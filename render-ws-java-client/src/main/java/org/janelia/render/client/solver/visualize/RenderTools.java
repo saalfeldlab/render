@@ -7,6 +7,7 @@ import java.util.HashMap;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -21,15 +22,13 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvStackSource;
 import bdv.util.volatiles.VolatileViews;
-import ij.ImageJ;
-import ij.ImagePlus;
 import mpicbg.models.AffineModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.cache.img.CachedCellImg;
 import net.imglib2.img.basictypeaccess.AccessFlags;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.real.FloatType;
@@ -48,18 +47,31 @@ public class RenderTools
 	final static public String boundingBoxFormat = stackFormat + "/z/%d/box/%d,%d,%d,%d,%f";
 	final static public String renderParametersFormat = boundingBoxFormat + "/render-parameters";
 
+	final public static StackMetaData openStackMetaData(
+			final String baseUrl,
+			final String owner,
+			final String project,
+			final String stack ) throws IOException
+	{
+		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
+		return renderDataClient.getStackMetaData( stack );
+	}
+
 	final static public int[] availableDownsamplings(
 			final String baseUrl,
 			final String owner,
 			final String project,
 			final String stack ) throws IOException
 	{
+		return availableDownsamplings( openStackMetaData( baseUrl, owner, project, stack ) );
+	}
+
+	final static public int[] availableDownsamplings(
+			final StackMetaData sourceStackMetaData ) throws IOException
+	{
 		// Say you have scalings of 0.5, 0.25, 0.1
 		// and I query 0.500000001
 		// will it use 1.0 then - yes
-
-		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
-		final StackMetaData sourceStackMetaData = renderDataClient.getStackMetaData( stack );
 
 		final MipmapPathBuilder mipmaps = sourceStackMetaData.getCurrentVersion().getMipmapPathBuilder();
 		
@@ -78,6 +90,21 @@ public class RenderTools
 		}
 	}
 
+	final static public Interval stackBounds( final StackMetaData sourceStackMetaData ) throws IOException
+	{
+		Bounds bounds = sourceStackMetaData.getStats().getStackBounds();
+		
+		return new FinalInterval(
+				new long[] {
+					Math.round( Math.floor( bounds.getMinX() ) ),
+					Math.round( Math.floor( bounds.getMinY() ) ),
+					Math.round( Math.floor( bounds.getMinZ() ) ) },
+				new long[] {
+					Math.round( Math.ceil( bounds.getMaxX() ) ),
+					Math.round( Math.ceil( bounds.getMaxY() ) ),
+					Math.round( Math.ceil( bounds.getMaxZ() ) ) } );
+	}
+
 	/**
 	 * Fetch the raw image for an arbitrary scale (can crash if scale does not exist - if that is easier)
 	 * 
@@ -90,7 +117,7 @@ public class RenderTools
 	 * @param scale - the preexisting downsampled image as stored on disk
 	 * @return
 	 */
-	final static private BufferedImage renderImage(
+	final static public BufferedImage renderImage(
 			final ImageProcessorCache ipCache,
 			final String baseUrl,
 			final String owner,
@@ -214,13 +241,15 @@ public class RenderTools
 							owner,
 							project,
 							stack,
+							fullResInterval.min( 2 ),
+							fullResInterval.max( 2 ),
 							ipCache,
 							min,
 							new FloatType(),
 							1.0/downsampling );
 
 			// blockSize should be power-of-2 and at least the minimal downsampling
-			final int blockSizeXY = Math.max( 64, ds[ ds.length - 1 ] );
+			final int blockSizeXY = Math.max( 64, ds[ ds.length - 1 ] ); // does that make sense?
 			final int[] blockSize = new int[] { blockSizeXY, blockSizeXY, 1 };
 
 			final RandomAccessibleInterval<FloatType> cachedImg =
@@ -252,7 +281,7 @@ public class RenderTools
 			source = BdvFunctions.show( new MultiResolutionSource( multiRes, project + "_" + stack ), Bdv.options().addTo( source ).numRenderingThreads( numThreads ) );
 		}
 
-		source.setDisplayRange( 0, 4096 );
+		//source.setDisplayRange( 0, 4096 );
 
 		return source;
 	}
@@ -264,14 +293,18 @@ public class RenderTools
 		String project = "Z0419_25_Alpha3";
 		String stack = "v1_acquire_sp_nodyn_v2";
 
-		final int[] ds = availableDownsamplings( baseUrl, owner, project, stack );
+		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
+		
+		final int[] ds = availableDownsamplings( meta );
+		Interval interval = stackBounds( meta );
 
 		System.out.println( Util.printCoordinates( ds ) );
+		System.out.println( Util.printInterval( interval ) );
 
 		final boolean recordStats = true;
 		final boolean cacheOriginalsForDownSampledImages = true;
 		final ImageProcessorCache ipCache = new ImageProcessorCache( Integer.MAX_VALUE, recordStats, cacheOriginalsForDownSampledImages );
-
+		/*
 		final boolean filter = false;
 
 		int w = 12000;
@@ -288,22 +321,11 @@ public class RenderTools
 		final ImagePlus imp2 = new ImagePlus("img1 " + ds[ 3 ], img2.ip);
 		imp1.show();
 		imp2.show();
-
-		/*
-		 * ds=1, interval=FinalInterval [(-5152, -5816, 1) -- (5939, 3629, 9505) = 11092x9446x9505]
-		 * ds=2, interval=FinalInterval [(-2576, -2908, 0) -- (2970, 1815, 4753) = 5547x4724x4754]
-		 * ds=4, interval=FinalInterval [(-1288, -1454, 0) -- (1485, 908, 2377) = 2774x2363x2378]
-		 * ds=8, interval=FinalInterval [(-644, -727, 0) -- (743, 454, 1189) = 1388x1182x1190]
-		 * ds=16, interval=FinalInterval [(-322, -364, 0) -- (372, 227, 595) = 695x592x596]
-		 * ds=32, interval=FinalInterval [(-161, -182, 0) -- (186, 114, 298) = 348x297x299]
-		 * ds=64, interval=FinalInterval [(-81, -91, 0) -- (93, 57, 149) = 175x149x150]
-		 * ds=128, interval=FinalInterval [(-41, -46, 0) -- (47, 29, 75) = 89x76x76]
-		 * ds=256, interval=FinalInterval [(-21, -23, 0) -- (24, 15, 38) = 46x39x39]
-		 */
-
-		final Interval interval = new FinalInterval( new long[] {-5152, -5816, 1}, new long[] {5939, 3629, 9505 } );
+		*/
 
 		BdvStackSource<?> img = RenderTools.renderMultiRes(
-				null, baseUrl, owner, project, stack, interval, null, 72 );
+				ipCache, baseUrl, owner, project, stack, interval, null, 72 );
+		
+		img.setDisplayRange( 0, 256 );
 	}
 }
