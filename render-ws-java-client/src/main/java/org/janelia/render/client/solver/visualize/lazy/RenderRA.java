@@ -23,8 +23,6 @@
 
 package org.janelia.render.client.solver.visualize.lazy;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -33,23 +31,11 @@ import org.janelia.render.client.solver.visualize.RenderTools;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
 import net.imglib2.Cursor;
-import net.imglib2.Interval;
-import net.imglib2.Localizable;
-import net.imglib2.RandomAccess;
-import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.Sampler;
-import net.imglib2.algorithm.gauss3.Gauss3;
-import net.imglib2.algorithm.gauss3.SeparableSymmetricConvolution;
-import net.imglib2.converter.Converters;
 import net.imglib2.exception.IncompatibleTypeException;
-import net.imglib2.img.array.ArrayImg;
-import net.imglib2.img.array.ArrayImgFactory;
-import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 /**
@@ -64,19 +50,27 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 	final T type;
 	final long[] globalMin;
 	final ImageProcessorCache ipCache;
-	String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-	String owner = "flyem";
-	String project = "Z0419_25_Alpha3";
-	String stack = "v1_acquire_sp_translation_nodyn";
+	final String baseUrl;// = "http://tem-services.int.janelia.org:8080/render-ws/v1";
+	final String owner;// = "flyem";
+	final String project;// = "Z0419_25_Alpha3";
+	final String stack;// = "v1_acquire_sp_translation_nodyn";
 
 	final double scale;
 
 	public RenderRA(
+			final String baseUrl,
+			final String owner,
+			final String project,
+			final String stack,
 			final ImageProcessorCache ipCache,
 			final long[] min,
 			final T type,
-			final double scale)
+			final double scale )
 	{
+		this.baseUrl = baseUrl;
+		this.owner = owner;
+		this.project = project;
+		this.stack = stack;
 		this.ipCache = ipCache;
 		this.globalMin = min;
 		this.type = type;
@@ -93,6 +87,10 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 
 		try
 		{
+			final long[] min= new long[ output.numDimensions() ];
+			for ( int d = 0; d < min.length; ++d )
+				min[ d ] = globalMin[ d ] + output.min( d );
+
 			final int x = (int)Math.round( output.min( 0 ) / scale );
 			final int y = (int)Math.round( output.min( 1 ) / scale );
 
@@ -103,11 +101,10 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 			final int z = (int)Math.round( output.min( 2 ) / scale );
 
 			ImageProcessor ip = RenderTools.renderImage(ipCache, baseUrl, owner, project, stack, x, y, z, w, h, z, false ).ip;
+			RandomAccessibleInterval img;
 
-			final long[] min = new long[ output.numDimensions() ];
-			output.min( min );
-
-			RandomAccessibleInterval img = Views.translate( (RandomAccessibleInterval)ImageJFunctions.wrapReal( new ImagePlus( "", ip ) ), min );
+			img = ImagePlusImgs.from( new ImagePlus( "", ip ) );
+			img = Views.translate( img, min );
 
 			final Cursor< T > out = Views.flatIterable( output ).cursor();
 			final Cursor< RealType > in = Views.flatIterable( img ).cursor();
