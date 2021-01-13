@@ -2,22 +2,41 @@ package org.janelia.render.client.solver.visualize;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 
-import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
-import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.solver.MinimalTileSpec;
+import org.janelia.render.client.solver.MultiResolutionSource;
+import org.janelia.render.client.solver.visualize.lazy.Lazy;
+import org.janelia.render.client.solver.visualize.lazy.RenderRA;
 
+import bdv.util.Bdv;
+import bdv.util.BdvFunctions;
+import bdv.util.BdvOptions;
+import bdv.util.BdvStackSource;
+import bdv.util.volatiles.VolatileViews;
 import ij.ImageJ;
 import ij.ImagePlus;
+import mpicbg.models.AffineModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import net.imglib2.Interval;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.cache.img.CachedCellImg;
+import net.imglib2.img.basictypeaccess.AccessFlags;
 import net.imglib2.realtransform.AffineTransform2D;
+import net.imglib2.realtransform.AffineTransform3D;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.type.volatiles.VolatileFloatType;
+import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
+import net.imglib2.util.ValuePair;
+import net.imglib2.view.Views;
 
 public class RenderTools
 {
@@ -122,6 +141,81 @@ public class RenderTools
 		*/
 
 		return Renderer.renderImageProcessorWithMasks( renderParameters, ipCache );
+	}
+
+	public static BdvStackSource< ? > renderMultiRes(
+			final String baseUrl,
+			final String owner,
+			final String project,
+			final String stack,
+			final HashMap<String, AffineModel2D> idToModels,
+			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			BdvStackSource< ? > source,
+			final int numThreads ) throws IOException
+	{
+		// one common ImageProcessor cache for all
+		final boolean recordStats = true;
+		final boolean cacheOriginalsForDownSampledImages = true;
+		final ImageProcessorCache ipCache = new ImageProcessorCache( Integer.MAX_VALUE, recordStats, cacheOriginalsForDownSampledImages );
+
+		final ArrayList< Pair< RandomAccessibleInterval< VolatileFloatType >, AffineTransform3D > > multiRes = new ArrayList<>();
+
+		final int[] ds = availableDownsamplings( baseUrl, owner, project, stack );
+
+		for ( final int downsampling : ds )
+		{
+			//LOG.info( "Assembling Multiresolution pyramid for downsampling=" + downsampling );
+
+			final Interval interval = VisualizingRandomAccessibleInterval.computeInterval(
+					idToModels,
+					idToTileSpec,
+					new double[] { 1.0/downsampling, 1.0/downsampling, 1.0/downsampling } );
+
+			System.out.println( "ds=" + downsampling + ", interval=" + interval );
+
+			final long[] min = new long[ interval.numDimensions() ];
+			interval.min( min );
+
+			final RenderRA< FloatType > renderer =
+					new RenderRA<>(
+							baseUrl,
+							owner,
+							project,
+							stack,
+							ipCache,
+							min,
+							new FloatType(),
+							1.0/downsampling );
+
+			// blockSize should be power-of-2 and at least the minimal downsampling
+			final int blockSizeXY = Math.max( 64, ds[ ds.length - 1 ] );
+			final int[] blockSize = new int[] { blockSizeXY, blockSizeXY, 1 };
+
+			final RandomAccessibleInterval<FloatType> cachedImg =
+					Views.translate( Lazy.process( interval, blockSize, new FloatType(), AccessFlags.setOf(), renderer ), min );
+
+			final RandomAccessibleInterval< VolatileFloatType > volatileRA = VolatileViews.wrapAsVolatile( cachedImg );
+
+			// the virtual image is zeroMin, this transformation puts it into the global coordinate system
+			final AffineTransform3D t = new AffineTransform3D();
+			t.scale( downsampling );
+
+			multiRes.add( new ValuePair<>( volatileRA, t )  );
+		}
+
+		if ( source == null )
+		{
+			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( project + "_" + stack ).numRenderingThreads( numThreads );
+			source = BdvFunctions.show( new MultiResolutionSource( multiRes, project + "_" + stack ), options );
+		}
+		else
+		{
+			source = BdvFunctions.show( new MultiResolutionSource( multiRes, project + "_" + stack ), Bdv.options().addTo( source ).numRenderingThreads( numThreads ) );
+		}
+
+		source.setDisplayRange( 0, 4096 );
+
+		return source;
 	}
 
 	public static void main( String[] args ) throws IOException
