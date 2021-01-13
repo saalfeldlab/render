@@ -10,10 +10,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import bdv.util.BdvStackSource;
 import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
@@ -115,7 +117,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             "--project", "Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
                             "--matchCollection", "Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
                             "--stack", "v1_acquire", //"v3_acquire",
-                            "--targetStack", "v1_acquire_sp_nodyn_v2",
+                            "--targetStack", "v1_acquire_sp_nodyn_test",
                             "--completeTargetStack",
                             
                             //"--noreg","400, 23434, 23-254",
@@ -136,8 +138,8 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             "--threadsGlobal", "72",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-							"--serializerDirectory", ".",
-							"--serializeMatches",
+							//"--serializerDirectory", ".",
+							//"--serializeMatches",
 							"--dynamicLambdaFactor", "0.0"
                     };
                     parameters.parse(testArgs);
@@ -186,7 +188,17 @@ public class DistributedSolveMultiThread extends DistributedSolve
 				for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
 					idToValue.put( tileId, gs.zToDynamicLambdaGlobal.get( (int)Math.round( gs.idToTileSpecGlobal.get( tileId ).getZ() ) ).floatValue() + 1 ); // between 1 and 1.2
 
-                VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
+				BdvStackSource<?> vis = VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
+
+				vis = RenderTools.renderMultiRes(
+						null,
+						parameters.renderWeb.baseDataUrl,
+						parameters.renderWeb.owner,
+						parameters.renderWeb.project,
+						"v1_acquire_sp_nodyn_test",
+						gs.idToFinalModelGlobal,
+						gs.idToTileSpecGlobal,
+						vis, 36 );
 
                 SimpleMultiThreading.threadHaltUnClean();
             }

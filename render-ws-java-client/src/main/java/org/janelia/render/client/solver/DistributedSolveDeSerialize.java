@@ -178,7 +178,7 @@ public class DistributedSolveDeSerialize extends DistributedSolve
 						"v1_acquire_sp_nodyn_v2",
 						gs.idToFinalModelGlobal,
 						gs.idToTileSpecGlobal,
-						null, 72 );
+						vis, 36 );
 
 				SimpleMultiThreading.threadHaltUnClean();
             }
