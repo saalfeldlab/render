@@ -15,6 +15,7 @@ import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.janelia.render.client.solver.visualize.ErrorTools.ErrorFilter;
 import org.janelia.render.client.solver.visualize.ErrorTools.ErrorType;
 import org.janelia.render.client.solver.visualize.ErrorTools.Errors;
+import org.janelia.render.client.solver.visualize.RenderTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,22 +114,21 @@ public class DistributedSolveDeSerialize extends DistributedSolve
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "Z1217_33m_BR",
-                            "--project", "Sec10",
-                            "--matchCollection", "Sec10_multi",
-                            "--stack", "v3_acquire",
-                            //"--targetStack", "v3_acquire_sp1",
+                            "--owner", "flyem", //"cosem", //"Z1217_33m_BR",
+                            "--project", "Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", "v1_acquire", //"v3_acquire",
+                            //"--targetStack", "v1_acquire_sp_nodyn_v2",
                             //"--completeTargetStack",
-                            
+
                             "--minZ", "1",
-                            "--maxZ", "34022",
-                            "--blockSize", "500",
+                            "--maxZ", "9505", //"6480",//"34022",
 
                             //"--threadsWorker", "1", 
                             "--threadsGlobal", "65",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-                            "--serializerDirectory", "/groups/flyem/data/sema/spark_example/ser-0.3new"//"/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser"//500_full"
+                            "--serializerDirectory", "."//"/groups/flyem/data/sema/spark_example/ser-0.3new"//"/groups/scicompsoft/home/preibischs/Documents/FIB-SEM/ser"//500_full"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -169,6 +169,16 @@ public class DistributedSolveDeSerialize extends DistributedSolve
 				vis = ErrorTools.renderPotentialProblemAreas( vis, errors, ErrorType.AVG, 4.0, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal );
 
 				vis = VisualizeTools.renderDynamicLambda( vis, gs.zToDynamicLambdaGlobal, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, parameters.dynamicLambdaFactor );
+
+				BdvStackSource<?> img = RenderTools.renderMultiRes(
+						null,
+						parameters.renderWeb.baseDataUrl,
+						parameters.renderWeb.owner,
+						parameters.renderWeb.project,
+						"v1_acquire_sp_nodyn_v2",
+						gs.idToFinalModelGlobal,
+						gs.idToTileSpecGlobal,
+						null, 72 );
 
 				SimpleMultiThreading.threadHaltUnClean();
             }

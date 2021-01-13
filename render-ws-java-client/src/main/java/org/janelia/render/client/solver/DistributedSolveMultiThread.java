@@ -115,15 +115,15 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             "--project", "Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
                             "--matchCollection", "Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
                             "--stack", "v1_acquire", //"v3_acquire",
-                            "--targetStack", "v1_acquire_sp_translation_nodyn",
+                            "--targetStack", "v1_acquire_sp_nodyn_v2",
                             "--completeTargetStack",
                             
                             //"--noreg","400, 23434, 23-254",
                             
-                            "--blockOptimizerLambdasRigid",       "1.0", //"1.0,1.0,0.9,0.1,0.01",
-                            "--blockOptimizerLambdasTranslation", "1.0", //"1.0,0.5,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "2000", //"1000,1000,500,250,250",
-                            "--blockMaxPlateauWidth", "500",//"250,250,150,100,100",
+                            "--blockOptimizerLambdasRigid",       "1.0,1.0,0.9,0.3,0.01",
+                            "--blockOptimizerLambdasTranslation", "1.0,0.0,0.0,0.0,0.0",
+                            "--blockOptimizerIterations", "1000,1000,500,250,250",
+                            "--blockMaxPlateauWidth", "250,250,150,100,100",
 
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
@@ -136,9 +136,9 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             "--threadsGlobal", "72",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-							"--serializerDirectory", "./ser-translation_nodyn",
+							"--serializerDirectory", ".",
 							"--serializeMatches",
-							"--dynamicLambdaFactor", "0.00"
+							"--dynamicLambdaFactor", "0.0"
                     };
                     parameters.parse(testArgs);
                 } else {
