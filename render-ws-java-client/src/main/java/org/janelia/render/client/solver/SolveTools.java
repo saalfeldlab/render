@@ -265,6 +265,7 @@ public class SolveTools
 		return prevTiles;
 	}
 
+	// also adds results to solveItem.zToDynamicLambda()
 	protected static HashMap< Tile< ? >, Double > computeMetaDataLambdas(
 			final Collection< Tile< ? > > tiles,
 			final SolveItem< ?,?,? > solveItem,
