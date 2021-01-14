@@ -21,6 +21,7 @@ import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvStackSource;
+import bdv.util.volatiles.SharedQueue;
 import bdv.util.volatiles.VolatileViews;
 import mpicbg.models.AffineModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
@@ -28,7 +29,6 @@ import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.basictypeaccess.AccessFlags;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.real.FloatType;
@@ -187,7 +187,11 @@ public class RenderTools
 				idToTileSpec,
 				new double[] { 1.0, 1.0, 1.0 } );
 
-		return renderMultiRes( globalIpCache, baseUrl, owner, project, stack, interval, source, numThreads );
+		// TODO: determine optimal distribution of threads between render and fetch (using half and half for now)
+		final int numFetchThreads = Math.max(numThreads / 2, 1);
+		final int numRenderingThreads = Math.max(numThreads - numFetchThreads, 1);
+
+		return renderMultiRes( globalIpCache, baseUrl, owner, project, stack, interval, source, numRenderingThreads, numFetchThreads );
 	}
 
 	public static BdvStackSource< ? > renderMultiRes(
@@ -198,7 +202,8 @@ public class RenderTools
 			final String stack,
 			final Interval fullResInterval,
 			BdvStackSource< ? > source,
-			final int numThreads ) throws IOException
+			final int numRenderingThreads,
+			final int numFetchThreads ) throws IOException
 	{
 		// one common ImageProcessor cache for all
 		final ImageProcessorCache ipCache;
@@ -217,6 +222,10 @@ public class RenderTools
 		final ArrayList< Pair< RandomAccessibleInterval< VolatileFloatType >, AffineTransform3D > > multiRes = new ArrayList<>();
 
 		final int[] ds = availableDownsamplings( baseUrl, owner, project, stack );
+
+		// define queue here so that multiple FetcherThreads are used
+		System.out.println("building SharedQueue with " + numFetchThreads + " FetcherThreads" );
+		final SharedQueue queue = new SharedQueue(numFetchThreads, 1 );
 
 		for ( final int downsampling : ds )
 		{
@@ -262,7 +271,8 @@ public class RenderTools
 									renderer ),
 							min );
 
-			final RandomAccessibleInterval< VolatileFloatType > volatileRA = VolatileViews.wrapAsVolatile( cachedImg );
+			final RandomAccessibleInterval< VolatileFloatType > volatileRA = VolatileViews.wrapAsVolatile( cachedImg,
+																										   queue );
 
 			// the virtual image is zeroMin, this transformation puts it into the global coordinate system
 			final AffineTransform3D t = new AffineTransform3D();
@@ -273,12 +283,13 @@ public class RenderTools
 
 		if ( source == null )
 		{
-			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( project + "_" + stack ).numRenderingThreads( numThreads );
-			source = BdvFunctions.show( new MultiResolutionSource( multiRes, project + "_" + stack ), options );
+			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( project + "_" + stack ).numRenderingThreads( numRenderingThreads );
+			final String windowName = owner + " " + project + " " + stack;
+			source = BdvFunctions.show( new MultiResolutionSource( multiRes, windowName ), options );
 		}
 		else
 		{
-			source = BdvFunctions.show( new MultiResolutionSource( multiRes, project + "_" + stack ), Bdv.options().addTo( source ).numRenderingThreads( numThreads ) );
+			source = BdvFunctions.show( new MultiResolutionSource( multiRes, project + "_" + stack ), Bdv.options().addTo( source ).numRenderingThreads( numRenderingThreads ) );
 		}
 
 		//source.setDisplayRange( 0, 4096 );
@@ -289,9 +300,9 @@ public class RenderTools
 	public static void main( String[] args ) throws IOException
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "flyem";
-		String project = "Z0419_25_Alpha3";
-		String stack = "v1_acquire_sp_nodyn_v2";
+		String owner = "Z0720_07m_VNC";
+		String project = "Sec32";
+		String stack = "v1_acquire";
 
 		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
 		
@@ -302,8 +313,21 @@ public class RenderTools
 		System.out.println( Util.printInterval( interval ) );
 
 		final boolean recordStats = true;
-		final boolean cacheOriginalsForDownSampledImages = true;
-		final ImageProcessorCache ipCache = new ImageProcessorCache( Integer.MAX_VALUE, recordStats, cacheOriginalsForDownSampledImages );
+
+		// only cache original imageProcessors if you don't have mipmaps
+		final boolean cacheOriginalsForDownSampledImages = false;
+		// make imageProcessor cache large enough for masks and some images, but leave most RAM for BDV
+		final long cachedPixels = 2000000;
+		final ImageProcessorCache ipCache = new ImageProcessorCache( cachedPixels, recordStats, cacheOriginalsForDownSampledImages );
+
+		// make most cores available for viewer
+		final double totalThreadUsage = 0.8;
+		final int numTotalThreads = (int) Math.floor(Runtime.getRuntime().availableProcessors() * totalThreadUsage);
+
+		// TODO: determine optimal distribution of threads between render and fetch (using half and half for now)
+		final int numFetchThreads = Math.max(numTotalThreads / 2, 1);
+		final int numRenderingThreads = Math.max(numTotalThreads - numFetchThreads, 1);
+
 		/*
 		final boolean filter = false;
 
@@ -324,7 +348,7 @@ public class RenderTools
 		*/
 
 		BdvStackSource<?> img = RenderTools.renderMultiRes(
-				ipCache, baseUrl, owner, project, stack, interval, null, 72 );
+				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads );
 		
 		img.setDisplayRange( 0, 256 );
 	}
