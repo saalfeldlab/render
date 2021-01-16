@@ -375,7 +375,11 @@ public class CopyStackClient {
             }
         }
 
-        toDataClient.saveResolvedTiles(sourceCollection, parameters.toStack, null);
+        if (sourceCollection.getTileCount() > 0) {
+            toDataClient.saveResolvedTiles(sourceCollection, parameters.toStack, null);
+        } else {
+            LOG.info("copyLayer: no tiles left to save");
+        }
     }
 
     private Set<String> getIdsForTilesInBox(final Double z) throws Exception {
