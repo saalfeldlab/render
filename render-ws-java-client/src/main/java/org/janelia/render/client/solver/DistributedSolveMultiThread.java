@@ -113,15 +113,16 @@ public class DistributedSolveMultiThread extends DistributedSolve
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "flyem", //"cosem", //"Z1217_33m_BR",
-                            "--project", "Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                            "--matchCollection", "Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-                            "--stack", "v1_acquire", //"v3_acquire",
-                            "--targetStack", "v1_acquire_sp_nodyn_t4636",
+                            "--owner", "Z0720_07m_VNC", //"flyem", //"cosem", //"Z1217_33m_BR",
+                            "--project", "Sec32", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "Sec32_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", "v1_acquire_trimmed", //"v3_acquire",
+                            "--targetStack", "v1_acquire_trimmed_sp1",
                             "--completeTargetStack",
                             
                             //"--noreg","400, 23434, 23-254",
-                            
+
+                            // note: prealign is with translation only
                             "--blockOptimizerLambdasRigid",       "1.0,1.0,0.9,0.3,0.01",
                             "--blockOptimizerLambdasTranslation", "1.0,0.0,0.0,0.0,0.0",
                             "--blockOptimizerIterations", "1000,1000,500,250,250",
@@ -131,7 +132,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             //"--noStitching", // do not stitch first
                             
                             "--minZ", "1",
-                            "--maxZ", "9505", //"6480",//"34022",
+                            "--maxZ", "12301", //"9505", //"6480",//"34022",
 
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
@@ -163,7 +164,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
                 //DistributedSolve.visMaxZ = 1285;
                 
                 final SolveSetFactory solveSetFactory =
-        		new SolveSetFactoryAso(
+        		new SolveSetFactorySimple(
         				parameters.globalModel(),
         				parameters.blockModel(),
         				parameters.stitchingModel(),
@@ -195,7 +196,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
 						parameters.renderWeb.baseDataUrl,
 						parameters.renderWeb.owner,
 						parameters.renderWeb.project,
-						"v1_acquire_sp_nodyn_t4636",
+						parameters.targetStack,
 						gs.idToFinalModelGlobal,
 						gs.idToTileSpecGlobal,
 						vis, 36 );
