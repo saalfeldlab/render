@@ -117,7 +117,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             "--project", "Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
                             "--matchCollection", "Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
                             "--stack", "v1_acquire", //"v3_acquire",
-                            "--targetStack", "v1_acquire_sp_nodyn_test",
+                            "--targetStack", "v1_acquire_sp_nodyn_t4636",
                             "--completeTargetStack",
                             
                             //"--noreg","400, 23434, 23-254",
@@ -163,7 +163,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
                 //DistributedSolve.visMaxZ = 1285;
                 
                 final SolveSetFactory solveSetFactory =
-        		new SolveSetFactorySimple(
+        		new SolveSetFactoryAso(
         				parameters.globalModel(),
         				parameters.blockModel(),
         				parameters.stitchingModel(),
@@ -195,7 +195,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
 						parameters.renderWeb.baseDataUrl,
 						parameters.renderWeb.owner,
 						parameters.renderWeb.project,
-						"v1_acquire_sp_nodyn_test",
+						"v1_acquire_sp_nodyn_t4636",
 						gs.idToFinalModelGlobal,
 						gs.idToTileSpecGlobal,
 						vis, 36 );
