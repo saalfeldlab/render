@@ -186,6 +186,7 @@ public class CopyStackClient {
     }
 
     private final Parameters parameters;
+    private final ExcludedColumnParameters.ExcludedColumnList excludedColumnList;
     private final RenderDataClient fromDataClient;
     private final RenderDataClient toDataClient;
     private final Map<String, Double> sectionIdToZMap;
@@ -195,6 +196,7 @@ public class CopyStackClient {
     private CopyStackClient(final Parameters parameters) throws Exception {
 
         this.parameters = parameters;
+        this.excludedColumnList = parameters.excludedColumns.toList();
 
         this.fromDataClient = parameters.renderWeb.getDataClient();
 
@@ -345,12 +347,12 @@ public class CopyStackClient {
             }
         }
 
-        if (parameters.excludedColumns.isDefined()) {
+        if (excludedColumnList.isDefined()) {
             final Set<String> tileIdsToRemove = new HashSet<>();
             sourceCollection.getTileSpecs().forEach(tileSpec -> {
                 final LayoutData layoutData = tileSpec.getLayout();
-                if (parameters.excludedColumns.isExcludedColumn(layoutData.getImageCol(),
-                                                                tileSpec.getZ())) {
+                if (excludedColumnList.isExcludedColumn(layoutData.getImageCol(),
+                                                        tileSpec.getZ())) {
                     tileIdsToRemove.add(tileSpec.getTileId());
                 }
             });
@@ -373,7 +375,11 @@ public class CopyStackClient {
             }
         }
 
-        toDataClient.saveResolvedTiles(sourceCollection, parameters.toStack, null);
+        if (sourceCollection.getTileCount() > 0) {
+            toDataClient.saveResolvedTiles(sourceCollection, parameters.toStack, null);
+        } else {
+            LOG.info("copyLayer: no tiles left to save");
+        }
     }
 
     private Set<String> getIdsForTilesInBox(final Double z) throws Exception {
