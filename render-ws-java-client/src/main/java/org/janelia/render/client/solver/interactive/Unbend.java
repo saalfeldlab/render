@@ -1,6 +1,7 @@
 package org.janelia.render.client.solver.interactive;
 
 import java.io.IOException;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -22,6 +23,8 @@ import org.janelia.render.client.solver.SerializableValuePair;
 import org.janelia.render.client.solver.SolveItem;
 import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.RenderTools;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
@@ -73,8 +76,8 @@ public class Unbend
 		final int numFetchThreads = Math.max(numTotalThreads / 2, 1);
 		final int numRenderingThreads = Math.max(numTotalThreads - numFetchThreads, 1);
 
-		Double minZ = 1650.0;
-		Double maxZ = 1750.0;
+		Double minZ = 5000.0;
+		Double maxZ = 9999.0;
 
 		RenderDataClient client = new RenderDataClient(baseUrl, owner, project );
 		final List<SectionData> allSectionDataList =
@@ -104,7 +107,7 @@ public class Unbend
 			@Override
 			public int compare( final Pair< String, Double > o1, final Pair< String, Double > o2 )
 			{
-				return o1.getA().compareTo( o2.getA() );
+				return o1.getB().compareTo( o2.getB() );
 			}
 		} );
 
@@ -128,15 +131,44 @@ public class Unbend
 			}
 		});
 
-		final HashMap< Integer, Model<?> > transforms = new HashMap<>();
+		//final HashMap< Integer, AffineModel2D > renderTransforms = new HashMap<>();
+		//final HashMap< Integer, double[] > cm = new HashMap<>();
+		HashMap< Integer, TranslationModel2D > deltaCM = null;
 
 		for ( final Pair< String, Double > pGroupPair : pGroupList )
 		{
 			final String pGroupId = pGroupPair.getA();
 
-			//System.out.println("connecting tiles with pGroupId " + pGroupId);
+			final int z0 = (int)Math.round( pGroupPair.getB() );
+			System.out.println( "z0=" + z0 );
+			// init with empty model for the first z-plane
+			if ( deltaCM == null )
+			{
+				deltaCM = new HashMap<Integer, TranslationModel2D>();
+				deltaCM.put( z0, new TranslationModel2D() );
+			}
 
 			final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
+
+			int z1 = Integer.MAX_VALUE;
+
+			for (final CanvasMatches match : matches)
+			{
+				final String qGroupId = match.getqGroupId();
+
+				if (pGroupId.equals(qGroupId ) )
+					continue;
+
+				final String qId = match.getqId();
+				final TileSpec qTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, client, stack, qGroupId, qId);
+
+				if ((qTileSpec == null))
+					continue;
+
+				z1 = Math.min( z1, (int)Math.round( qTileSpec.getZ() ) );
+			}
+
+			final ArrayList< double[] > p = new ArrayList<>(), q = new ArrayList<>();
 
 			for (final CanvasMatches match : matches)
 			{
@@ -148,61 +180,97 @@ public class Unbend
 				final TileSpec qTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, client, stack, qGroupId, qId);
 
 				if ((pTileSpec == null) || (qTileSpec == null))
-				{
-					//System.out.println( "ignoring pair ({}, {}) because one or both tiles are missing from stack {}" +  pId + "," + qId + "," + stack);
 					continue;
-				}
 
-
-				if ( pId.contains("0-0-2") && qId.contains( "0-0-2" ) && Math.abs( pTileSpec.getZ() - qTileSpec.getZ() ) < 1.5 )
+				if ( pId.contains( "0-0-1" ) && qId.contains( "0-0-1" ) && Math.round( qTileSpec.getZ() ) == z1 )
 				{
-					final int z = (int)Math.round( pTileSpec.getZ() );
+					System.out.println( pId + ", " + qId );
+					// compute the deltaX and deltaY between the correspondences
+					final AffineModel2D mP = SolveTools.loadLastTransformFromSpec( pTileSpec );
+					final AffineModel2D mQ = SolveTools.loadLastTransformFromSpec( qTileSpec );
+					final double[][] ps = match.getMatches().getPs();
+					final double[][] qs = match.getMatches().getQs();
 
-					if ( !transforms.containsKey( z ) )
+					for ( int i = 0; i < ps[ 0 ].length; ++i )
 					{
-						final AffineModel2D mP = SolveTools.loadLastTransformFromSpec( pTileSpec );
-						final double[][] ps = match.getMatches().getPs();
+						double[] tmpP = new double[ 2 ];
+						tmpP[ 0 ] = ps[ 0 ][ i ];
+						tmpP[ 1 ] = ps[ 1 ][ i ];
+						mP.applyInPlace( tmpP );
+						p.add( tmpP );
 
-						double[] cm = new double[ 2 ];
-
-						for ( int i = 0; i < ps[ 0 ].length; ++i )
-						{
-							cm[ 0 ] += ps[ 0 ][ i ];
-							cm[ 1 ] += ps[ 1 ][ i ];
-						}
-
-						cm[ 0 ] /= (double)ps[ 0 ].length;
-						cm[ 1 ] /= (double)ps[ 0 ].length;
-
-						mP.applyInPlace( cm );
-						TranslationModel2D t = new TranslationModel2D();
-						t.set( cm[ 0 ], cm[ 1 ] );
-						transforms.put( z, t );
+						double[] tmpQ = new double[ 2 ];
+						tmpQ[ 0 ] = qs[ 0 ][ i ];
+						tmpQ[ 1 ] = qs[ 1 ][ i ];
+						mQ.applyInPlace( tmpQ );
+						q.add( tmpQ );
 					}
-						
-					//if ( !transforms.containsKey( z ) )
-					//	transforms.put( z, SolveTools.loadLastTransformFromSpec( pTileSpec ) );
 				}
 			}
 
+			double[] cmP = new double[ 2 ];
+			double[] cmQ = new double[ 2 ];
+
+			for ( int i = 0; i < p.size(); ++i )
+			{
+				cmP[ 0 ] += p.get( i )[ 0 ];
+				cmP[ 1 ] += p.get( i )[ 1 ];
+
+				cmQ[ 0 ] += q.get( i )[ 0 ];
+				cmQ[ 1 ] += q.get( i )[ 1 ];
+			}
+
+			cmP[ 0 ] /= (double)p.size();
+			cmP[ 1 ] /= (double)p.size();
+
+			cmQ[ 0 ] /= (double)p.size();
+			cmQ[ 1 ] /= (double)p.size();
+
+			double d[] = new double[ 2 ];
+
+			// pre-concantenate to previous differential transform
+			TranslationModel2D n = deltaCM.get( z0 );
+			n.applyInPlace( d );
+
+			d[ 0 ] += cmQ[ 0 ] - cmP[ 0 ];
+			d[ 1 ] += cmQ[ 1 ] - cmP[ 1 ];
+
+			System.out.println( z1 + ": " + (cmQ[ 0 ] - cmP[ 0 ]) + ", " + (cmQ[ 1 ] - cmP[ 1 ]));
+			TranslationModel2D t = new TranslationModel2D();
+			t.set( d[ 0 ], d[ 1 ] );
+			deltaCM.put( z1, t );
+			
+			//cm.put( z, cmQ );
+			//renderTransforms.put( z, mQ );
+
 		}
 
+		final ArrayList< Integer > zs = new ArrayList<Integer>( deltaCM.keySet() );
+		Collections.sort( zs );
+
+		double tmp[] = new double[ 2 ];
+		for ( final int z : zs )
+			System.out.println( z + ": " + Util.printCoordinates( deltaCM.get( z ).apply( tmp ) ) );
+
+		//System.exit( 0 );
 		BdvStackSource<?> bdv = RenderTools.renderMultiRes(
 				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads );
 		bdv.setDisplayRange( 0, 256 );
 
-		final double x = 0;
-		final double y = 0;
+		final double x = 18300;
+		final double y = 1500;
 		final double sigma = 100;
 		final double two_sq_sigma = 2 * sigma * sigma;
 		final double r2 = Math.pow( sigma * 4, 2 );
+
+		final HashMap< Integer, TranslationModel2D > d = deltaCM;
 
 		FunctionRealRandomAccessible<DoubleType> overlay =
 				new FunctionRealRandomAccessible<>(
 						3,
 						(l,t) -> {
 							final int z = (int)Math.round( l.getDoublePosition( 2 ) );
-							final Model<?> m = transforms.get( z );
+							final TranslationModel2D m = d.get( z );
 	
 							if ( m != null )
 							{
