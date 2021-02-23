@@ -76,8 +76,12 @@ public class Unbend
 		final int numFetchThreads = Math.max(numTotalThreads / 2, 1);
 		final int numRenderingThreads = Math.max(numTotalThreads - numFetchThreads, 1);
 
-		Double minZ = 5000.0;
-		Double maxZ = 9999.0;
+		BdvStackSource<?> bdv = RenderTools.renderMultiRes(
+				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads );
+		bdv.setDisplayRange( 0, 256 );
+
+		Double minZ = 1200.0;
+		Double maxZ = 2200.0;
 
 		RenderDataClient client = new RenderDataClient(baseUrl, owner, project );
 		final List<SectionData> allSectionDataList =
@@ -182,7 +186,7 @@ public class Unbend
 				if ((pTileSpec == null) || (qTileSpec == null))
 					continue;
 
-				if ( pId.contains( "0-0-1" ) && qId.contains( "0-0-1" ) && Math.round( qTileSpec.getZ() ) == z1 )
+				if ( /*pId.contains( "0-0-1" ) && qId.contains( "0-0-1" ) &&*/ Math.round( qTileSpec.getZ() ) == z1 )
 				{
 					System.out.println( pId + ", " + qId );
 					// compute the deltaX and deltaY between the correspondences
@@ -229,6 +233,7 @@ public class Unbend
 			double d[] = new double[ 2 ];
 
 			// pre-concantenate to previous differential transform
+			// TODO: update total location at every slice
 			TranslationModel2D n = deltaCM.get( z0 );
 			n.applyInPlace( d );
 
@@ -253,13 +258,10 @@ public class Unbend
 			System.out.println( z + ": " + Util.printCoordinates( deltaCM.get( z ).apply( tmp ) ) );
 
 		//System.exit( 0 );
-		BdvStackSource<?> bdv = RenderTools.renderMultiRes(
-				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads );
-		bdv.setDisplayRange( 0, 256 );
 
-		final double x = 18300;
-		final double y = 1500;
-		final double sigma = 100;
+		final double x = 17300;
+		final double y = 1800;
+		final double sigma = 20;
 		final double two_sq_sigma = 2 * sigma * sigma;
 		final double r2 = Math.pow( sigma * 4, 2 );
 
