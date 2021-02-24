@@ -213,43 +213,28 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 
 		graphics.setRenderingHint( RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON );
 
+		// for spline drawing
+		final MonotoneCubicSpline spline =
+				MonotoneCubicSpline.createMonotoneCubicSpline(
+						points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
+
+		final RealPoint p0 = new RealPoint( points.get( 0 ).length );
+		final RealPoint p1 = new RealPoint( points.get( 0 ).length );
+
+		final double[] d0 = new double[ p0.numDimensions() ];
+		final double[] d1 = new double[ p0.numDimensions() ];
+
 		// draw lines 
 		if ( transformedPoints.size() > 1 )
 		{
 			final GeneralPath front = new GeneralPath();
 			final GeneralPath back = new GeneralPath();
 
+			// draw lines
 			for ( int i = 1; i < transformedPoints.size(); ++i )
 				splitLine( transformedPoints.get( i - 1 ), transformedPoints.get( i ), front, back );
 
-			graphics.setStroke( normalStroke );
-			graphics.setPaint( backColor );
-			graphics.draw( back );
-
-			graphics.setStroke( normalStroke );
-			graphics.setPaint( frontColor );
-			graphics.draw( front );
-		}
-
-		for ( int i = 0; i < transformedPoints.size(); ++i )
-			drawPoint( graphics, transformedPoints.get( i ), i==pointId );
-
-		// draw spline
-		if ( transformedPoints.size() > 1 )
-		{
-			final MonotoneCubicSpline spline =
-					MonotoneCubicSpline.createMonotoneCubicSpline(
-							points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
-	
-			final RealPoint p0 = new RealPoint( points.get( 0 ).length );
-			final RealPoint p1 = new RealPoint( points.get( 0 ).length );
-	
-			final GeneralPath front = new GeneralPath();
-			final GeneralPath back = new GeneralPath();
-
-			final double[] d0 = new double[ p0.numDimensions() ];
-			final double[] d1 = new double[ p0.numDimensions() ];
-
+			// draw spline
 			for ( double x = 0.01; x < points.size() - 1; x += 0.01 )
 			{
 				spline.interpolate( x - 0.01, p0 );
@@ -272,6 +257,9 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 			graphics.setPaint( frontColor );
 			graphics.draw( front );
 		}
+
+		for ( int i = 0; i < transformedPoints.size(); ++i )
+			drawPoint( graphics, transformedPoints.get( i ), i==pointId );
 	}
 
 	private void drawPoint( final Graphics2D graphics, final double[] p, final boolean isHighlighted )
