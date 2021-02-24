@@ -2,38 +2,50 @@ package org.janelia.render.client.solver.interactive;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.Stroke;
+import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Ellipse2D;
 import java.awt.geom.GeneralPath;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import javax.swing.ActionMap;
+import javax.swing.InputMap;
+
 import org.scijava.ui.behaviour.Behaviour;
 import org.scijava.ui.behaviour.BehaviourMap;
 import org.scijava.ui.behaviour.DragBehaviour;
 import org.scijava.ui.behaviour.InputTrigger;
+import org.scijava.ui.behaviour.KeyStrokeAdder;
 import org.scijava.ui.behaviour.io.InputTriggerConfig;
+import org.scijava.ui.behaviour.io.InputTriggerDescription;
+import org.scijava.ui.behaviour.util.AbstractNamedAction;
 import org.scijava.ui.behaviour.util.Behaviours;
 import org.scijava.ui.behaviour.util.TriggerBehaviourBindings;
 
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
+import bdv.viewer.ViewerPanel;
+import bdv.viewer.animate.AbstractTransformAnimator;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.ui.OverlayRenderer;
 import net.imglib2.ui.TransformListener;
+import net.imglib2.util.Util;
 
 public class InteractiveSegmentedLine implements OverlayRenderer, TransformListener< AffineTransform3D >
 {
@@ -57,7 +69,7 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 	private static final String SEGMENTED_LINE_MAP = "segmented-line";
 	private static final String BLOCKING_MAP = "segmented-line-blocking";
 	private static final String SEGMENTED_LINE_TOGGLE_EDITOR = "edit segmented-line";
-	private static final String[] SEGMENTED_LINE_TOGGLE_EDITOR_KEYS = new String[] { "button1", "ctrl C" };
+	private static final String[] SEGMENTED_LINE_TOGGLE_EDITOR_KEYS = new String[] { "button1" };
 
 	private final Color backColor = new Color( 0x00994499 );
 	private final Color hitColor = Color.RED;
@@ -76,6 +88,67 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 		 */
 		behaviours = new Behaviours( new InputTriggerConfig(), "bdv" );
 		behaviours.behaviour( new DragPointBehaviour(), SEGMENTED_LINE_TOGGLE_EDITOR, SEGMENTED_LINE_TOGGLE_EDITOR_KEYS );
+
+		/*
+		 * setting up keystrokes
+		 */
+		// default input trigger config, disables "control button1" drag in bdv
+		// (collides with default of "move annotation")
+		final InputTriggerConfig config = new InputTriggerConfig(
+				Arrays.asList(
+						new InputTriggerDescription[]{new InputTriggerDescription(
+								new String[]{"not mapped"},
+								"drag rotate slow",
+								"bdv")}));
+
+		ActionMap ksActionMap = new ActionMap();
+		InputMap ksInputMap = new InputMap();
+		KeyStrokeAdder ksKeyStrokeAdder = config.keyStrokeAdder(ksInputMap, "persistence");
+
+		new AbstractNamedAction( "Screenshot" )
+		{
+			private static final long serialVersionUID = 3640052275162419689L;
+			private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
+
+			@Override
+			public void actionPerformed(ActionEvent e)
+			{
+				// a point is highlighted
+				if ( pointId >= 0)
+				{
+					synchronized (viewer) {
+
+						viewer.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+						final AffineTransform3D viewerTransform = viewer.state().getViewerTransform();
+
+						final double[] tStart =
+								new double[]{
+										viewerTransform.get(0, 3),
+										viewerTransform.get(1, 3),
+										viewerTransform.get(2, 3)};
+
+						final double[] tEnd = tStart.clone();
+						tEnd[ 2 ] -= transformedPoints.get( pointId )[ 2 ];
+
+						System.out.println( viewerTransform );
+						System.out.println( Util.printCoordinates( transformedPoints.get( pointId ) ));
+
+						viewer.setTransformAnimator(new TranslationTransformAnimator(viewerTransform, tStart, tEnd, 300));
+
+						viewer.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+					}
+				}
+			}
+
+			public void register() {
+				put(ksActionMap);
+				ksKeyStrokeAdder.put(name(), "ctrl C" );
+			}
+		}.register();
+
+		bdv.getBdvHandle().getKeybindings().addActionMap("persistence", ksActionMap);
+		bdv.getBdvHandle().getKeybindings().addInputMap("persistence", ksInputMap);
 
 		/*
 		 * Create BehaviourMap to block behaviours interfering with
@@ -179,22 +252,19 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 			final GeneralPath front = new GeneralPath();
 			final GeneralPath back = new GeneralPath();
 
-			drawPoint( graphics, transformedPoints.get( 0 ), 0==pointId );
-
 			for ( int i = 1; i < transformedPoints.size(); ++i )
-			{
 				splitLine( transformedPoints.get( i - 1 ), transformedPoints.get( i ), front, back );
 	
-				graphics.setStroke( normalStroke );
-				graphics.setPaint( backColor );
-				graphics.draw( back );
-	
-				graphics.setStroke( normalStroke );
-				graphics.setPaint( frontColor );
-				graphics.draw( front );
-	
+			graphics.setStroke( normalStroke );
+			graphics.setPaint( backColor );
+			graphics.draw( back );
+
+			graphics.setStroke( normalStroke );
+			graphics.setPaint( frontColor );
+			graphics.draw( front );
+
+			for ( int i = 0; i < transformedPoints.size(); ++i )
 				drawPoint( graphics, transformedPoints.get( i ), i==pointId );
-			}
 		}
 
 		// TODO Auto-generated method stub
@@ -339,6 +409,39 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 	public interface HighlightedPointListener
 	{
 		void highlightedPointChanged();
+	}
+
+	protected static class TranslationTransformAnimator extends AbstractTransformAnimator {
+
+		final AffineTransform3D viewerTransform;
+		final double[] tStart;
+		final double[] tEnd;
+
+		public TranslationTransformAnimator(
+				final AffineTransform3D viewerTransform,
+				final double[] tStart,
+				final double[] tEnd,
+				final long duration) {
+
+			super(duration);
+
+			this.viewerTransform = viewerTransform;
+			this.tStart = tStart;
+			this.tEnd = tEnd;
+		}
+
+		@Override
+		public AffineTransform3D get(final double t) {
+
+			final AffineTransform3D transform = viewerTransform.copy();
+
+			transform.set(tStart[0] * (1.0 - t) + tEnd[0] * t, 0, 3);
+			transform.set(tStart[1] * (1.0 - t) + tEnd[1] * t, 1, 3);
+			transform.set(tStart[2] * (1.0 - t) + tEnd[2] * t, 2, 3);
+
+			return transform;
+		}
+
 	}
 
 	public static void main( final String[] args )
