@@ -15,15 +15,16 @@ import java.awt.geom.Ellipse2D;
 import java.awt.geom.GeneralPath;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
-import javax.swing.KeyStroke;
 
 import org.scijava.ui.behaviour.Behaviour;
 import org.scijava.ui.behaviour.BehaviourMap;
@@ -41,6 +42,8 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.viewer.ViewerPanel;
 import bdv.viewer.animate.AbstractTransformAnimator;
+import net.imglib2.RealLocalizable;
+import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.realtransform.AffineTransform3D;
@@ -71,7 +74,7 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 	private static final String SEGMENTED_LINE_MAP = "segmented-line";
 	private static final String BLOCKING_MAP = "segmented-line-blocking";
 	private static final String SEGMENTED_LINE_TOGGLE_EDITOR = "edit segmented-line";
-	private static final String[] SEGMENTED_LINE_TOGGLE_EDITOR_KEYS = new String[] { "button1" };
+	private static final String[] SEGMENTED_LINE_TOGGLE_EDITOR_KEYS = new String[] { "button1" };//, "ctrl K" };
 
 	private final Color backColor = new Color( 0x00994499 );
 	private final Color hitColor = Color.RED;
@@ -184,7 +187,7 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 		final Map< InputTrigger, Set< String > > bindings = triggerbindings.getConcatenatedInputTriggerMap().getAllBindings();
 		final Set< String > behavioursToBlock = new HashSet<>();
 		for ( final InputTrigger t : segmentedLineTriggers )
-			behavioursToBlock.addAll( bindings.get( t ) );
+			behavioursToBlock.addAll( bindings.getOrDefault( t, Collections.emptySet() ) );
 
 		blockMap.clear();
 		final Behaviour block = new Behaviour() {};
@@ -218,7 +221,7 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 
 			for ( int i = 1; i < transformedPoints.size(); ++i )
 				splitLine( transformedPoints.get( i - 1 ), transformedPoints.get( i ), front, back );
-	
+
 			graphics.setStroke( normalStroke );
 			graphics.setPaint( backColor );
 			graphics.draw( back );
@@ -230,6 +233,45 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 
 		for ( int i = 0; i < transformedPoints.size(); ++i )
 			drawPoint( graphics, transformedPoints.get( i ), i==pointId );
+
+		// draw spline
+		if ( transformedPoints.size() > 1 )
+		{
+			final MonotoneCubicSpline spline =
+					MonotoneCubicSpline.createMonotoneCubicSpline(
+							points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
+	
+			final RealPoint p0 = new RealPoint( points.get( 0 ).length );
+			final RealPoint p1 = new RealPoint( points.get( 0 ).length );
+	
+			final GeneralPath front = new GeneralPath();
+			final GeneralPath back = new GeneralPath();
+
+			final double[] d0 = new double[ p0.numDimensions() ];
+			final double[] d1 = new double[ p0.numDimensions() ];
+
+			for ( double x = 0.01; x < points.size() - 1; x += 0.01 )
+			{
+				spline.interpolate( x - 0.01, p0 );
+				spline.interpolate( x, p1 );
+
+				p0.localize( d0 );
+				p1.localize( d1 );
+
+				transform.apply( d0, d0 );
+				transform.apply( d1, d1 );
+
+				splitLine( d0, d1, front, back );
+			}
+
+			graphics.setStroke( normalStroke );
+			graphics.setPaint( backColor );
+			graphics.draw( back );
+
+			graphics.setStroke( normalStroke );
+			graphics.setPaint( frontColor );
+			graphics.draw( front );
+		}
 	}
 
 	private void drawPoint( final Graphics2D graphics, final double[] p, final boolean isHighlighted )
