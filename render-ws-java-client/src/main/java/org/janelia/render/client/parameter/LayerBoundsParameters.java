@@ -13,31 +13,31 @@ public class LayerBoundsParameters implements Serializable {
 
     @Parameter(
             names = "--minX",
-            description = "Minimum X value for all tiles",
-            required = false)
+            description = "Minimum X value for all tiles")
     public Double minX;
 
     @Parameter(
             names = "--maxX",
-            description = "Maximum X value for all tiles",
-            required = false)
+            description = "Maximum X value for all tiles")
     public Double maxX;
 
     @Parameter(
             names = "--minY",
-            description = "Minimum Y value for all tiles",
-            required = false)
+            description = "Minimum Y value for all tiles")
     public Double minY;
 
     @Parameter(
             names = "--maxY",
-            description = "Maximum Y value for all tiles",
-            required = false)
+            description = "Maximum Y value for all tiles")
     public Double maxY;
+
+    public boolean isDefined() {
+        return (minX != null) || (maxX != null) || (minY != null) || (maxY != null);
+    }
 
     public void validate() throws IllegalArgumentException {
 
-        if ((minX != null) || (maxX != null) || (minY != null) || (maxY != null)) {
+        if (isDefined()) {
 
             if ((minX == null) || (maxX == null) || (minY == null) || (maxY == null)) {
                 throw new IllegalArgumentException("since one or more of minX (" + minX + "), maxX (" + maxX +

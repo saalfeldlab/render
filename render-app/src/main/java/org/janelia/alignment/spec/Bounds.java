@@ -84,6 +84,26 @@ public class Bounds implements Serializable {
     }
 
     @JsonIgnore
+    public int getX() {
+        return (int) Math.floor(minX);
+    }
+
+    @JsonIgnore
+    public int getY() {
+        return (int) Math.ceil(minY);
+    }
+
+    @JsonIgnore
+    public int getWidth() {
+        return (int) Math.ceil(getDeltaX());
+    }
+
+    @JsonIgnore
+    public int getHeight() {
+        return (int) Math.ceil(getDeltaY());
+    }
+
+    @JsonIgnore
     public double getCenterX() {
         return minX + (getDeltaX() / 2.0);
     }
