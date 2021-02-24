@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.Stroke;
 import java.awt.event.ActionEvent;
@@ -22,6 +23,7 @@ import java.util.Set;
 
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
+import javax.swing.KeyStroke;
 
 import org.scijava.ui.behaviour.Behaviour;
 import org.scijava.ui.behaviour.BehaviourMap;
@@ -105,47 +107,9 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 		InputMap ksInputMap = new InputMap();
 		KeyStrokeAdder ksKeyStrokeAdder = config.keyStrokeAdder(ksInputMap, "persistence");
 
-		new AbstractNamedAction( "Screenshot" )
-		{
-			private static final long serialVersionUID = 3640052275162419689L;
-			private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
-
-			@Override
-			public void actionPerformed(ActionEvent e)
-			{
-				// a point is highlighted
-				if ( pointId >= 0)
-				{
-					synchronized (viewer) {
-
-						viewer.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-
-						final AffineTransform3D viewerTransform = viewer.state().getViewerTransform();
-
-						final double[] tStart =
-								new double[]{
-										viewerTransform.get(0, 3),
-										viewerTransform.get(1, 3),
-										viewerTransform.get(2, 3)};
-
-						final double[] tEnd = tStart.clone();
-						tEnd[ 2 ] -= transformedPoints.get( pointId )[ 2 ];
-
-						System.out.println( viewerTransform );
-						System.out.println( Util.printCoordinates( transformedPoints.get( pointId ) ));
-
-						viewer.setTransformAnimator(new TranslationTransformAnimator(viewerTransform, tStart, tEnd, 300));
-
-						viewer.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-					}
-				}
-			}
-
-			public void register() {
-				put(ksActionMap);
-				ksKeyStrokeAdder.put(name(), "ctrl C" );
-			}
-		}.register();
+		new AddPoint().register(ksActionMap, ksKeyStrokeAdder);
+		new DeletePoint().register(ksActionMap, ksKeyStrokeAdder);
+		new JumpToPoint().register(ksActionMap, ksKeyStrokeAdder);
 
 		bdv.getBdvHandle().getKeybindings().addActionMap("persistence", ksActionMap);
 		bdv.getBdvHandle().getKeybindings().addInputMap("persistence", ksInputMap);
@@ -262,13 +226,10 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 			graphics.setStroke( normalStroke );
 			graphics.setPaint( frontColor );
 			graphics.draw( front );
-
-			for ( int i = 0; i < transformedPoints.size(); ++i )
-				drawPoint( graphics, transformedPoints.get( i ), i==pointId );
 		}
 
-		// TODO Auto-generated method stub
-		
+		for ( int i = 0; i < transformedPoints.size(); ++i )
+			drawPoint( graphics, transformedPoints.get( i ), i==pointId );
 	}
 
 	private void drawPoint( final Graphics2D graphics, final double[] p, final boolean isHighlighted )
@@ -367,6 +328,7 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 		{
 			final int x = e.getX();
 			final int y = e.getY();
+
 			for ( int i = 0; i < points.size(); i++ )
 			{
 				final double[] point = transformedPoints.get( i );
@@ -385,7 +347,6 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 
 	public class DragPointBehaviour implements DragBehaviour
 	{
-
 		@Override
 		public void init(int x, int y) {
 			System.out.println( "init " + x + ", " + y );
@@ -409,6 +370,114 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 	public interface HighlightedPointListener
 	{
 		void highlightedPointChanged();
+	}
+
+	public class AddPoint extends AbstractNamedAction
+	{
+		private static final long serialVersionUID = 3640052275162419689L;
+
+		public AddPoint() { super( "Add point" ); }
+
+		private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
+
+		@Override
+		public void actionPerformed(ActionEvent e)
+		{
+			// a point is highlighted
+			if ( pointId >= 0)
+			{
+				System.out.println( "cannot add new point as one is currently highlighted." );
+			}
+			else
+			{
+				final Point p = bdv.getBdvHandle().getViewerPanel().getDisplay().getMousePosition();
+
+				final AffineTransform3D viewerTransform = viewer.state().getViewerTransform();
+
+				final double[] tmp = new double[] { p.x, p.y, 0 };
+				viewerTransform.applyInverse(tmp, tmp);
+
+				System.out.println( "adding at: " + p + ", which is " + Util.printCoordinates( tmp ) );
+
+				points.add( tmp );
+
+				viewer.requestRepaint();
+			}
+		}
+
+		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+			put(ksActionMap);
+			ksKeyStrokeAdder.put(name(), "ctrl A" );
+		}
+	}
+
+	public class DeletePoint extends AbstractNamedAction
+	{
+		private static final long serialVersionUID = 3640052275162419689L;
+
+		public DeletePoint() { super( "Delete point" ); }
+
+		@Override
+		public void actionPerformed(ActionEvent e)
+		{
+			// a point is highlighted
+			if ( pointId >= 0)
+			{
+				points.remove( pointId );
+				bdv.getBdvHandle().getViewerPanel().requestRepaint();
+			}
+			else
+			{
+				System.out.println( "no point highlighted, cannot delete." );
+			}
+		}
+
+		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+			put(ksActionMap);
+			ksKeyStrokeAdder.put(name(), "ctrl D" );
+		}
+	}
+
+	public class JumpToPoint extends AbstractNamedAction
+	{
+		private static final long serialVersionUID = 3640052275162419689L;
+
+		public JumpToPoint() { super( "Jump to point" ); }
+
+		private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
+
+		@Override
+		public void actionPerformed(ActionEvent e)
+		{
+			// a point is highlighted
+			if ( pointId >= 0)
+			{
+				synchronized (viewer) {
+
+					viewer.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+
+					final AffineTransform3D viewerTransform = viewer.state().getViewerTransform();
+
+					final double[] tStart =
+							new double[]{
+									viewerTransform.get(0, 3),
+									viewerTransform.get(1, 3),
+									viewerTransform.get(2, 3)};
+
+					final double[] tEnd = tStart.clone();
+					tEnd[ 2 ] -= transformedPoints.get( pointId )[ 2 ];
+
+					viewer.setTransformAnimator(new TranslationTransformAnimator(viewerTransform, tStart, tEnd, 300));
+
+					viewer.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
+				}
+			}
+		}
+
+		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+			put(ksActionMap);
+			ksKeyStrokeAdder.put(name(), "ctrl J" );
+		}
 	}
 
 	protected static class TranslationTransformAnimator extends AbstractTransformAnimator {
