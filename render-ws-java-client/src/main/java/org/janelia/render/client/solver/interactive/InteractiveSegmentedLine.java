@@ -52,42 +52,29 @@ import net.imglib2.ui.OverlayRenderer;
 import net.imglib2.ui.TransformListener;
 import net.imglib2.util.Util;
 
-public class InteractiveSegmentedLine implements OverlayRenderer, TransformListener< AffineTransform3D >
+public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 {
-	private static final double SPLINE_STEP = 0.01;
 	private static final String SEGMENTED_LINE_MAP = "segmented-line";
 	private static final String BLOCKING_MAP = "segmented-line-blocking";
 	private static final String SEGMENTED_LINE_TOGGLE_EDITOR = "edit segmented-line";
 	private static final String[] SEGMENTED_LINE_TOGGLE_EDITOR_KEYS = new String[] { "button1" };//, "ctrl K" };
 
-	private final List< double[] > points = new ArrayList<>();
-	private final List< double[] > transformedPoints = new ArrayList<>();
 	private int pointId = -1;
-	private int canvasWidth;
-	private int canvasHeight;
-	private final AffineTransform3D viewerTransform;
 	private PointHighlighter pointHighLighter;
-	private final Bdv bdv;
-
-	private int HANDLE_RADIUS = 5;
-	private int HANDLE_RADIUS_SELECTED = 10;
-
-	private double SNAP_Z = 0.1;
-
 	private final TriggerBehaviourBindings triggerbindings;
 	private final Behaviours behaviours;
 	private final BehaviourMap blockMap;
 
-	private final Color backColor = new Color( 0x00994499 );
-	private final Color hitColor = Color.RED;
-	private final Color frontColor = Color.GREEN;
-	private final Stroke normalStroke = new BasicStroke();
-
 	public InteractiveSegmentedLine( final Bdv bdv )
 	{
-		this.bdv = bdv;
+		this( bdv, new ArrayList<>() );
+	}
+
+	public InteractiveSegmentedLine( final Bdv bdv, final List< double[] > points )
+	{
+		super( bdv, points );
+
 		this.triggerbindings = bdv.getBdvHandle().getTriggerbindings();
-		this.viewerTransform = new AffineTransform3D();
 		this.pointHighLighter = new PointHighlighter( 10 );
 
 		/*
@@ -127,27 +114,11 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 		blockMap = new BehaviourMap();
 	}
 
-	@Override
-	public void transformChanged( final AffineTransform3D t )
-	{
-		synchronized ( viewerTransform )
-		{
-			viewerTransform.set( t );
-		}
-	}
-
-	public void test()
-	{
-		points.add( new double[] { 10, 10 ,10 } );
-		points.add( new double[] { 50, 20 ,30 } );
-		points.add( new double[] { 90, 90 ,90 } );
-		install();
-	}
-
 	public void install()
 	{
-		bdv.getBdvHandle().getViewerPanel().getDisplay().addOverlayRenderer( this );
-		bdv.getBdvHandle().getViewerPanel().addRenderTransformListener( this );
+		super.install();
+		//bdv.getBdvHandle().getViewerPanel().getDisplay().addOverlayRenderer( this );
+		//bdv.getBdvHandle().getViewerPanel().addRenderTransformListener( this );
 		bdv.getBdvHandle().getViewerPanel().getDisplay().addHandler( pointHighLighter );
 
 		//refreshBlockMap();
@@ -158,8 +129,9 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 
 	public void uninstall()
 	{
-		bdv.getBdvHandle().getViewerPanel().getDisplay().removeOverlayRenderer( this );
-		bdv.getBdvHandle().getViewerPanel().removeTransformListener( this );
+		super.uninstall();
+		//bdv.getBdvHandle().getViewerPanel().getDisplay().removeOverlayRenderer( this );
+		//bdv.getBdvHandle().getViewerPanel().removeTransformListener( this );
 		bdv.getBdvHandle().getViewerPanel().getDisplay().removeHandler( pointHighLighter );
 
 		triggerbindings.removeInputTriggerMap( SEGMENTED_LINE_MAP );
@@ -198,142 +170,10 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 	}
 
 	@Override
-	public void drawOverlays(Graphics g)
+	protected void drawPoints( final Graphics2D graphics )
 	{
-		final Graphics2D graphics = ( Graphics2D ) g;
-
-		final AffineTransform3D transform = viewerTransform.copy();
-
-		transformedPoints.clear();
-
-		for ( final double[] point : points )
-		{
-			final double[] tmp = new double[ 3 ];
-			transform.apply( point, tmp );
-			transformedPoints.add( tmp );
-		}
-
-		graphics.setRenderingHint( RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON );
-
-		// for spline drawing
-		final MonotoneCubicSpline spline =
-				MonotoneCubicSpline.createMonotoneCubicSpline(
-						points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
-
-		final RealPoint p0 = new RealPoint( points.get( 0 ).length );
-		final RealPoint p1 = new RealPoint( points.get( 0 ).length );
-
-		final double[] d0 = new double[ p0.numDimensions() ];
-		final double[] d1 = new double[ p0.numDimensions() ];
-
-		// draw lines 
-		if ( transformedPoints.size() > 1 )
-		{
-			final GeneralPath front = new GeneralPath();
-			final GeneralPath back = new GeneralPath();
-
-			// draw lines
-			for ( int i = 1; i < transformedPoints.size(); ++i )
-				splitLine( transformedPoints.get( i - 1 ), transformedPoints.get( i ), front, back );
-
-			// draw spline
-			spline.interpolate( 0, p0 );
-
-			for ( double x = SPLINE_STEP; x < points.size() - 1; x += SPLINE_STEP )
-			{
-				spline.interpolate( x, p1 );
-
-				p0.localize( d0 );
-				p1.localize( d1 );
-
-				transform.apply( d0, d0 );
-				transform.apply( d1, d1 );
-
-				splitLine( d0, d1, front, back );
-
-				p0.setPosition( p1 );
-			}
-
-			graphics.setStroke( normalStroke );
-			graphics.setPaint( backColor );
-			graphics.draw( back );
-
-			graphics.setStroke( normalStroke );
-			graphics.setPaint( frontColor );
-			graphics.draw( front );
-		}
-
 		for ( int i = 0; i < transformedPoints.size(); ++i )
 			drawPoint( graphics, transformedPoints.get( i ), i==pointId );
-	}
-
-	private void drawPoint( final Graphics2D graphics, final double[] p, final boolean isHighlighted )
-	{
-		final int r = isHighlighted ? HANDLE_RADIUS_SELECTED : HANDLE_RADIUS;
-
-		final Ellipse2D cornerHandle = new Ellipse2D.Double(
-				p[ 0 ] - r, p[ 1 ] - r, 2 * r, 2 * r );
-
-		final Color cornerColor;
-
-		if ( Math.abs( p[ 2 ] ) < SNAP_Z )
-			cornerColor = hitColor;
-		else if ( p[ 2 ] > 0 )
-			cornerColor = backColor;
-		else
-			cornerColor = frontColor;
-
-		graphics.setColor( cornerColor );
-		graphics.fill( cornerHandle );
-		graphics.setColor( cornerColor.darker().darker() );
-		graphics.draw( cornerHandle );
-	}
-
-	private static void splitLine( final double[] a, final double[] b, final GeneralPath before, final GeneralPath behind )
-	{
-		final double[] pa = new double[] { a[ 0 ], a[ 1 ] };
-		final double[] pb = new double[] { b[ 0 ], b[ 1 ] };
-
-		if ( a[ 2 ] <= 0 )
-		{
-			before.moveTo( pa[ 0 ], pa[ 1 ] );
-			if ( b[ 2 ] <= 0 )
-				before.lineTo( pb[ 0 ], pb[ 1 ] );
-			else
-			{
-				final double[] t = new double[ 3 ];
-				final double d = a[ 2 ] / ( a[ 2 ] - b[ 2 ] );
-				t[ 0 ] = ( b[ 0 ] - a[ 0 ] ) * d + a[ 0 ];
-				t[ 1 ] = ( b[ 1 ] - a[ 1 ] ) * d + a[ 1 ];
-
-				before.lineTo( t[ 0 ], t[ 1 ] );
-				behind.moveTo( t[ 0 ], t[ 1 ] );
-				behind.lineTo( pb[ 0 ], pb[ 1 ] );
-			}
-		}
-		else
-		{
-			behind.moveTo( pa[ 0 ], pa[ 1 ] );
-			if ( b[ 2 ] > 0 )
-				behind.lineTo( pb[ 0 ], pb[ 1 ] );
-			else
-			{
-				final double[] t = new double[ 3 ];
-				final double d = a[ 2 ] / ( a[ 2 ] - b[ 2 ] );
-				t[ 0 ] = ( b[ 0 ] - a[ 0 ] ) * d + a[ 0 ];
-				t[ 1 ] = ( b[ 1 ] - a[ 1 ] ) * d + a[ 1 ];
-				behind.lineTo( t[ 0 ], t[ 1 ] );
-				before.moveTo( t[ 0 ], t[ 1 ] );
-				before.lineTo( pb[ 0 ], pb[ 1 ] );
-			}
-		}
-	}
-
-	@Override
-	public void setCanvasSize(int width, int height)
-	{
-		this.canvasWidth = width;
-		this.canvasHeight = height;
 	}
 
 	private void setHighlightedPoint( final int id )
@@ -401,8 +241,6 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 		{
 			if ( moving )
 			{
-				final AffineTransform3D viewerTransform = viewer.state().getViewerTransform();
-
 				// map original location to screen
 				double[] p = points.get( movintPointId );
 				viewerTransform.apply( p, p );
@@ -446,12 +284,8 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 			{
 				final Point p = bdv.getBdvHandle().getViewerPanel().getDisplay().getMousePosition();
 
-				final AffineTransform3D viewerTransform = viewer.state().getViewerTransform();
-
 				final double[] tmp = new double[] { p.x, p.y, 0 };
 				viewerTransform.applyInverse(tmp, tmp);
-
-				System.out.println( "adding at: " + p + ", which is " + Util.printCoordinates( tmp ) );
 
 				points.add( tmp );
 
@@ -509,8 +343,6 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 				synchronized (viewer) {
 
 					viewer.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
-
-					final AffineTransform3D viewerTransform = viewer.state().getViewerTransform();
 
 					final double[] tStart =
 							new double[]{
@@ -580,8 +412,14 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 		imageTransform.set( 2, 2, 2 ); //anisotropic in z
 		final Bdv bdv = BdvFunctions.show( img, "image", BdvOptions.options().sourceTransform( imageTransform ) );
 
-		InteractiveSegmentedLine line = new InteractiveSegmentedLine( bdv );
-		line.test();
+		final ArrayList< double[] > points = new ArrayList<>();
+
+		points.add( new double[] { 10, 10 ,10 } );
+		points.add( new double[] { 50, 20 ,30 } );
+		points.add( new double[] { 90, 90 ,90 } );
+
+		InteractiveSegmentedLine line = new InteractiveSegmentedLine( bdv, points );
+		line.install();
 		
 		/*
 		final Interval initialInterval = Intervals.createMinMax( 30, 30, 15, 80, 80, 40 );
