@@ -300,9 +300,9 @@ public class RenderTools
 	public static void main( String[] args ) throws IOException
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "Z0720_07m_VNC";
-		String project = "Sec32";
-		String stack = "v1_acquire";
+		String owner = "Z0720_07m_VNC"; //"flyem";
+		String project = "Sec32"; //"Z0419_25_Alpha3";
+		String stack = "v1_acquire_trimmed"; //"v1_acquire_sp_nodyn_v2";
 
 		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
 		
