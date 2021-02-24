@@ -3,6 +3,7 @@ package org.janelia.alignment.spec;
 import java.beans.Transient;
 import java.io.Serializable;
 import java.util.Comparator;
+import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 
@@ -111,6 +112,13 @@ public class SectionData
     @Override
     public String toString() {
         return this.toJson();
+    }
+
+    /**
+     * @return the bounds of the union of all specified section bounds.
+     */
+    public static Bounds getTotalBounds(final List<SectionData> sectionDataList) {
+        return sectionDataList.stream().map(SectionData::toBounds).reduce(new Bounds(), Bounds::union);
     }
 
     public static final Comparator<SectionData> Z_COMPARATOR = Comparator.comparing(o -> o.z);
