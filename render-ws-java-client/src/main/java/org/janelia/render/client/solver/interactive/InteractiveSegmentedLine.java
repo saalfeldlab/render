@@ -1,18 +1,11 @@
 package org.janelia.render.client.solver.interactive;
 
-import java.awt.BasicStroke;
-import java.awt.Color;
 import java.awt.Cursor;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
-import java.awt.RenderingHints;
-import java.awt.Stroke;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.GeneralPath;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -21,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import javax.swing.ActionMap;
 import javax.swing.InputMap;
@@ -42,15 +34,10 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.viewer.ViewerPanel;
 import bdv.viewer.animate.AbstractTransformAnimator;
-import net.imglib2.RealLocalizable;
-import net.imglib2.RealPoint;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.ui.OverlayRenderer;
-import net.imglib2.ui.TransformListener;
-import net.imglib2.util.Util;
 
 public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 {
