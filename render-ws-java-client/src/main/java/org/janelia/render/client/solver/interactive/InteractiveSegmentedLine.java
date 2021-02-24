@@ -54,6 +54,12 @@ import net.imglib2.util.Util;
 
 public class InteractiveSegmentedLine implements OverlayRenderer, TransformListener< AffineTransform3D >
 {
+	private static final double SPLINE_STEP = 0.01;
+	private static final String SEGMENTED_LINE_MAP = "segmented-line";
+	private static final String BLOCKING_MAP = "segmented-line-blocking";
+	private static final String SEGMENTED_LINE_TOGGLE_EDITOR = "edit segmented-line";
+	private static final String[] SEGMENTED_LINE_TOGGLE_EDITOR_KEYS = new String[] { "button1" };//, "ctrl K" };
+
 	private final List< double[] > points = new ArrayList<>();
 	private final List< double[] > transformedPoints = new ArrayList<>();
 	private int pointId = -1;
@@ -71,10 +77,6 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 	private final TriggerBehaviourBindings triggerbindings;
 	private final Behaviours behaviours;
 	private final BehaviourMap blockMap;
-	private static final String SEGMENTED_LINE_MAP = "segmented-line";
-	private static final String BLOCKING_MAP = "segmented-line-blocking";
-	private static final String SEGMENTED_LINE_TOGGLE_EDITOR = "edit segmented-line";
-	private static final String[] SEGMENTED_LINE_TOGGLE_EDITOR_KEYS = new String[] { "button1" };//, "ctrl K" };
 
 	private final Color backColor = new Color( 0x00994499 );
 	private final Color hitColor = Color.RED;
@@ -235,9 +237,10 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 				splitLine( transformedPoints.get( i - 1 ), transformedPoints.get( i ), front, back );
 
 			// draw spline
-			for ( double x = 0.01; x < points.size() - 1; x += 0.01 )
+			spline.interpolate( 0, p0 );
+
+			for ( double x = SPLINE_STEP; x < points.size() - 1; x += SPLINE_STEP )
 			{
-				spline.interpolate( x - 0.01, p0 );
 				spline.interpolate( x, p1 );
 
 				p0.localize( d0 );
@@ -247,6 +250,8 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 				transform.apply( d1, d1 );
 
 				splitLine( d0, d1, front, back );
+
+				p0.setPosition( p1 );
 			}
 
 			graphics.setStroke( normalStroke );
