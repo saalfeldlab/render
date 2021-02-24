@@ -347,29 +347,48 @@ public class InteractiveSegmentedLine implements OverlayRenderer, TransformListe
 
 	public class DragPointBehaviour implements DragBehaviour
 	{
+		private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
+		boolean moving = false;
+		int movintPointId = -1;
+
 		@Override
-		public void init(int x, int y) {
-			System.out.println( "init " + x + ", " + y );
-			
+		public void init(int x, int y)
+		{
+			if ( pointId >= 0 )
+			{
+				moving = true;
+				movintPointId = pointId;
+			}
 		}
 
 		@Override
-		public void drag(int x, int y) {
-			// TODO Auto-generated method stub
-			System.out.println( "drag " + x + ", " + y );
+		public void drag(int x, int y)
+		{
+			if ( moving )
+			{
+				final AffineTransform3D viewerTransform = viewer.state().getViewerTransform();
+
+				// map original location to screen
+				double[] p = points.get( movintPointId );
+				viewerTransform.apply( p, p );
+
+				// update x,y and not z
+				final double[] tmp = new double[] { x, y, p[ 2 ] };
+
+				// map back to global coordinates and store
+				viewerTransform.applyInverse(tmp, tmp);
+				points.set( movintPointId, tmp );
+
+				viewer.requestRepaint();
+			}
 		}
 
 		@Override
-		public void end(int x, int y) {
-			// TODO Auto-generated method stub
-			System.out.println( "end " + x + ", " + y );
+		public void end(int x, int y)
+		{
+			moving = false;
+			movintPointId = -1;
 		}
-		
-	}
-
-	public interface HighlightedPointListener
-	{
-		void highlightedPointChanged();
 	}
 
 	public class AddPoint extends AbstractNamedAction
