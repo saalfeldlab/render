@@ -110,15 +110,7 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 			}
 			else
 			{
-				ImageProcessorWithMasks ipm = RenderTools.renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, false );
-
-				if ( ipm == null ) // if the requested block contains no images, null will be returned
-				{
-					fillZero( output );
-					return;
-				}
-
-				update(ipm, output);
+				update(output, x, y, z, w, h );
 			}
 		}
 		catch (final IncompatibleTypeException e)
@@ -127,8 +119,16 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 		}
 	}
 
-	protected void update( final ImageProcessorWithMasks ipm, final RandomAccessibleInterval<T> output )
+	protected void update( final RandomAccessibleInterval<T> output, final int x, final int y, final int z, final int w, final int h )
 	{
+		ImageProcessorWithMasks ipm = RenderTools.renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, false );
+
+		if ( ipm == null ) // if the requested block contains no images, null will be returned
+		{
+			fillZero( output );
+			return;
+		}
+
 		final Cursor< T > out = Views.flatIterable( output ).cursor();
 		int i = 0;
 
