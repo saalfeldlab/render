@@ -287,7 +287,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 	public class Confirm extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = 3640052275162419689L;
+		private static final long serialVersionUID = -8388751240134830158L;
 
 		public Confirm() { super( "Confirm" ); }
 
@@ -308,7 +308,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 	public class Cancel extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = 3640052275162419689L;
+		private static final long serialVersionUID = 7966320561651920538L;
 
 		public Cancel() { super( "Cancel" ); }
 

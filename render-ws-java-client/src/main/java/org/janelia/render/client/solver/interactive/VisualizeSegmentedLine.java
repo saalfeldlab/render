@@ -21,17 +21,13 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.ui.OverlayRenderer;
-import net.imglib2.ui.TransformListener;
 
-public class VisualizeSegmentedLine implements OverlayRenderer, TransformListener< AffineTransform3D >
+public class VisualizeSegmentedLine extends MinimalBdvOverlay
 {
 	protected static final double SPLINE_STEP = 0.01;
 
 	protected final List< double[] > points;
 	protected final List< double[] > transformedPoints = new ArrayList<>();
-	protected final AffineTransform3D viewerTransform;
-	protected final Bdv bdv;
 
 	protected int HANDLE_RADIUS = 5;
 	protected int HANDLE_RADIUS_SELECTED = 10;
@@ -45,41 +41,19 @@ public class VisualizeSegmentedLine implements OverlayRenderer, TransformListene
 
 	public VisualizeSegmentedLine( final Bdv bdv, final List< double[] > points )
 	{
-		this.bdv = bdv;
+		super( bdv );
 		this.points = points;
-		this.viewerTransform = new AffineTransform3D();
 	}
 
 	public VisualizeSegmentedLine( final Bdv bdv, final List< double[] > points, final Color frontColor, final Color backColor, final Color hitColor )
 	{
-		this.bdv = bdv;
+		super( bdv );
+
 		this.points = points;
-		this.viewerTransform = new AffineTransform3D();
 
 		this.frontColor = frontColor;
 		this.backColor = backColor;
 		this.hitColor = hitColor;
-	}
-
-	@Override
-	public void transformChanged( final AffineTransform3D t )
-	{
-		synchronized ( viewerTransform )
-		{
-			viewerTransform.set( t );
-		}
-	}
-
-	public void install()
-	{
-		bdv.getBdvHandle().getViewerPanel().getDisplay().addOverlayRenderer( this );
-		bdv.getBdvHandle().getViewerPanel().addRenderTransformListener( this );
-	}
-
-	public void uninstall()
-	{
-		bdv.getBdvHandle().getViewerPanel().getDisplay().removeOverlayRenderer( this );
-		bdv.getBdvHandle().getViewerPanel().removeTransformListener( this );
 	}
 
 	@Override
@@ -216,9 +190,6 @@ public class VisualizeSegmentedLine implements OverlayRenderer, TransformListene
 			}
 		}
 	}
-
-	@Override
-	public void setCanvasSize(int width, int height) {}
 
 	public static void main( final String[] args )
 	{
