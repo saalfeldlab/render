@@ -1,5 +1,6 @@
 package org.janelia.render.client.solver.interactive;
 
+import java.awt.Color;
 import java.awt.Cursor;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -52,6 +53,9 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 	private final Behaviours behaviours;
 	private final BehaviourMap blockMap;
 
+	// for notification when the user pressed ESC or ENTER
+	private final Object monitor = new Object();
+
 	public InteractiveSegmentedLine( final Bdv bdv )
 	{
 		this( bdv, new ArrayList<>() );
@@ -66,12 +70,15 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 		/*
 		 * Create DragPointBehaviour
+		 * https://github.com/scijava/ui-behaviour/blob/master/src/test/java/org/scijava/ui/behaviour/UsageExample.java
 		 */
 		behaviours = new Behaviours( new InputTriggerConfig(), "bdv" );
 		behaviours.behaviour( new DragPointBehaviour(), SEGMENTED_LINE_TOGGLE_EDITOR, SEGMENTED_LINE_TOGGLE_EDITOR_KEYS );
 
 		/*
 		 * setting up keystrokes
+		 * 
+		 * https://github.com/scijava/ui-behaviour/wiki/InputTrigger-syntax
 		 */
 		// default input trigger config, disables "control button1" drag in bdv
 		// (collides with default of "move annotation")
@@ -89,6 +96,8 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		new AddPoint().register(ksActionMap, ksKeyStrokeAdder);
 		new DeletePoint().register(ksActionMap, ksKeyStrokeAdder);
 		new JumpToPoint().register(ksActionMap, ksKeyStrokeAdder);
+		new Cancel().register(ksActionMap, ksKeyStrokeAdder);
+		new Confirm().register(ksActionMap, ksKeyStrokeAdder);
 
 		bdv.getBdvHandle().getKeybindings().addActionMap("persistence", ksActionMap);
 		bdv.getBdvHandle().getKeybindings().addInputMap("persistence", ksInputMap);
@@ -176,6 +185,31 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		}
 	}
 
+	public List< double[] > getResult()
+	{
+		synchronized ( monitor )
+		{
+			install();
+
+			while( true )
+			{
+				try
+				{
+					monitor.wait();
+					break;
+				}
+				catch ( final InterruptedException e )
+				{
+					e.printStackTrace();
+				}
+			}
+
+			uninstall();
+		}
+
+		return points;
+	}
+
 	public class PointHighlighter extends MouseMotionAdapter
 	{
 		private final double squTolerance;
@@ -248,6 +282,49 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		{
 			moving = false;
 			movintPointId = -1;
+		}
+	}
+
+	public class Confirm extends AbstractNamedAction
+	{
+		private static final long serialVersionUID = 3640052275162419689L;
+
+		public Confirm() { super( "Confirm" ); }
+
+		@Override
+		public void actionPerformed(ActionEvent e)
+		{
+			synchronized ( monitor )
+			{
+				monitor.notifyAll();
+			}
+		}
+
+		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+			put(ksActionMap);
+			ksKeyStrokeAdder.put(name(), "ENTER" );
+		}
+	}
+
+	public class Cancel extends AbstractNamedAction
+	{
+		private static final long serialVersionUID = 3640052275162419689L;
+
+		public Cancel() { super( "Cancel" ); }
+
+		@Override
+		public void actionPerformed(ActionEvent e)
+		{
+			synchronized ( monitor )
+			{
+				points.clear();
+				monitor.notifyAll();
+			}
+		}
+
+		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+			put(ksActionMap);
+			ksKeyStrokeAdder.put(name(), "ESCAPE" );
 		}
 	}
 
@@ -383,7 +460,6 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 			return transform;
 		}
-
 	}
 
 	public static void main( final String[] args )
@@ -399,33 +475,16 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		imageTransform.set( 2, 2, 2 ); //anisotropic in z
 		final Bdv bdv = BdvFunctions.show( img, "image", BdvOptions.options().sourceTransform( imageTransform ) );
 
-		final ArrayList< double[] > points = new ArrayList<>();
+		List< double[] > points = new ArrayList<>();
 
 		points.add( new double[] { 10, 10 ,10 } );
 		points.add( new double[] { 50, 20 ,30 } );
 		points.add( new double[] { 90, 90 ,90 } );
 
 		InteractiveSegmentedLine line = new InteractiveSegmentedLine( bdv, points );
-		line.install();
-		
-		/*
-		final Interval initialInterval = Intervals.createMinMax( 30, 30, 15, 80, 80, 40 );
-		final Interval rangeInterval = Intervals.createMinMax( 0, 0, 0, 100, 100, 50 );
-		final TransformedBoxSelectionDialog.Result result = BdvFunctions.selectBox(
-				bdv,
-				imageTransform,
-				initialInterval,
-				rangeInterval,
-				BoxSelectionOptions.options()
-						.title( "Select box to fill" )
-						.selectTimepointRange()
-						.initialTimepointRange( 0, 5 ) );
+		points = line.getResult();
 
-		if ( result.isValid() )
-		{
-			Views.interval( Views.extendZero( img ), result.getInterval() ).forEach( t -> t.set( 255 ) );
-			bdv.getBdvHandle().getViewerPanel().requestRepaint();
-		}
-		*/
+		if ( points != null && points.size() > 0 )
+			new VisualizeSegmentedLine( bdv, points, Color.yellow, Color.yellow.darker(), null ).install();
 	}
 }
