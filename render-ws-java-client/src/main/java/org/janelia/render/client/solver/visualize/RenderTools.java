@@ -271,8 +271,8 @@ public class RenderTools
 									renderer ),
 							min );
 
-			final RandomAccessibleInterval< VolatileFloatType > volatileRA = VolatileViews.wrapAsVolatile( cachedImg,
-																										   queue );
+			final RandomAccessibleInterval< VolatileFloatType > volatileRA =
+					VolatileViews.wrapAsVolatile( cachedImg, queue );
 
 			// the virtual image is zeroMin, this transformation puts it into the global coordinate system
 			final AffineTransform3D t = new AffineTransform3D();

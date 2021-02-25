@@ -28,13 +28,10 @@ import java.util.function.Consumer;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.solver.visualize.RenderTools;
 
-import ij.ImagePlus;
-import ij.process.ImageProcessor;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.exception.IncompatibleTypeException;
-import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
@@ -121,11 +118,7 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 					return;
 				}
 
-				final Cursor< T > out = Views.flatIterable( output ).cursor();
-				int i = 0;
-
-				while( out.hasNext() )
-					out.next().setReal( ipm.ip.getf( i++ ) );
+				update(ipm, output);
 			}
 		}
 		catch (final IncompatibleTypeException e)
@@ -134,9 +127,13 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 		}
 	}
 
-	protected static final void update()
+	protected void update( final ImageProcessorWithMasks ipm, final RandomAccessibleInterval<T> output )
 	{
-		
+		final Cursor< T > out = Views.flatIterable( output ).cursor();
+		int i = 0;
+
+		while( out.hasNext() )
+			out.next().setReal( ipm.ip.getf( i++ ) );
 	}
 
 	protected void fillZero( final RandomAccessibleInterval<T> output )
