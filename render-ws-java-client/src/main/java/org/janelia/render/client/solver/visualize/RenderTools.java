@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.function.Function;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -16,6 +17,7 @@ import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.MultiResolutionSource;
 import org.janelia.render.client.solver.visualize.lazy.Lazy;
 import org.janelia.render.client.solver.visualize.lazy.RenderRA;
+import org.janelia.render.client.solver.visualize.lazy.UpdatingRenderRA;
 
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
@@ -205,6 +207,21 @@ public class RenderTools
 			final int numRenderingThreads,
 			final int numFetchThreads ) throws IOException
 	{
+		return renderMultiRes( globalIpCache, baseUrl, owner, project, stack, fullResInterval, source, numRenderingThreads, numFetchThreads, null );
+	}
+
+	public static BdvStackSource< ? > renderMultiRes(
+			final ImageProcessorCache globalIpCache,
+			final String baseUrl,
+			final String owner,
+			final String project,
+			final String stack,
+			final Interval fullResInterval,
+			BdvStackSource< ? > source,
+			final int numRenderingThreads,
+			final int numFetchThreads,
+			final Function< Integer, AffineTransform2D > zToTransform ) throws IOException
+	{
 		// one common ImageProcessor cache for all
 		final ImageProcessorCache ipCache;
 
@@ -244,9 +261,20 @@ public class RenderTools
 
 			System.out.println( "ds=" + downsampling + ", interval=" + interval );
 
-			final RenderRA< FloatType > renderer =
-					new RenderRA<>(
+			final RenderRA< FloatType > renderer = zToTransform != null ?
+					new UpdatingRenderRA<>(
 							baseUrl,
+							owner,
+							project,
+							stack,
+							fullResInterval.min( 2 ),
+							fullResInterval.max( 2 ),
+							ipCache,
+							min,
+							new FloatType(),
+							1.0/downsampling,
+							zToTransform ) :
+					new RenderRA<>(baseUrl,
 							owner,
 							project,
 							stack,
