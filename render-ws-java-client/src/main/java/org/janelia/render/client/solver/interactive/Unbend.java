@@ -134,8 +134,8 @@ public class Unbend
 		String stack = "v1_acquire_trimmed_sp1"; //"v1_acquire_sp_nodyn_v2";
 		String matchCollection = "Sec32_v1";
 
-		testAdditionalTransform(baseUrl, owner, project, stack);
-		SimpleMultiThreading.threadHaltUnClean();
+		//testAdditionalTransform(baseUrl, owner, project, stack);
+		//SimpleMultiThreading.threadHaltUnClean();
 
 		StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
 		Interval interval = RenderTools.stackBounds( meta );
@@ -157,7 +157,19 @@ public class Unbend
 		final int numRenderingThreads = Math.max(numTotalThreads - numFetchThreads, 1);
 
 		BdvStackSource<?> bdv = RenderTools.renderMultiRes(
-				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads );
+				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads,
+				z -> {
+					// world coordinates
+					AffineTransform2D t = new AffineTransform2D();
+					// simple translation test
+					//t.translate( 256, 256 );
+
+					// rotate by 45 degrees around the center of this patch
+					t.translate( -10000, -1000 );
+					t.rotate( Math.toRadians( 15 ) );
+					t.translate( 10000, 1000 );
+					return t;
+				});
 		bdv.setDisplayRange( 0, 256 );
 
 		InteractiveSegmentedLine line = new InteractiveSegmentedLine( bdv );
