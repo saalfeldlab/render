@@ -166,7 +166,7 @@ public class Unbend
 
 					// rotate by 45 degrees around the center of this patch
 					t.translate( -10000, -1000 );
-					t.rotate( Math.toRadians( 15 ) );
+					t.rotate( Math.toRadians( 30 * ( z/(double)interval.dimension( 2 ) ) - 15  ) );
 					t.translate( 10000, 1000 );
 					return t;
 				});
