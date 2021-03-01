@@ -30,6 +30,7 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWith
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.cache.img.CachedCellImg;
 import net.imglib2.img.basictypeaccess.AccessFlags;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
@@ -289,14 +290,18 @@ public class RenderTools
 			final int blockSizeXY = Math.max( 64, ds[ ds.length - 1 ] ); // does that make sense?
 			final int[] blockSize = new int[] { blockSizeXY, blockSizeXY, 1 };
 
+			// TODO: return it for invalidation
+			CachedCellImg<FloatType, ?> cachedCellImg =
+					Lazy.process(
+						interval,
+						blockSize,
+						new FloatType(),
+						AccessFlags.setOf( AccessFlags.VOLATILE ),
+						renderer );
+
 			final RandomAccessibleInterval<FloatType> cachedImg =
 					Views.translate(
-							Lazy.process(
-									interval,
-									blockSize,
-									new FloatType(),
-									AccessFlags.setOf( AccessFlags.VOLATILE ),
-									renderer ),
+							cachedCellImg,
 							min );
 
 			final RandomAccessibleInterval< VolatileFloatType > volatileRA =

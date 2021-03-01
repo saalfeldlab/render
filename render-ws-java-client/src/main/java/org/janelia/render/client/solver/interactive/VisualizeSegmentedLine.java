@@ -33,10 +33,13 @@ public class VisualizeSegmentedLine extends MinimalBdvOverlay
 	protected int HANDLE_RADIUS_SELECTED = 10;
 
 	protected double SNAP_Z = 0.1;
+	protected boolean drawLines = false;
+	protected boolean drawSplines = true;
 
 	protected Color backColor = new Color( 0x00994499 );
 	protected Color hitColor = Color.RED;
 	protected Color frontColor = Color.GREEN;
+	protected Color frontLineColor = Color.GREEN.darker().darker();
 	protected Stroke normalStroke = new BasicStroke();
 
 	public VisualizeSegmentedLine( final Bdv bdv, final List< double[] > points )
@@ -75,40 +78,43 @@ public class VisualizeSegmentedLine extends MinimalBdvOverlay
 		// draw lines and splines
 		if ( transformedPoints.size() > 1 )
 		{
-			// for spline drawing
-			final MonotoneCubicSpline spline =
-					MonotoneCubicSpline.createMonotoneCubicSpline(
-							points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
-
-			final RealPoint p0 = new RealPoint( points.get( 0 ).length );
-			final RealPoint p1 = new RealPoint( points.get( 0 ).length );
-
-			final double[] d0 = new double[ p0.numDimensions() ];
-			final double[] d1 = new double[ p0.numDimensions() ];
-
 			final GeneralPath front = new GeneralPath();
 			final GeneralPath back = new GeneralPath();
 
 			// draw lines
-			for ( int i = 1; i < transformedPoints.size(); ++i )
-				splitLine( transformedPoints.get( i - 1 ), transformedPoints.get( i ), front, back );
+			if ( drawLines )
+				for ( int i = 1; i < transformedPoints.size(); ++i )
+					splitLine( transformedPoints.get( i - 1 ), transformedPoints.get( i ), front, back );
 
 			// draw spline
-			spline.interpolate( 0, p0 );
-
-			for ( double x = SPLINE_STEP; x < points.size() - 1; x += SPLINE_STEP )
+			if ( drawSplines )
 			{
-				spline.interpolate( x, p1 );
-
-				p0.localize( d0 );
-				p1.localize( d1 );
-
-				viewerTransform.apply( d0, d0 );
-				viewerTransform.apply( d1, d1 );
-
-				splitLine( d0, d1, front, back );
-
-				p0.setPosition( p1 );
+				final MonotoneCubicSpline spline =
+						MonotoneCubicSpline.createMonotoneCubicSpline(
+								points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
+	
+				final RealPoint p0 = new RealPoint( points.get( 0 ).length );
+				final RealPoint p1 = new RealPoint( points.get( 0 ).length );
+	
+				final double[] d0 = new double[ p0.numDimensions() ];
+				final double[] d1 = new double[ p0.numDimensions() ];
+	
+				spline.interpolate( 0, p0 );
+	
+				for ( double x = SPLINE_STEP; x < points.size() - 1; x += SPLINE_STEP )
+				{
+					spline.interpolate( x, p1 );
+	
+					p0.localize( d0 );
+					p1.localize( d1 );
+	
+					viewerTransform.apply( d0, d0 );
+					viewerTransform.apply( d1, d1 );
+	
+					splitLine( d0, d1, front, back );
+	
+					p0.setPosition( p1 );
+				}
 			}
 
 			graphics.setStroke( normalStroke );
@@ -190,6 +196,9 @@ public class VisualizeSegmentedLine extends MinimalBdvOverlay
 			}
 		}
 	}
+
+	public void setDrawLines( final boolean draw ) { this.drawLines = draw; }
+	public boolean drawLines() { return drawLines; }
 
 	public static void main( final String[] args )
 	{
