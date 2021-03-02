@@ -171,6 +171,11 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+        	<groupId>net.imglib2</groupId>
+        	<artifactId>imglib2-cache</artifactId>
+        	<version>1.0.0-beta-16</version>
+        </dependency>
     </dependencies>
 
     <!--

@@ -5,29 +5,43 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.solver.visualize.RenderTools;
+import org.janelia.render.client.solver.visualize.imglib2.VolatileTmp;
+import org.janelia.render.client.solver.visualize.lazy.Lazy;
 import org.janelia.render.client.solver.visualize.lazy.UpdatingRenderRA;
 
+import bdv.util.Bdv;
+import bdv.util.BdvFunctions;
 import bdv.util.BdvStackSource;
+import bdv.util.volatiles.SharedQueue;
 import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
+import net.imglib2.cache.Invalidate;
+import net.imglib2.cache.img.CachedCellImg;
+import net.imglib2.cache.volatiles.VolatileCache;
 import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.basictypeaccess.AccessFlags;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.realtransform.Scale2D;
 import net.imglib2.realtransform.Translation2D;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.type.volatiles.VolatileFloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
 import net.imglib2.util.RealSum;
@@ -133,8 +147,46 @@ public class Unbend
 		
 	}
 
+	public static void simpleCacheTest()
+	{
+		Interval interval = new FinalInterval( 512, 512, 256 );
+
+		final Random rnd = new Random( 35 );
+		CachedCellImg<FloatType, ?> cachedCellImg =
+				Lazy.process(
+					interval,
+					new int[] { 64, 64, 32 },
+					new FloatType(),
+					AccessFlags.setOf( AccessFlags.VOLATILE ),
+					out -> Views.iterable( out ).forEach( p -> p.set( rnd.nextFloat() * 65535 )) );
+
+		final RandomAccessibleInterval<FloatType> cachedImg =
+				Views.translate(
+						cachedCellImg,
+						new long[] { 10, 10, 10 } );
+
+		final SharedQueue queue = new SharedQueue( 8, 1 );
+		final Pair< RandomAccessibleInterval< VolatileFloatType >, VolatileCache > pair = VolatileTmp.wrapAsVolatile( cachedImg, queue, null );
+
+		Bdv source = BdvFunctions.show( pair.getA(), "gg" );
+
+		while ( source != null )
+		{
+			SimpleMultiThreading.threadWait( 2000 );
+			System.out.println( "repainting " );
+
+			//cachedCellImg.getCache().invalidateAll();
+			pair.getB().invalidateAll();
+			source.getBdvHandle().getViewerPanel().requestRepaint();
+		}
+	}
+
+
 	public static void main( String[] args ) throws IOException
 	{
+		//simpleCacheTest();
+		//SimpleMultiThreading.threadHaltUnClean();
+
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "Z0720_07m_VNC"; //"flyem";
 		String project = "Sec32"; //"Z0419_25_Alpha3";
@@ -165,6 +217,7 @@ public class Unbend
 
 		// at first just identity transform, later update to use the 
 		final Unbending unbending = new Unbending();
+		final ArrayList< Invalidate<?> > caches = new ArrayList<>();
 
 		List< double[] > points = new ArrayList<>();
 		points.add( new double[] {18180.08737355983, 1215.890333894893, -157.65656608148038});
@@ -179,7 +232,7 @@ public class Unbend
 
 		BdvStackSource<?> bdv = RenderTools.renderMultiRes(
 				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads,
-				unbending );
+				unbending, caches );
 		bdv.setDisplayRange( 0, 256 );
 
 		InteractiveSegmentedLine line = new InteractiveSegmentedLine( bdv, points );
@@ -196,8 +249,9 @@ public class Unbend
 		ArrayList<Pair<Integer, double[]>> positions = positionPerZSlice(points, interval.min( 2 ), interval.max( 2 ), 0.01 );
 
 		unbending.setTranslations( centerTranslations( positions ));
+		
 		// TODO: move points accordingly
-		// TODO: invalidate CachedCellImg
+		caches.forEach( c -> c.invalidateAll() );
 		bdv.getBdvHandle().getViewerPanel().requestRepaint();
 	}
 
