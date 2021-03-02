@@ -3,14 +3,22 @@ package org.janelia.render.client.solver.visualize.imglib2;
 import static net.imglib2.img.basictypeaccess.AccessFlags.DIRTY;
 import static net.imglib2.img.basictypeaccess.AccessFlags.VOLATILE;
 
+import java.io.IOException;
+import java.util.Random;
 import java.util.Set;
+
+import org.janelia.render.client.solver.visualize.lazy.Lazy;
 
 import bdv.img.cache.CreateInvalidVolatileCell;
 import bdv.img.cache.VolatileCachedCellImg;
+import bdv.util.Bdv;
+import bdv.util.BdvFunctions;
 import bdv.util.volatiles.SharedQueue;
 import bdv.util.volatiles.VolatileRandomAccessibleIntervalView;
 import bdv.util.volatiles.VolatileTypeMatcher;
 import bdv.util.volatiles.VolatileViewData;
+import net.imglib2.FinalInterval;
+import net.imglib2.Interval;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.Volatile;
@@ -26,11 +34,15 @@ import net.imglib2.img.basictypeaccess.AccessFlags;
 import net.imglib2.img.basictypeaccess.volatiles.VolatileArrayDataAccess;
 import net.imglib2.img.cell.Cell;
 import net.imglib2.img.cell.CellGrid;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.type.volatiles.VolatileFloatType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.MixedTransformView;
+import net.imglib2.view.Views;
 
 public class VolatileTmp {
 
@@ -141,4 +153,45 @@ public class VolatileTmp {
 		//return volatileImg;
 	}
 
+	public static void simpleCacheTest()
+	{
+		Interval interval = new FinalInterval( 512, 512, 256 );
+
+		final Random rnd = new Random( 35 );
+		CachedCellImg<FloatType, ?> cachedCellImg =
+				Lazy.process(
+					interval,
+					new int[] { 64, 64, 32 },
+					new FloatType(),
+					AccessFlags.setOf( AccessFlags.VOLATILE ),
+					out -> {
+						final float base = rnd.nextFloat() * 32768 + 32768;
+						Views.iterable( out ).forEach( p -> p.set( rnd.nextFloat() * base ));
+						});
+
+		final RandomAccessibleInterval<FloatType> cachedImg =
+				Views.translate(
+						cachedCellImg,
+						new long[] { 10, 10, 10 } );
+
+		final SharedQueue queue = new SharedQueue( 8, 1 );
+		final Pair< RandomAccessibleInterval< VolatileFloatType >, VolatileCache > pair = VolatileTmp.wrapAsVolatile( cachedImg, queue, null );
+
+		Bdv source = BdvFunctions.show( pair.getA(), "gg" );
+
+		while ( source != null )
+		{
+			SimpleMultiThreading.threadWait( 2000 );
+			System.out.println( "repainting " );
+
+			//cachedCellImg.getCache().invalidateAll();
+			pair.getB().invalidateAll();
+			source.getBdvHandle().getViewerPanel().requestRepaint();
+		}
+	}
+
+	public static void main( String[] args ) throws IOException
+	{
+		simpleCacheTest();
+	}
 }

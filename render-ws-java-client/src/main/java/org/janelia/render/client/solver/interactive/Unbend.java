@@ -5,43 +5,30 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.solver.visualize.RenderTools;
-import org.janelia.render.client.solver.visualize.imglib2.VolatileTmp;
-import org.janelia.render.client.solver.visualize.lazy.Lazy;
 import org.janelia.render.client.solver.visualize.lazy.UpdatingRenderRA;
 
-import bdv.util.Bdv;
-import bdv.util.BdvFunctions;
 import bdv.util.BdvStackSource;
-import bdv.util.volatiles.SharedQueue;
 import ij.ImageJ;
 import ij.ImagePlus;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.cache.Invalidate;
-import net.imglib2.cache.img.CachedCellImg;
-import net.imglib2.cache.volatiles.VolatileCache;
 import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.basictypeaccess.AccessFlags;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.realtransform.Scale2D;
 import net.imglib2.realtransform.Translation2D;
-import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.type.volatiles.VolatileFloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
 import net.imglib2.util.RealSum;
@@ -147,46 +134,8 @@ public class Unbend
 		
 	}
 
-	public static void simpleCacheTest()
-	{
-		Interval interval = new FinalInterval( 512, 512, 256 );
-
-		final Random rnd = new Random( 35 );
-		CachedCellImg<FloatType, ?> cachedCellImg =
-				Lazy.process(
-					interval,
-					new int[] { 64, 64, 32 },
-					new FloatType(),
-					AccessFlags.setOf( AccessFlags.VOLATILE ),
-					out -> Views.iterable( out ).forEach( p -> p.set( rnd.nextFloat() * 65535 )) );
-
-		final RandomAccessibleInterval<FloatType> cachedImg =
-				Views.translate(
-						cachedCellImg,
-						new long[] { 10, 10, 10 } );
-
-		final SharedQueue queue = new SharedQueue( 8, 1 );
-		final Pair< RandomAccessibleInterval< VolatileFloatType >, VolatileCache > pair = VolatileTmp.wrapAsVolatile( cachedImg, queue, null );
-
-		Bdv source = BdvFunctions.show( pair.getA(), "gg" );
-
-		while ( source != null )
-		{
-			SimpleMultiThreading.threadWait( 2000 );
-			System.out.println( "repainting " );
-
-			//cachedCellImg.getCache().invalidateAll();
-			pair.getB().invalidateAll();
-			source.getBdvHandle().getViewerPanel().requestRepaint();
-		}
-	}
-
-
 	public static void main( String[] args ) throws IOException
 	{
-		//simpleCacheTest();
-		//SimpleMultiThreading.threadHaltUnClean();
-
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "Z0720_07m_VNC"; //"flyem";
 		String project = "Sec32"; //"Z0419_25_Alpha3";
@@ -220,15 +169,6 @@ public class Unbend
 		final ArrayList< Invalidate<?> > caches = new ArrayList<>();
 
 		List< double[] > points = new ArrayList<>();
-		/*points.add( new double[] {18180.08737355983, 1215.890333894893, -157.65656608148038});
-		points.add( new double[] {18180.08737355983, 1475.0200175143727, 749.2973265866995});
-		points.add( new double[] {18189.853698805466, 1724.0546629692826, 1682.3963054607357});
-		points.add( new double[] {18216.26065146877, 1791.5061812018662, 4593.851412228383});
-		points.add( new double[] {18026.55565070638, 2470.9690334880047, 6412.092765652576});
-		points.add( new double[] {18026.55565070639, 3128.7214768764475, 7769.737739455516});
-		points.add( new double[] {18026.55565070639, 4020.1983406595014, 9125.525469792246});
-		points.add( new double[] {18044.62319941457, 4538.78241451408, 10017.047437393852});
-		points.add( new double[] {18069.563192165682, 4578.155671281922, 13029.065008203444});*/
 
 		points.add( new double[] {18180.08737355983, 1044.0922756053733, -62.756698404699364});
 		points.add( new double[] {18180.08737355983, 1475.0200175143727, 749.2973265866995});
@@ -266,7 +206,7 @@ public class Unbend
 		bdv.getBdvHandle().getViewerPanel().requestRepaint();
 	}
 
-	public static void updatePoints( List< double[] > points, final double[] avg )
+	protected static void updatePoints( List< double[] > points, final double[] avg )
 	{
 		// spline goes through the points
 		for ( final double p[] : points )
@@ -276,7 +216,7 @@ public class Unbend
 		}
 	}
 
-	public static ArrayList<Pair<Integer, double[]>> centerTranslations( ArrayList<Pair<Integer, double[]>> positions, double[] avg )
+	protected static ArrayList<Pair<Integer, double[]>> centerTranslations( ArrayList<Pair<Integer, double[]>> positions, double[] avg )
 	{
 		RealSum x = new RealSum( positions.size() );
 		RealSum y = new RealSum( positions.size() );
@@ -304,7 +244,7 @@ public class Unbend
 		return positions;
 	}
 
-	public static ArrayList<Pair<Integer, double[]>> positionPerZSlice( final List< double[] > points, final long minZ, final long maxZ, final double maxLocErrZ )
+	protected static ArrayList<Pair<Integer, double[]>> positionPerZSlice( final List< double[] > points, final long minZ, final long maxZ, final double maxLocErrZ )
 	{
 		// check that list has an increasing z
 		double minPointZ = points.get( 0 )[ 2 ];
