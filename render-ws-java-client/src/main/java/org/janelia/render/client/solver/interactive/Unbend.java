@@ -220,7 +220,7 @@ public class Unbend
 		final ArrayList< Invalidate<?> > caches = new ArrayList<>();
 
 		List< double[] > points = new ArrayList<>();
-		points.add( new double[] {18180.08737355983, 1215.890333894893, -157.65656608148038});
+		/*points.add( new double[] {18180.08737355983, 1215.890333894893, -157.65656608148038});
 		points.add( new double[] {18180.08737355983, 1475.0200175143727, 749.2973265866995});
 		points.add( new double[] {18189.853698805466, 1724.0546629692826, 1682.3963054607357});
 		points.add( new double[] {18216.26065146877, 1791.5061812018662, 4593.851412228383});
@@ -228,7 +228,17 @@ public class Unbend
 		points.add( new double[] {18026.55565070639, 3128.7214768764475, 7769.737739455516});
 		points.add( new double[] {18026.55565070639, 4020.1983406595014, 9125.525469792246});
 		points.add( new double[] {18044.62319941457, 4538.78241451408, 10017.047437393852});
-		points.add( new double[] {18069.563192165682, 4578.155671281922, 13029.065008203444});
+		points.add( new double[] {18069.563192165682, 4578.155671281922, 13029.065008203444});*/
+
+		points.add( new double[] {18180.08737355983, 1044.0922756053733, -62.756698404699364});
+		points.add( new double[] {18180.08737355983, 1475.0200175143727, 749.2973265866995});
+		points.add( new double[] {18189.853698805466, 1724.0546629692826, 1682.3963054607357});
+		points.add( new double[] {18216.26065146877, 1791.5061812018662, 4593.851412228383});
+		points.add( new double[] {18026.55565070638, 2470.9690334880047, 6412.092765652576});
+		points.add( new double[] {18026.55565070639, 3128.7214768764475, 7769.737739455516});
+		points.add( new double[] {18026.55565070639, 4020.1983406595014, 9125.525469792246});
+		points.add( new double[] {18044.623199414567, 4496.445482984773, 10431.538583396674});
+		points.add( new double[] {18069.563192165682, 4781.255819355375, 12703.129389095324});
 
 		BdvStackSource<?> bdv = RenderTools.renderMultiRes(
 				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads,
@@ -246,16 +256,27 @@ public class Unbend
 			new VisualizeSegmentedLine( bdv, points, Color.yellow, Color.yellow.darker(), null ).install();
 		}
 
-		ArrayList<Pair<Integer, double[]>> positions = positionPerZSlice(points, interval.min( 2 ), interval.max( 2 ), 0.01 );
+		final ArrayList<Pair<Integer, double[]>> positions = positionPerZSlice(points, interval.min( 2 ), interval.max( 2 ), 0.01 );
+		final double[] avg = new double[ 2 ];
 
-		unbending.setTranslations( centerTranslations( positions ));
-		
-		// TODO: move points accordingly
+		unbending.setTranslations( centerTranslations( positions, avg ));
+
+		updatePoints( points, avg );
 		caches.forEach( c -> c.invalidateAll() );
 		bdv.getBdvHandle().getViewerPanel().requestRepaint();
 	}
 
-	public static ArrayList<Pair<Integer, double[]>> centerTranslations( ArrayList<Pair<Integer, double[]>> positions )
+	public static void updatePoints( List< double[] > points, final double[] avg )
+	{
+		// spline goes through the points
+		for ( final double p[] : points )
+		{
+			p[ 0 ] -= ( p[ 0 ] - avg[ 0 ] );
+			p[ 1 ] -= ( p[ 1 ] - avg[ 1 ] );
+		}
+	}
+
+	public static ArrayList<Pair<Integer, double[]>> centerTranslations( ArrayList<Pair<Integer, double[]>> positions, double[] avg )
 	{
 		RealSum x = new RealSum( positions.size() );
 		RealSum y = new RealSum( positions.size() );
@@ -267,6 +288,12 @@ public class Unbend
 
 		final double avgX = x.getSum() / (double)positions.size();
 		final double avgY = y.getSum() / (double)positions.size();
+
+		if ( avg != null && avg.length >= 2 )
+		{
+			avg[ 0 ] = avgX;
+			avg[ 1 ] = avgY;
+		}
 
 		positions.forEach( p -> {
 			p.getB()[ 0 ] -= avgX;
