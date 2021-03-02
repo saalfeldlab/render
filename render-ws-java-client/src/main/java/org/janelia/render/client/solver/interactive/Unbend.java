@@ -62,7 +62,7 @@ public class Unbend
 		return positions;
 	}
 
-	protected static ArrayList<Pair<Integer, double[]>> positionPerZSlice( final List< double[] > points, final long minZ, final long maxZ, final double maxLocErrZ )
+	protected static ArrayList<Pair<Integer, double[]>> positionPerZSlice( final List< double[] > points, final long minZ, final long maxZ )
 	{
 		// check that list has an increasing z
 		double minPointZ = points.get( 0 )[ 2 ];
@@ -232,13 +232,13 @@ public class Unbend
 			new VisualizeSegmentedLine( bdv, points, Color.yellow, Color.yellow.darker(), null ).install();
 		}
 
-		final ArrayList<Pair<Integer, double[]>> positions = positionPerZSlice(points, interval.min( 2 ), interval.max( 2 ), 0.01 );
+		final ArrayList<Pair<Integer, double[]>> positions = positionPerZSlice(points, interval.min( 2 ), interval.max( 2 ) );
 		final double[] avg = new double[ 2 ];
 
 		unbending.setTranslations( centerTranslations( positions, avg ));
 
-		updatePoints( points, avg );
 		caches.forEach( c -> c.invalidateAll() );
+		updatePoints( points, avg );
 		bdv.getBdvHandle().getViewerPanel().requestRepaint();
 	}
 

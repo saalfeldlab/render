@@ -122,5 +122,15 @@ public class Untwist
 			new VisualizeSegmentedLine( bdv, pointsB, Color.yellow, Color.yellow.darker(), null ).install();
 		}
 
+		final ArrayList<Pair<Integer, double[]>> positionsA =
+				Unbend.positionPerZSlice(pointsA, interval.min( 2 ), interval.max( 2 ) );
+
+		final ArrayList<Pair<Integer, double[]>> positionsB =
+				Unbend.positionPerZSlice(pointsB, interval.min( 2 ), interval.max( 2 ) );
+
+
+
+		caches.forEach( c -> c.invalidateAll() );
+		bdv.getBdvHandle().getViewerPanel().requestRepaint();
 	}
 }
