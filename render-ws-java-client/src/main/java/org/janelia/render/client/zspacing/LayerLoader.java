@@ -5,20 +5,14 @@ import ij.process.FloatProcessor;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
-import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.RenderDataClient;
 
 /**
  * Interface (and several implementations) for loading aligned layer pixels for z position correction.
@@ -112,70 +106,29 @@ public interface LayerLoader {
     class RenderLayerLoader implements LayerLoader, Serializable {
 
         private final String layerUrlPattern;
-        private final List<Double> zList;
-
-        private final Map<Double, List<SectionData>> zToSectionDataList;
-        private final String baseDataUrl;
-        private final String matchOwner;
-        private final String matchCollection;
+        private final List<Double> sortedZList;
 
         private String debugFilePattern;
 
-        private transient RenderDataClient matchClient;
-
         public RenderLayerLoader(final String layerUrlPattern,
-                                 final List<SectionData> sectionDataList) {
+                                 final List<Double> sortedZList) {
             this.layerUrlPattern = layerUrlPattern;
-            this.zList = sectionDataList.stream()
-                    .map(SectionData::getZ)
-                    .distinct()
-                    .sorted()
-                    .collect(Collectors.toList());
-            this.zToSectionDataList = null;
-            this.baseDataUrl = null;
-            this.matchOwner = null;
-            this.matchCollection = null;
-            this.debugFilePattern = null;
-        }
-
-        public RenderLayerLoader(final String layerUrlPattern,
-                                 final List<SectionData> sectionDataList,
-                                 final String baseDataUrl,
-                                 final String matchOwner,
-                                 final String matchCollection) {
-            this.layerUrlPattern = layerUrlPattern;
-            this.zToSectionDataList = new HashMap<>(sectionDataList.size());
-            sectionDataList.forEach(sd -> {
-                final List<SectionData> sdList = zToSectionDataList.computeIfAbsent(sd.getZ(),
-                                                                                    f -> new ArrayList<>());
-                sdList.add(sd);
-            });
-            this.zList = this.zToSectionDataList.keySet().stream().sorted().collect(Collectors.toList());
-            this.baseDataUrl = baseDataUrl;
-            this.matchOwner = matchOwner;
-            this.matchCollection = matchCollection;
+            this.sortedZList = sortedZList;
             this.debugFilePattern = null;
         }
 
         @Override
         public int getNumberOfLayers() {
-            return zList.size();
+            return sortedZList.size();
         }
 
         @Override
         public FloatProcessor getProcessor(final int layerIndex) {
 
-            final Double z = zList.get(layerIndex);
+            final Double z = sortedZList.get(layerIndex);
             final String url = String.format(layerUrlPattern, z);
 
             final RenderParameters renderParameters = RenderParameters.loadFromUrl(url);
-
-            if (matchOwner != null) {
-                if (matchClient == null) {
-                    setMatchClient();
-                }
-                // TODO: fetch matches and crop render parameters
-            }
 
             final File debugFile = debugFilePattern == null ? null : new File(String.format(debugFilePattern, z));
 
@@ -189,17 +142,11 @@ public interface LayerLoader {
         }
 
         public Double getFirstLayerZ() {
-            return zList.get(0);
+            return sortedZList.get(0);
         }
 
         public void setDebugFilePattern(final String debugFilePattern) {
             this.debugFilePattern = debugFilePattern;
-        }
-
-        private synchronized void setMatchClient() {
-            if (matchClient == null) {
-                this.matchClient = new RenderDataClient(baseDataUrl, matchOwner, matchCollection);
-            }
         }
     }
 }
