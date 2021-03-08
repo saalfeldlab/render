@@ -13,12 +13,14 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -65,6 +67,13 @@ public class ZPositionCorrectionClient {
         public String rootDirectory;
 
         @Parameter(
+                names = "--runName",
+                description = "Common run name to include in output path when running array jobs.  " +
+                              "Typically includes the timestamp when the array job was created.  " +
+                              "Omit if not running in an array job context.")
+        public String runName;
+
+        @Parameter(
                 names = "--optionsJson",
                 description = "JSON file containing thickness correction options (omit to use default values)")
         public String optionsJson;
@@ -73,12 +82,6 @@ public class ZPositionCorrectionClient {
                 names = "--nLocalEstimates",
                 description = "Number of local estimates")
         public Integer nLocalEstimates = 1;
-
-        @Parameter(
-                names = "--useMatchCollection",
-                description = "Name of match collection to use for rendering non-resin portions of layers (default is to render entire layer)"
-        )
-        public String matchCollection;
 
         @ParametersDelegate
         public ZRangeParameters layerRange = new ZRangeParameters();
@@ -102,15 +105,20 @@ public class ZPositionCorrectionClient {
                    HeadlessZPositionCorrection.generateDefaultFIBSEMOptions() : Options.read(optionsJson);
         }
 
-        public File createRunDirectory()
+        public File createRunDirectory(final Double firstZ,
+                                       final Double lastZ)
                 throws IllegalArgumentException {
 
-            final SimpleDateFormat sdf = new SimpleDateFormat("'run_'yyyyMMdd_hhmmss");
-            final Path path = Paths.get(rootDirectory,
-                                        renderWeb.owner,
-                                        renderWeb.project,
-                                        stack,
-                                        sdf.format(new Date()));
+            final String stackPath = Paths.get(rootDirectory, renderWeb.owner, renderWeb.project, stack).toString();
+            final String zRange = String.format("z_%08.1f_to_%08.1f", firstZ, lastZ);
+
+            final Path path;
+            if (runName == null) {
+                final SimpleDateFormat sdf = new SimpleDateFormat("'run_'yyyyMMdd_hhmmss");
+                path = Paths.get(stackPath, sdf.format(new Date()));
+            } else {
+                path = Paths.get(stackPath, runName, zRange);
+            }
 
             final File runDirectory = path.toFile().getAbsoluteFile();
 
@@ -142,17 +150,24 @@ public class ZPositionCorrectionClient {
     }
 
     private final Parameters parameters;
+    private final Options inferenceOptions;
+
     private final File runDirectory;
     private final RenderDataClient renderDataClient;
     private final List<SectionData> sectionDataList;
+    private final List<Double> sortedZList;
     private final List<Double> stackResolutionValues;
 
     ZPositionCorrectionClient(final Parameters parameters)
             throws IllegalArgumentException, IOException {
 
         this.parameters = parameters;
-        this.runDirectory = parameters.createRunDirectory();
         this.renderDataClient = parameters.renderWeb.getDataClient();
+
+        final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+        this.stackResolutionValues = stackMetaData.getCurrentResolutionValues();
+
+        this.inferenceOptions = parameters.getInferenceOptions();
 
         this.sectionDataList = renderDataClient.getStackSectionData(parameters.stack,
                                                                     parameters.layerRange.minZ,
@@ -163,8 +178,15 @@ public class ZPositionCorrectionClient {
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
 
-        final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
-        this.stackResolutionValues = stackMetaData.getCurrentResolutionValues();
+        this.sortedZList = sectionDataList.stream()
+                .map(SectionData::getZ)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
+        this.runDirectory = parameters.createRunDirectory(sortedZList.get(0),
+                                                          sortedZList.get(sortedZList.size() - 1));
+
     }
 
     String getLayerUrlPattern() {
@@ -206,21 +228,19 @@ public class ZPositionCorrectionClient {
                      layerThicknessPath);
         }
 
-        final Options inferenceOptions = parameters.getInferenceOptions();
         final File inferenceOptionsFile = new File(runDirectory, "inference-options.json");
         JsonUtils.MAPPER.writeValue(inferenceOptionsFile, inferenceOptions);
 
         LOG.info("estimateZCoordinates: using inference options: {}", inferenceOptions);
 
         final String layerUrlPattern = getLayerUrlPattern();
-        final RenderLayerLoader layerLoader = parameters.matchCollection == null ?
-                                              new RenderLayerLoader(layerUrlPattern,
-                                                                    sectionDataList) :
-                                              new RenderLayerLoader(layerUrlPattern,
-                                                                    sectionDataList,
-                                                                    parameters.renderWeb.baseDataUrl,
-                                                                    parameters.renderWeb.owner,
-                                                                    parameters.matchCollection);
+        final long pixelsInLargeMask = 20000 * 10000;
+        final ImageProcessorCache maskCache = new ImageProcessorCache(pixelsInLargeMask,
+                                                                      false,
+                                                                      false);
+        final RenderLayerLoader layerLoader = new RenderLayerLoader(layerUrlPattern,
+                                                                    sortedZList,
+                                                                    maskCache);
 
         if (parameters.debugFormat != null) {
             final File debugDirectory = new File(runDirectory, "debug-images");
@@ -229,12 +249,21 @@ public class ZPositionCorrectionClient {
             layerLoader.setDebugFilePattern(debugFilePattern);
         }
 
-        final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                       parameters.nLocalEstimates,
-                                                                       layerLoader);
+        final double[] transformsFromScaledSources = buildMatrixAndEstimateZCoordinates(inferenceOptions,
+                                                                                        parameters.nLocalEstimates,
+                                                                                        layerLoader);
+
+        // TODO: figure out whether transforms need to be scaled back up
+//        double[] fullScaleTransforms = transformsFromScaledSources;
+//        if (parameters.scale != 1.0) {
+//            fullScaleTransforms = new double[transformsFromScaledSources.length];
+//            for (int i = 0; i < transformsFromScaledSources.length; i++) {
+//                fullScaleTransforms[i] = transformsFromScaledSources[i] / parameters.scale;
+//            }
+//        }
 
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
-        writeEstimations(transforms, outputFilePath, layerLoader.getFirstLayerZ());
+        writeEstimations(transformsFromScaledSources, outputFilePath, layerLoader.getFirstLayerZ());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ZPositionCorrectionClient.class);
