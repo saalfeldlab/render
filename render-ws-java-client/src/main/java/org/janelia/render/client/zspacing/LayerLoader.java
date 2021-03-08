@@ -107,14 +107,17 @@ public interface LayerLoader {
 
         private final String layerUrlPattern;
         private final List<Double> sortedZList;
+        private final ImageProcessorCache imageProcessorCache;
 
         private String debugFilePattern;
 
         public RenderLayerLoader(final String layerUrlPattern,
-                                 final List<Double> sortedZList) {
+                                 final List<Double> sortedZList,
+                                 final ImageProcessorCache imageProcessorCache) {
             this.layerUrlPattern = layerUrlPattern;
             this.sortedZList = sortedZList;
             this.debugFilePattern = null;
+            this.imageProcessorCache = imageProcessorCache;
         }
 
         @Override
@@ -134,7 +137,7 @@ public interface LayerLoader {
 
             final ImageProcessorWithMasks imageProcessorWithMasks =
                     Renderer.renderImageProcessorWithMasks(renderParameters,
-                                                           ImageProcessorCache.DISABLED_CACHE,
+                                                           imageProcessorCache,
                                                            debugFile);
 
             // TODO: make sure it is ok to drop mask here
