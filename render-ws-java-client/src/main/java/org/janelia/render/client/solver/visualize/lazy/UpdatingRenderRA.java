@@ -71,7 +71,7 @@ public class UpdatingRenderRA<T extends RealType<T> & NativeType<T>> extends Ren
 					null, baseUrl, owner, project, stack,
 					transformedInterval.min( 0 ),
 					transformedInterval.min( 1 ),
-					z,
+					z + minZ,
 					transformedInterval.dimension( 0 ),
 					transformedInterval.dimension( 1 ),
 					scale,
