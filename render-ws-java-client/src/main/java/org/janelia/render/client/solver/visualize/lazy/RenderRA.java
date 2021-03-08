@@ -101,7 +101,7 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 			final int h = (int)Math.round( output.dimension( 1 ) / scale );
 
 			// we assume that the blocksize in z == 1
-			final int z = (int) (Math.round( output.min( 2 ) / scale ) + minZ);
+			final int z = (int) (Math.round( min[ 2 ] / scale ) );
 
 			if ( z < minZ || z > maxZ )
 			{
