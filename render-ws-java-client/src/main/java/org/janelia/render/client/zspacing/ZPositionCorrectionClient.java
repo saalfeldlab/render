@@ -20,6 +20,7 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -233,8 +234,13 @@ public class ZPositionCorrectionClient {
         LOG.info("estimateZCoordinates: using inference options: {}", inferenceOptions);
 
         final String layerUrlPattern = getLayerUrlPattern();
+        final long pixelsInLargeMask = 20000 * 10000;
+        final ImageProcessorCache maskCache = new ImageProcessorCache(pixelsInLargeMask,
+                                                                      false,
+                                                                      false);
         final RenderLayerLoader layerLoader = new RenderLayerLoader(layerUrlPattern,
-                                                                    sortedZList);
+                                                                    sortedZList,
+                                                                    maskCache);
 
         if (parameters.debugFormat != null) {
             final File debugDirectory = new File(runDirectory, "debug-images");
@@ -243,12 +249,21 @@ public class ZPositionCorrectionClient {
             layerLoader.setDebugFilePattern(debugFilePattern);
         }
 
-        final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                       parameters.nLocalEstimates,
-                                                                       layerLoader);
+        final double[] transformsFromScaledSources = buildMatrixAndEstimateZCoordinates(inferenceOptions,
+                                                                                        parameters.nLocalEstimates,
+                                                                                        layerLoader);
+
+        // TODO: figure out whether transforms need to be scaled back up
+//        double[] fullScaleTransforms = transformsFromScaledSources;
+//        if (parameters.scale != 1.0) {
+//            fullScaleTransforms = new double[transformsFromScaledSources.length];
+//            for (int i = 0; i < transformsFromScaledSources.length; i++) {
+//                fullScaleTransforms[i] = transformsFromScaledSources[i] / parameters.scale;
+//            }
+//        }
 
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
-        writeEstimations(transforms, outputFilePath, layerLoader.getFirstLayerZ());
+        writeEstimations(transformsFromScaledSources, outputFilePath, layerLoader.getFirstLayerZ());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ZPositionCorrectionClient.class);
