@@ -249,21 +249,12 @@ public class ZPositionCorrectionClient {
             layerLoader.setDebugFilePattern(debugFilePattern);
         }
 
-        final double[] transformsFromScaledSources = buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                                        parameters.nLocalEstimates,
-                                                                                        layerLoader);
-
-        // TODO: figure out whether transforms need to be scaled back up
-//        double[] fullScaleTransforms = transformsFromScaledSources;
-//        if (parameters.scale != 1.0) {
-//            fullScaleTransforms = new double[transformsFromScaledSources.length];
-//            for (int i = 0; i < transformsFromScaledSources.length; i++) {
-//                fullScaleTransforms[i] = transformsFromScaledSources[i] / parameters.scale;
-//            }
-//        }
+        final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
+                                                                       parameters.nLocalEstimates,
+                                                                       layerLoader);
 
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
-        writeEstimations(transformsFromScaledSources, outputFilePath, layerLoader.getFirstLayerZ());
+        writeEstimations(transforms, outputFilePath, layerLoader.getFirstLayerZ());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ZPositionCorrectionClient.class);
