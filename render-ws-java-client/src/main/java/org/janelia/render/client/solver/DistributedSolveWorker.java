@@ -85,7 +85,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final double blockMaxAllowedError;
 
 	final SolveItem< G, B, S > inputSolveItem;
-	List< SolveItem< G, B, S > > solveItems;
+	private List< SolveItem< G, B, S > > solveItems;
+	private List< SolveItemData< G, B, S > > result;
 
 	// for assigning new id's when splitting solveItemData
 	final int startId;
@@ -157,7 +158,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	public List< SolveItemData< G, B, S > > getSolveItemDataList()
 	{
-		return solveItems.stream().map( SolveItem::getSolveItemData ).collect( Collectors.toList() );
+		return result;
 	}
 
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
@@ -176,6 +177,20 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		for ( final SolveItem< G, B, S > solveItem : solveItems )
 			computeSolveItemErrors( solveItem, canvasMatches );
+
+		// clean up
+		this.result = new ArrayList<>();
+		for ( final SolveItem< G, B, S > solveItem : solveItems )
+		{
+			result.add( solveItem.getSolveItemData() );
+			solveItem.matches().clear();
+			solveItem.tileToGroupedTile().clear();
+			solveItem.groupedTileToTiles().clear();
+			solveItem.idToTileMap().clear();
+		}
+		this.solveItems.clear();
+		this.solveItems = null;
+		System.gc();
 	}
 
 	protected void assembleMatchData(

@@ -48,9 +48,6 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	// the errors per tile
 	final HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap = new HashMap<>();
 
-	// matches for error computation
-	final List< Pair< Pair< String, String>, Matches > > matches = new ArrayList<>();
-
 	final private G globalSolveModel;
 	final private B blockSolveModel;
 	final private S stitchingModel;
@@ -115,7 +112,6 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
 	public HashMap<Integer, Double> zToDynamicLambda() { return zToDynamicLambda; }
 	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return idToSolveItemErrorMap; }
-	public List< Pair< Pair< String, String>, Matches > > matches() { return matches; }
 
 	public double getWeight( final int z )
 	{

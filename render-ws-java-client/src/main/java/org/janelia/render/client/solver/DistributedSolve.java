@@ -494,6 +494,7 @@ public abstract class DistributedSolve
 		// combine all matches from all solveitems
 		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > sid : allSolveItems )
 		{
+			/*
 			for ( final Pair< Pair< String, String>, Matches > matchPair : sid.matches )
 			{
 				final String pTileId = matchPair.getA().getA();
@@ -506,6 +507,7 @@ public abstract class DistributedSolve
 				if ( !qTileIdToMatches.containsKey( qTileId ) )
 					qTileIdToMatches.put( qTileId, matches );
 			}
+			*/
 		}
 
 		if ( allMatches.size() == 0 )
