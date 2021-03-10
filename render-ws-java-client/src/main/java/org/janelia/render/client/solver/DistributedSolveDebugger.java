@@ -107,6 +107,8 @@ public class DistributedSolveDebugger extends DistributedSolve
                             "--blockOptimizerIterations", "1000,1000,500,250,250",
                             "--blockMaxPlateauWidth", "250,250,150,100,100",
 
+                            "--lambdaStitching", "1.0", // allow rigid tile alignment
+
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
                             
@@ -130,8 +132,8 @@ public class DistributedSolveDebugger extends DistributedSolve
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final SolveSetFactory solveSetFactory =
-                		//new SolveSetFactoryAdaptive(
-                		new SolveSetFactorySimple(
+                		new SolveSetFactoryAdaptiveRigid(
+                		//new SolveSetFactorySimple(
                 				parameters.globalModel(),
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),

@@ -74,6 +74,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	final int numThreads;
 	final double dynamicLambdaFactor;
+	final boolean rigidPreAlign;
 	final Set<Integer> excludeFromRegularization;
 	final boolean serializeMatches;
 
@@ -113,12 +114,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final double maxAllowedErrorStitching,
 			final int maxIterationsStitching,
 			final int maxPlateauWidthStitching,
-			final List<Double> blockOptimizerLambdasRigid,
+			final List<Double> blockOptimizerLambdasRigid, // TODO: all of these are also in SolveItemData!
 			final List<Double> blockOptimizerLambdasTranslation,
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
 			final double dynamicLambdaFactor,
+			final boolean rigidPreAlign,
 			final Set<Integer> excludeFromRegularization,
 			final int numThreads )
 	{
@@ -142,6 +144,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		this.numThreads = numThreads;
 		this.dynamicLambdaFactor = dynamicLambdaFactor;
+		this.rigidPreAlign = rigidPreAlign;
 		this.excludeFromRegularization = excludeFromRegularization;
 		this.serializeMatches = serializeMatches;
 
@@ -816,6 +819,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							blockMaxPlateauWidth,
 							blockMaxAllowedError,
 							dynamicLambdaFactor,
+							rigidPreAlign,
 							newMin,
 							newMax ) );
 
@@ -898,13 +902,21 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem, zRadiusRestarts, excludeFromRegularization, dynamicLambdaFactor );
 
-		LOG.info( "block " + solveItem.getId() + ": prealigning with translation and no dynamic lambda" );
+		if ( rigidPreAlign )
+			LOG.info( "block " + solveItem.getId() + ": prealigning with rigid and no dynamic lambda" );
+		else
+			LOG.info( "block " + solveItem.getId() + ": prealigning with translation and no dynamic lambda" );
 
 		for (final Tile< ? > tile : tileConfig.getTiles() )
 		{
 			// TODO: the prealign should reflect wheter we use translation or rigid as baseline
 			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( 1.0 ); // rigid vs affine
-			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( 1.0 ); // translation vs (rigid vs affine)
+
+			if ( rigidPreAlign )
+				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( 0.0 ); // translation vs (rigid vs affine)
+			else
+				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( 1.0 ); // translation vs (rigid vs affine)
+
 			((InterpolatedAffineModel2D) tile.getModel()).setLambda( 0.0 ); // prealign without regularization
 		}
 		
