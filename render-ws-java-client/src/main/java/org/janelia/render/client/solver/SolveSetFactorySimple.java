@@ -57,6 +57,7 @@ public class SolveSetFactorySimple extends SolveSetFactory
 							this.defaultBlockMaxPlateauWidth,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
+							false,
 							minZ + i * setSize,
 							Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
 			++id;
@@ -79,6 +80,7 @@ public class SolveSetFactorySimple extends SolveSetFactory
 							this.defaultBlockMaxPlateauWidth,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
+							false,
 							( set0.minZ() + set0.maxZ() ) / 2,
 							( set1.minZ() + set1.maxZ() ) / 2 - 1 ) );
 			++id;

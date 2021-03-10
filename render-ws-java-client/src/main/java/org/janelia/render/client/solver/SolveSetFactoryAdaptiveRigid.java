@@ -4,10 +4,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.InterpolatedAffineModel2D;
 
-public class SolveSetFactoryAdaptive extends SolveSetFactory
+public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 {
 	public HashMap<Integer, String> additionalIssues = new HashMap<>();
 
@@ -22,7 +25,7 @@ public class SolveSetFactoryAdaptive extends SolveSetFactory
 	 * @param defaultBlockMaxAllowedError - the default max error for global opt (from parameters)
 	 * @param defaultDynamicLambdaFactor - the default dynamic lambda factor
 	 */
-	public SolveSetFactoryAdaptive(
+	public SolveSetFactoryAdaptiveRigid(
 			final Affine2D<?> defaultGlobalSolveModel,
 			final Affine2D<?> defaultBlockSolveModel,
 			final Affine2D<?> defaultStitchingModel,
@@ -62,21 +65,44 @@ public class SolveSetFactoryAdaptive extends SolveSetFactory
 			final int setMinZ = minZ + i * setSize;
 			final int setMaxZ = Math.min( minZ + (i + 1) * setSize - 1, maxZ );
 
+			boolean rigidPreAlign = false;
+			Affine2D< ? > stitchingModel = defaultStitchingModel;
+			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
+			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
+			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
+			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
+	
 			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
+			{
+				// rigid alignment
+				rigidPreAlign = true;
+
+				// allow rigid stitching
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+	
+				// only rigid/affine solve
+				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
+				blockOptimizerLambdasTranslation = Stream.of( 0.0,0.0,0.0,0.0 ).collect(Collectors.toList());
+				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
+				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
+
 				throw new RuntimeException( "set " + setMinZ + ">>" + setMaxZ + " contains issues, do something about it." );
+			}
 
 			leftSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							this.defaultStitchingModel,
-							this.defaultBlockOptimizerLambdasRigid,
-							this.defaultBlockOptimizerLambdasTranslation,
-							this.defaultBlockOptimizerIterations,
-							this.defaultBlockMaxPlateauWidth,
+							stitchingModel,
+							blockOptimizerLambdasRigid,
+							blockOptimizerLambdasTranslation,
+							blockOptimizerIterations,
+							blockMaxPlateauWidth,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
+							rigidPreAlign,
 							setMinZ,
 							setMaxZ ) );
 			++id;
@@ -90,21 +116,44 @@ public class SolveSetFactoryAdaptive extends SolveSetFactory
 			final int setMinZ = ( set0.minZ() + set0.maxZ() ) / 2;
 			final int setMaxZ = ( set1.minZ() + set1.maxZ() ) / 2 - 1;
 
+			boolean rigidPreAlign = false;
+			Affine2D< ? > stitchingModel = defaultStitchingModel;
+			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
+			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
+			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
+			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
+
 			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
+			{
+				// rigid alignment
+				rigidPreAlign = true;
+
+				// allow rigid stitching
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+	
+				// only rigid/affine solve
+				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
+				blockOptimizerLambdasTranslation = Stream.of( 0.0,0.0,0.0,0.0 ).collect(Collectors.toList());
+				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
+				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
+
 				throw new RuntimeException( "set " + setMinZ + ">>" + setMaxZ + " contains issues, do something about it." );
+			}
 
 			rightSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							this.defaultStitchingModel,
-							this.defaultBlockOptimizerLambdasRigid,
-							this.defaultBlockOptimizerLambdasTranslation,
-							this.defaultBlockOptimizerIterations,
-							this.defaultBlockMaxPlateauWidth,
+							stitchingModel,
+							blockOptimizerLambdasRigid,
+							blockOptimizerLambdasTranslation,
+							blockOptimizerIterations,
+							blockMaxPlateauWidth,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
+							rigidPreAlign,
 							setMinZ,
 							setMaxZ ) );
 			++id;

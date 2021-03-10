@@ -28,13 +28,10 @@ import java.util.function.Consumer;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.solver.visualize.RenderTools;
 
-import ij.ImagePlus;
-import ij.process.ImageProcessor;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.exception.IncompatibleTypeException;
-import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
@@ -104,28 +101,15 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 			final int h = (int)Math.round( output.dimension( 1 ) / scale );
 
 			// we assume that the blocksize in z == 1
-			final int z = (int)Math.round( output.min( 2 ) / scale );
+			final int z = (int) (Math.round( min[ 2 ] / scale ) );
 
 			if ( z < minZ || z > maxZ )
 			{
 				fillZero( output );
-				return;
 			}
 			else
 			{
-				ImageProcessorWithMasks ipm = RenderTools.renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, false );
-
-				if ( ipm == null ) // if the requested block contains no images, null will be returned
-				{
-					fillZero( output );
-					return;
-				}
-
-				final Cursor< T > out = Views.flatIterable( output ).cursor();
-				int i = 0;
-
-				while( out.hasNext() )
-					out.next().setReal( ipm.ip.getf( i++ ) );
+				update(output, x, y, z, w, h );
 			}
 		}
 		catch (final IncompatibleTypeException e)
@@ -134,9 +118,21 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 		}
 	}
 
-	protected static final void update()
+	protected void update( final RandomAccessibleInterval<T> output, final int x, final int y, final int z, final int w, final int h )
 	{
-		
+		ImageProcessorWithMasks ipm = RenderTools.renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, false );
+
+		if ( ipm == null ) // if the requested block contains no images, null will be returned
+		{
+			fillZero( output );
+			return;
+		}
+
+		final Cursor< T > out = Views.flatIterable( output ).cursor();
+		int i = 0;
+
+		while( out.hasNext() )
+			out.next().setReal( ipm.ip.getf( i++ ) );
 	}
 
 	protected void fillZero( final RandomAccessibleInterval<T> output )

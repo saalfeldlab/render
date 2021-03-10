@@ -79,6 +79,7 @@ public abstract class SolveSetFactory
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
 			final double dynamicLambdaFactor,
+			final boolean rigidPreAlign,
 			final int minZ,
 			final int maxZ )
 	{
@@ -94,6 +95,7 @@ public abstract class SolveSetFactory
 				blockMaxPlateauWidth,
 				blockMaxAllowedError,
 				dynamicLambdaFactor,
+				rigidPreAlign,
 				minZ,
 				maxZ );
 	}

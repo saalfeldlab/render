@@ -3,7 +3,10 @@ package org.janelia.render.client.solver.visualize;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.function.Function;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -14,8 +17,10 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.MultiResolutionSource;
+import org.janelia.render.client.solver.visualize.imglib2.VolatileTmp;
 import org.janelia.render.client.solver.visualize.lazy.Lazy;
 import org.janelia.render.client.solver.visualize.lazy.RenderRA;
+import org.janelia.render.client.solver.visualize.lazy.UpdatingRenderRA;
 
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
@@ -28,6 +33,9 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWith
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.cache.Invalidate;
+import net.imglib2.cache.img.CachedCellImg;
+import net.imglib2.cache.volatiles.VolatileCache;
 import net.imglib2.img.basictypeaccess.AccessFlags;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
@@ -205,6 +213,22 @@ public class RenderTools
 			final int numRenderingThreads,
 			final int numFetchThreads ) throws IOException
 	{
+		return renderMultiRes( globalIpCache, baseUrl, owner, project, stack, fullResInterval, source, numRenderingThreads, numFetchThreads, null, null );
+	}
+
+	public static BdvStackSource< ? > renderMultiRes(
+			final ImageProcessorCache globalIpCache,
+			final String baseUrl,
+			final String owner,
+			final String project,
+			final String stack,
+			final Interval fullResInterval,
+			BdvStackSource< ? > source,
+			final int numRenderingThreads,
+			final int numFetchThreads,
+			final Function< Integer, AffineTransform2D > zToTransform,
+			final Collection< Invalidate< ? > > caches ) throws IOException
+	{
 		// one common ImageProcessor cache for all
 		final ImageProcessorCache ipCache;
 
@@ -244,9 +268,20 @@ public class RenderTools
 
 			System.out.println( "ds=" + downsampling + ", interval=" + interval );
 
-			final RenderRA< FloatType > renderer =
-					new RenderRA<>(
+			final RenderRA< FloatType > renderer = zToTransform != null ?
+					new UpdatingRenderRA<>(
 							baseUrl,
+							owner,
+							project,
+							stack,
+							fullResInterval.min( 2 ),
+							fullResInterval.max( 2 ),
+							ipCache,
+							min,
+							new FloatType(),
+							1.0/downsampling,
+							zToTransform ) :
+					new RenderRA<>(baseUrl,
 							owner,
 							project,
 							stack,
@@ -261,18 +296,32 @@ public class RenderTools
 			final int blockSizeXY = Math.max( 64, ds[ ds.length - 1 ] ); // does that make sense?
 			final int[] blockSize = new int[] { blockSizeXY, blockSizeXY, 1 };
 
+			// TODO: return it for invalidation
+			CachedCellImg<FloatType, ?> cachedCellImg =
+					Lazy.process(
+						interval,
+						blockSize,
+						new FloatType(),
+						AccessFlags.setOf( AccessFlags.VOLATILE ),
+						renderer );
+
+			if ( caches != null )
+				caches.add( cachedCellImg.getCache() );
+
 			final RandomAccessibleInterval<FloatType> cachedImg =
 					Views.translate(
-							Lazy.process(
-									interval,
-									blockSize,
-									new FloatType(),
-									AccessFlags.setOf( AccessFlags.VOLATILE ),
-									renderer ),
+							cachedCellImg,
 							min );
 
-			final RandomAccessibleInterval< VolatileFloatType > volatileRA = VolatileViews.wrapAsVolatile( cachedImg,
-																										   queue );
+			final Pair< RandomAccessibleInterval< VolatileFloatType >, VolatileCache > pair = VolatileTmp.wrapAsVolatile( cachedImg, queue, null );
+
+			final RandomAccessibleInterval< VolatileFloatType > volatileRA = pair.getA();
+
+			if ( caches != null )
+				caches.add( pair.getB() );
+
+			//final RandomAccessibleInterval< VolatileFloatType > volatileRA =
+					//VolatileViews.wrapAsVolatile( cachedImg, queue );
 
 			// the virtual image is zeroMin, this transformation puts it into the global coordinate system
 			final AffineTransform3D t = new AffineTransform3D();

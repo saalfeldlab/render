@@ -32,7 +32,7 @@ public class DistributedSolveDebugger extends DistributedSolve
 	{
 		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
 		final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w =
-				this.solveSet.leftItems.get( 49 ).createWorker(//8, 9, 43, 44, 49, 66 ),
+				this.solveSet.leftItems.get( 9 ).createWorker(//8, 9, 43, 44, 49, 66 ),
 						this.solveSet.getMaxId() + 1,
 						runParams.pGroupList,
 						runParams.sectionIdToZMap,
@@ -68,7 +68,7 @@ public class DistributedSolveDebugger extends DistributedSolve
 				vis = VisualizeTools.renderDynamicLambda( vis, s.zToDynamicLambda(), s.idToNewModel(), s.idToTileSpec(), parameters.dynamicLambdaFactor );
 
 				final ImagePlus imp = s.visualizeAligned();
-				VisualizeTools.renderBDV( vis, imp, 0.15 );
+				VisualizeTools.renderBDV( vis, imp, 0.25 );
 			}
 
 		} catch ( Exception e1 )
@@ -94,17 +94,20 @@ public class DistributedSolveDebugger extends DistributedSolve
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "Z1217_33m_BR",
-                            "--project", "Sec10",
-                            "--matchCollection", "Sec10_multi",
-                            "--stack", "v3_acquire",
+                            "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
+                            "--project", "Sec32", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "Sec32_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", "v1_acquire_trimmed", //"v3_acquire",
                             //"--targetStack", "v3_acquire_sp1",
                             //"--completeTargetStack",
                             
-                            "--blockOptimizerLambdasRigid",       /*"1.0,1.0,0.5,0.1,0.01",*/"1.0,1.0,0.5,0.1,0.01",
-                            "--blockOptimizerLambdasTranslation", /*"0.5,0.0,0.0,0.0,0.0",*/"1.0,0.5,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "1000,1000,500,200,100",
-                            "--blockMaxPlateauWidth", "250,250,150,100,50",
+                            // note: prealign is with translation only
+                            "--blockOptimizerLambdasRigid",       "1.0,1.0,0.9,0.3,0.01",
+                            "--blockOptimizerLambdasTranslation", "1.0,0.0,0.0,0.0,0.0",
+                            "--blockOptimizerIterations", "1000,1000,500,250,250",
+                            "--blockMaxPlateauWidth", "250,250,150,100,100",
+
+                            "--lambdaStitching", "1.0", // allow rigid tile alignment
 
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
@@ -115,10 +118,11 @@ public class DistributedSolveDebugger extends DistributedSolve
                             //"--excludeFromRegularization", "1-5,35-534",
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
-                            "--threadsGlobal", "65",
+                            "--threadsGlobal", "8",
                             "--maxPlateauWidthGlobal", "50",
                             "--maxIterationsGlobal", "10000",
-							"--serializerDirectory", "."
+							//"--serializerDirectory", "."
+							"--dynamicLambdaFactor", "0.0"
                     };
                     parameters.parse(testArgs);
                 } else {
@@ -128,7 +132,8 @@ public class DistributedSolveDebugger extends DistributedSolve
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final SolveSetFactory solveSetFactory =
-                		new SolveSetFactoryAdaptive(
+                		new SolveSetFactoryAdaptiveRigid(
+                		//new SolveSetFactorySimple(
                 				parameters.globalModel(),
                 				parameters.blockModel(),
                 				parameters.stitchingModel(),

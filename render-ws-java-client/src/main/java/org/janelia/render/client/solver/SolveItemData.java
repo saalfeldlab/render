@@ -58,6 +58,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	final private List<Integer> blockMaxPlateauWidth;
 	final private double blockMaxAllowedError;
 	final private double dynamicLambdaFactor;
+	final private boolean rigidPreAlign;
 
 	public SolveItemData(
 			final int id,
@@ -70,6 +71,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
 			final double dynamicLambdaFactor,
+			final boolean rigidPreAlign,
 			final int minZ,
 			final int maxZ )
 	{
@@ -88,6 +90,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
 		this.blockMaxAllowedError = blockMaxAllowedError;
 		this.dynamicLambdaFactor = dynamicLambdaFactor;
+		this.rigidPreAlign = rigidPreAlign;
 	}
 
 	protected void assignUpdatedId( final int id ) { this.id = id; }
@@ -105,6 +108,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
 	public double blockMaxAllowedError() { return blockMaxAllowedError; }
 	public double dynamicLambdaFactor() { return dynamicLambdaFactor; }
+	public boolean rigidPreAlign() { return rigidPreAlign; }
 
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 	public HashMap<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
@@ -236,6 +240,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 				blockMaxPlateauWidth,
 				blockMaxAllowedError,
 				dynamicLambdaFactor,
+				rigidPreAlign,
 				excludeFromRegularization,
 				numThreads );
 	}

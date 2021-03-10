@@ -93,7 +93,7 @@
 
     <ciManagement>
         <system>Travis CI</system>
-        <url>https://travis-ci.org/saalfeldlab/render</url>
+        <url>https://travis-ci.com/saalfeldlab/render</url>
     </ciManagement>
 
     <packaging>pom</packaging>

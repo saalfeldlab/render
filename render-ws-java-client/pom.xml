@@ -100,6 +100,18 @@
         </dependency>
 
         <dependency>
+            <groupId>sc.fiji</groupId>
+            <artifactId>z_spacing</artifactId>
+            <exclusions>
+                <!-- filter out TrakEM2_ to avoid conflict between its jline and Spark org.fusesource.leveldbjni -->
+                <exclusion>
+                    <groupId>sc.fiji</groupId>
+                    <artifactId>TrakEM2_</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
         </dependency>
@@ -159,6 +171,11 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+        	<groupId>net.imglib2</groupId>
+        	<artifactId>imglib2-cache</artifactId>
+        	<version>1.0.0-beta-16</version>
+        </dependency>
     </dependencies>
 
     <!--
