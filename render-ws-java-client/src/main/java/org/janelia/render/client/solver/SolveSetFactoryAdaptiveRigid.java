@@ -87,7 +87,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
-				throw new RuntimeException( "set " + setMinZ + ">>" + setMaxZ + " contains issues, do something about it." );
+				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " contains issues, using rigid align." );
 			}
 
 			leftSets.add(
@@ -138,7 +138,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
-				throw new RuntimeException( "set " + setMinZ + ">>" + setMaxZ + " contains issues, do something about it." );
+				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " contains issues, do something about it." );
 			}
 
 			rightSets.add(
