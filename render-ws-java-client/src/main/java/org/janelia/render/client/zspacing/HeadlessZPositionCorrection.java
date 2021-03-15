@@ -28,6 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.numeric.real.DoubleType;
 
 import static org.janelia.thickness.plugin.ZPositionCorrection.createEmptyMatrix;
@@ -70,6 +72,8 @@ public class HeadlessZPositionCorrection {
         final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
                 buildNCCMatrix(cachedLayerLoader,
                                inferenceOptions.comparisonRange);
+
+        ImageJFunctions.show( crossCorrelationMatrix );
 
         LOG.info("estimating Z coordinates for " + layerLoader.getNumberOfLayers() + " layers:");
 

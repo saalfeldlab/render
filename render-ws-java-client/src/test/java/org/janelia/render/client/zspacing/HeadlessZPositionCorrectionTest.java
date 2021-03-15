@@ -14,6 +14,7 @@ import java.util.Random;
 import org.janelia.alignment.Utils;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.thickness.inference.Options;
+import org.janelia.thickness.inference.InferFromMatrix.RegularizationType;
 import org.junit.Test;
 
 /**
@@ -63,7 +64,7 @@ public class HeadlessZPositionCorrectionTest {
         final String testPath = imageDir + "/test.png";                                 // 2650x2260
         final ImageProcessor testProcessor = Utils.openImagePlus(testPath).getProcessor().resize(1325); // 1325x1130
 
-        final int shiftX = 10;
+        final int shiftX = 2;
         final int testWidth = testProcessor.getWidth() - shiftX;
         final int testHeight = testProcessor.getHeight();
 
@@ -78,8 +79,8 @@ public class HeadlessZPositionCorrectionTest {
         // final BufferedImage b2 = new ImagePlus("shifted", shiftedLayer).getBufferedImage();
 
         new ImageJ();
-        new ImagePlus( "standard", standardLayer ).show();;
-        new ImagePlus( "shiftedLayer", shiftedLayer ).show();;
+        //new ImagePlus( "standard", standardLayer ).show();;
+        //new ImagePlus( "shiftedLayer", shiftedLayer ).show();;
 
         // SP: look here.  Using 20-29 seems ok, but look at what happens when you change to 23-25.
         final int startShiftZ = 20; // 23
@@ -88,14 +89,16 @@ public class HeadlessZPositionCorrectionTest {
 
         // setup layers, shifting subset of them
         Random rnd = new Random( 3434795 );
-   
+        double noise = 0;
+
         final List<FloatProcessor> layers = new ArrayList<>();
+        /*
         for (int z = 0; z < totalNumberOfLayers; z++) {
             if ((z >= startShiftZ) && (z <= stopShiftZ))
             {
             	final float[] pixels = (float[])shiftedLayer.getPixelsCopy();
             	for ( int i = 0; i < pixels.length; ++i )
-            		pixels[ i ] += rnd.nextFloat() * 2 - 1;
+            		pixels[ i ] += rnd.nextFloat() * noise - (noise/2.0);
                 layers.add( new FloatProcessor( shiftedLayer.getWidth(), shiftedLayer.getHeight(), pixels));
                 //new ImagePlus( "copy", new FloatProcessor( shiftedLayer.getWidth(), shiftedLayer.getHeight(), pixels) ).show();; 
             }
@@ -103,16 +106,38 @@ public class HeadlessZPositionCorrectionTest {
             {
             	final float[] pixels = (float[])standardLayer.getPixelsCopy();
             	for ( int i = 0; i < pixels.length; ++i )
-            		pixels[ i ] += rnd.nextFloat() * 2 - 1;
+            		pixels[ i ] += rnd.nextFloat() * noise - (noise/2.0);
                 layers.add( new FloatProcessor( standardLayer.getWidth(), standardLayer.getHeight(), pixels));
                 //layers.add(standardLayer.convertToFloatProcessor());
             }
         }
+        */
+
+        final int movingW = testProcessor.getWidth() - totalNumberOfLayers * 2;
+
+        int offset = 0;
+        for (int z = 0; z < totalNumberOfLayers; z++) {
+
+        	if ((z >= startShiftZ) && (z <= stopShiftZ))
+        		offset += 1;
+        	else
+        		offset += 1;
+
+        	testProcessor.setRoi(offset, 0, movingW, testHeight);
+
+        	final float[] pixels = (float[])testProcessor.crop().convertToFloatProcessor().getPixelsCopy();
+        	for ( int i = 0; i < pixels.length; ++i )
+        		pixels[ i ] += rnd.nextFloat() * noise - (noise/2.0);
+            layers.add( new FloatProcessor( movingW, standardLayer.getHeight(), pixels));
+            //layers.add(standardLayer.convertToFloatProcessor());
+        }
+
         final LayerLoader testLayerLoader = new TestLayerLoader(layers);
 
         // override default correction options here
         final Options inferenceOptions = HeadlessZPositionCorrection.generateDefaultFIBSEMOptions();
         inferenceOptions.minimumSectionThickness = 0.0001;
+        //inferenceOptions.regularizationType = RegularizationType.IDENTITY;
         inferenceOptions.comparisonRange = 10; // SP: playing with this value also affects results
 
         // run Phillip's code
@@ -126,7 +151,7 @@ public class HeadlessZPositionCorrectionTest {
         System.out.printf("Z     Delta Values (* = shifted)%n---   --------------------------%n%03d: %8.4f  ", 0, 0.0);
         int z = 1;
         for (; z < transforms.length; z++) {
-            if (z % inferenceOptions.comparisonRange == 0) {
+            if (z % 10 == 0) {
                 System.out.printf("%n%03d: ", z);
             }
             final double delta = transforms[z] - transforms[z-1];
@@ -138,7 +163,7 @@ public class HeadlessZPositionCorrectionTest {
         System.out.printf("Z     Abs Values (* = shifted)%n---   --------------------------");
         z = 0;
         for (; z < transforms.length; z++) {
-            if (z % inferenceOptions.comparisonRange == 0) {
+            if (z % 10 == 0) {
                 System.out.printf("%n%03d: ", z);
             }
             final String shiftIndicator = (z >= startShiftZ) && (z <= stopShiftZ) ? "*" : " ";
