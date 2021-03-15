@@ -21,7 +21,9 @@ import org.janelia.thickness.inference.Options;
 import org.janelia.thickness.inference.fits.AbstractCorrelationFit;
 import org.janelia.thickness.inference.fits.GlobalCorrelationFitAverage;
 import org.janelia.thickness.inference.fits.LocalCorrelationFitAverage;
+import org.janelia.thickness.inference.visitor.LUTVisitor;
 import org.janelia.thickness.inference.visitor.LazyVisitor;
+import org.janelia.thickness.inference.visitor.ScalingFactorsVisitor;
 import org.janelia.thickness.inference.visitor.Visitor;
 import org.janelia.thickness.plugin.RealSumFloatNCC;
 import org.slf4j.Logger;
@@ -127,7 +129,9 @@ public class HeadlessZPositionCorrection {
 
         final double[] transform;
         try {
-            final Visitor visitor = new LazyVisitor(); // always use do-nothing visitor
+            //final Visitor visitor = new LazyVisitor(); // always use do-nothing visitor
+            //final Visitor visitor = new LUTVisitor("", "", "," ); 
+            final Visitor visitor = new ScalingFactorsVisitor("", "", "," );
             transform = inf.estimateZCoordinates(crossCorrelationMatrix, startingCoordinates, visitor, options);
         } catch (final Exception e) {
             throw new RuntimeException("failed to estimate z coordinates", e);
