@@ -1,11 +1,15 @@
 package org.janelia.render.client.zspacing;
 
+import ij.ImageJ;
+import ij.ImagePlus;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
+import net.imglib2.multithreading.SimpleMultiThreading;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import org.janelia.alignment.Utils;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -55,11 +59,11 @@ public class HeadlessZPositionCorrectionTest {
         System.out.println("Running testEstimations in " + runDir);
 
         // just using single TEM tile already in repo for other tests
-        final String imageDir = runDir + "/render-ws-java-client/src/test/resources/point-match-test";
-        final String testPath = imageDir + "/col0075_row0021_cam1.png";                                 // 2650x2260
+        final String imageDir = runDir + "/src/test/resources/point-match-test";
+        final String testPath = imageDir + "/test.png";                                 // 2650x2260
         final ImageProcessor testProcessor = Utils.openImagePlus(testPath).getProcessor().resize(1325); // 1325x1130
 
-        final int shiftX = 100;
+        final int shiftX = 10;
         final int testWidth = testProcessor.getWidth() - shiftX;
         final int testHeight = testProcessor.getHeight();
 
@@ -73,18 +77,35 @@ public class HeadlessZPositionCorrectionTest {
         final FloatProcessor shiftedLayer = testProcessor.crop().convertToFloatProcessor();
         // final BufferedImage b2 = new ImagePlus("shifted", shiftedLayer).getBufferedImage();
 
+        new ImageJ();
+        new ImagePlus( "standard", standardLayer ).show();;
+        new ImagePlus( "shiftedLayer", shiftedLayer ).show();;
+
         // SP: look here.  Using 20-29 seems ok, but look at what happens when you change to 23-25.
         final int startShiftZ = 20; // 23
         final int stopShiftZ = 29;  // 25
         final int totalNumberOfLayers = 50;
 
         // setup layers, shifting subset of them
+        Random rnd = new Random( 3434795 );
+   
         final List<FloatProcessor> layers = new ArrayList<>();
         for (int z = 0; z < totalNumberOfLayers; z++) {
-            if ((z >= startShiftZ) && (z <= stopShiftZ)) {
-                layers.add(shiftedLayer);
-            } else {
-                layers.add(standardLayer);
+            if ((z >= startShiftZ) && (z <= stopShiftZ))
+            {
+            	final float[] pixels = (float[])shiftedLayer.getPixelsCopy();
+            	for ( int i = 0; i < pixels.length; ++i )
+            		pixels[ i ] += rnd.nextFloat() * 2 - 1;
+                layers.add( new FloatProcessor( shiftedLayer.getWidth(), shiftedLayer.getHeight(), pixels));
+                //new ImagePlus( "copy", new FloatProcessor( shiftedLayer.getWidth(), shiftedLayer.getHeight(), pixels) ).show();; 
+            }
+            else
+            {
+            	final float[] pixels = (float[])standardLayer.getPixelsCopy();
+            	for ( int i = 0; i < pixels.length; ++i )
+            		pixels[ i ] += rnd.nextFloat() * 2 - 1;
+                layers.add( new FloatProcessor( standardLayer.getWidth(), standardLayer.getHeight(), pixels));
+                //layers.add(standardLayer.convertToFloatProcessor());
             }
         }
         final LayerLoader testLayerLoader = new TestLayerLoader(layers);
@@ -113,6 +134,18 @@ public class HeadlessZPositionCorrectionTest {
             System.out.printf("%8.4f%s ", delta, shiftIndicator);
         }
         System.out.println();
+
+        System.out.printf("Z     Abs Values (* = shifted)%n---   --------------------------");
+        z = 0;
+        for (; z < transforms.length; z++) {
+            if (z % inferenceOptions.comparisonRange == 0) {
+                System.out.printf("%n%03d: ", z);
+            }
+            final String shiftIndicator = (z >= startShiftZ) && (z <= stopShiftZ) ? "*" : " ";
+            System.out.printf("%8.4f%s ", transforms[z], shiftIndicator);
+        }
+        System.out.println();
+SimpleMultiThreading.threadHaltUnClean();
     }
 
     static class TestLayerLoader implements LayerLoader {
