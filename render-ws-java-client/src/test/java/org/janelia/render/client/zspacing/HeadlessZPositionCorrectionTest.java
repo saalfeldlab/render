@@ -119,7 +119,7 @@ public class HeadlessZPositionCorrectionTest {
         for (int z = 0; z < totalNumberOfLayers; z++) {
 
         	if ((z >= startShiftZ) && (z <= stopShiftZ))
-        		offset += 1;
+        		offset += 2; //1???
         	else
         		offset += 1;
 
@@ -137,8 +137,10 @@ public class HeadlessZPositionCorrectionTest {
         // override default correction options here
         final Options inferenceOptions = HeadlessZPositionCorrection.generateDefaultFIBSEMOptions();
         inferenceOptions.minimumSectionThickness = 0.0001;
-        //inferenceOptions.regularizationType = RegularizationType.IDENTITY;
+        //inferenceOptions.regularizationType = RegularizationType.NONE; // IDENTITY leads to min and max not being fixed
+        //inferenceOptions.regularizationType = RegularizationType.
         inferenceOptions.comparisonRange = 10; // SP: playing with this value also affects results
+        inferenceOptions.scalingFactorRegularizerWeight = 1.0;
 
         // run Phillip's code
         final double[] transforms =
