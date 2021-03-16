@@ -33,6 +33,8 @@ public class HeadlessZPositionCorrectionTest {
         
         testEstimations();
 
+        SimpleMultiThreading.threadHaltUnClean();
+
         System.exit(0); // HACK: exit here to skip "normal" test
 
         final String runDirectory =
@@ -73,11 +75,6 @@ public class HeadlessZPositionCorrectionTest {
         final FloatProcessor standardLayer = testProcessor.crop().convertToFloatProcessor();
         // final BufferedImage b1 = new ImagePlus("standard", standardLayer).getBufferedImage();
 
-        // shifted layer is tile with left 100 pixels cropped off
-        testProcessor.setRoi(shiftX, 0, testWidth, testHeight);
-        final FloatProcessor shiftedLayer = testProcessor.crop().convertToFloatProcessor();
-        // final BufferedImage b2 = new ImagePlus("shifted", shiftedLayer).getBufferedImage();
-
         new ImageJ();
         //new ImagePlus( "standard", standardLayer ).show();;
         //new ImagePlus( "shiftedLayer", shiftedLayer ).show();;
@@ -92,26 +89,6 @@ public class HeadlessZPositionCorrectionTest {
         double noise = 0;
 
         final List<FloatProcessor> layers = new ArrayList<>();
-        /*
-        for (int z = 0; z < totalNumberOfLayers; z++) {
-            if ((z >= startShiftZ) && (z <= stopShiftZ))
-            {
-            	final float[] pixels = (float[])shiftedLayer.getPixelsCopy();
-            	for ( int i = 0; i < pixels.length; ++i )
-            		pixels[ i ] += rnd.nextFloat() * noise - (noise/2.0);
-                layers.add( new FloatProcessor( shiftedLayer.getWidth(), shiftedLayer.getHeight(), pixels));
-                //new ImagePlus( "copy", new FloatProcessor( shiftedLayer.getWidth(), shiftedLayer.getHeight(), pixels) ).show();; 
-            }
-            else
-            {
-            	final float[] pixels = (float[])standardLayer.getPixelsCopy();
-            	for ( int i = 0; i < pixels.length; ++i )
-            		pixels[ i ] += rnd.nextFloat() * noise - (noise/2.0);
-                layers.add( new FloatProcessor( standardLayer.getWidth(), standardLayer.getHeight(), pixels));
-                //layers.add(standardLayer.convertToFloatProcessor());
-            }
-        }
-        */
 
         final int movingW = testProcessor.getWidth() - totalNumberOfLayers * 2;
 
@@ -122,7 +99,12 @@ public class HeadlessZPositionCorrectionTest {
         		offset += 2; //1???
         	else
         		offset += 1;
-
+/*
+        	if ( z == 15 )
+        		noise = 100;
+        	else
+        		noise = 0;
+*/
         	testProcessor.setRoi(offset, 0, movingW, testHeight);
 
         	final float[] pixels = (float[])testProcessor.crop().convertToFloatProcessor().getPixelsCopy();
@@ -140,7 +122,8 @@ public class HeadlessZPositionCorrectionTest {
         //inferenceOptions.regularizationType = RegularizationType.NONE; // IDENTITY leads to min and max not being fixed
         //inferenceOptions.regularizationType = RegularizationType.
         inferenceOptions.comparisonRange = 10; // SP: playing with this value also affects results
-        inferenceOptions.scalingFactorRegularizerWeight = 1.0;
+
+        inferenceOptions.scalingFactorRegularizerWeight = 1.0; // cannot correct for noisy slices
 
         // run Phillip's code
         final double[] transforms =
@@ -172,7 +155,6 @@ public class HeadlessZPositionCorrectionTest {
             System.out.printf("%8.4f%s ", transforms[z], shiftIndicator);
         }
         System.out.println();
-SimpleMultiThreading.threadHaltUnClean();
     }
 
     static class TestLayerLoader implements LayerLoader {

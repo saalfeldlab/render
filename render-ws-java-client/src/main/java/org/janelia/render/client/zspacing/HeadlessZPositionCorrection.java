@@ -75,7 +75,7 @@ public class HeadlessZPositionCorrection {
                 buildNCCMatrix(cachedLayerLoader,
                                inferenceOptions.comparisonRange);
 
-        ImageJFunctions.show( crossCorrelationMatrix );
+        //ImageJFunctions.show( crossCorrelationMatrix );
 
         LOG.info("estimating Z coordinates for " + layerLoader.getNumberOfLayers() + " layers:");
 
@@ -129,9 +129,9 @@ public class HeadlessZPositionCorrection {
 
         final double[] transform;
         try {
-            //final Visitor visitor = new LazyVisitor(); // always use do-nothing visitor
+            final Visitor visitor = new LazyVisitor(); // always use do-nothing visitor
             //final Visitor visitor = new LUTVisitor("", "", "," ); 
-            final Visitor visitor = new ScalingFactorsVisitor("", "", "," );
+            //final Visitor visitor = new ScalingFactorsVisitor("", "", "," );
             transform = inf.estimateZCoordinates(crossCorrelationMatrix, startingCoordinates, visitor, options);
         } catch (final Exception e) {
             throw new RuntimeException("failed to estimate z coordinates", e);
