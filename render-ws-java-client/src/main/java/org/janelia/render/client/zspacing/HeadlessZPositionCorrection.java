@@ -242,8 +242,6 @@ public class HeadlessZPositionCorrection {
         options.nIterations = 100;
         options.shiftProportion = 0.6;
         options.scalingFactorEstimationIterations = 10;
-        options.scalingFactorRegularizerWeight = 0.1;
-        options.minimumSectionThickness = 0.01;
         options.coordinateUpdateRegularizerWeight = 0.0;
         options.regularizationType = InferFromMatrix.RegularizationType.BORDER;
         options.forceMonotonicity = false;
@@ -251,6 +249,8 @@ public class HeadlessZPositionCorrection {
 
         // changes:
         options.withReorder = false;             // milled data should always be correctly ordered
+        options.scalingFactorRegularizerWeight = 1.0; // won't correct for noisy slices
+        options.minimumSectionThickness = 0.0001;
 
         return options;
     }
