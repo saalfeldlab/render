@@ -1,21 +1,24 @@
 package org.janelia.render.client.zspacing;
 
 import ij.ImageJ;
-import ij.ImagePlus;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
-import net.imglib2.multithreading.SimpleMultiThreading;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.thickness.inference.Options;
-import org.janelia.thickness.inference.InferFromMatrix.RegularizationType;
 import org.junit.Test;
+
+import net.imglib2.multithreading.SimpleMultiThreading;
 
 /**
  * Tests the {@link HeadlessZPositionCorrection} class.
@@ -30,8 +33,9 @@ public class HeadlessZPositionCorrectionTest {
     }
 
     public static void main(final String[] args) {
-        
-        testEstimations();
+
+        // testEstimationsForShiftedSlices();
+        testEstimationsForRenderSlices();
 
         SimpleMultiThreading.threadHaltUnClean();
 
@@ -56,7 +60,7 @@ public class HeadlessZPositionCorrectionTest {
         HeadlessZPositionCorrection.main(effectiveArgs);
     }
 
-    private static void testEstimations() {
+    private static void testEstimationsForShiftedSlices() {
 
         final String runDir = new File("").getAbsolutePath();
         System.out.println("Running testEstimations in " + runDir);
@@ -131,21 +135,26 @@ public class HeadlessZPositionCorrectionTest {
                                                                                1,
                                                                                testLayerLoader);
 
-        // print formatted results to stdout (shifted layers flagged with *)
+        printFormattedResults(startShiftZ, stopShiftZ, transforms);
+    }
 
-        System.out.printf("Z     Delta Values (* = shifted)%n---   --------------------------%n%03d: %8.4f  ", 0, 0.0);
+    // print formatted results to stdout (shifted layers flagged with *)
+    private static void printFormattedResults(final int startShiftZ,
+                                              final int stopShiftZ,
+                                              final double[] transforms) {
+        System.out.printf("\nZ     Delta Values (* = shifted)%n---   --------------------------%n%03d: %8.4f  ", 0, 0.0);
         int z = 1;
         for (; z < transforms.length; z++) {
             if (z % 10 == 0) {
                 System.out.printf("%n%03d: ", z);
             }
-            final double delta = transforms[z] - transforms[z-1];
+            final double delta = transforms[z] - transforms[z - 1];
             final String shiftIndicator = (z >= startShiftZ) && (z <= stopShiftZ) ? "*" : " ";
             System.out.printf("%8.4f%s ", delta, shiftIndicator);
         }
         System.out.println();
 
-        System.out.printf("Z     Abs Values (* = shifted)%n---   --------------------------");
+        System.out.printf("\nZ     Abs Values (* = shifted)%n---   --------------------------");
         z = 0;
         for (; z < transforms.length; z++) {
             if (z % 10 == 0) {
@@ -155,6 +164,77 @@ public class HeadlessZPositionCorrectionTest {
             System.out.printf("%8.4f%s ", transforms[z], shiftIndicator);
         }
         System.out.println();
+    }
+
+    private static void testEstimationsForRenderSlices() {
+
+        // TODO: don't forget to mount both /nrs/flyem and /groups/flyem/data
+
+        final String host = "renderer-dev.int.janelia.org:8080";
+        final String owner = "Z0720_07m_BR";
+        final String project = "Sec39";
+        final String stack = "v1_acquire_trimmed_sp1";
+
+        // Tissue crop areas without resin for Sec39 stack v1_acquire_trimmed_sp1:
+        // [
+        //   {"minZ":     1, "maxZ":   600, "minX":  600, "maxX": 2160, "minY":   900, "maxY": 3400, "scale": 0.125},
+        //   {"minZ":   500, "maxZ":  4100, "minX": 1000, "maxX": 4000, "minY":  2100, "maxY": 3400, "scale": 0.125},
+        //   {"minZ":  4000, "maxZ": 14100, "minX":  500, "maxX": 3500, "minY":  1200, "maxY": 2500, "scale": 0.125},
+        //   {"minZ": 14000, "maxZ": 25100, "minX": 2500, "maxX": 5500, "minY":   400, "maxY": 1700, "scale": 0.125},
+        //   {"minZ": 25000, "maxZ": 26100, "minX": 1900, "maxX": 5300, "minY":   500, "maxY": 1000, "scale": 0.125},
+        //   {"minZ": 26000, "maxZ": 27499, "minX": -800, "maxX":  300, "minY": -1200, "maxY":  100, "scale": 0.125}
+        // ]
+
+        // crop area for the largest layer group (z 14000 - z 25100)
+        final double minX = 2500;
+        final double maxX = 5500;
+        final double minY = 400;
+        final double maxY = 1700;
+        final Bounds layerBounds = new Bounds(minX, minY, maxX, maxY);
+
+        // z range for 50 layers within the largest layer group
+        final int minZ = 20000;
+        final int maxZ = minZ + 49; // inclusive
+        final List<Double> sortedZList = IntStream.rangeClosed(minZ, maxZ)
+                .boxed().map(Double::new).collect(Collectors.toList());
+
+        // for 19m VNC, layers were rendered at scale 0.125
+        final double renderScale = 0.125;
+
+        final String stackUrl = String.format("http://%s/render-ws/v1/owner/%s/project/%s/stack/%s",
+                                              host, owner, project, stack);
+
+        final String layerUrlPattern =
+                String.format("%s/z/%s/box/%d,%d,%d,%d,%s/render-parameters",
+                              stackUrl, "%s",
+                              layerBounds.getX(), layerBounds.getY(),
+                              layerBounds.getWidth(), layerBounds.getHeight(),
+                              renderScale);
+
+        final long pixelsInLargeMask = 20000 * 10000;
+        final ImageProcessorCache maskCache = new ImageProcessorCache(pixelsInLargeMask,
+                                                                      false,
+                                                                      false);
+
+        final LayerLoader testLayerLoader = new LayerLoader.RenderLayerLoader(layerUrlPattern,
+                                                                              sortedZList,
+                                                                              maskCache);
+
+        // override default correction options here
+        final Options inferenceOptions = HeadlessZPositionCorrection.generateDefaultFIBSEMOptions();
+        inferenceOptions.minimumSectionThickness = 0.0001;
+        //inferenceOptions.regularizationType = RegularizationType.NONE; // IDENTITY leads to min and max not being fixed
+        //inferenceOptions.regularizationType = RegularizationType.
+        inferenceOptions.comparisonRange = 10; // SP: playing with this value also affects results
+        inferenceOptions.scalingFactorRegularizerWeight = 1.0; // cannot correct for noisy slices
+
+        // run Phillip's code
+        final double[] transforms =
+                HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates(inferenceOptions,
+                                                                               1,
+                                                                               testLayerLoader);
+
+        printFormattedResults(-1, -1, transforms);
     }
 
     static class TestLayerLoader implements LayerLoader {
