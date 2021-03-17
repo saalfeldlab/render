@@ -33,6 +33,7 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.numeric.real.DoubleType;
+import net.imglib2.util.Pair;
 
 import static org.janelia.thickness.plugin.ZPositionCorrection.createEmptyMatrix;
 import static org.janelia.thickness.plugin.ZPositionCorrection.wrapDouble;
@@ -50,6 +51,7 @@ public class HeadlessZPositionCorrection {
      * @param  inferenceOptions  options for estimation.
      * @param  nLocalEstimates   number of local estimates used to derive estimateWindowRadius option value.
      * @param  layerLoader       loader for each layer's pixels (this gets wrapped in a caching loader).
+     * @param  useMasks          whether masks should be used (all values where mask < 255 will be ignored)
      *
      * @return estimated z coordinates for each specified layer.
      *
@@ -61,7 +63,8 @@ public class HeadlessZPositionCorrection {
      */
     public static double[] buildMatrixAndEstimateZCoordinates(final Options inferenceOptions,
                                                               final int nLocalEstimates,
-                                                              final LayerLoader layerLoader)
+                                                              final LayerLoader layerLoader,
+                                                              final boolean useMasks )
             throws IllegalArgumentException, RuntimeException {
 
         final int maxLayersToCache = inferenceOptions.comparisonRange + 1;
@@ -73,9 +76,10 @@ public class HeadlessZPositionCorrection {
 
         final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
                 buildNCCMatrix(cachedLayerLoader,
-                               inferenceOptions.comparisonRange);
+                               inferenceOptions.comparisonRange,
+                               useMasks );
 
-        //ImageJFunctions.show( crossCorrelationMatrix );
+        ImageJFunctions.show( crossCorrelationMatrix );
 
         LOG.info("estimating Z coordinates for " + layerLoader.getNumberOfLayers() + " layers:");
 
@@ -143,6 +147,7 @@ public class HeadlessZPositionCorrection {
     /**
      * @param  layerLoader      loader for z-ordered layers to process.
      * @param  comparisonRange  number of adjacent neighbor layers to compare with each layer.
+     * @param  useMasks         whether masks should be used (all values where mask < 255 will be ignored)
      *
      * @return matrix of pixels representing cross correlation similarity between each layer and its neighbors.
      *
@@ -150,7 +155,8 @@ public class HeadlessZPositionCorrection {
      *   if there are too few or too many layers to process.
      */
     public static RandomAccessibleInterval<DoubleType> buildNCCMatrix(final LayerLoader layerLoader,
-                                                                      final int comparisonRange)
+                                                                      final int comparisonRange,
+                                                                      final boolean useMasks)
             throws IllegalArgumentException {
 
         final int layerCount = layerLoader.getNumberOfLayers();
@@ -168,14 +174,41 @@ public class HeadlessZPositionCorrection {
 
         for (int fromLayerIndex = 0; fromLayerIndex < layerCount; ++fromLayerIndex) {
 
-            final float[] pixelsA = (float[]) layerLoader.getProcessor(fromLayerIndex).getPixels();
+        	final float[] pixelsA, masksA;
+        	if ( useMasks )
+        	{
+        		Pair<FloatProcessor, FloatProcessor> processors = layerLoader.getMaskAndProcessor( fromLayerIndex );
+        		 pixelsA = (float[]) processors.getA().getPixels();
+        		 masksA = (float[]) processors.getB().getPixels();
+        	}
+        	else
+        	{
+                pixelsA = (float[]) layerLoader.getProcessor(fromLayerIndex).getPixels();
+                masksA = null;
+        	}
 
             for (int toLayerIndex = fromLayerIndex + 1;
                  toLayerIndex - fromLayerIndex <= comparisonRange && toLayerIndex < layerCount;
                  ++toLayerIndex) {
 
-                final float[] pixelsB = (float[]) layerLoader.getProcessor(toLayerIndex).getPixels();
-                final float val = new RealSumFloatNCC(pixelsA, pixelsB).call().floatValue();
+            	final float[] pixelsB, masksB;
+            	if ( useMasks )
+            	{
+            		Pair<FloatProcessor, FloatProcessor> processors = layerLoader.getMaskAndProcessor( toLayerIndex );
+            		pixelsB = (float[]) processors.getA().getPixels();
+            		masksB = (float[]) processors.getB().getPixels();
+            	}
+            	else
+            	{
+            		pixelsB = (float[]) layerLoader.getProcessor(toLayerIndex).getPixels();
+            		masksB = null;
+            	}
+
+                final float val;
+                if ( !useMasks )
+                	val = new RealSumFloatNCC(pixelsA, pixelsB).call().floatValue();
+                else
+                	val = new RealSumFloatNCCMasks(pixelsA, masksA, pixelsB, masksB ).call().floatValue();
                 matrixFp.setf(fromLayerIndex, toLayerIndex, val);
                 matrixFp.setf(toLayerIndex, fromLayerIndex, val);
             }
@@ -349,7 +382,8 @@ public class HeadlessZPositionCorrection {
                 final LayerLoader pathLayerLoader = new LayerLoader.PathLayerLoader(layerPaths);
                 final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
                                                                                parameters.nLocalEstimates,
-                                                                               pathLayerLoader);
+                                                                               pathLayerLoader,
+                                                                               false );
 
                 writeEstimations(transforms, parameters.outputFile, parameters.zOffset);
             }

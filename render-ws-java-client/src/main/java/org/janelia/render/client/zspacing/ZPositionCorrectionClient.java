@@ -216,6 +216,10 @@ public class ZPositionCorrectionClient {
     void estimateZCoordinates()
             throws IllegalArgumentException, IOException {
 
+        // resin detection
+        final double sigma = 100;
+        final double relativeContentThreshold = 3.0;
+
         final File runParametersFile = new File(runDirectory, "client-parameters.json");
         JsonUtils.MAPPER.writeValue(runParametersFile, parameters);
 
@@ -240,7 +244,10 @@ public class ZPositionCorrectionClient {
                                                                       false);
         final RenderLayerLoader layerLoader = new RenderLayerLoader(layerUrlPattern,
                                                                     sortedZList,
-                                                                    maskCache);
+                                                                    maskCache,
+                                                                    sigma,
+                                                                    parameters.scale,
+                                                                    relativeContentThreshold );
 
         if (parameters.debugFormat != null) {
             final File debugDirectory = new File(runDirectory, "debug-images");
@@ -251,7 +258,8 @@ public class ZPositionCorrectionClient {
 
         final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
                                                                        parameters.nLocalEstimates,
-                                                                       layerLoader);
+                                                                       layerLoader,
+                                                                       true);
 
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
         writeEstimations(transforms, outputFilePath, layerLoader.getFirstLayerZ());

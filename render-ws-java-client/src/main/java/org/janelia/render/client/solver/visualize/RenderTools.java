@@ -28,6 +28,9 @@ import bdv.util.BdvOptions;
 import bdv.util.BdvStackSource;
 import bdv.util.volatiles.SharedQueue;
 import bdv.util.volatiles.VolatileViews;
+import ij.ImageJ;
+import ij.ImagePlus;
+import ij.ImageStack;
 import mpicbg.models.AffineModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.FinalInterval;
@@ -37,6 +40,8 @@ import net.imglib2.cache.Invalidate;
 import net.imglib2.cache.img.CachedCellImg;
 import net.imglib2.cache.volatiles.VolatileCache;
 import net.imglib2.img.basictypeaccess.AccessFlags;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.real.FloatType;
@@ -349,9 +354,9 @@ public class RenderTools
 	public static void main( String[] args ) throws IOException
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "Z0720_07m_VNC"; //"flyem";
-		String project = "Sec32"; //"Z0419_25_Alpha3";
-		String stack = "v1_acquire_trimmed"; //"v1_acquire_sp_nodyn_v2";
+		String owner = "Z0720_07m_BR"; //"flyem";
+		String project = "Sec39"; //"Z0419_25_Alpha3";
+		String stack = "v1_acquire_trimmed_sp1"; //"v1_acquire_sp_nodyn_v2";
 
 		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
 		
@@ -380,20 +385,28 @@ public class RenderTools
 		/*
 		final boolean filter = false;
 
-		int w = 12000;
-		int h = 7500;
-		int x = -6000;
-		int y = -5000;
-		int z = 3600;
+		int w = (int)interval.dimension( 0 );
+		int h = (int)interval.dimension( 1 );
+		int x = (int)interval.min( 0 );
+		int y = (int)interval.min( 1 );
+		double scale = 1.0 / ds[ 2 ];
 
-		ImageProcessorWithMasks img1 = renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, 1.0 / ds[ 4 ], filter );
-		ImageProcessorWithMasks img2 = renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, 1.0 / ds[ 3 ], filter );
+		ImageStack imagestack = null;
+
+		for ( int z = 4630; z <= 4640; ++z )
+		{
+			System.out.println( z + " ... " );
+			ImageProcessorWithMasks img1 = renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, filter );
+			if ( imagestack == null )
+				imagestack = new ImageStack( img1.ip.getWidth(), img1.ip.getHeight() );
+			imagestack.addSlice( img1.ip );
+		}
 
 		new ImageJ();
-		final ImagePlus imp1 = new ImagePlus("img1 " + ds[ 4 ], img1.ip);
-		final ImagePlus imp2 = new ImagePlus("img1 " + ds[ 3 ], img2.ip);
+		final ImagePlus imp1 = new ImagePlus( project + "-" + stack , imagestack );
 		imp1.show();
-		imp2.show();
+
+		SimpleMultiThreading.threadHaltUnClean();
 		*/
 
 		BdvStackSource<?> img = RenderTools.renderMultiRes(

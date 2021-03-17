@@ -26,10 +26,17 @@ import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.thickness.inference.Options;
 import org.junit.Test;
 
+import net.imglib2.Cursor;
 import net.imglib2.Interval;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
+import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
+import net.imglib2.view.Views;
 
 /**
  * Tests the {@link HeadlessZPositionCorrection} class.
@@ -43,7 +50,7 @@ public class HeadlessZPositionCorrectionTest {
         CommandLineParameters.parseHelp(new HeadlessZPositionCorrection.MainParameters());
     }
 
-    public static void main(final String[] args) {
+    public static void main(final String[] args) throws IOException {
 
         // testEstimationsForShiftedSlices();
         testEstimationsForRenderSlices();
@@ -144,7 +151,8 @@ public class HeadlessZPositionCorrectionTest {
         final double[] transforms =
                 HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates(inferenceOptions,
                                                                                1,
-                                                                               testLayerLoader);
+                                                                               testLayerLoader,
+                                                                               false );
 
         printFormattedResults(startShiftZ, stopShiftZ, transforms);
     }
@@ -177,7 +185,7 @@ public class HeadlessZPositionCorrectionTest {
         System.out.println();
     }
 
-    private static void testEstimationsForRenderSlices() {
+    private static void testEstimationsForRenderSlices() throws IOException {
 
         // TODO: don't forget to mount both /nrs/flyem and /groups/flyem/data
 
@@ -185,6 +193,10 @@ public class HeadlessZPositionCorrectionTest {
         final String owner = "Z0720_07m_BR";
         final String project = "Sec39";
         final String stack = "v1_acquire_trimmed_sp1";
+
+        // resin detection
+        final double sigma = 100;
+        final double relativeContentThreshold = 3.0;
 
         // Tissue crop areas without resin for Sec39 stack v1_acquire_trimmed_sp1:
         // [
@@ -202,17 +214,19 @@ public class HeadlessZPositionCorrectionTest {
         double minY = 400;
         double maxY = 1700;
 
-        //[-1324, -2661, 1] -> [13140, 4304, 27499], dimensions (14465, 6966, 27499)
-        // 119, 219 -- 380, 165 @ 16x
-       // minX = 119*16 - 1324;
-        //minY = 219*16 - 2661;
-        //maxX = minX + 123*8;//380*16;
-        //maxY = minY + 105*8;//165*16;
+		StackMetaData meta = RenderTools.openStackMetaData( "http://tem-services.int.janelia.org:8080/render-ws/v1", owner, project, stack);
+		Interval interval = RenderTools.stackBounds( meta );
+		System.out.println( "stack size: " + Util.printInterval( interval ) );
+
+		minX = interval.min( 0 );
+		maxX = interval.max( 0 );
+		minY = interval.min( 1 );
+		maxY = interval.max( 1 );
 
         final Bounds layerBounds = new Bounds(minX, minY, maxX, maxY);
 
         // z range for 50 layers within the largest layer group
-        final int minZ = 20000;
+        final int minZ = 10;
         final int maxZ = minZ + 149; // inclusive
         final List<Double> sortedZList = IntStream.rangeClosed(minZ, maxZ)
                 .boxed().map(Double::new).collect(Collectors.toList());
@@ -237,13 +251,28 @@ public class HeadlessZPositionCorrectionTest {
 
         final LayerLoader testLayerLoader = new LayerLoader.RenderLayerLoader(layerUrlPattern,
                                                                               sortedZList,
-                                                                              maskCache);
+                                                                              maskCache,
+                                                                              sigma, renderScale, relativeContentThreshold );
 
+        /*
         ImageStack img = new ImageStack( testLayerLoader.getProcessor( 0 ).getWidth(), testLayerLoader.getProcessor( 0 ).getHeight() );
+        ImageStack mask1 = new ImageStack( img.getWidth(), img.getHeight() );
+        ImageStack mask2 = new ImageStack( img.getWidth(), img.getHeight() );
         for ( int i = 0; i < testLayerLoader.getNumberOfLayers(); ++i )
-        	img.addSlice( testLayerLoader.getProcessor( i ) );
+        {
+        	Pair<FloatProcessor, FloatProcessor> processors = testLayerLoader.getMaskAndProcessor( i );
+        	img.addSlice( processors.getA() );
+        	mask1.addSlice( processors.getB() );
+
+        	mask2.addSlice( RealSumFloatNCCMasks.processMaskAndImage(sigma, renderScale, relativeContentThreshold, processors.getA(), processors.getB()) );
+        	//img.addSlice( testLayerLoader.getProcessor( i ) );
+        }
         new ImageJ();
         new ImagePlus( "stack", img ).show();
+        new ImagePlus( "mask", mask1 ).show();
+        new ImagePlus( "processed", mask2 ).show();
+        SimpleMultiThreading.threadHaltUnClean();
+		*/
 
         // override default correction options here
         final Options inferenceOptions = HeadlessZPositionCorrection.generateDefaultFIBSEMOptions();
@@ -257,16 +286,12 @@ public class HeadlessZPositionCorrectionTest {
         final double[] transforms =
                 HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates(inferenceOptions,
                                                                                1,
-                                                                               testLayerLoader);
+                                                                               testLayerLoader,
+                                                                               true);
 
         printFormattedResults(-1, -1, transforms);
 
         try {
-
-    		StackMetaData meta = RenderTools.openStackMetaData( "http://tem-services.int.janelia.org:8080/render-ws/v1", owner, project, stack);
-    		Interval interval = RenderTools.stackBounds( meta );
-    		System.out.println( "stack range: " + interval.min( 2 ) + " >> " + interval.max( 2 ) );
-   
 			BufferedReader in = new BufferedReader( new FileReader( new File( "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/BR-Sec39", "Zcoords.txt")));
 			double posLast = -1;
 			while ( in.ready() )
@@ -307,7 +332,7 @@ public class HeadlessZPositionCorrectionTest {
 			FloatProcessor ip = getProcessor(layerIndex);
 			float[] fakeMask = new float[ ip.getWidth() * ip.getHeight() ];
 			for ( int i = 0; i < fakeMask.length; ++i )
-				fakeMask[ i ] = 1.0f;
+				fakeMask[ i ] = 255.0f;
 			return new ValuePair<FloatProcessor, FloatProcessor>( ip, new FloatProcessor(ip.getWidth(), ip.getHeight(), fakeMask) );
 		}
     }

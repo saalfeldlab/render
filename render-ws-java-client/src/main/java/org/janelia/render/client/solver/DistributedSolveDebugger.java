@@ -32,7 +32,7 @@ public class DistributedSolveDebugger extends DistributedSolve
 	{
 		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
 		final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w =
-				this.solveSet.leftItems.get( 9 ).createWorker(//8, 9, 43, 44, 49, 66 ),
+				this.solveSet.leftItems.get( 57 ).createWorker( //9, 28, 57, 81
 						this.solveSet.getMaxId() + 1,
 						runParams.pGroupList,
 						runParams.sectionIdToZMap,
@@ -95,8 +95,8 @@ public class DistributedSolveDebugger extends DistributedSolve
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                            "--project", "Sec32", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                            "--matchCollection", "Sec32_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--project", "Sec33", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "Sec33_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
                             "--stack", "v1_acquire_trimmed", //"v3_acquire",
                             //"--targetStack", "v3_acquire_sp1",
                             //"--completeTargetStack",
@@ -107,7 +107,7 @@ public class DistributedSolveDebugger extends DistributedSolve
                             "--blockOptimizerIterations", "1000,1000,500,250,250",
                             "--blockMaxPlateauWidth", "250,250,150,100,100",
 
-                            "--lambdaStitching", "1.0", // allow rigid tile alignment
+                            //"--lambdaStitching", "1.0", // allow rigid tile alignment
 
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first

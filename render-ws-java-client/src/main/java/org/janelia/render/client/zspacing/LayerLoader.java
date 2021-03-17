@@ -9,8 +9,18 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import net.imglib2.Cursor;
+import net.imglib2.RandomAccessible;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.algorithm.gauss3.Gauss3;
+import net.imglib2.converter.Converters;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
+import net.imglib2.view.Views;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -48,12 +58,14 @@ public interface LayerLoader {
         private final int maxNumberOfLayersToCache;
 
         private final LinkedHashMap<Integer, FloatProcessor> indexToLayerProcessor;
+        private final LinkedHashMap<Integer, Pair<FloatProcessor, FloatProcessor>> indexToLayerProcessorImageAndMask;
 
         public SimpleLeastRecentlyUsedLayerCache(final LayerLoader loader,
                                                  final int maxNumberOfLayersToCache) {
             this.loader = loader;
             this.maxNumberOfLayersToCache = maxNumberOfLayersToCache;
             this.indexToLayerProcessor = new LinkedHashMap<>();
+            this.indexToLayerProcessorImageAndMask = new LinkedHashMap<>();
         }
 
         @Override
@@ -65,6 +77,11 @@ public interface LayerLoader {
         public FloatProcessor getProcessor(final int layerIndex) {
             return threadSafeGet(layerIndex);
         }
+
+		@Override
+		public Pair<FloatProcessor, FloatProcessor> getMaskAndProcessor(int layerIndex) {
+			return threadSafeGetMaskAndProcessor(layerIndex);
+		}
 
         private synchronized FloatProcessor threadSafeGet(final int layerIndex) {
 
@@ -89,10 +106,28 @@ public interface LayerLoader {
             return processor;
         }
 
-		@Override
-		public Pair<FloatProcessor, FloatProcessor> getMaskAndProcessor(int layerIndex) {
-			return loader.getMaskAndProcessor(layerIndex);
-		}
+        private synchronized Pair<FloatProcessor, FloatProcessor> threadSafeGetMaskAndProcessor(final int layerIndex) {
+
+        	Pair<FloatProcessor, FloatProcessor> processors = indexToLayerProcessorImageAndMask.remove(layerIndex);
+
+            if (processors == null) {
+
+                if (indexToLayerProcessorImageAndMask.size() >= maxNumberOfLayersToCache) {
+                    final Integer leastRecentlyUsedIndex = indexToLayerProcessorImageAndMask.keySet()
+                            .stream()
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalStateException("cache should have at least one element"));
+                    indexToLayerProcessorImageAndMask.remove(leastRecentlyUsedIndex);
+                }
+
+                processors = loader.getMaskAndProcessor(layerIndex);
+            }
+
+            // reorder linked hash map so that most recently used is last
+            indexToLayerProcessorImageAndMask.put(layerIndex, processors);
+
+            return processors;
+        }
     }
 
     class PathLayerLoader implements LayerLoader, Serializable {
@@ -119,7 +154,7 @@ public interface LayerLoader {
 			FloatProcessor ip = getProcessor(layerIndex);
 			float[] fakeMask = new float[ ip.getWidth() * ip.getHeight() ];
 			for ( int i = 0; i < fakeMask.length; ++i )
-				fakeMask[ i ] = 1.0f;
+				fakeMask[ i ] = 255.0f;
 			return new ValuePair<FloatProcessor, FloatProcessor>( ip, new FloatProcessor(ip.getWidth(), ip.getHeight(), fakeMask) );
 		}
     }
@@ -130,15 +165,20 @@ public interface LayerLoader {
         private final List<Double> sortedZList;
         private final ImageProcessorCache imageProcessorCache;
 
+        final double sigma, renderScale, relativeContentThreshold;
         private String debugFilePattern;
 
         public RenderLayerLoader(final String layerUrlPattern,
                                  final List<Double> sortedZList,
-                                 final ImageProcessorCache imageProcessorCache) {
+                                 final ImageProcessorCache imageProcessorCache,
+                                 final double sigma, final double renderScale, final double relativeContentThreshold) {
             this.layerUrlPattern = layerUrlPattern;
             this.sortedZList = sortedZList;
             this.debugFilePattern = null;
             this.imageProcessorCache = imageProcessorCache;
+            this.sigma = sigma;
+            this.renderScale = renderScale;
+            this.relativeContentThreshold = relativeContentThreshold;
         }
 
         @Override
@@ -180,7 +220,111 @@ public interface LayerLoader {
 		@Override
 		public Pair<FloatProcessor, FloatProcessor> getMaskAndProcessor(int layerIndex) {
             final ImageProcessorWithMasks imageProcessorWithMasks = getImageProcessorWithMasks( layerIndex );
-			return new ValuePair<>( imageProcessorWithMasks.ip.convertToFloatProcessor(), imageProcessorWithMasks.mask.convertToFloatProcessor() );
+			//return new ValuePair<>( imageProcessorWithMasks.ip.convertToFloatProcessor(), imageProcessorWithMasks.mask.convertToFloatProcessor() );
+
+            return new ValuePair<>( imageProcessorWithMasks.ip.convertToFloatProcessor(), 
+            processMaskAndImage(sigma, renderScale, relativeContentThreshold, imageProcessorWithMasks.ip.convertToFloatProcessor(), imageProcessorWithMasks.mask.convertToFloatProcessor() ) );
 		}
     }
+
+	public static FloatProcessor processMaskAndImage( final double sigma, final double renderScale, final double relativeContentThreshold, final FloatProcessor image, final FloatProcessor mask )
+	{
+		System.out.println("filtering image");
+    	RandomAccessibleInterval< FloatType > imgA = ArrayImgs.floats( (float[])image.getPixels(), new long[] { image.getWidth(), image.getHeight() } );
+    	RandomAccessibleInterval< FloatType > imgB = ArrayImgs.floats( (float[])mask.getPixels(), new long[] { image.getWidth(), image.getHeight() } );
+    	float[] outP = new float[image.getWidth() * image.getHeight()];
+    	Img< FloatType > out = ArrayImgs.floats( outP, new long[] { image.getWidth(), image.getHeight() } );;
+
+    	weightedGauss(
+    			new double[] { sigma * renderScale, sigma * renderScale },
+    			Views.extendMirrorSingle( imgA ),
+    			Views.extendBorder( imgB ),
+    			out,
+    			Runtime.getRuntime().availableProcessors() );
+
+    	Cursor< FloatType > ic = Views.flatIterable( imgA ).cursor();
+    	Cursor< FloatType > mc = Views.flatIterable( imgB ).cursor();
+    	Cursor< FloatType > pc = Views.flatIterable( out ).cursor();
+
+    	while ( pc.hasNext() )
+    	{
+    		final FloatType p = pc.next();
+    		final FloatType m = mc.next();
+    		final FloatType j = ic.next();
+
+    		if ( m.get() < 255 )
+    			p.set( 0 );
+    		else
+    			p.set( Math.max( 0, j.get() - p.get()));
+    	}
+
+    	//Img< FloatType > outCopy = out.copy();
+
+    	weightedGauss(
+    			new double[] { sigma * renderScale, sigma * renderScale },
+    			Views.extendMirrorSingle( out ),
+    			Views.extendBorder( imgB ),
+    			out,
+    			Runtime.getRuntime().availableProcessors() );
+
+    	mc = Views.flatIterable( imgB ).cursor();
+    	pc = Views.flatIterable( out ).cursor();
+
+    	while ( pc.hasNext() )
+    	{
+    		final FloatType p = pc.next();
+    		final FloatType m = mc.next();
+
+			if ( m.get() < 255 || p.get() < relativeContentThreshold )
+				p.set( 0 );
+			else
+				p.set( 255 );
+    	}
+
+    	return new FloatProcessor( image.getWidth(), image.getHeight(), outP );
+	}
+
+	public static void weightedGauss(
+			final double[] sigmas,
+			final RandomAccessible<FloatType> source,
+			final RandomAccessible<FloatType> weight,
+			final RandomAccessibleInterval<FloatType> output,
+			final int numThreads )
+	{
+		final FloatType type = new FloatType();
+		final RandomAccessible<FloatType> weightedSource =
+				Converters.convert(source, weight, (i1,i2,o) -> o.setReal( i1.getRealDouble() * i2.getRealDouble() ), type );
+
+		final long[] min= new long[ output.numDimensions() ];
+		for ( int d = 0; d < min.length; ++d )
+			min[ d ] = output.min( d );
+
+		final RandomAccessibleInterval< FloatType > sourceTmp = Views.translate( new ArrayImgFactory<>(type).create( output ), min );
+		final RandomAccessibleInterval< FloatType > weightTmp = Views.translate( new ArrayImgFactory<>(type).create( output ), min );
+
+		Gauss3.gauss(sigmas, weightedSource, sourceTmp, 1 );
+		Gauss3.gauss(sigmas, weight, weightTmp, 1 );
+
+
+		final Cursor< FloatType > i = Views.flatIterable( Views.interval( source, sourceTmp ) ).cursor();
+		final Cursor< FloatType > s = Views.flatIterable( sourceTmp ).cursor();
+		final Cursor< FloatType > w = Views.flatIterable( weightTmp ).cursor();
+		final Cursor< FloatType > o = Views.flatIterable( output ).cursor();
+
+		while ( o.hasNext() )
+		{
+			final double w0 = w.next().getRealDouble();
+
+			if ( w0 == 0 )
+			{
+				o.next().set( i.next() );
+				s.fwd();
+			}
+			else
+			{
+				o.next().setReal( s.next().getRealDouble() / w0 );
+				i.fwd();
+			}
+		}
+	}
 }
