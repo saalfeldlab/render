@@ -9,6 +9,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import net.imglib2.util.Pair;
+import net.imglib2.util.ValuePair;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -30,6 +32,11 @@ public interface LayerLoader {
      * @return image processor for the specified slice index.
      */
     FloatProcessor getProcessor(final int layerIndex);
+
+    /**
+     * @return image mask and processor for the specified slice index.
+     */
+    Pair<FloatProcessor,FloatProcessor> getMaskAndProcessor(final int layerIndex);
 
     /**
      * Simple LRU cache of loaded processors for slices.
@@ -81,6 +88,11 @@ public interface LayerLoader {
 
             return processor;
         }
+
+		@Override
+		public Pair<FloatProcessor, FloatProcessor> getMaskAndProcessor(int layerIndex) {
+			return loader.getMaskAndProcessor(layerIndex);
+		}
     }
 
     class PathLayerLoader implements LayerLoader, Serializable {
@@ -101,6 +113,15 @@ public interface LayerLoader {
             final String layerPath = layerPathList.get(layerIndex);
             return new ImagePlus(layerPath).getProcessor().convertToFloatProcessor();
         }
+
+		@Override
+		public Pair<FloatProcessor, FloatProcessor> getMaskAndProcessor(int layerIndex) {
+			FloatProcessor ip = getProcessor(layerIndex);
+			float[] fakeMask = new float[ ip.getWidth() * ip.getHeight() ];
+			for ( int i = 0; i < fakeMask.length; ++i )
+				fakeMask[ i ] = 1.0f;
+			return new ValuePair<FloatProcessor, FloatProcessor>( ip, new FloatProcessor(ip.getWidth(), ip.getHeight(), fakeMask) );
+		}
     }
 
     class RenderLayerLoader implements LayerLoader, Serializable {
@@ -125,8 +146,7 @@ public interface LayerLoader {
             return sortedZList.size();
         }
 
-        @Override
-        public FloatProcessor getProcessor(final int layerIndex) {
+        protected ImageProcessorWithMasks getImageProcessorWithMasks(final int layerIndex) {
 
             final Double z = sortedZList.get(layerIndex);
             final String url = String.format(layerUrlPattern, z);
@@ -135,10 +155,15 @@ public interface LayerLoader {
 
             final File debugFile = debugFilePattern == null ? null : new File(String.format(debugFilePattern, z));
 
-            final ImageProcessorWithMasks imageProcessorWithMasks =
-                    Renderer.renderImageProcessorWithMasks(renderParameters,
+            return  Renderer.renderImageProcessorWithMasks(renderParameters,
                                                            imageProcessorCache,
                                                            debugFile);
+        }
+
+        @Override
+        public FloatProcessor getProcessor(final int layerIndex) {
+
+            final ImageProcessorWithMasks imageProcessorWithMasks = getImageProcessorWithMasks( layerIndex );
 
             // TODO: make sure it is ok to drop mask here
             return imageProcessorWithMasks.ip.convertToFloatProcessor();
@@ -151,5 +176,11 @@ public interface LayerLoader {
         public void setDebugFilePattern(final String debugFilePattern) {
             this.debugFilePattern = debugFilePattern;
         }
+
+		@Override
+		public Pair<FloatProcessor, FloatProcessor> getMaskAndProcessor(int layerIndex) {
+            final ImageProcessorWithMasks imageProcessorWithMasks = getImageProcessorWithMasks( layerIndex );
+			return new ValuePair<>( imageProcessorWithMasks.ip.convertToFloatProcessor(), imageProcessorWithMasks.mask.convertToFloatProcessor() );
+		}
     }
 }
