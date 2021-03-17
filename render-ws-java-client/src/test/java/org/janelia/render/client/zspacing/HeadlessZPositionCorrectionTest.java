@@ -1,10 +1,16 @@
 package org.janelia.render.client.zspacing;
 
 import ij.ImageJ;
+import ij.ImagePlus;
+import ij.ImageStack;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -13,12 +19,17 @@ import java.util.stream.IntStream;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.thickness.inference.Options;
 import org.junit.Test;
 
+import net.imglib2.Interval;
 import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.util.Pair;
+import net.imglib2.util.ValuePair;
 
 /**
  * Tests the {@link HeadlessZPositionCorrection} class.
@@ -186,20 +197,28 @@ public class HeadlessZPositionCorrectionTest {
         // ]
 
         // crop area for the largest layer group (z 14000 - z 25100)
-        final double minX = 2500;
-        final double maxX = 5500;
-        final double minY = 400;
-        final double maxY = 1700;
+        double minX = 2500;
+        double maxX = 5500;
+        double minY = 400;
+        double maxY = 1700;
+
+        //[-1324, -2661, 1] -> [13140, 4304, 27499], dimensions (14465, 6966, 27499)
+        // 119, 219 -- 380, 165 @ 16x
+       // minX = 119*16 - 1324;
+        //minY = 219*16 - 2661;
+        //maxX = minX + 123*8;//380*16;
+        //maxY = minY + 105*8;//165*16;
+
         final Bounds layerBounds = new Bounds(minX, minY, maxX, maxY);
 
         // z range for 50 layers within the largest layer group
         final int minZ = 20000;
-        final int maxZ = minZ + 49; // inclusive
+        final int maxZ = minZ + 149; // inclusive
         final List<Double> sortedZList = IntStream.rangeClosed(minZ, maxZ)
                 .boxed().map(Double::new).collect(Collectors.toList());
 
         // for 19m VNC, layers were rendered at scale 0.125
-        final double renderScale = 0.125;
+        final double renderScale = 0.25;
 
         final String stackUrl = String.format("http://%s/render-ws/v1/owner/%s/project/%s/stack/%s",
                                               host, owner, project, stack);
@@ -220,6 +239,12 @@ public class HeadlessZPositionCorrectionTest {
                                                                               sortedZList,
                                                                               maskCache);
 
+        ImageStack img = new ImageStack( testLayerLoader.getProcessor( 0 ).getWidth(), testLayerLoader.getProcessor( 0 ).getHeight() );
+        for ( int i = 0; i < testLayerLoader.getNumberOfLayers(); ++i )
+        	img.addSlice( testLayerLoader.getProcessor( i ) );
+        new ImageJ();
+        new ImagePlus( "stack", img ).show();
+
         // override default correction options here
         final Options inferenceOptions = HeadlessZPositionCorrection.generateDefaultFIBSEMOptions();
         inferenceOptions.minimumSectionThickness = 0.0001;
@@ -235,6 +260,33 @@ public class HeadlessZPositionCorrectionTest {
                                                                                testLayerLoader);
 
         printFormattedResults(-1, -1, transforms);
+
+        try {
+
+    		StackMetaData meta = RenderTools.openStackMetaData( "http://tem-services.int.janelia.org:8080/render-ws/v1", owner, project, stack);
+    		Interval interval = RenderTools.stackBounds( meta );
+    		System.out.println( "stack range: " + interval.min( 2 ) + " >> " + interval.max( 2 ) );
+   
+			BufferedReader in = new BufferedReader( new FileReader( new File( "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/BR-Sec39", "Zcoords.txt")));
+			double posLast = -1;
+			while ( in.ready() )
+			{
+				String[] l = in.readLine().trim().split( " " );
+				int z = Integer.parseInt( l[ 0 ] ) + (int)interval.min( 2 );
+				double pos = Double.parseDouble( l[ 1 ] );
+
+				if ( z >= minZ + 1 && z <= maxZ )
+				{
+					System.out.println(  z + "\t" + (pos - posLast) + "\t" + (transforms[ z - minZ ] - transforms[ z - minZ - 1 ] ));
+				}
+
+				posLast = pos;
+			}
+			in.close();
+		} catch ( IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 
     static class TestLayerLoader implements LayerLoader {
@@ -250,6 +302,14 @@ public class HeadlessZPositionCorrectionTest {
         public FloatProcessor getProcessor(final int layerIndex) {
             return layers.get(layerIndex);
         }
+		@Override
+		public Pair<FloatProcessor, FloatProcessor> getMaskAndProcessor(int layerIndex) {
+			FloatProcessor ip = getProcessor(layerIndex);
+			float[] fakeMask = new float[ ip.getWidth() * ip.getHeight() ];
+			for ( int i = 0; i < fakeMask.length; ++i )
+				fakeMask[ i ] = 1.0f;
+			return new ValuePair<FloatProcessor, FloatProcessor>( ip, new FloatProcessor(ip.getWidth(), ip.getHeight(), fakeMask) );
+		}
     }
 
 }
