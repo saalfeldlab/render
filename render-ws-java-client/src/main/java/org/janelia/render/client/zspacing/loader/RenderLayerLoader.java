@@ -93,10 +93,10 @@ public class RenderLayerLoader implements LayerLoader, Serializable {
     private void validatePattern(final String pattern)
             throws IllegalArgumentException {
 
-        final int firstTokenIndex = pattern.indexOf("%s");
-        if ((firstTokenIndex == -1) || (pattern.indexOf("%s", firstTokenIndex + 2) > -1)) {
+        final int firstTokenIndex = pattern.indexOf('%');
+        if ((firstTokenIndex == -1) || (pattern.indexOf('%', firstTokenIndex + 2) > -1)) {
             throw new IllegalArgumentException("pattern '" + pattern +
-                                               "' must contain one and only one '%s' token for the layer z value");
+                                               "' must contain one and only one '%' token for the layer z value");
         }
     }
 }
