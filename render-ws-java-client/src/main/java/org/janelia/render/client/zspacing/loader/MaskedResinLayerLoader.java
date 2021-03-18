@@ -18,6 +18,7 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.StopWatch;
 import net.imglib2.view.Views;
 
 /**
@@ -75,6 +76,8 @@ public class MaskedResinLayerLoader
     private FloatProcessor buildResinMask(final FloatProcessors processors) {
 
         LOG.debug("buildResinMask: entry, filtering image");
+
+        final StopWatch stopWatch = StopWatch.createAndStart();
 
         final FloatProcessor image = processors.image;
 
@@ -137,6 +140,10 @@ public class MaskedResinLayerLoader
                 p.set(maskIntensity);
             }
         }
+
+        stopWatch.stop();
+
+        LOG.debug("buildResinMask: exit, took {}", stopWatch);
 
         return new FloatProcessor(image.getWidth(), image.getHeight(), outP);
     }

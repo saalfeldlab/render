@@ -27,7 +27,10 @@ import org.janelia.thickness.inference.Options;
 import org.junit.Test;
 
 import net.imglib2.Interval;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Util;
 
 /**
@@ -141,10 +144,15 @@ public class HeadlessZPositionCorrectionTest {
         inferenceOptions.scalingFactorRegularizerWeight = 1.0; // cannot correct for noisy slices
 
         // run Phillip's code
-        final double[] transforms =
-                HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                               1,
-                                                                               testLayerLoader);
+        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
+                HeadlessZPositionCorrection.buildNCCMatrixWithCachedLoaders(testLayerLoader,
+                                                                            inferenceOptions.comparisonRange);
+
+        ImageJFunctions.show(crossCorrelationMatrix);
+
+        final double[] transforms = HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
+                                                                                     inferenceOptions,
+                                                                                     1);
 
         printFormattedResults(startShiftZ, stopShiftZ, transforms);
     }
@@ -282,10 +290,15 @@ public class HeadlessZPositionCorrectionTest {
         inferenceOptions.scalingFactorRegularizerWeight = 1.0; // cannot correct for noisy slices
 
         // run Phillip's code
-        final double[] transforms =
-                HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                               1,
-                                                                               testLayerLoader);
+        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
+                HeadlessZPositionCorrection.buildNCCMatrixWithCachedLoaders(testLayerLoader,
+                                                                            inferenceOptions.comparisonRange);
+
+        ImageJFunctions.show(crossCorrelationMatrix);
+
+        final double[] transforms = HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
+                                                                                     inferenceOptions,
+                                                                                     1);
 
         printFormattedResults(-1, -1, transforms);
 

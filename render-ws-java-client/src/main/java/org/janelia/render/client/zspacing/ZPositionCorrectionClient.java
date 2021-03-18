@@ -34,8 +34,8 @@ import org.janelia.thickness.inference.Options;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.render.client.zspacing.HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates;
-import static org.janelia.render.client.zspacing.HeadlessZPositionCorrection.writeEstimations;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.type.numeric.real.DoubleType;
 
 /**
  * Java client for estimating z thickness of a range of layers in an aligned render stack.
@@ -282,12 +282,16 @@ public class ZPositionCorrectionClient {
             layerLoader.setDebugFilePattern(debugFilePattern);
         }
 
-        final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                       parameters.nLocalEstimates,
-                                                                       layerLoader);
+        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
+                HeadlessZPositionCorrection.buildNCCMatrixWithCachedLoaders(layerLoader,
+                                                                            inferenceOptions.comparisonRange);
+        final double[] transforms =
+                HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
+                                                                 inferenceOptions,
+                                                                 parameters.nLocalEstimates);
 
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
-        writeEstimations(transforms, outputFilePath, layerLoader.getFirstLayerZ());
+        HeadlessZPositionCorrection.writeEstimations(transforms, outputFilePath, layerLoader.getFirstLayerZ());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ZPositionCorrectionClient.class);
