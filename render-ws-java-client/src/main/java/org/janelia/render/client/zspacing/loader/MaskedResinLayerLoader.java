@@ -67,6 +67,12 @@ public class MaskedResinLayerLoader
     public FloatProcessors getProcessors(final int layerIndex) {
 
         final FloatProcessors processors = super.getProcessors(layerIndex);
+        processors.mask = buildResinMask(processors);
+
+        return processors;
+    }
+
+    private FloatProcessor buildResinMask(final FloatProcessors processors) {
 
         final FloatProcessor image = processors.image;
 
@@ -132,9 +138,7 @@ public class MaskedResinLayerLoader
             }
         }
 
-        processors.mask = new FloatProcessor(image.getWidth(), image.getHeight(), outP);
-
-        return processors;
+        return new FloatProcessor(image.getWidth(), image.getHeight(), outP);
     }
 
     private static void weightedGauss(final double[] sigmas,
