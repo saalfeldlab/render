@@ -83,6 +83,16 @@ public class ZPositionCorrectionClient {
                 description = "Number of local estimates")
         public Integer nLocalEstimates = 1;
 
+        @Parameter(
+                names = "--resinDetectionSigma",
+                description = "need description from SP")
+        public Integer resinSigma = 100;
+
+        @Parameter(
+                names = "--resinContentThreshold",
+                description = "need description from SP")
+        public Double resinContentThreshold = 3.0;
+
         @ParametersDelegate
         public ZRangeParameters layerRange = new ZRangeParameters();
 
@@ -216,10 +226,6 @@ public class ZPositionCorrectionClient {
     void estimateZCoordinates()
             throws IllegalArgumentException, IOException {
 
-        // resin detection
-        final double sigma = 100;
-        final double relativeContentThreshold = 3.0;
-
         final File runParametersFile = new File(runDirectory, "client-parameters.json");
         JsonUtils.MAPPER.writeValue(runParametersFile, parameters);
 
@@ -245,9 +251,9 @@ public class ZPositionCorrectionClient {
         final RenderLayerLoader layerLoader = new RenderLayerLoader(layerUrlPattern,
                                                                     sortedZList,
                                                                     maskCache,
-                                                                    sigma,
+                                                                    parameters.resinSigma,
                                                                     parameters.scale,
-                                                                    relativeContentThreshold );
+                                                                    parameters.resinContentThreshold);
 
         if (parameters.debugFormat != null) {
             final File debugDirectory = new File(runDirectory, "debug-images");
