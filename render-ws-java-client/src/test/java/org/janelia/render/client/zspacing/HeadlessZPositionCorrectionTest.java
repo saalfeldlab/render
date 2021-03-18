@@ -20,14 +20,15 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.solver.visualize.RenderTools;
+import org.janelia.render.client.zspacing.loader.LayerLoader;
+import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
+import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
 import org.janelia.thickness.inference.Options;
 import org.junit.Test;
 
 import net.imglib2.Interval;
 import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
-import net.imglib2.util.ValuePair;
 
 /**
  * Tests the {@link HeadlessZPositionCorrection} class.
@@ -101,7 +102,7 @@ public class HeadlessZPositionCorrectionTest {
         Random rnd = new Random( 3434795 );
         double noise = 0;
 
-        final List<FloatProcessor> layers = new ArrayList<>();
+        final List<LayerLoader.FloatProcessors> layers = new ArrayList<>();
 
         final int movingW = testProcessor.getWidth() - totalNumberOfLayers * 2;
 
@@ -123,8 +124,9 @@ public class HeadlessZPositionCorrectionTest {
         	final float[] pixels = (float[])testProcessor.crop().convertToFloatProcessor().getPixelsCopy();
         	for ( int i = 0; i < pixels.length; ++i )
         		pixels[ i ] += rnd.nextFloat() * noise - (noise/2.0);
-            layers.add( new FloatProcessor( movingW, standardLayer.getHeight(), pixels));
-            //layers.add(standardLayer.convertToFloatProcessor());
+        	final FloatProcessor fp =
+                    new FloatProcessor( movingW, standardLayer.getHeight(), pixels); // standardLayer.convertToFloatProcessor()
+            layers.add(new LayerLoader.FloatProcessors(fp, null));
         }
 
         final LayerLoader testLayerLoader = new TestLayerLoader(layers);
@@ -142,8 +144,7 @@ public class HeadlessZPositionCorrectionTest {
         final double[] transforms =
                 HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates(inferenceOptions,
                                                                                1,
-                                                                               testLayerLoader,
-                                                                               false );
+                                                                               testLayerLoader);
 
         printFormattedResults(startShiftZ, stopShiftZ, transforms);
     }
@@ -240,10 +241,17 @@ public class HeadlessZPositionCorrectionTest {
                                                                       false,
                                                                       false);
 
-        final LayerLoader testLayerLoader = new LayerLoader.RenderLayerLoader(layerUrlPattern,
-                                                                              sortedZList,
-                                                                              maskCache,
-                                                                              sigma, renderScale, relativeContentThreshold );
+//        final LayerLoader testLayerLoader = new RenderLayerLoader(layerUrlPattern,
+//                                                                  sortedZList,
+//                                                                  maskCache);
+
+        final LayerLoader testLayerLoader = new MaskedResinLayerLoader(layerUrlPattern,
+                                                                       sortedZList,
+                                                                       maskCache,
+                                                                       sigma,
+                                                                       renderScale,
+                                                                       relativeContentThreshold,
+                                                                       255.0f);
 
         /*
         ImageStack img = new ImageStack( testLayerLoader.getProcessor( 0 ).getWidth(), testLayerLoader.getProcessor( 0 ).getHeight() );
@@ -277,8 +285,7 @@ public class HeadlessZPositionCorrectionTest {
         final double[] transforms =
                 HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates(inferenceOptions,
                                                                                1,
-                                                                               testLayerLoader,
-                                                                               true);
+                                                                               testLayerLoader);
 
         printFormattedResults(-1, -1, transforms);
 
@@ -329,8 +336,8 @@ public class HeadlessZPositionCorrectionTest {
     }
 
     static class TestLayerLoader implements LayerLoader {
-        private final List<FloatProcessor> layers;
-        public TestLayerLoader(final List<FloatProcessor> layers) {
+        private final List<FloatProcessors> layers;
+        public TestLayerLoader(final List<FloatProcessors> layers) {
             this.layers = layers;
         }
         @Override
@@ -338,17 +345,9 @@ public class HeadlessZPositionCorrectionTest {
             return layers.size();
         }
         @Override
-        public FloatProcessor getProcessor(final int layerIndex) {
+        public FloatProcessors getProcessors(final int layerIndex) {
             return layers.get(layerIndex);
         }
-		@Override
-		public Pair<FloatProcessor, FloatProcessor> getMaskAndProcessor(int layerIndex) {
-			FloatProcessor ip = getProcessor(layerIndex);
-			float[] fakeMask = new float[ ip.getWidth() * ip.getHeight() ];
-			for ( int i = 0; i < fakeMask.length; ++i )
-				fakeMask[ i ] = 255.0f;
-			return new ValuePair<FloatProcessor, FloatProcessor>( ip, new FloatProcessor(ip.getWidth(), ip.getHeight(), fakeMask) );
-		}
     }
 
 }

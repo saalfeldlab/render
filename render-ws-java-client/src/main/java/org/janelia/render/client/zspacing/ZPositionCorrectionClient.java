@@ -28,7 +28,8 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
-import org.janelia.render.client.zspacing.LayerLoader.RenderLayerLoader;
+import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
+import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
 import org.janelia.thickness.inference.Options;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +99,11 @@ public class ZPositionCorrectionClient {
                 names = "--resinContentThreshold",
                 description = "need description from SP")
         public Double resinContentThreshold = 3.0;
+
+        @Parameter(
+                names = "--resinMaskIntensity",
+                description = "Intensity value to use when masking resin areas (typically max intensity for image)")
+        public Float resinMaskIntensity = 255.0f;
 
         @ParametersDelegate
         public ZRangeParameters layerRange = new ZRangeParameters();
@@ -254,12 +260,20 @@ public class ZPositionCorrectionClient {
         final ImageProcessorCache maskCache = new ImageProcessorCache(pixelsInLargeMask,
                                                                       false,
                                                                       false);
-        final RenderLayerLoader layerLoader = new RenderLayerLoader(layerUrlPattern,
-                                                                    sortedZList,
-                                                                    maskCache,
-                                                                    parameters.resinSigma,
-                                                                    parameters.scale,
-                                                                    parameters.resinContentThreshold);
+        final RenderLayerLoader layerLoader;
+        if (parameters.resinMaskingEnabled)  {
+            layerLoader = new RenderLayerLoader(layerUrlPattern,
+                                                sortedZList,
+                                                maskCache);
+        } else {
+            layerLoader = new MaskedResinLayerLoader(layerUrlPattern,
+                                                     sortedZList,
+                                                     maskCache,
+                                                     parameters.resinSigma,
+                                                     parameters.scale,
+                                                     parameters.resinContentThreshold,
+                                                     parameters.resinMaskIntensity);
+        }
 
         if (parameters.debugFormat != null) {
             final File debugDirectory = new File(runDirectory, "debug-images");
@@ -270,8 +284,7 @@ public class ZPositionCorrectionClient {
 
         final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
                                                                        parameters.nLocalEstimates,
-                                                                       layerLoader,
-                                                                       parameters.resinMaskingEnabled);
+                                                                       layerLoader);
 
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
         writeEstimations(transforms, outputFilePath, layerLoader.getFirstLayerZ());

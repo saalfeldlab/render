@@ -16,14 +16,16 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.zspacing.loader.LayerLoader;
+import org.janelia.render.client.zspacing.loader.LayerLoader.FloatProcessors;
+import org.janelia.render.client.zspacing.loader.PathLayerLoader;
+import org.janelia.render.client.zspacing.loader.SimpleLeastRecentlyUsedLayerCache;
 import org.janelia.thickness.inference.InferFromMatrix;
 import org.janelia.thickness.inference.Options;
 import org.janelia.thickness.inference.fits.AbstractCorrelationFit;
 import org.janelia.thickness.inference.fits.GlobalCorrelationFitAverage;
 import org.janelia.thickness.inference.fits.LocalCorrelationFitAverage;
-import org.janelia.thickness.inference.visitor.LUTVisitor;
 import org.janelia.thickness.inference.visitor.LazyVisitor;
-import org.janelia.thickness.inference.visitor.ScalingFactorsVisitor;
 import org.janelia.thickness.inference.visitor.Visitor;
 import org.janelia.thickness.plugin.RealSumFloatNCC;
 import org.slf4j.Logger;
@@ -31,9 +33,7 @@ import org.slf4j.LoggerFactory;
 
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.numeric.real.DoubleType;
-import net.imglib2.util.Pair;
 
 import static org.janelia.thickness.plugin.ZPositionCorrection.createEmptyMatrix;
 import static org.janelia.thickness.plugin.ZPositionCorrection.wrapDouble;
@@ -51,7 +51,6 @@ public class HeadlessZPositionCorrection {
      * @param  inferenceOptions  options for estimation.
      * @param  nLocalEstimates   number of local estimates used to derive estimateWindowRadius option value.
      * @param  layerLoader       loader for each layer's pixels (this gets wrapped in a caching loader).
-     * @param  useMasks          whether masks should be used (all values where mask < 255 will be ignored)
      *
      * @return estimated z coordinates for each specified layer.
      *
@@ -63,21 +62,19 @@ public class HeadlessZPositionCorrection {
      */
     public static double[] buildMatrixAndEstimateZCoordinates(final Options inferenceOptions,
                                                               final int nLocalEstimates,
-                                                              final LayerLoader layerLoader,
-                                                              final boolean useMasks )
+                                                              final LayerLoader layerLoader)
             throws IllegalArgumentException, RuntimeException {
 
         final int maxLayersToCache = inferenceOptions.comparisonRange + 1;
 
-        final LayerLoader cachedLayerLoader = new LayerLoader.SimpleLeastRecentlyUsedLayerCache(layerLoader,
-                                                                                                maxLayersToCache);
+        final LayerLoader cachedLayerLoader = new SimpleLeastRecentlyUsedLayerCache(layerLoader,
+                                                                                    maxLayersToCache);
 
         LOG.info("building cross correlation matrix for {} layers", layerLoader.getNumberOfLayers());
 
         final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
                 buildNCCMatrix(cachedLayerLoader,
-                               inferenceOptions.comparisonRange,
-                               useMasks );
+                               inferenceOptions.comparisonRange);
 
         ImageJFunctions.show( crossCorrelationMatrix );
 
@@ -147,7 +144,6 @@ public class HeadlessZPositionCorrection {
     /**
      * @param  layerLoader      loader for z-ordered layers to process.
      * @param  comparisonRange  number of adjacent neighbor layers to compare with each layer.
-     * @param  useMasks         whether masks should be used (all values where mask < 255 will be ignored)
      *
      * @return matrix of pixels representing cross correlation similarity between each layer and its neighbors.
      *
@@ -155,8 +151,7 @@ public class HeadlessZPositionCorrection {
      *   if there are too few or too many layers to process.
      */
     public static RandomAccessibleInterval<DoubleType> buildNCCMatrix(final LayerLoader layerLoader,
-                                                                      final int comparisonRange,
-                                                                      final boolean useMasks)
+                                                                      final int comparisonRange)
             throws IllegalArgumentException {
 
         final int layerCount = layerLoader.getNumberOfLayers();
@@ -174,41 +169,24 @@ public class HeadlessZPositionCorrection {
 
         for (int fromLayerIndex = 0; fromLayerIndex < layerCount; ++fromLayerIndex) {
 
-        	final float[] pixelsA, masksA;
-        	if ( useMasks )
-        	{
-        		Pair<FloatProcessor, FloatProcessor> processors = layerLoader.getMaskAndProcessor( fromLayerIndex );
-        		 pixelsA = (float[]) processors.getA().getPixels();
-        		 masksA = (float[]) processors.getB().getPixels();
-        	}
-        	else
-        	{
-                pixelsA = (float[]) layerLoader.getProcessor(fromLayerIndex).getPixels();
-                masksA = null;
-        	}
+            final FloatProcessors processorsA = layerLoader.getProcessors(fromLayerIndex);
+            final float[] pixelsA = (float[]) processorsA.image.getPixels();
+            final float[] masksA = processorsA.mask == null ? null : (float[]) processorsA.mask.getPixels();
 
             for (int toLayerIndex = fromLayerIndex + 1;
                  toLayerIndex - fromLayerIndex <= comparisonRange && toLayerIndex < layerCount;
                  ++toLayerIndex) {
 
-            	final float[] pixelsB, masksB;
-            	if ( useMasks )
-            	{
-            		Pair<FloatProcessor, FloatProcessor> processors = layerLoader.getMaskAndProcessor( toLayerIndex );
-            		pixelsB = (float[]) processors.getA().getPixels();
-            		masksB = (float[]) processors.getB().getPixels();
-            	}
-            	else
-            	{
-            		pixelsB = (float[]) layerLoader.getProcessor(toLayerIndex).getPixels();
-            		masksB = null;
-            	}
+                final FloatProcessors processorsB = layerLoader.getProcessors(toLayerIndex);
+                final float[] pixelsB = (float[]) processorsB.image.getPixels();
+                final float[] masksB = processorsB.mask == null ? null : (float[]) processorsB.mask.getPixels();
 
                 final float val;
-                if ( !useMasks )
-                	val = new RealSumFloatNCC(pixelsA, pixelsB).call().floatValue();
-                else
-                	val = new RealSumFloatNCCMasks(pixelsA, masksA, pixelsB, masksB ).call().floatValue();
+                if ((masksA == null) || (masksB == null)) {
+                    val = new RealSumFloatNCC(pixelsA, pixelsB).call().floatValue();
+                } else {
+                    val = new RealSumFloatNCCMasks(pixelsA, masksA, pixelsB, masksB).call().floatValue();
+                }
                 matrixFp.setf(fromLayerIndex, toLayerIndex, val);
                 matrixFp.setf(toLayerIndex, fromLayerIndex, val);
             }
@@ -379,11 +357,10 @@ public class HeadlessZPositionCorrection {
                     throw new IllegalArgumentException("no layer images found in " + parameters.imagePaths);
                 }
 
-                final LayerLoader pathLayerLoader = new LayerLoader.PathLayerLoader(layerPaths);
+                final LayerLoader pathLayerLoader = new PathLayerLoader(layerPaths);
                 final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
                                                                                parameters.nLocalEstimates,
-                                                                               pathLayerLoader,
-                                                                               false );
+                                                                               pathLayerLoader);
 
                 writeEstimations(transforms, parameters.outputFile, parameters.zOffset);
             }
