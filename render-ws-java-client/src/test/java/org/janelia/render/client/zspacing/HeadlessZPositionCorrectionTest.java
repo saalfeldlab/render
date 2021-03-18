@@ -1,19 +1,16 @@
 package org.janelia.render.client.zspacing;
 
 import ij.ImageJ;
-import ij.ImagePlus;
-import ij.ImageStack;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -26,17 +23,11 @@ import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.thickness.inference.Options;
 import org.junit.Test;
 
-import net.imglib2.Cursor;
 import net.imglib2.Interval;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
-import net.imglib2.view.Views;
 
 /**
  * Tests the {@link HeadlessZPositionCorrection} class.
@@ -227,7 +218,7 @@ public class HeadlessZPositionCorrectionTest {
 
         // z range for 50 layers within the largest layer group
         final int minZ = 10;
-        final int maxZ = minZ + 149; // inclusive
+        final int maxZ = minZ + 9; // inclusive
         final List<Double> sortedZList = IntStream.rangeClosed(minZ, maxZ)
                 .boxed().map(Double::new).collect(Collectors.toList());
 
@@ -291,27 +282,50 @@ public class HeadlessZPositionCorrectionTest {
 
         printFormattedResults(-1, -1, transforms);
 
-        try {
-			BufferedReader in = new BufferedReader( new FileReader( new File( "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/BR-Sec39", "Zcoords.txt")));
-			double posLast = -1;
-			while ( in.ready() )
-			{
-				String[] l = in.readLine().trim().split( " " );
-				int z = Integer.parseInt( l[ 0 ] ) + (int)interval.min( 2 );
-				double pos = Double.parseDouble( l[ 1 ] );
+        final String comparisonDataFilePath =
+                "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/BR-Sec39/Zcoords.txt";
+//                "/Users/trautmane/Desktop/zcorr/Z0720_07m_BR/Sec39/alignment-legacy/Zcoords.txt";
 
-				if ( z >= minZ + 1 && z <= maxZ )
-				{
-					System.out.println(  z + "\t" + (pos - posLast) + "\t" + (transforms[ z - minZ ] - transforms[ z - minZ - 1 ] ));
-				}
+        printComparison(comparisonDataFilePath,
+                        minZ,
+                        maxZ,
+                        (int) interval.min(2), // note: this is only true for legacy data
+                        transforms);
+    }
 
-				posLast = pos;
-			}
-			in.close();
-		} catch ( IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+    private static void printComparison(final String comparisonDataFilePath,
+                                        final int minZ,
+                                        final int maxZ,
+                                        final int zOffset,
+                                        final double[] transforms)
+            throws IOException {
+
+        final File comparisonDataFile = new File(comparisonDataFilePath);
+
+        if (comparisonDataFile.exists()) {
+
+            final Pattern p = Pattern.compile("\\s+");
+            final Double[] lastCorrectedZ = {null};
+
+            System.out.println();
+
+            Files.lines(comparisonDataFile.toPath()).map(String::trim).forEach(trimmedLine -> {
+
+                final String[] words = p.split(trimmedLine);
+                if (words.length == 2) {
+                    final int z = Integer.parseInt(words[0]) + zOffset;
+                    final double correctedZ = Double.parseDouble(words[1]);
+                    if ((z > minZ) && (z <= maxZ) && (lastCorrectedZ[0] != null)) {
+                        final double fileDeltaZ = correctedZ - lastCorrectedZ[0];
+                        final double computedDeltaZ = transforms[z - minZ] - transforms[z - minZ - 1];
+                        System.out.println(z + "\t" + fileDeltaZ + "\t" + computedDeltaZ);
+                    }
+                    lastCorrectedZ[0] = correctedZ;
+                }
+
+            });
+        }
+
     }
 
     static class TestLayerLoader implements LayerLoader {
