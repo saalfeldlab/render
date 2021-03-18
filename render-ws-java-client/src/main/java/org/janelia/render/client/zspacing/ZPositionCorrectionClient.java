@@ -262,10 +262,6 @@ public class ZPositionCorrectionClient {
                                                                       false);
         final RenderLayerLoader layerLoader;
         if (parameters.resinMaskingEnabled)  {
-            layerLoader = new RenderLayerLoader(layerUrlPattern,
-                                                sortedZList,
-                                                maskCache);
-        } else {
             layerLoader = new MaskedResinLayerLoader(layerUrlPattern,
                                                      sortedZList,
                                                      maskCache,
@@ -273,6 +269,10 @@ public class ZPositionCorrectionClient {
                                                      parameters.scale,
                                                      parameters.resinContentThreshold,
                                                      parameters.resinMaskIntensity);
+        } else {
+            layerLoader = new RenderLayerLoader(layerUrlPattern,
+                                                sortedZList,
+                                                maskCache);
         }
 
         if (parameters.debugFormat != null) {
