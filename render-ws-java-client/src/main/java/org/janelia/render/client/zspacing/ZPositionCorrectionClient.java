@@ -84,6 +84,12 @@ public class ZPositionCorrectionClient {
         public Integer nLocalEstimates = 1;
 
         @Parameter(
+                names = "--resinMaskingEnabled",
+                description = "specify as 'false' to skip masking of resin areas",
+                arity = 1)
+        public boolean resinMaskingEnabled = true;
+
+        @Parameter(
                 names = "--resinDetectionSigma",
                 description = "need description from SP")
         public Integer resinSigma = 100;
@@ -265,7 +271,7 @@ public class ZPositionCorrectionClient {
         final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
                                                                        parameters.nLocalEstimates,
                                                                        layerLoader,
-                                                                       true);
+                                                                       parameters.resinMaskingEnabled);
 
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
         writeEstimations(transforms, outputFilePath, layerLoader.getFirstLayerZ());
