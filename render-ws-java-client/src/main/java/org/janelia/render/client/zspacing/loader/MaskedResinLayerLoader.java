@@ -74,6 +74,8 @@ public class MaskedResinLayerLoader
 
     private FloatProcessor buildResinMask(final FloatProcessors processors) {
 
+        LOG.debug("buildResinMask: entry, filtering image");
+
         final FloatProcessor image = processors.image;
 
         final FloatProcessor mask;
@@ -84,8 +86,6 @@ public class MaskedResinLayerLoader
         }  else {
             mask = processors.mask;
         }
-
-        LOG.debug("getProcessor: filtering image");
 
         final RandomAccessibleInterval<FloatType> imgA =
                 ArrayImgs.floats((float[]) image.getPixels(), image.getWidth(), image.getHeight());
