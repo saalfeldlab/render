@@ -86,18 +86,18 @@ public class ZPositionCorrectionClient {
 
         @Parameter(
                 names = "--resinMaskingEnabled",
-                description = "specify as 'false' to skip masking of resin areas",
+                description = "Specify as 'false' to skip masking of resin areas",
                 arity = 1)
         public boolean resinMaskingEnabled = true;
 
         @Parameter(
-                names = "--resinDetectionSigma",
-                description = "need description from SP")
+                names = "--resinSigma",
+                description = "Standard deviation for gaussian convolution")
         public Integer resinSigma = 100;
 
         @Parameter(
                 names = "--resinContentThreshold",
-                description = "need description from SP")
+                description = "Threshold intensity that identifies content")
         public Double resinContentThreshold = 3.0;
 
         @Parameter(

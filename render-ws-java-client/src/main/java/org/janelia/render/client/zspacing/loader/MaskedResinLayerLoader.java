@@ -40,9 +40,9 @@ public class MaskedResinLayerLoader
      *                                  (e.g. http://[base-url]/owner/o/project/p/stack/s/z/%s/box/0,0,2000,2000,0.125/render-parameters).
      * @param sortedZList               sorted list of z values for the layers to be loaded.
      * @param imageProcessorCache       source data cache (only useful for caching source masks).
-     * @param sigma                     sigma.                      // TODO: get better description from SP
+     * @param sigma                     standard deviation for gaussian convolution.
      * @param renderScale               scale for layer rendering.
-     * @param relativeContentThreshold  relative content threshold. // TODO: get better description from SP
+     * @param relativeContentThreshold  threshold intensity that identifies content.
      * @param maskIntensity             all values where mask is less than this value will be ignored.
      *
      * @throws IllegalArgumentException
