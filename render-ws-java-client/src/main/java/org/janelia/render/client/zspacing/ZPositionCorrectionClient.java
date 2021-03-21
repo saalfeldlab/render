@@ -218,8 +218,6 @@ public class ZPositionCorrectionClient {
 
         final Bounds totalBounds = SectionData.getTotalBounds(sectionDataList);
 
-        // TODO: if matchCollection specified, use that to define bounds
-
         final Bounds layerBounds;
         if (parameters.bounds.isDefined()) {
             layerBounds = new Bounds(parameters.bounds.minX, parameters.bounds.minY, totalBounds.getMinZ(),
@@ -282,9 +280,11 @@ public class ZPositionCorrectionClient {
             layerLoader.setDebugFilePattern(debugFilePattern);
         }
 
-        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
-                HeadlessZPositionCorrection.buildNCCMatrixWithCachedLoaders(layerLoader,
-                                                                            inferenceOptions.comparisonRange);
+        final CrossCorrelationData ccData =
+                HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(layerLoader,
+                                                                                    inferenceOptions.comparisonRange,
+                                                                                    0);
+        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
         final double[] transforms =
                 HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
                                                                  inferenceOptions,

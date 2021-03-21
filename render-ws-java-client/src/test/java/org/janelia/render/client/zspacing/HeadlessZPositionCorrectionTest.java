@@ -144,10 +144,11 @@ public class HeadlessZPositionCorrectionTest {
         inferenceOptions.scalingFactorRegularizerWeight = 1.0; // cannot correct for noisy slices
 
         // run Phillip's code
-        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
-                HeadlessZPositionCorrection.buildNCCMatrixWithCachedLoaders(testLayerLoader,
-                                                                            inferenceOptions.comparisonRange);
-
+        final CrossCorrelationData ccData =
+                HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(testLayerLoader,
+                                                                                    inferenceOptions.comparisonRange,
+                                                                                    0);
+        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
         ImageJFunctions.show(crossCorrelationMatrix);
 
         final double[] transforms = HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
@@ -290,9 +291,11 @@ public class HeadlessZPositionCorrectionTest {
         inferenceOptions.scalingFactorRegularizerWeight = 1.0; // cannot correct for noisy slices
 
         // run Phillip's code
-        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
-                HeadlessZPositionCorrection.buildNCCMatrixWithCachedLoaders(testLayerLoader,
-                                                                            inferenceOptions.comparisonRange);
+        final CrossCorrelationData ccData =
+                HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(testLayerLoader,
+                                                                                    inferenceOptions.comparisonRange,
+                                                                                    0);
+        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
 
         ImageJFunctions.show(crossCorrelationMatrix);
 
