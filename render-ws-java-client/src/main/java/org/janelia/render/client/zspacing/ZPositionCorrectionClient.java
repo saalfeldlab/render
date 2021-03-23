@@ -183,7 +183,7 @@ public class ZPositionCorrectionClient {
 
             final Path path;
             if (runName == null) {
-                final SimpleDateFormat sdf = new SimpleDateFormat("'run_'yyyyMMdd_hhmmss");
+                final SimpleDateFormat sdf = new SimpleDateFormat("'run_'yyyyMMdd_HHmmss");
                 path = Paths.get(stackPath, sdf.format(new Date()));
             } else {
                 path = Paths.get(stackPath, runName);
@@ -209,10 +209,11 @@ public class ZPositionCorrectionClient {
 
                 final ZPositionCorrectionClient client = new ZPositionCorrectionClient(parameters);
 
+                client.saveRunFiles();
+
                 if (parameters.solveExisting) {
 
                     final CrossCorrelationData ccData = client.loadCrossCorrelationDataSets();
-                    client.saveZThicknessFile();
                     client.estimateAndSaveZCoordinates(ccData);
 
                 } else {
@@ -280,13 +281,17 @@ public class ZPositionCorrectionClient {
             this.firstLayerOffset = 0;
         }
 
-        if ((parameters.runName != null) && (! parameters.solveExisting)) {
+        if (parameters.runName == null) {
+            this.runDirectory = this.baseRunDirectory;
+        } else if (parameters.solveExisting) {
+            final SimpleDateFormat sdf = new SimpleDateFormat("'solve_'yyyyMMdd_HHmmss");
+            this.runDirectory = new File(this.baseRunDirectory, sdf.format(new Date()));
+        } else { // batched cross correlation run
             final Double firstZ = sortedZList.get(0);
             final Double lastZ = sortedZList.get(sortedZList.size() - 1);
             final String zRange = String.format("z_%08.1f_to_%08.1f", firstZ, lastZ);
-            this.runDirectory = new File(this.baseRunDirectory, zRange);
-        } else {
-            this.runDirectory = this.baseRunDirectory;
+            final Path path = Paths.get(this.baseRunDirectory.getAbsolutePath(), CC_BATCHES_DIR_NAME, zRange);
+            this.runDirectory = path.toFile();
         }
 
         FileUtil.ensureWritableDirectory(this.runDirectory);
@@ -315,19 +320,9 @@ public class ZPositionCorrectionClient {
     }
 
     CrossCorrelationData deriveCrossCorrelationData()
-            throws IllegalArgumentException, IOException {
+            throws IllegalArgumentException {
 
-        final File runParametersFile = new File(runDirectory, "client-parameters.json");
-        JsonUtils.MAPPER.writeValue(runParametersFile, parameters);
-
-        LOG.info("deriveCrossCorrelationData: wrote run parameters to {}", runParametersFile.getAbsolutePath());
-
-        saveZThicknessFile();
-
-        final File inferenceOptionsFile = new File(runDirectory, "inference-options.json");
-        JsonUtils.MAPPER.writeValue(inferenceOptionsFile, inferenceOptions);
-
-        LOG.info("deriveCrossCorrelationData: using inference options: {}", inferenceOptions);
+        LOG.info("deriveCrossCorrelationData: using comparison range: {}", inferenceOptions.comparisonRange);
 
         final String layerUrlPattern = getLayerUrlPattern();
         final long pixelsInLargeMask = 20000 * 10000;
@@ -361,15 +356,30 @@ public class ZPositionCorrectionClient {
                                                                                    firstLayerOffset);
     }
 
-    void saveZThicknessFile()
+    void saveRunFiles()
             throws IOException {
-        final Path layerThicknessPath = Paths.get(runDirectory.getAbsolutePath(), "Zthick.txt");
-        if (stackResolutionValues.size() > 2) {
-            final String zResolutionString = stackResolutionValues.get(2) + " nm/section\n";
-            Files.write(layerThicknessPath, zResolutionString.getBytes(StandardCharsets.UTF_8));
-        } else {
-            LOG.warn("saveZThicknessFile: stack resolution values are not defined, skipping creation of {}",
-                     layerThicknessPath);
+
+        final File runParametersFile = new File(runDirectory, "client-parameters.json");
+        JsonUtils.MAPPER.writeValue(runParametersFile, parameters);
+        LOG.info("saveRunFiles: wrote {}", runParametersFile.getAbsolutePath());
+
+        // write inference options and Zthick files when we are not generating batched correlation data
+        if (! parameters.hasBatchInfo()) {
+
+            final File inferenceOptionsFile = new File(runDirectory, "inference-options.json");
+            JsonUtils.MAPPER.writeValue(inferenceOptionsFile, inferenceOptions);
+            LOG.info("saveRunFiles: wrote {}", inferenceOptionsFile.getAbsolutePath());
+
+            final Path layerThicknessPath = Paths.get(runDirectory.getAbsolutePath(), "Zthick.txt");
+            if (stackResolutionValues.size() > 2) {
+                final String zResolutionString = stackResolutionValues.get(2) + " nm/section\n";
+                Files.write(layerThicknessPath, zResolutionString.getBytes(StandardCharsets.UTF_8));
+                LOG.info("saveRunFiles: wrote {}", layerThicknessPath);
+            } else {
+                LOG.warn("saveRunFiles: stack resolution values are not defined, skipping creation of {}",
+                         layerThicknessPath);
+            }
+
         }
     }
 
@@ -382,15 +392,22 @@ public class ZPositionCorrectionClient {
     CrossCorrelationData loadCrossCorrelationDataSets()
             throws IllegalArgumentException, IOException {
 
+        final File ccBatchesDir = new File(baseRunDirectory, CC_BATCHES_DIR_NAME);
+
+        if (! ccBatchesDir.exists()) {
+            throw new IllegalArgumentException("cannot find " + ccBatchesDir.getAbsolutePath());
+        }
+
         final List<CrossCorrelationData> dataSets = new ArrayList<>();
         final int depth = 2;
-        try (final Stream<Path> stream = Files.walk(baseRunDirectory.toPath(), depth)) {
+        try (final Stream<Path> stream = Files.walk(ccBatchesDir.toPath(), depth)) {
             stream.filter(f -> f.getFileName().toString().equals(CC_DATA_FILE_NAME))
                     .forEach(p -> {
                         final CrossCorrelationData ccData = loadCrossCorrelationDataFile(p);
                         dataSets.add(ccData);
                     });
         }
+
         if (dataSets.size() < 1) {
             throw new IllegalArgumentException("no cross correlation data files found in " +
                                                baseRunDirectory.getAbsolutePath());
@@ -401,6 +418,8 @@ public class ZPositionCorrectionClient {
 
     void estimateAndSaveZCoordinates(final CrossCorrelationData ccData)
             throws IllegalArgumentException, IOException {
+
+        LOG.info("estimateAndSaveZCoordinates: using inference options: {}", inferenceOptions);
 
         final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
         final double[] transforms =
@@ -449,5 +468,6 @@ public class ZPositionCorrectionClient {
 
     private static final Logger LOG = LoggerFactory.getLogger(ZPositionCorrectionClient.class);
 
+    private static final String CC_BATCHES_DIR_NAME = "cc_batches";
     private static final String CC_DATA_FILE_NAME = "cc_data.json.gz";
 }
