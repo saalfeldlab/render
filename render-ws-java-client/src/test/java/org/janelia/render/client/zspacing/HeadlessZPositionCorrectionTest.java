@@ -272,7 +272,7 @@ public class HeadlessZPositionCorrectionTest {
         	img.addSlice( processors.getA() );
         	mask1.addSlice( processors.getB() );
 
-        	mask2.addSlice( RealSumFloatNCCMasks.processMaskAndImage(sigma, renderScale, relativeContentThreshold, processors.getA(), processors.getB()) );
+        	mask2.addSlice( LayerLoader.processMaskAndImage(sigma, renderScale, relativeContentThreshold, processors.getA(), processors.getB()) );
         	//img.addSlice( testLayerLoader.getProcessor( i ) );
         }
         new ImageJ();
@@ -281,7 +281,6 @@ public class HeadlessZPositionCorrectionTest {
         new ImagePlus( "processed", mask2 ).show();
         SimpleMultiThreading.threadHaltUnClean();
 		*/
-
         // override default correction options here
         final Options inferenceOptions = HeadlessZPositionCorrection.generateDefaultFIBSEMOptions();
         inferenceOptions.minimumSectionThickness = 0.0001;

@@ -16,6 +16,7 @@ public class SolveSetFactoryAso extends SolveSetFactory
 			final List<Double> defaultBlockOptimizerLambdasTranslation,
 			final List<Integer> defaultBlockOptimizerIterations,
 			final List<Integer> defaultBlockMaxPlateauWidth,
+			final int defaultMinStitchingInliers,
 			final double defaultBlockMaxAllowedError,
 			final double defaultDynamicLambdaFactor )
 	{
@@ -27,6 +28,7 @@ public class SolveSetFactoryAso extends SolveSetFactory
 				defaultBlockOptimizerLambdasTranslation,
 				defaultBlockOptimizerIterations,
 				defaultBlockMaxPlateauWidth,
+				defaultMinStitchingInliers,
 				defaultBlockMaxAllowedError,
 				defaultDynamicLambdaFactor );
 	}
@@ -67,6 +69,7 @@ public class SolveSetFactoryAso extends SolveSetFactory
 							defaultBlockOptimizerLambdasTranslation,
 							this.defaultBlockOptimizerIterations,
 							this.defaultBlockMaxPlateauWidth,
+							this.defaultMinStitchingInliers,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
 							false,
@@ -102,6 +105,7 @@ public class SolveSetFactoryAso extends SolveSetFactory
 							defaultBlockOptimizerLambdasTranslation,
 							this.defaultBlockOptimizerIterations,
 							this.defaultBlockMaxPlateauWidth,
+							this.defaultMinStitchingInliers,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
 							false,
