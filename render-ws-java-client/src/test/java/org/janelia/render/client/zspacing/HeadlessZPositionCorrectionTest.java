@@ -227,7 +227,7 @@ public class HeadlessZPositionCorrectionTest {
 
         // z range for 50 layers within the largest layer group
         final int minZ = 10;
-        final int maxZ = minZ + 149; // inclusive
+        final int maxZ = minZ + 1; // inclusive
         final List<Double> sortedZList = IntStream.rangeClosed(minZ, maxZ)
                 .boxed().map(Double::new).collect(Collectors.toList());
 
@@ -253,7 +253,6 @@ public class HeadlessZPositionCorrectionTest {
                                                                               sortedZList,
                                                                               maskCache,
                                                                               sigma, renderScale, relativeContentThreshold );
-
         /*
         ImageStack img = new ImageStack( testLayerLoader.getProcessor( 0 ).getWidth(), testLayerLoader.getProcessor( 0 ).getHeight() );
         ImageStack mask1 = new ImageStack( img.getWidth(), img.getHeight() );
@@ -264,7 +263,7 @@ public class HeadlessZPositionCorrectionTest {
         	img.addSlice( processors.getA() );
         	mask1.addSlice( processors.getB() );
 
-        	mask2.addSlice( RealSumFloatNCCMasks.processMaskAndImage(sigma, renderScale, relativeContentThreshold, processors.getA(), processors.getB()) );
+        	mask2.addSlice( LayerLoader.processMaskAndImage(sigma, renderScale, relativeContentThreshold, processors.getA(), processors.getB()) );
         	//img.addSlice( testLayerLoader.getProcessor( i ) );
         }
         new ImageJ();
@@ -273,7 +272,6 @@ public class HeadlessZPositionCorrectionTest {
         new ImagePlus( "processed", mask2 ).show();
         SimpleMultiThreading.threadHaltUnClean();
 		*/
-
         // override default correction options here
         final Options inferenceOptions = HeadlessZPositionCorrection.generateDefaultFIBSEMOptions();
         inferenceOptions.minimumSectionThickness = 0.0001;

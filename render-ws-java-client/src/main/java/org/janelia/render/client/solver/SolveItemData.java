@@ -56,6 +56,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	final private List<Double> blockOptimizerLambdasTranslation;
 	final private List<Integer> blockOptimizerIterations;
 	final private List<Integer> blockMaxPlateauWidth;
+	final private int minStitchingInliers; // if it is less, it is not stitched first
 	final private double blockMaxAllowedError;
 	final private double dynamicLambdaFactor;
 	final private boolean rigidPreAlign;
@@ -69,6 +70,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 			final List<Double> blockOptimizerLambdasTranslation,
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
+			final int minStitchingInliers, // if it is less, it is not stitched first
 			final double blockMaxAllowedError,
 			final double dynamicLambdaFactor,
 			final boolean rigidPreAlign,
@@ -88,6 +90,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 		this.blockOptimizerLambdasTranslation = blockOptimizerLambdasTranslation;
 		this.blockOptimizerIterations = blockOptimizerIterations;
 		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
+		this.minStitchingInliers = minStitchingInliers;
 		this.blockMaxAllowedError = blockMaxAllowedError;
 		this.dynamicLambdaFactor = dynamicLambdaFactor;
 		this.rigidPreAlign = rigidPreAlign;
@@ -106,6 +109,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public List<Double> blockOptimizerLambdasTranslation() { return blockOptimizerLambdasTranslation; }
 	public List<Integer> blockOptimizerIterations() { return blockOptimizerIterations; }
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
+	public int minStitchingInliers() { return minStitchingInliers; }
 	public double blockMaxAllowedError() { return blockMaxAllowedError; }
 	public double dynamicLambdaFactor() { return dynamicLambdaFactor; }
 	public boolean rigidPreAlign() { return rigidPreAlign; }
@@ -234,13 +238,6 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 				maxAllowedErrorStitching,
 				maxIterationsStitching,
 				maxPlateauWidthStitching,
-				blockOptimizerLambdasRigid,
-				blockOptimizerLambdasTranslation,
-				blockOptimizerIterations,
-				blockMaxPlateauWidth,
-				blockMaxAllowedError,
-				dynamicLambdaFactor,
-				rigidPreAlign,
 				excludeFromRegularization,
 				numThreads );
 	}

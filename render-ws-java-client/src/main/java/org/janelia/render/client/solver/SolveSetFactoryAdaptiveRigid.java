@@ -22,6 +22,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 	 * @param defaultBlockOptimizerLambdasTranslation - the default translation lambdas for a block (from parameters)
 	 * @param defaultBlockOptimizerIterations - the default iterations (from parameters)
 	 * @param defaultBlockMaxPlateauWidth - the default plateau with (from parameters)
+	 * @param defaultMinStitchingInliers - how many inliers per tile pair are necessary for "stitching first"
 	 * @param defaultBlockMaxAllowedError - the default max error for global opt (from parameters)
 	 * @param defaultDynamicLambdaFactor - the default dynamic lambda factor
 	 */
@@ -33,6 +34,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 			final List<Double> defaultBlockOptimizerLambdasTranslation,
 			final List<Integer> defaultBlockOptimizerIterations,
 			final List<Integer> defaultBlockMaxPlateauWidth,
+			final int defaultMinStitchingInliers,
 			final double defaultBlockMaxAllowedError,
 			final double defaultDynamicLambdaFactor )
 	{
@@ -44,6 +46,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				defaultBlockOptimizerLambdasTranslation,
 				defaultBlockOptimizerIterations,
 				defaultBlockMaxPlateauWidth,
+				defaultMinStitchingInliers,
 				defaultBlockMaxAllowedError,
 				defaultDynamicLambdaFactor );
 	}
@@ -87,7 +90,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
-				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " contains issues, using rigid align." );
+				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
 			}
 
 			leftSets.add(
@@ -100,6 +103,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
 							blockMaxPlateauWidth,
+							this.defaultMinStitchingInliers,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
 							rigidPreAlign,
@@ -138,7 +142,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
-				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " contains issues, do something about it." );
+				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
 			}
 
 			rightSets.add(
@@ -151,6 +155,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
 							blockMaxPlateauWidth,
+							this.defaultMinStitchingInliers,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
 							rigidPreAlign,
