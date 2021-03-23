@@ -1,6 +1,7 @@
 package org.janelia.render.client.zspacing;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
@@ -44,20 +45,28 @@ public class CrossCorrelationDataTest {
 
         final int layerCount = 10;
         final int comparisonRange = 2;
-        final int relativeFromLayerIndex = 2;
+        final int overlapLayerCount = layerCount + comparisonRange;
+        final List<Integer> relativeFromLayerIndexes = Arrays.asList(0, 1, 5); // first 2 layers and one in the middle
 
-        final int batchCount = 4;
-        final List<CrossCorrelationData> ccDataBatches = new ArrayList<>();
-        final double[] batchCorrelationValues = new double[batchCount];
-        for (int b = batchCount - 1; b >= 0; b--) {
-            final CrossCorrelationData ccData =
-                    new CrossCorrelationData(layerCount, comparisonRange, (b + 1) * layerCount);
-            batchCorrelationValues[b] = (double) (b + 1) / (batchCount + 1);
-            ccData.set(relativeFromLayerIndex, (relativeFromLayerIndex + 1), batchCorrelationValues[b]);
-            ccDataBatches.add(ccData);
+        // reverse ordered batch list with overlapping layers
+        final List<CrossCorrelationData> unsortedBatches = new ArrayList<>();
+        unsortedBatches.add(new CrossCorrelationData(layerCount, comparisonRange, (layerCount*4)));
+        unsortedBatches.add(new CrossCorrelationData(overlapLayerCount, comparisonRange, (layerCount*3)));
+        unsortedBatches.add(new CrossCorrelationData(overlapLayerCount, comparisonRange, (layerCount*2)));
+        unsortedBatches.add(new CrossCorrelationData(overlapLayerCount, comparisonRange, layerCount));
+
+        final int batchCount = unsortedBatches.size();
+        final List<Double> sortedBatchCorrelationValues = new ArrayList<>();
+
+        for (int b = 0; b < batchCount; b++) {
+            final int sortedBatchNumber = batchCount - b - 1;
+            final CrossCorrelationData ccData = unsortedBatches.get(sortedBatchNumber);
+            final double correlation = (double) (b + 1) / (batchCount + 1);
+            sortedBatchCorrelationValues.add(correlation);
+            relativeFromLayerIndexes.forEach(i -> ccData.set(i, (i+1), correlation));
         }
 
-        final CrossCorrelationData mergedDataSet = CrossCorrelationData.merge(ccDataBatches);
+        final CrossCorrelationData mergedDataSet = CrossCorrelationData.merge(unsortedBatches);
 
         Assert.assertEquals("bad merged comparison range",
                             comparisonRange, mergedDataSet.getComparisonRange());
@@ -69,9 +78,13 @@ public class CrossCorrelationDataTest {
         final RandomAccessibleInterval<DoubleType> mergedMatrix = mergedDataSet.toMatrix();
 
         for (int b = 0; b < batchCount; b++) {
-            final int x = (b * layerCount) + relativeFromLayerIndex;
-            final int y = x + 1;
-            validateMatrix(x, y, mergedMatrix, batchCorrelationValues[b]);
+            final int firstX = b * layerCount;
+            final double expectedCorrelation = sortedBatchCorrelationValues.get(b);
+            relativeFromLayerIndexes.forEach(i -> {
+                final int x = firstX + i;
+                final int y = x + 1;
+                validateMatrix(x, y, mergedMatrix, expectedCorrelation);
+            });
         }
     }
 
@@ -94,7 +107,7 @@ public class CrossCorrelationDataTest {
         }
     }
 
-    public static void main2(final String[] args) {
+    public static void main(final String[] args) {
 
         final int layerCount = 400;
         final int comparisonRange = 10;

@@ -1,11 +1,14 @@
 package org.janelia.render.client.zspacing;
 
+import java.io.Reader;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.janelia.alignment.json.JsonUtils;
 
 import net.imagej.Extents;
 import net.imglib2.Interval;
@@ -31,6 +34,15 @@ public class CrossCorrelationData
     // Two dimensional array allows for support of up to 2^31-1 layers
     // and minimizes storage by only tracking values within the comparison range.
     private final double[][] data;
+
+    // required for JSON deserialization
+    @SuppressWarnings("unused")
+    private CrossCorrelationData() {
+        this.layerCount = -1;
+        this.comparisonRange = -1;
+        this.firstLayerOffset = -1;
+        this.data = new double[0][0];
+    }
 
     /**
      * @param  layerCount        total number of layers being compared for this data set.
@@ -148,7 +160,17 @@ public class CrossCorrelationData
                '}';
     }
 
-    public static CrossCorrelationData merge(final List<CrossCorrelationData> dataSets) {
+    /**
+     * @param  dataSets  list of data sets to merge.
+     *
+     * @return single data set merged from specified list of data sets.
+     *
+     * @throws IllegalArgumentException
+     *   if any inconsistencies are found between the data sets to be merged.
+     *   Data sets may (and typically should) overlap, but each data set must have a unique first layer offset.
+     */
+    public static CrossCorrelationData merge(final List<CrossCorrelationData> dataSets)
+            throws IllegalArgumentException {
 
         final CrossCorrelationData mergedDataSet;
 
@@ -168,7 +190,6 @@ public class CrossCorrelationData
             mergedDataSet = new CrossCorrelationData(mergedLayerCount, comparisonRange, mergedFirstLayerOffset);
 
             final Set<Integer> firstLayerOffsetValues = new HashSet<>();
-            int priorMergedLastLayerOffset = -1;
 
             for (final CrossCorrelationData dataSet : sortedDataSets) {
 
@@ -184,19 +205,12 @@ public class CrossCorrelationData
 
                 final int mergedLayerOffset = dataSet.firstLayerOffset - mergedFirstLayerOffset;
 
-                if (mergedLayerOffset < priorMergedLastLayerOffset) {
-                    throw new IllegalArgumentException(
-                            "data set " + dataSet + " has overlapping layers with prior data set");
-                }
-
                 for (int layerIndex = 0; layerIndex < dataSet.layerCount; layerIndex++) {
                     final int mergedLayerIndex = layerIndex + mergedLayerOffset;
                     System.arraycopy(dataSet.data[layerIndex],
                                      0, mergedDataSet.data[mergedLayerIndex],
                                      0, dataSet.comparisonRange);
                 }
-
-                priorMergedLastLayerOffset = mergedLayerOffset + dataSet.layerCount;
 
             }
 
@@ -206,4 +220,12 @@ public class CrossCorrelationData
 
         return mergedDataSet;
     }
+
+    public static CrossCorrelationData fromJson(final Reader json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
+    private static final JsonUtils.Helper<CrossCorrelationData> JSON_HELPER =
+            new JsonUtils.Helper<>(CrossCorrelationData.class);
+
 }
