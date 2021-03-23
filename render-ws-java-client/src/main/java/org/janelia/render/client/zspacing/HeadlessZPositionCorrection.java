@@ -2,9 +2,6 @@ package org.janelia.render.client.zspacing;
 
 import com.beust.jcommander.Parameter;
 
-import ij.ImagePlus;
-import ij.process.FloatProcessor;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -16,27 +13,24 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.FileUtils;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.zspacing.loader.LayerLoader;
+import org.janelia.render.client.zspacing.loader.LayerLoader.FloatProcessors;
+import org.janelia.render.client.zspacing.loader.PathLayerLoader;
+import org.janelia.render.client.zspacing.loader.SimpleLeastRecentlyUsedLayerCache;
 import org.janelia.thickness.inference.InferFromMatrix;
 import org.janelia.thickness.inference.Options;
 import org.janelia.thickness.inference.fits.AbstractCorrelationFit;
 import org.janelia.thickness.inference.fits.GlobalCorrelationFitAverage;
 import org.janelia.thickness.inference.fits.LocalCorrelationFitAverage;
-import org.janelia.thickness.inference.visitor.LUTVisitor;
 import org.janelia.thickness.inference.visitor.LazyVisitor;
-import org.janelia.thickness.inference.visitor.ScalingFactorsVisitor;
 import org.janelia.thickness.inference.visitor.Visitor;
 import org.janelia.thickness.plugin.RealSumFloatNCC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.numeric.real.DoubleType;
-import net.imglib2.util.Pair;
-
-import static org.janelia.thickness.plugin.ZPositionCorrection.createEmptyMatrix;
-import static org.janelia.thickness.plugin.ZPositionCorrection.wrapDouble;
+import net.imglib2.util.StopWatch;
 
 /**
  * Adapter to run {@link InferFromMatrix#estimateZCoordinates} in "headless" mode without any visualization.
@@ -47,50 +41,8 @@ import static org.janelia.thickness.plugin.ZPositionCorrection.wrapDouble;
 public class HeadlessZPositionCorrection {
 
     /**
-     *
-     * @param  inferenceOptions  options for estimation.
-     * @param  nLocalEstimates   number of local estimates used to derive estimateWindowRadius option value.
-     * @param  layerLoader       loader for each layer's pixels (this gets wrapped in a caching loader).
-     * @param  useMasks          whether masks should be used (all values where mask < 255 will be ignored)
-     *
-     * @return estimated z coordinates for each specified layer.
-     *
-     * @throws IllegalArgumentException
-     *   if there are too few or too many layers to process.
-     *
-     * @throws RuntimeException
-     *   if any errors occur during estimation.
-     */
-    public static double[] buildMatrixAndEstimateZCoordinates(final Options inferenceOptions,
-                                                              final int nLocalEstimates,
-                                                              final LayerLoader layerLoader,
-                                                              final boolean useMasks )
-            throws IllegalArgumentException, RuntimeException {
-
-        final int maxLayersToCache = inferenceOptions.comparisonRange + 1;
-
-        final LayerLoader cachedLayerLoader = new LayerLoader.SimpleLeastRecentlyUsedLayerCache(layerLoader,
-                                                                                                maxLayersToCache);
-
-        LOG.info("building cross correlation matrix for {} layers", layerLoader.getNumberOfLayers());
-
-        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
-                buildNCCMatrix(cachedLayerLoader,
-                               inferenceOptions.comparisonRange,
-                               useMasks );
-
-        ImageJFunctions.show( crossCorrelationMatrix );
-
-        LOG.info("estimating Z coordinates for " + layerLoader.getNumberOfLayers() + " layers:");
-
-        return estimateZCoordinates(crossCorrelationMatrix,
-                                    inferenceOptions,
-                                    nLocalEstimates);
-    }
-
-    /**
      * @param  crossCorrelationMatrix  matrix of pixels representing cross correlation similarity between each
-     *                                 layer and its neighbors (see {@link #buildNCCMatrix}).
+     *                                 layer and its neighbors (see {@link #deriveCrossCorrelation}).
      * @param  inferenceOptions        options for estimation.
      * @param  nLocalEstimates         number of local estimates used to derive estimateWindowRadius option value.
      *
@@ -107,7 +59,11 @@ public class HeadlessZPositionCorrection {
                                                 final int nLocalEstimates)
             throws IllegalArgumentException, RuntimeException {
 
+        final StopWatch stopWatch = StopWatch.createAndStart();
+
         final int nLayers = (int) crossCorrelationMatrix.dimension(0);
+
+        LOG.debug("estimateZCoordinates: entry, estimating for {} layers", nLayers);
 
         // clone inferenceOptions since we need to override/derive some values
         final Options options = inferenceOptions.clone();
@@ -134,29 +90,56 @@ public class HeadlessZPositionCorrection {
         final double[] transform;
         try {
             final Visitor visitor = new LazyVisitor(); // always use do-nothing visitor
-            //final Visitor visitor = new LUTVisitor("", "", "," ); 
+            //final Visitor visitor = new LUTVisitor("", "", "," );
             //final Visitor visitor = new ScalingFactorsVisitor("", "", "," );
             transform = inf.estimateZCoordinates(crossCorrelationMatrix, startingCoordinates, visitor, options);
         } catch (final Exception e) {
             throw new RuntimeException("failed to estimate z coordinates", e);
         }
 
+        stopWatch.stop();
+
+        LOG.debug("estimateZCoordinates: exit, took {}", stopWatch);
+
         return transform;
     }
 
     /**
-     * @param  layerLoader      loader for z-ordered layers to process.
-     * @param  comparisonRange  number of adjacent neighbor layers to compare with each layer.
-     * @param  useMasks         whether masks should be used (all values where mask < 255 will be ignored)
+     * @param  layerLoader       loader for each layer's pixels (this gets wrapped in a caching loader).
+     * @param  comparisonRange   number of adjacent neighbor layers to compare with each layer.
+     * @param  firstLayerOffset  offset of the first layer loaded relative to the full set of layers.
      *
-     * @return matrix of pixels representing cross correlation similarity between each layer and its neighbors.
+     * @return cross correlation similarity between each layer and its neighbors.
      *
      * @throws IllegalArgumentException
      *   if there are too few or too many layers to process.
      */
-    public static RandomAccessibleInterval<DoubleType> buildNCCMatrix(final LayerLoader layerLoader,
-                                                                      final int comparisonRange,
-                                                                      final boolean useMasks)
+    public static CrossCorrelationData deriveCrossCorrelationWithCachedLoaders(final LayerLoader layerLoader,
+                                                                               final int comparisonRange,
+                                                                               final int firstLayerOffset)
+            throws IllegalArgumentException {
+
+        final int maxLayersToCache = comparisonRange + 1;
+        final LayerLoader cachedLayerLoader = new SimpleLeastRecentlyUsedLayerCache(layerLoader,
+                                                                                    maxLayersToCache);
+        return deriveCrossCorrelation(cachedLayerLoader,
+                                      comparisonRange,
+                                      firstLayerOffset);
+    }
+
+    /**
+     * @param  layerLoader       loader for z-ordered layers to process.
+     * @param  comparisonRange   number of adjacent neighbor layers to compare with each layer.
+     * @param  firstLayerOffset  offset of the first layer loaded relative to the full set of layers.
+     *
+     * @return cross correlation similarity between each layer and its neighbors.
+     *
+     * @throws IllegalArgumentException
+     *   if there are too few or too many layers to process.
+     */
+    public static CrossCorrelationData deriveCrossCorrelation(final LayerLoader layerLoader,
+                                                              final int comparisonRange,
+                                                              final int firstLayerOffset)
             throws IllegalArgumentException {
 
         final int layerCount = layerLoader.getNumberOfLayers();
@@ -164,59 +147,38 @@ public class HeadlessZPositionCorrection {
             throw new IllegalArgumentException("must have at least two layers to evaluate");
         }
 
-        // TODO: replace square matrix image with layerCount x comparisonRange array (since we are not visualizing)
-        final long matrixPixels = (long) layerCount * layerCount;
-        if (matrixPixels > Integer.MAX_VALUE) {
-            throw new IllegalArgumentException("too many layers (" + layerCount + ") for single matrix");
-        }
+        LOG.info("building cross correlation data for {} layers", layerLoader.getNumberOfLayers());
 
-        final FloatProcessor matrixFp = createEmptyMatrix(layerCount);
+        final CrossCorrelationData ccData = new CrossCorrelationData(layerCount,
+                                                                     comparisonRange,
+                                                                     firstLayerOffset);
 
         for (int fromLayerIndex = 0; fromLayerIndex < layerCount; ++fromLayerIndex) {
 
-        	final float[] pixelsA, masksA;
-        	if ( useMasks )
-        	{
-        		Pair<FloatProcessor, FloatProcessor> processors = layerLoader.getMaskAndProcessor( fromLayerIndex );
-        		 pixelsA = (float[]) processors.getA().getPixels();
-        		 masksA = (float[]) processors.getB().getPixels();
-        	}
-        	else
-        	{
-                pixelsA = (float[]) layerLoader.getProcessor(fromLayerIndex).getPixels();
-                masksA = null;
-        	}
+            final FloatProcessors processorsA = layerLoader.getProcessors(fromLayerIndex);
+            final float[] pixelsA = (float[]) processorsA.image.getPixels();
+            final float[] masksA = processorsA.mask == null ? null : (float[]) processorsA.mask.getPixels();
 
             for (int toLayerIndex = fromLayerIndex + 1;
                  toLayerIndex - fromLayerIndex <= comparisonRange && toLayerIndex < layerCount;
                  ++toLayerIndex) {
 
-            	final float[] pixelsB, masksB;
-            	if ( useMasks )
-            	{
-            		Pair<FloatProcessor, FloatProcessor> processors = layerLoader.getMaskAndProcessor( toLayerIndex );
-            		pixelsB = (float[]) processors.getA().getPixels();
-            		masksB = (float[]) processors.getB().getPixels();
-            	}
-            	else
-            	{
-            		pixelsB = (float[]) layerLoader.getProcessor(toLayerIndex).getPixels();
-            		masksB = null;
-            	}
+                final FloatProcessors processorsB = layerLoader.getProcessors(toLayerIndex);
+                final float[] pixelsB = (float[]) processorsB.image.getPixels();
+                final float[] masksB = processorsB.mask == null ? null : (float[]) processorsB.mask.getPixels();
 
                 final float val;
-                if ( !useMasks )
-                	val = new RealSumFloatNCC(pixelsA, pixelsB).call().floatValue();
-                else
-                	val = new RealSumFloatNCCMasks(pixelsA, masksA, pixelsB, masksB ).call().floatValue();
-                matrixFp.setf(fromLayerIndex, toLayerIndex, val);
-                matrixFp.setf(toLayerIndex, fromLayerIndex, val);
+                if ((masksA == null) || (masksB == null)) {
+                    val = new RealSumFloatNCC(pixelsA, pixelsB).call().floatValue();
+                } else {
+                    val = new RealSumFloatNCCMasks(pixelsA, masksA, pixelsB, masksB).call().floatValue();
+                }
+
+                ccData.set(fromLayerIndex, toLayerIndex, val);
             }
         }
 
-        // note: removed stripToMatrix logic for non-square matrices since currently, matrix is always square
-
-        return wrapDouble(new ImagePlus("", matrixFp));
+        return ccData;
     }
 
     /**
@@ -278,10 +240,10 @@ public class HeadlessZPositionCorrection {
         options.coordinateUpdateRegularizerWeight = 0.0;
         options.regularizationType = InferFromMatrix.RegularizationType.BORDER;
         options.forceMonotonicity = false;
-        options.estimateWindowRadius = -1;       // note: always overridden by code
+        options.estimateWindowRadius = -1;            // note: always overridden by code
 
         // changes:
-        options.withReorder = false;             // milled data should always be correctly ordered
+        options.withReorder = false;                  // milled data should always be correctly ordered
         options.scalingFactorRegularizerWeight = 1.0; // won't correct for noisy slices
         options.minimumSectionThickness = 0.0001;
 
@@ -379,11 +341,16 @@ public class HeadlessZPositionCorrection {
                     throw new IllegalArgumentException("no layer images found in " + parameters.imagePaths);
                 }
 
-                final LayerLoader pathLayerLoader = new LayerLoader.PathLayerLoader(layerPaths);
-                final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                               parameters.nLocalEstimates,
-                                                                               pathLayerLoader,
-                                                                               false );
+                final LayerLoader pathLayerLoader = new PathLayerLoader(layerPaths);
+
+                final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix =
+                        deriveCrossCorrelationWithCachedLoaders(pathLayerLoader,
+                                                                inferenceOptions.comparisonRange,
+                                                                0).toMatrix();
+
+                final double[] transforms = estimateZCoordinates(crossCorrelationMatrix,
+                                                                 inferenceOptions,
+                                                                 parameters.nLocalEstimates);
 
                 writeEstimations(transforms, parameters.outputFile, parameters.zOffset);
             }

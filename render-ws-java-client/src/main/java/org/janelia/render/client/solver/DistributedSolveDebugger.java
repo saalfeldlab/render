@@ -32,7 +32,7 @@ public class DistributedSolveDebugger extends DistributedSolve
 	{
 		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
 		final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w =
-				this.solveSet.leftItems.get( 20 ).createWorker( //9, 28, 57, 81
+				this.solveSet.leftItems.get( 6 ).createWorker( //9, 28, 57, 81
 						this.solveSet.getMaxId() + 1,
 						runParams.pGroupList,
 						runParams.sectionIdToZMap,

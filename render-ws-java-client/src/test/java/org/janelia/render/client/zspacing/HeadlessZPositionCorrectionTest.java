@@ -1,19 +1,16 @@
 package org.janelia.render.client.zspacing;
 
 import ij.ImageJ;
-import ij.ImagePlus;
-import ij.ImageStack;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -23,20 +20,18 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.solver.visualize.RenderTools;
+import org.janelia.render.client.zspacing.loader.LayerLoader;
+import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
+import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
 import org.janelia.thickness.inference.Options;
 import org.junit.Test;
 
-import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.Pair;
+import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Util;
-import net.imglib2.util.ValuePair;
-import net.imglib2.view.Views;
 
 /**
  * Tests the {@link HeadlessZPositionCorrection} class.
@@ -110,7 +105,7 @@ public class HeadlessZPositionCorrectionTest {
         Random rnd = new Random( 3434795 );
         double noise = 0;
 
-        final List<FloatProcessor> layers = new ArrayList<>();
+        final List<LayerLoader.FloatProcessors> layers = new ArrayList<>();
 
         final int movingW = testProcessor.getWidth() - totalNumberOfLayers * 2;
 
@@ -132,8 +127,9 @@ public class HeadlessZPositionCorrectionTest {
         	final float[] pixels = (float[])testProcessor.crop().convertToFloatProcessor().getPixelsCopy();
         	for ( int i = 0; i < pixels.length; ++i )
         		pixels[ i ] += rnd.nextFloat() * noise - (noise/2.0);
-            layers.add( new FloatProcessor( movingW, standardLayer.getHeight(), pixels));
-            //layers.add(standardLayer.convertToFloatProcessor());
+        	final FloatProcessor fp =
+                    new FloatProcessor( movingW, standardLayer.getHeight(), pixels); // standardLayer.convertToFloatProcessor()
+            layers.add(new LayerLoader.FloatProcessors(fp, null));
         }
 
         final LayerLoader testLayerLoader = new TestLayerLoader(layers);
@@ -148,11 +144,16 @@ public class HeadlessZPositionCorrectionTest {
         inferenceOptions.scalingFactorRegularizerWeight = 1.0; // cannot correct for noisy slices
 
         // run Phillip's code
-        final double[] transforms =
-                HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                               1,
-                                                                               testLayerLoader,
-                                                                               false );
+        final CrossCorrelationData ccData =
+                HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(testLayerLoader,
+                                                                                    inferenceOptions.comparisonRange,
+                                                                                    0);
+        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
+        ImageJFunctions.show(crossCorrelationMatrix);
+
+        final double[] transforms = HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
+                                                                                     inferenceOptions,
+                                                                                     1);
 
         printFormattedResults(startShiftZ, stopShiftZ, transforms);
     }
@@ -227,7 +228,7 @@ public class HeadlessZPositionCorrectionTest {
 
         // z range for 50 layers within the largest layer group
         final int minZ = 10;
-        final int maxZ = minZ + 1; // inclusive
+        final int maxZ = minZ + 9; // inclusive
         final List<Double> sortedZList = IntStream.rangeClosed(minZ, maxZ)
                 .boxed().map(Double::new).collect(Collectors.toList());
 
@@ -249,10 +250,18 @@ public class HeadlessZPositionCorrectionTest {
                                                                       false,
                                                                       false);
 
-        final LayerLoader testLayerLoader = new LayerLoader.RenderLayerLoader(layerUrlPattern,
-                                                                              sortedZList,
-                                                                              maskCache,
-                                                                              sigma, renderScale, relativeContentThreshold );
+//        final LayerLoader testLayerLoader = new RenderLayerLoader(layerUrlPattern,
+//                                                                  sortedZList,
+//                                                                  maskCache);
+
+        final LayerLoader testLayerLoader = new MaskedResinLayerLoader(layerUrlPattern,
+                                                                       sortedZList,
+                                                                       maskCache,
+                                                                       sigma,
+                                                                       renderScale,
+                                                                       relativeContentThreshold,
+                                                                       255.0f);
+
         /*
         ImageStack img = new ImageStack( testLayerLoader.getProcessor( 0 ).getWidth(), testLayerLoader.getProcessor( 0 ).getHeight() );
         ImageStack mask1 = new ImageStack( img.getWidth(), img.getHeight() );
@@ -281,40 +290,69 @@ public class HeadlessZPositionCorrectionTest {
         inferenceOptions.scalingFactorRegularizerWeight = 1.0; // cannot correct for noisy slices
 
         // run Phillip's code
-        final double[] transforms =
-                HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                               1,
-                                                                               testLayerLoader,
-                                                                               true);
+        final CrossCorrelationData ccData =
+                HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(testLayerLoader,
+                                                                                    inferenceOptions.comparisonRange,
+                                                                                    0);
+        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
+
+        ImageJFunctions.show(crossCorrelationMatrix);
+
+        final double[] transforms = HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
+                                                                                     inferenceOptions,
+                                                                                     1);
 
         printFormattedResults(-1, -1, transforms);
 
-        try {
-			BufferedReader in = new BufferedReader( new FileReader( new File( "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/BR-Sec39", "Zcoords.txt")));
-			double posLast = -1;
-			while ( in.ready() )
-			{
-				String[] l = in.readLine().trim().split( " " );
-				int z = Integer.parseInt( l[ 0 ] ) + (int)interval.min( 2 );
-				double pos = Double.parseDouble( l[ 1 ] );
+        final String comparisonDataFilePath =
+                "/Users/spreibi/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/BR-Sec39/Zcoords.txt";
+//                "/Users/trautmane/Desktop/zcorr/Z0720_07m_BR/Sec39/alignment-legacy/Zcoords.txt";
 
-				if ( z >= minZ + 1 && z <= maxZ )
-				{
-					System.out.println(  z + "\t" + (pos - posLast) + "\t" + (transforms[ z - minZ ] - transforms[ z - minZ - 1 ] ));
-				}
+        printComparison(comparisonDataFilePath,
+                        minZ,
+                        maxZ,
+                        (int) interval.min(2), // note: this is only true for legacy data
+                        transforms);
+    }
 
-				posLast = pos;
-			}
-			in.close();
-		} catch ( IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+    private static void printComparison(final String comparisonDataFilePath,
+                                        final int minZ,
+                                        final int maxZ,
+                                        final int zOffset,
+                                        final double[] transforms)
+            throws IOException {
+
+        final File comparisonDataFile = new File(comparisonDataFilePath);
+
+        if (comparisonDataFile.exists()) {
+
+            final Pattern p = Pattern.compile("\\s+");
+            final Double[] lastCorrectedZ = {null};
+
+            System.out.println();
+
+            Files.lines(comparisonDataFile.toPath()).map(String::trim).forEach(trimmedLine -> {
+
+                final String[] words = p.split(trimmedLine);
+                if (words.length == 2) {
+                    final int z = Integer.parseInt(words[0]) + zOffset;
+                    final double correctedZ = Double.parseDouble(words[1]);
+                    if ((z > minZ) && (z <= maxZ) && (lastCorrectedZ[0] != null)) {
+                        final double fileDeltaZ = correctedZ - lastCorrectedZ[0];
+                        final double computedDeltaZ = transforms[z - minZ] - transforms[z - minZ - 1];
+                        System.out.println(z + "\t" + fileDeltaZ + "\t" + computedDeltaZ);
+                    }
+                    lastCorrectedZ[0] = correctedZ;
+                }
+
+            });
+        }
+
     }
 
     static class TestLayerLoader implements LayerLoader {
-        private final List<FloatProcessor> layers;
-        public TestLayerLoader(final List<FloatProcessor> layers) {
+        private final List<FloatProcessors> layers;
+        public TestLayerLoader(final List<FloatProcessors> layers) {
             this.layers = layers;
         }
         @Override
@@ -322,17 +360,9 @@ public class HeadlessZPositionCorrectionTest {
             return layers.size();
         }
         @Override
-        public FloatProcessor getProcessor(final int layerIndex) {
+        public FloatProcessors getProcessors(final int layerIndex) {
             return layers.get(layerIndex);
         }
-		@Override
-		public Pair<FloatProcessor, FloatProcessor> getMaskAndProcessor(int layerIndex) {
-			FloatProcessor ip = getProcessor(layerIndex);
-			float[] fakeMask = new float[ ip.getWidth() * ip.getHeight() ];
-			for ( int i = 0; i < fakeMask.length; ++i )
-				fakeMask[ i ] = 255.0f;
-			return new ValuePair<FloatProcessor, FloatProcessor>( ip, new FloatProcessor(ip.getWidth(), ip.getHeight(), fakeMask) );
-		}
     }
 
 }
