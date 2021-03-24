@@ -391,8 +391,9 @@ public class ZPositionCorrectionClient {
 
     CrossCorrelationData loadCrossCorrelationDataSets()
             throws IllegalArgumentException, IOException {
+        final File ccDataParent = new File(baseRunDirectory, CrossCorrelationData.DEFAULT_BATCHES_DIR_NAME);
         final List<CrossCorrelationData> dataSets =
-                CrossCorrelationData.loadCrossCorrelationDataFiles(baseRunDirectory.toPath(),
+                CrossCorrelationData.loadCrossCorrelationDataFiles(ccDataParent.toPath(),
                                                                    CrossCorrelationData.DEFAULT_DATA_FILE_NAME,
                                                                    2);
         return CrossCorrelationData.merge(dataSets);
