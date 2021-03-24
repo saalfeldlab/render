@@ -1,5 +1,8 @@
 package org.janelia.render.client.zspacing;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -7,8 +10,8 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
+import bdv.util.BdvFunctions;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.real.DoubleType;
 
 /**
@@ -107,29 +110,44 @@ public class CrossCorrelationDataTest {
         }
     }
 
-    public static void main(final String[] args) {
+    public static void main(final String[] args) throws Exception {
 
-        final int layerCount = 400;
-        final int comparisonRange = 10;
+        final String base = "/nrs/flyem/render/z_corr/Z0720_07m_BR";
 
-        final CrossCorrelationData ccData = new CrossCorrelationData(layerCount, comparisonRange, 0);
+        final String tabStackRun = "Sec39/v1_acquire_trimmed_sp1/run_20210323_132057_278_z_corr";
 
-        for (int fromLayerIndex = 0; fromLayerIndex < layerCount; fromLayerIndex++) {
+        final Path batchDirPath = Paths.get(base,
+                                            tabStackRun,
+                                            CrossCorrelationData.DEFAULT_BATCHES_DIR_NAME);
 
-            for (int toLayerIndex = fromLayerIndex + 1;
-                 toLayerIndex - fromLayerIndex <= comparisonRange && toLayerIndex < layerCount;
-                 toLayerIndex++) {
+        final List<CrossCorrelationData> ccDataList = loadSmallBatchData(batchDirPath);
+//        final List<CrossCorrelationData> ccDataList = loadAllBatchData(batchDirPath);
 
-                // set to inverse similarity so it is easier to see
-                final double value = (toLayerIndex - fromLayerIndex) / (double) comparisonRange;
-
-                ccData.set(fromLayerIndex, toLayerIndex, value);
-            }
-        }
+        final CrossCorrelationData ccData = CrossCorrelationData.merge(ccDataList);
 
         final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
 
-        ImageJFunctions.show(crossCorrelationMatrix);
+        // TODO: ask SP how to set maxIntensity to 1 (and maybe zoom in) by default here
+        BdvFunctions.show(crossCorrelationMatrix, tabStackRun);
     }
-    
+
+    private static List<CrossCorrelationData> loadAllBatchData(final Path batchDirPath)
+            throws IOException {
+        return CrossCorrelationData.loadCrossCorrelationDataFiles(batchDirPath,
+                                                                  CrossCorrelationData.DEFAULT_DATA_FILE_NAME,
+                                                                  2);
+    }
+
+    private static List<CrossCorrelationData> loadSmallBatchData(final Path batchDirPath) {
+        final List<CrossCorrelationData> ccDataList = new ArrayList<>();
+                final List<Path> batchDirNames = Arrays.asList(
+                Paths.get(batchDirPath.toString(), "z_000001.0_to_000060.0"),
+                Paths.get(batchDirPath.toString(), "z_000051.0_to_000120.0")
+        );
+        for (final Path p : batchDirNames) {
+            final Path f = Paths.get(p.toString(), CrossCorrelationData.DEFAULT_DATA_FILE_NAME);
+            ccDataList.add(CrossCorrelationData.loadCrossCorrelationDataFile(f));
+        }
+        return ccDataList;
+    }
 }

@@ -1,14 +1,22 @@
 package org.janelia.render.client.zspacing;
 
+import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.util.FileUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.imagej.Extents;
 import net.imglib2.Interval;
@@ -221,9 +229,74 @@ public class CrossCorrelationData
         return mergedDataSet;
     }
 
+    /**
+     * @param  path  path of .json, .gz, or .zip file containing JSON serialization.
+     *
+     * @return data parsed from the specified file.
+     */
+    public static CrossCorrelationData loadCrossCorrelationDataFile(final Path path) {
+        final CrossCorrelationData ccData;
+        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
+            ccData = CrossCorrelationData.fromJson(reader);
+        } catch (final Exception e) {
+            throw new RuntimeException("failed to load data from " + path, e);
+        }
+
+        LOG.info("loadCrossCorrelationDataFile: loaded data for {} layers from {}",
+                 ccData.layerCount, path);
+
+        return ccData;
+    }
+
+    /**
+     * @param  parentDirectoryPath  path of parent directory containing JSON data files.
+     * @param  dataFileName         common name of all JSON data files (typically nested within subdirectories).
+     * @param  searchDepth          number of subdirectories to search for data files.
+     *
+     * @return list of data sets parsed.
+     *
+     * @throws IllegalArgumentException
+     *   if appropriate files cannot be found.
+     *
+     * @throws IOException
+     *   if there are any problems reading file data.
+     */
+    public static List<CrossCorrelationData> loadCrossCorrelationDataFiles(final Path parentDirectoryPath,
+                                                                           final String dataFileName,
+                                                                           final int searchDepth)
+            throws IllegalArgumentException, IOException {
+
+        if (! parentDirectoryPath.toFile().exists()) {
+            throw new IllegalArgumentException("cannot find " + parentDirectoryPath);
+        }
+
+        final List<CrossCorrelationData> dataSets = new ArrayList<>();
+        try (final Stream<Path> stream = Files.walk(parentDirectoryPath, searchDepth)) {
+            stream.filter(f -> f.getFileName().toString().equals(dataFileName))
+                    .forEach(p -> {
+                        final CrossCorrelationData ccData = loadCrossCorrelationDataFile(p);
+                        dataSets.add(ccData);
+                    });
+        }
+
+        if (dataSets.size() < 1) {
+            throw new IllegalArgumentException("no " + dataFileName + " files found in " + parentDirectoryPath);
+        }
+
+        LOG.info("loadCrossCorrelationDataFiles: returning {} data sets found in {}",
+                 dataSets.size(), parentDirectoryPath);
+
+        return dataSets;
+    }
+
+    public static final String DEFAULT_DATA_FILE_NAME = "cc_data.json.gz";
+    public static final String DEFAULT_BATCHES_DIR_NAME = "cc_batches";
+
     public static CrossCorrelationData fromJson(final Reader json) {
         return JSON_HELPER.fromJson(json);
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(CrossCorrelationData.class);
 
     private static final JsonUtils.Helper<CrossCorrelationData> JSON_HELPER =
             new JsonUtils.Helper<>(CrossCorrelationData.class);

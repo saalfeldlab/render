@@ -6,17 +6,14 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
@@ -290,7 +287,9 @@ public class ZPositionCorrectionClient {
             final Double firstZ = sortedZList.get(0);
             final Double lastZ = sortedZList.get(sortedZList.size() - 1);
             final String zRange = String.format("z_%08.1f_to_%08.1f", firstZ, lastZ);
-            final Path path = Paths.get(this.baseRunDirectory.getAbsolutePath(), CC_BATCHES_DIR_NAME, zRange);
+            final Path path = Paths.get(this.baseRunDirectory.getAbsolutePath(),
+                                        CrossCorrelationData.DEFAULT_BATCHES_DIR_NAME,
+                                        zRange);
             this.runDirectory = path.toFile();
         }
 
@@ -385,34 +384,17 @@ public class ZPositionCorrectionClient {
 
     void saveCrossCorrelationData(final CrossCorrelationData ccData)
             throws IOException {
-        final String ccDataPath = new File(runDirectory, CC_DATA_FILE_NAME).getAbsolutePath();
+        final String ccDataPath = new File(runDirectory,
+                                           CrossCorrelationData.DEFAULT_DATA_FILE_NAME).getAbsolutePath();
         FileUtil.saveJsonFile(ccDataPath, ccData);
     }
 
     CrossCorrelationData loadCrossCorrelationDataSets()
             throws IllegalArgumentException, IOException {
-
-        final File ccBatchesDir = new File(baseRunDirectory, CC_BATCHES_DIR_NAME);
-
-        if (! ccBatchesDir.exists()) {
-            throw new IllegalArgumentException("cannot find " + ccBatchesDir.getAbsolutePath());
-        }
-
-        final List<CrossCorrelationData> dataSets = new ArrayList<>();
-        final int depth = 2;
-        try (final Stream<Path> stream = Files.walk(ccBatchesDir.toPath(), depth)) {
-            stream.filter(f -> f.getFileName().toString().equals(CC_DATA_FILE_NAME))
-                    .forEach(p -> {
-                        final CrossCorrelationData ccData = loadCrossCorrelationDataFile(p);
-                        dataSets.add(ccData);
-                    });
-        }
-
-        if (dataSets.size() < 1) {
-            throw new IllegalArgumentException("no cross correlation data files found in " +
-                                               baseRunDirectory.getAbsolutePath());
-        }
-
+        final List<CrossCorrelationData> dataSets =
+                CrossCorrelationData.loadCrossCorrelationDataFiles(baseRunDirectory.toPath(),
+                                                                   CrossCorrelationData.DEFAULT_DATA_FILE_NAME,
+                                                                   2);
         return CrossCorrelationData.merge(dataSets);
     }
 
@@ -456,18 +438,5 @@ public class ZPositionCorrectionClient {
         return sortedZList.subList(fromIndex, toIndex);
     }
 
-    private static CrossCorrelationData loadCrossCorrelationDataFile(final Path path) {
-        final CrossCorrelationData ccData;
-        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
-            ccData = CrossCorrelationData.fromJson(reader);
-        } catch (final Exception e) {
-            throw new RuntimeException("failed to load data from " + path, e);
-        }
-        return ccData;
-    }
-
     private static final Logger LOG = LoggerFactory.getLogger(ZPositionCorrectionClient.class);
-
-    private static final String CC_BATCHES_DIR_NAME = "cc_batches";
-    private static final String CC_DATA_FILE_NAME = "cc_data.json.gz";
 }
