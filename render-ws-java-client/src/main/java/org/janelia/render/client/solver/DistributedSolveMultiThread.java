@@ -132,7 +132,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             //"--noStitching", // do not stitch first
                             
                             "--minZ", "1",
-                            "--maxZ", "41976", //"9505", //"6480",//"34022",
+                            "--maxZ", "42329", //"9505", //"6480",//"34022",
 
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
@@ -174,6 +174,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
         				parameters.blockOptimizerLambdasTranslation,
         				parameters.blockOptimizerIterations,
         				parameters.blockMaxPlateauWidth,
+        				parameters.minStitchingInliers,
         				parameters.blockMaxAllowedError,
         				parameters.dynamicLambdaFactor );
 

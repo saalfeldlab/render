@@ -8,7 +8,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -32,7 +31,6 @@ import com.beust.jcommander.ParametersDelegate;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.Model;
 import mpicbg.models.TranslationModel2D;
 import mpicbg.trakem2.transform.RigidModel2D;
 import net.imglib2.util.Pair;
@@ -173,6 +171,13 @@ public class DistributedSolveParameters extends CommandLineParameters
             description = "Max plateau width stitching"
     )
     public Integer maxPlateauWidthStitching = 50;
+
+    @Parameter(
+            names = "--minStitchingInliers",
+            description = "how many inliers per tile pair are necessary for 'stitching first'"
+    )
+    // corresponding with: /groups/flyem/data/alignment/flyem-alignment-ett/Z0720-07m/BR/Sec39/stage_parameters.montage.json
+    public Integer minStitchingInliers = 25;
 
     @Parameter(
             names = "--dynamicLambdaFactor",

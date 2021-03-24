@@ -98,6 +98,14 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	// for error computation (local)
 	final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
 
+	// how many stitching inliers are needed to stitch first
+	// reason: if tiles are rarely connected and it is stitched first, a useful
+	// common alignment model after stitching cannot be found
+	final int minStitchingInliers;
+
+	// global switch to disable "stitch first"
+	final private boolean stitchFirst = true;
+
 	// created by SolveItemData.createWorker()
 	public DistributedSolveWorker(
 			final SolveItemData< G, B, S > solveItemData,
@@ -115,13 +123,6 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final double maxAllowedErrorStitching,
 			final int maxIterationsStitching,
 			final int maxPlateauWidthStitching,
-			final List<Double> blockOptimizerLambdasRigid, // TODO: all of these are also in SolveItemData!
-			final List<Double> blockOptimizerLambdasTranslation,
-			final List<Integer> blockOptimizerIterations,
-			final List<Integer> blockMaxPlateauWidth,
-			final double blockMaxAllowedError,
-			final double dynamicLambdaFactor,
-			final boolean rigidPreAlign,
 			final Set<Integer> excludeFromRegularization,
 			final int numThreads )
 	{
@@ -133,19 +134,20 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		this.pGroupList = pGroupList;
 		this.sectionIdToZMap = sectionIdToZMap;
 
-		this.blockOptimizerLambdasRigid = blockOptimizerLambdasRigid;
-		this.blockOptimizerLambdasTranslation = blockOptimizerLambdasTranslation;
-		this.blockOptimizerIterations = blockOptimizerIterations;
-		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
+		this.blockOptimizerLambdasRigid = solveItemData.blockOptimizerLambdasRigid();
+		this.blockOptimizerLambdasTranslation = solveItemData.blockOptimizerLambdasTranslation();
+		this.blockOptimizerIterations = solveItemData.blockOptimizerIterations();
+		this.blockMaxPlateauWidth = solveItemData.blockMaxPlateauWidth();
 
+		this.minStitchingInliers = solveItemData.minStitchingInliers();
 		this.maxAllowedErrorStitching = maxAllowedErrorStitching;
 		this.maxIterationsStitching = maxIterationsStitching;
 		this.maxPlateauWidthStitching = maxPlateauWidthStitching;
-		this.blockMaxAllowedError = blockMaxAllowedError;
+		this.blockMaxAllowedError = solveItemData.blockMaxAllowedError();
 
 		this.numThreads = numThreads;
-		this.dynamicLambdaFactor = dynamicLambdaFactor;
-		this.rigidPreAlign = rigidPreAlign;
+		this.dynamicLambdaFactor = solveItemData.dynamicLambdaFactor();
+		this.rigidPreAlign = solveItemData.rigidPreAlign();
 		this.excludeFromRegularization = excludeFromRegularization;
 		this.serializeMatches = serializeMatches;
 
@@ -609,47 +611,54 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final HashMap< String, Tile< S > > idTotile = new HashMap<>();
 			final HashMap< Tile< S >, String > tileToId = new HashMap<>();
 
-			// all connections within this z section
-			if ( zToPairs.containsKey( z ) )
+			if ( stitchFirst )
 			{
-				for ( final int index : zToPairs.get( z ) )
+				// all connections within this z section
+				if ( zToPairs.containsKey( z ) )
 				{
-					final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair = pairs.get( index );
-					
-					final String pId = solveItem.tileToIdMap().get( pair.getA().getA() );
-					final String qId = solveItem.tileToIdMap().get( pair.getA().getB() );
-	
-					//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
-	
-					final Tile< S > p, q;
-	
-					if ( !idTotile.containsKey( pId ) )
+					for ( final int index : zToPairs.get( z ) )
 					{
-						//p = new Tile<>( model.copy() );
-						// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
-						p = SolveTools.buildTile( solveItem.idToPreviousModel().get( pId ), model.copy(), 100, 100, 3 );
-						idTotile.put( pId, p );
-						tileToId.put( p, pId );
+						final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair = pairs.get( index );
+
+						// stitching first only works when the stitching is reliable
+						if ( pair.getB().size() < minStitchingInliers )
+							continue;
+
+						final String pId = solveItem.tileToIdMap().get( pair.getA().getA() );
+						final String qId = solveItem.tileToIdMap().get( pair.getA().getB() );
+		
+						//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
+		
+						final Tile< S > p, q;
+		
+						if ( !idTotile.containsKey( pId ) )
+						{
+							//p = new Tile<>( model.copy() );
+							// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
+							p = SolveTools.buildTile( solveItem.idToPreviousModel().get( pId ), model.copy(), 100, 100, 3 );
+							idTotile.put( pId, p );
+							tileToId.put( p, pId );
+						}
+						else
+						{
+							p = idTotile.get( pId );
+						}
+		
+						if ( !idTotile.containsKey( qId ) )
+						{
+							//q = new Tile<>( model.copy() );
+							q = SolveTools.buildTile( solveItem.idToPreviousModel().get( qId ), model.copy(), 100, 100, 3 );
+							idTotile.put( qId, q );
+							tileToId.put( q, qId );
+						}
+						else
+						{
+							q = idTotile.get( qId );
+						}
+
+						// TODO: do we really need to duplicate the PointMatches?
+						p.connect( q, SolveTools.duplicate( pair.getB() ) );
 					}
-					else
-					{
-						p = idTotile.get( pId );
-					}
-	
-					if ( !idTotile.containsKey( qId ) )
-					{
-						//q = new Tile<>( model.copy() );
-						q = SolveTools.buildTile( solveItem.idToPreviousModel().get( qId ), model.copy(), 100, 100, 3 );
-						idTotile.put( qId, q );
-						tileToId.put( q, qId );
-					}
-					else
-					{
-						q = idTotile.get( qId );
-					}
-	
-					// TODO: do we really need to duplicate the PointMatches?
-					p.connect( q, SolveTools.duplicate( pair.getB() ) );
 				}
 			}
 
@@ -793,7 +802,11 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		LOG.info( "block " + inputSolveItem.getId() + ": Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
 
-		if ( graphs.size() == 1 )
+		if ( graphs.size() == 0 )
+		{
+			throw new RuntimeException( "Something went wrong. The inputsolve item has 0 subgraphs. stopping." );
+		}
+		else if ( graphs.size() == 1 )
 		{
 			solveItems.add( inputSolveItem );
 
@@ -832,6 +845,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
 							blockMaxPlateauWidth,
+							minStitchingInliers,
 							blockMaxAllowedError,
 							dynamicLambdaFactor,
 							rigidPreAlign,

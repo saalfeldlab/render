@@ -28,13 +28,14 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
-import org.janelia.render.client.zspacing.LayerLoader.RenderLayerLoader;
+import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
+import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
 import org.janelia.thickness.inference.Options;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.render.client.zspacing.HeadlessZPositionCorrection.buildMatrixAndEstimateZCoordinates;
-import static org.janelia.render.client.zspacing.HeadlessZPositionCorrection.writeEstimations;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.type.numeric.real.DoubleType;
 
 /**
  * Java client for estimating z thickness of a range of layers in an aligned render stack.
@@ -83,6 +84,40 @@ public class ZPositionCorrectionClient {
                 description = "Number of local estimates")
         public Integer nLocalEstimates = 1;
 
+        @Parameter(
+                names = "--resinMaskingEnabled",
+                description = "Specify as 'false' to skip masking of resin areas",
+                arity = 1)
+        public boolean resinMaskingEnabled = true;
+
+        @Parameter(
+                names = "--resinSigma",
+                description = "Standard deviation for gaussian convolution")
+        public Integer resinSigma = 100;
+
+        @Parameter(
+                names = "--resinContentThreshold",
+                description = "Threshold intensity that identifies content")
+        public Double resinContentThreshold = 3.0;
+
+        @Parameter(
+                names = "--resinMaskIntensity",
+                description = "Intensity value to use when masking resin areas (typically max intensity for image)")
+        public Float resinMaskIntensity = 255.0f;
+
+        @Parameter(
+                names = "--correlationBatch",
+                description = "Specify to only save correlation data without solving.  " +
+                              "Format is <batch number>:<total batch count> where first batch number is 1 " +
+                              "(e.g. '1:20', '2:20', ..., '20:20').")
+        public String correlationBatch;
+
+        @Parameter(
+                names = "--solveExisting",
+                description = "Specify to load existing correlation data and solve.",
+                arity = 0)
+        public boolean solveExisting;
+
         @ParametersDelegate
         public ZRangeParameters layerRange = new ZRangeParameters();
 
@@ -105,26 +140,53 @@ public class ZPositionCorrectionClient {
                    HeadlessZPositionCorrection.generateDefaultFIBSEMOptions() : Options.read(optionsJson);
         }
 
-        public File createRunDirectory(final Double firstZ,
-                                       final Double lastZ)
+        private Integer currentBatchNumber = null;
+        private Integer totalBatchCount = null;
+
+        public void deriveBatchInfo()
                 throws IllegalArgumentException {
 
+            if (correlationBatch != null) {
+                final String[] values = correlationBatch.split(":");
+
+                final String errorMessage =
+                        "invalid correlationBatch, must have format <batch number>:<total batch count> " +
+                        "where the first batch number is 1";
+
+                if (values.length != 2) {
+                    throw new IllegalArgumentException(errorMessage);
+                }
+
+                try {
+                    this.currentBatchNumber = Integer.parseInt(values[0]);
+                    this.totalBatchCount = Integer.parseInt(values[1]);
+                } catch (final NumberFormatException nfe) {
+                    throw new IllegalArgumentException(errorMessage, nfe);
+                }
+
+                if ((currentBatchNumber < 1) || (totalBatchCount < 1) || (totalBatchCount < currentBatchNumber)) {
+                    throw new IllegalArgumentException(errorMessage);
+                }
+            }
+        }
+
+        public boolean hasBatchInfo() {
+            return currentBatchNumber != null;
+        }
+
+        public File getBaseRunDirectory() {
+
             final String stackPath = Paths.get(rootDirectory, renderWeb.owner, renderWeb.project, stack).toString();
-            final String zRange = String.format("z_%08.1f_to_%08.1f", firstZ, lastZ);
 
             final Path path;
             if (runName == null) {
-                final SimpleDateFormat sdf = new SimpleDateFormat("'run_'yyyyMMdd_hhmmss");
+                final SimpleDateFormat sdf = new SimpleDateFormat("'run_'yyyyMMdd_HHmmss");
                 path = Paths.get(stackPath, sdf.format(new Date()));
             } else {
-                path = Paths.get(stackPath, runName, zRange);
+                path = Paths.get(stackPath, runName);
             }
 
-            final File runDirectory = path.toFile().getAbsoluteFile();
-
-            FileUtil.ensureWritableDirectory(runDirectory);
-
-            return runDirectory;
+            return path.toFile().getAbsoluteFile();
         }
 
     }
@@ -138,11 +200,29 @@ public class ZPositionCorrectionClient {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
                 parameters.bounds.validate();
+                parameters.deriveBatchInfo();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final ZPositionCorrectionClient client = new ZPositionCorrectionClient(parameters);
-                client.estimateZCoordinates();
+
+                client.saveRunFiles();
+
+                if (parameters.solveExisting) {
+
+                    final CrossCorrelationData ccData = client.loadCrossCorrelationDataSets();
+                    client.estimateAndSaveZCoordinates(ccData);
+
+                } else {
+
+                    final CrossCorrelationData ccData = client.deriveCrossCorrelationData();
+                    if (parameters.hasBatchInfo()) {
+                        client.saveCrossCorrelationData(ccData);
+                    } else {
+                        client.estimateAndSaveZCoordinates(ccData);
+                    }
+
+                }
             }
         };
         clientRunner.run();
@@ -152,16 +232,19 @@ public class ZPositionCorrectionClient {
     private final Parameters parameters;
     private final Options inferenceOptions;
 
+    private final File baseRunDirectory;
     private final File runDirectory;
     private final RenderDataClient renderDataClient;
     private final List<SectionData> sectionDataList;
     private final List<Double> sortedZList;
+    private final int firstLayerOffset;
     private final List<Double> stackResolutionValues;
 
     ZPositionCorrectionClient(final Parameters parameters)
             throws IllegalArgumentException, IOException {
 
         this.parameters = parameters;
+        this.baseRunDirectory = parameters.getBaseRunDirectory();
         this.renderDataClient = parameters.renderWeb.getDataClient();
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
@@ -178,15 +261,39 @@ public class ZPositionCorrectionClient {
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
 
-        this.sortedZList = sectionDataList.stream()
+        final List<Double> allSortedZList = sectionDataList.stream()
                 .map(SectionData::getZ)
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
 
-        this.runDirectory = parameters.createRunDirectory(sortedZList.get(0),
-                                                          sortedZList.get(sortedZList.size() - 1));
+        if (parameters.hasBatchInfo()) {
+            this.sortedZList = getSortedZListForBatch(allSortedZList,
+                                                      parameters.currentBatchNumber,
+                                                      parameters.totalBatchCount,
+                                                      this.inferenceOptions.comparisonRange);
+            this.firstLayerOffset = allSortedZList.indexOf(this.sortedZList.get(0));
+        } else {
+            this.sortedZList = allSortedZList;
+            this.firstLayerOffset = 0;
+        }
 
+        if (parameters.runName == null) {
+            this.runDirectory = this.baseRunDirectory;
+        } else if (parameters.solveExisting) {
+            final SimpleDateFormat sdf = new SimpleDateFormat("'solve_'yyyyMMdd_HHmmss");
+            this.runDirectory = new File(this.baseRunDirectory, sdf.format(new Date()));
+        } else { // batched cross correlation run
+            final Double firstZ = sortedZList.get(0);
+            final Double lastZ = sortedZList.get(sortedZList.size() - 1);
+            final String zRange = String.format("z_%08.1f_to_%08.1f", firstZ, lastZ);
+            final Path path = Paths.get(this.baseRunDirectory.getAbsolutePath(),
+                                        CrossCorrelationData.DEFAULT_BATCHES_DIR_NAME,
+                                        zRange);
+            this.runDirectory = path.toFile();
+        }
+
+        FileUtil.ensureWritableDirectory(this.runDirectory);
     }
 
     String getLayerUrlPattern() {
@@ -195,8 +302,6 @@ public class ZPositionCorrectionClient {
         final String stackUrlString = urls.getStackUrlString(parameters.stack);
 
         final Bounds totalBounds = SectionData.getTotalBounds(sectionDataList);
-
-        // TODO: if matchCollection specified, use that to define bounds
 
         final Bounds layerBounds;
         if (parameters.bounds.isDefined()) {
@@ -213,34 +318,30 @@ public class ZPositionCorrectionClient {
                              parameters.scale);
     }
 
-    void estimateZCoordinates()
-            throws IllegalArgumentException, IOException {
+    CrossCorrelationData deriveCrossCorrelationData()
+            throws IllegalArgumentException {
 
-        final File runParametersFile = new File(runDirectory, "client-parameters.json");
-        JsonUtils.MAPPER.writeValue(runParametersFile, parameters);
-
-        final Path layerThicknessPath = Paths.get(runDirectory.getAbsolutePath(), "Zthick.txt");
-        if (stackResolutionValues.size() > 2) {
-            final String zResolutionString = stackResolutionValues.get(2) + " nm/section\n";
-            Files.write(layerThicknessPath, zResolutionString.getBytes(StandardCharsets.UTF_8));
-        } else {
-            LOG.warn("estimateZCoordinates: stack resolution values are not defined, skipping creation of {}",
-                     layerThicknessPath);
-        }
-
-        final File inferenceOptionsFile = new File(runDirectory, "inference-options.json");
-        JsonUtils.MAPPER.writeValue(inferenceOptionsFile, inferenceOptions);
-
-        LOG.info("estimateZCoordinates: using inference options: {}", inferenceOptions);
+        LOG.info("deriveCrossCorrelationData: using comparison range: {}", inferenceOptions.comparisonRange);
 
         final String layerUrlPattern = getLayerUrlPattern();
         final long pixelsInLargeMask = 20000 * 10000;
         final ImageProcessorCache maskCache = new ImageProcessorCache(pixelsInLargeMask,
                                                                       false,
                                                                       false);
-        final RenderLayerLoader layerLoader = new RenderLayerLoader(layerUrlPattern,
-                                                                    sortedZList,
-                                                                    maskCache);
+        final RenderLayerLoader layerLoader;
+        if (parameters.resinMaskingEnabled)  {
+            layerLoader = new MaskedResinLayerLoader(layerUrlPattern,
+                                                     sortedZList,
+                                                     maskCache,
+                                                     parameters.resinSigma,
+                                                     parameters.scale,
+                                                     parameters.resinContentThreshold,
+                                                     parameters.resinMaskIntensity);
+        } else {
+            layerLoader = new RenderLayerLoader(layerUrlPattern,
+                                                sortedZList,
+                                                maskCache);
+        }
 
         if (parameters.debugFormat != null) {
             final File debugDirectory = new File(runDirectory, "debug-images");
@@ -249,12 +350,92 @@ public class ZPositionCorrectionClient {
             layerLoader.setDebugFilePattern(debugFilePattern);
         }
 
-        final double[] transforms = buildMatrixAndEstimateZCoordinates(inferenceOptions,
-                                                                       parameters.nLocalEstimates,
-                                                                       layerLoader);
+        return HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(layerLoader,
+                                                                                   inferenceOptions.comparisonRange,
+                                                                                   firstLayerOffset);
+    }
+
+    void saveRunFiles()
+            throws IOException {
+
+        final File runParametersFile = new File(runDirectory, "client-parameters.json");
+        JsonUtils.MAPPER.writeValue(runParametersFile, parameters);
+        LOG.info("saveRunFiles: wrote {}", runParametersFile.getAbsolutePath());
+
+        // write inference options and Zthick files when we are not generating batched correlation data
+        if (! parameters.hasBatchInfo()) {
+
+            final File inferenceOptionsFile = new File(runDirectory, "inference-options.json");
+            JsonUtils.MAPPER.writeValue(inferenceOptionsFile, inferenceOptions);
+            LOG.info("saveRunFiles: wrote {}", inferenceOptionsFile.getAbsolutePath());
+
+            final Path layerThicknessPath = Paths.get(runDirectory.getAbsolutePath(), "Zthick.txt");
+            if (stackResolutionValues.size() > 2) {
+                final String zResolutionString = stackResolutionValues.get(2) + " nm/section\n";
+                Files.write(layerThicknessPath, zResolutionString.getBytes(StandardCharsets.UTF_8));
+                LOG.info("saveRunFiles: wrote {}", layerThicknessPath);
+            } else {
+                LOG.warn("saveRunFiles: stack resolution values are not defined, skipping creation of {}",
+                         layerThicknessPath);
+            }
+
+        }
+    }
+
+    void saveCrossCorrelationData(final CrossCorrelationData ccData)
+            throws IOException {
+        final String ccDataPath = new File(runDirectory,
+                                           CrossCorrelationData.DEFAULT_DATA_FILE_NAME).getAbsolutePath();
+        FileUtil.saveJsonFile(ccDataPath, ccData);
+    }
+
+    CrossCorrelationData loadCrossCorrelationDataSets()
+            throws IllegalArgumentException, IOException {
+        final List<CrossCorrelationData> dataSets =
+                CrossCorrelationData.loadCrossCorrelationDataFiles(baseRunDirectory.toPath(),
+                                                                   CrossCorrelationData.DEFAULT_DATA_FILE_NAME,
+                                                                   2);
+        return CrossCorrelationData.merge(dataSets);
+    }
+
+    void estimateAndSaveZCoordinates(final CrossCorrelationData ccData)
+            throws IllegalArgumentException, IOException {
+
+        LOG.info("estimateAndSaveZCoordinates: using inference options: {}", inferenceOptions);
+
+        final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
+        final double[] transforms =
+                HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
+                                                                 inferenceOptions,
+                                                                 parameters.nLocalEstimates);
 
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
-        writeEstimations(transforms, outputFilePath, layerLoader.getFirstLayerZ());
+        HeadlessZPositionCorrection.writeEstimations(transforms, outputFilePath, sortedZList.get(0));
+    }
+
+    protected static List<Double> getSortedZListForBatch(final List<Double> sortedZList,
+                                                         final int batchNumber,
+                                                         final int batchCount,
+                                                         final int comparisonRange) {
+        final int totalLayerCount = sortedZList.size();
+        final int batchIndex = batchNumber - 1;
+        int layersPerBatch = (totalLayerCount / batchCount);
+        final int batchesWithExtraLayer = totalLayerCount % batchCount;
+
+        int fromIndex;
+        if (batchIndex < batchesWithExtraLayer) {
+            layersPerBatch += 1;
+            fromIndex = batchIndex * layersPerBatch;
+        } else {
+            fromIndex = (batchesWithExtraLayer * (layersPerBatch + 1)) +
+                        ((batchIndex - batchesWithExtraLayer) * layersPerBatch);
+        }
+
+        final int toIndex = fromIndex + layersPerBatch;
+
+        fromIndex = Math.max(0, fromIndex - comparisonRange); // overlap with prior batch by comparison range
+
+        return sortedZList.subList(fromIndex, toIndex);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ZPositionCorrectionClient.class);

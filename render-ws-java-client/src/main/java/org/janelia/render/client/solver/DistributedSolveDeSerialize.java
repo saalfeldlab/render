@@ -150,6 +150,7 @@ public class DistributedSolveDeSerialize extends DistributedSolve
         				parameters.blockOptimizerLambdasTranslation,
         				parameters.blockOptimizerIterations,
         				parameters.blockMaxPlateauWidth,
+        				parameters.minStitchingInliers,
         				parameters.blockMaxAllowedError,
         				parameters.dynamicLambdaFactor );
 

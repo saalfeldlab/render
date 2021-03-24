@@ -16,6 +16,7 @@ public abstract class SolveSetFactory
 	final List<Double> defaultBlockOptimizerLambdasTranslation;
 	final List<Integer> defaultBlockOptimizerIterations;
 	final List<Integer> defaultBlockMaxPlateauWidth;
+	final int defaultMinStitchingInliers;
 	final double defaultBlockMaxAllowedError;
 	final double defaultDynamicLambdaFactor;
 
@@ -25,6 +26,7 @@ public abstract class SolveSetFactory
 	 * @param defaultStitchingModel - the default model when stitching per z slice (here always used)
 	 * @param defaultBlockOptimizerLambdasRigid - the default rigid/affine lambdas for a block (from parameters)
 	 * @param defaultBlockOptimizerLambdasTranslation - the default translation lambdas for a block (from parameters)
+	 * @param defaultMinStitchingInliers - how many inliers per tile pair are necessary for "stitching first"
 	 * @param defaultBlockOptimizerIterations - the default iterations (from parameters)
 	 * @param defaultBlockMaxPlateauWidth - the default plateau with (from parameters)
 	 * @param defaultBlockMaxAllowedError - the default max error for global opt (from parameters)
@@ -38,6 +40,7 @@ public abstract class SolveSetFactory
 			final List<Double> defaultBlockOptimizerLambdasTranslation,
 			final List<Integer> defaultBlockOptimizerIterations,
 			final List<Integer> defaultBlockMaxPlateauWidth,
+			final int defaultMinStitchingInliers,
 			final double defaultBlockMaxAllowedError,
 			final double defaultDynamicLambdaFactor )
 
@@ -49,6 +52,7 @@ public abstract class SolveSetFactory
 		this.defaultBlockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
 		this.defaultBlockOptimizerIterations = defaultBlockOptimizerIterations;
 		this.defaultBlockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
+		this.defaultMinStitchingInliers = defaultMinStitchingInliers;
 		this.defaultBlockMaxAllowedError = defaultBlockMaxAllowedError;
 		this.defaultDynamicLambdaFactor = defaultDynamicLambdaFactor;
 	}
@@ -77,6 +81,7 @@ public abstract class SolveSetFactory
 			final List<Double> blockOptimizerLambdasTranslation,
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
+			final int minStitchingInliers,
 			final double blockMaxAllowedError,
 			final double dynamicLambdaFactor,
 			final boolean rigidPreAlign,
@@ -93,6 +98,7 @@ public abstract class SolveSetFactory
 				blockOptimizerLambdasTranslation,
 				blockOptimizerIterations,
 				blockMaxPlateauWidth,
+				minStitchingInliers,
 				blockMaxAllowedError,
 				dynamicLambdaFactor,
 				rigidPreAlign,
