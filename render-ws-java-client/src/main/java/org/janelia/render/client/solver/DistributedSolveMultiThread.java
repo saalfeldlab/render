@@ -114,10 +114,10 @@ public class DistributedSolveMultiThread extends DistributedSolve
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                            "--project", "Sec34", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                            "--matchCollection", "Sec34_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-                            "--stack", "v1_acquire_trimmed", //"v3_acquire",
-                            "--targetStack", "v1_acquire_trimmed_sp1_adaptive",
+                            "--project", "Sec37", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "Sec37_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", " v2_acquire_trimmed", //"v3_acquire",
+                            "--targetStack", " v2_acquire_trimmed_sp1_adaptive",
                             "--completeTargetStack",
                             
                             //"--noreg","400, 23434, 23-254",
@@ -132,7 +132,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             //"--noStitching", // do not stitch first
                             
                             "--minZ", "1",
-                            "--maxZ", "42329", //"9505", //"6480",//"34022",
+                            "--maxZ", "37213", //"9505", //"6480",//"34022",
 
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
