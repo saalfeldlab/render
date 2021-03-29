@@ -70,12 +70,17 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 
 			boolean rigidPreAlign = false;
 			Affine2D< ? > stitchingModel = defaultStitchingModel;
+			int minStitchingInliers = defaultMinStitchingInliers;
 			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
 			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
-	
-			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
+
+			if ( setMinZ < 2700 || setMaxZ > 34100 )
+			{
+				minStitchingInliers = 1000;
+			}
+			else if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
 			{
 				// rigid alignment
 				rigidPreAlign = true;
@@ -103,7 +108,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
 							blockMaxPlateauWidth,
-							this.defaultMinStitchingInliers,
+							minStitchingInliers,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
 							rigidPreAlign,
@@ -122,12 +127,17 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 
 			boolean rigidPreAlign = false;
 			Affine2D< ? > stitchingModel = defaultStitchingModel;
+			int minStitchingInliers = defaultMinStitchingInliers;
 			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
 			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
 
-			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
+			if ( setMinZ < 2700 || setMaxZ > 34100 )
+			{
+				minStitchingInliers = 1000;
+			}
+			else if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
 			{
 				// rigid alignment
 				rigidPreAlign = true;
@@ -155,7 +165,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
 							blockMaxPlateauWidth,
-							this.defaultMinStitchingInliers,
+							minStitchingInliers,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
 							rigidPreAlign,
