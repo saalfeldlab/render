@@ -10,8 +10,11 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
+import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
+import bdv.util.BdvStackSource;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.converter.Converters;
 import net.imglib2.type.numeric.real.DoubleType;
 
 /**
@@ -127,8 +130,13 @@ public class CrossCorrelationDataTest {
 
         final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
 
+        final RandomAccessibleInterval<DoubleType> stretched = 
+        		Converters.convert( crossCorrelationMatrix, (i,o) -> o.setReal( i.get() * 65535 ), new DoubleType() );
+
         // TODO: ask SP how to set maxIntensity to 1 (and maybe zoom in) by default here
-        BdvFunctions.show(crossCorrelationMatrix, tabStackRun);
+        BdvStackSource<?> bdv = BdvFunctions.show(crossCorrelationMatrix, tabStackRun);
+        bdv.setDisplayRange(0, 1);
+        bdv.setDisplayRangeBounds(0, 2);
     }
 
     private static List<CrossCorrelationData> loadAllBatchData(final Path batchDirPath)
