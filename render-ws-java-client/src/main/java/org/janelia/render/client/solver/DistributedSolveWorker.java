@@ -43,6 +43,7 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -215,7 +216,30 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 			LOG.info("block " + inputSolveItem.getId() + ": run: connecting tiles with pGroupId {}", pGroupId);
 
-			final List<CanvasMatches> matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
+			List<CanvasMatches> matches = null;
+			final int maxTries = 10;
+			int run = 0;
+
+			do
+			{
+				try
+				{
+					matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
+				}
+				catch (Exception e )
+				{
+					matches = null;
+					if ( ++run <= maxTries )
+					{
+						LOG.info( "block " + inputSolveItem.getId() + ": Failed at: " + inputSolveItem.getId() + ": " + e );
+						SimpleMultiThreading.threadWait( 1000 );
+					}
+					else
+					{
+						throw new RuntimeException( "failed to retrieve matches for pGroupId " + pGroupId + " after " + maxTries + " attempts (id=" + inputSolveItem.getId() + ")" );
+					}
+				}
+			} while( matches == null );
 
 			for (final CanvasMatches match : matches)
 			{
