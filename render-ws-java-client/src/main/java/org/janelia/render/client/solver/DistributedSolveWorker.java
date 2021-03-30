@@ -231,7 +231,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					matches = null;
 					if ( ++run <= maxTries )
 					{
-						LOG.info( "block " + inputSolveItem.getId() + ": Failed at: " + inputSolveItem.getId() + ": " + e );
+						LOG.warn( "block " + inputSolveItem.getId() + ": Failed at: " + inputSolveItem.getId() + ": " + e );
 						SimpleMultiThreading.threadWait( 1000 );
 					}
 					else
