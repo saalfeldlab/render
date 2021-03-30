@@ -641,15 +641,17 @@ public class VisualizeTools
 
 	protected static ImageProcessor getFullResMask( final MinimalTileSpec tileSpec )
 	{
+	    ImageProcessor maskProcessor = null;
 		final String fileNameMask = tileSpec.getMaskFileName();
-
-		if ( new File( fileNameMask ).exists() )
-			return new ImagePlus( fileNameMask ).getProcessor();
-		else
-		{
-			System.out.println( "WARNING: File path '" + new File( fileNameMask ).getAbsolutePath() + "' does not exist. Shares mounted?" );
-			return null;
+		if (fileNameMask != null) {
+			final File maskFile = new File(fileNameMask);
+			if (maskFile.exists()) {
+				maskProcessor = new ImagePlus(fileNameMask).getProcessor();
+			} else {
+				LOG.warn("File path '" + maskFile.getAbsolutePath() + "' does not exist. Shares mounted?");
+			}
 		}
+		return maskProcessor;
 	}
 
 	protected static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale )
