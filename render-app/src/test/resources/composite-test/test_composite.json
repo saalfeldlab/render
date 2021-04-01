@@ -3,7 +3,7 @@
         "tileId": "tile_1",
         "mipmapLevels": {
             "0": {
-                "imageUrl": "src/test/resources/color-test/49768_112_reduced.tif",
+                "imageUrl": "src/test/resources/composite-test/49768_112_reduced.tif",
                 "imageLoaderType": "IMAGEJ_COMPOSITE"
             }
         },
