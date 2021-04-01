@@ -1,0 +1,20 @@
+[
+    {
+        "tileId": "tile_1",
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/color-test/49768_112_reduced.tif",
+                "imageLoaderType": "IMAGEJ_COMPOSITE"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1  0  0  1  0  0"
+                }
+            ]
+        }
+    }
+]
