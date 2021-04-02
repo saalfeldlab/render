@@ -6,6 +6,7 @@ import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
 
+import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 
 import mpicbg.trakem2.util.Downsampler;
@@ -238,6 +239,11 @@ public class ImageProcessorCache {
         if (imageProcessor == null) {
 
             imageProcessor = imageLoader.load(urlString);
+
+            // force masks to always be ByteProcessor instances
+            if (isMask && (! (imageProcessor instanceof ByteProcessor))) {
+                imageProcessor = imageProcessor.convertToByteProcessor();
+            }
 
             // if we're going to down sample and we're supposed to cache originals, do so here
             if (cacheOriginalsForDownSampledImages && (downSampleLevels > 0)) {
