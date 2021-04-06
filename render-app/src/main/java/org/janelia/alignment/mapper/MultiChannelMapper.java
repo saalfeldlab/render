@@ -12,9 +12,7 @@ import org.slf4j.LoggerFactory;
 import static mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 /**
- * TODO: add javadoc
- *
- * @author Eric Trautman
+ * Maps source pixels from an unmasked multi-channel source to a target canvas.
  */
 public class MultiChannelMapper
         implements PixelMapper {
@@ -103,15 +101,15 @@ public class MultiChannelMapper
                     final int targetX,
                     final int targetY) {
 
-        final int roundedSourceX = (int) Math.round(sourceX);
-        final int roundedSourceY = (int) Math.round(sourceY);
+        final int roundedSourceX = (int) (sourceX + 0.5f);
+        final int roundedSourceY = (int) (sourceY + 0.5f);
 
         ImageProcessorWithMasks normalizedSource;
         ImageProcessorWithMasks target;
         for (int i = 0; i < normalizedSourceList.size(); i++) {
             normalizedSource = normalizedSourceList.get(i);
             target = targetList.get(i);
-            target.ip.setf(targetX, targetY, normalizedSource.ip.getf(roundedSourceX, roundedSourceY));
+            target.ip.set(targetX, targetY, normalizedSource.ip.get(roundedSourceX, roundedSourceY));
         }
     }
 
@@ -126,7 +124,7 @@ public class MultiChannelMapper
         for (int i = 0; i < normalizedSourceList.size(); i++) {
             normalizedSource = normalizedSourceList.get(i);
             target = targetList.get(i);
-            target.ip.setf(targetX, targetY, (float) normalizedSource.ip.getInterpolatedPixel(sourceX, sourceY));
+            target.ip.set(targetX, targetY, normalizedSource.ip.getPixelInterpolated(sourceX, sourceY));
         }
     }
 
