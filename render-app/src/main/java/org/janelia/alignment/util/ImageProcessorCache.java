@@ -225,7 +225,8 @@ public class ImageProcessorCache {
             throws IllegalArgumentException {
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("loadImageProcessor: entry, urlString={}, downSampleLevels={}", urlString, downSampleLevels);
+            LOG.debug("loadImageProcessor: entry, urlString={}, downSampleLevels={}, imageLoaderClass={}",
+                      urlString, downSampleLevels, imageLoader.getClass().getSimpleName());
         }
 
         ImageProcessor imageProcessor = null;
