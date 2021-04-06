@@ -28,10 +28,8 @@ public class RenderRawTileTest {
                                                                null);
 
         final ImageProcessor rawIp = ImageJDefaultLoader.INSTANCE.load(imageWithoutMask.getImageUrl());
-        final FloatProcessor floatRawIp = rawIp.convertToFloatProcessor();
-        floatRawIp.setMinAndMax(0, 255);
         final BufferedImage rawImage =
-                ArgbRenderer.targetToARGBImage(new TransformMeshMappingWithMasks.ImageProcessorWithMasks(floatRawIp,
+                ArgbRenderer.targetToARGBImage(new TransformMeshMappingWithMasks.ImageProcessorWithMasks(rawIp,
                                                                                                          null,
                                                                                                          null),
                                                false);

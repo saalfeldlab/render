@@ -20,8 +20,8 @@ public class SingleChannelWithBinaryMaskMapper
     @Override
     public void setBlendedIntensity(final int worldTargetX,
                                     final int worldTargetY,
-                                    final double sourceIntensity,
-                                    final double sourceMaskIntensity) {
+                                    final int sourceIntensity,
+                                    final int sourceMaskIntensity) {
 
         if (sourceMaskIntensity > 0.0) {
             target.ip.setf(worldTargetX, worldTargetY, (float) sourceIntensity);

@@ -25,6 +25,7 @@ import org.janelia.alignment.mapper.PixelMapper;
 import org.janelia.alignment.mapper.SingleChannelMapper;
 import org.janelia.alignment.mapper.SingleChannelWithAlphaMapper;
 import org.janelia.alignment.mapper.SingleChannelWithBinaryMaskMapper;
+import org.janelia.alignment.mapper.SingleColorChannelWithAlphaMapper;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
@@ -441,6 +442,10 @@ public class RenderedCanvasMipmapSource
                 if (hasMask) {
                     if (binaryMask) {
                         tilePixelMapper = new SingleChannelWithBinaryMaskMapper(sourceChannel,
+                                                                                targetChannel,
+                                                                                (! skipInterpolation));
+                    } else if (targetChannel.ip instanceof ColorProcessor) {
+                        tilePixelMapper = new SingleColorChannelWithAlphaMapper(sourceChannel,
                                                                                 targetChannel,
                                                                                 (! skipInterpolation));
                     } else {

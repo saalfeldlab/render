@@ -58,8 +58,8 @@ public class SingleChannelWithAlphaMapper
 
     public void setBlendedIntensity(final int targetX,
                                     final int targetY,
-                                    final double sourceIntensity,
-                                    final double sourceMaskIntensity) {
+                                    final int sourceIntensity,
+                                    final int sourceMaskIntensity) {
 
         final double sourceAlpha = sourceMaskIntensity / sourceMaxMaskIntensity;
         final double targetIntensity = target.ip.getf(targetX, targetY);
