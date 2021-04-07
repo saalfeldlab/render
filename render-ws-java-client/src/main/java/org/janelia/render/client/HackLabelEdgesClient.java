@@ -259,7 +259,7 @@ public class HackLabelEdgesClient {
             imageFile = new File(parameters.rootDirectory, imageName);
         }
 
-        BoxMipmapGenerator.saveImage(targetImage, imageFile, true, parameters.format);
+        BoxMipmapGenerator.saveImage(targetImage, imageFile, parameters.format, true);
 
         if (priorNonEmptyLabelColors != null) {
             final Set<Integer> hackedNonEmptyLabelColors =

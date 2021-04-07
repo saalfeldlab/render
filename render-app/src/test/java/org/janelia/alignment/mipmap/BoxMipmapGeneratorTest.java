@@ -1,19 +1,3 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment.mipmap;
 
 import java.awt.Color;
@@ -28,9 +12,9 @@ import java.util.List;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.junit.After;
 import org.junit.Assert;
@@ -96,6 +80,7 @@ public class BoxMipmapGeneratorTest {
         BoxMipmapGenerator boxMipmapGenerator = new BoxMipmapGenerator(z,
                                                                        false,
                                                                        Utils.PNG_FORMAT,
+                                                                       true,
                                                                        boxWidth,
                                                                        boxHeight,
                                                                        boxDirectory,
@@ -183,8 +168,8 @@ public class BoxMipmapGeneratorTest {
 
         BoxMipmapGenerator.saveImage(argbLabelImage,
                                      outputFile,
-                                     true,
-                                     Utils.PNG_FORMAT);
+                                     Utils.PNG_FORMAT,
+                                     false);
 
         Assert.assertTrue("missing label image " + outputFile.getAbsolutePath(), outputFile.exists());
 

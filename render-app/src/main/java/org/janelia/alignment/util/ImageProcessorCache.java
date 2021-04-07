@@ -351,11 +351,13 @@ public class ImageProcessorCache {
                                   final LoaderType loaderType,
                                   final Integer imageSliceNumber) {
 
+            final ImageLoader imageLoader =  ImageLoader.build(loaderType, imageSliceNumber);
+
             if (LOG.isDebugEnabled()) {
-                LOG.debug("uncachedGet: entry, urlString={}, downSampleLevels={}", url, downSampleLevels);
+                LOG.debug("uncachedGet: entry, urlString={}, downSampleLevels={}, imageLoaderClass={}",
+                          url, downSampleLevels, imageLoader.getClass().getSimpleName());
             }
 
-            final ImageLoader imageLoader =  ImageLoader.build(loaderType, imageSliceNumber);
             ImageProcessor imageProcessor = imageLoader.load(url);
 
             // down sample the image as needed
