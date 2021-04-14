@@ -6,8 +6,11 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 import mpicbg.trakem2.transform.TranslationModel2D;
@@ -16,10 +19,13 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
@@ -104,6 +110,10 @@ public class TransformSectionClient {
                 description = "See fromTileId parameter description")
         public String toTileId;
 
+        // if specified, only transform tiles within these bounds
+        @ParametersDelegate
+        public LayerBoundsParameters layerBounds = new LayerBoundsParameters();
+
         @Parameter(
                 names = "--completeTargetStack",
                 description = "Complete the target stack after transforming all layers",
@@ -130,6 +140,7 @@ public class TransformSectionClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
+                parameters.layerBounds.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -246,6 +257,10 @@ public class TransformSectionClient {
 
         final ResolvedTileSpecCollection tiles = sourceRenderDataClient.getResolvedTiles(parameters.stack, z);
 
+        if (parameters.layerBounds.isDefined()) {
+            removeTilesOutsideBox(tiles);
+        }
+
         final LeafTransformSpec layerTransform;
         if (parameters.layerMinimumXAndYBound != null) {
 
@@ -281,12 +296,39 @@ public class TransformSectionClient {
         }
         final int numberOfRemovedTiles = totalNumberOfTiles - tiles.getTileCount();
 
-        LOG.info("transformTilesForZ: added transform and derived bounding boxes for {} tiles with z of {}, removed {} bad tiles",
-                 totalNumberOfTiles, z, numberOfRemovedTiles);
+        if (tiles.getTileCount() > 0) {
+            LOG.info("transformTilesForZ: added transform and derived bounding boxes for {} tiles with z of {}, removed {} bad tiles",
+                     totalNumberOfTiles, z, numberOfRemovedTiles);
 
-        targetRenderDataClient.saveResolvedTiles(tiles, parameters.getTargetStack(), z);
+            targetRenderDataClient.saveResolvedTiles(tiles, parameters.getTargetStack(), z);
+        } else {
+            LOG.info("transformTilesForZ: no tiles left for z {}, skipping save", z);
+        }
 
         LOG.info("transformTilesForZ: exit, saved tiles and transforms for {}", z);
+    }
+
+    private void removeTilesOutsideBox(final ResolvedTileSpecCollection tiles) {
+
+        final List<TileBounds> tileBoundsList =
+                tiles.getTileSpecs().stream().map(TileSpec::toTileBounds).collect(Collectors.toList());
+        final TileBoundsRTree tree = new TileBoundsRTree(null, tileBoundsList);
+
+        final Set<String> tileIdsToKeep = new HashSet<>(tileBoundsList.size());
+
+        tileIdsToKeep.addAll(
+                tree.findTilesInBox(parameters.layerBounds.minX,
+                                    parameters.layerBounds.minY,
+                                    parameters.layerBounds.maxX,
+                                    parameters.layerBounds.maxY).stream().map(
+                        TileBounds::getTileId).collect(Collectors.toList()));
+
+        if (tileBoundsList.size() > tileIdsToKeep.size()) {
+            tiles.removeDifferentTileSpecs(tileIdsToKeep);
+            LOG.info("removeTilesOutsideBox: removed {} tiles outside of bounding box",
+                     (tileBoundsList.size() - tileIdsToKeep.size()));
+
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TransformSectionClient.class);

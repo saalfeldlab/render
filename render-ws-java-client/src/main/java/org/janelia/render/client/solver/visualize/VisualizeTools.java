@@ -24,6 +24,7 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.io.FileSaver;
 import ij.measure.Calibration;
+import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import mpicbg.models.AffineModel2D;
@@ -641,15 +642,17 @@ public class VisualizeTools
 
 	protected static ImageProcessor getFullResMask( final MinimalTileSpec tileSpec )
 	{
+	    ImageProcessor maskProcessor = null;
 		final String fileNameMask = tileSpec.getMaskFileName();
-
-		if ( new File( fileNameMask ).exists() )
-			return new ImagePlus( fileNameMask ).getProcessor();
-		else
-		{
-			System.out.println( "WARNING: File path '" + new File( fileNameMask ).getAbsolutePath() + "' does not exist. Shares mounted?" );
-			return null;
+		if (fileNameMask != null) {
+			final File maskFile = new File(fileNameMask);
+			if (maskFile.exists()) {
+				maskProcessor = new ImagePlus(fileNameMask).getProcessor();
+			} else {
+				LOG.warn("File path '" + maskFile.getAbsolutePath() + "' does not exist. Shares mounted?");
+			}
 		}
+		return maskProcessor;
 	}
 
 	protected static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale )
@@ -690,7 +693,17 @@ public class VisualizeTools
 			ImageProcessor maskIP = getFullResMask( tileSpec );
 
 			imageFP = (FloatProcessor)imageFP.resize( (int)Math.round( imageFP.getWidth() * scale ), (int)Math.round( imageFP.getHeight() * scale ), true );
-			maskIP = maskIP.resize( (int)Math.round( maskIP.getWidth() * scale ), (int)Math.round( maskIP.getHeight() * scale ), true );
+
+			if ( maskIP == null )
+			{
+				// if there is no mask, add a fake one with all pixels being 255
+				maskIP = new ByteProcessor( imageFP.getWidth(), imageFP.getHeight() );
+				maskIP.invert();
+			}
+			else
+			{
+				maskIP = maskIP.resize( (int)Math.round( maskIP.getWidth() * scale ), (int)Math.round( maskIP.getHeight() * scale ), true );
+			}
 
 			// hack to get a not transformed image:
 			imp = new ImageProcessorWithMasks( imageFP, maskIP, null );

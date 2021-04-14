@@ -2,6 +2,7 @@ package org.janelia.render.client.solver;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.TileSpec;
 
 public class MinimalTileSpec implements Serializable
@@ -20,8 +21,9 @@ public class MinimalTileSpec implements Serializable
 
 	public MinimalTileSpec( final TileSpec tileSpec )
 	{
-		this.fileName = tileSpec.getFirstMipmapEntry().getValue().getImageFilePath();
-		this.fileNameMask = tileSpec.getFirstMipmapEntry().getValue().getMaskFilePath();
+		final ImageAndMask imageAndMask = tileSpec.getFirstMipmapEntry().getValue();
+		this.fileName = imageAndMask.getImageFilePath();
+		this.fileNameMask = imageAndMask.hasMask() ? imageAndMask.getMaskFilePath() : null;
 
 		this.tileId = tileSpec.getTileId();
 
@@ -45,3 +47,4 @@ public class MinimalTileSpec implements Serializable
 	public int getImageCol() { return col; }
 	public boolean isRestart() { return isRestart; }
 }
+
