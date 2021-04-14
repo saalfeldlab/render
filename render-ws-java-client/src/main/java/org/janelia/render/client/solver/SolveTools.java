@@ -49,8 +49,10 @@ import net.imglib2.RandomAccess;
 import net.imglib2.algorithm.gauss3.Gauss3;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.util.Pair;
+import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
 
@@ -1000,11 +1002,40 @@ public class SolveTools
 		LOG.info( "saveTargetStackTiles: exit" );
 	}
 
-	private static LeafTransformSpec getTransformSpec( final AffineModel2D forModel )
+	public static LeafTransformSpec getTransformSpec( final AffineModel2D forModel )
 	{
 		final double[] m = new double[ 6 ];
 		forModel.toArray( m );
+
+		/*
+		data[ 0 ] = m00;
+		data[ 1 ] = m10;
+		data[ 2 ] = m01;
+		data[ 3 ] = m11;
+		data[ 4 ] = m02;
+		data[ 5 ] = m12;
+		*/
+		
 		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 1 ] + ' ' + m[ 2 ] + ' ' + m[ 3 ] + ' ' + m[ 4 ] + ' ' + m[ 5 ];
+		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
+	}
+
+	public static LeafTransformSpec getTransformSpec( final AffineTransform2D forModel )
+	{
+		final double[] m = new double[ 8 ]; //TODO:???? - array indices 0,1,3,4,6,7 are being set
+		forModel.toArray( m );
+
+		/*
+		data[ 0 ] = a.m00;
+		data[ 1 ] = a.m01;
+		data[ 3 ] = a.m02;
+		data[ 4 ] = a.m10;
+		data[ 6 ] = a.m11;
+		data[ 7 ] = a.m12;
+		*/
+
+		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 4 ] + ' ' + m[ 1 ] + ' ' + m[ 6 ] + ' ' + m[ 3 ] + ' ' + m[ 7 ];
+		System.out.println( data );
 		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
 	}
 
