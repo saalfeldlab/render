@@ -1025,6 +1025,9 @@ public class SolveTools
 		final double[] m = new double[ 8 ]; //TODO:???? - array indices 0,1,3,4,6,7 are being set
 		forModel.toArray( m );
 
+		// TODO: fix when bug in imglib2-realtransform is released
+		// https://github.com/imglib/imglib2-realtransform/commit/28986382280012a338cfed879956fbf6ac1f0f2e
+
 		/*
 		data[ 0 ] = a.m00;
 		data[ 1 ] = a.m01;
