@@ -76,10 +76,9 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
 
-			// <=1272 no "stitch first"
-			if ( setMinZ <= 1272 )
+			if ( setMinZ < 2700 || setMaxZ > 34100 )
 			{
-				minStitchingInliers = 300000;
+				minStitchingInliers = 1000;
 			}
 
 			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
@@ -135,10 +134,9 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
 
-			// <=1272 no "stitch first"
-			if ( setMinZ <= 1272 )
+			if ( setMinZ < 2700 || setMaxZ > 34100 )
 			{
-				minStitchingInliers = 300000;
+				minStitchingInliers = 1000;
 			}
 
 			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
