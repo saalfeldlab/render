@@ -8,6 +8,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.measure.Calibration;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.Interval;
 import net.imglib2.util.Util;
@@ -19,7 +20,7 @@ public class VisualizeIJ
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "Z0720_07m_BR"; //"flyem";
-		String project = "Sec37"; //"Z0419_25_Alpha3";
+		String project = "Sec36"; //"Z0419_25_Alpha3";
 		String stack = "v1_acquire_trimmed_sp1"; //"v1_acquire_sp_nodyn_v2";
 
 		StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
@@ -44,11 +45,15 @@ public class VisualizeIJ
 		int h = (int)interval.dimension( 1 );
 		int x = (int)interval.min( 0 );
 		int y = (int)interval.min( 1 );
-		double scale = 1.0 / ds[ 2 ];
+		double scale = 1.0 / 7.5;
+		System.out.println( scale );
 
 		ImageStack imagestack = null ;
 
-		for ( int z = 28911-5; z <= 28911+5; ++z )
+		final int from = 25425-5;
+		final int to= 25425+5;
+
+		for ( int z = from; z <= to; ++z )
 		{
 			System.out.println( z + " ... " );
 			ImageProcessorWithMasks img1 = RenderTools.renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, filter );
@@ -59,6 +64,16 @@ public class VisualizeIJ
 
 		new ImageJ();
 		final ImagePlus imp1 = new ImagePlus( project + "-" + stack , imagestack );
+
+		Calibration cal = new Calibration();
+		cal.xOrigin = -(int)interval.min(0);
+		cal.yOrigin = -(int)interval.min(1);
+		cal.zOrigin = -from;
+		cal.pixelWidth = 1.0/scale;
+		cal.pixelHeight = 1.0/scale;
+		cal.pixelDepth = 1.0;
+		imp1.setCalibration( cal );
+
 		imp1.show();
 
 	}
