@@ -178,9 +178,6 @@ public class DistributedSolveMultiThread extends DistributedSolve
         				parameters.blockMaxAllowedError,
         				parameters.dynamicLambdaFactor );
 
-                for ( int i = 15360; i <= 15781; ++i )
-                	solveSetFactory.additionalIssues.put( i, "needsRigid" );
-
                 final DistributedSolve solve =
                 		new DistributedSolveMultiThread(
                 				solveSetFactory,
