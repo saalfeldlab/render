@@ -85,9 +85,20 @@ public class Untwist
 				LinAlgHelpers.normalize( vector );
 
 				if ( pairA.getA().intValue() == 6470 )
+				{
 					System.out.println( "nv: " + Util.printCoordinates( vector ) );
+					System.out.println( "dot: " + LinAlgHelpers.dot( vector, rotationAxis ) );
+				}
 
-				angle[ i ] = Math.acos( LinAlgHelpers.dot( vector, rotationAxis ) );
+				angle[ i ] = Math.acos( LinAlgHelpers.dot( vector, rotationAxis ) ) * Math.signum( vector[ 1 ] );
+
+				if ( pairA.getA().intValue() == 6470 )
+					System.out.println( "angle: " + angle[ i ] + " " + Math.toDegrees( angle[ i ] ) );
+
+				if ( Math.toDegrees( angle[ i ] ) > 90 )
+					angle[ i ] = Math.toRadians( Math.toDegrees( angle[ i ] ) - 180 );
+				else if ( Math.toDegrees( angle[ i ] ) < -90 )
+					angle[ i ] = Math.toRadians( Math.toDegrees( angle[ i ] ) + 180);
 
 				if ( pairA.getA().intValue() == 6470 )
 					System.out.println( "angle: " + angle[ i ] + " " + Math.toDegrees( angle[ i ] ) );
@@ -216,6 +227,39 @@ public class Untwist
 				untwisting, caches );
 		bdv.setDisplayRange( 0, 256 );
 
+		InteractiveSegmentedLine lineA = new InteractiveSegmentedLine( bdv, pointsA );
+		pointsA = lineA.getResult();
+
+		if ( pointsA != null && pointsA.size() > 0 )
+		{
+			for ( final double[] p : pointsA )
+				System.out.println( Util.printCoordinates( p ) );
+
+			new VisualizeSegmentedLine( bdv, pointsA, Color.yellow, Color.yellow.darker(), null ).install();
+		}
+		else
+		{
+			System.out.println( "No points defined. stopping.");
+			return;
+		}
+
+		InteractiveSegmentedLine lineB = new InteractiveSegmentedLine( bdv, pointsB );
+		pointsB = lineB.getResult();
+
+		if ( pointsB != null && pointsB.size() > 0 )
+		{
+			for ( final double[] p : pointsB )
+				System.out.println( Util.printCoordinates( p ) );
+
+			new VisualizeSegmentedLine( bdv, pointsB, Color.yellow, Color.yellow.darker(), null ).install();
+		}
+		else
+		{
+			System.out.println( "No points defined. stopping.");
+			return;
+		}
+
+		/*
 		if ( pointsA != null && pointsB != null && pointsA.size() > 0 && pointsB.size() > 0 )
 		{
 			for ( final double[] p : pointsA )
@@ -228,16 +272,15 @@ public class Untwist
 
 			new VisualizeSegmentedLine( bdv, pointsA, Color.yellow, Color.yellow.darker(), null ).install();
 			new VisualizeSegmentedLine( bdv, pointsB, Color.yellow, Color.yellow.darker(), null ).install();
-		}
+		}*/
+
+		System.out.println( "updating...");
 
 		final ArrayList<Pair<Integer, double[]>> positionsA =
 				Unbend.positionPerZSlice(pointsA, interval.min( 2 ), interval.max( 2 ) );
 
 		final ArrayList<Pair<Integer, double[]>> positionsB =
 				Unbend.positionPerZSlice(pointsB, interval.min( 2 ), interval.max( 2 ) );
-
-		SimpleMultiThreading.threadWait( 5000 );
-		System.out.println( "updating...");
 
 		untwisting.setRotation( positionsB, positionsA );
 
