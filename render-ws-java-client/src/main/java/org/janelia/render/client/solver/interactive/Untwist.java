@@ -67,6 +67,8 @@ public class Untwist
 				vector[ 0 ] = (x1 - x0);
 				vector[ 1 ] = (y1 - y0);
 
+				if ( pairA.getA().intValue() == 6470 )
+					System.out.println( x0 + "," + y0 + " -> " + x1 + "," + y1 + " - v" + Util.printCoordinates( vector ) );
 				// point of rotation and translation center
 				xc[ i ] = vector[ 0 ]/2.0 + x0;
 				yc[ i ] = vector[ 1 ]/2.0 + y0;
@@ -74,11 +76,21 @@ public class Untwist
 				x.add( xc[ i ] );
 				y.add( yc[ i ] );
 
+				if ( pairA.getA().intValue() == 6470 )
+					System.out.println( "c: " + xc[ i ] + "," + yc[ i ] );
+				
 				//l[ i ] = Math.sqrt( vector[ 0 ]*vector[ 0 ] + vector[ 1 ]*vector[ 1 ] );
 
 				// e.g. (1,1) -> (1,0) = 45 degrees
 				LinAlgHelpers.normalize( vector );
+
+				if ( pairA.getA().intValue() == 6470 )
+					System.out.println( "nv: " + Util.printCoordinates( vector ) );
+
 				angle[ i ] = Math.acos( LinAlgHelpers.dot( vector, rotationAxis ) );
+
+				if ( pairA.getA().intValue() == 6470 )
+					System.out.println( "angle: " + angle[ i ] + " " + Math.toDegrees( angle[ i ] ) );
 			}
 
 			final double avgX = x.getSum() / (double)positionA.size();
@@ -98,6 +110,27 @@ public class Untwist
 				t.translate( avgX, avgY );
 
 				transforms.put( positionA.get( i ).getA(), t );
+
+				if ( positionA.get( i ).getA().intValue() == 6470 )
+				{
+					double[] p0 = positionA.get( i ).getB().clone();
+					double[] p1 = positionB.get( i ).getB().clone();
+					double[] pc = new double[] { xc[i], yc[i]};
+
+					System.out.println( "p0: " + Util.printCoordinates( p0 ) );
+					System.out.println( "p1: " + Util.printCoordinates( p1 ) );
+					System.out.println( "pc: " + Util.printCoordinates( pc ) );
+
+					t.apply( p0, p0 );
+					t.apply( p1, p1 );
+					t.apply( pc, pc );
+
+					System.out.println( "t(p0): " + Util.printCoordinates( p0 ) );
+					System.out.println( "t(p1): " + Util.printCoordinates( p1 ) );
+					System.out.println( "t(pc): " + Util.printCoordinates( pc ) );
+
+					//System.exit( 0 );
+				}
 			}
 		}
 
@@ -108,6 +141,20 @@ public class Untwist
 				return identity;
 			else
 				return transforms.get( z );
+		}
+	}
+
+	protected static void updatePoints( List< double[] > points, HashMap< Integer, AffineTransform2D > transforms, final int minZ, final int maxZ )
+	{
+		// spline goes through the points
+		for ( final double p[] : points )
+		{
+			int z = (int)Math.round( p[ 2 ] );
+
+			z = Math.min(z, maxZ);
+			z = Math.max(z, minZ);
+
+			transforms.get( z ).apply( p, p );
 		}
 	}
 
@@ -192,9 +239,11 @@ public class Untwist
 		SimpleMultiThreading.threadWait( 5000 );
 		System.out.println( "updating...");
 
-		untwisting.setRotation( positionsA, positionsB );
+		untwisting.setRotation( positionsB, positionsA );
 
 		caches.forEach( c -> c.invalidateAll() );
+		updatePoints( pointsA, untwisting.transforms, (int)interval.min( 2 ), (int)interval.max( 2 ) );
+		updatePoints( pointsB, untwisting.transforms, (int)interval.min( 2 ), (int)interval.max( 2 ) );
 		bdv.getBdvHandle().getViewerPanel().requestRepaint();
 	}
 }
