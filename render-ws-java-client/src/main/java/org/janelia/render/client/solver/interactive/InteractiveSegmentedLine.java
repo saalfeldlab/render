@@ -205,6 +205,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 			}
 
 			uninstall();
+			bdv.getBdvHandle().getViewerPanel().requestRepaint();
 		}
 
 		return points;
