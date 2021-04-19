@@ -114,10 +114,10 @@ public class DistributedSolveMultiThread extends DistributedSolve
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                            "--project", "Sec32", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                            "--matchCollection", "Sec32_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-                            "--stack", "v3_acquire_trimmed", //"v3_acquire",
-                            "--targetStack", "v3_acquire_trimmed_sp1_adaptive",
+                            "--project", "Sec33", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "Sec33_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", "v1_acquire_trimmed", //"v3_acquire",
+                            "--targetStack", "v1_acquire_trimmed_sp1_adaptive_2",
                             "--completeTargetStack",
                             
                             //"--noreg","400, 23434, 23-254",
@@ -132,7 +132,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
                             //"--noStitching", // do not stitch first
                             
                             "--minZ", "1",
-                            "--maxZ", "42329", //"9505", //"6480",//"34022",
+                            "--maxZ", "44598", //"9505", //"6480",//"34022",
 
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
@@ -163,10 +163,8 @@ public class DistributedSolveMultiThread extends DistributedSolve
                 //DistributedSolve.visMinZ = 1223;
                 //DistributedSolve.visMaxZ = 1285;
                 
-                final SolveSetFactoryBRSec32 solveSetFactory =
-        		//new SolveSetFactorySimple(
-                new SolveSetFactoryBRSec32(
-                //new SolveSetFactoryAso(
+                final SolveSetFactoryAdaptiveRigid solveSetFactory =
+                new SolveSetFactoryAdaptiveRigid(
         				parameters.globalModel(),
         				parameters.blockModel(),
         				parameters.stitchingModel(),
@@ -178,7 +176,10 @@ public class DistributedSolveMultiThread extends DistributedSolve
         				parameters.blockMaxAllowedError,
         				parameters.dynamicLambdaFactor );
 
-                for ( int i = 13914; i <= 18229; ++i )
+                for ( int i = 11176; i <= 11585; ++i )
+                	solveSetFactory.additionalIssues.put( i, "problem" );
+
+                for ( int i = 12578; i <= 13364; ++i )
                 	solveSetFactory.additionalIssues.put( i, "problem" );
 
                 final DistributedSolve solve =
