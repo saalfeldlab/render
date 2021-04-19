@@ -1,13 +1,31 @@
 package org.janelia.render.client.solver;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.InterpolatedAffineModel2D;
 
 public class SolveSetFactoryAso extends SolveSetFactory
 {
+	public HashMap<Integer, String> additionalIssues = new HashMap<>();
+
+	/**
+	 * @param defaultGlobalSolveModel - the default model for the final global solve (here always used)
+	 * @param defaultBlockSolveModel - the default model (if layer contains no 'restart' or 'problem' tag), otherwise using less stringent model
+	 * @param defaultStitchingModel - the default model when stitching per z slice (here always used)
+	 * @param defaultBlockOptimizerLambdasRigid - the default rigid/affine lambdas for a block (from parameters)
+	 * @param defaultBlockOptimizerLambdasTranslation - the default translation lambdas for a block (from parameters)
+	 * @param defaultBlockOptimizerIterations - the default iterations (from parameters)
+	 * @param defaultBlockMaxPlateauWidth - the default plateau with (from parameters)
+	 * @param defaultMinStitchingInliers - how many inliers per tile pair are necessary for "stitching first"
+	 * @param defaultBlockMaxAllowedError - the default max error for global opt (from parameters)
+	 * @param defaultDynamicLambdaFactor - the default dynamic lambda factor
+	 */
 	public SolveSetFactoryAso(
 			final Affine2D<?> defaultGlobalSolveModel,
 			final Affine2D<?> defaultBlockSolveModel,
@@ -47,16 +65,39 @@ public class SolveSetFactoryAso extends SolveSetFactory
 
 		for ( int i = 0; i < numSetsLeft; ++i )
 		{
-			final List<Double> defaultBlockOptimizerLambdasTranslation;
-			if ( minZ + i * setSize > 4636 )
+			final int setMinZ = minZ + i * setSize;
+			final int setMaxZ = Math.min( minZ + (i + 1) * setSize - 1, maxZ );
+
+			boolean rigidPreAlign = false;
+			Affine2D< ? > stitchingModel = defaultStitchingModel;
+			int minStitchingInliers = defaultMinStitchingInliers;
+			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
+			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
+			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
+			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
+
+			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
 			{
-				 defaultBlockOptimizerLambdasTranslation = new ArrayList<Double>();
-				 for ( final double lambda : this.defaultBlockOptimizerLambdasTranslation )
-					 defaultBlockOptimizerLambdasTranslation.add( Math.max( lambda, 0.1 ) );
+				// rigid alignment
+				rigidPreAlign = true;
+
+				// allow rigid stitching
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+	
+				// only rigid/affine solve
+				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
+				blockOptimizerLambdasTranslation = Stream.of( 0.0,0.0,0.0,0.0 ).collect(Collectors.toList());
+				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
+				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
+
+				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
 			}
-			else
+			else if ( minZ + i * setSize > 4636 )
 			{
-				defaultBlockOptimizerLambdasTranslation = this.defaultBlockOptimizerLambdasTranslation;
+				blockOptimizerLambdasTranslation = new ArrayList<Double>();
+				for ( final double lambda : this.defaultBlockOptimizerLambdasTranslation )
+					blockOptimizerLambdasTranslation.add( Math.max( lambda, 0.1 ) );
 			}
 
 			leftSets.add(
@@ -64,17 +105,17 @@ public class SolveSetFactoryAso extends SolveSetFactory
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							this.defaultStitchingModel,
-							this.defaultBlockOptimizerLambdasRigid,
-							defaultBlockOptimizerLambdasTranslation,
-							this.defaultBlockOptimizerIterations,
-							this.defaultBlockMaxPlateauWidth,
-							this.defaultMinStitchingInliers,
+							stitchingModel,
+							blockOptimizerLambdasRigid,
+							blockOptimizerLambdasTranslation,
+							blockOptimizerIterations,
+							blockMaxPlateauWidth,
+							minStitchingInliers,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
-							false,
-							minZ + i * setSize,
-							Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
+							rigidPreAlign,
+							setMinZ,
+							setMaxZ ) );
 			++id;
 		}
 
@@ -83,16 +124,39 @@ public class SolveSetFactoryAso extends SolveSetFactory
 			final SolveItemData< ?, ?, ? > set0 = leftSets.get( i );
 			final SolveItemData< ?, ?, ? > set1 = leftSets.get( i + 1 );
 
-			final List<Double> defaultBlockOptimizerLambdasTranslation;
-			if ( ( set0.minZ() + set0.maxZ() ) / 2 > 4636 )
+			final int setMinZ = ( set0.minZ() + set0.maxZ() ) / 2;
+			final int setMaxZ = ( set1.minZ() + set1.maxZ() ) / 2 - 1;
+
+			boolean rigidPreAlign = false;
+			Affine2D< ? > stitchingModel = defaultStitchingModel;
+			int minStitchingInliers = defaultMinStitchingInliers;
+			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
+			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
+			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
+			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
+
+			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
 			{
-				 defaultBlockOptimizerLambdasTranslation = new ArrayList<Double>();
-				 for ( final double lambda : this.defaultBlockOptimizerLambdasTranslation )
-					 defaultBlockOptimizerLambdasTranslation.add( Math.max( lambda, 0.1 ) );
+				// rigid alignment
+				rigidPreAlign = true;
+
+				// allow rigid stitching
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+	
+				// only rigid/affine solve
+				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
+				blockOptimizerLambdasTranslation = Stream.of( 0.0,0.0,0.0,0.0 ).collect(Collectors.toList());
+				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
+				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
+
+				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
 			}
-			else
+			else if ( ( set0.minZ() + set0.maxZ() ) / 2 > 4636 )
 			{
-				defaultBlockOptimizerLambdasTranslation = this.defaultBlockOptimizerLambdasTranslation;
+				blockOptimizerLambdasTranslation = new ArrayList<Double>();
+				for ( final double lambda : this.defaultBlockOptimizerLambdasTranslation )
+					blockOptimizerLambdasTranslation.add( Math.max( lambda, 0.1 ) );
 			}
 
 			rightSets.add(
@@ -100,20 +164,33 @@ public class SolveSetFactoryAso extends SolveSetFactory
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							this.defaultStitchingModel,
-							this.defaultBlockOptimizerLambdasRigid,
-							defaultBlockOptimizerLambdasTranslation,
-							this.defaultBlockOptimizerIterations,
-							this.defaultBlockMaxPlateauWidth,
-							this.defaultMinStitchingInliers,
+							stitchingModel,
+							blockOptimizerLambdasRigid,
+							blockOptimizerLambdasTranslation,
+							blockOptimizerIterations,
+							blockMaxPlateauWidth,
+							minStitchingInliers,
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
-							false,
-							( set0.minZ() + set0.maxZ() ) / 2,
-							( set1.minZ() + set1.maxZ() ) / 2 - 1 ) );
+							rigidPreAlign,
+							setMinZ,
+							setMaxZ ) );
 			++id;
 		}
 
 		return new SolveSet( leftSets, rightSets );
+	}
+
+	protected static boolean containsIssue(
+			final int min,
+			final int max,
+			final Map<Integer, String> zToGroupIdMap,
+			final Map<Integer, String> additionalIssues )
+	{
+		for ( int i = min; i <= max; ++i )
+			if ( zToGroupIdMap.containsKey( i ) || additionalIssues.containsKey( i ) )
+				return true;
+
+		return false;
 	}
 }
