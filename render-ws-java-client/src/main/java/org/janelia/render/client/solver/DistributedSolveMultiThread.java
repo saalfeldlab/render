@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.custom.SolveSetFactoryBRSec36;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;

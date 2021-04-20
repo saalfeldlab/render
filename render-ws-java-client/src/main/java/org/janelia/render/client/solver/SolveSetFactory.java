@@ -8,17 +8,17 @@ import mpicbg.models.Model;
 
 public abstract class SolveSetFactory
 {
-	final Affine2D< ? > defaultGlobalSolveModel;
-	final Affine2D< ? > defaultBlockSolveModel;
-	final Affine2D< ? > defaultStitchingModel;
+	protected final Affine2D< ? > defaultGlobalSolveModel;
+	protected final Affine2D< ? > defaultBlockSolveModel;
+	protected final Affine2D< ? > defaultStitchingModel;
 
-	final List<Double> defaultBlockOptimizerLambdasRigid;
-	final List<Double> defaultBlockOptimizerLambdasTranslation;
-	final List<Integer> defaultBlockOptimizerIterations;
-	final List<Integer> defaultBlockMaxPlateauWidth;
-	final int defaultMinStitchingInliers;
-	final double defaultBlockMaxAllowedError;
-	final double defaultDynamicLambdaFactor;
+	protected final List<Double> defaultBlockOptimizerLambdasRigid;
+	protected final List<Double> defaultBlockOptimizerLambdasTranslation;
+	protected final List<Integer> defaultBlockOptimizerIterations;
+	protected final List<Integer> defaultBlockMaxPlateauWidth;
+	protected final int defaultMinStitchingInliers;
+	protected final double defaultBlockMaxAllowedError;
+	protected final double defaultDynamicLambdaFactor;
 
 	/**
 	 * @param defaultGlobalSolveModel - the default model for the final global solve (here always used)

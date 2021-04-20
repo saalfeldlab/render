@@ -1,4 +1,4 @@
-package org.janelia.render.client.solver;
+package org.janelia.render.client.solver.custom;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,6 +9,10 @@ import java.util.stream.Stream;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.InterpolatedAffineModel2D;
+
+import org.janelia.render.client.solver.SolveItemData;
+import org.janelia.render.client.solver.SolveSet;
+import org.janelia.render.client.solver.SolveSetFactory;
 
 public class SolveSetFactoryBRSec32 extends SolveSetFactory
 {
@@ -52,13 +56,13 @@ public class SolveSetFactoryBRSec32 extends SolveSetFactory
 	}
 
 	@Override
-	public SolveSet defineSolveSet( final int minZ, final int maxZ, final int setSize, final Map<Integer, String> zToGroupIdMap )
+	public SolveSet defineSolveSet(final int minZ, final int maxZ, final int setSize, final Map<Integer, String> zToGroupIdMap )
 	{
 		final int modulo = ( maxZ - minZ + 1 ) % setSize;
 
 		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
 
-		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > leftSets = new ArrayList<>();
+		final List<SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >> leftSets = new ArrayList<>();
 		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rightSets = new ArrayList<>();
 
 		int id = 0;
