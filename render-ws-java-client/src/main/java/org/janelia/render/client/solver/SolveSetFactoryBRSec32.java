@@ -10,7 +10,7 @@ import java.util.stream.Stream;
 import mpicbg.models.Affine2D;
 import mpicbg.models.InterpolatedAffineModel2D;
 
-public class SolveSetFactoryAso extends SolveSetFactory
+public class SolveSetFactoryBRSec32 extends SolveSetFactory
 {
 	public HashMap<Integer, String> additionalIssues = new HashMap<>();
 
@@ -26,7 +26,7 @@ public class SolveSetFactoryAso extends SolveSetFactory
 	 * @param defaultBlockMaxAllowedError - the default max error for global opt (from parameters)
 	 * @param defaultDynamicLambdaFactor - the default dynamic lambda factor
 	 */
-	public SolveSetFactoryAso(
+	public SolveSetFactoryBRSec32(
 			final Affine2D<?> defaultGlobalSolveModel,
 			final Affine2D<?> defaultBlockSolveModel,
 			final Affine2D<?> defaultStitchingModel,
@@ -76,15 +76,26 @@ public class SolveSetFactoryAso extends SolveSetFactory
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
 
+			// stitching-first issue around 1262-1555 (later > 25 matches -- no stitch first)
+			if ( setMinZ <= 4018 )
+			{
+				// allow translation stitching obly
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
+			}
+			
 			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
 			{
 				// rigid alignment
 				rigidPreAlign = true;
 
-				// allow rigid stitching
-				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
-				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
-	
+				if ( setMinZ > 4018 )
+				{
+					// allow rigid stitching
+					stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+					((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+				}
+
 				// only rigid/affine solve
 				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
 				blockOptimizerLambdasTranslation = Stream.of( 0.0,0.0,0.0,0.0 ).collect(Collectors.toList());
@@ -92,12 +103,6 @@ public class SolveSetFactoryAso extends SolveSetFactory
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
-			}
-			else if ( minZ + i * setSize > 4636 )
-			{
-				blockOptimizerLambdasTranslation = new ArrayList<Double>();
-				for ( final double lambda : this.defaultBlockOptimizerLambdasTranslation )
-					blockOptimizerLambdasTranslation.add( Math.max( lambda, 0.1 ) );
 			}
 
 			leftSets.add(
@@ -135,15 +140,27 @@ public class SolveSetFactoryAso extends SolveSetFactory
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
 
+
+			// stitching-first issue around 1262-1555 (later > 25 matches -- no stitch first)
+			if ( setMinZ <= 4018 )
+			{
+				// allow translation stitching obly
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
+			}
+
 			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
 			{
 				// rigid alignment
 				rigidPreAlign = true;
 
-				// allow rigid stitching
-				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
-				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
-	
+				if ( setMinZ > 4018 )
+				{
+					// allow rigid stitching
+					stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+					((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+				}
+
 				// only rigid/affine solve
 				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
 				blockOptimizerLambdasTranslation = Stream.of( 0.0,0.0,0.0,0.0 ).collect(Collectors.toList());
@@ -151,12 +168,6 @@ public class SolveSetFactoryAso extends SolveSetFactory
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
-			}
-			else if ( ( set0.minZ() + set0.maxZ() ) / 2 > 4636 )
-			{
-				blockOptimizerLambdasTranslation = new ArrayList<Double>();
-				for ( final double lambda : this.defaultBlockOptimizerLambdasTranslation )
-					blockOptimizerLambdasTranslation.add( Math.max( lambda, 0.1 ) );
 			}
 
 			rightSets.add(

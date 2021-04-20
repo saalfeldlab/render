@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.function.Function;
 
@@ -27,10 +26,6 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvStackSource;
 import bdv.util.volatiles.SharedQueue;
-import bdv.util.volatiles.VolatileViews;
-import ij.ImageJ;
-import ij.ImagePlus;
-import ij.ImageStack;
 import mpicbg.models.AffineModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.FinalInterval;
@@ -40,8 +35,6 @@ import net.imglib2.cache.Invalidate;
 import net.imglib2.cache.img.CachedCellImg;
 import net.imglib2.cache.volatiles.VolatileCache;
 import net.imglib2.img.basictypeaccess.AccessFlags;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.real.FloatType;
@@ -356,7 +349,7 @@ public class RenderTools
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "cosem"; //"flyem";
 		String project = "aic_desmosome_2"; //"Z0419_25_Alpha3";
-		String stack = "v1_acquire_align_adaptive_2_straight2";
+		String stack = "v1_acquire_align_adaptive_2_untwisted";
 
 		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
 		
