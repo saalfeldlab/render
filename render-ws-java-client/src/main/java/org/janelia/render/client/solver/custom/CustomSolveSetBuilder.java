@@ -6,6 +6,9 @@ import java.util.List;
 import mpicbg.models.Affine2D;
 
 import org.janelia.render.client.solver.SolveSetFactory;
+import org.janelia.render.client.zspacing.ZPositionCorrectionClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Uses reflection to build a {@link SolveSetFactory} instance.
@@ -34,7 +37,7 @@ public class CustomSolveSetBuilder {
         }
 
         final SolveSetFactory instance;
-        if (clazz.isInstance(SolveSetFactory.class)) {
+        if (SolveSetFactory.class.isAssignableFrom(clazz)) {
             final Constructor<?>[] ctors = clazz.getDeclaredConstructors();
             try {
                 instance = (SolveSetFactory) ctors[0].newInstance(defaultGlobalSolveModel,
@@ -55,6 +58,10 @@ public class CustomSolveSetBuilder {
             throw new IllegalArgumentException(solveSetFactoryClassName + " must extend " + SolveSetFactory.class);
         }
 
+        LOG.info("build: loaded instance of {}", instance.getClass());
+
         return instance;
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(CustomSolveSetBuilder.class);
 }
