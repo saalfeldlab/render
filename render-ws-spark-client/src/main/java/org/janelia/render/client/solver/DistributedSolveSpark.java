@@ -119,7 +119,7 @@ public class DistributedSolveSpark extends DistributedSolve
 
                 final SolveSetFactory solveSetFactory =
         		//new SolveSetFactorySimple(
-                new SolveSetFactoryBRSec34(
+                new SolveSetFactoryBRSec36(
         				parameters.globalModel(),
         				parameters.blockModel(),
         				parameters.stitchingModel(),
