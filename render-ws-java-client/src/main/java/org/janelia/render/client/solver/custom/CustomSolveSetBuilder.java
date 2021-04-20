@@ -6,7 +6,6 @@ import java.util.List;
 import mpicbg.models.Affine2D;
 
 import org.janelia.render.client.solver.SolveSetFactory;
-import org.janelia.render.client.zspacing.ZPositionCorrectionClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
