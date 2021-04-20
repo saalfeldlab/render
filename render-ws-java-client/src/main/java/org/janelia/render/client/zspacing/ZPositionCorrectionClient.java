@@ -455,42 +455,70 @@ public class ZPositionCorrectionClient {
     private double[] normalizeTransforms(final double[] transforms) {
         // look for corrections that have been stretched or squished at the ends of the stack
 
+        // compute the median of all deltas
         final double[] sortedDeltas = new double[transforms.length - 1];
         for (int i = 1; i < transforms.length; i++) {
             sortedDeltas[i-1] = transforms[i] - transforms[i - 1];
         }
         Arrays.sort(sortedDeltas);
-        final double closeEnoughMedian = sortedDeltas[sortedDeltas.length / 2];
+        final double closeEnoughMedian = sortedDeltas[sortedDeltas.length / 2]; // I assume this is very close to 1.0
 
-        final double problemMargin = closeEnoughMedian / 2.0;
+        final double problemMargin = closeEnoughMedian / 5; // so this is roughly 0.8-1.2
         final double minDelta = closeEnoughMedian - problemMargin;
         final double maxDelta = closeEnoughMedian + problemMargin;
 
         final double[] normalizedTransforms = new double[transforms.length];
         normalizedTransforms[0] = transforms[0];
 
-        int lastStartIndex = inferenceOptions.comparisonRange;
-        final int firstEndIndex = transforms.length - inferenceOptions.comparisonRange;
+        final int lastStartIndex = inferenceOptions.comparisonRange * 3; //let's use 3*10= 30
+        final int firstEndIndex = transforms.length - inferenceOptions.comparisonRange * 3; //let's use 3*10= 30
 
         for (int i = 1; i < transforms.length; i++) {
             double delta = transforms[i] - transforms[i - 1];
             if (i < lastStartIndex) {
                 if ((delta < minDelta) || (delta > maxDelta)) {
                     LOG.info("normalizeTransforms: reset transform[{}] delta from {} to {}}",
-                             i, delta, closeEnoughMedian);
-                    delta = closeEnoughMedian;
-                } else {
-                    lastStartIndex = i; // stop looking for start problems once we've found a delta close to median
+                             i, delta, 1.0);
+                    delta = 1.0;
                 }
             } else if (i > firstEndIndex) {
                 if ((delta < minDelta) || (delta > maxDelta)) {
                     LOG.info("normalizeTransforms: reset transform[{}] delta from {} to {}}",
-                             i, delta, closeEnoughMedian);
-                    delta = closeEnoughMedian;
+                             i, delta, 1.0);
+                    delta = 1.0;
                 }
             }
-            normalizedTransforms[i] = normalizedTransforms[i-1] + delta;
+            normalizedTransforms[i] = normalizedTransforms[i-1] + delta; // do we have to worry about accuracy? No.
         }
+
+        // it kind of always is
+        // scale back to the same global range
+        if ( normalizedTransforms[ normalizedTransforms.length - 1 ] != transforms[ transforms.length - 1 ] )
+        {
+        	final double min = transforms[ 0 ];
+        	final double max = transforms[ transforms.length - 1 ];
+        	final double minN = normalizedTransforms[ 0 ];
+        	final double maxN = normalizedTransforms[ normalizedTransforms.length - 1 ];
+
+        	// e.g. original: 1-1000, fixed: 1.1-995.23
+        	final double scale = ( max - min ) / (maxN - minN );
+
+        	for ( int i = 0; i < transforms.length; ++i )
+        	{
+        		// e.g. (995.23 - 1.1) * (999/994.13) + 1.0
+        		normalizedTransforms[ i ] = ( normalizedTransforms[ i ] - minN ) * scale + min;
+        	}
+
+        	LOG.info( "normalizeTransforms: scaling back to original range, scale={}", scale ); // this should not be far from 1.0
+        	LOG.info( "normalizeTransforms: output range corrected, min={}, max={}", minN, maxN );
+        	LOG.info( "normalizeTransforms: input range, min={}, max={}", min, max );
+        	LOG.info( "normalizeTransforms: output range corrected, min={}, max={}", normalizedTransforms[ 0 ], normalizedTransforms[ normalizedTransforms.length - 1 ] );
+
+        	// just to avoid rounding issues
+        	normalizedTransforms[ 0 ] = transforms[ 0 ];
+        	normalizedTransforms[ normalizedTransforms.length - 1 ] = transforms[ normalizedTransforms.length - 1 ];
+        }
+
         return normalizedTransforms;
     }
 
