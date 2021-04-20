@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -104,6 +105,13 @@ public class ZPositionCorrectionClient {
                 names = "--resinMaskIntensity",
                 description = "Intensity value to use when masking resin areas (typically max intensity for image)")
         public Float resinMaskIntensity = 255.0f;
+
+        @Parameter(
+                names = "--normalizeEndDelta",
+                description = "Specify to look for stretched or squished corrections for layers at the " +
+                              "beginning and end of the stack and reset their delta z to the median delta z.",
+                arity = 0)
+        public boolean normalizeEndDelta;
 
         @Parameter(
                 names = "--correlationBatch",
@@ -405,11 +413,16 @@ public class ZPositionCorrectionClient {
         LOG.info("estimateAndSaveZCoordinates: using inference options: {}", inferenceOptions);
 
         final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
-        final double[] transforms =
-                HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
-                                                                 inferenceOptions,
-                                                                 parameters.nLocalEstimates);
 
+        double[] transforms = HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
+                                                                               inferenceOptions,
+                                                                               parameters.nLocalEstimates);
+
+        if ((parameters.normalizeEndDelta) &&
+            (transforms.length > (3 * inferenceOptions.comparisonRange))) {
+            transforms = normalizeTransforms(transforms);
+        }
+        
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
         HeadlessZPositionCorrection.writeEstimations(transforms, outputFilePath, sortedZList.get(0));
     }
@@ -437,6 +450,48 @@ public class ZPositionCorrectionClient {
         fromIndex = Math.max(0, fromIndex - comparisonRange); // overlap with prior batch by comparison range
 
         return sortedZList.subList(fromIndex, toIndex);
+    }
+
+    private double[] normalizeTransforms(final double[] transforms) {
+        // look for corrections that have been stretched or squished at the ends of the stack
+
+        final double[] sortedDeltas = new double[transforms.length - 1];
+        for (int i = 1; i < transforms.length; i++) {
+            sortedDeltas[i-1] = transforms[i] - transforms[i - 1];
+        }
+        Arrays.sort(sortedDeltas);
+        final double closeEnoughMedian = sortedDeltas[sortedDeltas.length / 2];
+
+        final double problemMargin = closeEnoughMedian / 2.0;
+        final double minDelta = closeEnoughMedian - problemMargin;
+        final double maxDelta = closeEnoughMedian + problemMargin;
+
+        final double[] normalizedTransforms = new double[transforms.length];
+        normalizedTransforms[0] = transforms[0];
+
+        int lastStartIndex = inferenceOptions.comparisonRange;
+        final int firstEndIndex = transforms.length - inferenceOptions.comparisonRange;
+
+        for (int i = 1; i < transforms.length; i++) {
+            double delta = transforms[i] - transforms[i - 1];
+            if (i < lastStartIndex) {
+                if ((delta < minDelta) || (delta > maxDelta)) {
+                    LOG.info("normalizeTransforms: reset transform[{}] delta from {} to {}}",
+                             i, delta, closeEnoughMedian);
+                    delta = closeEnoughMedian;
+                } else {
+                    lastStartIndex = i; // stop looking for start problems once we've found a delta close to median
+                }
+            } else if (i > firstEndIndex) {
+                if ((delta < minDelta) || (delta > maxDelta)) {
+                    LOG.info("normalizeTransforms: reset transform[{}] delta from {} to {}}",
+                             i, delta, closeEnoughMedian);
+                    delta = closeEnoughMedian;
+                }
+            }
+            normalizedTransforms[i] = normalizedTransforms[i-1] + delta;
+        }
+        return normalizedTransforms;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ZPositionCorrectionClient.class);
