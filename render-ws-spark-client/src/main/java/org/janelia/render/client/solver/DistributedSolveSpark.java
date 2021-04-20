@@ -10,6 +10,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.custom.CustomSolveSetBuilder;
 import org.janelia.render.client.spark.LogUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -117,19 +118,31 @@ public class DistributedSolveSpark extends DistributedSolve
 
 				final SparkConf sparkConf = new SparkConf().setAppName(DistributedSolveSpark.class.getSimpleName());
 
-                final SolveSetFactory solveSetFactory =
-        		new SolveSetFactorySimple(
-//                new SolveSetFactoryBRSec36(
-        				parameters.globalModel(),
-        				parameters.blockModel(),
-        				parameters.stitchingModel(),
-        				parameters.blockOptimizerLambdasRigid,
-        				parameters.blockOptimizerLambdasTranslation,
-        				parameters.blockOptimizerIterations,
-        				parameters.blockMaxPlateauWidth,
-        				parameters.minStitchingInliers,
-        				parameters.blockMaxAllowedError,
-        				parameters.dynamicLambdaFactor );
+                final SolveSetFactory solveSetFactory;
+                if (parameters.customSolveClass == null) {
+					solveSetFactory = new SolveSetFactorySimple(parameters.globalModel(),
+																parameters.blockModel(),
+																parameters.stitchingModel(),
+																parameters.blockOptimizerLambdasRigid,
+																parameters.blockOptimizerLambdasTranslation,
+																parameters.blockOptimizerIterations,
+																parameters.blockMaxPlateauWidth,
+																parameters.minStitchingInliers,
+																parameters.blockMaxAllowedError,
+																parameters.dynamicLambdaFactor);
+				} else {
+					solveSetFactory = CustomSolveSetBuilder.build(parameters.customSolveClass,
+																  parameters.globalModel(),
+																  parameters.blockModel(),
+																  parameters.stitchingModel(),
+																  parameters.blockOptimizerLambdasRigid,
+																  parameters.blockOptimizerLambdasTranslation,
+																  parameters.blockOptimizerIterations,
+																  parameters.blockMaxPlateauWidth,
+																  parameters.minStitchingInliers,
+																  parameters.blockMaxAllowedError,
+																  parameters.dynamicLambdaFactor);
+				}
 
 				final DistributedSolve client = new DistributedSolveSpark(solveSetFactory, parameters, sparkConf);
 				client.run();

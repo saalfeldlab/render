@@ -274,6 +274,11 @@ public class DistributedSolveParameters extends CommandLineParameters
 			description = "Exclude certain z sections (including from-to) from dynamic lambda regularization, e.g. 500-550,1000-1100 (default: none)" )
 	public List<SerializableValuePair<Integer, Integer>> excludeFromRegularization = new ArrayList<>();
 
+	@Parameter(
+			names = "--customSolveClass",
+			description = "Full name of custom SolveSetFactory class to use instead of the default implementation")
+	public String customSolveClass;
+
 	public DistributedSolveParameters() {}
 
 	public void initDefaultValues()
