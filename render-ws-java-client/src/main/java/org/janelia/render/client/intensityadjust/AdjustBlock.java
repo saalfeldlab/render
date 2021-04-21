@@ -16,7 +16,6 @@ import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
-import fit.polynomial.HigherOrderPolynomialFunction;
 import fit.polynomial.QuadraticFunction;
 import ij.ImageJ;
 import ij.ImagePlus;
@@ -37,18 +36,15 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.algorithm.gauss3.Gauss3;
 import net.imglib2.converter.Converters;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.iterator.IntervalIterator;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
@@ -232,7 +228,6 @@ public class AdjustBlock {
 			final RealInterval boundingBox = boundingBox( 0,0,corrected.get( i ).getB().getWidth() - 1,corrected.get( i ).getB().getHeight() - 1, model );
 
 			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-			//final RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getA() ) ) ), new NLinearInterpolatorFactory() );
 			final RealRandomAccessible<FloatType> interpolantMask = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getA()) )), (in,out) -> out.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
 
 			final RealRandomAccess<FloatType> im = RealViews.affine( interpolant, affine ).realRandomAccess();
@@ -249,9 +244,9 @@ public class AdjustBlock {
 				// it makes sense to look if we overlap
 				if ( adjustments.containsKey( j ) )
 				{
+					final double[] adjust = adjustments.get( j );
 					final AffineModel2D modelQ = data.get( j ).getA();
 					final AffineTransform2D affineQ = toImgLib( modelQ );
-					final MinimalTileSpec tileSpecQ = data.get( j ).getB();
 					final RealInterval boundingBoxQ = boundingBox( 0,0,corrected.get( j ).getB().getWidth() - 1,corrected.get( j ).getB().getHeight() - 1, modelQ );
 
 					if ( intersects( boundingBox, boundingBoxQ ) )
@@ -259,7 +254,6 @@ public class AdjustBlock {
 						//System.out.println( "Testing " + tileSpec.getImageCol() + " vs " + tileSpecQ.getImageCol() );
 
 						final RealRandomAccessible<FloatType> interpolantQ = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-						//final RealRandomAccessible<UnsignedByteType> interpolantMaskQ = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getA() ) ) ), new NLinearInterpolatorFactory() );
 						final RealRandomAccessible<FloatType> interpolantMaskQ = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getA()) )), (in,out) -> out.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
 
 						final RealRandomAccess<FloatType> imQ = RealViews.affine( interpolantQ, affineQ ).realRandomAccess();
@@ -292,7 +286,7 @@ public class AdjustBlock {
 							sumO.add( im.get().get() );
 
 							imQ.setPosition( l );
-							sumQ.add( imQ.get().get() );
+							sumQ.add( ( ( imQ.get().get() - adjust[ 0 ] ) * adjust[ 1 ] ) + adjust[ 2 ] );
 
 							++count;
 						}
@@ -326,7 +320,7 @@ public class AdjustBlock {
 								sumO.add( Math.pow( im.get().get() - avgO, 2 ) );
 
 								imQ.setPosition( l );
-								sumQ.add( Math.pow( imQ.get().get() - avgQ, 2 ) );
+								sumQ.add( Math.pow( ( ( ( imQ.get().get() - adjust[ 0 ] ) * adjust[ 1 ] ) + adjust[ 2 ] ) - avgQ, 2 ) );
 
 								++count;
 							}
