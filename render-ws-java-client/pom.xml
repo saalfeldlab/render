@@ -176,6 +176,11 @@
         	<artifactId>imglib2-cache</artifactId>
         	<version>1.0.0-beta-16</version>
         </dependency>
+        <dependency>
+        	<groupId>com.github.PreibischLab</groupId>
+        	<artifactId>FunctionFit</artifactId>
+        	<version>157ab01</version>
+        </dependency>
     </dependencies>
 
     <!--
