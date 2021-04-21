@@ -9,15 +9,23 @@ import ij.process.ImageProcessor;
 import java.io.File;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
+import mpicbg.trakem2.transform.TranslationModel2D;
+
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -46,9 +54,21 @@ public class ImportSlicesClient {
 
         @Parameter(
                 names = "--sliceListing",
-                description = "File containing list of absolute slice paths",
-                required = true)
+                description = "File containing list of absolute slice paths")
         public String sliceListing;
+
+        @Parameter(
+                names = "--sliceUrlFormat",
+                description = "Input URL format for slice (assumes integral z value).  " +
+                              "For example: /nrs/flyem/alignment-legacy/Z0720-07m/BR/Sec37/aligned/after.%05d.png " +
+                              "This is ignored if a sliceListing is specified.")
+        public String sliceUrlFormat;
+
+        @Parameter(
+                names = "--basisStack",
+                description = "Existing stack (in same project) to use as basis for the new imported stack " +
+                              "(e.g. for layer tile positions and resolution data)")
+        public String basisStack;
 
         @Parameter(
                 names = "--stackResolutionX",
@@ -80,6 +100,12 @@ public class ImportSlicesClient {
                 description = "Complete the stack after importing all layers",
                 arity = 0)
         public boolean completeStackAfterImport = false;
+
+        public void validate() throws IllegalArgumentException {
+            if ((sliceListing == null) && (sliceUrlFormat == null)) {
+                throw new IllegalArgumentException("must specify --sliceListing or --sliceUrlFormat");
+            }
+        }
     }
 
     public static void main(final String[] args) {
@@ -89,12 +115,12 @@ public class ImportSlicesClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
+                parameters.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final ImportSlicesClient client = new ImportSlicesClient(parameters);
                 client.importStackData();
-
 
                 if (parameters.completeStackAfterImport) {
                     client.completeStack();
@@ -114,25 +140,75 @@ public class ImportSlicesClient {
 
     private void importStackData() throws Exception {
 
-        final File fileListing = new File(parameters.sliceListing).getAbsoluteFile();
+        final StackMetaData basisStackMetaData = parameters.basisStack == null ? null :
+                                                 this.renderDataClient.getStackMetaData(parameters.basisStack);
 
-        LOG.info("importStackData: loading slice file paths from {}", fileListing);
+        final Map<Double, String> zToSlicePath = new LinkedHashMap<>();
+        final List<TransformSpec> stackTransformSpecList;
 
-        final List<String> slicePaths =
-                Files.readAllLines(fileListing.toPath()).stream()
-                        .sorted()
-                        .collect(Collectors.toList());
+        if (basisStackMetaData == null) {
 
-        LOG.info("importStackData: creating tile specs for {} slices", slicePaths.size());
+            // load explicit slice data
 
-        final List<TileSpec> tileSpecs = new ArrayList<>(slicePaths.size());
+            final File fileListing = new File(parameters.sliceListing).getAbsoluteFile();
+
+            LOG.info("importStackData: loading slice file paths from {}", fileListing);
+
+            final List<String> slicePaths =
+                    Files.readAllLines(fileListing.toPath()).stream()
+                            .sorted()
+                            .collect(Collectors.toList());
+            for (int i = 0; i < slicePaths.size(); i++) {
+                zToSlicePath.put(i + 1.0, slicePaths.get(i));
+            }
+            stackTransformSpecList = null;
+
+            if (zToSlicePath.size() > 0) {
+                final StackVersion stackVersion = new StackVersion(new Date(),
+                                                                   null,
+                                                                   null,
+                                                                   null,
+                                                                   parameters.stackResolutionX,
+                                                                   parameters.stackResolutionY,
+                                                                   parameters.stackResolutionZ,
+                                                                   null,
+                                                                   null,
+                                                                   null,
+                                                                   null);
+                renderDataClient.saveStackVersion(parameters.stack, stackVersion);
+            }
+
+        } else {
+
+            // load slice data using basis stack
+
+            for (final Double z : renderDataClient.getStackZValues(parameters.basisStack)) {
+                zToSlicePath.put(z, String.format(parameters.sliceUrlFormat, z.intValue()));
+            }
+
+            final Bounds bounds = basisStackMetaData.getStats().getStackBounds();
+            final TranslationModel2D model = new TranslationModel2D();
+            model.set(bounds.getMinX(), bounds.getMinY());
+            final String modelDataString = model.toDataString();
+            final LeafTransformSpec stackTransform = new LeafTransformSpec(model.getClass().getName(),
+                                                                           modelDataString);
+            stackTransformSpecList = Collections.singletonList(stackTransform);
+
+            if (zToSlicePath.size() > 0) {
+                renderDataClient.setupDerivedStack(basisStackMetaData, parameters.stack);
+            }
+
+        }
+
+        LOG.info("importStackData: creating tile specs for {} slices", zToSlicePath.size());
+
+        final List<TileSpec> tileSpecs = new ArrayList<>(zToSlicePath.size());
 
         Double width = null;
         Double height = null;
-        for (int i = 0; i < slicePaths.size(); i++) {
+        for (final Double z : zToSlicePath.keySet()) {
 
-            final String slicePath = slicePaths.get(i);
-            final Double z = i + 1.0;
+            final String slicePath = zToSlicePath.get(z);
 
             if (parameters.deriveSliceSizes || (width == null)) {
                 final ImageProcessor imp = new ImagePlus(slicePath).getProcessor();
@@ -153,31 +229,22 @@ public class ImportSlicesClient {
                                                          0.0,
                                                          null);
             tileSpec.setLayout(layoutData);
-            tileSpec.setTileId("slice-" + i);
+            tileSpec.setTileId("slice." + z);
             tileSpec.setZ(z);
             tileSpec.setWidth(width);
             tileSpec.setHeight(height);
             tileSpec.addChannel(channelSpec);
+
+            if (stackTransformSpecList != null) {
+                tileSpec.addTransformSpecs(stackTransformSpecList);
+            }
+
             tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
             tileSpecs.add(tileSpec);
         }
 
         if (tileSpecs.size() > 0) {
-            final StackVersion stackVersion = new StackVersion(new Date(),
-                                                               null,
-                                                               null,
-                                                               null,
-                                                               parameters.stackResolutionX,
-                                                               parameters.stackResolutionY,
-                                                               parameters.stackResolutionZ,
-                                                               null,
-                                                               null,
-                                                               null,
-                                                               null);
-
-            renderDataClient.saveStackVersion(parameters.stack, stackVersion);
-
             final ResolvedTileSpecCollection resolvedTiles =
                     new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
 

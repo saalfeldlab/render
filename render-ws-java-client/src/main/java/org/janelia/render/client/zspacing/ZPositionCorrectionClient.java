@@ -107,11 +107,13 @@ public class ZPositionCorrectionClient {
         public Float resinMaskIntensity = 255.0f;
 
         @Parameter(
-                names = "--normalizeEndDelta",
-                description = "Specify to look for stretched or squished corrections for layers at the " +
-                              "beginning and end of the stack and reset their delta z to the median delta z.",
-                arity = 0)
-        public boolean normalizeEndDelta;
+                names = "--normalizedEdgeLayerCount",
+                description = "The number of layers at the beginning and end of the stack to assign correction " +
+                              "delta values of 1.0.  This hack fixes the stretched or squished corrections the " +
+                              "solver typically produces for layers at the edges of the stack.  " +
+                              "For Z0720_07m stacks, we set this value to 30.  " +
+                              "Omit to leave the solver correction values as is.")
+        public Integer normalizedEdgeLayerCount;
 
         @Parameter(
                 names = "--correlationBatch",
@@ -418,9 +420,9 @@ public class ZPositionCorrectionClient {
                                                                                inferenceOptions,
                                                                                parameters.nLocalEstimates);
 
-        if ((parameters.normalizeEndDelta) &&
-            (transforms.length > (3 * inferenceOptions.comparisonRange))) {
-            transforms = normalizeTransforms(transforms);
+        if ((parameters.normalizedEdgeLayerCount != null) &&
+            (transforms.length > (3 * parameters.normalizedEdgeLayerCount))) {
+            transforms = normalizeTransforms(transforms, parameters.normalizedEdgeLayerCount);
         }
         
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
@@ -452,8 +454,8 @@ public class ZPositionCorrectionClient {
         return sortedZList.subList(fromIndex, toIndex);
     }
 
-    private double[] normalizeTransforms(final double[] transforms) {
-        // look for corrections that have been stretched or squished at the ends of the stack
+    public static double[] normalizeTransforms(final double[] transforms,
+                                               final int normalizedEdgeLayerCount) {
 
         // compute the median of all deltas
         final double[] sortedDeltas = new double[transforms.length - 1];
@@ -461,7 +463,7 @@ public class ZPositionCorrectionClient {
             sortedDeltas[i-1] = transforms[i] - transforms[i - 1];
         }
         Arrays.sort(sortedDeltas);
-        final double closeEnoughMedian = sortedDeltas[sortedDeltas.length / 2]; // I assume this is very close to 1.0
+        final double closeEnoughMedian = sortedDeltas[sortedDeltas.length / 2]; // this should be very close to 1.0
 
         final double problemMargin = closeEnoughMedian / 5; // so this is roughly 0.8-1.2
         final double minDelta = closeEnoughMedian - problemMargin;
@@ -470,53 +472,46 @@ public class ZPositionCorrectionClient {
         final double[] normalizedTransforms = new double[transforms.length];
         normalizedTransforms[0] = transforms[0];
 
-        final int lastStartIndex = inferenceOptions.comparisonRange * 3; //let's use 3*10= 30
-        final int firstEndIndex = transforms.length - inferenceOptions.comparisonRange * 3; //let's use 3*10= 30
+        final double overrideDelta = 1.0;
+        final int firstEndIndex = transforms.length - normalizedEdgeLayerCount;
 
         for (int i = 1; i < transforms.length; i++) {
             double delta = transforms[i] - transforms[i - 1];
-            if (i < lastStartIndex) {
+            if ((i < normalizedEdgeLayerCount) || (i > firstEndIndex)) {
                 if ((delta < minDelta) || (delta > maxDelta)) {
-                    LOG.info("normalizeTransforms: reset transform[{}] delta from {} to {}}",
-                             i, delta, 1.0);
-                    delta = 1.0;
-                }
-            } else if (i > firstEndIndex) {
-                if ((delta < minDelta) || (delta > maxDelta)) {
-                    LOG.info("normalizeTransforms: reset transform[{}] delta from {} to {}}",
-                             i, delta, 1.0);
-                    delta = 1.0;
+                    LOG.info("normalizeTransforms: reset transform[{}] delta from {} to {}",
+                             i, delta, overrideDelta);
+                    delta = overrideDelta;
                 }
             }
             normalizedTransforms[i] = normalizedTransforms[i-1] + delta; // do we have to worry about accuracy? No.
         }
 
-        // it kind of always is
-        // scale back to the same global range
-        if ( normalizedTransforms[ normalizedTransforms.length - 1 ] != transforms[ transforms.length - 1 ] )
-        {
-        	final double min = transforms[ 0 ];
-        	final double max = transforms[ transforms.length - 1 ];
-        	final double minN = normalizedTransforms[ 0 ];
-        	final double maxN = normalizedTransforms[ normalizedTransforms.length - 1 ];
+        // if normalization changed last z (almost always the case), scale back to the same global range
+        final int lastTransformIndex = transforms.length - 1;
+        if (normalizedTransforms[lastTransformIndex] != transforms[lastTransformIndex]) {
+            final double min = transforms[0];
+            final double max = transforms[transforms.length - 1];
+            final double minN = normalizedTransforms[0];
+            final double maxN = normalizedTransforms[normalizedTransforms.length - 1];
 
-        	// e.g. original: 1-1000, fixed: 1.1-995.23
-        	final double scale = ( max - min ) / (maxN - minN );
+            // e.g. original: 1-1000, fixed: 1.1-995.23
+            final double scale = (max - min) / (maxN - minN); // this should not be far from 1.0
 
-        	for ( int i = 0; i < transforms.length; ++i )
-        	{
-        		// e.g. (995.23 - 1.1) * (999/994.13) + 1.0
-        		normalizedTransforms[ i ] = ( normalizedTransforms[ i ] - minN ) * scale + min;
-        	}
+            LOG.info("normalizeTransforms: scaling normalized range ({} to {}) back to original range ({} to {}) with scale {}",
+                     minN, maxN, min, max, scale);
 
-        	LOG.info( "normalizeTransforms: scaling back to original range, scale={}", scale ); // this should not be far from 1.0
-        	LOG.info( "normalizeTransforms: output range corrected, min={}, max={}", minN, maxN );
-        	LOG.info( "normalizeTransforms: input range, min={}, max={}", min, max );
-        	LOG.info( "normalizeTransforms: output range corrected, min={}, max={}", normalizedTransforms[ 0 ], normalizedTransforms[ normalizedTransforms.length - 1 ] );
+            for (int i = 0; i < transforms.length; ++i) {
+                // e.g. (995.23 - 1.1) * (999/994.13) + 1.0
+                normalizedTransforms[i] = ((normalizedTransforms[i] - minN) * scale) + min;
+            }
 
-        	// just to avoid rounding issues
-        	normalizedTransforms[ 0 ] = transforms[ 0 ];
-        	normalizedTransforms[ normalizedTransforms.length - 1 ] = transforms[ normalizedTransforms.length - 1 ];
+            // reset ends to avoid rounding issues
+            normalizedTransforms[0] = transforms[0];
+            normalizedTransforms[normalizedTransforms.length - 1] = transforms[normalizedTransforms.length - 1];
+
+            LOG.info("normalizeTransforms: reset ends to {} and {}",
+                     normalizedTransforms[0], normalizedTransforms[normalizedTransforms.length - 1]);
         }
 
         return normalizedTransforms;

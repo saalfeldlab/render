@@ -22,6 +22,30 @@ public class ZPositionCorrectionClientTest {
     }
 
     @Test
+    public void testNormalizeTransforms() {
+
+        final int normalizedEdgeLayerCount = 3;
+
+        // min=4, max=16, median delta z=0.8, outliers < 0.64 or > 0.96
+        final double[] transforms = {
+                   4.0, 6.3, 6.8, 7.6, 8.4, 9.2, 10.0, 10.8, 11.6, 12.4, 13.0, 13.4, 16.0
+//                      2.3, 0.5, 0.8, 0.8, 0.8,  0.8,  0.8,  0.8,  0.8,  0.6,  0.4,  2.6  (corrected delta z)
+//                      1.0, 1.0,                                               1.0,  1.0  (reset delta z)
+//                 4.0, 5.0, 6.0, 6.8, 7.6, 8.4,  9.2, 10.0, 10.8, 11.6, 12.2, 13.2, 14.2  (normalized values)
+        };
+
+        final double[] expectedTransforms = {
+                4, 5.18, 6.35, 7.29, 8.23, 9.18, 10.12, 11.06, 12.0, 12.94, 13.65, 14.82, 16
+//                 1.18, 1.17, 0.94, 0.94, 0.95,  0.94,  0.94,  0.94, 0.94,  0.71,  1.17,  1.18  (scaled delta z)
+        };
+        final double[] normalizedTransforms = ZPositionCorrectionClient.normalizeTransforms(transforms,
+                                                                                            normalizedEdgeLayerCount);
+
+        Assert.assertArrayEquals("bad scaled normalized transform ",
+                                 expectedTransforms, normalizedTransforms, 0.01);
+    }
+
+    @Test
     public void testGetSortedZListForBatch() {
         final int minZ = 1;
         final int maxZ = 30;

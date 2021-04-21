@@ -1,4 +1,4 @@
-package org.janelia.render.client.solver;
+package org.janelia.render.client.solver.custom;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -10,7 +10,11 @@ import java.util.stream.Stream;
 import mpicbg.models.Affine2D;
 import mpicbg.models.InterpolatedAffineModel2D;
 
-public class SolveSetFactoryBRSec34 extends SolveSetFactory
+import org.janelia.render.client.solver.SolveItemData;
+import org.janelia.render.client.solver.SolveSet;
+import org.janelia.render.client.solver.SolveSetFactory;
+
+public class SolveSetFactoryBRSec36 extends SolveSetFactory
 {
 	public HashMap<Integer, String> additionalIssues = new HashMap<>();
 
@@ -26,7 +30,7 @@ public class SolveSetFactoryBRSec34 extends SolveSetFactory
 	 * @param defaultBlockMaxAllowedError - the default max error for global opt (from parameters)
 	 * @param defaultDynamicLambdaFactor - the default dynamic lambda factor
 	 */
-	public SolveSetFactoryBRSec34(
+	public SolveSetFactoryBRSec36(
 			final Affine2D<?> defaultGlobalSolveModel,
 			final Affine2D<?> defaultBlockSolveModel,
 			final Affine2D<?> defaultStitchingModel,
@@ -52,13 +56,13 @@ public class SolveSetFactoryBRSec34 extends SolveSetFactory
 	}
 
 	@Override
-	public SolveSet defineSolveSet( final int minZ, final int maxZ, final int setSize, final Map<Integer, String> zToGroupIdMap )
+	public SolveSet defineSolveSet(final int minZ, final int maxZ, final int setSize, final Map<Integer, String> zToGroupIdMap )
 	{
 		final int modulo = ( maxZ - minZ + 1 ) % setSize;
 
 		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
 
-		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > leftSets = new ArrayList<>();
+		final List<SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >> leftSets = new ArrayList<>();
 		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rightSets = new ArrayList<>();
 
 		int id = 0;
@@ -76,12 +80,12 @@ public class SolveSetFactoryBRSec34 extends SolveSetFactory
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
 
-			// stitching-first issue around 1262-1555 (later > 25 matches -- no stitch first)
-			if ( setMaxZ >= 1262 && setMinZ <= 1555 )
+			// 1800-2303 set stitching-first threshold to 30
+			if ( setMaxZ >= 1800 && setMinZ <= 2302 )
 			{
-				minStitchingInliers = 1000;
+				minStitchingInliers = 30;
 			}
-			
+
 			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
 			{
 				// rigid alignment
@@ -98,6 +102,14 @@ public class SolveSetFactoryBRSec34 extends SolveSetFactory
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
+			}
+
+			// translation-only
+			if ( setMinZ <= 2500 )
+			{
+				// allow rigid stitching
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 			}
 
 			leftSets.add(
@@ -135,10 +147,10 @@ public class SolveSetFactoryBRSec34 extends SolveSetFactory
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
 
-			// stitching-first issue around 1262-1555 (later > 25 matches -- no stitch first)
-			if ( setMaxZ >= 1262 && setMinZ <= 1555 )
+			// 1800-2303 set stitching-first threshold to 30
+			if ( setMaxZ >= 1800 && setMinZ <= 2302 )
 			{
-				minStitchingInliers = 1000;
+				minStitchingInliers = 30;
 			}
 
 			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
@@ -157,6 +169,14 @@ public class SolveSetFactoryBRSec34 extends SolveSetFactory
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
+			}
+
+			// translation-only
+			if ( setMinZ <= 2500 )
+			{
+				// allow rigid stitching
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 			}
 
 			rightSets.add(
