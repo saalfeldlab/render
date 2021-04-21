@@ -3,14 +3,9 @@ package org.janelia.render.client.intensityadjust;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -23,40 +18,37 @@ import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import fit.polynomial.HigherOrderPolynomialFunction;
 import fit.polynomial.QuadraticFunction;
-import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.gui.Line;
 import ij.gui.ProfilePlot;
 import ij.measure.Calibration;
 import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.IllDefinedDataPointsException;
-import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import mpicbg.util.RealSum;
 import net.imglib2.Cursor;
 import net.imglib2.FinalRealInterval;
 import net.imglib2.Interval;
-import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
+import net.imglib2.algorithm.gauss3.Gauss3;
 import net.imglib2.converter.Converters;
-import net.imglib2.converter.RealFloatConverter;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.iterator.IntervalIterator;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
@@ -87,21 +79,32 @@ public class AdjustBlock {
 		double[] avg = new double[ imp.ip.getWidth() ];
 		final ArrayList< Point > points = new ArrayList<>();
 
+		// use only 70% of the pixels in the middle
+		final int startY = Math.round( imp.ip.getHeight() * 0.15f );
+		final int endY = Math.round( imp.ip.getHeight() * 0.85f );
+
 		for ( int x = 0; x < avg.length; ++x )
 		{
+			//final ArrayList< Float > median = new ArrayList<>();
+
 			int count = 0;
 
-			for ( int y = 0; y < imp.ip.getHeight(); ++y )
+			for ( int y = startY; y <= endY; ++y )
 			{
 				final double value = imp.ip.getf(x, y);
 				if ( value >= 10 && value <= 245 )
 				{
+					//median.add( (float)value );
 					avg[ x ] += value;
 					++count;
 				}
 			}
 
 			avg[ x ] /= (double)count;
+
+			//Collections.sort( median );
+			//avg[ x ] = median.get( median.size() / 2 );
+
 			points.add( new Point( new double[] { x, avg[ x ] } ) );
 		}
 
@@ -114,6 +117,21 @@ public class AdjustBlock {
 
 		try
 		{
+			/*
+			final double[] fit = avg.clone();
+			RandomAccessibleInterval<DoubleType> img = ArrayImgs.doubles( fit, avg.length );
+			Gauss3.gauss( 500, Views.extendBorder( img ), img );
+
+			double avgFit = 0.0;
+
+			for ( int x = 0; x < avg.length; ++x )
+			{
+				avgFit += fit[ x ];
+			}
+			
+			avgFit /= (double)fit.length;
+			*/
+
 			//HigherOrderPolynomialFunction q = new HigherOrderPolynomialFunction( 3 );
 			QuadraticFunction q = new QuadraticFunction();
 			q.fitFunction(points);
@@ -121,16 +139,14 @@ public class AdjustBlock {
 			double avgFit = 0.0;
 
 			double[] fit = new double[ avg.length ];
-			double[] distance = new double[ avg.length ];
 
 			for ( int x = 0; x < avg.length; ++x )
 			{
 				fit[ x ] = q.predict( x );
-				distance[ x ] = avg[ x ] - fit[ x ];
 
 				avgFit += fit[ x ];
 			}
-
+			
 			avgFit /= (double)fit.length;
 
 			double[] correctedAvg = new double[ avg.length ];
@@ -151,11 +167,7 @@ public class AdjustBlock {
 				ImagePlus fitImp = ImageJFunctions.wrapFloat( Views.addDimension( ArrayImgs.doubles( fit, fit.length ), 0, 0 ), "" );
 				fitImp.setRoi(new Line(0,0,avg.length,0));
 				new ProfilePlot( fitImp ).createWindow();
-	
-				ImagePlus distanceImp = ImageJFunctions.wrapFloat( Views.addDimension( ArrayImgs.doubles( distance, distance.length ), 0, 0 ), "" );
-				distanceImp.setRoi(new Line(0,0,avg.length,0));
-				new ProfilePlot( distanceImp ).createWindow();
-	
+
 				ImagePlus correctedImp = ImageJFunctions.wrapFloat( Views.addDimension( ArrayImgs.doubles( correctedAvg, correctedAvg.length ), 0, 0 ), "" );
 				correctedImp.setRoi(new Line(0,0,avg.length,0));
 				new ProfilePlot( correctedImp ).createWindow();
@@ -237,7 +249,7 @@ public class AdjustBlock {
 
 					if ( intersects( boundingBox, boundingBoxQ ) )
 					{
-						System.out.println( "Testing " + tileSpec.getImageCol() + " vs " + tileSpecQ.getImageCol() );
+						//System.out.println( "Testing " + tileSpec.getImageCol() + " vs " + tileSpecQ.getImageCol() );
 
 						final RealRandomAccessible<FloatType> interpolantQ = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
 						//final RealRandomAccessible<UnsignedByteType> interpolantMaskQ = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getA() ) ) ), new NLinearInterpolatorFactory() );
@@ -283,7 +295,7 @@ public class AdjustBlock {
 							final double avgO = sumO.getSum() / (double)count;
 							final double avgQ = sumQ.getSum() / (double)count;
 
-							System.out.println( count + ": " + avgO + ", " + avgQ );
+							//System.out.println( count + ": " + avgO + ", " + avgQ );
 
 							sumO = new RealSum();
 							sumQ = new RealSum();
@@ -315,7 +327,7 @@ public class AdjustBlock {
 							final double stDevO = Math.sqrt( sumO.getSum() / (double)count );
 							final double stDevQ = Math.sqrt( sumQ.getSum() / (double)count );
 
-							System.out.println( count + ": " + stDevO + ", " + stDevQ );
+							//System.out.println( count + ": " + stDevO + ", " + stDevQ );
 
 							adjustments.put( i, new double[] { avgO, stDevQ / stDevO, avgQ } );
 							
@@ -337,14 +349,14 @@ public class AdjustBlock {
 		return adjustments;
 	}
 
-	public static void fuse2d(
+	public static RandomAccessibleInterval< UnsignedByteType > fuse2d(
 			final Interval interval,
 			final List<Pair<AffineModel2D,MinimalTileSpec>> data,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected,
 			final Map< Integer, double[] > adjustments  )
 	{
 		// draw
-		final RandomAccessibleInterval< FloatType > slice = Views.translate( ArrayImgs.floats( interval.dimension( 0 ), interval.dimension( 1 ) ), interval.min( 0 ), interval.min( 1 ) );
+		final RandomAccessibleInterval< UnsignedByteType > slice = Views.translate( ArrayImgs.unsignedBytes( interval.dimension( 0 ), interval.dimension( 1 ) ), interval.min( 0 ), interval.min( 1 ) );
 
 		for ( int i = 0; i < data.size(); ++i )
 		{
@@ -357,35 +369,36 @@ public class AdjustBlock {
 			final RealRandomAccessible<FloatType> interpolantMask = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getA()) )), (in,o) -> o.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
 
 			//final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
-			final Cursor< FloatType > c = Views.iterable( slice ).cursor();
+			final Cursor< UnsignedByteType > c = Views.iterable( slice ).cursor();
 
 			final AffineTransform2D affine = toImgLib( model );
 
 			final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), slice ).cursor();
 			final Cursor< FloatType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), slice ).cursor();
-			
+
+			// Math.min( 255, Math.max( 0, 
+
 			while ( c.hasNext() )
 			{
 				c.fwd();
 				cMask.fwd();
 				cSrc.fwd();
 				if (cMask.get().get() >= 254.99 ) {
-					FloatType srcType = cSrc.get();
-					float value = (float)( ((srcType.get() - adjust[ 0 ]) * adjust[ 1 ] ) + adjust[ 2 ] );
+					final FloatType srcType = cSrc.get();
+					final float value = (float)( ((srcType.get() - adjust[ 0 ]) * adjust[ 1 ] ) + adjust[ 2 ] );
 					if (value >= 0) {
-						FloatType type = c.get();
-						final float currentValue = type.get(); //(float)((type.get() + adjust[ 0 ] ));//* adjust[ 1 ] );
+						final UnsignedByteType type = c.get();
+						final float currentValue = type.get();
 						if ( currentValue > 0 )
-							type.setReal( ( value + currentValue ) / 2 );
+							type.setReal( Math.min( 255, Math.max( 0, ( value + currentValue ) / 2 ) ) );
 						else
-							type.setReal( value );
+							type.setReal( Math.min( 255, Math.max( 0, value ) ) );
 					}
 				}
 			}
 		}
 
-		ImageJFunctions.show( slice );
-
+		return slice;
 	}
 
 	public static AffineTransform2D toImgLib( final AffineModel2D model )
@@ -435,11 +448,13 @@ public class AdjustBlock {
 		//final StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
 		final Interval interval = RenderTools.stackBounds( meta );
 
-		final int minZ = 5000;
-		final int maxZ = 5000;
-		final double scale = 1.0;
+		final int minZ = 15000;
+		final int maxZ = 15003;
+		final double scale = 1.0; // only full res supported right now
 
 		new ImageJ();
+
+		final ImageStack stack3d = new ImageStack( (int)interval.dimension( 0 ), (int)interval.dimension( 1 ) );
 
 		for ( int z = minZ; z <= maxZ; ++z )
 		{
@@ -456,18 +471,20 @@ public class AdjustBlock {
 				//new ImagePlus( "i", imp.ip ).show();
 				//new ImagePlus( "m", imp.mask ).show();
 				//new ImagePlus( "c", corrected.get( corrected.size() - 1).getB() ).show();
-				//break;
+				//SimpleMultiThreading.threadHaltUnClean();
+
 			}
 
-			// order maps to [add, mul]
+			//SimpleMultiThreading.threadHaltUnClean();
+
+			// order maps to [sub, mul, add]
 			final HashMap< Integer, double[] > adjustments = computeAdjustments( data, corrected );
 
-			fuse2d(interval, data, corrected, adjustments);
+			final RandomAccessibleInterval< UnsignedByteType > slice = fuse2d(interval, data, corrected, adjustments);
+			stack3d.addSlice( ImageJFunctions.wrap( slice, "" ).getProcessor() );
 		}
 
-		/*
-		
-		final ImagePlus imp1 = new ImagePlus( project + "-" + stack , imagestack );
+		final ImagePlus imp1 = new ImagePlus( project + "_" + stack, stack3d );
 
 		Calibration cal = new Calibration();
 		cal.xOrigin = -(int)interval.min(0);
@@ -477,6 +494,7 @@ public class AdjustBlock {
 		cal.pixelHeight = 1.0/scale;
 		cal.pixelDepth = 1.0;
 		imp1.setCalibration( cal );
-		*/
+
+		imp1.show();
 	}
 }
