@@ -657,13 +657,18 @@ public class VisualizeTools
 
 	public static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale )
 	{
+		return getImage(tileSpec, scale, true );
+	}
+
+	public static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale, final boolean cacheOnDisk )
+	{
 		// old code:
 		final File imageFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".image.tif" );
 		final File maskFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".mask.tif" );
 
 		final ImageProcessorWithMasks imp;
 
-		if ( imageFile.exists() && maskFile.exists() )
+		if ( cacheOnDisk && imageFile.exists() && maskFile.exists() )
 		{
 			//System.out.println( "Loading: " + imageFile );
 			//System.out.println( "Loading: " + maskFile );
@@ -711,7 +716,7 @@ public class VisualizeTools
 			imp = new ImageProcessorWithMasks( imageFP, maskIP, null );
 
 			// write temp if doesn't exist
-			if ( !imageFile.exists() || !maskFile.exists() )
+			if ( cacheOnDisk && ( !imageFile.exists() || !maskFile.exists() ) )
 			{
 				System.out.println( "Saving: " + imageFile );
 				System.out.println( "Saving: " + maskFile );

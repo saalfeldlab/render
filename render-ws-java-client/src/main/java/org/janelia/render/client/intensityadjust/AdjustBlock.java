@@ -74,6 +74,13 @@ public class AdjustBlock {
 		return data;
 	}
 
+	/**
+	 * Fits a quadratic function along X and removes the difference, independently for each image
+	 * 
+	 * @param imp
+	 * @param debug
+	 * @return
+	 */
 	public static FloatProcessor correct( final ImageProcessorWithMasks imp, final boolean debug )
 	{
 		double[] avg = new double[ imp.ip.getWidth() ];
@@ -329,6 +336,8 @@ public class AdjustBlock {
 
 							//System.out.println( count + ": " + stDevO + ", " + stDevQ );
 
+							// TODO: there is a mistake if there are more than two overlaps
+							// Apply the already computed transformation
 							adjustments.put( i, new double[] { avgO, stDevQ / stDevO, avgQ } );
 							
 							System.out.println( "adjustment for " + tileSpec.getImageCol() + " is: sub " + avgO + ", mul " + (stDevQ / stDevO) + ", add " + avgQ );
@@ -448,9 +457,10 @@ public class AdjustBlock {
 		//final StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
 		final Interval interval = RenderTools.stackBounds( meta );
 
-		final int minZ = 15000;
-		final int maxZ = 15003;
+		final int minZ = 20000;
+		final int maxZ = 20000;
 		final double scale = 1.0; // only full res supported right now
+		final boolean cacheOnDisk = true;
 
 		new ImageJ();
 
@@ -464,10 +474,10 @@ public class AdjustBlock {
 			for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )
 			{
 				System.out.println( "Processing z=" + tile.getB().getZ() + ", tile=" + tile.getB().getImageCol() );
-				final ImageProcessorWithMasks imp = VisualizeTools.getImage( tile.getB(), scale );
-				//corrected.add( new ValuePair<>( (ByteProcessor)imp.mask, (FloatProcessor)imp.ip ) ); //correct(imp, false) ) );
+
+				final ImageProcessorWithMasks imp = VisualizeTools.getImage( tile.getB(), scale, cacheOnDisk );
 				corrected.add( new ValuePair<>( (ByteProcessor)imp.mask, correct(imp, false) ) );
-				
+
 				//new ImagePlus( "i", imp.ip ).show();
 				//new ImagePlus( "m", imp.mask ).show();
 				//new ImagePlus( "c", corrected.get( corrected.size() - 1).getB() ).show();
