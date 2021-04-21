@@ -6,6 +6,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -16,6 +21,7 @@ import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
+import fit.polynomial.HigherOrderPolynomialFunction;
 import fit.polynomial.QuadraticFunction;
 import ij.IJ;
 import ij.ImageJ;
@@ -30,17 +36,26 @@ import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import mpicbg.util.RealSum;
+import net.imglib2.Cursor;
 import net.imglib2.FinalRealInterval;
 import net.imglib2.Interval;
+import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealInterval;
+import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
+import net.imglib2.converter.Converters;
+import net.imglib2.converter.RealFloatConverter;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
+import net.imglib2.iterator.IntervalIterator;
 import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.realtransform.AffineTransform2D;
+import net.imglib2.realtransform.RealViews;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
@@ -99,6 +114,7 @@ public class AdjustBlock {
 
 		try
 		{
+			//HigherOrderPolynomialFunction q = new HigherOrderPolynomialFunction( 3 );
 			QuadraticFunction q = new QuadraticFunction();
 			q.fitFunction(points);
 
@@ -147,7 +163,7 @@ public class AdjustBlock {
 
 			return corrected;
 		}
-		catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+		catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -155,8 +171,7 @@ public class AdjustBlock {
 		return null;
 	}
 
-	public static void fuseAndFixOverlaps(
-			final Interval interval,
+	public static HashMap< Integer, double[] > computeAdjustments(
 			final List<Pair<AffineModel2D,MinimalTileSpec>> data,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected )
 	{
@@ -182,21 +197,27 @@ public class AdjustBlock {
 			inputOrder.remove( index );
 		}
 
-		// order maps to [add, mul]
-		final HashMap< Integer, double[] > adjustStatistics = new HashMap<>();
+		// order maps to [sub, mul, add]
+		final HashMap< Integer, double[] > adjustments = new HashMap<>();
 
-		// first tile is not adjusted for overlap (add 0, mul with 1)
-		adjustStatistics.put( order.get( 0 ), new double[] { 0, 1 } );
+		// first tile is not adjusted for overlap (add 0, mul with 1, sub 0)
+		adjustments.put( order.get( 0 ), new double[] { 0, 1, 0 } );
 
 		for ( int o = 1; o < order.size(); ++o )
 		{
 			final int i = order.get( o );
 
 			final AffineModel2D model = data.get( i ).getA();
+			final AffineTransform2D affine = toImgLib( model );
 			final MinimalTileSpec tileSpec = data.get( i ).getB();
 			final RealInterval boundingBox = boundingBox( 0,0,corrected.get( i ).getB().getWidth() - 1,corrected.get( i ).getB().getHeight() - 1, model );
+
 			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-			final RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getA() ) ) ), new NLinearInterpolatorFactory() );
+			//final RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getA() ) ) ), new NLinearInterpolatorFactory() );
+			final RealRandomAccessible<FloatType> interpolantMask = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getA()) )), (in,out) -> out.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
+
+			final RealRandomAccess<FloatType> im = RealViews.affine( interpolant, affine ).realRandomAccess();
+			final RealRandomAccess<FloatType> ma = RealViews.affine( interpolantMask, affine ).realRandomAccess();
 
 			// which one do we overlap with that already has statistics
 			for ( int q = 0; q < order.size(); ++q )
@@ -207,24 +228,173 @@ public class AdjustBlock {
 				final int j = order.get( q );
 
 				// it makes sense to look if we overlap
-				if ( adjustStatistics.containsKey( j ) )
+				if ( adjustments.containsKey( j ) )
 				{
 					final AffineModel2D modelQ = data.get( j ).getA();
+					final AffineTransform2D affineQ = toImgLib( modelQ );
 					final MinimalTileSpec tileSpecQ = data.get( j ).getB();
 					final RealInterval boundingBoxQ = boundingBox( 0,0,corrected.get( j ).getB().getWidth() - 1,corrected.get( j ).getB().getHeight() - 1, modelQ );
-
-					System.out.println( boundingBox );
-					System.out.println( boundingBoxQ );
 
 					if ( intersects( boundingBox, boundingBoxQ ) )
 					{
 						System.out.println( "Testing " + tileSpec.getImageCol() + " vs " + tileSpecQ.getImageCol() );
+
+						final RealRandomAccessible<FloatType> interpolantQ = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
+						//final RealRandomAccessible<UnsignedByteType> interpolantMaskQ = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getA() ) ) ), new NLinearInterpolatorFactory() );
+						final RealRandomAccessible<FloatType> interpolantMaskQ = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getA()) )), (in,out) -> out.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
+
+						final RealRandomAccess<FloatType> imQ = RealViews.affine( interpolantQ, affineQ ).realRandomAccess();
+						final RealRandomAccess<FloatType> maQ = RealViews.affine( interpolantMaskQ, affineQ ).realRandomAccess();
+
+						// iterate over the intersection of both tiles
+						final Interval testInterval = Intervals.smallestContainingInterval( Intervals.intersect( boundingBox, boundingBoxQ ) );
+
+						final IntervalIterator it = new IntervalIterator( testInterval );
+						final long[] l = new long[ testInterval.numDimensions() ];
+
+						RealSum sumO = new RealSum();
+						RealSum sumQ = new RealSum();
+						int count = 0;
+
+						while ( it.hasNext() )
+						{
+							it.fwd();
+							it.localize( l );
+
+							ma.setPosition( l );
+							if ( ma.get().get() < 254.99 )
+								continue;
+
+							maQ.setPosition( l );
+							if ( maQ.get().get() < 254.99 )
+								continue;
+
+							im.setPosition( l );
+							sumO.add( im.get().get() );
+
+							imQ.setPosition( l );
+							sumQ.add( imQ.get().get() );
+
+							++count;
+						}
+
+						if ( count > 0 )
+						{
+							final double avgO = sumO.getSum() / (double)count;
+							final double avgQ = sumQ.getSum() / (double)count;
+
+							System.out.println( count + ": " + avgO + ", " + avgQ );
+
+							sumO = new RealSum();
+							sumQ = new RealSum();
+							count = 0;
+							it.reset();
+
+							while ( it.hasNext() )
+							{
+								it.fwd();
+								it.localize( l );
+
+								ma.setPosition( l );
+								if ( ma.get().get() < 254.99 )
+									continue;
+
+								maQ.setPosition( l );
+								if ( maQ.get().get() < 254.99 )
+									continue;
+
+								im.setPosition( l );
+								sumO.add( Math.pow( im.get().get() - avgO, 2 ) );
+
+								imQ.setPosition( l );
+								sumQ.add( Math.pow( imQ.get().get() - avgQ, 2 ) );
+
+								++count;
+							}
+
+							final double stDevO = Math.sqrt( sumO.getSum() / (double)count );
+							final double stDevQ = Math.sqrt( sumQ.getSum() / (double)count );
+
+							System.out.println( count + ": " + stDevO + ", " + stDevQ );
+
+							adjustments.put( i, new double[] { avgO, stDevQ / stDevO, avgQ } );
+							
+							System.out.println( "adjustment for " + tileSpec.getImageCol() + " is: sub " + avgO + ", mul " + (stDevQ / stDevO) + ", add " + avgQ );
+							
+							break;
+						}
+					}
+				}
+			}
+
+			if ( !adjustments.containsKey( i ) )
+			{
+				System.out.println( "COULD NOT ADJUST " + tileSpec.getImageCol() + " setting to identity." );
+				adjustments.put( i, new double[] { 0, 1, 0 } );
+			}
+		}
+
+		return adjustments;
+	}
+
+	public static void fuse2d(
+			final Interval interval,
+			final List<Pair<AffineModel2D,MinimalTileSpec>> data,
+			final List<Pair<ByteProcessor, FloatProcessor>> corrected,
+			final Map< Integer, double[] > adjustments  )
+	{
+		// draw
+		final RandomAccessibleInterval< FloatType > slice = Views.translate( ArrayImgs.floats( interval.dimension( 0 ), interval.dimension( 1 ) ), interval.min( 0 ), interval.min( 1 ) );
+
+		for ( int i = 0; i < data.size(); ++i )
+		{
+			final double[] adjust = adjustments.get( i );
+			System.out.println( i + " " + Util.printCoordinates( adjust ) );
+
+			final AffineModel2D model = data.get( i ).getA();
+
+			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
+			final RealRandomAccessible<FloatType> interpolantMask = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getA()) )), (in,o) -> o.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
+
+			//final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
+			final Cursor< FloatType > c = Views.iterable( slice ).cursor();
+
+			final AffineTransform2D affine = toImgLib( model );
+
+			final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), slice ).cursor();
+			final Cursor< FloatType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), slice ).cursor();
+			
+			while ( c.hasNext() )
+			{
+				c.fwd();
+				cMask.fwd();
+				cSrc.fwd();
+				if (cMask.get().get() >= 254.99 ) {
+					FloatType srcType = cSrc.get();
+					float value = (float)( ((srcType.get() - adjust[ 0 ]) * adjust[ 1 ] ) + adjust[ 2 ] );
+					if (value >= 0) {
+						FloatType type = c.get();
+						final float currentValue = type.get(); //(float)((type.get() + adjust[ 0 ] ));//* adjust[ 1 ] );
+						if ( currentValue > 0 )
+							type.setReal( ( value + currentValue ) / 2 );
+						else
+							type.setReal( value );
 					}
 				}
 			}
 		}
 
-		System.exit( 0 );
+		ImageJFunctions.show( slice );
+
+	}
+
+	public static AffineTransform2D toImgLib( final AffineModel2D model )
+	{
+		final AffineTransform2D affine = new AffineTransform2D();
+		double[] array = new double[6];
+		model.toArray( array );
+		affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
+		return affine;
 	}
 
 	public static boolean intersects( final RealInterval intervalA, final RealInterval intervalB )
@@ -280,6 +450,7 @@ public class AdjustBlock {
 			{
 				System.out.println( "Processing z=" + tile.getB().getZ() + ", tile=" + tile.getB().getImageCol() );
 				final ImageProcessorWithMasks imp = VisualizeTools.getImage( tile.getB(), scale );
+				//corrected.add( new ValuePair<>( (ByteProcessor)imp.mask, (FloatProcessor)imp.ip ) ); //correct(imp, false) ) );
 				corrected.add( new ValuePair<>( (ByteProcessor)imp.mask, correct(imp, false) ) );
 				
 				//new ImagePlus( "i", imp.ip ).show();
@@ -288,8 +459,10 @@ public class AdjustBlock {
 				//break;
 			}
 
-			fuseAndFixOverlaps(interval, data, corrected);
-			
+			// order maps to [add, mul]
+			final HashMap< Integer, double[] > adjustments = computeAdjustments( data, corrected );
+
+			fuse2d(interval, data, corrected, adjustments);
 		}
 
 		/*
