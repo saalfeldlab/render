@@ -655,7 +655,7 @@ public class VisualizeTools
 		return maskProcessor;
 	}
 
-	protected static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale )
+	public static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale )
 	{
 		// old code:
 		final File imageFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".image.tif" );
@@ -692,7 +692,8 @@ public class VisualizeTools
 			FloatProcessor imageFP = getFullResImage( tileSpec );
 			ImageProcessor maskIP = getFullResMask( tileSpec );
 
-			imageFP = (FloatProcessor)imageFP.resize( (int)Math.round( imageFP.getWidth() * scale ), (int)Math.round( imageFP.getHeight() * scale ), true );
+			if ( !Double.isNaN( scale ) && scale != 1.0 )
+				imageFP = (FloatProcessor)imageFP.resize( (int)Math.round( imageFP.getWidth() * scale ), (int)Math.round( imageFP.getHeight() * scale ), true );
 
 			if ( maskIP == null )
 			{
@@ -702,7 +703,8 @@ public class VisualizeTools
 			}
 			else
 			{
-				maskIP = maskIP.resize( (int)Math.round( maskIP.getWidth() * scale ), (int)Math.round( maskIP.getHeight() * scale ), true );
+				if ( !Double.isNaN( scale ) && scale != 1.0 )
+					maskIP = maskIP.resize( (int)Math.round( maskIP.getWidth() * scale ), (int)Math.round( maskIP.getHeight() * scale ), true );
 			}
 
 			// hack to get a not transformed image:
