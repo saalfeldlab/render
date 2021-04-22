@@ -271,7 +271,7 @@ public class N5Client {
             LOG.info("run: down-sampling stack with factors {}", Arrays.toString(downSamplingFactors));
 
             // Now that the full resolution image is saved into n5, generate the scale pyramid
-            final N5WriterSupplier n5Supplier = () -> new N5FSWriter(parameters.n5Path);
+            final N5WriterSupplier n5Supplier = new N5PathSupplier(parameters.n5Path);
 
             // NOTE: no need to write full scale down-sampling factors (default is 1,1,1)
 
@@ -321,6 +321,19 @@ public class N5Client {
             final BufferedImage image = renderParameters.openTargetImage();
             ArgbRenderer.render(renderParameters, image, ipCache);
             return new ColorProcessor(image).convertToByteProcessor();
+        }
+    }
+
+    // serializable downsample supplier for spark
+    public static class N5PathSupplier implements N5WriterSupplier {
+        private final String path;
+        public N5PathSupplier(final String path) {
+            this.path = path;
+        }
+        @Override
+        public N5Writer get()
+                throws IOException {
+            return new N5FSWriter(path);
         }
     }
 
