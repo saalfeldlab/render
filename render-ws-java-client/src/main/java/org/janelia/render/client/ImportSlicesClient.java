@@ -65,6 +65,12 @@ public class ImportSlicesClient {
         public String sliceUrlFormat;
 
         @Parameter(
+                names = "--sliceZOffset",
+                description = "If specified, this value will be added to stack z values before formatting " +
+                              "slice URLs (e.g. a value of -1 would map z 1 to after.00000.png)")
+        public Integer sliceZOffset;
+
+        @Parameter(
                 names = "--basisStack",
                 description = "Existing stack (in same project) to use as basis for the new imported stack " +
                               "(e.g. for layer tile positions and resolution data)")
@@ -181,9 +187,14 @@ public class ImportSlicesClient {
         } else {
 
             // load slice data using basis stack
-
+            final int zOffset = parameters.sliceZOffset == null ? 0 : parameters.sliceZOffset;
             for (final Double z : renderDataClient.getStackZValues(parameters.basisStack)) {
-                zToSlicePath.put(z, String.format(parameters.sliceUrlFormat, z.intValue()));
+                final String slicePath = String.format(parameters.sliceUrlFormat, z.intValue() + zOffset);
+                final File sliceFile = new File(slicePath).getAbsoluteFile();
+                if (! sliceFile.exists()) {
+                    throw new IllegalArgumentException(sliceFile + " does not exist");
+                }
+                zToSlicePath.put(z, sliceFile.getAbsolutePath());
             }
 
             final Bounds bounds = basisStackMetaData.getStats().getStackBounds();
