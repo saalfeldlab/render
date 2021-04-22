@@ -151,9 +151,8 @@ public class N5Client {
 
         @Parameter(
                 names = "--z_coords",
-                description = "Path of Zcoords.txt file",
-                required = true)
-        private String zCoordsPath = null;
+                description = "Path of Zcoords.txt file")
+        public String zCoordsPath;
 
         private int[] parseCSIntArray(final String csvString) {
             int[] intValues = null;
