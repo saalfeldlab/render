@@ -84,6 +84,11 @@ public class Bounds implements Serializable {
     }
 
     @JsonIgnore
+    public double getDeltaZ() {
+        return ((maxZ == null) || (minZ == null)) ? 0 : maxZ - minZ;
+    }
+
+    @JsonIgnore
     public int getX() {
         return (int) Math.floor(minX);
     }
@@ -116,6 +121,46 @@ public class Bounds implements Serializable {
     @Override
     public String toString() {
         return toJson();
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        final Bounds bounds = (Bounds) o;
+
+        if (!minX.equals(bounds.minX)) {
+            return false;
+        }
+        if (!minY.equals(bounds.minY)) {
+            return false;
+        }
+        if (minZ != null ? !minZ.equals(bounds.minZ) : bounds.minZ != null) {
+            return false;
+        }
+        if (!maxX.equals(bounds.maxX)) {
+            return false;
+        }
+        if (!maxY.equals(bounds.maxY)) {
+            return false;
+        }
+        return maxZ != null ? maxZ.equals(bounds.maxZ) : bounds.maxZ == null;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = minX.hashCode();
+        result = 31 * result + minY.hashCode();
+        result = 31 * result + (minZ != null ? minZ.hashCode() : 0);
+        result = 31 * result + maxX.hashCode();
+        result = 31 * result + maxY.hashCode();
+        result = 31 * result + (maxZ != null ? maxZ.hashCode() : 0);
+        return result;
     }
 
     public boolean intersects(final Bounds that) {
