@@ -4,6 +4,8 @@ import com.beust.jcommander.Parameter;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.spec.Bounds;
+
 /**
  * Parameters for specifying layer bounds.
  *
@@ -56,4 +58,12 @@ public class LayerBoundsParameters implements Serializable {
 
     }
 
+    public Bounds overrideBounds(final Bounds defaultBounds) {
+        return new Bounds(minX == null ? defaultBounds.getMinX() : minX,
+                          minY == null ? defaultBounds.getMinY() : minY,
+                          defaultBounds.getMinZ(),
+                          maxX == null ? defaultBounds.getMaxX() : maxX,
+                          maxY == null ? defaultBounds.getMaxY() : maxY,
+                          defaultBounds.getMaxZ());
+    }
 }

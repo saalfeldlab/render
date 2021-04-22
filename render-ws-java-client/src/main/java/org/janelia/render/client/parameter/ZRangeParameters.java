@@ -4,6 +4,8 @@ import com.beust.jcommander.Parameter;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.spec.Bounds;
+
 /**
  * Parameters for specifying layer z ranges.
  *
@@ -21,5 +23,14 @@ public class ZRangeParameters
             names = "--maxZ",
             description = "Maximum Z value for layers to be processed")
     public Double maxZ;
+
+    public Bounds overrideBounds(final Bounds defaultBounds) {
+        return new Bounds(defaultBounds.getMinX(),
+                          defaultBounds.getMinY(),
+                          minZ == null ? defaultBounds.getMinZ() : minZ,
+                          defaultBounds.getMaxX(),
+                          defaultBounds.getMaxY(),
+                          maxZ == null ? defaultBounds.getMaxZ() : maxZ);
+    }
 
 }

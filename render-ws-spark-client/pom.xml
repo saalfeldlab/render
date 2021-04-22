@@ -224,6 +224,12 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>org.janelia.saalfeldlab</groupId>
+            <artifactId>n5-spark</artifactId>
+            <version>3.4.1</version>
+        </dependency>
+
     </dependencies>
 
     <!--
