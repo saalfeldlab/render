@@ -15,6 +15,8 @@ import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import fit.polynomial.QuadraticFunction;
 import ij.ImageJ;
@@ -332,10 +334,11 @@ public class AdjustBlock {
 
 							// TODO: there is a mistake if there are more than two overlaps
 							// Apply the already computed transformation
-							adjustments.put( i, new double[] { avgO, stDevQ / stDevO, avgQ } );
-							
-							System.out.println( "adjustment for " + tileSpec.getImageCol() + " is: sub " + avgO + ", mul " + (stDevQ / stDevO) + ", add " + avgQ );
-							
+							final double mul = stDevQ / stDevO;
+							adjustments.put( i, new double[] { avgO, mul, avgQ } );
+
+							LOG.debug("computeAdjustments: adjustment for column {} is: sub {}, mul {}, add {}",
+									  tileSpec.getImageCol(), avgO, mul, avgQ);
 							break;
 						}
 					}
@@ -344,7 +347,8 @@ public class AdjustBlock {
 
 			if ( !adjustments.containsKey( i ) )
 			{
-				System.out.println( "COULD NOT ADJUST " + tileSpec.getImageCol() + " setting to identity." );
+				LOG.warn("computeAdjustments: COULD NOT ADJUST column {}, setting to identity",
+						 tileSpec.getImageCol());
 				adjustments.put( i, new double[] { 0, 1, 0 } );
 			}
 		}
@@ -364,7 +368,7 @@ public class AdjustBlock {
 		for ( int i = 0; i < data.size(); ++i )
 		{
 			final double[] adjust = adjustments.get( i );
-			System.out.println( i + " " + Util.printCoordinates( adjust ) );
+			//System.out.println( i + " " + Util.printCoordinates( adjust ) );
 
 			final AffineModel2D model = data.get( i ).getA();
 
@@ -439,6 +443,42 @@ public class AdjustBlock {
 		return new FinalRealInterval( tmpMin, tmpMax );
 	}
 
+
+	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSlice(final String stack,
+																						  final RenderDataClient renderDataClient,
+																						  final Interval interval,
+																						  final double scale,
+																						  final boolean cacheOnDisk,
+																						  final int z)
+			throws IOException {
+
+		final List<Pair<AffineModel2D,MinimalTileSpec>> data = getData(z, renderDataClient, stack);
+		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
+
+		for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )
+		{
+			final MinimalTileSpec minimalTileSpec = tile.getB();
+
+			LOG.debug("renderIntensityAdjustedSlice: processing tile {} in column {}",
+					  minimalTileSpec.getTileId(), minimalTileSpec.getImageCol());
+
+			final ImageProcessorWithMasks imp = VisualizeTools.getImage(minimalTileSpec, scale, cacheOnDisk);
+			corrected.add( new ValuePair<>( (ByteProcessor)imp.mask, correct(imp, false) ) );
+
+			//new ImagePlus( "i", imp.ip ).show();
+			//new ImagePlus( "m", imp.mask ).show();
+			//new ImagePlus( "c", corrected.get( corrected.size() - 1).getB() ).show();
+			//SimpleMultiThreading.threadHaltUnClean();
+		}
+
+		//SimpleMultiThreading.threadHaltUnClean();
+
+		// order maps to [sub, mul, add]
+		final HashMap< Integer, double[] > adjustments = computeAdjustments( data, corrected );
+
+		return fuse2d(interval, data, corrected, adjustments);
+	}
+
 	public static void main( String[] args ) throws IOException
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
@@ -462,29 +502,8 @@ public class AdjustBlock {
 
 		for ( int z = minZ; z <= maxZ; ++z )
 		{
-			List<Pair<AffineModel2D,MinimalTileSpec>> data = getData(z, renderDataClient, stack);
-			List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
-
-			for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )
-			{
-				System.out.println( "Processing z=" + tile.getB().getZ() + ", tile=" + tile.getB().getImageCol() );
-
-				final ImageProcessorWithMasks imp = VisualizeTools.getImage( tile.getB(), scale, cacheOnDisk );
-				corrected.add( new ValuePair<>( (ByteProcessor)imp.mask, correct(imp, false) ) );
-
-				//new ImagePlus( "i", imp.ip ).show();
-				//new ImagePlus( "m", imp.mask ).show();
-				//new ImagePlus( "c", corrected.get( corrected.size() - 1).getB() ).show();
-				//SimpleMultiThreading.threadHaltUnClean();
-
-			}
-
-			//SimpleMultiThreading.threadHaltUnClean();
-
-			// order maps to [sub, mul, add]
-			final HashMap< Integer, double[] > adjustments = computeAdjustments( data, corrected );
-
-			final RandomAccessibleInterval< UnsignedByteType > slice = fuse2d(interval, data, corrected, adjustments);
+			final RandomAccessibleInterval<UnsignedByteType> slice =
+					renderIntensityAdjustedSlice(stack, renderDataClient, interval, scale, cacheOnDisk, z);
 			stack3d.addSlice( ImageJFunctions.wrap( slice, "" ).getProcessor() );
 		}
 
@@ -501,4 +520,7 @@ public class AdjustBlock {
 
 		imp1.show();
 	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(AdjustBlock.class);
+
 }
