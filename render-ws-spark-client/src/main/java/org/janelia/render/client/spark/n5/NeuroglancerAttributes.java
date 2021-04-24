@@ -48,7 +48,7 @@ public class NeuroglancerAttributes {
     private final List<String> units;
     private final List<List<Integer>> scales;
     private final PixelResolution pixelResolution;
-    private final List<Long> coordinateOffsets;
+    private final List<Long> translate;
 
     /**
      * @param  stackResolutionValues        stack resolution values for each axis (x, y, z).
@@ -57,12 +57,13 @@ public class NeuroglancerAttributes {
      *                                      May be an empty string to indicate a unit-less dimension.
      * @param  numberOfDownsampledDatasets  number of downsampled datasets (for multi-scaled datasets).
      * @param  downSampleFactors            downsample factors (for multi-scaled datasets).
+     * @param  translate                    translation or offset required to map n5 origin to render stack origin.
      */
     public NeuroglancerAttributes(final List<Double> stackResolutionValues,
                                   final String stackResolutionUnit,
                                   final int numberOfDownsampledDatasets,
                                   final int[] downSampleFactors,
-                                  final List<Long> coordinateOffsets) {
+                                  final List<Long> translate) {
 
         this.axes = RENDER_AXES;
 
@@ -80,7 +81,7 @@ public class NeuroglancerAttributes {
         this.pixelResolution = new PixelResolution(stackResolutionValues,
                                                    stackResolutionUnit);
 
-        this.coordinateOffsets = new ArrayList<>(coordinateOffsets);
+        this.translate = new ArrayList<>(translate);
     }
 
     /**
@@ -125,7 +126,7 @@ public class NeuroglancerAttributes {
         attributes.put("units", units);
         attributes.put("scales", scales);
         attributes.put("pixelResolution", pixelResolution);
-        attributes.put("coordinateOffsets", coordinateOffsets);
+        attributes.put("translate", translate);
 
         LOG.info("write: saving neuroglancer attributes to {}{}/attributes.json", n5BasePath, ngAttributesPath);
         n5Writer.setAttributes(ngAttributesPath.toString(), attributes);
