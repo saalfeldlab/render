@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark;
+package org.janelia.render.client.spark.n5;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.List;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -28,6 +29,7 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
+import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.zspacing.ThicknessCorrectionData;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
@@ -41,7 +43,6 @@ import org.slf4j.LoggerFactory;
 
 import net.imglib2.Cursor;
 import net.imglib2.IterableInterval;
-import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.basictypeaccess.array.ByteArray;
@@ -81,11 +82,7 @@ public class N5Client {
                 names = "--n5Dataset",
                 description = "N5 dataset, e.g. /Sec26",
                 required = true)
-        public String baseDatasetName;
-
-        public String getDatasetName() {
-            return tempTileSizeString == null ? baseDatasetName : baseDatasetName + "-slices";
-        }
+        public String n5Dataset;
 
         @Parameter(
                 names = "--tileWidth",
@@ -100,39 +97,23 @@ public class N5Client {
         public Integer tileHeight;
 
         @Parameter(
-                names = "--tempTileSize",
-                description = "Size of temporary output tiles, must be an integer multiple of blockSize, e.g. 4096,4096")
-        public String tempTileSizeString;
-
-        public int[] getTempTileSize() {
-            return parseCSIntArray(tempTileSizeString);
-        }
-
-        @Parameter(
                 names = "--blockSize",
                 description = "Size of output blocks, e.g. 128,128,128",
                 required = true)
         public String blockSizeString;
 
         public int[] getBlockSize() {
-            final int[] blockSize;
-            final int[] tempTileSize = getTempTileSize();
-            if (tempTileSize == null) {
-                blockSize = parseCSIntArray(blockSizeString);
-            } else {
-                blockSize = new int[]{tempTileSize[0], tempTileSize[1], 1};
-            }
-            return blockSize;
+            return parseCSIntArray(blockSizeString);
         }
 
         @Parameter(
                 names = "--factors",
                 description = "Specifies generates a scale pyramid with given factors with relative scaling between factors, e.g. 2,2,2",
                 required = true)
-        public String downSamplingFactorsString;
+        public String downsampleFactorsString;
 
-        public int[] getDownSamplingFactors() {
-            return parseCSIntArray(downSamplingFactorsString);
+        public int[] getDownsampleFactors() {
+            return parseCSIntArray(downsampleFactorsString);
         }
 
         @ParametersDelegate
@@ -140,6 +121,11 @@ public class N5Client {
 
         @ParametersDelegate
         public ZRangeParameters layerRange = new ZRangeParameters();
+
+        @Parameter(
+                names = "--stackResolutionUnit",
+                description = "Unit description for stack resolution values (e.g. nm, um, ...)")
+        public String stackResolutionUnit = "nm";
 
         public Bounds getBoundsForRun(final StackMetaData stackMetaData) {
             final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
@@ -207,12 +193,12 @@ public class N5Client {
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
-        final String datasetName = parameters.getDatasetName();
+        final String datasetName = parameters.n5Dataset;
         final int[] blockSize = parameters.getBlockSize();
-        final int[] downSamplingFactors = parameters.getDownSamplingFactors();
-        final boolean downSampleStack = downSamplingFactors != null;
+        final int[] downsampleFactors = parameters.getDownsampleFactors();
+        final boolean downsampleStack = downsampleFactors != null;
 
-        final String fullScaleName = downSampleStack ? Paths.get(datasetName, "s" + 0).toString() : datasetName;
+        final String fullScaleName = downsampleStack ? Paths.get(datasetName, "s" + 0).toString() : datasetName;
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
         final Bounds bounds = parameters.getBoundsForRun(stackMetaData);
@@ -222,11 +208,20 @@ public class N5Client {
                 bounds.getMinY().longValue(),
                 bounds.getMinZ().longValue()
         };
-        final long[] size = {
+        final long[] dimensions = {
                 new Double(bounds.getDeltaX()).longValue(),
                 new Double(bounds.getDeltaY()).longValue(),
                 new Double(bounds.getDeltaZ()).longValue()
         };
+
+        final N5Writer n5 = new N5FSWriter(parameters.n5Path);
+
+        final DatasetAttributes datasetAttributes = new DatasetAttributes(dimensions,
+                                                                          blockSize,
+                                                                          DataType.UINT8,
+                                                                          new GzipCompression());
+        n5.createDataset(datasetName, datasetAttributes);
+
 
         final File datasetDir = new File(Paths.get(parameters.n5Path, fullScaleName).toString());
         if (! datasetDir.exists()) {
@@ -254,42 +249,44 @@ public class N5Client {
                     parameters.n5Path,
                     fullScaleName,
                     min,
-                    size,
+                    dimensions,
                     blockSize,
                     thicknessCorrectionData);
 
         } else {
             final File s1Dir = new File(datasetDir.getParent(), "s1");
-            if ((! downSampleStack) || (! fullScaleName.endsWith("/s0")) || s1Dir.exists()) {
+            if ((! downsampleStack) || s1Dir.exists()) {
                 throw new IllegalArgumentException("Dataset " + datasetDir.getAbsolutePath() + " already exists.  " +
                                                    "Please remove the existing dataset if you wish to regenerate it.");
             }
         }
 
-        if (downSampleStack) {
+        int numberOfDownSampledDatasets = 0;
+        if (downsampleStack) {
 
-            LOG.info("run: down-sampling stack with factors {}", Arrays.toString(downSamplingFactors));
+            LOG.info("run: downsample stack with factors {}", Arrays.toString(downsampleFactors));
 
             // Now that the full resolution image is saved into n5, generate the scale pyramid
             final N5WriterSupplier n5Supplier = new N5PathSupplier(parameters.n5Path);
 
-            // NOTE: no need to write full scale down-sampling factors (default is 1,1,1)
+            final List<String> downsampledDatasetPaths =
+                    downsampleScalePyramid(sparkContext,
+                                           n5Supplier,
+                                           fullScaleName,
+                                           datasetName,
+                                           downsampleFactors);
 
-            downsampleScalePyramid(sparkContext,
-                                   n5Supplier,
-                                   fullScaleName,
-                                   datasetName,
-                                   downSamplingFactors);
+            numberOfDownSampledDatasets = downsampledDatasetPaths.size();
         }
 
-        // TODO: find out whether this should behave differently when down-sampling is requested
-        if (parameters.getTempTileSize() != null) {
-            reSave(sparkContext,
-                   parameters.n5Path,
-                   datasetName,
-                   parameters.getDatasetName(),
-                   parameters.getBlockSize());
-        }
+        // save additional parameters so that n5 can be viewed in neuroglancer
+        final NeuroglancerAttributes ngAttributes =
+                new NeuroglancerAttributes(stackMetaData.getCurrentResolutionValues(),
+                                           parameters.stackResolutionUnit,
+                                           numberOfDownSampledDatasets,
+                                           downsampleFactors);
+        ngAttributes.write(Paths.get(parameters.n5Path),
+                           Paths.get(fullScaleName));
 
         sparkContext.close();
     }
@@ -337,34 +334,18 @@ public class N5Client {
         }
     }
 
-    public static void saveRenderStack(
-            final JavaSparkContext sc,
-            final BoxRenderer boxRenderer,
-            final int tileWidth,
-            final int tileHeight,
-            final String n5Path,
-            final String datasetName,
-            final long[] min,
-            final long[] size,
-            final int[] blockSize,
-            final ThicknessCorrectionData thicknessCorrectionData)
-            throws IOException {
+    public static void saveRenderStack(final JavaSparkContext sc,
+                                       final BoxRenderer boxRenderer,
+                                       final int tileWidth,
+                                       final int tileHeight,
+                                       final String n5Path,
+                                       final String datasetName,
+                                       final long[] min,
+                                       final long[] dimensions,
+                                       final int[] blockSize,
+                                       final ThicknessCorrectionData thicknessCorrectionData) {
 
-        final N5Writer n5 = new N5FSWriter(n5Path);
-
-        // TODO: setup neuroglancer friendly attributes for dataset
-
-        n5.createDataset(
-                datasetName,
-                size,
-                blockSize,
-                DataType.UINT8,
-                new GzipCompression());
-
-        /*
-         * grid block size for parallelization to minimize double loading of
-         * blocks
-         */
+        // grid block size for parallelization to minimize double loading of tiles
         final int[] gridBlockSize = new int[]{
                 Math.max(blockSize[0], tileWidth),
                 Math.max(blockSize[1], tileHeight),
@@ -373,10 +354,10 @@ public class N5Client {
 
         final JavaRDD<long[][]> rdd = sc.parallelize(
                 Grid.create(
-                        new long[]{
-                                size[0],
-                                size[1],
-                                size[2]
+                        new long[] {
+                                dimensions[0],
+                                dimensions[1],
+                                dimensions[2]
                         },
                         gridBlockSize,
                         blockSize));
@@ -467,55 +448,6 @@ public class N5Client {
             final N5FSWriter n5Writer = new N5FSWriter(n5Path);
             N5Utils.saveNonEmptyBlock(block, n5Writer, datasetName, gridBlock[2], new UnsignedByteType(0));
         });
-    }
-
-    /**
-     * Copy an existing N5 dataset into another with a different blockSize.
-     * <p>
-     * Parallelizes over blocks of [max(input, output)] to reduce redundant
-     * loading.  If blockSizes are integer multiples of each other, no
-     * redundant loading will happen.
-     */
-    @SuppressWarnings("unchecked")
-    public static void reSave(
-            final JavaSparkContext sc,
-            final String n5Path,
-            final String datasetName,
-            final String outDatasetName,
-            final int[] outBlockSize)
-            throws IOException {
-
-        final N5Writer n5 = new N5FSWriter(n5Path);
-
-        final DatasetAttributes attributes = n5.getDatasetAttributes(datasetName);
-        final int[] blockSize = attributes.getBlockSize();
-
-        n5.createDataset(
-                outDatasetName,
-                attributes.getDimensions(),
-                outBlockSize,
-                attributes.getDataType(),
-                attributes.getCompression());
-
-        /* grid block size for parallelization to minimize double loading of blocks */
-        final int[] gridBlockSize = new int[outBlockSize.length];
-        Arrays.setAll(gridBlockSize, i -> Math.max(blockSize[i], outBlockSize[i]));
-
-        final JavaRDD<long[][]> rdd =
-                sc.parallelize(
-                        Grid.create(
-                                attributes.getDimensions(),
-                                gridBlockSize,
-                                outBlockSize));
-
-        rdd.foreach(
-                gridBlock -> {
-                    final N5Writer n5Writer = new N5FSWriter(n5Path);
-                    final RandomAccessibleInterval<?> source = N5Utils.open(n5Writer, datasetName);
-                    @SuppressWarnings("rawtypes") final RandomAccessibleInterval sourceGridBlock =
-                            Views.offsetInterval(source, gridBlock[0], gridBlock[1]);
-                    N5Utils.saveBlock(sourceGridBlock, n5Writer, outDatasetName, gridBlock[2]);
-                });
     }
 
 }
