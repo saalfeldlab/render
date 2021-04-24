@@ -91,7 +91,7 @@ public class N5ClientTest {
     public void testNeuroglancerAttributes() throws Exception {
 
         final Path n5Path = n5PathDirectory.toPath().toAbsolutePath();
-        final Path fullScaleDatasetPath = Paths.get("/render/test_stack/s0");
+        final Path fullScaleDatasetPath = Paths.get("/render/test_stack/one_more_nested_dir/s0");
         final String datasetName = fullScaleDatasetPath.toString();
 
         final long[] dimensions = { 100L, 200L, 300L };
@@ -124,14 +124,26 @@ public class N5ClientTest {
                                            new int[] {2,2,2});
         ngAttributes.write(n5Path, fullScaleDatasetPath);
 
-        final String parentDatasetName = fullScaleDatasetPath.getParent().toString();
+        final String testStackDatasetName = fullScaleDatasetPath.getParent().toString();
 
         @SuppressWarnings("unchecked")
-        final List<String> axes = n5Reader.getAttribute(parentDatasetName, "axes", List.class);
+        final List<String> axes = n5Reader.getAttribute(testStackDatasetName,
+                                                        "axes",
+                                                        List.class);
 
-        Assert.assertNotNull("axes attributes not written to dataset " + parentDatasetName, axes);
+        Assert.assertNotNull("axes attributes not written to dataset " + testStackDatasetName, axes);
         Assert.assertArrayEquals("invalid axes attributes written",
                                  NeuroglancerAttributes.RENDER_AXES.toArray(), axes.toArray());
+
+        final String renderDatasetName = fullScaleDatasetPath.getParent().getParent().toString();
+
+        final Boolean flag = n5Reader.getAttribute(renderDatasetName,
+                                                   NeuroglancerAttributes.SUPPORTED_KEY,
+                                                   Boolean.class);
+
+        Assert.assertEquals(NeuroglancerAttributes.SUPPORTED_KEY +
+                            " attributes not written to dataset " + renderDatasetName,
+                            Boolean.TRUE, flag);
     }
 
 }

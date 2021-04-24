@@ -10,6 +10,8 @@ import java.util.Map;
 
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Writer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Attributes used by neuroglancer to display n5 volumes.
@@ -94,6 +96,9 @@ public class NeuroglancerAttributes {
         final Path ngAttributesPath = fullScaleDatasetPath.endsWith("s0") ?
                                       fullScaleDatasetPath.getParent() : fullScaleDatasetPath;
 
+        LOG.info("write: entry, n5BasePath={}, fullScaleDatasetPath={}, ngAttributesPath={}",
+                 n5BasePath, fullScaleDatasetPath, ngAttributesPath);
+
         final N5Writer n5Writer = new N5FSWriter(n5BasePath.toAbsolutePath().toString());
 
         // Neuroglancer recursively looks for attribute.json files from root path and stops at
@@ -102,8 +107,11 @@ public class NeuroglancerAttributes {
 
         // For more complex projects with hierarchical data sets (e.g. /render/<stack>, /z_corr/<stack>, ...),
         // we need to ensure attributes.json files exist in each subdirectory.
-        for (final Path pathElement : ngAttributesPath.getParent()) {
-            n5Writer.setAttribute(pathElement.toString(), SUPPORTED_KEY, true);
+        for (Path path = ngAttributesPath.getParent();
+             (path != null) && (! path.endsWith("/"));
+             path = path.getParent()) {
+            LOG.info("write: saving supported attribute to {}{}/attributes.json", n5BasePath, path);
+            n5Writer.setAttribute(path.toString(), SUPPORTED_KEY, true);
         }
 
         // Finally, write the neuroglancer attributes.
@@ -114,7 +122,9 @@ public class NeuroglancerAttributes {
         attributes.put("scales", scales);
         attributes.put("pixelResolution", pixelResolution);
 
+        LOG.info("write: saving neuroglancer attributes to {}{}/attributes.json", n5BasePath, ngAttributesPath);
         n5Writer.setAttributes(ngAttributesPath.toString(), attributes);
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(NeuroglancerAttributes.class);
 }

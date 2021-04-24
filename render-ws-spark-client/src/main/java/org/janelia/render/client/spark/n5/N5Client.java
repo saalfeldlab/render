@@ -32,7 +32,6 @@ import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.zspacing.ThicknessCorrectionData;
 import org.janelia.saalfeldlab.n5.DataType;
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Writer;
@@ -198,7 +197,8 @@ public class N5Client {
         final int[] downsampleFactors = parameters.getDownsampleFactors();
         final boolean downsampleStack = downsampleFactors != null;
 
-        final String fullScaleName = downsampleStack ? Paths.get(datasetName, "s" + 0).toString() : datasetName;
+        final String fullScaleDatasetName = downsampleStack ?
+                                            Paths.get(datasetName, "s" + 0).toString() : datasetName;
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
         final Bounds bounds = parameters.getBoundsForRun(stackMetaData);
@@ -213,21 +213,12 @@ public class N5Client {
                 new Double(bounds.getDeltaY()).longValue(),
                 new Double(bounds.getDeltaZ()).longValue()
         };
-
-        final N5Writer n5 = new N5FSWriter(parameters.n5Path);
-
-        final DatasetAttributes datasetAttributes = new DatasetAttributes(dimensions,
-                                                                          blockSize,
-                                                                          DataType.UINT8,
-                                                                          new GzipCompression());
-        n5.createDataset(datasetName, datasetAttributes);
-
-
-        final File datasetDir = new File(Paths.get(parameters.n5Path, fullScaleName).toString());
+        
+        final File datasetDir = new File(Paths.get(parameters.n5Path, fullScaleDatasetName).toString());
         if (! datasetDir.exists()) {
 
             LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {},{},{}",
-                     parameters.n5Path, fullScaleName, min[0], min[1], min[2]);
+                     parameters.n5Path, fullScaleDatasetName, min[0], min[1], min[2]);
 
             final BoxRenderer boxRenderer = new BoxRenderer(parameters.renderWeb.baseDataUrl,
                                                             parameters.renderWeb.owner,
@@ -247,7 +238,7 @@ public class N5Client {
                     parameters.tileWidth,
                     parameters.tileHeight,
                     parameters.n5Path,
-                    fullScaleName,
+                    fullScaleDatasetName,
                     min,
                     dimensions,
                     blockSize,
@@ -272,7 +263,7 @@ public class N5Client {
             final List<String> downsampledDatasetPaths =
                     downsampleScalePyramid(sparkContext,
                                            n5Supplier,
-                                           fullScaleName,
+                                           fullScaleDatasetName,
                                            datasetName,
                                            downsampleFactors);
 
@@ -286,7 +277,7 @@ public class N5Client {
                                            numberOfDownSampledDatasets,
                                            downsampleFactors);
         ngAttributes.write(Paths.get(parameters.n5Path),
-                           Paths.get(fullScaleName));
+                           Paths.get(fullScaleDatasetName));
 
         sparkContext.close();
     }
@@ -343,7 +334,17 @@ public class N5Client {
                                        final long[] min,
                                        final long[] dimensions,
                                        final int[] blockSize,
-                                       final ThicknessCorrectionData thicknessCorrectionData) {
+                                       final ThicknessCorrectionData thicknessCorrectionData)
+            throws IOException {
+
+        final N5Writer n5 = new N5FSWriter(n5Path);
+
+        n5.createDataset(
+                datasetName,
+                dimensions,
+                blockSize,
+                DataType.UINT8,
+                new GzipCompression());
 
         // grid block size for parallelization to minimize double loading of tiles
         final int[] gridBlockSize = new int[]{
