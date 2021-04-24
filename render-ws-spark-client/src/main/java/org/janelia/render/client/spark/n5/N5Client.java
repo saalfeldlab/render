@@ -275,7 +275,9 @@ public class N5Client {
                 new NeuroglancerAttributes(stackMetaData.getCurrentResolutionValues(),
                                            parameters.stackResolutionUnit,
                                            numberOfDownSampledDatasets,
-                                           downsampleFactors);
+                                           downsampleFactors,
+                                           Arrays.asList(min[0], min[1], min[2]));
+
         ngAttributes.write(Paths.get(parameters.n5Path),
                            Paths.get(fullScaleDatasetName));
 

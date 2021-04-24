@@ -31,7 +31,7 @@ public class NeuroglancerAttributes {
     /** Attribute key for "intermediate" directory json files required by neuroglancer. */
     public static final String SUPPORTED_KEY = "neuroglancer_supported";
 
-    @SuppressWarnings({"FieldCanBeLocal", "unused"})
+    @SuppressWarnings({"FieldCanBeLocal", "unused", "MismatchedQueryAndUpdateOfCollection"})
     public static class PixelResolution {
 
         private final List<Double> dimensions;
@@ -39,7 +39,7 @@ public class NeuroglancerAttributes {
 
         public PixelResolution(final List<Double> dimensions,
                                final String unit) {
-            this.dimensions = dimensions;
+            this.dimensions = new ArrayList<>(dimensions);
             this.unit = unit;
         }
     }
@@ -48,6 +48,7 @@ public class NeuroglancerAttributes {
     private final List<String> units;
     private final List<List<Integer>> scales;
     private final PixelResolution pixelResolution;
+    private final List<Long> coordinateOffsets;
 
     /**
      * @param  stackResolutionValues        stack resolution values for each axis (x, y, z).
@@ -60,7 +61,8 @@ public class NeuroglancerAttributes {
     public NeuroglancerAttributes(final List<Double> stackResolutionValues,
                                   final String stackResolutionUnit,
                                   final int numberOfDownsampledDatasets,
-                                  final int[] downSampleFactors) {
+                                  final int[] downSampleFactors,
+                                  final List<Long> coordinateOffsets) {
 
         this.axes = RENDER_AXES;
 
@@ -77,6 +79,8 @@ public class NeuroglancerAttributes {
 
         this.pixelResolution = new PixelResolution(stackResolutionValues,
                                                    stackResolutionUnit);
+
+        this.coordinateOffsets = new ArrayList<>(coordinateOffsets);
     }
 
     /**
@@ -121,6 +125,7 @@ public class NeuroglancerAttributes {
         attributes.put("units", units);
         attributes.put("scales", scales);
         attributes.put("pixelResolution", pixelResolution);
+        attributes.put("coordinateOffsets", coordinateOffsets);
 
         LOG.info("write: saving neuroglancer attributes to {}{}/attributes.json", n5BasePath, ngAttributesPath);
         n5Writer.setAttributes(ngAttributesPath.toString(), attributes);

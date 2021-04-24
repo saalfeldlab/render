@@ -4,6 +4,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -121,7 +122,8 @@ public class N5ClientTest {
                 new NeuroglancerAttributes(stackMetaData.getCurrentResolutionValues(),
                                            "nm",
                                            3,
-                                           new int[] {2,2,2});
+                                           new int[] {2, 2, 2},
+                                           Arrays.asList(5L, 25L, 125L));
         ngAttributes.write(n5Path, fullScaleDatasetPath);
 
         final String testStackDatasetName = fullScaleDatasetPath.getParent().toString();
