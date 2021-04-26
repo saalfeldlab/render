@@ -151,6 +151,20 @@ public class N5Client {
             return intValues;
         }
 
+        public void validate() throws IllegalArgumentException {
+            final int[] blockSize = getBlockSize();
+            if (tileWidth % blockSize[0] != 0) {
+                throw new IllegalArgumentException("tileWidth " + tileWidth +
+                                                   " must be an integral multiple of the blockSize width " +
+                                                   blockSize[0]);
+            }
+            if (tileHeight % blockSize[1] != 0) {
+                throw new IllegalArgumentException("tileHeight " + tileHeight +
+                                                   " must be an integral multiple of the blockSize height " +
+                                                   blockSize[1]);
+            }
+        }
+
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(N5Client.class);
@@ -163,6 +177,7 @@ public class N5Client {
 
                 final N5Client.Parameters parameters = new N5Client.Parameters();
                 parameters.parse(args);
+                parameters.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
