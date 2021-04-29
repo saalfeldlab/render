@@ -85,7 +85,7 @@ public class SolveSetFactoryBRSec34 extends SolveSetFactory
 			{
 				minStitchingInliers = 1000;
 			}
-			
+
 			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
 			{
 				// rigid alignment
@@ -102,6 +102,13 @@ public class SolveSetFactoryBRSec34 extends SolveSetFactory
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
+			}
+
+			if ( setMinZ <= 5000 )
+			{
+				// translation only
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 			}
 
 			leftSets.add(
@@ -161,6 +168,13 @@ public class SolveSetFactoryBRSec34 extends SolveSetFactory
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
+			}
+
+			if ( setMinZ <= 5000 )
+			{
+				// translation only
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 			}
 
 			rightSets.add(
