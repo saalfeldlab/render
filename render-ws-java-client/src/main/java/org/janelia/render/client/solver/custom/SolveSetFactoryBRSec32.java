@@ -53,6 +53,10 @@ public class SolveSetFactoryBRSec32 extends SolveSetFactory
 				defaultMinStitchingInliers,
 				defaultBlockMaxAllowedError,
 				defaultDynamicLambdaFactor );
+
+		for ( int i = 13914; i <= 18229; ++i )
+			this.additionalIssues.put( i, "problem" );
+
 	}
 
 	@Override
@@ -108,6 +112,10 @@ public class SolveSetFactoryBRSec32 extends SolveSetFactory
 
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
 			}
+
+			// allow translation stitching obly
+			stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+			((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 
 			leftSets.add(
 					instantiateSolveItemData(
@@ -173,6 +181,10 @@ public class SolveSetFactoryBRSec32 extends SolveSetFactory
 
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
 			}
+
+			// allow translation stitching obly
+			stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+			((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 
 			rightSets.add(
 					instantiateSolveItemData(
