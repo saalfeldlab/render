@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.custom.SolveSetFactoryBRSec32;
 import org.janelia.render.client.solver.visualize.ErrorTools;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.janelia.render.client.solver.visualize.ErrorTools.ErrorFilter;
@@ -32,7 +33,7 @@ public class DistributedSolveDebugger extends DistributedSolve
 	{
 		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
 		final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w =
-				this.solveSet.leftItems.get( 6 ).createWorker( //9, 28, 57, 81
+				this.solveSet.leftItems.get( 35 ).createWorker( //9, 28, 57, 81
 						this.solveSet.getMaxId() + 1,
 						runParams.pGroupList,
 						runParams.sectionIdToZMap,
@@ -67,8 +68,8 @@ public class DistributedSolveDebugger extends DistributedSolve
 
 				vis = VisualizeTools.renderDynamicLambda( vis, s.zToDynamicLambda(), s.idToNewModel(), s.idToTileSpec(), parameters.dynamicLambdaFactor );
 
-				final ImagePlus imp = s.visualizeAligned();
-				VisualizeTools.renderBDV( vis, imp, 0.25 );
+				final ImagePlus imp = s.visualizeAligned( 0.5 );
+				VisualizeTools.renderBDV( vis, imp, 0.5 );
 			}
 
 		} catch ( Exception e1 )
@@ -95,9 +96,9 @@ public class DistributedSolveDebugger extends DistributedSolve
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                            "--project", "Sec37", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                            "--matchCollection", "Sec37_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-                            "--stack", "v1_acquire_trimmed", //"v3_acquire",
+                            "--project", "Sec32", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "Sec32_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", "v3_acquire_trimmed", //"v3_acquire",
                             //"--targetStack", "v3_acquire_sp1",
                             //"--completeTargetStack",
                             
@@ -132,7 +133,7 @@ public class DistributedSolveDebugger extends DistributedSolve
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final SolveSetFactory solveSetFactory =
-                		new SolveSetFactoryAdaptiveRigid(
+                		new SolveSetFactoryBRSec32(
                 		//new SolveSetFactorySimple(
                 				parameters.globalModel(),
                 				parameters.blockModel(),
