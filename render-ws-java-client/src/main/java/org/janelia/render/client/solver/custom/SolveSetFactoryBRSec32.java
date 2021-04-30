@@ -57,6 +57,7 @@ public class SolveSetFactoryBRSec32 extends SolveSetFactory
 		for ( int i = 13914; i <= 18229; ++i )
 			this.additionalIssues.put( i, "problem" );
 
+		this.additionalIssues.put( 3859, "problem" );
 	}
 
 	@Override
