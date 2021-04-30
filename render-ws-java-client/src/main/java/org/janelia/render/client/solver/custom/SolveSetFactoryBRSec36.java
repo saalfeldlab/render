@@ -105,7 +105,7 @@ public class SolveSetFactoryBRSec36 extends SolveSetFactory
 			}
 
 			// translation-only
-			if ( setMinZ <= 2500 )
+			if ( setMinZ <= 2500 || setMaxZ >= 36000 )
 			{
 				// allow rigid stitching
 				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
@@ -172,7 +172,7 @@ public class SolveSetFactoryBRSec36 extends SolveSetFactory
 			}
 
 			// translation-only
-			if ( setMinZ <= 2500 )
+			if ( setMinZ <= 2500 || setMaxZ >= 36000 )
 			{
 				// allow rigid stitching
 				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
