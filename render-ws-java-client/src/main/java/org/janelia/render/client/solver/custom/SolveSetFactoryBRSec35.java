@@ -1,11 +1,18 @@
 package org.janelia.render.client.solver.custom;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.janelia.render.client.solver.SolveItemData;
+import org.janelia.render.client.solver.SolveSet;
 import org.janelia.render.client.solver.SolveSetFactoryAdaptiveRigid;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.InterpolatedAffineModel2D;
 
 public class SolveSetFactoryBRSec35 extends SolveSetFactoryAdaptiveRigid
 {
@@ -49,5 +56,144 @@ public class SolveSetFactoryBRSec35 extends SolveSetFactoryAdaptiveRigid
 
 		for ( int i = 14445; i <= 15445; ++i )
 			this.additionalIssues.put( i, "problem" );
+	}
+
+	@Override
+	public SolveSet defineSolveSet( final int minZ, final int maxZ, final int setSize, final Map<Integer, String> zToGroupIdMap )
+	{
+		final int modulo = ( maxZ - minZ + 1 ) % setSize;
+
+		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
+
+		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > leftSets = new ArrayList<>();
+		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rightSets = new ArrayList<>();
+
+		int id = 0;
+
+		for ( int i = 0; i < numSetsLeft; ++i )
+		{
+			final int setMinZ = minZ + i * setSize;
+			final int setMaxZ = Math.min( minZ + (i + 1) * setSize - 1, maxZ );
+
+			boolean rigidPreAlign = false;
+			Affine2D< ? > stitchingModel = defaultStitchingModel;
+			int minStitchingInliers = defaultMinStitchingInliers;
+			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
+			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
+			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
+			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
+
+			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
+			{
+				// rigid alignment
+				rigidPreAlign = true;
+
+				// allow rigid stitching
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+	
+				// only rigid/affine solve
+				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
+				blockOptimizerLambdasTranslation = Stream.of( 0.0,0.0,0.0,0.0 ).collect(Collectors.toList());
+				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
+				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
+
+				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
+			}
+
+			// allow translation stitching obly
+			stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+			((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
+
+			leftSets.add(
+					instantiateSolveItemData(
+							id,
+							this.defaultGlobalSolveModel,
+							this.defaultBlockSolveModel,
+							stitchingModel,
+							blockOptimizerLambdasRigid,
+							blockOptimizerLambdasTranslation,
+							blockOptimizerIterations,
+							blockMaxPlateauWidth,
+							minStitchingInliers,
+							this.defaultBlockMaxAllowedError,
+							this.defaultDynamicLambdaFactor,
+							rigidPreAlign,
+							setMinZ,
+							setMaxZ ) );
+			++id;
+		}
+
+		for ( int i = 0; i < numSetsLeft - 1; ++i )
+		{
+			final SolveItemData< ?, ?, ? > set0 = leftSets.get( i );
+			final SolveItemData< ?, ?, ? > set1 = leftSets.get( i + 1 );
+
+			final int setMinZ = ( set0.minZ() + set0.maxZ() ) / 2;
+			final int setMaxZ = ( set1.minZ() + set1.maxZ() ) / 2 - 1;
+
+			boolean rigidPreAlign = false;
+			Affine2D< ? > stitchingModel = defaultStitchingModel;
+			int minStitchingInliers = defaultMinStitchingInliers;
+			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
+			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
+			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
+			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
+
+			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
+			{
+				// rigid alignment
+				rigidPreAlign = true;
+
+				// allow rigid stitching
+				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+	
+				// only rigid/affine solve
+				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
+				blockOptimizerLambdasTranslation = Stream.of( 0.0,0.0,0.0,0.0 ).collect(Collectors.toList());
+				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
+				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
+
+				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
+			}
+
+			// allow translation stitching obly
+			stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+			((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
+
+			rightSets.add(
+					instantiateSolveItemData(
+							id,
+							this.defaultGlobalSolveModel,
+							this.defaultBlockSolveModel,
+							stitchingModel,
+							blockOptimizerLambdasRigid,
+							blockOptimizerLambdasTranslation,
+							blockOptimizerIterations,
+							blockMaxPlateauWidth,
+							minStitchingInliers,
+							this.defaultBlockMaxAllowedError,
+							this.defaultDynamicLambdaFactor,
+							rigidPreAlign,
+							setMinZ,
+							setMaxZ ) );
+			++id;
+		}
+
+		return new SolveSet( leftSets, rightSets );
+	}
+
+	protected static boolean containsIssue(
+			final int min,
+			final int max,
+			final Map<Integer, String> zToGroupIdMap,
+			final Map<Integer, String> additionalIssues )
+	{
+		for ( int i = min; i <= max; ++i )
+			if ( zToGroupIdMap.containsKey( i ) || additionalIssues.containsKey( i ) )
+				return true;
+
+		return false;
 	}
 }
