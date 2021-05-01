@@ -463,8 +463,7 @@ public class N5Client {
                 }
             }
 
-            final N5FSWriter n5Writer = new N5FSWriter(n5Path);
-            N5Utils.saveNonEmptyBlock(block, n5Writer, datasetName, gridBlock[2], new UnsignedByteType(0));
+            N5Utils.saveNonEmptyBlock(block, n5, datasetName, gridBlock[2], new UnsignedByteType(0));
         });
     }
 
