@@ -97,6 +97,12 @@
 
         <!-- Overridden SciJava Dependencies -->
 
+        <dependency>
+            <groupId>org.janelia.saalfeldlab</groupId>
+            <artifactId>n5</artifactId>
+            <version>${n5-version}</version>
+        </dependency>
+
         <!-- override logback dependency with provided scope since it should be installed into jetty directly -->
         <dependency>
             <groupId>ch.qos.logback</groupId>

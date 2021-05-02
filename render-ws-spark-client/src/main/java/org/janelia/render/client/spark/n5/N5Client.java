@@ -463,8 +463,8 @@ public class N5Client {
                 }
             }
 
-            final N5FSWriter n5Writer = new N5FSWriter(n5Path);
-            N5Utils.saveNonEmptyBlock(block, n5Writer, datasetName, gridBlock[2], new UnsignedByteType(0));
+            final N5Writer anotherN5Writer = new N5FSWriter(n5Path); // needed to prevent Spark serialization error
+            N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock[2], new UnsignedByteType(0));
         });
     }
 
