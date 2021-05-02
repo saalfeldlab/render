@@ -1,9 +1,11 @@
 package org.janelia.render.client.solver.custom;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -125,7 +127,7 @@ public class SolveSetFactoryBRSec32 extends SolveSetFactory
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							(z) -> {
+							(Function< Integer, Affine2D<?> > & Serializable )(z) -> {
 								if ( z == 4633 )
 									((InterpolatedAffineModel2D) stitchingModelf ).setLambda( 1.0 );
 								return stitchingModelf; },
@@ -199,7 +201,7 @@ public class SolveSetFactoryBRSec32 extends SolveSetFactory
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							(z) -> {
+							(Function< Integer, Affine2D<?> > & Serializable )(z) -> {
 								if ( z == 4633 )
 									((InterpolatedAffineModel2D) stitchingModelf ).setLambda( 1.0 );
 								return stitchingModelf; },

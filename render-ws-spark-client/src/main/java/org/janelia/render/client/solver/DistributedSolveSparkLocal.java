@@ -133,7 +133,7 @@ public class DistributedSolveSparkLocal extends DistributedSolve
                             "--matchCollection", "Sec08_patch_matt",
                             "--stack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758",
                             //"--targetStack", "v2_py_solve_03_affine_e10_e10_trakem2_22103_15758_new",
-                            "--completeTargetStack",
+                            //"--completeTargetStack",
                             
                             "--blockOptimizerLambdasRigid", "1.0,0.5,0.1,0.01",
                             "--blockOptimizerLambdasTranslation", "0.0,0.0,0.0,0.0",

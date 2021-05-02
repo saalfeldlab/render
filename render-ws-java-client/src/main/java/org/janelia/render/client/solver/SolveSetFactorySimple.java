@@ -1,8 +1,10 @@
 package org.janelia.render.client.solver;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
@@ -53,7 +55,7 @@ public class SolveSetFactorySimple extends SolveSetFactory
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							(z) -> defaultStitchingModel,
+							(Function< Integer, Affine2D<?> > & Serializable )(z) -> defaultStitchingModel,
 							this.defaultBlockOptimizerLambdasRigid,
 							this.defaultBlockOptimizerLambdasTranslation,
 							this.defaultBlockOptimizerIterations,
@@ -77,7 +79,7 @@ public class SolveSetFactorySimple extends SolveSetFactory
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							(z) -> defaultStitchingModel,
+							(Function< Integer, Affine2D<?> > & Serializable )(z) -> defaultStitchingModel,
 							this.defaultBlockOptimizerLambdasRigid,
 							this.defaultBlockOptimizerLambdasTranslation,
 							this.defaultBlockOptimizerIterations,

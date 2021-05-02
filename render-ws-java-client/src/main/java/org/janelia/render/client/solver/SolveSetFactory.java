@@ -1,5 +1,6 @@
 package org.janelia.render.client.solver;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -94,7 +95,7 @@ public abstract class SolveSetFactory
 				id,
 				(G)(Object)globalSolveModel,
 				(B)(Object)blockSolveModel,
-				stitchingModelSupplier,
+				(Function< Integer, S > & Serializable)(Object)stitchingModelSupplier,
 				blockOptimizerLambdasRigid,
 				blockOptimizerLambdasTranslation,
 				blockOptimizerIterations,
