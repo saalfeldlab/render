@@ -2,6 +2,7 @@ package org.janelia.render.client.solver;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
@@ -76,7 +77,7 @@ public abstract class SolveSetFactory
 			final int id,
 			final Affine2D<?> globalSolveModel,
 			final Affine2D<?> blockSolveModel,
-			final Affine2D<?> stitchingModel,
+			final Function< Integer, Affine2D<?> > stitchingModelSupplier,
 			final List<Double> blockOptimizerLambdasRigid,
 			final List<Double> blockOptimizerLambdasTranslation,
 			final List<Integer> blockOptimizerIterations,
@@ -93,7 +94,7 @@ public abstract class SolveSetFactory
 				id,
 				(G)(Object)globalSolveModel,
 				(B)(Object)blockSolveModel,
-				(S)(Object)stitchingModel,
+				stitchingModelSupplier,
 				blockOptimizerLambdasRigid,
 				blockOptimizerLambdasTranslation,
 				blockOptimizerIterations,

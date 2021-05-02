@@ -7,8 +7,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
-import org.janelia.alignment.match.Matches;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import ij.ImagePlus;
@@ -50,7 +50,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 	final private G globalSolveModel;
 	final private B blockSolveModel;
-	final private S stitchingModel;
+	final private Function< Integer, S > stitchingModelSupplier;
 
 	final private List<Double> blockOptimizerLambdasRigid;
 	final private List<Double> blockOptimizerLambdasTranslation;
@@ -65,7 +65,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 			final int id,
 			final G globalSolveModel,
 			final B blockSolveModel,
-			final S stitchingModel,
+			final Function< Integer, S > stitchingModelSupplier,
 			final List<Double> blockOptimizerLambdasRigid,
 			final List<Double> blockOptimizerLambdasTranslation,
 			final List<Integer> blockOptimizerIterations,
@@ -84,7 +84,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 		this.globalSolveModel = globalSolveModel.copy();
 		this.blockSolveModel = blockSolveModel.copy();
-		this.stitchingModel = stitchingModel.copy();
+		this.stitchingModelSupplier = (Function< Integer, S > & Serializable)stitchingModelSupplier; // make lambda serializable for Spark
 
 		this.blockOptimizerLambdasRigid = blockOptimizerLambdasRigid;
 		this.blockOptimizerLambdasTranslation = blockOptimizerLambdasTranslation;
@@ -103,7 +103,8 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 	public G globalSolveModelInstance() { return globalSolveModel.copy(); }
 	public B blockSolveModelInstance() { return blockSolveModel.copy(); }
-	public S stitchingSolveModelInstance() { return stitchingModel.copy(); }
+	public S stitchingSolveModelInstance( final int z ) { return stitchingModelSupplier.apply( z ); }
+	public Function< Integer, S > stitchingModelSupplier() { return stitchingModelSupplier; }
 
 	public List<Double> blockOptimizerLambdasRigid() { return blockOptimizerLambdasRigid; }
 	public List<Double> blockOptimizerLambdasTranslation() { return blockOptimizerLambdasTranslation; }
@@ -195,7 +196,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 	public DummySolveItemData<G, B, S> createCorrespondingDummySolveItem( final int id, final int z )
 	{
-		return new DummySolveItemData< G, B, S >( id, globalSolveModelInstance(), blockSolveModelInstance(), stitchingSolveModelInstance(), z );
+		return new DummySolveItemData< G, B, S >( id, globalSolveModelInstance(), blockSolveModelInstance(), stitchingSolveModelInstance( z ), z );
 	}
 
 	@Override

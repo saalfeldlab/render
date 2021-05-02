@@ -94,12 +94,14 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
 			}
 
+			final Affine2D<?> stitchingModelf = stitchingModel;
+
 			leftSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							stitchingModel,
+							(z) -> stitchingModelf,
 							blockOptimizerLambdasRigid,
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
@@ -147,12 +149,14 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
 			}
 
+			final Affine2D<?> stitchingModelf = stitchingModel;
+
 			rightSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							stitchingModel,
+							(z) -> stitchingModelf,
 							blockOptimizerLambdasRigid,
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,

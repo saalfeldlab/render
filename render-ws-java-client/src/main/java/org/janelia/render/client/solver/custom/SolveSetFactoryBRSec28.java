@@ -124,12 +124,14 @@ public class SolveSetFactoryBRSec28 extends SolveSetFactory
 			stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
 			((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 
+			final Affine2D<?> stitchingModelf = stitchingModel;
+
 			leftSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							stitchingModel,
+							(z) -> stitchingModelf,
 							blockOptimizerLambdasRigid,
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
@@ -181,12 +183,14 @@ public class SolveSetFactoryBRSec28 extends SolveSetFactory
 			stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
 			((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 
+			final Affine2D<?> stitchingModelf = stitchingModel;
+
 			rightSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							stitchingModel,
+							(z) -> stitchingModelf,
 							blockOptimizerLambdasRigid,
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,

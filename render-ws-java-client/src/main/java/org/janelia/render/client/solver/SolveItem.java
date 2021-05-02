@@ -68,7 +68,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 
 	public G globalSolveModelInstance() { return solveItemData.globalSolveModelInstance(); }
 	public B blockSolveModelInstance() { return solveItemData.blockSolveModelInstance(); }
-	public S stitchingSolveModelInstance() { return solveItemData.stitchingSolveModelInstance(); }
+	public S stitchingSolveModelInstance( final int z ) { return solveItemData.stitchingSolveModelInstance( z ); }
 
 	public HashMap<String, Tile< B > > idToTileMap() { return idToTileMap; }
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return solveItemData.idToPreviousModel(); }

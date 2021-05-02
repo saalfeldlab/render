@@ -621,7 +621,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final HashMap< Integer, List< Integer > > zToPairs,
 			final int numThreads )
 	{
-		final S model = solveItem.stitchingSolveModelInstance();
+		//final S model = solveItem.stitchingSolveModelInstance();
 
 		// combine tiles per layer that are be stitched first, but iterate over all z's 
 		// (also those only consisting of single tiles, they are connected in z though)
@@ -659,7 +659,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						{
 							//p = new Tile<>( model.copy() );
 							// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
-							p = SolveTools.buildTile( solveItem.idToPreviousModel().get( pId ), model.copy(), 100, 100, 3 );
+							p = SolveTools.buildTile( solveItem.idToPreviousModel().get( pId ), solveItem.stitchingSolveModelInstance( z ).copy(), 100, 100, 3 );
 							idTotile.put( pId, p );
 							tileToId.put( p, pId );
 						}
@@ -671,7 +671,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 						if ( !idTotile.containsKey( qId ) )
 						{
 							//q = new Tile<>( model.copy() );
-							q = SolveTools.buildTile( solveItem.idToPreviousModel().get( qId ), model.copy(), 100, 100, 3 );
+							q = SolveTools.buildTile( solveItem.idToPreviousModel().get( qId ), solveItem.stitchingSolveModelInstance( z ).copy(), 100, 100, 3 );
 							idTotile.put( qId, q );
 							tileToId.put( q, qId );
 						}
@@ -692,7 +692,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				{
 					LOG.info( "block " + solveItem.getId() + ": unconnected tileId " + tileId );
 
-					final Tile< S > tile = new Tile< S >( model.copy() );
+					final Tile< S > tile = new Tile< S >( solveItem.stitchingSolveModelInstance( z ).copy() );
 					idTotile.put( tileId, tile );
 					tileToId.put( tile, tileId );
 				}
@@ -731,7 +731,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					}
 
 					// test if the graph has cycles, if yes we would need to do a solve
-					if ( !( ( TranslationModel2D.class.isInstance( model ) || RigidModel2D.class.isInstance( model ) ) && !new Graph( new ArrayList<>( set ) ).isCyclic() ) )
+					if ( !( ( TranslationModel2D.class.isInstance( set.iterator().next().getModel() ) || RigidModel2D.class.isInstance( set.iterator().next().getModel() ) ) && !new Graph( new ArrayList<>( set ) ).isCyclic() ) )
 					{
 						LOG.info( "block " + solveItem.getId() + ": Full solve required for stitching z=" + z  );
 
@@ -864,7 +864,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 							id,
 							inputSolveItem.globalSolveModelInstance(),
 							inputSolveItem.blockSolveModelInstance(),
-							inputSolveItem.stitchingSolveModelInstance(),
+							inputSolveItem.solveItemData.stitchingModelSupplier(),
 							blockOptimizerLambdasRigid,
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
@@ -1095,7 +1095,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 		// for local fits
 		final Model< ? > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
-		final Model< ? > montageLayerModel = solveItem.stitchingSolveModelInstance();
+		//final Model< ? > montageLayerModel = solveItem.stitchingSolveModelInstance();
 
 		for ( final CanvasMatches match : canvasMatches )
 		{
@@ -1114,7 +1114,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				solveItem.matches().add( new SerializableValuePair<>( new SerializableValuePair<>( pTileId, qTileId ), match.getMatches() ) );
 
 			final double vDiff = SolveTools.computeAlignmentError(
-					crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, solveItem.idToNewModel().get( pTileId ), solveItem.idToNewModel().get( qTileId ), match.getMatches() );
+					crossLayerModel, solveItem.stitchingSolveModelInstance( (int)Math.round( pTileSpec.getZ() ) ), pTileSpec, qTileSpec, solveItem.idToNewModel().get( pTileId ), solveItem.idToNewModel().get( qTileId ), match.getMatches() );
 
 			solveItem.idToSolveItemErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
 			solveItem.idToSolveItemErrorMap().putIfAbsent( qTileId, new ArrayList<>() );

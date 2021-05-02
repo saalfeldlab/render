@@ -100,12 +100,14 @@ public class SolveSetFactoryAso extends SolveSetFactory
 					blockOptimizerLambdasTranslation.add( Math.max( lambda, 0.1 ) );
 			}
 
+			final Affine2D<?> stitchingModelf = stitchingModel;
+
 			leftSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							stitchingModel,
+							(z) -> stitchingModelf,
 							blockOptimizerLambdasRigid,
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
@@ -159,12 +161,14 @@ public class SolveSetFactoryAso extends SolveSetFactory
 					blockOptimizerLambdasTranslation.add( Math.max( lambda, 0.1 ) );
 			}
 
+			final Affine2D<?> stitchingModelf = stitchingModel;
+
 			rightSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							stitchingModel,
+							(z) -> stitchingModelf,
 							blockOptimizerLambdasRigid,
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,

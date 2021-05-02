@@ -118,12 +118,17 @@ public class SolveSetFactoryBRSec32 extends SolveSetFactory
 			stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
 			((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 
+			final Affine2D<?> stitchingModelf = stitchingModel;
+
 			leftSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							stitchingModel,
+							(z) -> {
+								if ( z == 4633 )
+									((InterpolatedAffineModel2D) stitchingModelf ).setLambda( 1.0 );
+								return stitchingModelf; },
 							blockOptimizerLambdasRigid,
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,
@@ -187,12 +192,17 @@ public class SolveSetFactoryBRSec32 extends SolveSetFactory
 			stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
 			((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
 
+			final Affine2D<?> stitchingModelf = stitchingModel;
+
 			rightSets.add(
 					instantiateSolveItemData(
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							stitchingModel,
+							(z) -> {
+								if ( z == 4633 )
+									((InterpolatedAffineModel2D) stitchingModelf ).setLambda( 1.0 );
+								return stitchingModelf; },
 							blockOptimizerLambdasRigid,
 							blockOptimizerLambdasTranslation,
 							blockOptimizerIterations,

@@ -11,7 +11,7 @@ public class DummySolveItemData< G extends Model< G > & Affine2D< G >, B extends
 
 	public DummySolveItemData( final int id, final G g, final B b, final S s, final int z )
 	{
-		super( id, g, b, s, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), 0, 0.0, 0.0, false, z, z );
+		super( id, g, b, (x) -> s, new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), 0, 0.0, 0.0, false, z, z );
 	}
 
 	@Override

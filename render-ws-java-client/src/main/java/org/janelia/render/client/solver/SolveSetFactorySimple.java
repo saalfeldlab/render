@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.Model;
 
 public class SolveSetFactorySimple extends SolveSetFactory
 {
@@ -44,7 +45,7 @@ public class SolveSetFactorySimple extends SolveSetFactory
 		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rightSets = new ArrayList<>();
 
 		int id = 0;
-
+		
 		for ( int i = 0; i < numSetsLeft; ++i )
 		{
 			leftSets.add(
@@ -52,7 +53,7 @@ public class SolveSetFactorySimple extends SolveSetFactory
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							this.defaultStitchingModel,
+							(z) -> defaultStitchingModel,
 							this.defaultBlockOptimizerLambdasRigid,
 							this.defaultBlockOptimizerLambdasTranslation,
 							this.defaultBlockOptimizerIterations,
@@ -76,7 +77,7 @@ public class SolveSetFactorySimple extends SolveSetFactory
 							id,
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
-							this.defaultStitchingModel,
+							(z) -> defaultStitchingModel,
 							this.defaultBlockOptimizerLambdasRigid,
 							this.defaultBlockOptimizerLambdasTranslation,
 							this.defaultBlockOptimizerIterations,
