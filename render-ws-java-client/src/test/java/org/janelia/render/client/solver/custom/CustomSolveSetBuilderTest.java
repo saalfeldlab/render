@@ -1,5 +1,8 @@
 package org.janelia.render.client.solver.custom;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectOutputStream;
+
 import org.janelia.render.client.solver.DistributedSolveParameters;
 import org.janelia.render.client.solver.SolveSetFactory;
 import org.junit.Assert;
@@ -13,7 +16,7 @@ import org.junit.Test;
 public class CustomSolveSetBuilderTest {
 
     @Test
-    public void testBuild() {
+    public void testBuild() throws Exception {
 
         final String args =
                 "--baseDataUrl http://renderer-dev/render-ws/v1 --owner o --project p --stack s --targetStack ts " +
@@ -40,7 +43,14 @@ public class CustomSolveSetBuilderTest {
                                                                             parameters.blockMaxAllowedError,
                                                                             parameters.dynamicLambdaFactor);
 
-        Assert.assertTrue("", solveSetFactory instanceof SolveSetFactoryBRSec36);
+        Assert.assertTrue("built wrong instance " + solveSetFactory.getClass().getName(),
+                          solveSetFactory instanceof SolveSetFactoryBRSec36);
+
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        final ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(solveSetFactory);
+        Assert.assertTrue("serialization worked", true);
+
     }
 
 }

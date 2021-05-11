@@ -8,7 +8,7 @@ import java.util.function.Function;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 
-public abstract class SolveSetFactory
+public abstract class SolveSetFactory implements Serializable
 {
 	protected final Affine2D< ? > defaultGlobalSolveModel;
 	protected final Affine2D< ? > defaultBlockSolveModel;
