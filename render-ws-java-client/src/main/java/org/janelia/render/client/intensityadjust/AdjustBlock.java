@@ -27,6 +27,7 @@ import ij.gui.ProfilePlot;
 import ij.measure.Calibration;
 import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
+import mpicbg.ij.integral.NormalizeLocalContrast;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Point;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
@@ -44,13 +45,13 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.iterator.IntervalIterator;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
-import net.imglib2.util.Util;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
 
@@ -443,6 +444,138 @@ public class AdjustBlock {
 		return new FinalRealInterval( tmpMin, tmpMax );
 	}
 
+	public static class FlyEMFilter extends NormalizeLocalContrast
+	{
+		public FlyEMFilter(FloatProcessor fp) { super(fp); }
+
+		public FloatProcessor computeStDevs(
+				final int blockRadiusX,
+				final int blockRadiusY)
+		{
+			FloatProcessor fp = fpOriginal.convertToFloatProcessor();
+			//fp.setPixels( fpOriginal.getPixelsCopy() );
+			
+			final int width = fp.getWidth();
+			final int height = fp.getHeight();
+			
+			final double fpMin = fp.getMin();
+			final double fpLength = fp.getMax() - fpMin;
+			final double fpMean = fpLength / 2.0 + fpMin;
+			
+			final int w = width - 1;
+			final int h = height - 1;
+			for ( int y = 0; y < height; ++y )
+			{
+				final int row = y * width;
+				final int yMin = Math.max( -1, y - blockRadiusY - 1 );
+				final int yMax = Math.min( h, y + blockRadiusY );
+				final int bh = yMax - yMin;
+				for ( int x = 0; x < width; ++x )
+				{
+					final int xMin = Math.max( -1, x - blockRadiusX - 1 );
+					final int xMax = Math.min( w, x + blockRadiusX );
+					final long bs = ( xMax - xMin ) * bh;
+					final double scale1 = 1.0 / ( bs - 1 );
+					final double scale2 = 1.0 / ( bs * bs - bs );
+					final double sum = sums.getDoubleSum( xMin, yMin, xMax, yMax );
+					final double var = scale1 * sumsOfSquares.getDoubleSum( xMin, yMin, xMax, yMax ) - scale2 * sum * sum;
+					final int i = row + x;
+					
+					final double std = var < 0 ? 0 : Math.sqrt( var );
+					final float v = fp.getf( i );
+					//final double d = meanFactor * std;
+					
+					fp.setf(  i, ( float )std );
+				}
+			}
+
+			return fp;
+		}
+	}
+	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceNorm(final String stack,
+			  final RenderDataClient renderDataClient,
+			  final Interval interval,
+			  final double scale,
+			  final boolean cacheOnDisk,
+			  final int z) throws IOException
+	{
+		//NormalizeLocalContrast.run(tmp, 0, 300, 3.0f, true, true );
+
+		final List<Pair<AffineModel2D,MinimalTileSpec>> data = getData(z, renderDataClient, stack);
+		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
+
+		for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )
+		{
+			final MinimalTileSpec minimalTileSpec = tile.getB();
+
+			if ( minimalTileSpec.getImageCol() > 0 )//<2 || minimalTileSpec.getImageCol() > 3 )
+				continue;
+
+			LOG.debug("renderIntensityAdjustedSlice: processing tile {} in column {}",
+					  minimalTileSpec.getTileId(), minimalTileSpec.getImageCol());
+
+			final ImageProcessorWithMasks imp = VisualizeTools.getImage(minimalTileSpec, scale, cacheOnDisk);
+
+			new ImagePlus( "imp_" + minimalTileSpec.getImageCol(), imp.ip ).duplicate().show();
+
+			//FloatProcessor fp = imp.ip.convertToFloatProcessor();
+			//NormalizeLocalContrast nlc = new NormalizeLocalContrast( fp );
+			//nlc.run(0, imp.getHeight(), 3.0f, true, true );
+			//new ImagePlus( "", fp ).show();
+
+			FlyEMFilter filter = new FlyEMFilter( imp.ip.convertToFloatProcessor() );
+			FloatProcessor stDevs = filter.computeStDevs(0, 1000);
+
+			FloatProcessor stDevsAdd = new FloatProcessor( stDevs.getWidth(), stDevs.getHeight() );
+			FloatProcessor stDevsMul = new FloatProcessor( stDevs.getWidth(), stDevs.getHeight() );
+
+			//new ImagePlus( "", stDevs ).show();
+
+			for ( int x = 0; x < stDevs.getWidth(); ++x )
+			{
+				double sumStDevs = 0;
+				double sumLogStDevs = 0;
+
+				for ( int y = 0; y < stDevs.getHeight(); ++y )
+				{
+					final float s = stDevs.getf(x, y);
+					sumStDevs += s;
+					sumLogStDevs += Math.log10( s );
+				}
+
+				sumStDevs /= (double)stDevs.getHeight();
+				sumLogStDevs /= (double)stDevs.getHeight();
+
+				double stStDevs = 0;
+				double stLogStDevs = 0;
+			
+				for ( int y = 0; y < stDevs.getHeight(); ++y )
+				{
+					final float s = stDevs.getf(x, y);
+					stStDevs += Math.pow( s - sumStDevs, 2 );
+					stLogStDevs += Math.pow( Math.log10( s ) - sumLogStDevs, 2 );
+				}
+
+				stStDevs /= Math.sqrt( (double)stDevs.getHeight() );
+				stLogStDevs /= Math.sqrt( (double)stDevs.getHeight() );
+
+				for ( int y = 0; y < stDevs.getHeight(); ++y )
+				{
+					stDevsAdd.setf(x, y, (float)stStDevs );
+					stDevsMul.setf(x, y, (float)stLogStDevs );
+				}
+			}
+
+			new ImagePlus( "stDevsAdd_" + minimalTileSpec.getImageCol(), stDevsAdd ).show();
+			new ImagePlus( "stDevsMul_" + minimalTileSpec.getImageCol(), stDevsMul ).show();
+
+			
+		}
+
+		SimpleMultiThreading.threadHaltUnClean();
+
+		return null;
+	}
 
 	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSlice(final String stack,
 																						  final RenderDataClient renderDataClient,
@@ -483,16 +616,16 @@ public class AdjustBlock {
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "Z0720_07m_BR"; //"flyem";
-		String project = "Sec37"; //"Z0419_25_Alpha3";
-		String stack = "v2_acquire_trimmed_sp1_adaptive"; //"v1_acquire_sp_nodyn_v2";
+		String project = "Sec26"; //"Z0419_25_Alpha3";
+		String stack = "v2_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		final StackMetaData meta =  renderDataClient.getStackMetaData( stack );
 		//final StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
 		final Interval interval = RenderTools.stackBounds( meta );
 
-		final int minZ = 20000;
-		final int maxZ = 20000;
+		final int minZ = 27759;//20000;
+		final int maxZ = 27759;//20000;
 		final double scale = 1.0; // only full res supported right now
 		final boolean cacheOnDisk = true;
 
@@ -503,7 +636,8 @@ public class AdjustBlock {
 		for ( int z = minZ; z <= maxZ; ++z )
 		{
 			final RandomAccessibleInterval<UnsignedByteType> slice =
-					renderIntensityAdjustedSlice(stack, renderDataClient, interval, scale, cacheOnDisk, z);
+					//renderIntensityAdjustedSlice(stack, renderDataClient, interval, scale, cacheOnDisk, z);
+					renderIntensityAdjustedSliceNorm(stack, renderDataClient, interval, scale, cacheOnDisk, z);
 			stack3d.addSlice( ImageJFunctions.wrap( slice, "" ).getProcessor() );
 		}
 
