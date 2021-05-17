@@ -450,55 +450,6 @@ public class AdjustBlock {
 		return new FinalRealInterval( tmpMin, tmpMax );
 	}
 
-	public static class FlyEMFilter extends NormalizeLocalContrast
-	{
-		public FlyEMFilter(FloatProcessor fp) { super(fp); }
-
-		public FloatProcessor computeStDevs(
-				final int blockRadiusX,
-				final int blockRadiusY)
-		{
-			FloatProcessor fp = fpOriginal.convertToFloatProcessor();
-			//fp.setPixels( fpOriginal.getPixelsCopy() );
-			
-			final int width = fp.getWidth();
-			final int height = fp.getHeight();
-			
-			final double fpMin = fp.getMin();
-			final double fpLength = fp.getMax() - fpMin;
-			final double fpMean = fpLength / 2.0 + fpMin;
-			
-			final int w = width - 1;
-			final int h = height - 1;
-			for ( int y = 0; y < height; ++y )
-			{
-				final int row = y * width;
-				final int yMin = Math.max( -1, y - blockRadiusY - 1 );
-				final int yMax = Math.min( h, y + blockRadiusY );
-				final int bh = yMax - yMin;
-				for ( int x = 0; x < width; ++x )
-				{
-					final int xMin = Math.max( -1, x - blockRadiusX - 1 );
-					final int xMax = Math.min( w, x + blockRadiusX );
-					final long bs = ( xMax - xMin ) * bh;
-					final double scale1 = 1.0 / ( bs - 1 );
-					final double scale2 = 1.0 / ( bs * bs - bs );
-					final double sum = sums.getDoubleSum( xMin, yMin, xMax, yMax );
-					final double var = scale1 * sumsOfSquares.getDoubleSum( xMin, yMin, xMax, yMax ) - scale2 * sum * sum;
-					final int i = row + x;
-					
-					final double std = var < 0 ? 0 : Math.sqrt( var );
-					final float v = fp.getf( i );
-					//final double d = meanFactor * std;
-					
-					fp.setf(  i, ( float )std );
-				}
-			}
-
-			return fp;
-		}
-	}
-
 	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGauss(final String stack,
 			  final RenderDataClient renderDataClient,
 			  final Interval interval,
@@ -631,114 +582,6 @@ public class AdjustBlock {
 		return fuse2d(interval, data, corrected, adjustments);
 	}
 	
-
-	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceNorm(final String stack,
-			  final RenderDataClient renderDataClient,
-			  final Interval interval,
-			  final double scale,
-			  final boolean cacheOnDisk,
-			  final int z) throws IOException
-	{
-		//NormalizeLocalContrast.run(tmp, 0, 300, 3.0f, true, true );
-
-		final List<Pair<AffineModel2D,MinimalTileSpec>> data = getData(z, renderDataClient, stack);
-		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
-
-		for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )
-		{
-			final MinimalTileSpec minimalTileSpec = tile.getB();
-
-			if ( minimalTileSpec.getImageCol() != 0 ) //<2 || minimalTileSpec.getImageCol() > 3 )
-				continue;
-
-			LOG.debug("renderIntensityAdjustedSlice: processing tile {} in column {}",
-					  minimalTileSpec.getTileId(), minimalTileSpec.getImageCol());
-
-			final ImageProcessorWithMasks imp = VisualizeTools.getImage(minimalTileSpec, scale, cacheOnDisk);
-
-			new ImagePlus( "imp_" + minimalTileSpec.getImageCol(), imp.ip ).duplicate().show();
-
-			//FloatProcessor fp = imp.ip.convertToFloatProcessor();
-			//NormalizeLocalContrast nlc = new NormalizeLocalContrast( fp );
-			//nlc.run(0, imp.getHeight(), 3.0f, true, true );
-			//new ImagePlus( "", fp ).show();
-
-			FlyEMFilter filter = new FlyEMFilter( imp.ip.convertToFloatProcessor() );
-			FloatProcessor stDevsAdd = new FloatProcessor( imp.ip.getWidth(), imp.ip.getHeight() );
-			FloatProcessor stDevsMul = new FloatProcessor( imp.ip.getWidth(), imp.ip.getHeight() );
-
-			/*
-			FloatProcessor stDevsY = filter.computeStDevs(0, 1000);
-
-			//new ImagePlus( "", stDevsY ).show();
-			//new ImagePlus( "", stDevsX ).show();
-			//SimpleMultiThreading.threadHaltUnClean();
-
-			for ( int x = 0; x < stDevsY.getWidth(); ++x )
-			{
-				double sumStDevs = 0;
-				double sumLogStDevs = 0;
-
-				for ( int y = 0; y < stDevsY.getHeight(); ++y )
-				{
-					final float s = stDevsY.getf(x, y);
-					sumStDevs += s;
-					sumLogStDevs += Math.log10( s );
-				}
-
-				sumStDevs /= (double)stDevsY.getHeight();
-				sumLogStDevs /= (double)stDevsY.getHeight();
-
-				double stStDevs = 0;
-				double stLogStDevs = 0;
-			
-				for ( int y = 0; y < stDevsY.getHeight(); ++y )
-				{
-					final float s = stDevsY.getf(x, y);
-					stStDevs += Math.pow( s - sumStDevs, 2 );
-					stLogStDevs += Math.pow( Math.log10( s ) - sumLogStDevs, 2 );
-				}
-
-				stStDevs /= Math.sqrt( (double)stDevsY.getHeight() );
-				stLogStDevs /= Math.sqrt( (double)stDevsY.getHeight() );
-
-				for ( int y = 0; y < stDevsY.getHeight(); ++y )
-				{
-					stDevsAdd.setf(x, y, (float)stStDevs );
-					stDevsMul.setf(x, y, (float)stLogStDevs );
-				}
-			}
-			*/
-
-			/*
-			int blockRadius1 = 300;
-			int blockRadius2 = 100;
-
-			FloatProcessor stDevs = filter.computeStDevs(blockRadius1, blockRadius1);
-			//new ImagePlus( "", stDevs ).show();
-
-			// stdevs of stdevs
-			FlyEMFilter filterAdd = new FlyEMFilter( (FloatProcessor)stDevs.duplicate() );
-			stDevsAdd = filterAdd.computeStDevs(blockRadius2, blockRadius2 );
-
-			FloatProcessor mulFP = (FloatProcessor)stDevs.duplicate();
-			for ( int i = 0; i < mulFP.getWidth() * mulFP.getHeight(); ++i )
-				mulFP.setf( i, (float)Math.log10( mulFP.getf( i ) ));
-			FlyEMFilter filterMul = new FlyEMFilter( mulFP );
-			stDevsMul = filterMul.computeStDevs(blockRadius2, blockRadius2 );
-			*/
-
-			//new ImagePlus( "stDevsAdd_" + minimalTileSpec.getImageCol(), stDevsAdd ).show();
-			//new ImagePlus( "stDevsMul_" + minimalTileSpec.getImageCol(), stDevsMul ).show();
-
-			
-		}
-
-		SimpleMultiThreading.threadHaltUnClean();
-
-		return null;
-	}
-
 	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSlice(final String stack,
 																						  final RenderDataClient renderDataClient,
 																						  final Interval interval,
@@ -799,7 +642,6 @@ public class AdjustBlock {
 		{
 			final RandomAccessibleInterval<UnsignedByteType> slice =
 					//renderIntensityAdjustedSlice(stack, renderDataClient, interval, scale, cacheOnDisk, z);
-					//renderIntensityAdjustedSliceNorm(stack, renderDataClient, interval, scale, cacheOnDisk, z);
 					renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, false, cacheOnDisk, z);
 			stack3d.addSlice( ImageJFunctions.wrap( slice, "" ).getProcessor() );
 		}
