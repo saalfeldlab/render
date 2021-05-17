@@ -502,13 +502,14 @@ public class AdjustBlock {
 	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGauss(final String stack,
 			  final RenderDataClient renderDataClient,
 			  final Interval interval,
-			  final double scale,
+			  final boolean weightening,
 			  final boolean cacheOnDisk,
 			  final int z) throws IOException
 	{
 		final boolean isSec26 = renderDataClient.getUrls().getStackUrlString( "" ).contains( "Sec26" );
 		LOG.debug("renderIntensityAdjustedSliceGauss: isSec26=" + isSec26 );
 
+		final double scale = 0.22;
 		final double[] sigma = new double[] { 0, 50 };
 
 		final List<Pair<AffineModel2D,MinimalTileSpec>> data = getData(z, renderDataClient, stack);
@@ -526,87 +527,102 @@ public class AdjustBlock {
 			LOG.debug("renderIntensityAdjustedSliceGauss: processing tile {} in column {}", minimalTileSpec.getTileId(),
 					minimalTileSpec.getImageCol());
 
-			final ImageProcessorWithMasks imp = VisualizeTools.getImage(minimalTileSpec, scale, cacheOnDisk);
-
-			//new ImagePlus("imp_" + minimalTileSpec.getImageCol(), imp.ip).duplicate().show();
-
-			final FloatProcessor image = imp.ip.convertToFloatProcessor();
-
-			// median filter smoothes resin way more than inside the sample
-			new RankFilters().rank( image, 3, RankFilters.MEDIAN );
-
-			final RandomAccessibleInterval<FloatType> imgA = ArrayImgs.floats((float[]) image.getPixels(),
-					image.getWidth(), image.getHeight());
-			final float[] outP = new float[image.getWidth() * image.getHeight()];
-			final Img<FloatType> out = ArrayImgs.floats(outP, image.getWidth(), image.getHeight());
-
-			Gauss3.gauss(sigma, Views.extendMirrorSingle(imgA), out);
-
-			Cursor<FloatType> ic = Views.flatIterable(imgA).cursor();
-			Cursor<FloatType> pc = Views.flatIterable(out).cursor();
-
-			while (pc.hasNext()) {
-				final FloatType p = pc.next();
-				final FloatType j = ic.next();
-				
-				double q = j.get() / p.get();
-				if ( q < 1 )
-					q = 1.0/q;
-				if ( Double.isNaN( q ) || Double.isInfinite( q ) )
-					q = 1.0;
-
-				p.set(Math.max(0, (float) Math.abs( q )));
-			}
-
-			Gauss3.gauss(sigma, Views.extendMirrorSingle(out), out);
-
-			//for (final FloatType t : out)
-			//	t.set((float) (Math.sqrt(t.getRealDouble())));
-
-			// apply weights
-			final ImageProcessorWithMasks impFull = VisualizeTools.getImage(minimalTileSpec, 1.0, cacheOnDisk);
-
-			FloatProcessor fp = impFull.ip.convertToFloatProcessor();
-			fp.setMinAndMax(0, 255);
-			NormalizeLocalContrast nlc = new NormalizeLocalContrast( fp );
-			nlc.run(0, impFull.getHeight(), 3.0f, true, true );
-
-			//if ( minimalTileSpec.getImageCol() == 2 || minimalTileSpec.getImageCol() == 3 )
+			if ( weightening )
 			{
-				//new ImagePlus( "", impFull.ip.duplicate() ).show();
-				//new ImagePlus( "", fp.duplicate() ).show();
-			}
-			//ImageJFunctions.show(out);
-
-
-			AffineTransform2D t = new AffineTransform2D();
-			t.scale( 1.0/scale, 1.0/scale);
-
-			RealRandomAccessible scaled = RealViews.affine( Views.interpolate( Views.extendMirrorSingle( out ) , new NLinearInterpolatorFactory() ), t );
-			RealRandomAccess rs = scaled.realRandomAccess();
-
-			for ( int x = 0; x < impFull.ip.getWidth(); ++x )
-			{
-				rs.setPosition( x, 0 );
-				for ( int y = 0; y < impFull.ip.getHeight(); ++y )
-				{
-					rs.setPosition( y, 1 );
-					final double n = fp.getf(x, y);
-					final double i = impFull.ip.getf( x, y );
-					final double a = ((RealType)rs.get()).getRealDouble();
-					final double alpha = Math.min( 1, Math.max( 0, ( ( a - 1.01 ) / 0.05 ) ) );
-
-					if ( isSec26 && minimalTileSpec.getZ() >= 27759 && minimalTileSpec.getZ() >= 28016 && minimalTileSpec.getImageCol() == 2 )
-						fp.setf(x, y, (float)n );
-					else
-						fp.setf(x, y, (float)( (1.0 - alpha ) * i + alpha * n ) );
+				final ImageProcessorWithMasks imp = VisualizeTools.getImage(minimalTileSpec, scale, cacheOnDisk);
+	
+				//new ImagePlus("imp_" + minimalTileSpec.getImageCol(), imp.ip).duplicate().show();
+	
+				final FloatProcessor image = imp.ip.convertToFloatProcessor();
+	
+				// median filter smoothes resin way more than inside the sample
+				new RankFilters().rank( image, 3, RankFilters.MEDIAN );
+	
+				final RandomAccessibleInterval<FloatType> imgA = ArrayImgs.floats((float[]) image.getPixels(),
+						image.getWidth(), image.getHeight());
+				final float[] outP = new float[image.getWidth() * image.getHeight()];
+				final Img<FloatType> out = ArrayImgs.floats(outP, image.getWidth(), image.getHeight());
+	
+				Gauss3.gauss(sigma, Views.extendMirrorSingle(imgA), out);
+	
+				Cursor<FloatType> ic = Views.flatIterable(imgA).cursor();
+				Cursor<FloatType> pc = Views.flatIterable(out).cursor();
+	
+				while (pc.hasNext()) {
+					final FloatType p = pc.next();
+					final FloatType j = ic.next();
+					
+					double q = j.get() / p.get();
+					if ( q < 1 )
+						q = 1.0/q;
+					if ( Double.isNaN( q ) || Double.isInfinite( q ) )
+						q = 1.0;
+	
+					p.set(Math.max(0, (float) Math.abs( q )));
 				}
+	
+				Gauss3.gauss(sigma, Views.extendMirrorSingle(out), out);
+	
+				//for (final FloatType t : out)
+				//	t.set((float) (Math.sqrt(t.getRealDouble())));
+	
+				// apply weights
+				final ImageProcessorWithMasks impFull = VisualizeTools.getImage(minimalTileSpec, 1.0, cacheOnDisk);
+	
+				FloatProcessor fp = impFull.ip.convertToFloatProcessor();
+				fp.setMinAndMax(0, 255);
+				NormalizeLocalContrast nlc = new NormalizeLocalContrast( fp );
+				nlc.run(0, impFull.getHeight(), 3.0f, true, true );
+	
+				//if ( minimalTileSpec.getImageCol() == 2 || minimalTileSpec.getImageCol() == 3 )
+				{
+					//new ImagePlus( "", impFull.ip.duplicate() ).show();
+					//new ImagePlus( "", fp.duplicate() ).show();
+				}
+				//ImageJFunctions.show(out);
+	
+	
+				AffineTransform2D t = new AffineTransform2D();
+				t.scale( 1.0/scale, 1.0/scale);
+	
+				RealRandomAccessible scaled = RealViews.affine( Views.interpolate( Views.extendMirrorSingle( out ) , new NLinearInterpolatorFactory() ), t );
+				RealRandomAccess rs = scaled.realRandomAccess();
+	
+				for ( int x = 0; x < impFull.ip.getWidth(); ++x )
+				{
+					rs.setPosition( x, 0 );
+					for ( int y = 0; y < impFull.ip.getHeight(); ++y )
+					{
+						rs.setPosition( y, 1 );
+						final double n = fp.getf(x, y);
+						final double i = impFull.ip.getf( x, y );
+						final double a = ((RealType)rs.get()).getRealDouble();
+						final double alpha = Math.min( 1, Math.max( 0, ( ( a - 1.01 ) / 0.05 ) ) );
+	
+						if ( isSec26 && minimalTileSpec.getZ() >= 27759 && minimalTileSpec.getZ() >= 28016 && minimalTileSpec.getImageCol() == 2 )
+							fp.setf(x, y, (float)n );
+						else
+							fp.setf(x, y, (float)( (1.0 - alpha ) * i + alpha * n ) );
+					}
+				}
+	
+				corrected.add( new ValuePair( (ByteProcessor)impFull.mask, fp ) );
+				adjustments.put(k, new double[] { 0,1,0 } );
+				//new ImagePlus( "", fp ).show();
+				//SimpleMultiThreading.threadHaltUnClean();
 			}
+			else
+			{
+				final ImageProcessorWithMasks impFull = VisualizeTools.getImage(minimalTileSpec, 1.0, cacheOnDisk);
+				
+				FloatProcessor fp = impFull.ip.convertToFloatProcessor();
+				fp.setMinAndMax(0, 255);
+				NormalizeLocalContrast nlc = new NormalizeLocalContrast( fp );
+				nlc.run(0, impFull.getHeight(), 3.0f, true, true );
 
-			corrected.add( new ValuePair( (ByteProcessor)impFull.mask, fp ) );
-			adjustments.put(k, new double[] { 0,1,0 } );
-			//new ImagePlus( "", fp ).show();
-			//SimpleMultiThreading.threadHaltUnClean();
+				corrected.add( new ValuePair( (ByteProcessor)impFull.mask, fp ) );
+				adjustments.put(k, new double[] { 0,1,0 } );
+			}
 		}
 
 		//ImageJFunctions.show( fuse2d(interval, data, corrected, adjustments) );
@@ -784,7 +800,7 @@ public class AdjustBlock {
 			final RandomAccessibleInterval<UnsignedByteType> slice =
 					//renderIntensityAdjustedSlice(stack, renderDataClient, interval, scale, cacheOnDisk, z);
 					//renderIntensityAdjustedSliceNorm(stack, renderDataClient, interval, scale, cacheOnDisk, z);
-					renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, 0.22, cacheOnDisk, z);
+					renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, false, cacheOnDisk, z);
 			stack3d.addSlice( ImageJFunctions.wrap( slice, "" ).getProcessor() );
 		}
 
