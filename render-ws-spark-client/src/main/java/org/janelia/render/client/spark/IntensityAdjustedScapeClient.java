@@ -70,6 +70,15 @@ public class IntensityAdjustedScapeClient
         )
         public String format = Utils.PNG_FORMAT;
 
+        @Parameter(
+                names = "--useGaussWeightBeforeNormalizingContrast",
+                description = "Specify to use new intensity correction code: " +
+                              "true indicates gauss weight should be applied before normalization, " +
+                              "false indicates only apply normalization.  " +
+                              "Omit to use original intensity correction code.",
+                arity = 1)
+        public Boolean useGaussWeightBeforeNormalizingContrast;
+
         File getSectionRootDirectory(final Date forRunTime) {
 
             final String scapeDir = "intensity_adjusted_scapes_" +
@@ -154,12 +163,20 @@ public class IntensityAdjustedScapeClient
                     final Interval interval = RenderTools.stackBounds(stackMetaData);
 
                     final RandomAccessibleInterval<UnsignedByteType> slice =
+                            parameters.useGaussWeightBeforeNormalizingContrast == null ?
                             AdjustBlock.renderIntensityAdjustedSlice(parameters.stack,
                                                                      workerDataClient,
                                                                      interval,
                                                                      1.0,
                                                                      false,
-                                                                     integralZ);
+                                                                     integralZ) :
+                            AdjustBlock.renderIntensityAdjustedSliceGauss(parameters.stack,
+                                                                          workerDataClient,
+                                                                          interval,
+                                                                          parameters.useGaussWeightBeforeNormalizingContrast,
+                                                                          false,
+                                                                          integralZ);
+
                     final BufferedImage sliceImage =
                             ImageJFunctions.wrap(slice, "").getProcessor().getBufferedImage();
 
