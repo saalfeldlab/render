@@ -148,7 +148,7 @@ public class MaskedResinLayerLoader
         return new FloatProcessor(image.getWidth(), image.getHeight(), outP);
     }
 
-    private static void weightedGauss(final double[] sigmas,
+    public static void weightedGauss(final double[] sigmas,
                                       final RandomAccessible<FloatType> source,
                                       final RandomAccessible<FloatType> weight,
                                       final RandomAccessibleInterval<FloatType> output) {
