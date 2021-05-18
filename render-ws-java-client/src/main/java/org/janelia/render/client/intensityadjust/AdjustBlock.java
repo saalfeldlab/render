@@ -471,7 +471,7 @@ public class AdjustBlock {
 		final double lambda2 = 0.01;
 		final double neighborWeight = 0.1;
 		final int iterations = 2000;
-		
+
 		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
 				data,
 				scale,
@@ -659,16 +659,16 @@ public class AdjustBlock {
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "Z0720_07m_BR"; //"flyem";
-		String project = "Sec26"; //"Z0419_25_Alpha3";
-		String stack = "v2_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
+		String project = "Sec39";//"Sec26"; //"Z0419_25_Alpha3";
+		String stack = "v1_acquire_trimmed_sp1";//"v2_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		final StackMetaData meta =  renderDataClient.getStackMetaData( stack );
 		//final StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
 		final Interval interval = RenderTools.stackBounds( meta );
 
-		final int minZ = 27758;//27759;//20000;
-		final int maxZ = 27758;//27759;//20000;
+		final int minZ = 23850;//27759;//20000;
+		final int maxZ = 23850;//27759;//20000;
 		final double scale = 1.0; // only full res supported right now
 		final boolean cacheOnDisk = true;
 
