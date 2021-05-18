@@ -7,11 +7,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.RenderTools;
@@ -450,6 +452,42 @@ public class AdjustBlock {
 		return new FinalRealInterval( tmpMin, tmpMax );
 	}
 
+	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGlobalPerSlice(
+			final String stack,
+			final RenderDataClient renderDataClient,
+			final Interval interval,
+			final boolean cacheOnDisk,
+			final int z) throws IOException, InterruptedException, ExecutionException
+	{
+		final boolean isSec26 = renderDataClient.getUrls().getStackUrlString( "" ).contains( "Sec26" );
+		LOG.debug("renderIntensityAdjustedSliceGauss: isSec26=" + isSec26 );
+
+		final List<Pair<AffineModel2D,MinimalTileSpec>> data = getData(z, renderDataClient, stack);
+		final HashMap< Integer, double[] > adjustments = new HashMap<>();
+
+		final double scale = 0.1;
+		final int numCoefficients = 8;
+		final double lambda1 = 0.01;
+		final double lambda2 = 0.01;
+		final double neighborWeight = 0.1;
+		final int iterations = 2000;
+		
+		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
+				data,
+				scale,
+				numCoefficients,
+				lambda1,
+				lambda2,
+				neighborWeight,
+				iterations,
+				cacheOnDisk );
+
+		for ( int i = 0; i < data.size(); ++i )
+			adjustments.put( i, new double[] { 0,1,0 } );
+
+		return fuse2d(interval, data, corrected, adjustments);
+	}
+
 	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGauss(final String stack,
 			  final RenderDataClient renderDataClient,
 			  final Interval interval,
@@ -617,7 +655,7 @@ public class AdjustBlock {
 		return fuse2d(interval, data, corrected, adjustments);
 	}
 
-	public static void main( String[] args ) throws IOException
+	public static void main( String[] args ) throws IOException, InterruptedException, ExecutionException
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "Z0720_07m_BR"; //"flyem";
@@ -629,8 +667,8 @@ public class AdjustBlock {
 		//final StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
 		final Interval interval = RenderTools.stackBounds( meta );
 
-		final int minZ = 1500;//27759;//20000;
-		final int maxZ = 1500;//27759;//20000;
+		final int minZ = 27758;//27759;//20000;
+		final int maxZ = 27758;//27759;//20000;
 		final double scale = 1.0; // only full res supported right now
 		final boolean cacheOnDisk = true;
 
@@ -642,7 +680,8 @@ public class AdjustBlock {
 		{
 			final RandomAccessibleInterval<UnsignedByteType> slice =
 					//renderIntensityAdjustedSlice(stack, renderDataClient, interval, scale, cacheOnDisk, z);
-					renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, false, cacheOnDisk, z);
+					//renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, false, cacheOnDisk, z);
+					renderIntensityAdjustedSliceGlobalPerSlice(stack, renderDataClient, interval, cacheOnDisk, z);
 			stack3d.addSlice( ImageJFunctions.wrap( slice, "" ).getProcessor() );
 		}
 
