@@ -44,6 +44,7 @@ import net.imglib2.img.imageplus.FloatImagePlus;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.img.list.ListImg;
 import net.imglib2.img.list.ListRandomAccess;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
@@ -113,7 +114,9 @@ public class IntensityMatcher
 			Render.render( p2, numCoefficients, numCoefficients, pixels2, weights2, coefficients2, box.x, box.y, scale, meshResolution, cacheOnDisk );
 
 			//new ImagePlus( "pixels1", pixels1 ).show();
+			//new ImagePlus( "weights1", weights1 ).show();
 			//new ImagePlus( "pixels2", pixels2 ).show();
+			//new ImagePlus( "weights2", weights2 ).show();
 			//SimpleMultiThreading.threadHaltUnClean();
 
 			/*
@@ -351,9 +354,11 @@ public class IntensityMatcher
 
 			final ImageProcessorWithMasks imp = VisualizeTools.getImage( p.getB(), 1.0, cacheOnDisk );
 
-			imp.ip.resetMinAndMax();
-			final double min = imp.ip.getMin();//patch.getMin();
-			final double max = imp.ip.getMax();//patch.getMax();
+			FloatProcessor fp = imp.ip.convertToFloatProcessor();
+			fp.resetMinAndMax();
+			final double min = 0;//fp.getMin();//patch.getMin();
+			final double max = 255;//fp.getMax();//patch.getMax();
+			System.out.println( min + ", " + max );
 
 			for ( int i = 0; i < numCoefficients * numCoefficients; ++i )
 			{
@@ -382,7 +387,6 @@ public class IntensityMatcher
 					new LinearIntensityMap<FloatType>(
 							(FloatImagePlus)ImagePlusImgs.from( new ImagePlus( "", coefficientsStack ) ));
 
-			FloatProcessor fp = imp.ip.convertToFloatProcessor();
 
 			final long[] dims = new long[]{imp.getWidth(), imp.getHeight()};
 			final Img< FloatType > img = ArrayImgs.floats((float[])fp.getPixels(), dims);

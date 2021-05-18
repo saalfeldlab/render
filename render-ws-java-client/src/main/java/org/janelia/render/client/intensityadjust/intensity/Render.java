@@ -275,9 +275,11 @@ public class Render
 			alphaPixels = ( byte[] )target.outside.getPixels();
 
 		/* convert */
-		impOriginal.ip.resetMinAndMax();
-		final double min = impOriginal.ip.getMin();//patch.getMin();
-		final double max = impOriginal.ip.getMax();//patch.getMax();
+		//FloatProcessor fp = impOriginal.ip.convertToFloatProcessor();
+		//fp.resetMinAndMax();
+		final double min = 0;//fp.getMin();//patch.getMin();
+		final double max = 255;//fp.getMax();//patch.getMax();
+		//System.out.println( min + ", " + max );
 		final double a = 1.0 / ( max - min );
 		final double b = 1.0 / 255.0;
 
