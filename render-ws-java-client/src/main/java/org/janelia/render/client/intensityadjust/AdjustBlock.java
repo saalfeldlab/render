@@ -8,6 +8,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -365,6 +367,60 @@ public class AdjustBlock {
 		return adjustments;
 	}
 
+	public static  RandomAccessibleInterval< UnsignedByteType > fuseFinal(
+			final Interval interval,
+			final List<Pair<AffineModel2D,MinimalTileSpec>> data1,
+			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 )
+	{
+		// draw
+		final RandomAccessibleInterval< UnsignedByteType > slice = Views.translate( ArrayImgs.unsignedBytes( interval.dimension( 0 ), interval.dimension( 1 ) ), interval.min( 0 ), interval.min( 1 ) );
+
+		// sort both lists by descending column ids, then write as it comes
+		final List<ValuePair<Pair<AffineModel2D, MinimalTileSpec>, Pair<ByteProcessor, FloatProcessor>>> list =
+				IntStream
+					.range(0, Math.max(data1.size(), corrected1.size())) // max will crash if the lists have a different size, intended
+					.mapToObj(i -> new ValuePair<>(data1.get(i), corrected1.get(i)))
+					.collect(Collectors.toList());
+
+		list.sort( (a,b) ->  b.getA().getB().getImageCol() - a.getA().getB().getImageCol() );
+
+		for ( final Pair<Pair<AffineModel2D, MinimalTileSpec>, Pair<ByteProcessor, FloatProcessor>> entry : list )
+		{
+			System.out.println( entry.getA().getB().getImageCol() );
+
+			final AffineModel2D model = entry.getA().getA();
+
+			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", entry.getB().getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
+			final RealRandomAccessible<FloatType> interpolantMask = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", entry.getB().getA()) )), (in,o) -> o.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
+
+			//final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
+			final Cursor< UnsignedByteType > c = Views.iterable( slice ).cursor();
+
+			final AffineTransform2D affine = toImgLib( model );
+
+			final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), slice ).cursor();
+			final Cursor< FloatType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), slice ).cursor();
+
+			while ( c.hasNext() )
+			{
+				c.fwd();
+				cMask.fwd();
+				cSrc.fwd();
+				if (cMask.get().get() >= 254.99 ) {
+					final FloatType srcType = cSrc.get();
+					final float value = srcType.get();
+					if (value >= 0) {
+						final UnsignedByteType type = c.get();
+						type.setReal( Math.min( 255, Math.max( 0, value ) ) );
+					}
+				}
+			}
+		}
+
+		return slice;
+
+	}
+
 	public static RandomAccessibleInterval< UnsignedByteType > fuse2d(
 			final Interval interval,
 			final List<Pair<AffineModel2D,MinimalTileSpec>> data,
@@ -485,7 +541,7 @@ public class AdjustBlock {
 		for ( int i = 0; i < data.size(); ++i )
 			adjustments.put( i, new double[] { 0,1,0 } );
 
-		return fuse2d(interval, data, corrected, adjustments);
+		return fuseFinal(interval, data, corrected);
 	}
 
 	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGauss(final String stack,
