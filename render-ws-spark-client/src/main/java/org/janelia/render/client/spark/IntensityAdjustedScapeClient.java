@@ -44,6 +44,10 @@ import net.imglib2.type.numeric.integer.UnsignedByteType;
 public class IntensityAdjustedScapeClient
         implements Serializable {
 
+    public enum CorrectionMethod {
+        DEFAULT, GAUSS, GAUSS_WEIGHTED, GLOBAL_PER_SLICE
+    }
+
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
@@ -71,13 +75,9 @@ public class IntensityAdjustedScapeClient
         public String format = Utils.PNG_FORMAT;
 
         @Parameter(
-                names = "--useGaussWeightBeforeNormalizingContrast",
-                description = "Specify to use new intensity correction code: " +
-                              "true indicates gauss weight should be applied before normalization, " +
-                              "false indicates only apply normalization.  " +
-                              "Omit to use original intensity correction code.",
-                arity = 1)
-        public Boolean useGaussWeightBeforeNormalizingContrast;
+                names = "--correctionMethod",
+                description = "Correction method to use")
+        public CorrectionMethod correctionMethod = CorrectionMethod.DEFAULT;
 
         File getSectionRootDirectory(final Date forRunTime) {
 
@@ -162,20 +162,34 @@ public class IntensityAdjustedScapeClient
                     // NOTE: need to create interval here since it is not labelled as Serializable
                     final Interval interval = RenderTools.stackBounds(stackMetaData);
 
-                    final RandomAccessibleInterval<UnsignedByteType> slice =
-                            parameters.useGaussWeightBeforeNormalizingContrast == null ?
-                            AdjustBlock.renderIntensityAdjustedSlice(parameters.stack,
-                                                                     workerDataClient,
-                                                                     interval,
-                                                                     1.0,
-                                                                     false,
-                                                                     integralZ) :
-                            AdjustBlock.renderIntensityAdjustedSliceGauss(parameters.stack,
-                                                                          workerDataClient,
-                                                                          interval,
-                                                                          parameters.useGaussWeightBeforeNormalizingContrast,
-                                                                          false,
-                                                                          integralZ);
+                    final RandomAccessibleInterval<UnsignedByteType> slice;
+                    switch (parameters.correctionMethod) {
+                        case GAUSS:
+                        case GAUSS_WEIGHTED:
+                            slice = AdjustBlock.renderIntensityAdjustedSliceGauss(parameters.stack,
+                                                                                  workerDataClient,
+                                                                                  interval,
+                                                                                  CorrectionMethod.GAUSS_WEIGHTED.equals(parameters.correctionMethod),
+                                                                                  false,
+                                                                                  integralZ);
+
+                            break;
+                        case GLOBAL_PER_SLICE:
+                            slice = AdjustBlock.renderIntensityAdjustedSliceGlobalPerSlice(parameters.stack,
+                                                                                           workerDataClient,
+                                                                                           interval,
+                                                                                           false,
+                                                                                           integralZ);
+                            break;
+                        default:
+                            slice = AdjustBlock.renderIntensityAdjustedSlice(parameters.stack,
+                                                                             workerDataClient,
+                                                                             interval,
+                                                                             1.0,
+                                                                             false,
+                                                                             integralZ);
+                            break;
+                    }
 
                     final BufferedImage sliceImage =
                             ImageJFunctions.wrap(slice, "").getProcessor().getBufferedImage();
