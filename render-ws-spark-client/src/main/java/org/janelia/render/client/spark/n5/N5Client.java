@@ -36,6 +36,7 @@ import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.spark.downsample.N5DownsamplerSpark;
 import org.janelia.saalfeldlab.n5.spark.supplier.N5WriterSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -106,9 +107,18 @@ public class N5Client {
         }
 
         @Parameter(
+                names = "--isoFactors",
+                description = "If specified, down samples the full resolution data with these factors " +
+                              "before (optionally) generating a scale pyramid, e.g. 1,1,2")
+        public String isoFactorsString;
+
+        public int[] getIsoFactors() {
+            return parseCSIntArray(isoFactorsString);
+        }
+
+        @Parameter(
                 names = "--factors",
-                description = "Specifies generates a scale pyramid with given factors with relative scaling between factors, e.g. 2,2,2",
-                required = true)
+                description = "If specified, generates a scale pyramid with given factors, e.g. 2,2,2")
         public String downsampleFactorsString;
 
         public int[] getDownsampleFactors() {
@@ -207,15 +217,16 @@ public class N5Client {
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
-        final String datasetName = parameters.n5Dataset;
+        String datasetName = parameters.n5Dataset;
         final int[] blockSize = parameters.getBlockSize();
         final int[] downsampleFactors = parameters.getDownsampleFactors();
         final boolean downsampleStack = downsampleFactors != null;
 
-        final String fullScaleDatasetName = downsampleStack ?
-                                            Paths.get(datasetName, "s" + 0).toString() : datasetName;
+        String fullScaleDatasetName = downsampleStack ?
+                                      Paths.get(datasetName, "s" + 0).toString() : datasetName;
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+        final List<Double> resolutionValues = stackMetaData.getCurrentResolutionValues();
         final Bounds bounds = parameters.getBoundsForRun(stackMetaData);
 
         final long[] min = {
@@ -267,6 +278,32 @@ public class N5Client {
             }
         }
 
+        if (parameters.isoFactorsString != null) {
+            final int[] isoFactors = parameters.getIsoFactors();
+
+            for (int i = 0; i < isoFactors.length; i++) {
+                resolutionValues.set(i, resolutionValues.get(i) * isoFactors[i]);
+            }
+
+            final N5WriterSupplier n5Supplier = new N5PathSupplier(parameters.n5Path);
+
+            final String isoDatasetName = datasetName + "___iso";
+            final String fullScaleIsoDatasetName = downsampleStack ?
+                                                   Paths.get(isoDatasetName, "s" + 0).toString() :
+                                                   isoDatasetName;
+
+            N5DownsamplerSpark.downsample(
+                    sparkContext,
+                    n5Supplier,
+                    fullScaleDatasetName,
+                    fullScaleIsoDatasetName,
+                    isoFactors
+            );
+
+            datasetName = isoDatasetName;
+            fullScaleDatasetName = fullScaleIsoDatasetName;
+        }
+
         int numberOfDownSampledDatasets = 0;
         if (downsampleStack) {
 
@@ -287,7 +324,7 @@ public class N5Client {
 
         // save additional parameters so that n5 can be viewed in neuroglancer
         final NeuroglancerAttributes ngAttributes =
-                new NeuroglancerAttributes(stackMetaData.getCurrentResolutionValues(),
+                new NeuroglancerAttributes(resolutionValues,
                                            parameters.stackResolutionUnit,
                                            numberOfDownSampledDatasets,
                                            downsampleFactors,
