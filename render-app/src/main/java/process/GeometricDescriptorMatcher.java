@@ -9,6 +9,9 @@ import mpicbg.models.Model;
 import mpicbg.models.PointMatch;
 import mpicbg.pointdescriptor.matcher.Matcher;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import static process.Matching.getCorrespondenceCandidates;
 
 /**
@@ -27,16 +30,25 @@ public class GeometricDescriptorMatcher {
                                                                           final float zStretching1,
                                                                           final float zStretching2,
                                                                           final String explanation) {
-        // TODO: it would be nice if ArrayList cast wasn't needed for peak lists
-        return getCorrespondenceCandidates(nTimesBetter,
-                                           matcher,
-                                           (ArrayList<DifferenceOfGaussianPeak<FloatType>>) peaks1,
-                                           (ArrayList<DifferenceOfGaussianPeak<FloatType>>) peaks2,
-                                           model,
-                                           dimensionality,
-                                           zStretching1,
-                                           zStretching2,
-                                           explanation);
+        ArrayList<PointMatch> correspondenceCandidates;
+        try {
+            // TODO: it would be nice if ArrayList cast wasn't needed for peak lists
+            correspondenceCandidates = getCorrespondenceCandidates(nTimesBetter,
+                                                                   matcher,
+                                                                   (ArrayList<DifferenceOfGaussianPeak<FloatType>>) peaks1,
+                                                                   (ArrayList<DifferenceOfGaussianPeak<FloatType>>) peaks2,
+                                                                   model,
+                                                                   dimensionality,
+                                                                   zStretching1,
+                                                                   zStretching2,
+                                                                   explanation);
+        } catch (final IndexOutOfBoundsException iobe) {
+            LOG.warn("ignoring failure to derive candidates, returning empty list", iobe);
+            correspondenceCandidates = new ArrayList<>();
+        }
+        return correspondenceCandidates;
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(GeometricDescriptorMatcher.class);
 
 }
