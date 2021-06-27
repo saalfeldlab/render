@@ -344,12 +344,13 @@ public class RenderTools
 		return source;
 	}
 
-	public static void main( String[] args ) throws IOException
+	public static void main(final String[] args) throws IOException
 	{
-		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "cosem"; //"flyem";
-		String project = "aic_desmosome_2"; //"Z0419_25_Alpha3";
-		String stack = "v1_acquire_align_adaptive_2_untwisted";
+		final String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
+
+		final String owner = args.length < 1 ? "Z0720_07m_BR" : args[0];
+		final String project = args.length < 2 ? "Sec25" : args[1];
+		final String stack = args.length < 3 ? "v2_acquire_trimmed_align" : args[2];
 
 		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
 		
