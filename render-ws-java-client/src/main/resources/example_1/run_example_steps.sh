@@ -63,9 +63,11 @@ Step
 7. Render Results to Disk for Review
 
 """
-# NOTE: reduced render to just one section and two levels (run separately) so results fit in default Docker container storage
-#${CLIENT_SCRIPTS}/render_catmaid_boxes.sh ${EXAMPLE_1_PARAMS} --stack v1_align_tps --rootDirectory ${EXAMPLE_1_DIR}/boxes --height 2048 --width 2048 --format jpg --maxLevel 9 --maxOverviewWidthAndHeight 192 3407 3408 
-${CLIENT_SCRIPTS}/render_catmaid_boxes.sh ${EXAMPLE_1_PARAMS} --stack v1_align_tps --rootDirectory ${EXAMPLE_1_DIR}/boxes --height 2048 --width 2048 --format jpg --maxLevel 0 --maxOverviewWidthAndHeight 192 3407
+#${CLIENT_SCRIPTS}/render_catmaid_boxes.sh ${EXAMPLE_1_PARAMS} --stack v1_align_tps --rootDirectory ${EXAMPLE_1_DIR}/boxes --height 2048 --width 2048 --format jpg --maxLevel 9 --maxOverviewWidthAndHeight 192 3407 3408
+
+# NOTE: Set JVM max memory to 1G and reduce render to just one section and two levels so results fit in default Docker container,
+#       Without these changes, JVM will exit with code 137.
+export MAX_MEMORY="1G"
 ${CLIENT_SCRIPTS}/render_catmaid_boxes.sh ${EXAMPLE_1_PARAMS} --stack v1_align_tps --rootDirectory ${EXAMPLE_1_DIR}/boxes --height 2048 --width 2048 --format jpg --maxLevel 1 --maxOverviewWidthAndHeight 192 3407
 
 echo """
