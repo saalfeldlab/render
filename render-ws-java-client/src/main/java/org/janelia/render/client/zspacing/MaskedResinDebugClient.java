@@ -3,6 +3,7 @@ package org.janelia.render.client.zspacing;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import ij.ImageJ;
 import ij.ImagePlus;
 
 import java.io.IOException;
@@ -89,6 +90,8 @@ public class MaskedResinDebugClient {
                     "--resinContentThreshold", "3.0",
             };
         }
+
+        new ImageJ();
 
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
