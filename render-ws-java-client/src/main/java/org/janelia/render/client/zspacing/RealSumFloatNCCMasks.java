@@ -49,6 +49,10 @@ public class RealSumFloatNCCMasks  implements Callable< Double >
 			if ( Double.isNaN( va ) || Double.isNaN( vb ) )
 				continue;
 
+			// TODO: Remove once MaskedResinLoader mask is fixed
+			//if ( va <= 0 || vb <= 0 )
+			//	continue;
+
 			++n;
 			sumA.add( va );
 			sumAA.add( va * va );

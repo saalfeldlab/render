@@ -81,6 +81,7 @@ public class MaskedResinLayerLoader
 
         final FloatProcessor image = processors.image;
 
+        // TODO: we need a mask here that says which pixels contain image data (maskIntensity) and those who don't
         final FloatProcessor mask;
         if (processors.mask == null) {
             final float[] emptyMaskPixels = new float[image.getWidth() * image.getHeight()];
