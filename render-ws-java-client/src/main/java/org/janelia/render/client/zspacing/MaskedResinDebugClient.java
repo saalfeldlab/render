@@ -3,10 +3,12 @@ package org.janelia.render.client.zspacing;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import ij.ImageJ;
 import ij.ImagePlus;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 
@@ -43,8 +45,9 @@ public class MaskedResinDebugClient {
         @Parameter(
                 names = "--z",
                 description = "Layer to render",
-                required = true)
-        public Double z;
+                required = true,
+                variableArity = true)
+        public List<Double> zValues;
 
         @Parameter(
                 names = "--scale",
@@ -83,7 +86,7 @@ public class MaskedResinDebugClient {
                     "--owner", "cosem",
                     "--project", "jrc_mus_lung_ctrl",
                     "--stack", "v1_acquire_align",
-                    "--z", "1285",
+                    "--z", "1284", "1285",
                     "--scale", "0.22",
                     "--resinSigma", "100",
                     "--resinContentThreshold", "3.0",
@@ -124,7 +127,7 @@ public class MaskedResinDebugClient {
         final RenderWebServiceUrls urls = renderDataClient.getUrls();
         final String stackUrlString = urls.getStackUrlString(parameters.stack);
 
-        final Bounds totalBounds = renderDataClient.getLayerBounds(parameters.stack, parameters.z);
+        final Bounds totalBounds = renderDataClient.getStackMetaData(parameters.stack).getStats().getStackBounds();
 
         final Bounds layerBounds;
         if (parameters.bounds.isDefined()) {
@@ -144,23 +147,27 @@ public class MaskedResinDebugClient {
     void showSourceAndMask()
             throws IOException {
 
+        new ImageJ();
+        
         final String layerUrlPattern = getLayerUrlPattern();
 
-        final RenderLayerLoader layerLoader = new MaskedResinLayerLoader(layerUrlPattern,
-                                                                         Collections.singletonList(parameters.z),
-                                                                         ImageProcessorCache.DISABLED_CACHE,
-                                                                         parameters.resinSigma,
-                                                                         parameters.scale,
-                                                                         parameters.resinContentThreshold,
-                                                                         parameters.resinMaskIntensity);
+        for (final Double z : parameters.zValues) {
+            final RenderLayerLoader layerLoader = new MaskedResinLayerLoader(layerUrlPattern,
+                                                                             Collections.singletonList(z),
+                                                                             ImageProcessorCache.DISABLED_CACHE,
+                                                                             parameters.resinSigma,
+                                                                             parameters.scale,
+                                                                             parameters.resinContentThreshold,
+                                                                             parameters.resinMaskIntensity);
 
-        final LayerLoader.FloatProcessors floatProcessors = layerLoader.getProcessors(0);
+            final LayerLoader.FloatProcessors floatProcessors = layerLoader.getProcessors(0);
 
-        final ImagePlus source = new ImagePlus("source", floatProcessors.image);
-        final ImagePlus mask = new ImagePlus("mask", floatProcessors.mask);
+            final ImagePlus source = new ImagePlus(z + " source", floatProcessors.image);
+            final ImagePlus mask = new ImagePlus(z + " mask", floatProcessors.mask);
 
-        source.show();
-        mask.show();
+            source.show();
+            mask.show();
+        }
 
         SimpleMultiThreading.threadHaltUnClean();
     }
