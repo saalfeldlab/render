@@ -91,6 +91,13 @@ public class MaskedResinLayerLoader
             mask = processors.mask;
         }
 
+        // this is the simplest way to fix it, however if there is a 0 intensity, it will also be ignored
+        for ( int i = 0; i < mask.getWidth() * mask.getHeight(); ++i )
+        {
+        	if ( ((float[])image.getPixels())[ i ] == 0 )
+        		((float[])mask.getPixels())[ i ] = 0;
+        }
+
         final RandomAccessibleInterval<FloatType> imgA =
                 ArrayImgs.floats((float[]) image.getPixels(), image.getWidth(), image.getHeight());
         final RandomAccessibleInterval<FloatType> imgB =
