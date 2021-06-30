@@ -238,7 +238,7 @@
 
     <properties>
         <resteasy.version>3.13.2.Final</resteasy.version>
-        <jetty.version>9.4.9.v20180320</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
+        <jetty.version>9.4.41.v20210516</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
     </properties>
