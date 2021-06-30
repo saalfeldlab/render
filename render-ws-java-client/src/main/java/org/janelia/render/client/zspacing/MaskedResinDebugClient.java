@@ -5,6 +5,8 @@ import com.beust.jcommander.ParametersDelegate;
 
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.ImageStack;
+import ij.process.FloatProcessor;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -23,6 +25,7 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.zspacing.loader.LayerLoader;
 import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
 import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
+import org.janelia.thickness.plugin.RealSumFloatNCC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,8 +96,6 @@ public class MaskedResinDebugClient {
             };
         }
 
-        new ImageJ();
-
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
             public void runClient(final String[] args) throws Exception {
@@ -153,6 +154,9 @@ public class MaskedResinDebugClient {
         
         final String layerUrlPattern = getLayerUrlPattern();
 
+        ImageStack sourceStack = null;
+        ImageStack maskStack = null;
+
         for (final Double z : parameters.zValues) {
             final RenderLayerLoader layerLoader = new MaskedResinLayerLoader(layerUrlPattern,
                                                                              Collections.singletonList(z),
@@ -167,9 +171,33 @@ public class MaskedResinDebugClient {
             final ImagePlus source = new ImagePlus(z + " source", floatProcessors.image);
             final ImagePlus mask = new ImagePlus(z + " mask", floatProcessors.mask);
 
-            source.show();
-            mask.show();
+            if ( sourceStack == null )
+            {
+            	sourceStack = new ImageStack( source.getWidth(), source.getHeight() );
+            	maskStack = new ImageStack( mask.getWidth(), mask.getHeight() );
+            }
+            else
+            {
+            	double corr = new RealSumFloatNCCMasks(
+            			(float[])sourceStack.getProcessor( sourceStack.getSize() ).getPixels(),
+            			(float[])maskStack.getProcessor( maskStack.getSize() ).getPixels(),
+            			(float[])source.getProcessor().getPixels(),
+            			(float[])mask.getProcessor().getPixels()).call().floatValue();
+            	System.out.println( "masked corr: " + corr );
+
+            	corr = new RealSumFloatNCC(
+            			(float[])sourceStack.getProcessor( sourceStack.getSize() ).getPixels(),
+            			(float[])source.getProcessor().getPixels() ).call().floatValue();
+            	System.out.println( "corr: " + corr );
+
+            }
+
+            sourceStack.addSlice( source.getProcessor() );
+            maskStack.addSlice( mask.getProcessor() );
         }
+
+        new ImagePlus( "source", sourceStack ).show();
+        new ImagePlus( "mask", maskStack ).show();
 
         SimpleMultiThreading.threadHaltUnClean();
     }
