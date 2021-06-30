@@ -94,6 +94,10 @@ public class MaskedResinLayerLoader
         // this is the simplest way to fix it, however if there is a 0 intensity, it will also be ignored
         for ( int i = 0; i < mask.getWidth() * mask.getHeight(); ++i )
         {
+        	// for each pixel, inverse transformation, check if it hits the input image (with mask)
+        	// should ideally be a pixel away from the border
+
+        	// cheap man's solution to the same problem
         	if ( ((float[])image.getPixels())[ i ] == 0 )
         		((float[])mask.getPixels())[ i ] = 0;
         }
