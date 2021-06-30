@@ -120,9 +120,10 @@ public class DistributedSolveSpark extends DistributedSolve
 
                 final SolveSetFactory solveSetFactory;
                 if (parameters.customSolveClass == null) {
-					solveSetFactory = new SolveSetFactorySimple(parameters.globalModel(),
+					solveSetFactory = new SolveSetFactoryAdaptiveRigid(
+																parameters.globalModel(),
 																parameters.blockModel(),
-																parameters.stitchingModel(),
+																parameters.stitchingModel(), // lambda is 0.0 by default (please double-check)
 																parameters.blockOptimizerLambdasRigid,
 																parameters.blockOptimizerLambdasTranslation,
 																parameters.blockOptimizerIterations,
@@ -134,7 +135,7 @@ public class DistributedSolveSpark extends DistributedSolve
 					solveSetFactory = CustomSolveSetBuilder.build(parameters.customSolveClass,
 																  parameters.globalModel(),
 																  parameters.blockModel(),
-																  parameters.stitchingModel(),
+																  parameters.stitchingModel(), // lambda is 0.0 by default, might be changed for specific z-layers in custom SolveSetFactories
 																  parameters.blockOptimizerLambdasRigid,
 																  parameters.blockOptimizerLambdasTranslation,
 																  parameters.blockOptimizerIterations,

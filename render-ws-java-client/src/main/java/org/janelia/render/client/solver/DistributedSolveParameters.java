@@ -152,7 +152,7 @@ public class DistributedSolveParameters extends CommandLineParameters
             names = "--lambdaStitching",
             description = "Lambda, used if modelTypeStitchingRegularizer is not null."
     )
-    public Double lambdaStitching = 0.25;
+    public Double lambdaStitching = 0.0;
 
     @Parameter(
             names = "--maxAllowedErrorStitching",
