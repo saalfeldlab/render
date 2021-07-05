@@ -81,33 +81,55 @@ public class MaskedResinLayerLoader
 
         final FloatProcessor image = processors.image;
 
-        // TODO: we need a mask here that says which pixels contain image data (maskIntensity) and those who don't
+        final int layerWidth = image.getWidth();
+        final int layerHeight = image.getHeight();
+        final int layerPixelCount = layerWidth * layerHeight;
+
         final FloatProcessor mask;
         if (processors.mask == null) {
-            final float[] emptyMaskPixels = new float[image.getWidth() * image.getHeight()];
+            final float[] emptyMaskPixels = new float[layerPixelCount];
             Arrays.fill(emptyMaskPixels, maskIntensity);
-            mask = new FloatProcessor(image.getWidth(), image.getHeight(), emptyMaskPixels);
+            mask = new FloatProcessor(layerWidth, layerHeight, emptyMaskPixels);
         }  else {
             mask = processors.mask;
         }
 
-        // this is the simplest way to fix it, however if there is a 0 intensity, it will also be ignored
-        for ( int i = 0; i < mask.getWidth() * mask.getHeight(); ++i )
-        {
-        	// for each pixel, inverse transformation, check if it hits the input image (with mask)
-        	// should ideally be a pixel away from the border
+        // At this point, mask only includes masked areas for each individual tile in the layer.
+        // We also need to mask any layer pixels that are completely outside of the transformed tiles.
 
-        	// cheap man's solution to the same problem
-        	if ( ((float[])image.getPixels())[ i ] == 0 )
-        		((float[])mask.getPixels())[ i ] = 0;
+        final StopWatch outsideTileMaskStopWatch = StopWatch.createAndStart();
+
+        int zeroValuePixelCount = 0;
+        final float[] layerImagePixels = (float[]) image.getPixels();
+        final float[] layerMaskPixels = (float[]) mask.getPixels();
+        for (int i = 0; i < layerImagePixels.length; i++) {
+            // only run expensive inverse transformation to check if input image is hit when pixel is black (background)
+            if (layerImagePixels[i] == 0) {
+                zeroValuePixelCount++;
+                // TODO: review inverse transformation performance issues with SP
+                // - is there a faster way and if not, is this really necessary ?
+                // - explain earlier comment: "should ideally be a pixel away from the border"
+                final int x = i % layerWidth;
+                final int y = i / layerWidth;
+//                if (! processors.renderParameters.isRenderedCoordinateInsideTiles(x, y)) {
+                    layerMaskPixels[i] = 0;
+//                }
+//                if (zeroValuePixelCount % 10000 == 0) {
+//                    LOG.debug("buildResinMask: checked {} zero value pixels", zeroValuePixelCount);
+//                }
+            }
         }
 
-        final RandomAccessibleInterval<FloatType> imgA =
-                ArrayImgs.floats((float[]) image.getPixels(), image.getWidth(), image.getHeight());
-        final RandomAccessibleInterval<FloatType> imgB =
-                ArrayImgs.floats((float[]) mask.getPixels(), image.getWidth(), image.getHeight());
-        final float[] outP = new float[image.getWidth() * image.getHeight()];
-        final Img<FloatType> out = ArrayImgs.floats(outP, image.getWidth(), image.getHeight());
+        final double zeroPixelPercentage = Math.round((zeroValuePixelCount * 10000.0) / layerPixelCount) / 100.0 ;
+        outsideTileMaskStopWatch.stop();
+
+        LOG.debug("buildResinMask: outsideTileMask derivation took {} for {} zero value pixels ({}% of total)",
+                  outsideTileMaskStopWatch, zeroValuePixelCount, zeroPixelPercentage);
+
+        final RandomAccessibleInterval<FloatType> imgA = ArrayImgs.floats(layerImagePixels, layerWidth, layerHeight);
+        final RandomAccessibleInterval<FloatType> imgB = ArrayImgs.floats(layerMaskPixels, layerWidth, layerHeight);
+        final float[] outP = new float[layerPixelCount];
+        final Img<FloatType> out = ArrayImgs.floats(outP, layerWidth, layerHeight);
 
         weightedGauss(
                 new double[]{sigma * renderScale, sigma * renderScale},
@@ -157,7 +179,7 @@ public class MaskedResinLayerLoader
 
         LOG.debug("buildResinMask: exit, took {}", stopWatch);
 
-        return new FloatProcessor(image.getWidth(), image.getHeight(), outP);
+        return new FloatProcessor(layerWidth, layerHeight, outP);
     }
 
     public static void weightedGauss(final double[] sigmas,

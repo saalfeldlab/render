@@ -3,6 +3,8 @@ package org.janelia.render.client.zspacing.loader;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
+import org.janelia.alignment.RenderParameters;
+
 /**
  * Interface for loading aligned layer pixels for z position correction.
  *
@@ -17,16 +19,25 @@ public interface LayerLoader {
 
         public FloatProcessor image;
         public FloatProcessor mask;
+        public RenderParameters renderParameters;
 
         public FloatProcessors(final ImageProcessor image,
                                final ImageProcessor mask) {
+            this(image, mask, null);
+        }
+
+        public FloatProcessors(final ImageProcessor image,
+                               final ImageProcessor mask,
+                               final RenderParameters renderParameters) {
             this.image = image instanceof FloatProcessor ? (FloatProcessor) image : image.convertToFloatProcessor();
             if (mask == null) {
                 this.mask = null;
             } else {
                 this.mask = mask instanceof FloatProcessor ? (FloatProcessor) mask : mask.convertToFloatProcessor();
             }
+            this.renderParameters = renderParameters;
         }
+
     }
 
     /**

@@ -65,11 +65,7 @@ public class RenderLayerLoader implements LayerLoader, Serializable {
                                                        imageProcessorCache,
                                                        debugFile);
 
-        return new FloatProcessors(imageProcessorWithMasks.ip, imageProcessorWithMasks.mask);
-    }
-
-    public Double getFirstLayerZ() {
-        return sortedZList.get(0);
+        return new FloatProcessors(imageProcessorWithMasks.ip, imageProcessorWithMasks.mask, renderParameters);
     }
 
     /**

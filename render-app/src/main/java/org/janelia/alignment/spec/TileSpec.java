@@ -73,6 +73,10 @@ public class TileSpec implements Serializable {
 
     private Set<String> labels;
 
+    /** cached mesh to speed up local coordinates calculations (see {@link #getLocalCoordinates}) */
+    @JsonIgnore
+    private transient CoordinateTransformMesh localCoordinatesMesh = null;
+
     public TileSpec() {
         this.mipmapLevels = new TreeMap<>();
         this.transforms = new ListTransformSpec();
@@ -340,7 +344,7 @@ public class TileSpec implements Serializable {
                     max[1] - min[1]);
         else {
             box = preallocated;
-            box.setRect(min[0], min[1], max[0] - min[0], max[1] - max[1]);
+            box.setRect(min[0], min[1], max[0] - min[0], max[1] - min[1]);
         }
         return box;
     }
@@ -387,8 +391,10 @@ public class TileSpec implements Serializable {
         final double[] localCoordinates;
         final double[] l = new double[] {x, y};
         if (hasTransforms()) {
-            final CoordinateTransformMesh mesh = getCoordinateTransformMesh(meshCellSize);
-            mesh.applyInverseInPlace(l);
+            if (localCoordinatesMesh == null) {
+                localCoordinatesMesh = getCoordinateTransformMesh(meshCellSize);
+            } // else assume cached localCoordinatesMesh for this tile spec has same meshCellSize
+            localCoordinatesMesh.applyInverseInPlace(l);
         }
 
         if (z == null) {
@@ -398,6 +404,22 @@ public class TileSpec implements Serializable {
         }
 
         return localCoordinates;
+    }
+
+    public boolean isWorldCoordinateInsideTile(final double worldX,
+                                               final double worldY)
+            throws IllegalStateException, NoninvertibleModelException {
+
+        boolean isInside = false;
+
+        if ((worldX >= minX) && (worldX <= maxX) &&
+            (worldY >= minY) && (worldY <= maxY)) {
+            final double[] local = getLocalCoordinates(worldX, worldY, meshCellSize);
+            isInside = ((local[0] >= 0.0) && (local[0] <= width) &&
+                        (local[1] >= 0.0) && (local[1] <= height));
+        }
+
+        return isInside;
     }
 
     public boolean isMissingWidthOrHeight() {

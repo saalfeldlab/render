@@ -41,6 +41,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 
+import mpicbg.models.NoninvertibleModelException;
+
 import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterFactory;
 import org.janelia.alignment.filter.FilterSpec;
@@ -636,6 +638,30 @@ public class RenderParameters implements Serializable {
                 spec.setMipmapPathBuilder(null);
             }
         }
+    }
+
+    public boolean isRenderedCoordinateInsideTiles(final double renderedX,
+                                                   final double renderedY) {
+
+        boolean isInside = false;
+
+        final double worldX = (renderedX / scale) + x;
+        final double worldY = (renderedY / scale) + y;
+
+        for (final TileSpec tileSpec : tileSpecs) {
+            try {
+                tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), false);
+                if (tileSpec.isWorldCoordinateInsideTile(worldX, worldY)) {
+                    isInside = true;
+                    break;
+                }
+            } catch (final NoninvertibleModelException e) {
+                // assume non-invertible exceptions imply coordinate is outside tile (don't log to improve performance)
+                // LOG.warn("assuming (" + worldX + ", " + worldY + ") is outside tile " + tileSpec.getTileId(), e);
+            }
+        }
+
+        return isInside;
     }
 
     public boolean hasFilters() {

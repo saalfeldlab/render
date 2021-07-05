@@ -1,0 +1,57 @@
+{
+  "x": -1627,
+  "y": -100,
+  "width": 5137,
+  "height": 3537,
+  "scale": 0.1,
+  "tileSpecs": [
+      {
+          "tileId": "tileA",
+          "z": 3903.0,
+          "width": 2560.0,
+          "height": 2160.0,
+          "mipmapLevels": {
+              "0": {
+                  "imageUrl": "src/test/resources/mipmap-test/scaled-images/col0060_row0140_cam0.tif",
+                  "maskUrl": "src/test/resources/mipmap-test/scaled-images/49.134.zip"
+              }
+          },
+          "transforms": {
+              "type": "list",
+              "specList": [
+                  {
+                      "id": "rotate45_cos_sin_nsin_cos_a",
+                      "className": "mpicbg.trakem2.transform.AffineModel2D",
+                      "dataString": "0.70710678118 0.70710678118 -0.70710678118 0.70710678118 0 0"
+                  }
+              ]
+          }
+      },
+      {
+          "tileId": "tileB",
+          "z": 3903.0,
+          "width": 2560.0,
+          "height": 2160.0,
+          "mipmapLevels": {
+              "0": {
+                  "imageUrl": "src/test/resources/mipmap-test/scaled-images/col0060_row0140_cam0.tif",
+                  "maskUrl": "src/test/resources/mipmap-test/scaled-images/49.134.zip"
+              }
+          },
+          "transforms": {
+              "type": "list",
+              "specList": [
+                  {
+                      "id": "rotate45_cos_sin_nsin_cos_b",
+                      "className": "mpicbg.trakem2.transform.AffineModel2D",
+                      "dataString": "0.70710678118 0.70710678118 -0.70710678118 0.70710678118 0 0"
+                  },
+                  {
+                      "className": "mpicbg.trakem2.transform.TranslationModel2D",
+                      "dataString": "1600 0"
+                  }
+              ]
+          }
+      }
+  ]
+}
