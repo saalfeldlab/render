@@ -83,9 +83,9 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				// rigid alignment
 				rigidPreAlign = true;
 
-				// allow rigid stitching
-				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
-				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+				// Do NOT DO allow rigid stitching
+				//stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				//((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
 	
 				// only rigid/affine solve
 				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
@@ -138,9 +138,9 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				// rigid alignment
 				rigidPreAlign = true;
 
-				// allow rigid stitching
-				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
-				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
+				// Do NOT DO allow rigid stitching
+				//stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
+				//((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
 	
 				// only rigid/affine solve
 				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
