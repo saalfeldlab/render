@@ -47,8 +47,7 @@ public class IntensityAdjustParameters
             names = "--dataSetPath",
             description = "Explicit path to append to the root directory for rendered layers " +
                           "(e.g. /Z0720_7m_BR/Sec39/v1_align/intensity_adjusted_scapes_20210501_112233).  " +
-                          "Omit to have auto generated data set path.",
-            required = true)
+                          "Omit to have auto generated data set path.")
     public String dataSetPath;
 
     @ParametersDelegate
