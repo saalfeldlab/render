@@ -11,9 +11,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
+import mpicbg.models.AffineModel1D;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import net.imglib2.RealRandomAccess;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.img.imageplus.ImagePlusImgs;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.view.Views;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -57,7 +68,7 @@ public class VisualizeTilePairMatches {
                     "--collection", "Sec24_wobble_fix_3", // "Sec24_v1", "Sec24_wobble_fix_1"
                     "--pTileId", "21-04-29_151034_0-0-0.57325.0",
                     "--qTileId", "21-04-29_151547_0-0-0.57326.0",
-                    "--scale", "0.1",
+                    //"--renderScale", "0.1",
             };
         }
 
@@ -106,14 +117,50 @@ public class VisualizeTilePairMatches {
         final DebugTile pTile = new DebugTile(parameters.pTileId);
         final DebugTile qTile = new DebugTile(parameters.qTileId);
 
+		final CanvasMatches canvasMatches = matchDataClient.getMatchesBetweenTiles(pTile.getGroupId(), pTile.getId(),
+				qTile.getGroupId(), qTile.getId());
+
+		final List<PointMatch> pointMatchList = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+
+		final AffineModel2D model = new AffineModel2D();
+
+		try
+		{
+			model.fit(pointMatchList); // The estimated model transfers match.p1.local to match.p2.world
+			System.out.println( model );
+
+			for ( final PointMatch pm : pointMatchList )
+				pm.getP1().apply( model );
+
+			System.out.println( "mean dist: " + PointMatch.meanDistance( pointMatchList ) );
+			System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );
+
+			//System.exit(0 );
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+
         final ImagePlus pIp = pTile.render();
         final ImagePlus qIp = qTile.render();
 
-        final CanvasMatches canvasMatches = matchDataClient.getMatchesBetweenTiles(pTile.getGroupId(), pTile.getId(),
-                                                                                   qTile.getGroupId(), qTile.getId());
+        final double[] tmp = new double[ 2 ];
+        final AffineModel2D modelInvert = model.createInverse();
 
-        final List<PointMatch> pointMatchList =
-                CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+        final ImagePlus pIpTransformed = qIp.duplicate();
+        RealRandomAccess<FloatType> r = Views.interpolate( Views.extendZero( ArrayImgs.floats( (float[])pIp.getProcessor().getPixels(), new long[] { pIp.getWidth(), pIp.getHeight() } ) ), new NLinearInterpolatorFactory<>() ).realRandomAccess();
+
+        for ( int y = 0; y < pIpTransformed.getHeight(); ++y )
+        	for ( int x = 0; x < pIpTransformed.getWidth(); ++x )
+        	{
+        		tmp[ 0 ] = x;
+        		tmp[ 1 ] = y;
+        		modelInvert.applyInPlace( tmp );
+        		r.setPosition( tmp );
+        		pIpTransformed.getProcessor().setf(x, y, r.get().get() );
+        	}
+        pIpTransformed.show();
+
         final List<Point> pPointList = new ArrayList<>(pointMatchList.size());
         final List<Point> qPointList = new ArrayList<>(pointMatchList.size());
         pointMatchList.forEach(pm -> {
@@ -132,7 +179,7 @@ public class VisualizeTilePairMatches {
 
         pIp.show();
         qIp.show();
-        
+
         SimpleMultiThreading.threadHaltUnClean();
     }
 
