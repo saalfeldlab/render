@@ -65,7 +65,7 @@ public class VisualizeTilePairMatches {
                     "--owner", "Z0720_07m_BR",
                     "--project", "Sec24",
                     "--stack", "v3_acquire_trimmed",
-                    "--collection", "Sec24_wobble_fix_3", // "Sec24_v1", "Sec24_wobble_fix_1"
+                    "--collection", "Sec24_wobble_fiji", // "Sec24_v1", "Sec24_wobble_fix_1"
                     "--pTileId", "21-04-29_151034_0-0-0.57325.0",
                     "--qTileId", "21-04-29_151547_0-0-0.57326.0",
                     //"--renderScale", "0.1",
@@ -129,11 +129,29 @@ public class VisualizeTilePairMatches {
 			model.fit(pointMatchList); // The estimated model transfers match.p1.local to match.p2.world
 			System.out.println( model );
 
+			//final List<PointMatch> pointMatchList2 = new ArrayList<>();
+
+			for ( final PointMatch pm : pointMatchList )
+			{
+				pm.getP1().apply( model );
+				//if ( pm.getDistance() < 2 )
+				//	pointMatchList2.add( pm );
+			}
+
+			System.out.println( "mean dist: " + PointMatch.meanDistance( pointMatchList ) );
+			System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );
+			/*
+			pointMatchList.clear();
+			pointMatchList.addAll( pointMatchList2 );
+
+			model.fit(pointMatchList);
+			System.out.println( model );
+
 			for ( final PointMatch pm : pointMatchList )
 				pm.getP1().apply( model );
 
 			System.out.println( "mean dist: " + PointMatch.meanDistance( pointMatchList ) );
-			System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );
+			System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );*/
 
 			//System.exit(0 );
 		}
@@ -148,6 +166,7 @@ public class VisualizeTilePairMatches {
         final AffineModel2D modelInvert = model.createInverse();
 
         final ImagePlus pIpTransformed = qIp.duplicate();
+        pIpTransformed.setTitle( pIp.getTitle() + "_transformed" );
         RealRandomAccess<FloatType> r = Views.interpolate( Views.extendZero( ArrayImgs.floats( (float[])pIp.getProcessor().getPixels(), new long[] { pIp.getWidth(), pIp.getHeight() } ) ), new NLinearInterpolatorFactory<>() ).realRandomAccess();
 
         for ( int y = 0; y < pIpTransformed.getHeight(); ++y )
