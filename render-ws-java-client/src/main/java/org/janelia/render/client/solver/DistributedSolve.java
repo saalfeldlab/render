@@ -235,6 +235,8 @@ public abstract class DistributedSolve
 
 		// important: all images within one solveitem must be connected to each other!
 
+		LOG.info( "globalSolve: solving {} items", allSolveItems.size() );
+
 		// solve by solveitem, not by z layer
 		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
 		{
@@ -243,6 +245,8 @@ public abstract class DistributedSolve
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
+				LOG.info( "globalSolve: solveItemA z range is {} to {}", solveItemA.minZ(), solveItemA.maxZ());
+
 				// is this zPlane of SolveItemA overlapping with anything?
 				boolean wasAssigned = false;
 
@@ -250,6 +254,8 @@ public abstract class DistributedSolve
 				{
 					final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemB = allSolveItems.get( b );
 					solveItemDataToTile.putIfAbsent( solveItemB, new Tile( solveItemB.globalSolveModelInstance() ) );
+
+					LOG.info( "globalSolve: solveItemB z range is {} to {}", solveItemB.minZ(), solveItemB.maxZ());
 
 					if ( solveItemA.equals( solveItemB ) )
 						continue;
@@ -381,7 +387,8 @@ public abstract class DistributedSolve
 			}
 		}
 
-		LOG.info( "Pre-Align ... " );
+		LOG.info( "launching Pre-Align, tileConfigBlocks has {} tiles and {} fixed tiles",
+				  tileConfigBlocks.getTiles().size(), tileConfigBlocks.getFixedTiles().size() );
 
 		tileConfigBlocks.preAlign();
 
