@@ -8,19 +8,19 @@ import mpicbg.trakem2.transform.CoordinateTransform;
 public class ExponentialFunctionOffsetTransform
         implements CoordinateTransform {
 
-    private Double a;
-    private Double b;
-    private Double c;
-    private Integer dimension;
+    private double a;
+    private double b;
+    private double c;
+    private int dimension;
 
     public ExponentialFunctionOffsetTransform() {
-        this(null, null, null, null);
+        this(0, 0, 0,0);
     }
 
-    public ExponentialFunctionOffsetTransform(final Double a,
-                                              final Double b,
-                                              final Double c,
-                                              final Integer dimension) {
+    public ExponentialFunctionOffsetTransform(final double a,
+                                              final double b,
+                                              final double c,
+                                              final int dimension) {
         this.a = a;
         this.b = b;
         this.c = c;
