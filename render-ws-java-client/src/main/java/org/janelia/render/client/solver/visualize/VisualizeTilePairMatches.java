@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.process.ImageProcessor;
 
 import java.io.IOException;
@@ -13,6 +14,8 @@ import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
@@ -62,7 +65,7 @@ public class VisualizeTilePairMatches {
                     "--owner", "Z0720_07m_BR",
                     "--project", "Sec24",
                     "--stack", "v3_acquire_trimmed",
-                    "--collection", "Sec24_wobble_fiji", // "Sec24_v1", "Sec24_wobble_fix_1"
+                    "--collection", "Sec24_wobble_fix_5", // "Sec24_wobble_fiji", // "Sec24_v1"
                     "--pTileId", "21-04-29_151034_0-0-0.57325.0",
                     "--qTileId", "21-04-29_151547_0-0-0.57326.0",
                     //"--renderScale", "0.1",
@@ -79,7 +82,7 @@ public class VisualizeTilePairMatches {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final VisualizeTilePairMatches client = new VisualizeTilePairMatches(parameters);
-                client.showMatches();
+                client.showMatchesAndAlignment();
             }
         };
 
@@ -106,8 +109,8 @@ public class VisualizeTilePairMatches {
                                         false);
     }
 
-    void showMatches()
-            throws IOException {
+    void showMatchesAndAlignment()
+            throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
 
         new ImageJ();
 
@@ -120,62 +123,37 @@ public class VisualizeTilePairMatches {
 		final List<PointMatch> pointMatchList = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
 
 		final AffineModel2D model = new AffineModel2D();
+        model.fit(pointMatchList); // The estimated model transfers match.p1.local to match.p2.world
+        System.out.println( model );
 
-		try
-		{
-			model.fit(pointMatchList); // The estimated model transfers match.p1.local to match.p2.world
-			System.out.println( model );
+        //final List<PointMatch> pointMatchList2 = new ArrayList<>();
 
-			//final List<PointMatch> pointMatchList2 = new ArrayList<>();
+        for ( final PointMatch pm : pointMatchList )
+        {
+            pm.getP1().apply( model );
+            //if ( pm.getDistance() < 2 )
+            //	pointMatchList2.add( pm );
+        }
 
-			for ( final PointMatch pm : pointMatchList )
-			{
-				pm.getP1().apply( model );
-				//if ( pm.getDistance() < 2 )
-				//	pointMatchList2.add( pm );
-			}
+        System.out.println( "mean dist: " + PointMatch.meanDistance( pointMatchList ) );
+        System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );
 
-			System.out.println( "mean dist: " + PointMatch.meanDistance( pointMatchList ) );
-			System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );
-			/*
-			pointMatchList.clear();
-			pointMatchList.addAll( pointMatchList2 );
+//        pointMatchList.clear();
+//        pointMatchList.addAll( pointMatchList2 );
+//
+//        model.fit(pointMatchList);
+//        System.out.println( model );
+//
+//        for ( final PointMatch pm : pointMatchList )
+//            pm.getP1().apply( model );
+//
+//        System.out.println( "mean dist: " + PointMatch.meanDistance( pointMatchList ) );
+//        System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );*/
+//
+//        System.exit(0 );
 
-			model.fit(pointMatchList);
-			System.out.println( model );
-
-			for ( final PointMatch pm : pointMatchList )
-				pm.getP1().apply( model );
-
-			System.out.println( "mean dist: " + PointMatch.meanDistance( pointMatchList ) );
-			System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );*/
-
-			//System.exit(0 );
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-
-        final ImagePlus pIp = new ImagePlus("P:" + parameters.pTileId, pTile.render());
-        final ImagePlus qIp = new ImagePlus("Q:" + parameters.qTileId, qTile.render());
-
-        final double[] tmp = new double[ 2 ];
-        final AffineModel2D modelInvert = model.createInverse();
-
-        final ImagePlus pIpTransformed = qIp.duplicate();
-        pIpTransformed.setTitle( pIp.getTitle() + "_transformed" );
-        RealRandomAccess<FloatType> r = Views.interpolate( Views.extendZero( ArrayImgs.floats( (float[])pIp.getProcessor().getPixels(), new long[] { pIp.getWidth(), pIp.getHeight() } ) ), new NLinearInterpolatorFactory<>() ).realRandomAccess();
-
-        for ( int y = 0; y < pIpTransformed.getHeight(); ++y )
-        	for ( int x = 0; x < pIpTransformed.getWidth(); ++x )
-        	{
-        		tmp[ 0 ] = x;
-        		tmp[ 1 ] = y;
-        		modelInvert.applyInPlace( tmp );
-        		r.setPosition( tmp );
-        		pIpTransformed.getProcessor().setf(x, y, r.get().get() );
-        	}
-        pIpTransformed.show();
+        final ImageProcessor pIp = pTile.render();
+        final ImageProcessor qIp = qTile.render();
 
         final List<Point> pPointList = new ArrayList<>(pointMatchList.size());
         final List<Point> qPointList = new ArrayList<>(pointMatchList.size());
@@ -190,11 +168,49 @@ public class VisualizeTilePairMatches {
             qPointList.add(qPoint);
         });
 
-        ImageDebugUtil.setPointRois(pPointList, pIp);
-        ImageDebugUtil.setPointRois(qPointList, qIp);
+        final ImagePlus pSourcePlus = new ImagePlus("SourceP:" + parameters.pTileId, pIp);
+        final ImagePlus qSourcePlus = new ImagePlus("SourceQ:" + parameters.qTileId, qIp);
+        ImageDebugUtil.setPointRois(pPointList, pSourcePlus);
+        ImageDebugUtil.setPointRois(qPointList, qSourcePlus);
 
-        pIp.show();
-        qIp.show();
+        pSourcePlus.show();
+        qSourcePlus.show();
+
+        final int width = Math.max(pIp.getWidth(), qIp.getWidth());
+        final int height = Math.max(pIp.getHeight(), qIp.getHeight());
+
+        final ImageProcessor pSlice = pIp.createProcessor(width, height);
+        pSlice.insert(pIp, 0, 0);
+        final ImageProcessor qSlice = qIp.createProcessor(width, height);
+        qSlice.insert(qIp, 0, 0);
+
+        final double[] tmp = new double[ 2 ];
+        final AffineModel2D modelInvert = model.createInverse();
+
+        final ImageProcessor pSliceTransformed = pSlice.createProcessor(width, height);
+        final RealRandomAccess<FloatType> r = Views.interpolate(
+                Views.extendZero( ArrayImgs.floats( (float[]) pSlice.getPixels(), width, height) ),
+                new NLinearInterpolatorFactory<>() ).realRandomAccess();
+
+        for ( int y = 0; y < pSliceTransformed.getHeight(); ++y )
+            for ( int x = 0; x < pSliceTransformed.getWidth(); ++x )
+            {
+                tmp[ 0 ] = x;
+                tmp[ 1 ] = y;
+                modelInvert.applyInPlace( tmp );
+                r.setPosition( tmp );
+                pSliceTransformed.setf(x, y, r.get().get() );
+            }
+
+//        final ImagePlus pTransformedPlus = new ImagePlus("TransformedP:" + parameters.pTileId, pSliceTransformed);
+//        pTransformedPlus.show();
+
+        final ImageStack transformedImageStack = new ImageStack(width, height);
+        transformedImageStack.addSlice("TransformedP:" + parameters.pTileId, pSliceTransformed);
+        transformedImageStack.addSlice("Q:" + parameters.qTileId, qSlice);
+        final ImagePlus transformedImageStackPlus = new ImagePlus("Transformed Stack", transformedImageStack);
+
+        transformedImageStackPlus.show();
 
         SimpleMultiThreading.threadHaltUnClean();
     }
