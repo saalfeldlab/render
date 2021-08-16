@@ -5,26 +5,17 @@ import com.beust.jcommander.ParametersDelegate;
 
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.process.ImageProcessor;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
-import mpicbg.models.AffineModel1D;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.IllDefinedDataPointsException;
-import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
-import net.imglib2.RealRandomAccess;
-import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.img.imageplus.ImagePlusImgs;
-import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.view.Views;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -39,6 +30,12 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.imglib2.RealRandomAccess;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.view.Views;
 
 /**
  * Java client for visualizing matches for a tile pair.
@@ -159,8 +156,8 @@ public class VisualizeTilePairMatches {
 			e.printStackTrace();
 		}
 
-        final ImagePlus pIp = pTile.render();
-        final ImagePlus qIp = qTile.render();
+        final ImagePlus pIp = new ImagePlus("P:" + parameters.pTileId, pTile.render());
+        final ImagePlus qIp = new ImagePlus("Q:" + parameters.qTileId, qTile.render());
 
         final double[] tmp = new double[ 2 ];
         final AffineModel2D modelInvert = model.createInverse();
@@ -214,10 +211,10 @@ public class VisualizeTilePairMatches {
         final RenderParameters renderParameters;
         final TileSpec tileSpec;
 
-        public DebugTile(final String tileId)
-                throws IOException {
-            this.renderParameters = renderDataClient.getRenderParametersForTile(parameters.stack, tileId);
-            this.renderParameters.setScale(parameters.renderScale);
+        public DebugTile(final String tileId) {
+            final String tileUrl = renderDataClient.getUrls().getTileUrlString(parameters.stack, tileId) +
+                                   "/render-parameters?normalizeForMatching=true&scale=" + parameters.renderScale;
+            this.renderParameters = RenderParameters.loadFromUrl(tileUrl);
             this.renderParameters.initializeDerivedValues();
             this.tileSpec = renderParameters.getTileSpecs().get(0);
         }
@@ -230,10 +227,10 @@ public class VisualizeTilePairMatches {
             return tileSpec.getTileId();
         }
 
-        public ImagePlus render() {
+        public ImageProcessor render() {
             final TransformMeshMappingWithMasks.ImageProcessorWithMasks
                     ipwm = Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache);
-            return new ImagePlus(getId(), ipwm.ip);
+            return ipwm.ip;
         }
     }
 
