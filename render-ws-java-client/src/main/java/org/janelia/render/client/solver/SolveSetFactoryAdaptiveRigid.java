@@ -182,8 +182,10 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 			final Map<Integer, String> additionalIssues )
 	{
 		for ( int i = min; i <= max; ++i )
+		{
 			if ( zToGroupIdMap.containsKey( i ) || additionalIssues.containsKey( i ) )
 				return true;
+		}
 
 		return false;
 	}

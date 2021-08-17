@@ -20,8 +20,8 @@ public class VisualizeIJ
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "Z0720_07m_BR"; //"flyem";
-		String project = "Sec36"; //"Z0419_25_Alpha3";
-		String stack = "v1_acquire_trimmed_sp1"; //"v1_acquire_sp_nodyn_v2";
+		String project = "Sec24"; //"Z0419_25_Alpha3";
+		String stack = "v3_acquire_trimmed_align_adaptive"; //"v1_acquire_sp_nodyn_v2";
 
 		StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
 		
@@ -50,8 +50,8 @@ public class VisualizeIJ
 
 		ImageStack imagestack = null ;
 
-		final int from = 25425-5;
-		final int to= 25425+5;
+		final int from = 57325-5;
+		final int to= 57325+5;
 
 		for ( int z = from; z <= to; ++z )
 		{
