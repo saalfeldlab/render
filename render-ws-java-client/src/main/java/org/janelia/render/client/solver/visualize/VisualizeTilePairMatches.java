@@ -48,11 +48,15 @@ public class VisualizeTilePairMatches {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
-        @Parameter(names = "--stack", description = "Stack name", required = true) public String stack;
-        @Parameter(names = "--pTileId", description = "P tile identifier", required = true) public String pTileId;
-        @Parameter(names = "--qTileId", description = "Q tile identifier", required = true) public String qTileId;
-        @Parameter(names = "--collection", description = "Match collection name", required = true) public String collection;
+        @Parameter(names = "--stack",       description = "Stack name", required = true) public String stack;
+        @Parameter(names = "--pTileId",     description = "P tile identifier", required = true) public String pTileId;
+        @Parameter(names = "--qTileId",     description = "Q tile identifier", required = true) public String qTileId;
+        @Parameter(names = "--collection",  description = "Match collection name") public String collection;
         @Parameter(names = "--renderScale", description = "Scale to render tiles and matches") public Double renderScale = 1.0;
+        @Parameter(
+                names = "--alignWithPlugin",
+                description = "Run ImageJ Linear Stack Alignment with SIFT plugin with default parameters on tiles")
+        public boolean alignWithPlugin = false;
         public Parameters() {
         }
     }
@@ -68,7 +72,8 @@ public class VisualizeTilePairMatches {
                     "--collection", "Sec24_wobble_fix_5", // "Sec24_wobble_fiji", // "Sec24_v1"
                     "--pTileId", "21-04-29_151034_0-0-0.57325.0",
                     "--qTileId", "21-04-29_151547_0-0-0.57326.0",
-                    //"--renderScale", "0.1",
+//                    "--renderScale", "0.1",
+                    "--alignWithPlugin",
             };
         }
 
@@ -82,7 +87,7 @@ public class VisualizeTilePairMatches {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final VisualizeTilePairMatches client = new VisualizeTilePairMatches(parameters);
-                client.showMatchesAndAlignment();
+                client.go();
             }
         };
 
@@ -99,7 +104,8 @@ public class VisualizeTilePairMatches {
             throws IllegalArgumentException {
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
-        this.matchDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+        this.matchDataClient = parameters.collection == null ? null :
+                               new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                     parameters.renderWeb.owner,
                                                     parameters.collection);
         // using cache helps a little with loading large masks over VPN
@@ -109,7 +115,7 @@ public class VisualizeTilePairMatches {
                                         false);
     }
 
-    void showMatchesAndAlignment()
+    private void go()
             throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
 
         new ImageJ();
@@ -117,12 +123,56 @@ public class VisualizeTilePairMatches {
         final DebugTile pTile = new DebugTile(parameters.pTileId);
         final DebugTile qTile = new DebugTile(parameters.qTileId);
 
-		final CanvasMatches canvasMatches = matchDataClient.getMatchesBetweenTiles(pTile.getGroupId(), pTile.getId(),
-				qTile.getGroupId(), qTile.getId());
+        final ImageProcessor pIp = pTile.render();
+        final ImageProcessor qIp = qTile.render();
 
-		final List<PointMatch> pointMatchList = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+        final int width = Math.max(pIp.getWidth(), qIp.getWidth());
+        final int height = Math.max(pIp.getHeight(), qIp.getHeight());
 
-		final AffineModel2D model = new AffineModel2D();
+        final ImageProcessor pSlice = pIp.createProcessor(width, height);
+        pSlice.insert(pIp, 0, 0);
+        final ImageProcessor qSlice = qIp.createProcessor(width, height);
+        qSlice.insert(qIp, 0, 0);
+
+        if (parameters.collection != null) {
+            showSavedMatchesAndAlign(pTile, qTile, width, height, pSlice, qSlice);
+        }
+
+        if (parameters.alignWithPlugin) {
+            final ImageStack imageStack = new ImageStack(width, height);
+            imageStack.addSlice("Q:" + parameters.qTileId, qSlice);
+            imageStack.addSlice("P:" + parameters.pTileId, pSlice);
+
+            final ImagePlus imageStackPlus = new ImagePlus("Source Stack", imageStack);
+
+            final SIFTAlignDebug plugin = new SIFTAlignDebug();
+            final SIFTAlignDebug.Param p = new SIFTAlignDebug.Param();
+            p.showMatrix = true;
+            plugin.runWithParameters(imageStackPlus, p);
+
+            final List<PointMatch> pluginInliers = plugin.getInliers();
+            final double pluginMeanDistance = PointMatch.meanDistance(pluginInliers);
+            System.out.println("mean plugin match distance: " + pluginMeanDistance);
+            System.out.println("max plugin match distance: " + PointMatch.maxDistance(pluginInliers));
+        }
+
+        SimpleMultiThreading.threadHaltUnClean();
+    }
+
+    private void showSavedMatchesAndAlign(final DebugTile pTile,
+                                          final DebugTile qTile,
+                                          final int width,
+                                          final int height,
+                                          final ImageProcessor pSlice,
+                                          final ImageProcessor qSlice)
+            throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
+
+        final CanvasMatches canvasMatches = matchDataClient.getMatchesBetweenTiles(pTile.getGroupId(), pTile.getId(),
+                                                                                   qTile.getGroupId(), qTile.getId());
+
+        final List<PointMatch> pointMatchList = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+
+        final AffineModel2D model = new AffineModel2D();
         model.fit(pointMatchList); // The estimated model transfers match.p1.local to match.p2.world
         System.out.println( model );
 
@@ -131,12 +181,10 @@ public class VisualizeTilePairMatches {
         for ( final PointMatch pm : pointMatchList )
         {
             pm.getP1().apply( model );
-            //if ( pm.getDistance() < 2 )
-            //	pointMatchList2.add( pm );
         }
 
-        System.out.println( "mean dist: " + PointMatch.meanDistance( pointMatchList ) );
-        System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );
+        System.out.println( "mean match distance: " + PointMatch.meanDistance( pointMatchList ) );
+        System.out.println( "max match distance: " + PointMatch.maxDistance( pointMatchList ) );
 
 //        pointMatchList.clear();
 //        pointMatchList.addAll( pointMatchList2 );
@@ -152,9 +200,6 @@ public class VisualizeTilePairMatches {
 //
 //        System.exit(0 );
 
-        final ImageProcessor pIp = pTile.render();
-        final ImageProcessor qIp = qTile.render();
-
         final List<Point> pPointList = new ArrayList<>(pointMatchList.size());
         final List<Point> qPointList = new ArrayList<>(pointMatchList.size());
         pointMatchList.forEach(pm -> {
@@ -168,28 +213,20 @@ public class VisualizeTilePairMatches {
             qPointList.add(qPoint);
         });
 
-        final ImagePlus pSourcePlus = new ImagePlus("SourceP:" + parameters.pTileId, pIp);
-        final ImagePlus qSourcePlus = new ImagePlus("SourceQ:" + parameters.qTileId, qIp);
+        final ImagePlus pSourcePlus = new ImagePlus("SourceP:" + parameters.pTileId, pSlice);
+        final ImagePlus qSourcePlus = new ImagePlus("SourceQ:" + parameters.qTileId, qSlice);
         ImageDebugUtil.setPointRois(pPointList, pSourcePlus);
         ImageDebugUtil.setPointRois(qPointList, qSourcePlus);
 
         pSourcePlus.show();
         qSourcePlus.show();
 
-        final int width = Math.max(pIp.getWidth(), qIp.getWidth());
-        final int height = Math.max(pIp.getHeight(), qIp.getHeight());
-
-        final ImageProcessor pSlice = pIp.createProcessor(width, height);
-        pSlice.insert(pIp, 0, 0);
-        final ImageProcessor qSlice = qIp.createProcessor(width, height);
-        qSlice.insert(qIp, 0, 0);
-
         final double[] tmp = new double[ 2 ];
         final AffineModel2D modelInvert = model.createInverse();
 
         final ImageProcessor pSliceTransformed = pSlice.createProcessor(width, height);
         final RealRandomAccess<FloatType> r = Views.interpolate(
-                Views.extendZero( ArrayImgs.floats( (float[]) pSlice.getPixels(), width, height) ),
+                Views.extendZero( ArrayImgs.floats((float[]) pSlice.getPixels(), width, height) ),
                 new NLinearInterpolatorFactory<>() ).realRandomAccess();
 
         for ( int y = 0; y < pSliceTransformed.getHeight(); ++y )
@@ -208,11 +245,10 @@ public class VisualizeTilePairMatches {
         final ImageStack transformedImageStack = new ImageStack(width, height);
         transformedImageStack.addSlice("TransformedP:" + parameters.pTileId, pSliceTransformed);
         transformedImageStack.addSlice("Q:" + parameters.qTileId, qSlice);
-        final ImagePlus transformedImageStackPlus = new ImagePlus("Transformed Stack", transformedImageStack);
+        final ImagePlus transformedImageStackPlus = new ImagePlus(parameters.collection + " Aligned Stack",
+                                                                  transformedImageStack);
 
         transformedImageStackPlus.show();
-
-        SimpleMultiThreading.threadHaltUnClean();
     }
 
     private void scaleLocal(final Point point) {
