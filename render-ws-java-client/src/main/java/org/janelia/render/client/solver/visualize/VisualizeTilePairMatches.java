@@ -108,6 +108,11 @@ public class VisualizeTilePairMatches {
 //                    "--collection", "Sec24_wobble_fix_5",
 
                     // -----------------------------------------
+                    // Sec24_geo_only (see http://renderer-dev.int.janelia.org:8080/render-ws/view/match-trial.html?matchTrialId=611bc5f057de7c1b09f946a4 )
+                    // match distances: mean 1.57, max 5.74
+//                    "--collection", "Sec24_geo_only",
+
+                    // -----------------------------------------
                     // Sec24_v1
                     // match distances: mean 2.17, max 13.19
 //                    "--collection", "Sec24_v1",
