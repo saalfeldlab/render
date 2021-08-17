@@ -14,11 +14,13 @@ import java.util.List;
 
 import mpicbg.imagefeatures.Feature;
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
+import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
+import mpicbg.models.RigidModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.RenderParameters;
@@ -240,7 +242,7 @@ public class VisualizeTilePairMatches {
 
         }
 
-        final AffineModel2D model = new AffineModel2D();
+        final AbstractAffineModel2D<?> model = new RigidModel2D(); // TODO: review this with SP, using rigid instead of affine here makes derived and plugin results very similar
         model.fit(pointMatchList); // The estimated model transfers match.p1.local to match.p2.world
         System.out.println(titlePrefix + " model: " + model);
 
@@ -290,7 +292,7 @@ public class VisualizeTilePairMatches {
         qSourcePlus.show();
 
         final double[] tmp = new double[ 2 ];
-        final AffineModel2D modelInvert = model.createInverse();
+        final AbstractAffineModel2D<?> modelInvert = model.createInverse();
 
         final ImageProcessor pSliceTransformed = pSlice.createProcessor(width, height);
         final RealRandomAccess<FloatType> r = Views.interpolate(
