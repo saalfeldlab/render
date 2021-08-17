@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import mpicbg.imagefeatures.Feature;
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.IllDefinedDataPointsException;
@@ -22,8 +23,13 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.match.CanvasFeatureExtractor;
+import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MontageRelativePosition;
+import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
+import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -53,10 +59,29 @@ public class VisualizeTilePairMatches {
         @Parameter(names = "--qTileId",     description = "Q tile identifier", required = true) public String qTileId;
         @Parameter(names = "--collection",  description = "Match collection name") public String collection;
         @Parameter(names = "--renderScale", description = "Scale to render tiles and matches") public Double renderScale = 1.0;
+
         @Parameter(
                 names = "--alignWithPlugin",
                 description = "Run ImageJ Linear Stack Alignment with SIFT plugin with default parameters on tiles")
         public boolean alignWithPlugin = false;
+
+        @Parameter(
+                names = "--alignWithRender",
+                description = "Run render match process dynamically on tiles")
+        public boolean alignWithRender = false;
+
+        @ParametersDelegate
+        public MatchDerivationParameters match = new MatchDerivationParameters();
+
+        @ParametersDelegate
+        public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
+
+        @Parameter(
+                names = "--firstCanvasPosition",
+                description = "When clipping, identifies the relative position of the first canvas to the second canvas"
+        )
+        public MontageRelativePosition firstCanvasPosition;
+
         public Parameters() {
         }
     }
@@ -74,6 +99,19 @@ public class VisualizeTilePairMatches {
                     "--qTileId", "21-04-29_151547_0-0-0.57326.0",
 //                    "--renderScale", "0.1",
                     "--alignWithPlugin",
+                    "--alignWithRender",
+                    "--matchRod", "0.92",
+                    "--matchModelType", "RIGID",
+                    "--matchIterations", "1000",
+                    "--matchMaxEpsilonFullScale", "25",
+                    "--matchMinInlierRatio", "0",
+                    "--matchMinNumInliers", "40",
+                    "--matchMaxTrust", "4",
+                    "--matchFilter", "SINGLE_SET",
+                    "--SIFTfdSize", "4",
+                    "--SIFTminScale", "0.0186", // "0.0075",
+                    "--SIFTmaxScale", "0.1187", // "0.12",
+                    "--SIFTsteps", "3",
             };
         }
 
@@ -113,6 +151,10 @@ public class VisualizeTilePairMatches {
                 new ImageProcessorCache(4 * 15000 * 10000, // 4 big images
                                         true,
                                         false);
+        if (parameters.alignWithRender) {
+            parameters.match.validateAndSetDefaults("");
+            parameters.featureExtraction.setDefaults();
+        }
     }
 
     private void go()
@@ -135,7 +177,11 @@ public class VisualizeTilePairMatches {
         qSlice.insert(qIp, 0, 0);
 
         if (parameters.collection != null) {
-            showSavedMatchesAndAlign(pTile, qTile, width, height, pSlice, qSlice);
+            showMatchesAndAlign(pTile, qTile, width, height, pSlice, qSlice, true);
+        }
+
+        if (parameters.alignWithRender) {
+            showMatchesAndAlign(pTile, qTile, width, height, pSlice, qSlice, false);
         }
 
         if (parameters.alignWithPlugin) {
@@ -151,30 +197,52 @@ public class VisualizeTilePairMatches {
             plugin.runWithParameters(imageStackPlus, p);
 
             final List<PointMatch> pluginInliers = plugin.getInliers();
-            final double pluginMeanDistance = PointMatch.meanDistance(pluginInliers);
-            System.out.println("mean plugin match distance: " + pluginMeanDistance);
-            System.out.println("max plugin match distance: " + PointMatch.maxDistance(pluginInliers));
+            System.out.println("plugin mean match distance: " + PointMatch.meanDistance(pluginInliers));
+            System.out.println("plugin max match distance: " + PointMatch.maxDistance(pluginInliers));
         }
 
         SimpleMultiThreading.threadHaltUnClean();
     }
 
-    private void showSavedMatchesAndAlign(final DebugTile pTile,
-                                          final DebugTile qTile,
-                                          final int width,
-                                          final int height,
-                                          final ImageProcessor pSlice,
-                                          final ImageProcessor qSlice)
+    private void showMatchesAndAlign(final DebugTile pTile,
+                                     final DebugTile qTile,
+                                     final int width,
+                                     final int height,
+                                     final ImageProcessor pSlice,
+                                     final ImageProcessor qSlice,
+                                     final boolean showSaved)
             throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
 
-        final CanvasMatches canvasMatches = matchDataClient.getMatchesBetweenTiles(pTile.getGroupId(), pTile.getId(),
-                                                                                   qTile.getGroupId(), qTile.getId());
+        final String titlePrefix;
+        final List<PointMatch> pointMatchList;
+        if (showSaved) {
 
-        final List<PointMatch> pointMatchList = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+            titlePrefix = parameters.collection;
+
+            final CanvasMatches canvasMatches =
+                    matchDataClient.getMatchesBetweenTiles(pTile.getGroupId(), pTile.getId(),
+                                                           qTile.getGroupId(), qTile.getId());
+            pointMatchList = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+
+        } else {
+
+            titlePrefix = "dynamic";
+
+            final CanvasFeatureExtractor featureExtractor = CanvasFeatureExtractor.build(parameters.featureExtraction);
+            final List<Feature> pFeatureList = featureExtractor.extractFeaturesFromImageAndMask(pSlice,
+                                                                                                null);
+            final List<Feature> qFeatureList = featureExtractor.extractFeaturesFromImageAndMask(qSlice,
+                                                                                                null);
+            final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(parameters.match,
+                                                                                 parameters.renderScale);
+            final CanvasMatchResult matchResult = featureMatcher.deriveMatchResult(pFeatureList, qFeatureList);
+            pointMatchList = matchResult.getInlierPointMatchList();
+
+        }
 
         final AffineModel2D model = new AffineModel2D();
         model.fit(pointMatchList); // The estimated model transfers match.p1.local to match.p2.world
-        System.out.println( model );
+        System.out.println(titlePrefix + " model: " + model);
 
         //final List<PointMatch> pointMatchList2 = new ArrayList<>();
 
@@ -183,8 +251,8 @@ public class VisualizeTilePairMatches {
             pm.getP1().apply( model );
         }
 
-        System.out.println( "mean match distance: " + PointMatch.meanDistance( pointMatchList ) );
-        System.out.println( "max match distance: " + PointMatch.maxDistance( pointMatchList ) );
+        System.out.println(titlePrefix + " mean match distance: " + PointMatch.meanDistance(pointMatchList));
+        System.out.println(titlePrefix + " max match distance: " + PointMatch.maxDistance(pointMatchList));
 
 //        pointMatchList.clear();
 //        pointMatchList.addAll( pointMatchList2 );
@@ -213,8 +281,8 @@ public class VisualizeTilePairMatches {
             qPointList.add(qPoint);
         });
 
-        final ImagePlus pSourcePlus = new ImagePlus("SourceP:" + parameters.pTileId, pSlice);
-        final ImagePlus qSourcePlus = new ImagePlus("SourceQ:" + parameters.qTileId, qSlice);
+        final ImagePlus pSourcePlus = new ImagePlus(titlePrefix + " P Points:" + parameters.pTileId, pSlice);
+        final ImagePlus qSourcePlus = new ImagePlus(titlePrefix + " Q Points:" + parameters.qTileId, qSlice);
         ImageDebugUtil.setPointRois(pPointList, pSourcePlus);
         ImageDebugUtil.setPointRois(qPointList, qSourcePlus);
 
@@ -245,7 +313,8 @@ public class VisualizeTilePairMatches {
         final ImageStack transformedImageStack = new ImageStack(width, height);
         transformedImageStack.addSlice("TransformedP:" + parameters.pTileId, pSliceTransformed);
         transformedImageStack.addSlice("Q:" + parameters.qTileId, qSlice);
-        final ImagePlus transformedImageStackPlus = new ImagePlus(parameters.collection + " Aligned Stack",
+
+        final ImagePlus transformedImageStackPlus = new ImagePlus(titlePrefix + " Aligned Stack",
                                                                   transformedImageStack);
 
         transformedImageStackPlus.show();

@@ -138,7 +138,7 @@ public class MatchDerivationParameters implements Serializable {
     )
     public Double matchMinCoveragePercentage;
 
-    void validateAndSetDefaults(final String context) {
+    public void validateAndSetDefaults(final String context) {
         this.setDefaults();
 
         if (this.matchRegularizerModelType == null) {
