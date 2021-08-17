@@ -6,6 +6,7 @@ import com.beust.jcommander.ParametersDelegate;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.plugin.RGBStackMerge;
 import ij.process.ImageProcessor;
 
 import java.io.IOException;
@@ -20,7 +21,6 @@ import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import mpicbg.models.RigidModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.RenderParameters;
@@ -96,11 +96,11 @@ public class VisualizeTilePairMatches {
                     "--owner", "Z0720_07m_BR",
                     "--project", "Sec24",
                     "--stack", "v3_acquire_trimmed",
-                    "--collection", "Sec24_wobble_fix_5", // "Sec24_wobble_fiji", // "Sec24_v1"
+                    "--collection", "Sec24_v1", // "Sec24_wobble_fix_5", // "Sec24_wobble_fiji", //
                     "--pTileId", "21-04-29_151034_0-0-0.57325.0",
                     "--qTileId", "21-04-29_151547_0-0-0.57326.0",
 //                    "--renderScale", "0.1",
-                    "--alignWithPlugin",
+//                    "--alignWithPlugin",
                     "--alignWithRender",
                     "--matchRod", "0.92",
                     "--matchModelType", "RIGID",
@@ -110,7 +110,7 @@ public class VisualizeTilePairMatches {
                     "--matchMinNumInliers", "40",
                     "--matchMaxTrust", "4",
                     "--matchFilter", "SINGLE_SET",
-                    "--SIFTfdSize", "4",
+                    "--SIFTfdSize", "8", // "4",
                     "--SIFTminScale", "0.0186", // "0.0075",
                     "--SIFTmaxScale", "0.1187", // "0.12",
                     "--SIFTsteps", "3",
@@ -242,7 +242,7 @@ public class VisualizeTilePairMatches {
 
         }
 
-        final AbstractAffineModel2D<?> model = new RigidModel2D(); // TODO: review this with SP, using rigid instead of affine here makes derived and plugin results very similar
+        final AbstractAffineModel2D<?> model = new AffineModel2D(); // NOTE: using rigid instead of affine here makes derived and plugin results very similar
         model.fit(pointMatchList); // The estimated model transfers match.p1.local to match.p2.world
         System.out.println(titlePrefix + " model: " + model);
 
@@ -320,6 +320,22 @@ public class VisualizeTilePairMatches {
                                                                   transformedImageStack);
 
         transformedImageStackPlus.show();
+
+        final ImagePlus[] imagesToMerge = {
+                null,                                                                  // red
+                new ImagePlus(titlePrefix + " Q", qSlice),                        // green
+                null,                                                                  // blue
+                null,                                                                  // gray
+                null,                                                                  // cyan
+                new ImagePlus(titlePrefix + " P Transformed", pSliceTransformed), // magenta
+                null                                                                   // yellow
+        };
+
+        final RGBStackMerge mergePlugin = new RGBStackMerge();
+        final ImagePlus mergedPlus = mergePlugin.mergeHyperstacks(imagesToMerge, false);
+        mergedPlus.setTitle(titlePrefix + " Merged");
+        mergedPlus.show();
+
     }
 
     private void scaleLocal(final Point point) {
