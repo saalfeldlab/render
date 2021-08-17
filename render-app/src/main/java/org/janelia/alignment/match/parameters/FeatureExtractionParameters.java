@@ -40,7 +40,7 @@ public class FeatureExtractionParameters
     )
     public Integer steps;
 
-    void setDefaults() {
+    public void setDefaults() {
 
         if (fdSize == null) {
             fdSize = 8;

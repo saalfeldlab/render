@@ -1122,6 +1122,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			solveItem.idToSolveItemErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
 			solveItem.idToSolveItemErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
 		}
+		LOG.info( "computeSolveItemErrors, exit" );
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveWorker.class);

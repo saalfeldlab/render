@@ -208,8 +208,8 @@ public class CanvasFeatureExtractor implements Serializable {
      *
      * @return list of extracted features.
      */
-    List<Feature> extractFeaturesFromImageAndMask(final ImageProcessor imageProcessor,
-                                                  final ImageProcessor maskProcessor) {
+    public List<Feature> extractFeaturesFromImageAndMask(final ImageProcessor imageProcessor,
+                                                         final ImageProcessor maskProcessor) {
 
         final Timer timer = new Timer();
         timer.start();
