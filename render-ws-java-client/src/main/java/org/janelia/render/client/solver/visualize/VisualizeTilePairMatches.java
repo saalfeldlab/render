@@ -2,10 +2,12 @@ package org.janelia.render.client.solver.visualize;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.ImageStack;
+import ij.plugin.RGBStackMerge;
 import ij.process.ImageProcessor;
 
 import java.io.IOException;
@@ -20,7 +22,6 @@ import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import mpicbg.models.RigidModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.RenderParameters;
@@ -29,6 +30,7 @@ import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
@@ -61,6 +63,7 @@ public class VisualizeTilePairMatches {
         @Parameter(names = "--qTileId",     description = "Q tile identifier", required = true) public String qTileId;
         @Parameter(names = "--collection",  description = "Match collection name") public String collection;
         @Parameter(names = "--renderScale", description = "Scale to render tiles and matches") public Double renderScale = 1.0;
+        @Parameter(names = "--renderWithFilter", description = "Render tiles with filter") public boolean renderWithFilter = false;
 
         @Parameter(
                 names = "--alignWithPlugin",
@@ -96,24 +99,81 @@ public class VisualizeTilePairMatches {
                     "--owner", "Z0720_07m_BR",
                     "--project", "Sec24",
                     "--stack", "v3_acquire_trimmed",
-                    "--collection", "Sec24_wobble_fix_5", // "Sec24_wobble_fiji", // "Sec24_v1"
                     "--pTileId", "21-04-29_151034_0-0-0.57325.0",
                     "--qTileId", "21-04-29_151547_0-0-0.57326.0",
+//                    "--alignWithPlugin",
+
+                    // -----------------------------------------
+                    // Sec24_wobble_fix_5 (or Sec24_wobble_fiji)
+//                    "--collection", "Sec24_wobble_fix_5",
+
+                    // -----------------------------------------
+                    // Sec24_geo_only (see http://renderer-dev.int.janelia.org:8080/render-ws/view/match-trial.html?matchTrialId=611bc5f057de7c1b09f946a4 )
+                    // match distances: mean 1.57, max 5.74
+//                    "--collection", "Sec24_geo_only",
+
+                    // -----------------------------------------
+                    // Sec24_v1
+                    // match distances: mean 2.17, max 13.19
+//                    "--collection", "Sec24_v1",
 //                    "--renderScale", "0.1",
-                    "--alignWithPlugin",
+//                    "--renderWithFilter",
+
+                    // -----------------------------------------
+                    // dynamic derivation with exact Sec24_v1 crossPass2 parameters
+                    // match distances: mean 2.10, max 13.08
                     "--alignWithRender",
+                    "--renderScale", "0.1",
+                    "--renderWithFilter",
                     "--matchRod", "0.92",
                     "--matchModelType", "RIGID",
                     "--matchIterations", "1000",
-                    "--matchMaxEpsilonFullScale", "25",
+                    "--matchMaxEpsilonFullScale", "10",
                     "--matchMinInlierRatio", "0",
-                    "--matchMinNumInliers", "40",
+                    "--matchMinNumInliers", "20",
                     "--matchMaxTrust", "4",
-                    "--matchFilter", "SINGLE_SET",
+                    "--matchFilter", "AGGREGATED_CONSENSUS_SETS",
                     "--SIFTfdSize", "4",
-                    "--SIFTminScale", "0.0186", // "0.0075",
-                    "--SIFTmaxScale", "0.1187", // "0.12",
-                    "--SIFTsteps", "3",
+                    "--SIFTminScale", "0.125",
+                    "--SIFTmaxScale", "1.0",
+                    "--SIFTsteps", "5",
+
+                    // -----------------------------------------
+                    // dynamic derivation with full scale Sec24_v1 crossPass2 parameters to avoid mipmaps
+                    // match distances: mean 2.02, max 10.11
+//                    "--alignWithRender",
+//                    "--renderScale", "1.0",
+//                    "--renderWithFilter",
+//                    "--matchRod", "0.92",
+//                    "--matchModelType", "RIGID",
+//                    "--matchIterations", "1000",
+//                    "--matchMaxEpsilonFullScale", "10",
+//                    "--matchMinInlierRatio", "0",
+//                    "--matchMinNumInliers", "20",
+//                    "--matchMaxTrust", "4",
+//                    "--matchFilter", "AGGREGATED_CONSENSUS_SETS",
+//                    "--SIFTfdSize", "4",
+//                    "--SIFTminScale", "0.0125", // "0.125" with renderScale 0.1
+//                    "--SIFTmaxScale", "0.1",    // "1.0" with renderScale 0.1
+//                    "--SIFTsteps", "5",
+
+                    // -----------------------------------------
+                    // dynamic derivation with adapted plugin parameters that produces good result
+                    // match distances: mean 1.76, max 9.04
+//                    "--alignWithRender",
+//                    "--renderScale", "1.0",
+//                    "--matchRod", "0.92",
+//                    "--matchModelType", "RIGID",
+//                    "--matchIterations", "1000",
+//                    "--matchMaxEpsilonFullScale", "25",
+//                    "--matchMinInlierRatio", "0",
+//                    "--matchMinNumInliers", "40",
+//                    "--matchMaxTrust", "4",
+//                    "--matchFilter", "SINGLE_SET",
+//                    "--SIFTfdSize", "8", // "4",
+//                    "--SIFTminScale", "0.0186", // "0.0075",
+//                    "--SIFTmaxScale", "0.1187", // "0.12",
+//                    "--SIFTsteps", "3",
             };
         }
 
@@ -173,17 +233,15 @@ public class VisualizeTilePairMatches {
         final int width = Math.max(pIp.getWidth(), qIp.getWidth());
         final int height = Math.max(pIp.getHeight(), qIp.getHeight());
 
-        final ImageProcessor pSlice = pIp.createProcessor(width, height);
-        pSlice.insert(pIp, 0, 0);
-        final ImageProcessor qSlice = qIp.createProcessor(width, height);
-        qSlice.insert(qIp, 0, 0);
+        final ImageProcessor pSlice = padProcessor(pIp, width, height);
+        final ImageProcessor qSlice = padProcessor(qIp, width, height);
 
         if (parameters.collection != null) {
-            showMatchesAndAlign(pTile, qTile, width, height, pSlice, qSlice, true);
+            showMatchesAndAlign(pTile, qTile, pSlice, qSlice, true);
         }
 
         if (parameters.alignWithRender) {
-            showMatchesAndAlign(pTile, qTile, width, height, pSlice, qSlice, false);
+            showMatchesAndAlign(pTile, qTile, pSlice, qSlice, false);
         }
 
         if (parameters.alignWithPlugin) {
@@ -203,20 +261,20 @@ public class VisualizeTilePairMatches {
             System.out.println("plugin max match distance: " + PointMatch.maxDistance(pluginInliers));
         }
 
+        System.out.println("visualizations complete: kill process when done viewing");
+
         SimpleMultiThreading.threadHaltUnClean();
     }
 
     private void showMatchesAndAlign(final DebugTile pTile,
                                      final DebugTile qTile,
-                                     final int width,
-                                     final int height,
                                      final ImageProcessor pSlice,
                                      final ImageProcessor qSlice,
                                      final boolean showSaved)
             throws IOException, NotEnoughDataPointsException, IllDefinedDataPointsException {
 
         final String titlePrefix;
-        final List<PointMatch> pointMatchList;
+        final List<PointMatch> fullScalePointMatchList;
         if (showSaved) {
 
             titlePrefix = parameters.collection;
@@ -224,7 +282,7 @@ public class VisualizeTilePairMatches {
             final CanvasMatches canvasMatches =
                     matchDataClient.getMatchesBetweenTiles(pTile.getGroupId(), pTile.getId(),
                                                            qTile.getGroupId(), qTile.getId());
-            pointMatchList = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+            fullScalePointMatchList = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
 
         } else {
 
@@ -238,41 +296,32 @@ public class VisualizeTilePairMatches {
             final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(parameters.match,
                                                                                  parameters.renderScale);
             final CanvasMatchResult matchResult = featureMatcher.deriveMatchResult(pFeatureList, qFeatureList);
-            pointMatchList = matchResult.getInlierPointMatchList();
+
+            if (parameters.renderScale != 1.0) {
+                final Matches fullScaleMatches =
+                        CanvasMatchResult.convertPointMatchListToMatches(matchResult.getInlierPointMatchList(),
+                                                                         parameters.renderScale);
+                fullScalePointMatchList = CanvasMatchResult.convertMatchesToPointMatchList(fullScaleMatches);
+            }  else {
+                fullScalePointMatchList = matchResult.getInlierPointMatchList();
+            }
 
         }
 
-        final AbstractAffineModel2D<?> model = new RigidModel2D(); // TODO: review this with SP, using rigid instead of affine here makes derived and plugin results very similar
-        model.fit(pointMatchList); // The estimated model transfers match.p1.local to match.p2.world
-        System.out.println(titlePrefix + " model: " + model);
+        final AbstractAffineModel2D<?> fullScaleModel = new AffineModel2D(); // NOTE: using rigid instead of affine here makes derived and plugin results very similar
+        fullScaleModel.fit(fullScalePointMatchList); // The estimated model transfers match.p1.local to match.p2.world
+        System.out.println(titlePrefix + " full scale model: " + fullScaleModel);
 
-        //final List<PointMatch> pointMatchList2 = new ArrayList<>();
-
-        for ( final PointMatch pm : pointMatchList )
-        {
-            pm.getP1().apply( model );
+        for (final PointMatch pm : fullScalePointMatchList) {
+            pm.getP1().apply(fullScaleModel);
         }
 
-        System.out.println(titlePrefix + " mean match distance: " + PointMatch.meanDistance(pointMatchList));
-        System.out.println(titlePrefix + " max match distance: " + PointMatch.maxDistance(pointMatchList));
+        System.out.println(titlePrefix + " full scale mean match distance: " + PointMatch.meanDistance(fullScalePointMatchList));
+        System.out.println(titlePrefix + " full scale max match distance: " + PointMatch.maxDistance(fullScalePointMatchList));
 
-//        pointMatchList.clear();
-//        pointMatchList.addAll( pointMatchList2 );
-//
-//        model.fit(pointMatchList);
-//        System.out.println( model );
-//
-//        for ( final PointMatch pm : pointMatchList )
-//            pm.getP1().apply( model );
-//
-//        System.out.println( "mean dist: " + PointMatch.meanDistance( pointMatchList ) );
-//        System.out.println( "max dist: " + PointMatch.maxDistance( pointMatchList ) );*/
-//
-//        System.exit(0 );
-
-        final List<Point> pPointList = new ArrayList<>(pointMatchList.size());
-        final List<Point> qPointList = new ArrayList<>(pointMatchList.size());
-        pointMatchList.forEach(pm -> {
+        final List<Point> pPointList = new ArrayList<>(fullScalePointMatchList.size());
+        final List<Point> qPointList = new ArrayList<>(fullScalePointMatchList.size());
+        fullScalePointMatchList.forEach(pm -> {
             final Point pPoint = pm.getP1();
             final Point qPoint = pm.getP2();
             if (parameters.renderScale != 1.0) {
@@ -291,12 +340,25 @@ public class VisualizeTilePairMatches {
         pSourcePlus.show();
         qSourcePlus.show();
 
+        int width = pSlice.getWidth();
+        int height = pSlice.getHeight();
+        ImageProcessor pSliceFullScale = pSlice;
+        ImageProcessor qSliceFullScale = qSlice;
+        if (parameters.renderScale != 1.0) {
+            pSliceFullScale = pTile.renderFullScale();
+            qSliceFullScale = qTile.renderFullScale();
+            width = Math.max(pSliceFullScale.getWidth(), qSliceFullScale.getWidth());
+            height = Math.max(pSliceFullScale.getHeight(), qSliceFullScale.getHeight());
+            pSliceFullScale = padProcessor(pSliceFullScale, width, height);
+            qSliceFullScale = padProcessor(qSliceFullScale, width, height);
+        }
+        
         final double[] tmp = new double[ 2 ];
-        final AbstractAffineModel2D<?> modelInvert = model.createInverse();
+        final AbstractAffineModel2D<?> modelInvert = fullScaleModel.createInverse();
 
-        final ImageProcessor pSliceTransformed = pSlice.createProcessor(width, height);
+        final ImageProcessor pSliceTransformed = pSliceFullScale.createProcessor(width, height);
         final RealRandomAccess<FloatType> r = Views.interpolate(
-                Views.extendZero( ArrayImgs.floats((float[]) pSlice.getPixels(), width, height) ),
+                Views.extendZero( ArrayImgs.floats((float[]) pSliceFullScale.getPixels(), width, height) ),
                 new NLinearInterpolatorFactory<>() ).realRandomAccess();
 
         for ( int y = 0; y < pSliceTransformed.getHeight(); ++y )
@@ -314,12 +376,39 @@ public class VisualizeTilePairMatches {
 
         final ImageStack transformedImageStack = new ImageStack(width, height);
         transformedImageStack.addSlice("TransformedP:" + parameters.pTileId, pSliceTransformed);
-        transformedImageStack.addSlice("Q:" + parameters.qTileId, qSlice);
+        transformedImageStack.addSlice("Q:" + parameters.qTileId, qSliceFullScale);
 
         final ImagePlus transformedImageStackPlus = new ImagePlus(titlePrefix + " Aligned Stack",
                                                                   transformedImageStack);
 
         transformedImageStackPlus.show();
+
+        final ImagePlus[] imagesToMerge = {
+                null,                                                                  // red
+                new ImagePlus(titlePrefix + " Q", qSliceFullScale),               // green
+                null,                                                                  // blue
+                null,                                                                  // gray
+                null,                                                                  // cyan
+                new ImagePlus(titlePrefix + " P Transformed", pSliceTransformed), // magenta
+                null                                                                   // yellow
+        };
+
+        final RGBStackMerge mergePlugin = new RGBStackMerge();
+        final ImagePlus mergedPlus = mergePlugin.mergeHyperstacks(imagesToMerge, false);
+        mergedPlus.setTitle(titlePrefix + " Merged");
+        mergedPlus.show();
+
+    }
+
+    private ImageProcessor padProcessor(final ImageProcessor imageProcessor,
+                                        final int width,
+                                        final int height) {
+        ImageProcessor paddedProcessor = imageProcessor;
+        if ((imageProcessor.getWidth() != width) || (imageProcessor.getHeight() != height)) {
+            paddedProcessor = imageProcessor.createProcessor(width, height);
+            paddedProcessor.insert(imageProcessor, 0, 0);
+        }
+        return paddedProcessor;
     }
 
     private void scaleLocal(final Point point) {
@@ -336,7 +425,8 @@ public class VisualizeTilePairMatches {
 
         public DebugTile(final String tileId) {
             final String tileUrl = renderDataClient.getUrls().getTileUrlString(parameters.stack, tileId) +
-                                   "/render-parameters?normalizeForMatching=true&scale=" + parameters.renderScale;
+                                   "/render-parameters?normalizeForMatching=true&filter=" +
+                                   parameters.renderWithFilter + "&scale=" + parameters.renderScale;
             this.renderParameters = RenderParameters.loadFromUrl(tileUrl);
             this.renderParameters.initializeDerivedValues();
             this.tileSpec = renderParameters.getTileSpecs().get(0);
@@ -355,6 +445,25 @@ public class VisualizeTilePairMatches {
                     ipwm = Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache);
             return ipwm.ip;
         }
+
+        public ImageProcessor renderFullScale()
+                throws JsonProcessingException {
+            final ImageProcessor renderedTile;
+            if (parameters.renderScale == 1.0) {
+                renderedTile = this.render();
+            } else {
+                final RenderParameters fullScaleRenderParameters =
+                        RenderParameters.parseJson(renderParameters.toJson());
+                fullScaleRenderParameters.setScale(1.0);
+                fullScaleRenderParameters.setDoFilter(false); // force filter off so it is easier to see problems in merged view
+                fullScaleRenderParameters.initializeDerivedValues();
+                final TransformMeshMappingWithMasks.ImageProcessorWithMasks
+                        ipwm = Renderer.renderImageProcessorWithMasks(fullScaleRenderParameters, imageProcessorCache);
+                renderedTile = ipwm.ip;
+            }
+            return renderedTile;
+        }
+
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(VisualizeTilePairMatches.class);
