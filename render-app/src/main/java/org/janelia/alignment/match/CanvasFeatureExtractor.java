@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import mpicbg.ij.SIFT;
 import mpicbg.imagefeatures.Feature;
 import mpicbg.imagefeatures.FloatArray2DSIFT;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
@@ -231,7 +232,7 @@ public class CanvasFeatureExtractor implements Serializable {
                  siftParameters.maxOctaveSize);
 
         final FloatArray2DSIFT sift = new FloatArray2DSIFT(siftParameters);
-        final SIFTWithFix ijSIFT = new SIFTWithFix(sift);
+        final SIFT ijSIFT = new SIFT(sift);
 
         final List<Feature> featureList = new ArrayList<>();
         ijSIFT.extractFeatures(imageProcessor, featureList);
