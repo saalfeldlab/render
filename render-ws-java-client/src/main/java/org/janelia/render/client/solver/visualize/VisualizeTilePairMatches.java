@@ -98,8 +98,8 @@ public class VisualizeTilePairMatches {
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                     "--owner", "Z0720_07m_BR",
                     "--project", "Sec24",
-                    "--stack", "v3_acquire_trimmed",
-                    "--pTileId", "21-04-29_151034_0-0-0.57325.0",
+                    "--stack", "v5_acquire_trimmed",
+                    "--pTileId", "21-04-29_151034_0-0-1.57325.0",
                     "--qTileId", "21-04-29_151547_0-0-0.57326.0",
 //                    "--alignWithPlugin",
 
@@ -115,16 +115,17 @@ public class VisualizeTilePairMatches {
                     // -----------------------------------------
                     // Sec24_v1
                     // match distances: mean 2.17, max 13.19
-//                    "--collection", "Sec24_v1",
-//                    "--renderScale", "0.1",
-//                    "--renderWithFilter",
+                    "--collection", "Sec24_v4_fix",
+                    "--renderScale", "0.1",
+                    "--renderWithFilter",
 
+                    /*
                     // -----------------------------------------
                     // dynamic derivation with exact Sec24_v1 crossPass2 parameters
                     // match distances: mean 2.10, max 13.08
                     "--alignWithRender",
                     "--renderScale", "0.1",
-                    "--renderWithFilter",
+                    //"--renderWithFilter",
                     "--matchRod", "0.92",
                     "--matchModelType", "RIGID",
                     "--matchIterations", "1000",
@@ -133,30 +134,31 @@ public class VisualizeTilePairMatches {
                     "--matchMinNumInliers", "20",
                     "--matchMaxTrust", "4",
                     "--matchFilter", "AGGREGATED_CONSENSUS_SETS",
-                    "--SIFTfdSize", "4",
+                    "--SIFTfdSize", "8",
                     "--SIFTminScale", "0.125",
                     "--SIFTmaxScale", "1.0",
                     "--SIFTsteps", "5",
-
+					*/
+                    /*
                     // -----------------------------------------
                     // dynamic derivation with full scale Sec24_v1 crossPass2 parameters to avoid mipmaps
                     // match distances: mean 2.02, max 10.11
-//                    "--alignWithRender",
-//                    "--renderScale", "1.0",
-//                    "--renderWithFilter",
-//                    "--matchRod", "0.92",
-//                    "--matchModelType", "RIGID",
-//                    "--matchIterations", "1000",
-//                    "--matchMaxEpsilonFullScale", "10",
-//                    "--matchMinInlierRatio", "0",
-//                    "--matchMinNumInliers", "20",
-//                    "--matchMaxTrust", "4",
-//                    "--matchFilter", "AGGREGATED_CONSENSUS_SETS",
-//                    "--SIFTfdSize", "4",
-//                    "--SIFTminScale", "0.0125", // "0.125" with renderScale 0.1
-//                    "--SIFTmaxScale", "0.1",    // "1.0" with renderScale 0.1
-//                    "--SIFTsteps", "5",
-
+                    "--alignWithRender",
+                    "--renderScale", "1.0",
+                    //"--renderWithFilter",
+                    "--matchRod", "0.92",
+                    "--matchModelType", "RIGID",
+                    "--matchIterations", "1000",
+                    "--matchMaxEpsilonFullScale", "10",
+                    "--matchMinInlierRatio", "0",
+                    "--matchMinNumInliers", "20",
+                    "--matchMaxTrust", "4",
+                    "--matchFilter", "AGGREGATED_CONSENSUS_SETS",
+                    "--SIFTfdSize", "8",
+                    "--SIFTminScale", "0.0125", // "0.125" with renderScale 0.1
+                    "--SIFTmaxScale", "0.1",    // "1.0" with renderScale 0.1
+                    "--SIFTsteps", "5",
+                    */
                     // -----------------------------------------
                     // dynamic derivation with adapted plugin parameters that produces good result
                     // match distances: mean 1.76, max 9.04
@@ -288,11 +290,17 @@ public class VisualizeTilePairMatches {
 
             titlePrefix = "dynamic";
 
+            new ImagePlus("p", pSlice ).show();
+            new ImagePlus("q", qSlice ).show();
+
+            //net.imglib2.multithreading.SimpleMultiThreading.threadHaltUnClean();
+            
             final CanvasFeatureExtractor featureExtractor = CanvasFeatureExtractor.build(parameters.featureExtraction);
             final List<Feature> pFeatureList = featureExtractor.extractFeaturesFromImageAndMask(pSlice,
                                                                                                 null);
             final List<Feature> qFeatureList = featureExtractor.extractFeaturesFromImageAndMask(qSlice,
                                                                                                 null);
+            //net.imglib2.multithreading.SimpleMultiThreading.threadHaltUnClean();
             final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(parameters.match,
                                                                                  parameters.renderScale);
             final CanvasMatchResult matchResult = featureMatcher.deriveMatchResult(pFeatureList, qFeatureList);
