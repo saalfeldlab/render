@@ -6,9 +6,10 @@ import mpicbg.models.Affine2D;
 
 import org.apache.commons.lang3.Range;
 
-public class SolveSetFactoryBRSec24 extends SolveSetFactoryWithStitchFirstExclusions
+public class SolveSetFactoryBRSec22
+        extends SolveSetFactoryWithStitchFirstExclusions
 {
-	public SolveSetFactoryBRSec24(
+	public SolveSetFactoryBRSec22(
 			final Affine2D<?> defaultGlobalSolveModel,
 			final Affine2D<?> defaultBlockSolveModel,
 			final Affine2D<?> defaultStitchingModel,
@@ -32,7 +33,7 @@ public class SolveSetFactoryBRSec24 extends SolveSetFactoryWithStitchFirstExclus
 				defaultBlockMaxAllowedError,
 				defaultDynamicLambdaFactor );
 
-		final int lastTwoTileZ = 57325;
+		final int lastTwoTileZ = 53385;
 		final int exclusionMargin = 25;
 
 		addStitchFirstExclusionRange(Range.between(lastTwoTileZ - exclusionMargin,
