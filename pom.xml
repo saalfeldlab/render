@@ -129,6 +129,13 @@
 
     <properties>
         <!--
+          Use MPI-CBG 1.4.2 to pull in SIFT fix from Preibisch.
+          See https://github.com/axtimwalde/mpicbg/commit/94fcf09d4a022245a24761f2977b1815002fa310 for details.
+        -->
+        <mpicbg.version>1.4.2</mpicbg.version>
+        <mpicbg_.version>${mpicbg.version}</mpicbg_.version>
+
+        <!--
           NOTE: To prevent attributes.json read errors the render n5 version should be kept in-sync with
                 the hot-knife n5 version if you need to run concurrent code from both repos on the same n5 group.
         -->
