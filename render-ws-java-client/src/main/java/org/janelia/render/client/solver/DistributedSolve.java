@@ -219,6 +219,36 @@ public abstract class DistributedSolve
 
 		final GlobalSolve gs = new GlobalSolve();
 
+		// the trivial case, would crash with the code below
+		if ( allSolveItems.size() == 1 )
+		{
+			LOG.info( "globalSolve: only a single solveitem, no solve across blocks necessary." );
+
+			final SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> solveItem = allSolveItems.get( 0 );
+	
+			for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
+			{
+				// there is no overlap with any other solveItem (should be beginning or end of the entire stack)
+				final HashSet< String > tileIds = solveItem.zToTileId().get( z );
+
+				// if there are none, we continue with the next
+				if ( tileIds.size() == 0 )
+					continue;
+
+				gs.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
+
+				for ( final String tileId : tileIds )
+				{
+					gs.zToTileIdGlobal.get( z ).add( tileId );
+					gs.idToTileSpecGlobal.put( tileId, solveItem.idToTileSpec().get( tileId ) );
+					gs.idToFinalModelGlobal.put( tileId, solveItem.idToNewModel().get( tileId ) );
+					gs.zToDynamicLambdaGlobal.put( z, solveItem.zToDynamicLambda().get( z ) );
+				}
+			}
+
+			return gs;
+		}
+
 		// local structures required for solvig
 		final HashMap<
 				Integer,
