@@ -48,6 +48,7 @@ public class DistributedSolveDebugger extends DistributedSolve
 						parameters.maxAllowedErrorStitching,
 						parameters.maxIterationsStitching,
 						parameters.maxPlateauWidthStitching,
+						Double.NaN, // maxRange
 						parameters.excludeSet(),
 						parameters.threadsGlobal );
 		try

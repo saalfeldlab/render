@@ -84,6 +84,7 @@ public class DistributedSolveSpark extends DistributedSolve
 									maxAllowedErrorStitching,
 									maxIterationsStitching,
 									maxPlateauWidthStitching,
+									Double.NaN, // maxRange
 									excludeFromRegularization,
 									numThreads );
 					LogUtilities.setupExecutorLog4j("z " + solveItemData.minZ() + " to " + solveItemData.maxZ());

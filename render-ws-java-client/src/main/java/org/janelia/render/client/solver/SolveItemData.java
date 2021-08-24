@@ -220,6 +220,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 			final double maxAllowedErrorStitching,
 			final int maxIterationsStitching,
 			final int maxPlateauWidthStitching,
+			final double maxRange,
 			final Set<Integer> excludeFromRegularization,
 			final int numThreads )
 	{
@@ -239,6 +240,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 				maxAllowedErrorStitching,
 				maxIterationsStitching,
 				maxPlateauWidthStitching,
+				maxRange,
 				excludeFromRegularization,
 				numThreads );
 	}

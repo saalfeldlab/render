@@ -66,6 +66,7 @@ public class DistributedSolveMultiThread extends DistributedSolve
 								parameters.maxAllowedErrorStitching,
 								parameters.maxIterationsStitching,
 								parameters.maxPlateauWidthStitching,
+								Double.NaN, // maxRange
 								parameters.excludeSet(),
 								parameters.threadsWorker );
 					w.run();

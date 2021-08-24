@@ -84,6 +84,7 @@ public class DistributedSolveSparkLocal extends DistributedSolve
 							maxAllowedErrorStitching,
 							maxIterationsStitching,
 							maxPlateauWidthStitching,
+							Double.NaN, // maxRange
 							excludeFromRegularization,
 							numThreads );
 					w.run();

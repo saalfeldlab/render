@@ -107,6 +107,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	// global switch to disable "stitch first"
 	final private boolean stitchFirst = true;
 
+	// limit the z-range of the solver (default: Double.NaN)
+	final double maxRange;
+
 	// created by SolveItemData.createWorker()
 	public DistributedSolveWorker(
 			final SolveItemData< G, B, S > solveItemData,
@@ -124,6 +127,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final double maxAllowedErrorStitching,
 			final int maxIterationsStitching,
 			final int maxPlateauWidthStitching,
+			final double maxRange,
 			final Set<Integer> excludeFromRegularization,
 			final int numThreads )
 	{
@@ -157,6 +161,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		else
 			this.matchFilter = new RandomMaxAmountFilter( maxNumMatches );
 
+		this.maxRange = maxRange;
+
 		// used locally
 		this.pairs = new ArrayList<>();
 		this.zToPairs = new HashMap<>();
@@ -169,7 +175,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
-		assembleMatchData( pairs, zToPairs );
+		assembleMatchData( pairs, zToPairs, maxRange );
 		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, numThreads );
 		connectGroupedTiles( pairs, inputSolveItem );
 		this.solveItems = splitSolveItem( inputSolveItem, startId );
@@ -201,11 +207,15 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 	protected void assembleMatchData(
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
-			final HashMap< Integer, List< Integer > > zToPairs ) throws IOException
+			final HashMap< Integer, List< Integer > > zToPairs,
+			final double maxRange ) throws IOException
 	{
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
 		LOG.info( "block " + inputSolveItem.getId() + ": Loading transforms and matches from " + inputSolveItem.minZ() + " to layer " + inputSolveItem.maxZ() );
+
+		if ( !Double.isNaN( maxRange ) )
+			LOG.info( "block " + inputSolveItem.getId() + ": WARNING! max z range for matching is " + maxRange );
 
 		for ( final Pair< String, Double > pGroupPair : pGroupList )
 		{
@@ -262,6 +272,10 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					LOG.info("block " + inputSolveItem.getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, stack);
 					continue;
 				}
+
+				// max range
+				if ( !Double.isNaN( maxRange ) && Math.abs( pTileSpec.getZ() - qTileSpec.getZ() ) > maxRange )
+					continue;
 
 				/*
 				// TODO: REMOVE Artificial split of the data
