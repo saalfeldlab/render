@@ -60,6 +60,7 @@ public class BoundingBoxRendererTest {
 
         final Color boxColor = Color.GREEN;
         final BoundingBoxRenderer renderer = new BoundingBoxRenderer(renderParameters, boxColor);
+        System.out.println("BoundingBoxRenderer is " + renderer);
         renderer.render(bufferedImage);
 
         final int[][] boxPoints = {
