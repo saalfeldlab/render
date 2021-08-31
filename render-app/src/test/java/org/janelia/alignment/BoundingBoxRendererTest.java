@@ -1,38 +1,24 @@
-/**
- * License: GPL
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License 2
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.janelia.alignment;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 
+import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
-import junit.framework.Assert;
 
 /**
  * Tests the {@link BoundingBoxRenderer} class.
  *
  * @author Eric Trautman
  */
+@Ignore
 public class BoundingBoxRendererTest {
 
     @Test
-    public void testRender() throws Exception {
+    public void testRender() {
 
         final String json =
                 "{\n" +
@@ -60,7 +46,6 @@ public class BoundingBoxRendererTest {
 
         final Color boxColor = Color.GREEN;
         final BoundingBoxRenderer renderer = new BoundingBoxRenderer(renderParameters, boxColor);
-        System.out.println("BoundingBoxRenderer is " + renderer);
         renderer.render(bufferedImage);
 
         final int[][] boxPoints = {
