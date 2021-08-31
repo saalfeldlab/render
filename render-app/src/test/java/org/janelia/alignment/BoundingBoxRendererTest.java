@@ -5,7 +5,6 @@ import java.awt.image.BufferedImage;
 import java.util.Arrays;
 
 import org.junit.Assert;
-import org.junit.Ignore;
 import org.junit.Test;
 
 
@@ -14,7 +13,6 @@ import org.junit.Test;
  *
  * @author Eric Trautman
  */
-@Ignore
 public class BoundingBoxRendererTest {
 
     @Test
