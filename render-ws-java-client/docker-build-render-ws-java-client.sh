@@ -29,4 +29,10 @@ To push this image to the repository:
 
   docker login
   docker push ${IMAGE_TAG}
+
+To run the image:
+
+  docker run -it --rm ${IMAGE_TAG} <memory> <client class> <args ...>
+  docker run -it --rm ${IMAGE_TAG} 1G org.janelia.render.client.ImportJsonClient <args ...>
+
 """
