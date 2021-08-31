@@ -30,7 +30,11 @@ else
     export JAVA_HOME="$RENDER_JAVA_HOME"
 fi
 
-export BASE_JAVA_COMMAND="${JAVA_HOME}/bin/java -cp ${RENDER_CLIENT_JAR}"
+if [[ -f "${JAVA_HOME}/bin/java" ]]; then
+    export BASE_JAVA_COMMAND="${JAVA_HOME}/bin/java -cp ${RENDER_CLIENT_JAR}"
+else
+    export BASE_JAVA_COMMAND="java -cp ${RENDER_CLIENT_JAR}"
+fi
 
 # request memory up-front and use serial garbage collector to keep GC threads from taking over cluster node
 export JAVA_MEMORY="${1:-1G}"
