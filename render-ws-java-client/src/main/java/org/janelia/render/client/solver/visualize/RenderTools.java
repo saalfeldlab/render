@@ -25,6 +25,7 @@ import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvOptions;
 import bdv.util.BdvStackSource;
+import bdv.util.Prefs;
 import bdv.util.volatiles.SharedQueue;
 import mpicbg.models.AffineModel2D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
@@ -328,6 +329,8 @@ public class RenderTools
 			multiRes.add( new ValuePair<>( volatileRA, t )  );
 		}
 
+		Prefs.showScaleBar(true);
+		
 		if ( source == null )
 		{
 			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( project + "_" + stack ).numRenderingThreads( numRenderingThreads );
@@ -349,13 +352,16 @@ public class RenderTools
 		final String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 
 		final String owner = args.length < 1 ? "Z0720_07m_BR" : args[0];
-		final String project = args.length < 2 ? "Sec25" : args[1];
-		final String stack = args.length < 3 ? "v2_acquire_trimmed_align" : args[2];
+		final String project = args.length < 2 ? "Sec24" : args[1];
+		final String stack = args.length < 3 ? "v5_acquire_trimmed" : args[2];
 
 		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
 		
 		final int[] ds = availableDownsamplings( meta );
 		Interval interval = stackBounds( meta );
+//		Interval interval = new FinalInterval(
+//				new long[] { 2000L, -1300L, 5000L },
+//				new long[] { 3000L, -300L, 5002L } );
 
 		System.out.println( Util.printCoordinates( ds ) );
 		System.out.println( Util.printInterval( interval ) );
