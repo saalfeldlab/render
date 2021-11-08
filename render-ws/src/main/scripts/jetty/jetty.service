@@ -20,9 +20,12 @@ SuccessExitStatus=143
 # needed to add this to keep the service from getting shutdown immediately
 TimeoutStartSec=5min
 
-# environment variables read from /etc/default/jetty currently handle running user and group
-#User=jetty
-#Group=jetty
+# SL 7.9 systemd fails with error:
+#   Refusing to accept PID outside of service control group
+# when using JETTY_USER variable from /etc/default/jetty in jetty.sh script.
+# Fix is to leave JETTY_USER undefined and explicitly identify user and group here:
+User=jboss
+Group=jboss
 
 [Install]
 WantedBy=multi-user.target
