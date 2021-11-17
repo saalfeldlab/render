@@ -149,6 +149,18 @@ public class N5Client {
                 description = "Path of Zcoords.txt file")
         public String zCoordsPath;
 
+        @Parameter(
+                names = "--minIntensity",
+                description = "Min intensity for all render source tiles (omit to use default)"
+        )
+        public Double minIntensity;
+
+        @Parameter(
+                names = "--maxIntensity",
+                description = "Max intensity for all render source tiles (omit to use default)"
+        )
+        public Double maxIntensity;
+
         private int[] parseCSIntArray(final String csvString) {
             int[] intValues = null;
             if (csvString != null) {
@@ -252,7 +264,9 @@ public class N5Client {
                                                             parameters.stack,
                                                             parameters.tileWidth,
                                                             parameters.tileHeight,
-                                                            1.0);
+                                                            1.0,
+                                                            parameters.minIntensity,
+                                                            parameters.maxIntensity);
 
             final ThicknessCorrectionData thicknessCorrectionData =
                     parameters.zCoordsPath == null ? null : new ThicknessCorrectionData(parameters.zCoordsPath);
@@ -341,6 +355,8 @@ public class N5Client {
 
         private final String stackUrl;
         private final String boxUrlSuffix;
+        private final Double minIntensity;
+        private final Double maxIntensity;
 
         public BoxRenderer(final String baseUrl,
                            final String owner,
@@ -348,9 +364,13 @@ public class N5Client {
                            final String stack,
                            final long width,
                            final long height,
-                           final double scale) {
+                           final double scale,
+                           final Double minIntensity,
+                           final Double maxIntensity) {
             this.stackUrl = String.format("%s/owner/%s/project/%s/stack/%s", baseUrl, owner, project, stack);
             this.boxUrlSuffix = String.format("%d,%d,%f/render-parameters", width, height, scale);
+            this.minIntensity = minIntensity;
+            this.maxIntensity = maxIntensity;
         }
 
         public ByteProcessor render(final long x,
@@ -360,6 +380,12 @@ public class N5Client {
             final String renderParametersUrlString = String.format("%s/z/%d/box/%d,%d,%s",
                                                                    stackUrl, z, x, y, boxUrlSuffix);
             final RenderParameters renderParameters = RenderParameters.loadFromUrl(renderParametersUrlString);
+            if (minIntensity != null) {
+                renderParameters.setMinIntensity(minIntensity);
+            }
+            if (maxIntensity != null) {
+                renderParameters.setMaxIntensity(maxIntensity);
+            }
             final BufferedImage image = renderParameters.openTargetImage();
             ArgbRenderer.render(renderParameters, image, ipCache);
             return new ColorProcessor(image).convertToByteProcessor();
