@@ -157,11 +157,22 @@ public class ThicknessCorrectionData
         System.out.println("ThicknessCorrectionData: loaded " + this.orderedCorrectedZValues.size() + " corrected z values");
     }
 
+    public double getFirstCorrectedZ() {
+        return orderedCorrectedZValues.get(0);
+    }
+
+    public double getLastCorrectedZ() {
+        return orderedCorrectedZValues.get(orderedCorrectedZValues.size() - 1);
+    }
+
     /**
      * @param  renderZ  layer being rendered.
      *
      * @return an interpolator instance that contains the information needed to render
      *         thickness corrected intensities for the specified layer.
+     *
+     * @throws IllegalArgumentException
+     *   if the specified renderZ is outside the corrected z range.
      */
     public LayerInterpolator getInterpolator(final long renderZ) {
 
@@ -200,8 +211,8 @@ public class ThicknessCorrectionData
         }
 
         if (interpolator == null) {
-            // renderZ is out of range of loaded data, so return "identity" interpolator with renderZ
-            interpolator = new LayerInterpolator(renderZ);
+            throw new IllegalArgumentException("renderZ " + renderZ + " is outside corrected z range " +
+                                               getFirstCorrectedZ() + " to " + getLastCorrectedZ());
         }
 
         return interpolator;

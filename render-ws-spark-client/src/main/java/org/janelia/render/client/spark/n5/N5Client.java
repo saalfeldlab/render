@@ -136,10 +136,21 @@ public class N5Client {
                 description = "Unit description for stack resolution values (e.g. nm, um, ...)")
         public String stackResolutionUnit = "nm";
 
-        public Bounds getBoundsForRun(final StackMetaData stackMetaData) {
+        public Bounds getBoundsForRun(final StackMetaData stackMetaData,
+                                      final ThicknessCorrectionData thicknessCorrectionData) {
             final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
             final Bounds defaultedLayerBounds = layerBounds.overrideBounds(defaultBounds);
-            final Bounds runBounds = layerRange.overrideBounds(defaultedLayerBounds);
+            Bounds runBounds = layerRange.overrideBounds(defaultedLayerBounds);
+
+            if (thicknessCorrectionData != null) {
+                final double minZ = Math.ceil(Math.max(runBounds.getMinZ(),
+                                                       thicknessCorrectionData.getFirstCorrectedZ()));
+                final double maxZ = Math.floor(Math.min(runBounds.getMaxZ(),
+                                                        thicknessCorrectionData.getLastCorrectedZ()));
+                runBounds = new Bounds(runBounds.getMinX(), runBounds.getMinY(), minZ,
+                                       runBounds.getMaxX(), runBounds.getMaxY(), maxZ);
+            }
+
             LOG.info("getBoundsForRun: returning {}", runBounds);
             return runBounds;
         }
@@ -239,7 +250,11 @@ public class N5Client {
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
         final List<Double> resolutionValues = stackMetaData.getCurrentResolutionValues();
-        final Bounds bounds = parameters.getBoundsForRun(stackMetaData);
+
+        final ThicknessCorrectionData thicknessCorrectionData =
+                parameters.zCoordsPath == null ? null : new ThicknessCorrectionData(parameters.zCoordsPath);
+
+        final Bounds bounds = parameters.getBoundsForRun(stackMetaData, thicknessCorrectionData);
 
         final long[] min = {
                 bounds.getMinX().longValue(),
@@ -267,9 +282,6 @@ public class N5Client {
                                                             1.0,
                                                             parameters.minIntensity,
                                                             parameters.maxIntensity);
-
-            final ThicknessCorrectionData thicknessCorrectionData =
-                    parameters.zCoordsPath == null ? null : new ThicknessCorrectionData(parameters.zCoordsPath);
 
             // save full scale first ...
             saveRenderStack(

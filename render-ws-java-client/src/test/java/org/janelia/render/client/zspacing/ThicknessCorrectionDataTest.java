@@ -13,23 +13,20 @@ import org.junit.Test;
  */
 public class ThicknessCorrectionDataTest {
 
+    private final String smallCorrectionZCoords = "4055 4054.926248674371\n" +
+                                                  "4056 4055.890848802147\n" +
+                                                  "4057 4056.8086632669383";
     @Test
     public void testGetInterpolator() {
 
         String context = "small correction";
-        String zCoordsText =
-                "4055 4054.926248674371\n" +
-                "4056 4055.890848802147\n" +
-                "4057 4056.8086632669383";
-        ThicknessCorrectionData data = buildData(zCoordsText);
+        ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
 
-        validateInterpolator(context, data, 4054, 4054, 1.0, 4054);
         validateInterpolator(context, data, 4055, 4055, 0.92, 4056);
         validateInterpolator(context, data, 4056, 4056, 0.88, 4057);
-        validateInterpolator(context, data, 4057, 4057, 1.0, 4057);
 
         context = "big correction";
-        zCoordsText =
+        final String zCoordsText =
                 "4100 4102.787808503473\n" +
                 "4101 4103.020253943293\n" +
                 "4102 4103.020353945556\n" +
@@ -59,6 +56,18 @@ public class ThicknessCorrectionDataTest {
         validateInterpolator(context, data, 4118, 4111, 0.04, 4112);
         validateInterpolator(context, data, 4119, 4112, 0.3, 4113);
         validateInterpolator(context, data, 4120, 4113, 0.45, 4114);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetInterpolatorTooSmall() {
+        final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
+        final ThicknessCorrectionData.LayerInterpolator interpolator = data.getInterpolator(4054);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testGetInterpolatorTooBig() {
+        final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
+        final ThicknessCorrectionData.LayerInterpolator interpolator = data.getInterpolator(4057);
     }
 
     private ThicknessCorrectionData buildData(final String zCoordsText) {

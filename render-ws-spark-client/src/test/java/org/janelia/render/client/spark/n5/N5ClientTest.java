@@ -16,6 +16,7 @@ import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.zspacing.ThicknessCorrectionData;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
@@ -79,13 +80,27 @@ public class N5ClientTest {
     @Test
     public void testGetBoundsForRun() {
         final N5Client.Parameters p = new N5Client.Parameters();
-        final Bounds stackBounds = new Bounds(1.0,2.0,3.0,4.0,5.0,6.0);
+        final Bounds stackBounds = new Bounds(222.0,333.0,1.0,444.0,555.0,6.0);
         stackMetaData.setStats(new StackStats(stackBounds,
                                               1L, 1L, 1L, 1L,
                                               1, 1, 1, 1,
                                               null));
-        final Bounds boundsForRun = p.getBoundsForRun(stackMetaData);
+        Bounds boundsForRun = p.getBoundsForRun(stackMetaData, null);
         Assert.assertEquals("null parameters should simply return stack bounds", stackBounds, boundsForRun);
+
+        final ThicknessCorrectionData thicknessCorrectionData = new ThicknessCorrectionData(Arrays.asList(
+                "1 1.23", "2 2.45", "3 3", "4 4", "5 4.85", "6 5.64"
+        ));
+
+        boundsForRun = p.getBoundsForRun(stackMetaData, thicknessCorrectionData);
+        final Bounds expectedThicknessBounds = new Bounds(stackBounds.getMinX(),
+                                                          stackBounds.getMinY(),
+                                                          2.0,
+                                                          stackBounds.getMaxX(),
+                                                          stackBounds.getMaxY(),
+                                                          5.0);
+        Assert.assertEquals("incorrect thickness data bounds",
+                            expectedThicknessBounds, boundsForRun);
     }
 
     @Test

@@ -25,9 +25,8 @@
         <package name="" withSubpackages="true" static="true" />
       </value>
     </option>
-    <option name="HTML_ALIGN_TEXT" value="true" />
-    <option name="ALIGN_MULTILINE_PARAMETERS_IN_CALLS" value="true" />
     <option name="ALIGN_MULTILINE_BINARY_OPERATION" value="true" />
+    <option name="ALIGN_MULTILINE_PARAMETERS_IN_CALLS" value="true" />
     <option name="ALIGN_MULTILINE_ASSIGNMENT" value="true" />
     <option name="ALIGN_MULTILINE_TERNARY_OPERATION" value="true" />
     <option name="ALIGN_MULTILINE_THROWS_LIST" value="true" />
@@ -78,9 +77,6 @@
         </value>
       </option>
     </JavaCodeStyleSettings>
-    <XML>
-      <option name="XML_LEGACY_SETTINGS_IMPORTED" value="true" />
-    </XML>
     <ADDITIONAL_INDENT_OPTIONS fileType="gsp">
       <option name="INDENT_SIZE" value="2" />
     </ADDITIONAL_INDENT_OPTIONS>
