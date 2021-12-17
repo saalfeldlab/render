@@ -13,15 +13,134 @@
     <script type="text/javascript" src="../script/janelia-render.js?v=20180611_001"></script>
     <script type="text/javascript" src="../script/stacks.js?v=20180430_001"></script>
 
+
+
+
+   <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script> -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+
     <script type="text/javascript">
-        $( document ).ready(function() {
-            $("#stackInfo").tablesorter( { } );
+
+
+        $(document).ready(function() {
+        console.log("hi this is sukesh");
+ // executes when HTML-Document is loaded and DOM is ready
+//console.log("document is ready");
+$("#stackInfo").tablesorter( { } );
 
             //noinspection JSUnusedLocalSymbols
             var stacksUi = new RenderWebServiceProjectStacks('renderStackOwner', 'renderStackProject', 'message', 'urlToView');
+
+
+
+                $(document).on('click','#myBtn',function(){
+  //  alert("button");
+    document.getElementById("StackOwner").value = $('#renderStackOwner option:selected').text();
+                document.getElementById("StackProject").value = $('#renderStackProject option:selected').text();
+                document.getElementById("Stack").value = $('#StackName').html();
+                var modal = document.getElementById("myModal");
+                modal.style.display = "block";
+});
+
+$('#modal_close').on('click', function(){
+
+    $("#myModal").hide();
+
+});
+
+
+$('#form_submit_id').on('click', function(){
+
+//alert("hii");
+//e.preventDefault();
+//console.log(document.getElementById("clustername").value);
+//console.log(document.getElementById("username").value);
+//console.log(document.getElementById("password").value);
+//console.log(document.getElementById("StackOwner").value);
+//console.log(document.getElementById("StackProject").value);
+//console.log(document.getElementById("Stack").value);
+
+//console.log(document.getElementById("openseadragonHost").value);
+
+//console.log("hello hello hello hello");
+$.ajax({
+            type: 'POST',
+            url: '../v1/openseadragon',
+            data: {clustername: document.getElementById("clustername").value, username: document.getElementById("username").value,
+            password: document.getElementById("password").value, StackOwner: document.getElementById("StackOwner").value,
+            StackProject: document.getElementById("StackProject").value, Stack: document.getElementById("Stack").value,
+            data_prep: document.getElementById("data_prep").value, data_prepsh: document.getElementById("data_prepsh").value,
+            openseadragonDataDestinationFolder: document.getElementById("openseadragonDataDestinationFolder").value,
+            openseadragonDataHost: document.getElementById("openseadragonDataHost").value,
+            openseadragonDataSourceFolder: document.getElementById("openseadragonDataSourceFolder").value,
+            renderHost: $(location).attr('hostname')+':'+$(location).attr('port')
+            },
+            success: function (data) {
+                console.log('Submission was successful.');
+                //console.log(data);
+                document.getElementById("clustername").value = "";
+                document.getElementById("username").value = "";
+                document.getElementById("password").value = "";
+                $("#myModal").hide();
+                alert("Job submitted successfully, wait for successful run email from hpc cluster to view");
+            },
+            error: function (data) {
+                console.log('An error occurred.');
+                console.log(data);
+                alert("please enter correct cluster name(hpc.stjude.org), username and password. For other issue please contact administrator (sukesh.sangam@stjude.org)");
+            },
         });
 
+});
+
+
+
+
+
+});
     </script>
+
+    <style>
+        .modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  padding-top: 100px; /* Location of the box */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0,0,0); /* Fallback color */
+  background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+}
+
+/* Modal Content */
+.modal-content {
+  background-color: #fefefe;
+  margin: auto;
+  padding: 20px;
+  border: 1px solid #888;
+  width: 80%;
+}
+
+/* The Close Button */
+.close {
+  color: #aaaaaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: #000;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+    </style>
 
 </head>
 
@@ -66,6 +185,26 @@
     </table>
 
 </div>
+<div id="myModal" class="modal">
 
+    <!-- Modal content -->
+    <div class="modal-content">
+        <span id="modal_close" class="close">&times;</span>
+        <h2>Submitting job to cluster<h4>(Please submit the job for data preparation only if you don't see data in Openseadragon)</h4></h2>
+      <!--  <form id="popupForm"  method="post">-->
+        <label for="clustername">cluster name:</label><br>
+        <input type="text" id="clustername" name="clustername" value="hpc.stjude.org"><br>
+        <label for="username">username:</label><br>
+        <input type="text" id="username" name="username"><br>
+        <label for="password">password:</label><br>
+        <input type="password" id="password" name="password"><br>
+            <input type="hidden" id="StackOwner" name="StackOwner">
+            <input type="hidden" id="StackProject" name="StackProject" >
+            <input type="hidden" id="Stack" name="Stack" >
+        <input id="form_submit_id" type="submit">
+        <!-- </form> -->
+    </div>
+
+</div>
 </body>
 </html>

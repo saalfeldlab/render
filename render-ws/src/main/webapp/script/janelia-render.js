@@ -68,6 +68,10 @@ var JaneliaScriptUtilities = function() {
         return this.getCatmaidUrl(catmaidBaseUrl, stackId, stackVersion, centerX, centerY, z, scaleLevel);
     };
 
+    this.prepareOpenseadragonDataUrl = function(){
+
+
+    };
     this.getSelectedValue = function(selectId) {
         var selectElement = document.getElementById(selectId);
         return selectElement.options[selectElement.selectedIndex].value;
@@ -165,8 +169,12 @@ var JaneliaQueryParameters = function() {
     var re = /([^&=]+)=([^&]*)/g;
     var m;
     while (m = re.exec(queryString)) {
+        console.log(m);
         this.map[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
     }
+    console.log(queryString);
+    console.log("helloooooo")
+    console.log(this.map);
 };
 
 JaneliaQueryParameters.prototype.getSearch = function() {
@@ -436,9 +444,15 @@ var JaneliaRenderServiceDataUI = function(queryParameters, ownerSelectId, projec
     this.util = new JaneliaScriptUtilities();
     this.shortbaseUrl = this.util.getShortRenderHost();
     this.queryParameters = queryParameters;
+    this.openseadragonHost = queryParameters.map['openseadragonHost'];
+    this.data_prep = queryParameters.map['data_prep'];
+    this.data_prepsh = queryParameters.map['data_prepsh'];
     this.catmaidHost = queryParameters.map['catmaidHost'];
     this.ndvizHost = queryParameters.map['ndvizHost'];
     this.dynamicRenderHost = queryParameters.map['dynamicRenderHost'];
+    this.openseadragonDataHost = queryParameters.map['openseadragonDataHost'];
+    this.openseadragonDataSourceFolder = queryParameters.map['openseadragonDataSourceFolder'];
+    this.openseadragonDataDestinationFolder = queryParameters.map['openseadragonDataDestinationFolder'];
 
     this.renderServiceData = new JaneliaRenderServiceData(queryParameters.map[ownerSelectId],
                                                           queryParameters.map[projectSelectId],
@@ -530,6 +544,19 @@ JaneliaRenderServiceDataUI.prototype.isNdvizHostDefined = function() {
 
 };
 
+JaneliaRenderServiceDataUI.prototype.isOpenseadragonHostDefined = function() {
+    //console.log("this is openseadragon");
+    //console.log(this.openseadragonHost);
+    return typeof this.openseadragonHost !== 'undefined';
+};
+
+JaneliaRenderServiceDataUI.prototype.isOpenseadragonDataHostDefined = function() {
+   // console.log("this is openseadragonDataHost");
+    //console.log(this.openseadragonDataHost);
+    return typeof this.openseadragonDataHost !== 'undefined';
+};
+
+
 JaneliaRenderServiceDataUI.prototype.isCatmaidHostDefined = function() {
     return typeof this.catmaidHost !== 'undefined';
 };
@@ -543,6 +570,12 @@ JaneliaRenderServiceDataUI.prototype.buildStackQueryParameters = function(owner,
         ['renderStackProject', project],
         ['renderStack', stack],
         ['dynamicRenderHost', this.dynamicRenderHost],
+        ['openseadragonHost', this.openseadragonHost],
+        ['data_prep', this.data_prep],
+        ['data_prepsh', this.data_prepsh],
+        ['openseadragonDataHost', this.openseadragonDataHost],
+        ['openseadragonDataSourceFolder', this.openseadragonDataSourceFolder],
+        ['openseadragonDataDestinationFolder', this.openseadragonDataDestinationFolder],
         ['catmaidHost', this.catmaidHost],
         ['ndvizHost', this.ndvizHost]
     ];
@@ -628,7 +661,7 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
 
     var detailsQueryString = '?' + this.buildStackQueryParameters(stackId.owner, stackId.project, stackId.stack);
     //noinspection HtmlUnknownTarget
-    var detailsLinkPrefix = '<a target="_blank" href="stack-details.html' + detailsQueryString + '">';
+    var detailsLinkPrefix = '<a id="StackName" target="_blank" href="stack-details.html' + detailsQueryString + '">';
     var detailsLink = detailsLinkPrefix + stackId.stack  +'</a>';
 
     var linksHtml = '<div class="dropdown">' +
@@ -636,8 +669,30 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
                     '<div class="dropdown-content">' +
                     '<a target="_blank" href="' + baseStackUrl + '">Metadata</a> ';
 
+    if (this.isOpenseadragonHostDefined()) {
+            var openseadragonBaseUrl = 'http://' + this.openseadragonHost;
+            //var openseadragonUrl = this.util.getCenteredCatmaidUrl(openseadragonBaseUrl, stackId, version, bounds, bounds.minZ, 8);
+            var openseadragonUrl = 'openseadragon.html?owner='+stackId.owner+'&project='+stackId.project+'&stack='+stackId.stack+'&minz='+bounds.minZ+'&maxz='+bounds.maxZ+'&datahost='+this.openseadragonDataHost;
+            if(!("OpenseadragonData" in stackInfo)){
+
+                // linksHtml = linksHtml + ' <a target="_blank" href="' + openseadragonUrl + '">Prepare data for Openseadragon</a>';
+               //linksHtml = linksHtml + '<a href="" class="btn" onclick="return check()">Prepare Data for Openseadragon</a>';
+                    linksHtml = linksHtml + '<button id="myBtn">Prepare data for openseadragon</button>';
+                    linksHtml = linksHtml + '<input type="hidden" id="openseadragonDataHost" value="'+this.openseadragonDataHost+'">';
+                    linksHtml = linksHtml + '<input type="hidden" id="data_prep" value="'+this.data_prep+'">';
+                    linksHtml = linksHtml + '<input type="hidden" id="data_prepsh" value="'+this.data_prepsh+'">';
+                    linksHtml = linksHtml + '<input type="hidden" id="openseadragonDataSourceFolder" value="'+this.openseadragonDataSourceFolder+'">';
+                    linksHtml = linksHtml + '<input type="hidden" id="openseadragonDataDestinationFolder" value="'+this.openseadragonDataDestinationFolder+'">';
+                  linksHtml = linksHtml + ' <a target="_blank" href="' + openseadragonUrl + '">Openseadragon</a>';
+            }
+            else{
+                linksHtml = linksHtml + ' <a target="_blank" href="' + openseadragonUrl + '">Openseadragon</a>';
+            }
+        }
+
+
     if (this.isCatmaidHostDefined()) {
-        var catmaidBaseUrl = 'http://' + this.catmaidHost;
+        var catmaidBaseUrl = 'http://' + this.pw;
         var catmaidUrl = this.util.getCenteredCatmaidUrl(catmaidBaseUrl, stackId, version, bounds, bounds.minZ, 8);
         linksHtml = linksHtml + ' <a target="_blank" href="' + catmaidUrl + '">CATMAID</a>';
     }
