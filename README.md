@@ -21,7 +21,7 @@ A collection of Java tools and HTTP services (APIs) for rendering transformed im
   [Docker packaging]: <docs/src/site/markdown/render-ws-docker.md>
   
   
-  Openseadragon Viewer for Render service:
+  #Openseadragon Viewer for Render service:
   
   In this branch Openseadragon Viewer feature is developed for the Render Service. 
   
