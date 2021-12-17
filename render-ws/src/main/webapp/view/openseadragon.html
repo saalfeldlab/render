@@ -1,0 +1,101 @@
+<head>
+    <style>
+        .slidecontainer {
+          width: 100%;
+        }
+        
+        .slider {
+          -webkit-appearance: none;
+          width: 100%;
+          height: 25px;
+          background: #d3d3d3;
+          outline: none;
+          opacity: 0.7;
+          -webkit-transition: .2s;
+          transition: opacity .2s;
+        }
+        
+        .slider:hover {
+          opacity: 1;
+        }
+        
+        .slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 25px;
+          height: 25px;
+          background: #04AA6D;
+          cursor: pointer;
+        }
+        
+        .slider::-moz-range-thumb {
+          width: 25px;
+          height: 25px;
+          background: #04AA6D;
+          cursor: pointer;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+
+<div id="openseadragon1" style="margin: 5%;">
+
+    <p>Z slice: <span id="index_no">1</span></p>
+
+
+</div>
+<script src="../script/openseadragon-bin-2.4.2/openseadragon.js"></script>
+<script type="text/javascript">
+
+var url = new URL(window.location.href);
+var owner = url.searchParams.get("owner");
+var project = url.searchParams.get("project");
+var stack = url.searchParams.get("stack");
+var minz = url.searchParams.get("minz");
+var maxz = url.searchParams.get("maxz");
+var datahost = url.searchParams.get("datahost");
+//var $i = "1";
+var arr = [];
+for (var i = parseInt(minz); i < parseInt(maxz)+1; i++) {
+    arr.push(datahost+owner+'/'+project+'/'+stack+'/'+owner+'_'+project+'_'+stack+'_'+i+'.jpg.dzi');
+}
+var viewer = OpenSeadragon({
+        id: "openseadragon1",
+        prefixUrl: "../script/openseadragon-bin-2.4.2/images/",
+        tileSources: arr,
+        sequenceMode: true,
+        preserveViewport: true,
+        showReferenceStrip: true,
+	showNavigator:  true
+    });
+
+  //  console.log(viewer.currentPage._sequenceIndex);
+
+  viewer.addHandler('page', function(event) {
+//alert(viewer._sequenceIndex);
+$('#index_no').text(viewer._sequenceIndex+1);
+
+  });
+
+  $(document).on('keypress',function(e) {
+    if(e.which == 60) {
+        viewer.goToPage(viewer._sequenceIndex-10);
+    }
+    if(e.which == 62){
+        viewer.goToPage(viewer._sequenceIndex+10);
+    }
+    if(e.which == 44){
+        viewer.goToPage(viewer._sequenceIndex-1);
+    }
+    if(e.which == 46){
+        viewer.goToPage(viewer._sequenceIndex+1);
+    }
+
+});
+
+
+
+    
+
+   
+</script>

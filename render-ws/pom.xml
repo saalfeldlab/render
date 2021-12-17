@@ -122,6 +122,12 @@
             <version>${resteasy.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.jcraft</groupId>
+            <artifactId>jsch</artifactId>
+            <version>0.1.53</version>
+        </dependency>
+
         <!--<dependency>-->
             <!--<groupId>org.jboss.resteasy</groupId>-->
             <!--<artifactId>resteasy-jaxb-provider</artifactId>-->
@@ -238,7 +244,7 @@
 
     <properties>
         <resteasy.version>3.13.2.Final</resteasy.version>
-        <jetty.version>9.4.43.v20210629</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
+        <jetty.version>9.4.9.v20180320</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
     </properties>
@@ -247,7 +253,7 @@
       Administrative elements required by org.scijava.maven.plugin.enforcer.RequireElements
       that have to be copied.  Too bad they can't just be taken from parent pom.
     -->
-    <url>https://github.com/saalfeldlab/render</url>
+    <url>https://github.com/sukeshsangam/render</url>
     <inceptionYear>2014</inceptionYear>
     <organization><name>see parent</name></organization>
     <licenses><license><name>see parent</name></license></licenses>

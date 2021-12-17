@@ -32,6 +32,13 @@ NDVIZHOST=$(stripQuotes ${NDVIZHOST})
 NDVIZPORT=$(stripQuotes ${NDVIZPORT})
 NDVIZ_URL=$(stripQuotes ${NDVIZ_URL})
 
+
+VIEW_OPENSEADRAGON_HOST_AND_PORT=$(stripQuotes ${VIEW_OPENSEADRAGON_HOST_AND_PORT})
+VIEW_OPENSEADRAGON_DATA_HOST=$(stripQuotes ${VIEW_OPENSEADRAGON_DATA_HOST})
+VIEW_OPENSEADRAGON_DATA_SOURCE_FOLDER=$(stripQuotes ${VIEW_OPENSEADRAGON_DATA_SOURCE_FOLDER})
+VIEW_OPENSEADRAGON_DATA_DESTINATION_FOLDER=$(stripQuotes ${VIEW_OPENSEADRAGON_DATA_DESTINATION_FOLDER})
+VIEW_OPENSEADRAGON_PYTHON_FILE=$(stripQuotes ${VIEW_OPENSEADRAGON_PYTHON_FILE})
+VIEW_OPENSEADRAGON_MAGIC_SLICER=$(stripQuotes ${VIEW_OPENSEADRAGON_MAGIC_SLICER})
 VIEW_CATMAID_HOST_AND_PORT=$(stripQuotes ${VIEW_CATMAID_HOST_AND_PORT})
 VIEW_DYNAMIC_RENDER_HOST_AND_PORT=$(stripQuotes ${VIEW_DYNAMIC_RENDER_HOST_AND_PORT})
 VIEW_RENDER_STACK_OWNER=$(stripQuotes ${VIEW_RENDER_STACK_OWNER})
@@ -39,6 +46,8 @@ VIEW_RENDER_STACK_PROJECT=$(stripQuotes ${VIEW_RENDER_STACK_PROJECT})
 VIEW_RENDER_STACK=$(stripQuotes ${VIEW_RENDER_STACK})
 VIEW_MATCH_OWNER=$(stripQuotes ${VIEW_MATCH_OWNER})
 VIEW_MATCH_COLLECTION=$(stripQuotes ${VIEW_MATCH_COLLECTION})
+VIEW_DATA_PREP=$(stripQuotes ${VIEW_DATA_PREP})
+VIEW_DATA_PREPSH=$(stripQuotes ${VIEW_DATA_PREPSH})
 
 WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER=$(stripQuotes ${WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER})
 WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB=$(stripQuotes ${WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB})
@@ -147,6 +156,12 @@ if [ -z "${NDVIZ_URL}" ] & [ -n "${NDVIZHOST}" ]; then
 fi
 
 sed -i """
+  s@view.openseadragonHost=.*@view.openseadragonHost=${VIEW_OPENSEADRAGON_HOST_AND_PORT}@
+  s@view.data_prep=.*@view.data_prep=${VIEW_DATA_PREP}@
+  s@view.data_prepsh=.*@view.data_prepsh=${VIEW_DATA_PREPSH}@
+  s@view.openseadragonDataHost=.*@view.openseadragonDataHost=${VIEW_OPENSEADRAGON_DATA_HOST}@
+  s@view.openseadragonDataSourceFolder=.*@view.openseadragonDataSourceFolder=${VIEW_OPENSEADRAGON_DATA_SOURCE_FOLDER}@
+  s@view.openseadragonDataDestinationFolder=.*@view.openseadragonDataDestinationFolder=${VIEW_OPENSEADRAGON_DATA_DESTINATION_FOLDER}@
   s@view.catmaidHost=.*@view.catmaidHost=${VIEW_CATMAID_HOST_AND_PORT}@
   s@view.dynamicRenderHost=.*@view.dynamicRenderHost=${VIEW_DYNAMIC_RENDER_HOST_AND_PORT}@
   s@view.matchOwner=.*@view.matchOwner=${VIEW_MATCH_OWNER}@

@@ -19,6 +19,8 @@
           var linkSelector = $('#' + linkId);
           var oldHref = linkSelector.attr('href');
           var newHref = oldHref.replace(/\?.*/, renderWebServiceViews.parameters.getSearch());
+          console.log(oldHref);
+          console.log(newHref);
           linkSelector.attr('href', newHref);
         },
         setUpHostData : function(inputId) {
@@ -61,8 +63,16 @@
           renderUi.loadData();
 
           renderWebServiceViews.setUpHostData('dynamicRenderHost');
+          renderWebServiceViews.setUpHostData('openseadragonHost');
+          renderWebServiceViews.setUpHostData('data_prep');
+          renderWebServiceViews.setUpHostData('openseadragonPythonFile');
+          renderWebServiceViews.setUpHostData('openseadragonMagicSlicer');
           renderWebServiceViews.setUpHostData('catmaidHost');
+          renderWebServiceViews.setUpHostData('openseadragonDataHost');
+          renderWebServiceViews.setUpHostData('openseadragonDataSourceFolder');
+          renderWebServiceViews.setUpHostData('openseadragonDataDestinationFolder');
           renderWebServiceViews.setUpHostData('ndvizHost');
+
 
           new JaneliaMatchServiceDataUI(
                   renderWebServiceViews.parameters,
@@ -106,6 +116,26 @@
                  onchange="renderWebServiceViews.updateParameter('dynamicRenderHost', this.value)">
         </td>
       </tr>
+
+      <tr>
+        <td>
+        </td>
+        <td>
+          <span class="selectSpan">OPENSEADRAGON Host (e.g. 'renderer-openseadragon:8000'):</span>
+          <input id="openseadragonHost" title="openseadragonHost" type="text" style="width:30em"
+                 onchange="renderWebServiceViews.updateParameter('openseadragonHost', this.value)">
+        </td>
+      </tr>
+
+    <!--  <tr>
+        <td>
+        </td>
+        <td>
+          <span class="selectSpan">OPENSEADRAGON DATA Host (e.g. 'renderer-openseadragon:8000'):</span>
+          <input id="openseadragonDataHost" title="openseadragonDataHost" type="text" style="width:30em"
+                 onchange="renderWebServiceViews.updateParameter('openseadragonDataHost', this.value)">
+        </td>
+      </tr> -->
 
       <tr>
         <td>

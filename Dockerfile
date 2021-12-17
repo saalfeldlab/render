@@ -33,7 +33,7 @@ COPY . /var/www/render/
 RUN mvn clean
 
 # use -T 1C option to multi-thread maven, using 1 thread per available core
-RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
+RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 -Dmaven.test.skip=true package && \
     mkdir -p /root/render-lib && \
     mv */target/*.*ar /root/render-lib && \
     printf "\nsaved the following build artifacts:\n\n" && \
@@ -49,13 +49,13 @@ RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
 # Once web service application is built, set up jetty server and deploy application to it.
 
 # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/render-ws/src/main/scripts/install.sh
-FROM jetty:9.4.43-jdk8-slim as render-ws
+FROM jetty:9.4.9-jre8-alpine as render-ws
 
 # add packages not included in alpine:
 #   curl and coreutils for gnu readlink
 #   fontconfig and ttf-dejavu for bounding box renderer ( see https://github.com/docker-library/openjdk/pull/202 )
 USER root
-RUN apt-get update && apt-get install -y curl coreutils fontconfig ttf-dejavu
+RUN apk add --no-cache curl coreutils fontconfig ttf-dejavu
 
 WORKDIR $JETTY_BASE
 
@@ -69,10 +69,10 @@ RUN ls -al $JETTY_BASE/* && \
 COPY --from=builder /root/render-lib/render-ws-*.war webapps/render-ws.war
 COPY render-ws/src/main/scripts/docker /render-docker
 RUN chown -R jetty:jetty $JETTY_BASE 
-
+RUN chmod -R 777 $JETTY_BASE
 EXPOSE 8080
 
-ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true" \
+ENV JAVA_OPTIONS="-Xms45g -Xmx45g -server -Djava.awt.headless=true" \
     JETTY_THREADPOOL_MIN_THREADS="10" \
     JETTY_THREADPOOL_MAX_THREADS="200" \
     LOG_ACCESS_ROOT_APPENDER="STDOUT" \
@@ -89,6 +89,12 @@ ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true" \
     NDVIZHOST="" \
     NDVIZPORT="" \
     NDVIZ_URL="" \
+    VIEW_OPENSEADRAGON_HOST_AND_PORT="" \
+    VIEW_DATA_PREP="" \
+    VIEW_DATA_PREPSH="" \
+    VIEW_OPENSEADRAGON_DATA_HOST="" \
+    VIEW_OPENSEADRAGON_DATA_SOURCE_FOLDER="" \
+    VIEW_OPENSEADRAGON_DATA_DESTINATION_FOLDER="" \
     VIEW_CATMAID_HOST_AND_PORT="" \
     VIEW_DYNAMIC_RENDER_HOST_AND_PORT="" \
     VIEW_RENDER_STACK_OWNER="" \

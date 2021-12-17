@@ -111,6 +111,8 @@ public class RenderDataService {
         return getLayoutFileForZRange(owner, project, stack, z, z, format, uriInfo);
     }
 
+
+
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/zRange/{minZ},{maxZ}/layoutFile")
     @GET
     @Produces(MediaType.TEXT_PLAIN)
