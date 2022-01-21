@@ -1,6 +1,14 @@
-name: build and run web services example
+# Do a full checkout, build, and example run to verify the steps documented at
+# docs/src/site/markdown/render-ws.md and docs/src/site/markdown/render-ws-example.md actually work.
+# This process takes roughly 10 minutes, so it is only triggered once a week (or manually)
+# to catch any issues introduced by changes in external dependencies.
+
+name: Build and run web services example
 
 on:
+  # build and run the example each Friday at 4pm ( see https://crontab.guru/#0_16_*_*_5 )
+  schedule:
+    - cron: '0 16 * * 5'
   workflow_dispatch:
 
 jobs:
@@ -9,11 +17,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: check out code
+      - name: Check out code
         uses: actions/checkout@v2
 
-      - name: build an all-inclusive fat Docker image for example run
-        run: docker build -t render_example_1 - < render-ws-java-client/src/main/resources/example_1/Dockerfile
+      - name: Build an all-inclusive fat Docker image for example run
+        run: docker build --tag render_example_1 - < render-ws-java-client/src/main/resources/example_1/Dockerfile
 
-      - name: run example
+      - name: Run example
         run: docker run render_example_1

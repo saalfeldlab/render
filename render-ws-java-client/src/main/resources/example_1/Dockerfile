@@ -51,7 +51,7 @@ RUN ./render-ws/src/main/scripts/install.sh
 
 # 4. Build the Render Modules
 RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc
-RUN mvn --version; mvn -Dproject.build.sourceEncoding=UTF-8 package
+RUN mvn --version; mvn --batch-mode -Dproject.build.sourceEncoding=UTF-8 package
 
 # 5. Deploy Web Service
 RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
