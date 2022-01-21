@@ -6,6 +6,7 @@ import com.google.common.cache.CacheStats;
 import com.google.common.cache.LoadingCache;
 import com.google.common.cache.Weigher;
 
+import ij.process.ByteProcessor;
 import ij.process.ImageProcessor;
 
 import mpicbg.trakem2.util.Downsampler;
@@ -224,7 +225,8 @@ public class ImageProcessorCache {
             throws IllegalArgumentException {
 
         if (LOG.isDebugEnabled()) {
-            LOG.debug("loadImageProcessor: entry, urlString={}, downSampleLevels={}", urlString, downSampleLevels);
+            LOG.debug("loadImageProcessor: entry, urlString={}, downSampleLevels={}, imageLoaderClass={}",
+                      urlString, downSampleLevels, imageLoader.getClass().getSimpleName());
         }
 
         ImageProcessor imageProcessor = null;
@@ -238,6 +240,11 @@ public class ImageProcessorCache {
         if (imageProcessor == null) {
 
             imageProcessor = imageLoader.load(urlString);
+
+            // force masks to always be ByteProcessor instances
+            if (isMask && (! (imageProcessor instanceof ByteProcessor))) {
+                imageProcessor = imageProcessor.convertToByteProcessor();
+            }
 
             // if we're going to down sample and we're supposed to cache originals, do so here
             if (cacheOriginalsForDownSampledImages && (downSampleLevels > 0)) {
@@ -344,11 +351,13 @@ public class ImageProcessorCache {
                                   final LoaderType loaderType,
                                   final Integer imageSliceNumber) {
 
+            final ImageLoader imageLoader =  ImageLoader.build(loaderType, imageSliceNumber);
+
             if (LOG.isDebugEnabled()) {
-                LOG.debug("uncachedGet: entry, urlString={}, downSampleLevels={}", url, downSampleLevels);
+                LOG.debug("uncachedGet: entry, urlString={}, downSampleLevels={}, imageLoaderClass={}",
+                          url, downSampleLevels, imageLoader.getClass().getSimpleName());
             }
 
-            final ImageLoader imageLoader =  ImageLoader.build(loaderType, imageSliceNumber);
             ImageProcessor imageProcessor = imageLoader.load(url);
 
             // down sample the image as needed

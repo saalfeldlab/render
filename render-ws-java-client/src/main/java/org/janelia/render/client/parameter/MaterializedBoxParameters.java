@@ -52,6 +52,12 @@ public class MaterializedBoxParameters implements Serializable {
     public String format = Utils.PNG_FORMAT;
 
     @Parameter(
+            names = "--convertToGray",
+            description = "convert all output to grayscale (ignored when --label is set)",
+            arity = 1)
+    public boolean convertToGray = true;
+
+    @Parameter(
             names = "--maxOverviewWidthAndHeight",
             description = "Max width and height of layer overview image (omit or set to zero to disable overview generation)"
     )
@@ -116,6 +122,10 @@ public class MaterializedBoxParameters implements Serializable {
             description = "Sort tile specs by cluster groupId so that larger clusters are rendered on top of smaller clusters"
     )
     public boolean sortByClusterGroupId = false;
+
+    public boolean isConvertToGray() {
+        return (! label) && convertToGray;
+    }
 
     public boolean isOverviewNeeded() {
         return ((maxOverviewWidthAndHeight != null) && (maxOverviewWidthAndHeight > 0));

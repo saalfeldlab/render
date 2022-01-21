@@ -242,8 +242,8 @@ public class BoxGenerator
                     final BufferedImage parentImage = cachedParent.buildImage(boxWidth, boxHeight);
                     BoxMipmapGenerator.saveImage(parentImage,
                                                  cachedParent.getBoxFile(),
-                                                 boxParameters.label,
-                                                 format);
+                                                 format,
+                                                 boxParameters.isConvertToGray());
                 }
 
                 renderedBoxList.add(siblingParentBox);
@@ -353,8 +353,8 @@ public class BoxGenerator
 
             BoxMipmapGenerator.saveImage(overviewImage,
                                          overviewFile,
-                                         boxParameters.label,
-                                         format);
+                                         format,
+                                         boxParameters.isConvertToGray());
         } else {
 
             LOG.warn("renderOverview: skipping render for layer " + z + " because overview contains too many (" +
@@ -431,8 +431,8 @@ public class BoxGenerator
 
                 BoxMipmapGenerator.saveImage(boxImage,
                                              boxFile,
-                                             boxParameters.label,
-                                             format);
+                                             format,
+                                             boxParameters.isConvertToGray());
 
                 if (cachedParent != null) {
                     final RenderedBox renderedChild = new RenderedBox(boxFile, boxImage);

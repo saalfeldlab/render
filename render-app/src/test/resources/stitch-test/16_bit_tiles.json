@@ -1,0 +1,40 @@
+[
+    {
+        "tileId": "tile_1",
+        "minIntensity":819.0,
+        "maxIntensity":2993.0,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/16_bit_source_left.png"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1  0  0  1  0  0"
+                }
+            ]
+        }
+    },
+    {
+        "tileId": "tile_2",
+        "minIntensity":819.0,
+        "maxIntensity":2993.0,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/16_bit_source_right.png"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1  0  0  1  299  0"
+                }
+            ]
+        }
+    }
+]

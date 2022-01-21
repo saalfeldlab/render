@@ -184,6 +184,31 @@ public class ArgbRendererTest {
     }
 
     @Test
+    public void testComposite() throws Exception {
+
+        final File expectedFile =
+                new File(modulePath + "/src/test/resources/composite-test/expected_composite.jpg");
+
+        final String[] args = {
+                "--tile_spec_url", "src/test/resources/composite-test/test_composite.json",
+                "--out", outputFile.getAbsolutePath(),
+                "--width", "846",
+                "--height", "842",
+                "--scale", "0.2"
+        };
+
+        ArgbRenderer.renderUsingCommandLineArguments(args);
+
+        Assert.assertTrue("composite file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+
+        final String expectedDigestString = getDigestString(expectedFile);
+        final String actualDigestString = getDigestString(outputFile);
+
+        Assert.assertEquals("stitched file MD5 hash differs from expected result",
+                            expectedDigestString, actualDigestString);
+    }
+
+    @Test
     public void testMaskMipmap() throws Exception {
 
         final File expectedFile =

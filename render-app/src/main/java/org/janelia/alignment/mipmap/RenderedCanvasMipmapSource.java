@@ -1,7 +1,10 @@
 package org.janelia.alignment.mipmap;
 
 import ij.process.ByteProcessor;
+import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
+import ij.process.ShortProcessor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,6 +28,7 @@ import org.janelia.alignment.mapper.PixelMapper;
 import org.janelia.alignment.mapper.SingleChannelMapper;
 import org.janelia.alignment.mapper.SingleChannelWithAlphaMapper;
 import org.janelia.alignment.mapper.SingleChannelWithBinaryMaskMapper;
+import org.janelia.alignment.mapper.SingleColorChannelWithAlphaMapper;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
@@ -147,16 +151,6 @@ public class RenderedCanvasMipmapSource
         final ChannelMap targetChannels = new ChannelMap();
 
         final double levelScale = (1.0 / Math.pow(2.0, mipmapLevel)) * levelZeroScale;
-        final int levelWidth = (int) ((fullScaleWidth * levelScale) + 0.5);
-        final int levelHeight = (int) ((fullScaleHeight * levelScale) + 0.5);
-
-        for (final String channelName : channelNames) {
-            targetChannels.put(channelName,
-                               new ImageProcessorWithMasks(
-                                       new FloatProcessor(levelWidth, levelHeight),
-                                       null, // mask is added by mapPixels call later (if necessary)
-                                       null));
-        }
 
         long totalScaleDerivationTime = 0;
 
@@ -178,7 +172,15 @@ public class RenderedCanvasMipmapSource
 
             totalScaleDerivationTime += (System.currentTimeMillis() - scaleDerivationStart);
 
+            final ChannelMap sourceChannels = source.getChannels(componentMipmapLevel);
+
+            // setup target channels based upon first source channel
+            if ((targetChannels.size() == 0) && (sourceChannels.size() > 0)) {
+                setupTargetChannels(sourceChannels, levelScale, targetChannels);
+            }
+
             mapPixels(source,
+                      sourceChannels,
                       componentMipmapLevel,
                       renderTransformList,
                       meshCellSize,
@@ -194,6 +196,37 @@ public class RenderedCanvasMipmapSource
                   totalScaleDerivationTime);
 
         return targetChannels;
+    }
+
+    private void setupTargetChannels(final ChannelMap sourceChannels,
+                                     final double levelScale,
+                                     final ChannelMap targetChannels) {
+
+        final int levelWidth = (int) ((fullScaleWidth * levelScale) + 0.5);
+        final int levelHeight = (int) ((fullScaleHeight * levelScale) + 0.5);
+
+        for (final String channelName : channelNames) {
+            final ImageProcessorWithMasks sourceChannel = sourceChannels.get(channelName);
+            final ImageProcessor sourceProcessor = sourceChannel.ip;
+            final ImageProcessor targetProcessor;
+            if (sourceProcessor instanceof ByteProcessor) {
+                targetProcessor = new ByteProcessor(levelWidth, levelHeight);
+            } else if (sourceProcessor instanceof ShortProcessor) {
+                targetProcessor = new ShortProcessor(levelWidth, levelHeight);
+            } else if (sourceProcessor instanceof FloatProcessor) {
+                targetProcessor = new FloatProcessor(levelWidth, levelHeight);
+            } else if (sourceProcessor instanceof ColorProcessor) {
+                targetProcessor = new ColorProcessor(levelWidth, levelHeight);
+            } else {
+                throw new IllegalArgumentException("conversion to " + sourceProcessor.getClass() + " is not supported");
+            }
+
+            final ImageProcessor mask = hasMasks ? new ByteProcessor(levelWidth, levelHeight) : null;
+            targetChannels.put(channelName,
+                               new ImageProcessorWithMasks(targetProcessor,
+                                                           mask,
+                                                           null));
+        }
     }
 
     /**
@@ -305,6 +338,7 @@ public class RenderedCanvasMipmapSource
      * Maps pixels from a source to a target.
      *
      * @param  source                  source pixel data.
+     * @param  sourceChannels          channels extracted from the source.
      * @param  mipmapLevel             source mipmap level.
      * @param  renderTransformList     list of transforms for the render context.
      * @param  meshCellSize            desired size of a mesh cell (triangle) in pixels.
@@ -315,17 +349,16 @@ public class RenderedCanvasMipmapSource
      * @param  skipInterpolation       enable sloppy but fast rendering by skipping interpolation.
      * @param  targetChannels          target channels for mapped results.
      */
-    public static void mapPixels(final MipmapSource source,
-                                 final int mipmapLevel,
-                                 final CoordinateTransformList<CoordinateTransform> renderTransformList,
-                                 final double meshCellSize,
-                                 final boolean canvasHasMasks,
-                                 final boolean binaryMask,
-                                 final int numberOfMappingThreads,
-                                 final boolean skipInterpolation,
-                                 final ChannelMap targetChannels) {
-
-        final ChannelMap sourceChannels = source.getChannels(mipmapLevel);
+    private static void mapPixels(final MipmapSource source,
+                                  final ChannelMap sourceChannels,
+                                  final int mipmapLevel,
+                                  final CoordinateTransformList<CoordinateTransform> renderTransformList,
+                                  final double meshCellSize,
+                                  final boolean canvasHasMasks,
+                                  final boolean binaryMask,
+                                  final int numberOfMappingThreads,
+                                  final boolean skipInterpolation,
+                                  final ChannelMap targetChannels) {
 
         if (sourceChannels.size() > 0) {
 
@@ -337,14 +370,6 @@ public class RenderedCanvasMipmapSource
             final int mipmapHeight = firstChannel.ip.getHeight();
 
             if (canvasHasMasks) {
-                // add target mask for each channel if it does not already exist
-                for (final ImageProcessorWithMasks targetChannel : targetChannels.values()) {
-                    if (targetChannel.mask == null) {
-                        targetChannel.mask = new ByteProcessor(targetChannel.ip.getWidth(),
-                                                               targetChannel.ip.getHeight());
-                    }
-                }
-
                 // add empty (inverted) source mask for each channel if it does not already exist
                 for (final ImageProcessorWithMasks sourceChannel : sourceChannels.values()) {
                     if (sourceChannel.mask == null) {
@@ -360,42 +385,37 @@ public class RenderedCanvasMipmapSource
                                                                binaryMask,
                                                                skipInterpolation,
                                                                targetChannels);
-            if (tilePixelMapper != null) {
 
-                final RenderTransformMesh mesh = createRenderMesh(mipmapLevel,
-                                                                  renderTransformList,
-                                                                  source.getFullScaleWidth(),
-                                                                  meshCellSize,
-                                                                  mipmapWidth,
-                                                                  mipmapHeight);
+            final RenderTransformMesh mesh = createRenderMesh(mipmapLevel,
+                                                              renderTransformList,
+                                                              source.getFullScaleWidth(),
+                                                              meshCellSize,
+                                                              mipmapWidth,
+                                                              mipmapHeight);
 
-                final long meshCreationStop = System.currentTimeMillis();
+            final long meshCreationStop = System.currentTimeMillis();
 
-                final RenderTransformMeshMappingWithMasks mapping = new RenderTransformMeshMappingWithMasks(mesh);
+            final RenderTransformMeshMappingWithMasks mapping = new RenderTransformMeshMappingWithMasks(mesh);
 
-                final String mapType = skipInterpolation ? "" : " interpolated";
-                mapping.map(tilePixelMapper, numberOfMappingThreads);
+            final String mapType = skipInterpolation ? "" : " interpolated";
+            mapping.map(tilePixelMapper, numberOfMappingThreads);
 
-                // apply source channel intensity ranges to corresponding target channels
-                for (final String channelName : targetChannels.names()) {
-                    final ImageProcessorWithMasks sourceChannel = sourceChannels.get(channelName);
-                    final ImageProcessorWithMasks targetChannel = targetChannels.get(channelName);
-                    targetChannel.ip.setMinAndMax(sourceChannel.ip.getMin(), sourceChannel.ip.getMax());
-                }
-
-                final long mapStop = System.currentTimeMillis();
-
-                LOG.debug("mapPixels: mapping of {} took {} milliseconds to process (mesh:{}, map{}:{})",
-                          source.getSourceName(),
-                          mapStop - mapStart,
-                          meshCreationStop - mapStart,
-                          mapType,
-                          mapStop - meshCreationStop);
+            // apply source channel intensity ranges to corresponding target channels
+            for (final String channelName : targetChannels.names()) {
+                final ImageProcessorWithMasks sourceChannel = sourceChannels.get(channelName);
+                final ImageProcessorWithMasks targetChannel = targetChannels.get(channelName);
+                targetChannel.ip.setMinAndMax(sourceChannel.ip.getMin(), sourceChannel.ip.getMax());
             }
 
-        } else {
-            LOG.warn("mapPixels: {} does not have any channels to map", source.getSourceName());
-        }
+            final long mapStop = System.currentTimeMillis();
+
+            LOG.debug("mapPixels: mapping of {} took {} milliseconds to process (mesh:{}, map{}:{})",
+                      source.getSourceName(),
+                      mapStop - mapStart,
+                      meshCreationStop - mapStart,
+                      mapType,
+                      mapStop - meshCreationStop);
+            }
 
     }
 
@@ -441,6 +461,10 @@ public class RenderedCanvasMipmapSource
                 if (hasMask) {
                     if (binaryMask) {
                         tilePixelMapper = new SingleChannelWithBinaryMaskMapper(sourceChannel,
+                                                                                targetChannel,
+                                                                                (! skipInterpolation));
+                    } else if (targetChannel.ip instanceof ColorProcessor) {
+                        tilePixelMapper = new SingleColorChannelWithAlphaMapper(sourceChannel,
                                                                                 targetChannel,
                                                                                 (! skipInterpolation));
                     } else {
