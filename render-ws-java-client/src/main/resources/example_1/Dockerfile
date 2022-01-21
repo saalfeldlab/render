@@ -15,7 +15,7 @@
 #
 # To build the example:
 #   copy this file to your local directory (save it as Dockerfile)
-#   docker build -t render_example_1:latest .
+#   docker build --no-cache -t render_example_1:latest .
 #
 # To run an example container:
 #   docker run -it --rm render_example_1:latest
@@ -50,7 +50,7 @@ WORKDIR /var/www/render/
 RUN ./render-ws/src/main/scripts/install.sh
 
 # 4. Build the Render Modules
-RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/jdk*)"'; } >> ~/.mavenrc
+RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc
 RUN mvn --version; mvn -Dproject.build.sourceEncoding=UTF-8 package
 
 # 5. Deploy Web Service
