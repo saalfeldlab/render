@@ -6,9 +6,9 @@
 name: Build and run web services example
 
 on:
-  # build and run the example each Friday at 4pm ( see https://crontab.guru/#0_16_*_*_5 )
+  # build and run the example each Friday at 5pm EST = 10pm UTC ( see https://crontab.guru/#0_22_*_*_5 )
   schedule:
-    - cron: '0 16 * * 5'
+    - cron: '0 22 * * 5'
   workflow_dispatch:
 
 jobs:
