@@ -4,7 +4,7 @@
 # Install library dependencies before actually building source.
 # This caches libraries into an image layer that can be reused when only source code has changed.
 
-FROM openjdk:8-jdk as build_environment
+FROM azul/zulu-openjdk-debian:8 as build_environment
 LABEL maintainer="Forrest Collman <forrestc@alleninstitute.org>, Eric Trautman <trautmane@janelia.hhmi.org>"
 
 RUN apt-get update && apt-get install -y maven
@@ -51,11 +51,10 @@ RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
 # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/render-ws/src/main/scripts/install.sh
 FROM jetty:9.4.43-jdk8-slim as render-ws
 
-# add packages not included in alpine:
+# add packages not included in slim base image:
 #   curl and coreutils for gnu readlink
-#   fontconfig and ttf-dejavu for bounding box renderer ( see https://github.com/docker-library/openjdk/pull/202 )
 USER root
-RUN apt-get update && apt-get install -y curl coreutils fontconfig ttf-dejavu
+RUN apt-get update && apt-get install -y curl coreutils
 
 WORKDIR $JETTY_BASE
 
