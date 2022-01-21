@@ -16,4 +16,4 @@ jobs:
         run: docker build -t render_example_1 - < render-ws-java-client/src/main/resources/example_1/Dockerfile
 
       - name: run example
-        run: docker run -it render_example_1
+        run: docker run render_example_1
