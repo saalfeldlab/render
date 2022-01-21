@@ -1,0 +1,19 @@
+name: build and run web services example
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  build-and-run:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+      - uses: actions/checkout@v2
+
+      - name: Build an all-inclusive fat Docker image for example run
+        run: docker build -t render_example_1 < render-ws-java-client/src/main/resources/example_1/Dockerfile
+
+      - name: Run example
+        run: docker run -it render_example_1
