@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: build an all-inclusive fat Docker image for example run
-        run: docker build -t render_example_1 < render-ws-java-client/src/main/resources/example_1/Dockerfile
+        run: docker build -t render_example_1 - < render-ws-java-client/src/main/resources/example_1/Dockerfile
 
       - name: run example
         run: docker run -it render_example_1
