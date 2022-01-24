@@ -79,6 +79,28 @@ public class ArgbRendererTest {
                             expectedDigestString, actualDigestString);
     }
 
+//    @Test
+//    public void testBinaryMaskStitching() throws Exception {
+//
+//        // use png to avoid jpg compression artifacts when inspecting binary result
+//        final String pngFileName = outputFile.getName().replace(".jpg", ".png");
+//        outputFile = new File(outputFile.getParentFile(), pngFileName);
+//
+//        final String[] args = {
+//                "--tile_spec_url", "src/test/resources/stitch-test/200x200-rotated-stitch.json",
+//                "--out", outputFile.getAbsolutePath(),
+//                "--width", "400",
+//                "--height", "400",
+//                "--binary_mask", // comment this line out to see interpolated version of rotated tile borders
+//                "--scale", "1.0"
+//        };
+//
+//        ArgbRenderer.renderUsingCommandLineArguments(args);
+//
+//        Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created",
+//                          outputFile.exists());
+//    }
+
     @Test
     public void testMixedMaskStitching() throws Exception {
 

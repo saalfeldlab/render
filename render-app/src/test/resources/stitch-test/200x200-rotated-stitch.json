@@ -1,0 +1,42 @@
+[
+    {
+        "tileId": "tile_1",
+        "width": 200,
+        "height": 200,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/200x200-gray-085.png",
+                "maskUrl": "src/test/resources/stitch-test/200x200-mask.png"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.93969262  0.34202014 -0.34202014  0.93969262  100  0"
+                }
+            ]
+        }
+    },
+    {
+        "tileId": "tile_2",
+        "width": 200,
+        "height": 200,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "src/test/resources/stitch-test/200x200-gray-188.png",
+                "maskUrl": "src/test/resources/stitch-test/200x200-mask.png"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.93969262  0.34202014 -0.34202014  0.93969262  200  100"
+                }
+            ]
+        }
+    }
+]
