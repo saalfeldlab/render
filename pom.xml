@@ -12,7 +12,7 @@
     <name>Janelia Render Tools And Services</name>
     <groupId>org.janelia.render</groupId>
     <artifactId>modules-root</artifactId>
-    <version>3.0.0-SNAPSHOT</version>
+    <version>3.0.0</version>
 
     <description>A collection of tools and HTTP services (APIs) for rendering transformed image tiles.</description>
     <url>https://github.com/saalfeldlab/render</url>
