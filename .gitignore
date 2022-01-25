@@ -12,18 +12,26 @@ tmp/
 
 # IntelliJ user specific files
 # see https://intellij-support.jetbrains.com/entries/23393067-How-to-manage-projects-under-Version-Control-Systems
-.idea/workspace.xml
-.idea/tasks.xml
 .idea/artifacts
 .idea/dictionaries
+.idea/httpRequests
 .idea/libraries
-
-# IntelliJ Sensitive or high-churn files:
+.idea/scopes
+.idea/shelf
+.idea/compiler.xml
 .idea/dataSources.ids
 .idea/dataSources.xml
-.idea/sqlDataSources.xml
 .idea/dynamic.xml
+.idea/encodings.xml
+.idea/jarRrepositories.xml
+.idea/jsLibraryMappings.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/sqlDataSources.xml
+.idea/tasks.xml
 .idea/uiDesigner.xml
+.idea/workspace.xml
+*.iml
 
 .DS_Store
 
