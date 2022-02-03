@@ -1,6 +1,8 @@
 package org.janelia.test;
 
-import com.mongodb.MongoClient;
+import com.mongodb.ConnectionString;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 
 import java.io.File;
@@ -64,7 +66,8 @@ public class EmbeddedMongoDb {
 
         this.mongodProcess = mongodExecutable.start();
 
-        this.mongoClient = new MongoClient("localhost", port);
+        final ConnectionString connectionString = new ConnectionString("mongodb://localhost:" + port);
+        this.mongoClient = MongoClients.create(connectionString);
 
         this.db = mongoClient.getDatabase(dbName);
     }

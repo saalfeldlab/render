@@ -1,8 +1,8 @@
 package org.janelia.render.service.dao;
 
-import com.mongodb.MongoClientOptions;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
+import com.mongodb.connection.ConnectionPoolSettings;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -69,7 +69,7 @@ public class DbConfig {
         this.userName = userName;
         this.authenticationDatabase = authenticationDatabase;
         this.password = password;
-        this.maxConnectionsPerHost = new MongoClientOptions.Builder().build().getConnectionsPerHost(); // 100
+        this.maxConnectionsPerHost = ConnectionPoolSettings.builder().build().getMaxSize(); // 100
         this.maxConnectionIdleTime = 600000; // 10 minutes
         this.readPreference = readPreference;
     }

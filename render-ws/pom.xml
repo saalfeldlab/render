@@ -213,21 +213,9 @@
 
         <dependency>
             <groupId>org.mongodb</groupId>
-            <artifactId>mongo-java-driver</artifactId>
+            <artifactId>mongodb-driver-sync</artifactId>
             <version>${mongodb.driver.version}</version>
         </dependency>
-
-<!--        <dependency>-->
-<!--            <groupId>org.mongodb</groupId>-->
-<!--            <artifactId>mongodb-driver-sync</artifactId>-->
-<!--            <version>${mongodb.driver.version}</version>-->
-<!--        </dependency>-->
-
-<!--        <dependency>-->
-<!--            <groupId>org.mongodb</groupId>-->
-<!--            <artifactId>mongodb-driver-core</artifactId>-->
-<!--            <version>${mongodb.driver.version}</version>-->
-<!--        </dependency>-->
 
         <dependency>
             <groupId>io.swagger</groupId>
@@ -283,7 +271,7 @@
     <properties>
         <resteasy.version>3.13.2.Final</resteasy.version>
         <jetty.version>9.4.43.v20210629</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
-        <mongodb.driver.version>3.12.10</mongodb.driver.version>
+        <mongodb.driver.version>4.4.1</mongodb.driver.version>
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
     </properties>
