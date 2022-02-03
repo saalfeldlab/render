@@ -255,7 +255,7 @@
         <dependency>
             <groupId>de.flapdoodle.embed</groupId>
             <artifactId>de.flapdoodle.embed.mongo</artifactId>
-            <version>3.3.1</version> <!-- NOTE: versions 2.0+ depend upon java 8 -->
+            <version>3.1.4</version> <!-- NOTE: versions 2.0+ depend upon java 8 -->
             <scope>test</scope>
             <exclusions>
                 <!-- filter out slf4j jar so that it does not conflict with jetty version -->
