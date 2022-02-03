@@ -423,23 +423,39 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
     //console.log(data);
 
-    this.pImage =
-            new JaneliaMatchTrialImage(data.parameters.pRenderParametersUrl, 0, 0, this.viewScale, this.cellMargin);
+    const fmParams = data.parameters.featureAndMatchParameters;
+    const isClipped = (typeof fmParams.pClipPosition !== 'undefined') && (typeof fmParams.clipPixels !== 'undefined');
+
+    let pRow = 0;
+    let pColumn = 0;
+    let qRow = 0;
+    let qColumn = 1;
+    if (isClipped) {
+        if (fmParams.pClipPosition === 'RIGHT') {
+            pColumn = 1;
+            qColumn = 0;
+        } else if (fmParams.pClipPosition === 'TOP') {
+            qRow = 1;
+            qColumn = 0;
+        } else if (fmParams.pClipPosition === 'BOTTOM') {
+            pRow = 1;
+            qRow = 0;
+            qColumn = 0;
+        }
+    }
+
+    this.pImage = new JaneliaMatchTrialImage(data.parameters.pRenderParametersUrl, pRow, pColumn, this.viewScale, this.cellMargin);
     this.pImage.loadImage();
 
-    this.qImage =
-            new JaneliaMatchTrialImage(data.parameters.qRenderParametersUrl, 0, 1, this.viewScale, this.cellMargin);
+    this.qImage = new JaneliaMatchTrialImage(data.parameters.qRenderParametersUrl, qRow, qColumn, this.viewScale, this.cellMargin);
     this.qImage.loadImage();
-
-    const fmParams = data.parameters.featureAndMatchParameters;
 
     $('#trialFdSize').html(fmParams.siftFeatureParameters.fdSize);
     $('#trialMinScale').html(fmParams.siftFeatureParameters.minScale);
     $('#trialMaxScale').html(fmParams.siftFeatureParameters.maxScale);
     $('#trialSteps').html(fmParams.siftFeatureParameters.steps);
 
-    if ((typeof fmParams.pClipPosition !== 'undefined') &&
-        (typeof fmParams.clipPixels !== 'undefined')) {
+    if (isClipped) {
         const trialClipRowHtml =
                 '<td>Clip Parameters:</td>' +
                 '<td colspan="4">' +
@@ -653,14 +669,31 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
 
     if (this.pImage.imagePositioned && this.qImage.imagePositioned) {
 
-        // reposition qImage based upon pImage size
-        this.qImage.positionImage(this.pImage.image.naturalWidth, this.pImage.image.naturalHeight);
+        const firstImage = this.pImage.column === 0 && this.pImage.row === 0 ? this.pImage : this.qImage;
+
+        // reposition images based upon image sizes and relative clip position
+        this.pImage.positionImage(firstImage.image.naturalWidth, firstImage.image.naturalHeight);
+        this.qImage.positionImage(firstImage.image.naturalWidth, firstImage.image.naturalHeight);
 
         const context = this.canvas.getContext("2d");
 
-        context.canvas.width = this.qImage.x + this.qImage.getCanvasWidth() + this.cellMargin;
-        context.canvas.height =
-                Math.max(this.pImage.getCanvasHeight(), this.qImage.getCanvasHeight()) + this.cellMargin;
+        if (this.pImage.column === this.qImage.column) {
+            context.canvas.width = Math.max(this.pImage.getCanvasWidth(),
+                                            this.qImage.getCanvasWidth()) + this.cellMargin;
+        } else if (this.pImage.column === 0) { // p is left of q
+            context.canvas.width = this.qImage.x + this.qImage.getCanvasWidth() + this.cellMargin;
+        } else { // q is left of p
+            context.canvas.width = this.pImage.x + this.pImage.getCanvasWidth() + this.cellMargin;
+        }
+
+        if (this.pImage.row === this.qImage.row) {
+            context.canvas.height = Math.max(this.pImage.getCanvasHeight(),
+                                             this.qImage.getCanvasHeight()) + this.cellMargin;
+        } else if (this.pImage.row === 0) { // p is above q
+            context.canvas.height = this.qImage.y + this.qImage.getCanvasHeight() + this.cellMargin;
+        } else { // q is above p
+            context.canvas.height = this.pImage.y + this.pImage.getCanvasHeight() + this.cellMargin;
+        }
 
         this.clearCanvas();
         this.pImage.drawLoadedImage(this.canvas);
