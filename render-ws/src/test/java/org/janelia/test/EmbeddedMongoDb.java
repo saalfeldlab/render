@@ -15,15 +15,17 @@ import de.flapdoodle.embed.mongo.MongoImportStarter;
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
 import de.flapdoodle.embed.mongo.MongodStarter;
-import de.flapdoodle.embed.mongo.config.IMongoImportConfig;
-import de.flapdoodle.embed.mongo.config.MongoCmdOptionsBuilder;
-import de.flapdoodle.embed.mongo.config.MongoImportConfigBuilder;
-import de.flapdoodle.embed.mongo.config.MongodConfigBuilder;
+import de.flapdoodle.embed.mongo.config.Defaults;
+import de.flapdoodle.embed.mongo.config.ImmutableMongoCmdOptions;
+import de.flapdoodle.embed.mongo.config.MongoCmdOptions;
+import de.flapdoodle.embed.mongo.config.MongoImportConfig;
+import de.flapdoodle.embed.mongo.config.MongodConfig;
 import de.flapdoodle.embed.mongo.config.Net;
-import de.flapdoodle.embed.mongo.config.RuntimeConfigBuilder;
 import de.flapdoodle.embed.mongo.distribution.IFeatureAwareVersion;
 import de.flapdoodle.embed.mongo.distribution.Version;
-import de.flapdoodle.embed.process.config.IRuntimeConfig;
+import de.flapdoodle.embed.process.config.ImmutableRuntimeConfig;
+import de.flapdoodle.embed.process.config.RuntimeConfig;
+import de.flapdoodle.embed.process.config.process.ProcessOutput;
 import de.flapdoodle.embed.process.runtime.Network;
 
 /**
@@ -45,19 +47,20 @@ public class EmbeddedMongoDb {
             throws IOException {
 
         this.version = Version.Main.V4_0;
-        this.port = 12345;
+        this.port = Network.freeServerPort(Network.getLocalHost());
 
-        // see MongodForTestsFactory for example verbose startup options
-        this.mongodExecutable = STARTER.prepare(
-                new MongodConfigBuilder()
-                        .version(version)
-                        .net(new Net(port, Network.localhostIsIPv6()))
+        // use ephemeralForTest storage engine to fix super slow run times on Mac
+        // see https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/166
+        final ImmutableMongoCmdOptions mongoCmdOptions =
+                MongoCmdOptions.builder().storageEngine("ephemeralForTest").build();
 
-                        // use ephemeralForTest storage engine to fix super slow run times on Mac
-                        // see https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/166
-                        .cmdOptions(new MongoCmdOptionsBuilder().useStorageEngine("ephemeralForTest").build())
-
-                        .build());
+        final MongodConfig mongodConfig = MongodConfig.builder()
+                .version(version)
+                .net(new Net(port, Network.localhostIsIPv6()))
+                .cmdOptions(mongoCmdOptions)
+                .build();
+        
+        this.mongodExecutable = STARTER.prepare(mongodConfig);
 
         this.mongodProcess = mongodExecutable.start();
 
@@ -76,14 +79,14 @@ public class EmbeddedMongoDb {
                                  final Boolean upsert,
                                  final Boolean drop) throws IOException {
 
-        final IMongoImportConfig mongoImportConfig = new MongoImportConfigBuilder()
+        final MongoImportConfig mongoImportConfig = MongoImportConfig.builder()
                 .version(version)
                 .net(new Net(port, Network.localhostIsIPv6()))
-                .db(db.getName())
-                .collection(collectionName)
-                .upsert(upsert)
-                .dropCollection(drop)
-                .jsonArray(jsonArray)
+                .databaseName(db.getName())
+                .collectionName(collectionName)
+                .isUpsertDocuments(upsert)
+                .isDropCollection(drop)
+                .isJsonArray(jsonArray)
                 .importFile(jsonFile.getAbsolutePath())
                 .build();
 
@@ -117,15 +120,15 @@ public class EmbeddedMongoDb {
 
     private static final Logger LOG = LoggerFactory.getLogger(EmbeddedMongoDb.class);
 
-    private static final Logger MONGO_LOG = LoggerFactory.getLogger("mongo");
-
-    private static final IRuntimeConfig MONGO_IMPORT_RUNTIME_CONFIG = new RuntimeConfigBuilder()
-            .defaultsWithLogger(Command.MongoImport, MONGO_LOG)
-            .daemonProcess(false) // make sure import processes are not daemons to avoid shutdown issues (see https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/191 )
+    private static final RuntimeConfig MONGO_IMPORT_RUNTIME_CONFIG = ImmutableRuntimeConfig.builder()
+            .processOutput(ProcessOutput.silent())
+            .artifactStore(Defaults.extractedArtifactStoreFor(Command.MongoImport))
+            .isDaemonProcess(false) // make sure import processes are not daemons to avoid shutdown issues (see https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/191 )
             .build();
 
-    private static final IRuntimeConfig MONGOD_RUNTIME_CONFIG = new RuntimeConfigBuilder()
-            .defaultsWithLogger(Command.MongoD, MONGO_LOG)
+    private static final RuntimeConfig MONGOD_RUNTIME_CONFIG = ImmutableRuntimeConfig.builder()
+            .processOutput(ProcessOutput.silent())
+            .artifactStore(Defaults.extractedArtifactStoreFor(Command.MongoD))
             .build();
 
     private static final MongodStarter STARTER = MongodStarter.getInstance(MONGOD_RUNTIME_CONFIG);

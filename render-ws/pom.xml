@@ -214,8 +214,20 @@
         <dependency>
             <groupId>org.mongodb</groupId>
             <artifactId>mongo-java-driver</artifactId>
-            <version>3.12.3</version>
+            <version>${mongodb.driver.version}</version>
         </dependency>
+
+<!--        <dependency>-->
+<!--            <groupId>org.mongodb</groupId>-->
+<!--            <artifactId>mongodb-driver-sync</artifactId>-->
+<!--            <version>${mongodb.driver.version}</version>-->
+<!--        </dependency>-->
+
+<!--        <dependency>-->
+<!--            <groupId>org.mongodb</groupId>-->
+<!--            <artifactId>mongodb-driver-core</artifactId>-->
+<!--            <version>${mongodb.driver.version}</version>-->
+<!--        </dependency>-->
 
         <dependency>
             <groupId>io.swagger</groupId>
@@ -255,7 +267,7 @@
         <dependency>
             <groupId>de.flapdoodle.embed</groupId>
             <artifactId>de.flapdoodle.embed.mongo</artifactId>
-            <version>2.2.0</version> <!-- NOTE: versions 2.0+ depend upon java 8 -->
+            <version>3.3.1</version> <!-- NOTE: versions 2.0+ depend upon java 8 -->
             <scope>test</scope>
             <exclusions>
                 <!-- filter out slf4j jar so that it does not conflict with jetty version -->
@@ -271,6 +283,7 @@
     <properties>
         <resteasy.version>3.13.2.Final</resteasy.version>
         <jetty.version>9.4.43.v20210629</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
+        <mongodb.driver.version>3.12.10</mongodb.driver.version>
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
     </properties>

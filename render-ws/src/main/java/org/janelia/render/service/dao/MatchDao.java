@@ -1,7 +1,6 @@
 package org.janelia.render.service.dao;
 
 import com.mongodb.MongoClient;
-import com.mongodb.QueryOperators;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoCollection;
@@ -9,8 +8,8 @@ import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.model.UpdateOneModel;
-import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.model.WriteModel;
 import com.mongodb.client.result.DeleteResult;
 
@@ -68,7 +67,7 @@ public class MatchDao {
                 list.add(
                         new MatchCollectionMetaData(
                                 MatchCollectionId.fromDbCollectionName(collectionName),
-                                matchDatabase.getCollection(collectionName).count()));
+                                matchDatabase.getCollection(collectionName).countDocuments()));
             }
         }
 
@@ -457,7 +456,7 @@ public class MatchDao {
 
             final List<WriteModel<Document>> modelList = new ArrayList<>(matchesList.size());
 
-            final UpdateOptions upsertOption = new UpdateOptions().upsert(true);
+            final ReplaceOptions upsertOption = new ReplaceOptions().upsert(true);
             Document filter;
             Document matchesObject;
             for (final CanvasMatches canvasMatches : matchesList) {
@@ -919,7 +918,7 @@ public class MatchDao {
         final List<Document> pipeline = new ArrayList<>();
         pipeline.add(new Document("$match",
                                   new Document("consensusSetData",
-                                               new Document(QueryOperators.EXISTS, true))));
+                                               new Document(MongoUtil.OP_EXISTS, true))));
 
         if (includeQGroupIds) {
 
@@ -976,10 +975,10 @@ public class MatchDao {
     private Document getOutsideGroupQuery(final String groupId) {
         final List<Document> queryList = new ArrayList<>();
         queryList.add(new Document("pGroupId", groupId).append(
-                "qGroupId", new Document(QueryOperators.NE, groupId)));
+                "qGroupId", new Document(MongoUtil.OP_NE, groupId)));
         queryList.add(new Document("qGroupId", groupId).append(
-                "pGroupId", new Document(QueryOperators.NE, groupId)));
-        return new Document(QueryOperators.OR, queryList);
+                "pGroupId", new Document(MongoUtil.OP_NE, groupId)));
+        return new Document(MongoUtil.OP_OR, queryList);
     }
 
     private Document getInvolvingObjectQuery(final String groupId,final String id){
@@ -988,7 +987,7 @@ public class MatchDao {
                 "pId", id));
         queryList.add(new Document("qGroupId", groupId).append(
                 "qId", id));
-        return new Document(QueryOperators.OR, queryList);
+        return new Document(MongoUtil.OP_OR, queryList);
     }
 
     private Document getInvolvingObjectAndGroupQuery(final String groupId,final String id, final String qGroupId){
@@ -998,7 +997,7 @@ public class MatchDao {
          queryList.add(new Document("qGroupId", groupId).append(
                  "qId", id).append("pGroupId",qGroupId));
 
-        return new Document(QueryOperators.OR, queryList);
+        return new Document(MongoUtil.OP_OR, queryList);
     }
 
     private void ensureMatchIndexes(final MongoCollection<Document> collection) {

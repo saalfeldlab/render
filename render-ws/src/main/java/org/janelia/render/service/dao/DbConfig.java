@@ -117,7 +117,7 @@ public class DbConfig {
     public static DbConfig fromFile(final File file)
             throws IllegalArgumentException {
 
-        DbConfig dbConfig = null;
+        DbConfig dbConfig;
         final Properties properties = new Properties();
 
         final String path = file.getAbsolutePath();

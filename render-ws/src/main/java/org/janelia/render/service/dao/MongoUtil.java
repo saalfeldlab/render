@@ -6,7 +6,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.BulkWriteOptions;
 import com.mongodb.client.model.IndexOptions;
-import com.mongodb.client.model.UpdateOptions;
+import com.mongodb.client.model.ReplaceOptions;
 import com.mongodb.client.result.UpdateResult;
 
 import java.util.List;
@@ -23,8 +23,18 @@ import org.slf4j.LoggerFactory;
  */
 public class MongoUtil {
 
-    public static final UpdateOptions UPSERT_OPTION = new UpdateOptions().upsert(true);
+    public static final ReplaceOptions UPSERT_OPTION = new ReplaceOptions().upsert(true);
     public static final BulkWriteOptions UNORDERED_OPTION = new BulkWriteOptions().ordered(false);
+
+    // Operator strings copied from deprecated QueryOperators class
+    public static final String OP_EXISTS = "$exists";
+    public static final String OP_GTE = "$gte";
+    public static final String OP_IN = "$in";
+    public static final String OP_LTE = "$lte";
+    public static final String OP_MAX = "$max";
+    public static final String OP_MIN = "$min";
+    public static final String OP_NE = "$ne";
+    public static final String OP_OR = "$or";
 
     public static String action(final UpdateResult result) {
         final String action;

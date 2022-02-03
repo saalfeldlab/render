@@ -8,9 +8,6 @@ import com.mongodb.MongoCredential;
 import java.io.File;
 import java.io.InputStream;
 import java.net.URL;
-import java.net.UnknownHostException;
-import java.util.Collections;
-import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
@@ -27,7 +24,7 @@ import org.slf4j.LoggerFactory;
  *     for example, you should create a single MongoClient instance, and you can use it in every request.
  *     The MongoClient object maintains an internal pool of connections to the database
  *     (default maximum pool size of 100).
- *     For every request to the DB (find, insert, etc) the Java thread will obtain a connection
+ *     For every request to the DB (find, insert, etc.) the Java thread will obtain a connection
  *     from the pool, execute the operation, and release the connection.
  *
  * @author Eric Trautman
@@ -36,8 +33,7 @@ public class SharedMongoClient {
 
     private static SharedMongoClient sharedMongoClient;
 
-    public static MongoClient getInstance()
-            throws UnknownHostException {
+    public static MongoClient getInstance() {
         if (sharedMongoClient == null) {
             setSharedMongoClient();
         }
@@ -46,9 +42,9 @@ public class SharedMongoClient {
 
     private final MongoClient client;
 
-    public SharedMongoClient(final DbConfig dbConfig)
-            throws UnknownHostException {
+    public SharedMongoClient(final DbConfig dbConfig) {
 
+        final String hostsString;
         if (dbConfig.hasConnectionString()) {
 
             // use connectionString for everything (see https://docs.mongodb.com/manual/reference/connection-string )
@@ -56,20 +52,11 @@ public class SharedMongoClient {
             final MongoClientURI mongoClientURI = new MongoClientURI(dbConfig.getConnectionString());
             client = new MongoClient(mongoClientURI);
 
+            hostsString = String.valueOf(mongoClientURI.getHosts());
+
         } else {
 
             // use explicitly configured  parameters
-
-            final List<MongoCredential> credentialsList;
-            if (dbConfig.hasCredentials()) {
-                final MongoCredential credential =
-                        MongoCredential.createCredential(dbConfig.getUserName(),
-                                                         dbConfig.getAuthenticationDatabase(),
-                                                         dbConfig.getPassword());
-                credentialsList = Collections.singletonList(credential);
-            } else {
-                credentialsList = Collections.emptyList();
-            }
 
             final MongoClientOptions options = new MongoClientOptions.Builder()
                     .connectionsPerHost(dbConfig.getMaxConnectionsPerHost())
@@ -77,16 +64,26 @@ public class SharedMongoClient {
                     .readPreference(dbConfig.getReadPreference())
                     .build();
 
-            client = new MongoClient(dbConfig.getServerAddressList(), credentialsList, options);
+            if (dbConfig.hasCredentials()) {
+                final MongoCredential credential =
+                        MongoCredential.createCredential(dbConfig.getUserName(),
+                                                         dbConfig.getAuthenticationDatabase(),
+                                                         dbConfig.getPassword());
+                client = new MongoClient(dbConfig.getServerAddressList(), credential, options);
+            } else {
+                client = new MongoClient(dbConfig.getServerAddressList(), options);
+            }
+
+            hostsString = String.valueOf(dbConfig.getServerAddressList());
+
         }
 
-        LOG.info("created {} client for server(s) {} with {}",
-                 getMongoClientVersion(), client.getServerAddressList(), client.getMongoClientOptions());
+        LOG.info("created {} client for host(s) {} with {}",
+                 getMongoClientVersion(), hostsString, client.getMongoClientOptions());
 
     }
 
-    private static synchronized void setSharedMongoClient()
-            throws UnknownHostException {
+    private static synchronized void setSharedMongoClient() {
         if (sharedMongoClient == null) {
             final File dbConfigFile = new File("resources/render-db.properties");
             final DbConfig dbConfig = DbConfig.fromFile(dbConfigFile);
@@ -96,9 +93,9 @@ public class SharedMongoClient {
 
     private static String getMongoClientVersion() {
         String versionString = "?";
-        final Class clazz = MongoClient.class;
+        final Class<MongoClient> clazz = MongoClient.class;
         final String className = clazz.getSimpleName() + ".class";
-        final String classPath = clazz.getResource(className).toString();
+        final String classPath = String.valueOf(clazz.getResource(className));
         if (classPath.startsWith("jar")) {
             final String manifestPath = classPath.substring(0, classPath.lastIndexOf("!") + 1) + "/META-INF/MANIFEST.MF";
             try (final InputStream manifestStream = new URL(manifestPath).openStream()) {
@@ -112,5 +109,5 @@ public class SharedMongoClient {
         return versionString;
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(DbConfig.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SharedMongoClient.class);
 }

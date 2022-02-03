@@ -3,7 +3,6 @@ package org.janelia.render.service.dao;
 import com.mongodb.BasicDBList;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoException;
-import com.mongodb.QueryOperators;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
@@ -127,13 +126,13 @@ public class RenderDao {
         final Bounds bounds = getLayerBounds(stackId, z);
         final Double x = bounds.getMinX();
         final Double y = bounds.getMinY();
-        final Double width = bounds.getMaxX() - x;
-        final Double height = bounds.getMaxY() - y;
+        final double width = bounds.getMaxX() - x;
+        final double height = bounds.getMaxY() - y;
 
         final Document tileQuery = new Document("z", z);
 
         final RenderParameters renderParameters =
-                new RenderParameters(null, x, y, width.intValue(), height.intValue(), scale);
+                new RenderParameters(null, x, y, (int) width, (int) height, scale);
         addResolvedTileSpecs(stackId, tileQuery, renderParameters);
 
         return renderParameters;
@@ -169,7 +168,7 @@ public class RenderDao {
         final double lowerRightY = y + height;
         final Document tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
 
-        final long count = tileCollection.count(tileQuery);
+        final long count = tileCollection.countDocuments(tileQuery);
 
         if (count == 0) {
             throwExceptionIfStackIsMissing(stackId);
@@ -562,7 +561,7 @@ public class RenderDao {
             final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
             final List<WriteModel<Document>> modelList = new ArrayList<>(tileSpecs.size());
-            Document query = new Document();
+            Document query;
             Document tileSpecObject;
             for (final TileSpec tileSpec : tileSpecs) {
                 query = new Document("tileId", tileSpec.getTileId());
@@ -575,7 +574,7 @@ public class RenderDao {
             if (LOG.isDebugEnabled()) {
                 final String bulkResultMessage = MongoUtil.toMessage("tile specs", result, tileSpecs.size());
                 LOG.debug("saveResolvedTiles: {} using {}.initializeUnorderedBulkOp()",
-                          bulkResultMessage, MongoUtil.fullName(tileCollection), query.toJson());
+                          bulkResultMessage, MongoUtil.fullName(tileCollection));
             }
         }
 
@@ -833,12 +832,12 @@ public class RenderDao {
         final Document query = new Document();
         if (minZ != null) {
             if (maxZ != null) {
-                query.append("_id.z", new Document(QueryOperators.GTE, minZ).append(QueryOperators.LTE, maxZ));
+                query.append("_id.z", new Document(MongoUtil.OP_GTE, minZ).append(MongoUtil.OP_LTE, maxZ));
             } else {
-                query.append("_id.z", new Document(QueryOperators.GTE, minZ));
+                query.append("_id.z", new Document(MongoUtil.OP_GTE, minZ));
             }
         } else if (maxZ != null) {
-            query.append("_id.z", new Document(QueryOperators.LTE, maxZ));
+            query.append("_id.z", new Document(MongoUtil.OP_LTE, maxZ));
         }
 
         try (final MongoCursor<Document> cursor = sectionCollection.find(query).iterator()) {
@@ -878,7 +877,7 @@ public class RenderDao {
         }
 
         LOG.debug("getSectionData: returning {} values for {}.find({})",
-                  list.size(), sectionCollection.getNamespace().getFullName());
+                  list.size(), sectionCollection.getNamespace().getFullName(), query.toJson());
 
         return list;
     }
@@ -1045,16 +1044,16 @@ public class RenderDao {
         long nonIntegralSectionCount = 0;
         double truncatedZ;
         for (final Double z : zValues) {
-            truncatedZ = (double) z.intValue();
+            truncatedZ = z.intValue();
             if (z > truncatedZ) {
                 nonIntegralSectionCount++;
             }
         }
 
-        final long tileCount = tileCollection.count();
+        final long tileCount = tileCollection.countDocuments();
         LOG.debug("ensureIndexesAndDeriveStats: tileCount for {} is {}", stackId, tileCount);
 
-        final long transformCount = transformCollection.count();
+        final long transformCount = transformCollection.countDocuments();
         LOG.debug("ensureIndexesAndDeriveStats: transformCount for {} is {}, deriving aggregate stats ...",
                   stackId, transformCount);
 
@@ -1109,16 +1108,16 @@ public class RenderDao {
         final String maxHeightKey = "stackMaxTileHeight";
 
         final Document minAndMaxValues = new Document("_id", "minAndMaxValues");
-        minAndMaxValues.append(minXKey, new Document(QueryOperators.MIN, "$minX"));
-        minAndMaxValues.append(minYKey, new Document(QueryOperators.MIN, "$minY"));
-        minAndMaxValues.append(minZKey, new Document(QueryOperators.MIN, "$z"));
-        minAndMaxValues.append(maxXKey, new Document(QueryOperators.MAX, "$maxX"));
-        minAndMaxValues.append(maxYKey, new Document(QueryOperators.MAX, "$maxY"));
-        minAndMaxValues.append(maxZKey, new Document(QueryOperators.MAX, "$z"));
-        minAndMaxValues.append(minWidthKey, new Document(QueryOperators.MIN, "$width"));
-        minAndMaxValues.append(maxWidthKey, new Document(QueryOperators.MAX, "$width"));
-        minAndMaxValues.append(minHeightKey, new Document(QueryOperators.MIN, "$height"));
-        minAndMaxValues.append(maxHeightKey, new Document(QueryOperators.MAX, "$height"));
+        minAndMaxValues.append(minXKey, new Document(MongoUtil.OP_MIN, "$minX"));
+        minAndMaxValues.append(minYKey, new Document(MongoUtil.OP_MIN, "$minY"));
+        minAndMaxValues.append(minZKey, new Document(MongoUtil.OP_MIN, "$z"));
+        minAndMaxValues.append(maxXKey, new Document(MongoUtil.OP_MAX, "$maxX"));
+        minAndMaxValues.append(maxYKey, new Document(MongoUtil.OP_MAX, "$maxY"));
+        minAndMaxValues.append(maxZKey, new Document(MongoUtil.OP_MAX, "$z"));
+        minAndMaxValues.append(minWidthKey, new Document(MongoUtil.OP_MIN, "$width"));
+        minAndMaxValues.append(maxWidthKey, new Document(MongoUtil.OP_MAX, "$width"));
+        minAndMaxValues.append(minHeightKey, new Document(MongoUtil.OP_MIN, "$height"));
+        minAndMaxValues.append(maxHeightKey, new Document(MongoUtil.OP_MAX, "$height"));
         final Document groupStage = new Document("$group", minAndMaxValues);
 
         final List<Document> pipeline = new ArrayList<>();
@@ -1131,7 +1130,7 @@ public class RenderDao {
         final Document aggregateResult = tileCollection.aggregate(pipeline).batchSize(1).first();
         if (aggregateResult == null) {
             String cause = "";
-            if (tileCollection.count() == 0) {
+            if (tileCollection.countDocuments() == 0) {
                 cause = " because the stack has no tiles";
             }
             throw new IllegalStateException("Stack data aggregation returned no results" + cause + ".  " +
@@ -1236,7 +1235,7 @@ public class RenderDao {
         }
 
         final MongoCollection<Document> sectionCollection = getSectionCollection(stackId);
-        final long sectionCount = sectionCollection.count();
+        final long sectionCount = sectionCollection.countDocuments();
 
         LOG.debug("deriveSectionData: saved data for {} sections in {}",
                   sectionCount, MongoUtil.fullName(sectionCollection));
@@ -1249,20 +1248,20 @@ public class RenderDao {
         MongoUtil.validateRequiredParameter("stackId", stackId);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
-        final long tileCount = tileCollection.count();
+        final long tileCount = tileCollection.countDocuments();
         tileCollection.drop();
 
         LOG.debug("removeStack: {}.drop() deleted {} document(s)", MongoUtil.fullName(tileCollection), tileCount);
 
         final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
-        final long transformCount = transformCollection.count();
+        final long transformCount = transformCollection.countDocuments();
         transformCollection.drop();
 
         LOG.debug("removeStack: {}.drop() deleted {} document(s)",
                   MongoUtil.fullName(transformCollection), transformCount);
 
         final MongoCollection<Document> sectionCollection = getSectionCollection(stackId);
-        final long sectionCount = sectionCollection.count();
+        final long sectionCount = sectionCollection.countDocuments();
         sectionCollection.drop();
 
         LOG.debug("removeStack: {}.drop() deleted {} document(s)",
@@ -1319,10 +1318,10 @@ public class RenderDao {
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
         final Document tileQuery = new Document("tileId",
-                                                new Document(QueryOperators.IN,
+                                                new Document(MongoUtil.OP_IN,
                                                              tileIds));
         final Document tileQueryForLog = new Document("tileId",
-                                                      new Document(QueryOperators.IN,
+                                                      new Document(MongoUtil.OP_IN,
                                                                    Arrays.asList("list of",
                                                                                  tileIds.size() + " tileIds")));
         final DeleteResult removeResult = tileCollection.deleteMany(tileQuery);
@@ -1473,7 +1472,7 @@ public class RenderDao {
         if ((zValues != null) && (zValues.size() > 0)) {
             final BasicDBList list = new BasicDBList();
             list.addAll(zValues);
-            final Document zFilter = new Document(QueryOperators.IN, list);
+            final Document zFilter = new Document(MongoUtil.OP_IN, list);
             filterQuery.append("z", zFilter);
         }
 
@@ -1582,12 +1581,12 @@ public class RenderDao {
 
         Document zFilter = null;
         if (minZ != null) {
-            zFilter = new Document(QueryOperators.GTE, minZ);
+            zFilter = new Document(MongoUtil.OP_GTE, minZ);
             if (maxZ != null) {
-                zFilter = zFilter.append(QueryOperators.LTE, maxZ);
+                zFilter = zFilter.append(MongoUtil.OP_LTE, maxZ);
             }
         } else if (maxZ != null) {
-            zFilter = new Document(QueryOperators.LTE, maxZ);
+            zFilter = new Document(MongoUtil.OP_LTE, maxZ);
         }
 
         // EXAMPLE:   find({"z": {"$gte": 4370.0, "$lte": 4370.0}}, {"tileId": 1, "z": 1, "minX": 1, "minY": 1, "layout": 1, "mipmapLevels": 1}).sort({"z": 1, "minY": 1, "minX": 1})
@@ -1774,7 +1773,7 @@ public class RenderDao {
         if (specCount > 0) {
 
             final Document transformQuery = new Document();
-            transformQuery.put("id", new Document(QueryOperators.IN, specIds));
+            transformQuery.put("id", new Document(MongoUtil.OP_IN, specIds));
 
             LOG.debug("getTransformSpecs: {}.find({})",
                       MongoUtil.fullName(transformCollection), transformQuery.toJson());
@@ -1874,11 +1873,11 @@ public class RenderDao {
     }
 
     private Document lte(final double value) {
-        return new Document(QueryOperators.LTE, value);
+        return new Document(MongoUtil.OP_LTE, value);
     }
 
     private Document gte(final double value) {
-        return new Document(QueryOperators.GTE, value);
+        return new Document(MongoUtil.OP_GTE, value);
     }
 
     private Document getIntersectsBoxQuery(final double z,
@@ -1920,12 +1919,12 @@ public class RenderDao {
         } else {
             if (minZ != null) {
                 if (maxZ != null) {
-                    groupQuery.append("z", new Document(QueryOperators.GTE, minZ).append(QueryOperators.LTE, maxZ));
+                    groupQuery.append("z", new Document(MongoUtil.OP_GTE, minZ).append(MongoUtil.OP_LTE, maxZ));
                 } else {
-                    groupQuery.append("z", new Document(QueryOperators.GTE, minZ));
+                    groupQuery.append("z", new Document(MongoUtil.OP_GTE, minZ));
                 }
             } else if (maxZ != null) {
-                groupQuery.append("z", new Document(QueryOperators.LTE, maxZ));
+                groupQuery.append("z", new Document(MongoUtil.OP_LTE, maxZ));
             }
         }
 
@@ -1934,16 +1933,16 @@ public class RenderDao {
         }
 
         if (minX != null) {
-            groupQuery.append("maxX", new Document(QueryOperators.GTE, minX));
+            groupQuery.append("maxX", new Document(MongoUtil.OP_GTE, minX));
         }
         if (maxX != null) {
-            groupQuery.append("minX", new Document(QueryOperators.LTE, maxX));
+            groupQuery.append("minX", new Document(MongoUtil.OP_LTE, maxX));
         }
         if (minY != null) {
-            groupQuery.append("maxY", new Document(QueryOperators.GTE, minY));
+            groupQuery.append("maxY", new Document(MongoUtil.OP_GTE, minY));
         }
         if (maxY != null) {
-            groupQuery.append("minY", new Document(QueryOperators.LTE, maxY));
+            groupQuery.append("minY", new Document(MongoUtil.OP_LTE, maxY));
         }
 
         return groupQuery;
@@ -2024,7 +2023,7 @@ public class RenderDao {
                                  final Document filterQuery)
             throws IllegalStateException {
 
-        final long fromCount = fromCollection.count();
+        final long fromCount = fromCollection.countDocuments();
         final long toCount;
         final String fromFullName = MongoUtil.fullName(fromCollection);
         final String toFullName = MongoUtil.fullName(toCollection);
@@ -2078,7 +2077,7 @@ public class RenderDao {
                 }
             }
 
-            toCount = toCollection.count();
+            toCount = toCollection.countDocuments();
 
             // if nothing was filtered, verify that all documents got copied
             if (filterQuery.keySet().size() == 0) {
