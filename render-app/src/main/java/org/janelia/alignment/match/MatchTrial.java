@@ -116,6 +116,16 @@ public class MatchTrial implements Serializable {
         final String groupId = "trial";
         final CanvasId p = new CanvasId(groupId, getTileId(parameters.getpRenderParametersUrl()), pClipPosition);
         final CanvasId q = new CanvasId(groupId, getTileId(parameters.getqRenderParametersUrl()), qClipPosition);
+
+        if (p.compareTo(q) > 0) {
+            final String additionalContext =
+                    parameters.getFeatureAndMatchParameters().getClipParameters().hasValue() ?
+                    " along with relative position" : "";
+            throw new IllegalArgumentException("P and Q render parameters URLs must be swapped" +
+                                               additionalContext + " because P canvasId " +
+                                               p + " is greater than Q canvasId " + q);
+        }
+
         final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(p, q, null);
         final StageMatcher stageMatcher = new StageMatcher(stageResources, true);
         final List<StageMatcher> stageMatcherList = Collections.singletonList(stageMatcher);
