@@ -67,7 +67,7 @@ public class MatchDao {
                 list.add(
                         new MatchCollectionMetaData(
                                 MatchCollectionId.fromDbCollectionName(collectionName),
-                                matchDatabase.getCollection(collectionName).countDocuments()));
+                                matchDatabase.getCollection(collectionName).estimatedDocumentCount()));
             }
         }
 

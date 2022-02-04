@@ -168,6 +168,7 @@ public class RenderDao {
         final double lowerRightY = y + height;
         final Document tileQuery = getIntersectsBoxQuery(z, x, y, lowerRightX, lowerRightY);
 
+        // need to use countDocuments here because we have a filter query
         final long count = tileCollection.countDocuments(tileQuery);
 
         if (count == 0) {
@@ -1050,6 +1051,8 @@ public class RenderDao {
             }
         }
 
+        // NOTE: do not use estimateDocumentCount here because we want to store accurate count
+        //       see https://docs.mongodb.com/v4.2/reference/method/db.collection.count/#db.collection.count
         final long tileCount = tileCollection.countDocuments();
         LOG.debug("ensureIndexesAndDeriveStats: tileCount for {} is {}", stackId, tileCount);
 
@@ -1130,7 +1133,7 @@ public class RenderDao {
         final Document aggregateResult = tileCollection.aggregate(pipeline).batchSize(1).first();
         if (aggregateResult == null) {
             String cause = "";
-            if (tileCollection.countDocuments() == 0) {
+            if (tileCollection.estimatedDocumentCount() == 0) {
                 cause = " because the stack has no tiles";
             }
             throw new IllegalStateException("Stack data aggregation returned no results" + cause + ".  " +
@@ -1235,7 +1238,7 @@ public class RenderDao {
         }
 
         final MongoCollection<Document> sectionCollection = getSectionCollection(stackId);
-        final long sectionCount = sectionCollection.countDocuments();
+        final long sectionCount = sectionCollection.estimatedDocumentCount();
 
         LOG.debug("deriveSectionData: saved data for {} sections in {}",
                   sectionCount, MongoUtil.fullName(sectionCollection));
@@ -1248,20 +1251,20 @@ public class RenderDao {
         MongoUtil.validateRequiredParameter("stackId", stackId);
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
-        final long tileCount = tileCollection.countDocuments();
+        final long tileCount = tileCollection.estimatedDocumentCount();
         tileCollection.drop();
 
         LOG.debug("removeStack: {}.drop() deleted {} document(s)", MongoUtil.fullName(tileCollection), tileCount);
 
         final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
-        final long transformCount = transformCollection.countDocuments();
+        final long transformCount = transformCollection.estimatedDocumentCount();
         transformCollection.drop();
 
         LOG.debug("removeStack: {}.drop() deleted {} document(s)",
                   MongoUtil.fullName(transformCollection), transformCount);
 
         final MongoCollection<Document> sectionCollection = getSectionCollection(stackId);
-        final long sectionCount = sectionCollection.countDocuments();
+        final long sectionCount = sectionCollection.estimatedDocumentCount();
         sectionCollection.drop();
 
         LOG.debug("removeStack: {}.drop() deleted {} document(s)",
@@ -2023,6 +2026,8 @@ public class RenderDao {
                                  final Document filterQuery)
             throws IllegalStateException {
 
+        // NOTE: do not use estimateDocumentCount here because we need to ensure accurate count
+        //       see https://docs.mongodb.com/v4.2/reference/method/db.collection.count/#db.collection.count
         final long fromCount = fromCollection.countDocuments();
         final long toCount;
         final String fromFullName = MongoUtil.fullName(fromCollection);
@@ -2077,6 +2082,8 @@ public class RenderDao {
                 }
             }
 
+            // NOTE: do not use estimateDocumentCount here because we need to ensure accurate count
+            //       see https://docs.mongodb.com/v4.2/reference/method/db.collection.count/#db.collection.count
             toCount = toCollection.countDocuments();
 
             // if nothing was filtered, verify that all documents got copied
