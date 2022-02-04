@@ -37,7 +37,7 @@ cd ./render
 ### 4. Build the Render Modules
 ```bash
 # assumes current directory is still the cloned render repository root (./render)
-export JAVA_HOME=`readlink -m ./deploy/jdk*`
+export JAVA_HOME=`readlink -m ./deploy/*jdk*`
 mvn package
 ```
 ### 5. Deploy Web Service
