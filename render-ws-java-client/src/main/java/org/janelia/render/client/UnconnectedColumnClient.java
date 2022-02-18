@@ -139,6 +139,9 @@ public class UnconnectedColumnClient {
             }
         }
 
+        if (sortedColumns.size() == 0) {
+            LOG.info("findUnconnectedColumns: no unconnected columns found!");
+        }
     }
 
     protected static class ZRange {
