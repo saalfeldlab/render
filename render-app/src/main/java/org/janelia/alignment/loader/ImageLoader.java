@@ -10,10 +10,8 @@ import ij.process.ImageProcessor;
  */
 public interface ImageLoader {
 
-    // TODO: add N5_SLICE_SHORT, N5_SLICE_COLOR, ... once generic n5 load process is stabilized
-
     enum LoaderType {
-        IMAGEJ_DEFAULT, IMAGEJ_TIFF_STACK, N5_SLICE_UNSIGNED_BYTE, N5_SLICE_FLOAT, IMAGEJ_COMPOSITE
+        IMAGEJ_DEFAULT, IMAGEJ_TIFF_STACK, N5_SLICE, IMAGEJ_COMPOSITE
     }
 
     boolean hasSame3DContext(final ImageLoader otherLoader);
@@ -48,12 +46,8 @@ public interface ImageLoader {
                     imageLoader = new ImageJTiffStackLoader(sliceNumber);
                     break;
 
-                case N5_SLICE_UNSIGNED_BYTE:
-                    imageLoader = N5SliceUnsignedByteLoader.INSTANCE;
-                    break;
-
-                case N5_SLICE_FLOAT:
-                    imageLoader = N5SliceFloatLoader.INSTANCE;
+                case N5_SLICE:
+                    imageLoader = N5SliceLoader.INSTANCE;
                     break;
 
                 case IMAGEJ_COMPOSITE:
