@@ -6,8 +6,9 @@ import ij.process.ImageProcessor;
 import ij.process.ShortProcessor;
 
 import java.io.IOException;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
 
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
@@ -35,9 +36,6 @@ import net.imglib2.view.Views;
  *       n5:///nrs/flyem/tmp/VNC-align.n5?dataSet=/align/slab-26/raw/s0&x=512&y=640&z=1656&w=384&h=640
  * </pre>
  *
- * NOTE: A current limitation is that URLs need to exactly match the pattern above
- * (they are not parsed as true URLs where positioning of parameters does not matter).
- *
  * @author Eric Trautman
  */
 public class N5SliceLoader implements ImageLoader {
@@ -57,27 +55,67 @@ public class N5SliceLoader implements ImageLoader {
         final ImageProcessor imageProcessor;
 
         try {
-            final Matcher m = N5_SLICE_URL_PATTERN.matcher(urlString);
 
-            if (m.matches()) {
+            // "n5://<n5BasePath>?dataSet=<dataSet>&x=<x>&y=<y>&z=<z>&w=<width>&h=<height>
 
-                // TODO: confirm encoding location info in single URL (with "n5" protocol) is okay
+            final URI uri = new URI(urlString);
+            final String defaultCharsetName = Charset.defaultCharset().name();
+            final String basePath = URLDecoder.decode(uri.getPath(), defaultCharsetName);
+            final String query = uri.getQuery();
+            final String[] queryKeyValuePairs = query.split("&"); // note: uses "fastpath" for simple regex
+            String dataSet = null;
+            Long x = null;
+            Long y = null;
+            Long z = null;
+            Integer width = null;
+            Integer height = null;
+            for (final String keyValuePair : queryKeyValuePairs) {
+                final String[] keyValue = keyValuePair.split("=");
+                if (keyValue.length == 2) {
+                    final String key = keyValue[0];
+                    if ("x".equals(key)){
+                        x = new Long(keyValue[1]);
+                    } else if ("y".equals(key)) {
+                        y = new Long(keyValue[1]);
+                    } else if ("z".equals(key)) {
+                        z = new Long(keyValue[1]);
+                    } else if ("w".equals(key)) {
+                        width = new Integer(keyValue[1]);
+                    } else if ("h".equals(key)) {
+                        height = new Integer(keyValue[1]);
+                    } else if ("dataSet".equals(key)) {
+                        dataSet = URLDecoder.decode(keyValue[1], defaultCharsetName);
+                    }
+                }
+            }
 
-                // "n5://<n5BasePath>?dataSet=<dataSet>&x=<x>&y=<y>&z=<z>&w=<width>&h=<height>
-                final String basePath = m.group(1);
-                final String dataSet = m.group(2);
-                final long x = Long.parseLong(m.group(3));
-                final long y = Long.parseLong(m.group(4));
-                final long z = Long.parseLong(m.group(5));
-                final long[] xAndYOffsets = new long[] { x, y };
-                final int width = Integer.parseInt(m.group(6));
-                final int height = Integer.parseInt(m.group(7));
+            long[] xAndYOffsets = null;
+            if (x != null) {
+                if (y != null) {
+                    xAndYOffsets = new long[] { x, y };
+                } else {
+                    xAndYOffsets = new long[] { x, 0 };
+                }
+            } else if (y != null) {
+                xAndYOffsets = new long[] { 0, y };
+            }
+
+            if ((basePath != null) && (dataSet != null)) {
 
                 // TODO: review load process (seems very slow)
 
                 final N5Reader reader = new N5FSReader(basePath);
                 final DatasetAttributes datasetAttributes = reader.getDatasetAttributes(dataSet);
                 final DataType dataType = datasetAttributes.getDataType();
+                final long[] dimensions = datasetAttributes.getDimensions();
+
+                if (width == null) {
+                    width = (int) dimensions[0];
+                }
+
+                if (height == null) {
+                    height = (int) dimensions[1];
+                }
 
                 switch(dataType) {
                     case UINT8:
@@ -98,8 +136,10 @@ public class N5SliceLoader implements ImageLoader {
                 // Utils.saveImage(imageProcessor.getBufferedImage(), debugFile, false, 0.85f);
 
             } else {
-                throw new IllegalArgumentException("n5 url '" + urlString +
-                                                   "' does not match pattern " + N5_SLICE_URL_PATTERN_STRING);
+                throw new IllegalArgumentException(
+                        "n5 url '" + urlString +
+                        "' is missing basePath and/or dataSet, pattern should be " +
+                        "n5://<n5BasePath>?dataSet=<dataSet>&x=<x>&y=<y>&z=<z>&w=<width>&h=<height>");
             }
 
         } catch (final Throwable t) {
@@ -194,12 +234,4 @@ public class N5SliceLoader implements ImageLoader {
                             forImageProcessor.getHeight());
                 }
             };
-
-
-    // "n5://<n5BasePath>?dataSet=<dataSet>&x=<x>&y=<y>&z=<z>&w=<width>&h=<height>
-    private static final String N5_SLICE_URL_PATTERN_STRING =
-            "n5://([^?]++)\\?dataSet=([^&]++)&x=(\\d++)&y=(\\d++)&z=(\\d++)&w=(\\d++)&h=(\\d++)";
-
-    private static final Pattern N5_SLICE_URL_PATTERN = Pattern.compile(N5_SLICE_URL_PATTERN_STRING);
-
 }
