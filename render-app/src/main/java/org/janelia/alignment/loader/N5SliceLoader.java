@@ -104,7 +104,7 @@ public class N5SliceLoader implements ImageLoader {
 
                 // TODO: review load process (seems very slow)
 
-                final N5Reader reader = new N5FSReader(basePath);
+                final N5Reader reader = buildReader(basePath);
                 final DatasetAttributes datasetAttributes = reader.getDatasetAttributes(dataSet);
                 final DataType dataType = datasetAttributes.getDataType();
                 final long[] dimensions = datasetAttributes.getDimensions();
@@ -132,9 +132,6 @@ public class N5SliceLoader implements ImageLoader {
                         throw new IllegalArgumentException("dataType " + dataType + " is not supported");
                 }
 
-                // final File debugFile = new File("/Users/trautmane/Desktop/test." + x + "." + y + ".jpg");
-                // Utils.saveImage(imageProcessor.getBufferedImage(), debugFile, false, 0.85f);
-
             } else {
                 throw new IllegalArgumentException(
                         "n5 url '" + urlString +
@@ -147,6 +144,11 @@ public class N5SliceLoader implements ImageLoader {
         }
 
         return imageProcessor;
+    }
+
+    public N5Reader buildReader(final String basePath)
+            throws IOException {
+        return new N5FSReader(basePath);
     }
 
     public static abstract class Helper <A extends NativeType< A >, B extends ImageProcessor> {

@@ -1,0 +1,42 @@
+[
+    {
+        "tileId": "21-05-20_125416_0-0-0.15001.0",
+        "width": 7437,
+        "height": 3500,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "h5:///Users/trautmane/Desktop/h5/Merlin-6257_21-05-20_125416_0-0-0.h5?dataSet=/Z0720-07m_BR_Sec18/Merlin-6257_21-05-20_125416/0-0-0&z=0",
+                "imageLoaderType": "H5_SLICE"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.9997473868879061 0.02288240307083744 -0.023125075733411275 0.9980622020799688 200.0 200.0"
+                }
+            ]
+        }
+    },
+    {
+        "tileId": "21-05-20_125416_0-0-1.15001.0",
+        "width": 7437,
+        "height": 3500,
+        "mipmapLevels": {
+            "0": {
+                "imageUrl": "h5:///Users/trautmane/Desktop/h5/Merlin-6257_21-05-20_125416_0-0-0.h5?dataSet=/Z0720-07m_BR_Sec18/Merlin-6257_21-05-20_125416/0-0-1&z=0",
+                "imageLoaderType": "H5_SLICE"
+            }
+        },
+        "transforms": {
+            "type": "list",
+            "specList": [
+                {
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "0.9997473868879061 0.02288240307083744 -0.023125075733411275 0.9980622020799688 7417.857075732099 359.455253147514"
+                }
+            ]
+        }
+    }
+]

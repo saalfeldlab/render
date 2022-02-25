@@ -16,7 +16,6 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -335,35 +334,66 @@ public class ArgbRendererTest {
                             params, ImageProcessorCache.DISABLED_CACHE, 0, 0, expectedDigestString);
     }
 
-    @Ignore // NOTE: must have /nrs/flyem mounted for this test to work
-    @Test
-    public void testCachingWithN5Slice() throws Exception {
+    // NOTE: must have /nrs/flyem mounted for this test to work
+//    @Test
+//    public void testCachingWithN5Slice() throws Exception {
+//
+//        //
+//        final String[] args = {
+//                "--tile_spec_url", "src/test/resources/stitch-test/test_n5.json",
+//                // "--tile_spec_url", "src/test/resources/stitch-test/test_n5_big.json",   // change expected cache counts
+//                // "--tile_spec_url", "src/test/resources/stitch-test/test_n5_small.json", // change expected cache counts
+//                "--out", outputFile.getAbsolutePath(),
+//                "--x", "512",
+//                "--y", "640",
+//                "--width", "384",
+//                "--height", "640",
+//                "--scale", "1.0"
+//        };
+//
+//        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
+//        final ImageProcessorCache imageProcessorCache =
+//                new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+//                                        true, false);
+//
+//        validateCacheRender("first run with cache",
+//                            params, imageProcessorCache, 2, 0, null);
+//        validateCacheRender("second run with cache",
+//                            params, imageProcessorCache, 2, 2, null);
+//        validateCacheRender("third run with NO cache",
+//                            params, ImageProcessorCache.DISABLED_CACHE, 0, 0, null);
+//    }
 
-        //
-        final String[] args = {
-                "--tile_spec_url", "src/test/resources/stitch-test/test_n5.json",
-                // "--tile_spec_url", "src/test/resources/stitch-test/test_n5_big.json",   // change expected cache counts
-                // "--tile_spec_url", "src/test/resources/stitch-test/test_n5_small.json", // change expected cache counts
-                "--out", outputFile.getAbsolutePath(),
-                "--x", "512",
-                "--y", "640",
-                "--width", "384",
-                "--height", "640",
-                "--scale", "1.0"
-        };
-
-        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
-        final ImageProcessorCache imageProcessorCache =
-                new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
-                                        true, false);
-
-        validateCacheRender("first run with cache",
-                            params, imageProcessorCache, 2, 0, null);
-        validateCacheRender("second run with cache",
-                            params, imageProcessorCache, 2, 2, null);
-        validateCacheRender("third run with NO cache",
-                            params, ImageProcessorCache.DISABLED_CACHE, 0, 0, null);
-    }
+    // NOTE: must have h5 data available and need to un-shelve Fibsem8Bit filter code for this to work
+//    @Test
+//    public void testCachingWithHDF5Slice() throws Exception {
+//
+//        //
+//        final String[] args = {
+//                "--tile_spec_url", "src/test/resources/stitch-test/test_hdf5.json",
+//                "--out", outputFile.getAbsolutePath(),
+//                "--x", "0",
+//                "--y", "0",
+//                "--width", "15000",
+//                "--height", "4200",
+//                "--scale", "0.1"
+//        };
+//
+//        final RenderParameters params = RenderParameters.parseCommandLineArgs(args);
+//        params.setFilterSpecs(Collections.singletonList(new FilterSpec("org.janelia.alignment.filter.Fibsem8Bit",
+//                                                                       new HashMap<>())));
+//        final ImageProcessorCache imageProcessorCache =
+//                new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+//                                        true, false);
+//
+//        final TransformMeshMappingWithMasks.ImageProcessorWithMasks result =
+//                Renderer.renderImageProcessorWithMasks(params, imageProcessorCache);
+//
+//        final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+//        final File debugFile = new File("/Users/trautmane/Desktop/test.lou." + sdf.format(new Date()) + ".png");
+//        final BufferedImage image = result.ip.getBufferedImage();
+//        Utils.saveImage(image, debugFile, false, 0.85f);
+//    }
 
     @Test
     public void testSuperDownSample() throws Exception {

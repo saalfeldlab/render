@@ -120,6 +120,11 @@
             <version>${n5-version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>org.janelia.saalfeldlab</groupId>
+            <artifactId>n5-hdf5</artifactId>
+        </dependency>
+
         <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

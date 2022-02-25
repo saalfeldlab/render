@@ -11,7 +11,7 @@ import ij.process.ImageProcessor;
 public interface ImageLoader {
 
     enum LoaderType {
-        IMAGEJ_DEFAULT, IMAGEJ_TIFF_STACK, N5_SLICE, IMAGEJ_COMPOSITE
+        IMAGEJ_DEFAULT, IMAGEJ_TIFF_STACK, H5_SLICE, N5_SLICE, IMAGEJ_COMPOSITE
     }
 
     boolean hasSame3DContext(final ImageLoader otherLoader);
@@ -44,6 +44,10 @@ public interface ImageLoader {
                                 "slice number must be defined for " + loaderType + " loaders");
                     }
                     imageLoader = new ImageJTiffStackLoader(sliceNumber);
+                    break;
+
+                case H5_SLICE:
+                    imageLoader = HDF5SliceLoader.INSTANCE;
                     break;
 
                 case N5_SLICE:
