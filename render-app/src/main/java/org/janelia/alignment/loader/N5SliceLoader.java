@@ -28,12 +28,12 @@ import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
 /**
- * Loads a 2D slice of an n5 volume identified as:
+ * Loads a 2D slice of an N5 volume identified as:
  * <pre>
- *     n5://[n5BasePath]?dataSet=[dataSet]&x=[x]&y=[y]&z=[z]&w=[width]&h=[height]
+ *     file://[n5BasePath]?dataSet=[dataSet]&x=[x]&y=[y]&z=[z]&w=[width]&h=[height]
  *
  *     Example:
- *       n5:///nrs/flyem/tmp/VNC-align.n5?dataSet=/align/slab-26/raw/s0&x=512&y=640&z=1656&w=384&h=640
+ *       file:///nrs/flyem/tmp/VNC-align.n5?dataSet=/align/slab-26/raw/s0&x=512&y=640&z=1656&w=384&h=640
  * </pre>
  *
  * @author Eric Trautman
@@ -56,9 +56,16 @@ public class N5SliceLoader implements ImageLoader {
 
         try {
 
-            // "n5://<n5BasePath>?dataSet=<dataSet>&x=<x>&y=<y>&z=<z>&w=<width>&h=<height>
+            // "file://<n5BasePath>?dataSet=<dataSet>&x=<x>&y=<y>&z=<z>&w=<width>&h=<height>
 
             final URI uri = new URI(urlString);
+            final String scheme = uri.getScheme();
+
+            // TODO: remove file scheme restriction once remote URL friendly N5Reader is implemented
+            if ((scheme != null) && (! scheme.equals("file"))) {
+                throw new IllegalArgumentException(scheme + " scheme not currently supported, must be a local file");
+            }
+
             final String defaultCharsetName = Charset.defaultCharset().name();
             final String basePath = URLDecoder.decode(uri.getPath(), defaultCharsetName);
             final String query = uri.getQuery();
@@ -136,7 +143,7 @@ public class N5SliceLoader implements ImageLoader {
                 throw new IllegalArgumentException(
                         "n5 url '" + urlString +
                         "' is missing basePath and/or dataSet, pattern should be " +
-                        "n5://<n5BasePath>?dataSet=<dataSet>&x=<x>&y=<y>&z=<z>&w=<width>&h=<height>");
+                        "file://<n5BasePath>?dataSet=<dataSet>&x=<x>&y=<y>&z=<z>&w=<width>&h=<height>");
             }
 
         } catch (final Throwable t) {

@@ -5,7 +5,7 @@
         "height": 3500,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "h5:///Users/trautmane/Desktop/h5/Merlin-6257_21-05-20_125416_0-0-0.h5?dataSet=/Z0720-07m_BR_Sec18/Merlin-6257_21-05-20_125416/0-0-0&z=0",
+                "imageUrl": "file:///Users/trautmane/Desktop/h5/mark/Merlin-6257_21-05-20_125416_0-0-0.h5?dataSet=/Z0720-07m_BR_Sec18/Merlin-6257_21-05-20_125416/0-0-0&z=0",
                 "imageLoaderType": "H5_SLICE"
             }
         },
@@ -25,7 +25,7 @@
         "height": 3500,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "h5:///Users/trautmane/Desktop/h5/Merlin-6257_21-05-20_125416_0-0-0.h5?dataSet=/Z0720-07m_BR_Sec18/Merlin-6257_21-05-20_125416/0-0-1&z=0",
+                "imageUrl": "file:///Users/trautmane/Desktop/h5/mark/Merlin-6257_21-05-20_125416_0-0-0.h5?dataSet=/Z0720-07m_BR_Sec18/Merlin-6257_21-05-20_125416/0-0-1&z=0",
                 "imageLoaderType": "H5_SLICE"
             }
         },

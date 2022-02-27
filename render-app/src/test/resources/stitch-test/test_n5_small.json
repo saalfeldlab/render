@@ -5,7 +5,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=640&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=640&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -25,7 +25,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=640&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=640&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -45,7 +45,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=640&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=640&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -65,7 +65,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=768&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=768&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -85,7 +85,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=768&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=768&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -105,7 +105,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=768&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=768&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -125,7 +125,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=896&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=896&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -145,7 +145,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=896&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=896&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -165,7 +165,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=896&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=896&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -185,7 +185,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=1024&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=1024&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -205,7 +205,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=1024&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=1024&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -225,7 +225,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=1024&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=1024&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -245,7 +245,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=1152&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=1152&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -265,7 +265,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=1152&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=640&y=1152&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -285,7 +285,7 @@
         "height": 128.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=1152&z=1656&w=128&h=128",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=768&y=1152&z=1656&w=128&h=128",
                 "imageLoaderType": "N5_SLICE"
             }
         },
@@ -305,7 +305,7 @@
         "height": 640.0,
         "mipmapLevels": {
             "0": {
-                "imageUrl": "n5:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=1280&z=1656&w=384&h=640",
+                "imageUrl": "file:///nrs/flyem/render/n5?dataSet=/Z0720_07m_BR/render/Sec07/v3_acquire_trimmed_align_ic___20210826_210937/s0&x=512&y=1280&z=1656&w=384&h=640",
                 "imageLoaderType": "N5_SLICE"
             }
         },
