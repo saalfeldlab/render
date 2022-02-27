@@ -168,7 +168,7 @@ public class ImageAndMask implements Serializable {
         if ((scheme == null) || FILE_SCHEME.equals(scheme)) {
             final File file;
             try {
-                file = new File(uri);
+                file = new File(uri.getPath());
             } catch (final Exception e) {
                 throw new IllegalArgumentException("failed to convert '" + uri + "' to a file reference", e);
             }
