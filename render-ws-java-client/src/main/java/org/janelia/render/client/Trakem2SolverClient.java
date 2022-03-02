@@ -169,6 +169,13 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         @Parameter(names = "--threads", description = "Number of threads to be used")
         public int numberOfThreads = 1;
 
+        @Parameter(
+                names = "--fixedTileIds",
+                description = "Explicit optimizer lambda values.",
+                variableArity = true
+        )
+        public List<String> fixedTileIds;
+
         public Parameters() {
         }
 
@@ -244,7 +251,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
     private final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap;
     private int totalTileCount;
 
-    private Trakem2SolverClient(final Parameters parameters)
+    public Trakem2SolverClient(final Parameters parameters)
             throws IOException {
 
         parameters.initDefaultValues();
@@ -328,7 +335,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         });
     }
 
-    private void run()
+    public void run()
             throws IOException, ExecutionException, InterruptedException {
 
         LOG.info("run: entry");
@@ -374,6 +381,14 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
         final TileConfiguration tileConfig = new TileConfiguration();
         tileConfig.addTiles(idToTileMap.values());
+
+        for (final String tileId : parameters.fixedTileIds) {
+            final Tile tile = idToTileMap.get(tileId);
+            if (tile != null) {
+                tileConfig.fixTile(tile);
+                LOG.info("run: fixed tile {}", tileId);
+            }
+        }
 
         LOG.info("run: optimizing {} tiles", idToTileMap.size());
 
