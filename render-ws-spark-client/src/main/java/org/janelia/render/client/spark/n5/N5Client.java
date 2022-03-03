@@ -354,7 +354,8 @@ public class N5Client {
                                            parameters.stackResolutionUnit,
                                            numberOfDownSampledDatasets,
                                            downsampleFactors,
-                                           Arrays.asList(min[0], min[1], min[2]));
+                                           Arrays.asList(min[0], min[1], min[2]),
+                                           NeuroglancerAttributes.NumpyContiguousOrdering.C);
 
         ngAttributes.write(Paths.get(parameters.n5Path),
                            Paths.get(fullScaleDatasetName));

@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark.n5;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -133,12 +134,27 @@ public class N5ClientTest {
                               writtenDatasetAttributes.containsKey(key));
         }
 
+        // need to create downsample scale level data set directories and attributes.json files
+        final int numberOfDownsampledDatasets = 3;
+        final Path multiScaleParentPath = fullScaleDatasetPath.getParent();
+        for (int scaleLevel = 1; scaleLevel <= numberOfDownsampledDatasets; scaleLevel++) {
+            final DatasetAttributes scaleLevelAttributes = new DatasetAttributes(dimensions,
+                                                                                 blockSize,
+                                                                                 DataType.UINT8,
+                                                                                 new GzipCompression());
+            final String scaleLevelDatasetName = multiScaleParentPath + "/s" + scaleLevel;
+            n5Writer.createDataset(scaleLevelDatasetName, scaleLevelAttributes);
+        }
+
+        final List<Double> resolutionValues = stackMetaData.getCurrentResolutionValues();
         final NeuroglancerAttributes ngAttributes =
-                new NeuroglancerAttributes(stackMetaData.getCurrentResolutionValues(),
+                new NeuroglancerAttributes(resolutionValues,
                                            "nm",
-                                           3,
+                                           numberOfDownsampledDatasets,
                                            new int[] {2, 2, 2},
-                                           Arrays.asList(5L, 25L, 125L));
+                                           Arrays.asList(5L, 25L, 125L),
+                                           NeuroglancerAttributes.NumpyContiguousOrdering.C);
+
         ngAttributes.write(n5Path, fullScaleDatasetPath);
 
         final String testStackDatasetName = fullScaleDatasetPath.getParent().toString();
@@ -161,6 +177,47 @@ public class N5ClientTest {
         Assert.assertEquals(NeuroglancerAttributes.SUPPORTED_KEY +
                             " attributes not written to dataset " + renderDatasetName,
                             Boolean.TRUE, flag);
+
+        validateTransformElement("level 0",
+                                 n5Reader,
+                                 fullScaleDatasetPath.toString(),
+                                 axes,
+                                 resolutionValues);
+
+        validateTransformElement("level 3",
+                                 n5Reader,
+                                 fullScaleDatasetPath.getParent() + "/s3",
+                                 axes,
+                                 Arrays.asList(resolutionValues.get(0) * 8,
+                                               resolutionValues.get(1) * 8,
+                                               resolutionValues.get(2) * 8));
     }
 
+    @SuppressWarnings("unchecked")
+    private void validateTransformElement(final String context,
+                                          final N5Reader n5Reader,
+                                          final String levelDatasetName,
+                                          final List<String> parentAxes,
+                                          final List<Double> expectedScaleList)
+            throws IOException {
+
+        final Map<String, Object> transformLevel0 = n5Reader.getAttribute(levelDatasetName,
+                                                                          "transform",
+                                                                          Map.class);
+        Assert.assertNotNull(context + " transform element not found ", transformLevel0);
+
+        Assert.assertTrue(context + " transform is missing axes element",
+                          transformLevel0.containsKey("axes"));
+
+        final List<String> levelAxes = (List<String>) transformLevel0.get("axes");
+        Assert.assertEquals(context + " axes element differs from parent",
+                            parentAxes, levelAxes);
+
+        Assert.assertTrue(context + " transform is missing scale element",
+                          transformLevel0.containsKey("scale"));
+
+        final List<Double> scaleList = (List<Double>) transformLevel0.get("scale");
+        Assert.assertEquals(context + " scale element differs from parent",
+                            expectedScaleList, scaleList);
+    }
 }

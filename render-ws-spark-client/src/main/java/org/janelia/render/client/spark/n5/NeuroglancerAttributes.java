@@ -2,6 +2,7 @@ package org.janelia.render.client.spark.n5;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -44,7 +45,29 @@ public class NeuroglancerAttributes {
         }
     }
 
+    public enum NumpyContiguousOrdering {
+
+        /** C contiguous arrays have rows stored as contiguous blocks of memory. */
+        C("C"),
+
+        /** Fortran contiguous arrays have columns stored as contiguous blocks of memory. */
+        FORTRAN("F"),
+
+        /** Any contiguous order indicates the array may be in any order (C, F, or even not contiguous). */
+        ANY("A");
+
+        private final String code;
+        NumpyContiguousOrdering(final String code) {
+            this.code = code;
+        }
+
+        public String getCode() {
+            return code;
+        }
+    }
+
     private final List<String> axes;
+    private final NumpyContiguousOrdering contiguousOrdering;
     private final List<String> units;
     private final List<List<Integer>> scales;
     private final PixelResolution pixelResolution;
@@ -58,14 +81,17 @@ public class NeuroglancerAttributes {
      * @param  numberOfDownsampledDatasets  number of downsampled datasets (for multi-scaled datasets).
      * @param  downSampleFactors            downsample factors (for multi-scaled datasets).
      * @param  translate                    translation or offset required to map n5 origin to render stack origin.
+     * @param  contiguousOrdering           numpy contiguous ordering.
      */
     public NeuroglancerAttributes(final List<Double> stackResolutionValues,
                                   final String stackResolutionUnit,
                                   final int numberOfDownsampledDatasets,
                                   final int[] downSampleFactors,
-                                  final List<Long> translate) {
+                                  final List<Long> translate,
+                                  final NumpyContiguousOrdering contiguousOrdering) {
 
         this.axes = RENDER_AXES;
+        this.contiguousOrdering = contiguousOrdering;
 
         this.units = Arrays.asList(stackResolutionUnit, stackResolutionUnit, stackResolutionUnit);
 
@@ -98,7 +124,8 @@ public class NeuroglancerAttributes {
             throws IOException {
 
         // for multi-scale datasets, ng attributes need to go in s0 parent
-        final Path ngAttributesPath = fullScaleDatasetPath.endsWith("s0") ?
+        final boolean isMultiScaleDataset = fullScaleDatasetPath.endsWith("s0");
+        final Path ngAttributesPath = isMultiScaleDataset ?
                                       fullScaleDatasetPath.getParent() : fullScaleDatasetPath;
 
         LOG.info("write: entry, n5BasePath={}, fullScaleDatasetPath={}, ngAttributesPath={}",
@@ -123,6 +150,9 @@ public class NeuroglancerAttributes {
         // See https://github.com/google/neuroglancer/blob/master/src/neuroglancer/datasource/n5/README.md
         final Map<String, Object> attributes = new HashMap<>();
         attributes.put("axes", axes);
+        if (contiguousOrdering != null) {
+            attributes.put("ordering", contiguousOrdering.getCode());
+        }
         attributes.put("units", units);
         attributes.put("scales", scales);
         attributes.put("pixelResolution", pixelResolution);
@@ -130,6 +160,58 @@ public class NeuroglancerAttributes {
 
         LOG.info("write: saving neuroglancer attributes to {}{}/attributes.json", n5BasePath, ngAttributesPath);
         n5Writer.setAttributes(ngAttributesPath.toString(), attributes);
+
+        if (isMultiScaleDataset) {
+            for (int scaleLevel = 0; scaleLevel < scales.size(); scaleLevel++) {
+                writeScaleLevelTransformAttributes(scaleLevel,
+                                                   scales.get(scaleLevel),
+                                                   n5Writer,
+                                                   n5BasePath,
+                                                   ngAttributesPath);
+            }
+        }
+    }
+
+    private void writeScaleLevelTransformAttributes(final int scaleLevel,
+                                                    final List<Integer> scaleLevelFactors,
+                                                    final N5Writer n5Writer,
+                                                    final Path n5BasePath,
+                                                    final Path ngAttributesPath)
+            throws IOException {
+
+        final String scaleName = "s" + scaleLevel;
+        final Path scaleAttributesPath = Paths.get(ngAttributesPath.toString(), scaleName);
+
+        final Path scaleLevelDirectoryPath = Paths.get(n5BasePath.toString(), ngAttributesPath.toString(), scaleName);
+        if (! scaleLevelDirectoryPath.toFile().exists()) {
+            throw new IOException(scaleLevelDirectoryPath.toAbsolutePath() + " does not exist");
+        }
+
+        final Map<String, Object> transformAttributes = new HashMap<>();
+        transformAttributes.put("axes", axes);
+        transformAttributes.put("ordering", contiguousOrdering.getCode());
+        transformAttributes.put("units", units);
+
+        final List<Double> groupDimensions  = pixelResolution.dimensions;
+        final List<Double> scaleList = new ArrayList<>();
+        final List<Double> translateList = new ArrayList<>();
+        for (int dimensionIndex = 0; dimensionIndex < scaleLevelFactors.size(); dimensionIndex++) {
+
+            final int factor = scaleLevelFactors.get(dimensionIndex);
+            scaleList.add(factor * groupDimensions.get(dimensionIndex));
+
+            final double unscaledTranslation = (factor - 1) / 2.0;
+            translateList.add(unscaledTranslation * groupDimensions.get(dimensionIndex));
+        }
+
+        transformAttributes.put("scale", scaleList);
+        transformAttributes.put("translate", translateList);
+
+        final Map<String, Object> attributes = new HashMap<>();
+        attributes.put("transform", transformAttributes);
+
+        LOG.info("writeScaleLevelTransformAttributes: saving {}{}/attributes.json", n5BasePath, scaleAttributesPath);
+        n5Writer.setAttributes(scaleAttributesPath.toString(), attributes);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(NeuroglancerAttributes.class);
