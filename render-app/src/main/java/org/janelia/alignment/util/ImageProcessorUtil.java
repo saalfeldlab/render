@@ -121,16 +121,17 @@ public class ImageProcessorUtil {
 
         int tooLow = 0;
         int tooHigh = 0;
-
+        int pix;
         for (int j = 0; j < pixelCount; j++) {
-            final int pix = (int) ((255.0 * (((short) imageProcessor.get(j) - low) / span)) + 0.5);
+            pix = (int) ((255.0 * (((short) imageProcessor.get(j) - low) / span)) + 0.5);
             if (pix < 0) {
+                pix = 0;
                 tooLow++;
             } else if (pix > 255) {
+                pix = 255;
                 tooHigh++;
-            } else {
-                byteProcessor.set(j, pix);
             }
+            byteProcessor.set(j, pix);
         }
 
         final double tooLowPct = ((double) tooLow / pixelCount) * 100.0;
