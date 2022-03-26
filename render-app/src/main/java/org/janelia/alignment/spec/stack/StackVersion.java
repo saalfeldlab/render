@@ -164,7 +164,8 @@ public class StackVersion
             // reconstruct builder in case JSON de-serialization created "incomplete" instance
             this.mipmapPathBuilder = new MipmapPathBuilder(mipmapPathBuilder.getRootPath(),
                                                            mipmapPathBuilder.getNumberOfLevels(),
-                                                           mipmapPathBuilder.getExtension());
+                                                           mipmapPathBuilder.getExtension(),
+                                                           mipmapPathBuilder.getImageMipmapPatternString());
         }
     }
 

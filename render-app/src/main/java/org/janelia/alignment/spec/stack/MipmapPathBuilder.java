@@ -1,8 +1,12 @@
 package org.janelia.alignment.spec.stack;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.io.Serializable;
 import java.util.AbstractMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
@@ -47,9 +51,24 @@ import io.swagger.annotations.ApiModelProperty;
 public class MipmapPathBuilder
         implements Serializable {
 
+    /**
+     * Standard naming pattern for Janelia FIB-SEM volumes where 8-bit mipmap data
+     * is aggregated as separate data sets within an HDF5 container.
+     * For example:
+     * <pre>
+     *     level 0: file:///data/Merlin-6257_21-05-20_125416.uint8.h5?dataSet=0-0-0.mipmap.0&z=0
+     *     level 1: file:///data/Merlin-6257_21-05-20_125416.uint8.h5?dataSet=0-0-0.mipmap.1&z=0
+     * </pre>
+     */
+    public static final String JANELIA_FIBSEM_H5_MIPMAP_PATTERN_STRING =
+            "(.*dataSet=\\d+-\\d+-\\d+\\.mipmap\\.)\\d+(.*)";
+
     private final String rootPath;
     private final Integer numberOfLevels;
     private final String extension;
+    private final String imageMipmapPatternString;
+
+    private transient Pattern imageMipmapPattern;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -57,11 +76,13 @@ public class MipmapPathBuilder
         this.rootPath = null;
         this.numberOfLevels = null;
         this.extension = null;
+        this.imageMipmapPatternString = null;
     }
 
     public MipmapPathBuilder(final String rootPath,
                              final Integer numberOfLevels,
-                             final String extension) throws IllegalArgumentException {
+                             final String extension,
+                             final String imageMipmapPatternString) throws IllegalArgumentException {
 
         if (rootPath == null) {
             throw new IllegalArgumentException("rootPath must be specified for MipmapPathBuilder");
@@ -82,10 +103,13 @@ public class MipmapPathBuilder
         } else {
             this.extension = extension;
         }
+
+        this.imageMipmapPatternString = imageMipmapPatternString;
     }
 
     @ApiModelProperty(
             value = "root path for all mipmaps",
+            required = true,
             notes = "The mipmap builder directory tree should be organized like <mipmap-root-path>/<level>/<level-0-path>.  " +
                     "A typical setup for the <mipmap-root-path> is <base-directory>/rendered_mipmaps/<stack-owner>/<stack-project> " +
                     "(e.g. /nrs/flyTEM/rendered_mipmaps/flyTEM/FAFB00).")
@@ -93,15 +117,39 @@ public class MipmapPathBuilder
         return rootPath;
     }
 
+    @ApiModelProperty(
+            value = "number of mipmap levels built",
+            required = true)
     public Integer getNumberOfLevels() {
         return numberOfLevels;
     }
 
     @ApiModelProperty(
             value = "file extension (without dot) for all mipmaps",
+            required = true,
             allowableValues = "tif, jpg, png")
     public String getExtension() {
         return extension;
+    }
+
+    /** For example see {@link MipmapPathBuilder#JANELIA_FIBSEM_H5_MIPMAP_PATTERN_STRING} */
+    @ApiModelProperty(
+            value = "pattern for deriving image mipmap URLs",
+            notes = "If specified, overrides use of root path when deriving mipmap URLs for images " +
+                    "(mask behavior remains unchanged).  The pattern is intended for use with HDF5 " +
+                    "collections where mipmap levels are stored as separate data sets in the same file.  " +
+                    "The pattern is expected to have two groups, a prefix group and a suffix group, with " +
+                    "the mipmap level to be changed in between.")
+    public String getImageMipmapPatternString() {
+        return imageMipmapPatternString;
+    }
+
+    @JsonIgnore
+    public Pattern getImageMipmapPattern() {
+        if ((imageMipmapPattern == null) && (imageMipmapPatternString != null)) {
+            imageMipmapPattern = Pattern.compile(imageMipmapPatternString);
+        }
+        return imageMipmapPattern;
     }
 
     public boolean hasSamePathAndExtension(final MipmapPathBuilder that) {
@@ -124,6 +172,8 @@ public class MipmapPathBuilder
     public Map.Entry<Integer, ImageAndMask> deriveImageAndMask(final Integer mipmapLevel,
                                                                final Map.Entry<Integer, ImageAndMask> sourceEntry,
                                                                final boolean validate) {
+        Map.Entry<Integer, ImageAndMask> derivedEntry = sourceEntry;
+
         Integer derivedLevel = numberOfLevels;
         if (mipmapLevel < derivedLevel) {
             derivedLevel = mipmapLevel;
@@ -131,24 +181,48 @@ public class MipmapPathBuilder
 
         final ImageAndMask sourceImageAndMask = sourceEntry.getValue();
 
-        final String derivedImageUrl = deriveMipmapUrl(sourceImageAndMask.getImageUrl(), derivedLevel);
+        final String derivedImageUrl;
+        if (imageMipmapPatternString == null) {
 
-        String derivedMaskUrl = null;
-        if (sourceImageAndMask.hasMask()) {
-            derivedMaskUrl = deriveMipmapUrl(sourceImageAndMask.getMaskUrl(), derivedLevel);
+            derivedImageUrl = deriveMipmapUrl(sourceImageAndMask.getImageUrl(), derivedLevel);
+
+        } else {
+
+            final String imageUrl = sourceImageAndMask.getImageUrl();
+            final Matcher m = getImageMipmapPattern().matcher(imageUrl);
+            if (m.matches()) {
+                if (m.groupCount() == 2) {
+                    derivedImageUrl = m.group(1) + derivedLevel + m.group(2);
+                } else {
+                    LOG.warn("imageMipmapPatternString '{}' does not define prefix and suffix groups, reverting to source",
+                             imageMipmapPatternString);
+                    derivedImageUrl = null;
+                }
+            } else {
+                LOG.warn("imageUrl {} does not match mipmap pattern, reverting to source", imageUrl);
+                derivedImageUrl = null;
+            }
+
         }
 
-        final ImageAndMask derivedImageAndMask = new ImageAndMask(derivedImageUrl, derivedMaskUrl);
+        if (derivedImageUrl != null) {
 
-        Map.Entry<Integer, ImageAndMask> derivedEntry;
-        try {
-            if (validate) {
-                derivedImageAndMask.validate();
+            String derivedMaskUrl = null;
+            if (sourceImageAndMask.hasMask()) {
+                derivedMaskUrl = deriveMipmapUrl(sourceImageAndMask.getMaskUrl(), derivedLevel);
             }
-            derivedEntry = new AbstractMap.SimpleEntry<>(derivedLevel, derivedImageAndMask);
-        } catch (final Throwable t) {
-            LOG.warn("derived imageAndMask is not valid, reverting to source", t);
-            derivedEntry = sourceEntry;
+
+            final ImageAndMask derivedImageAndMask = new ImageAndMask(derivedImageUrl, derivedMaskUrl);
+
+            try {
+                if (validate) {
+                    derivedImageAndMask.validate();
+                }
+                derivedEntry = new AbstractMap.SimpleEntry<>(derivedLevel, derivedImageAndMask);
+            } catch (final Throwable t) {
+                LOG.warn("derived imageAndMask is not valid, reverting to source", t);
+            }
+
         }
 
         return derivedEntry;

@@ -88,7 +88,7 @@ public class MipmapParameters implements Serializable {
             extension = "tif";
         }
 
-        return new MipmapPathBuilder(dir.getPath(), maxLevel, extension);
+        return new MipmapPathBuilder(dir.getPath(), maxLevel, extension, null);
     }
 
 }
