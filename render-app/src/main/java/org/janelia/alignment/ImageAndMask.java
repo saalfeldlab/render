@@ -62,6 +62,16 @@ public class ImageAndMask implements Serializable {
         this.maskSliceNumber = maskSliceNumber;
     }
 
+    public ImageAndMask copyWithDerivedUrls(final String derivedImageUrl,
+                                            final String derivedMaskUrl) {
+        return new ImageAndMask(derivedImageUrl,
+                                this.imageLoaderType,
+                                this.imageSliceNumber,
+                                derivedMaskUrl,
+                                this.maskLoaderType,
+                                this.maskSliceNumber);
+    }
+
     public boolean hasImage() {
         return imageUrl != null;
     }

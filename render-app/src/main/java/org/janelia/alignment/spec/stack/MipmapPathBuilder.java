@@ -212,7 +212,8 @@ public class MipmapPathBuilder
                 derivedMaskUrl = deriveMipmapUrl(sourceImageAndMask.getMaskUrl(), derivedLevel);
             }
 
-            final ImageAndMask derivedImageAndMask = new ImageAndMask(derivedImageUrl, derivedMaskUrl);
+            final ImageAndMask derivedImageAndMask = sourceImageAndMask.copyWithDerivedUrls(derivedImageUrl,
+                                                                                            derivedMaskUrl);
 
             try {
                 if (validate) {
