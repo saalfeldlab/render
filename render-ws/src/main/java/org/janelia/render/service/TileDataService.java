@@ -428,11 +428,9 @@ public class TileDataService {
         final ChannelSpec channelSpec = new ChannelSpec();
         simpleTileSpec.addChannel(channelSpec);
         if (isSource) {
-            final ImageAndMask imageWithoutMask = new ImageAndMask(imageAndMask.getImageUrl(), null);
-            channelSpec.putMipmap(firstEntry.getKey(), imageWithoutMask);
+            channelSpec.putMipmap(firstEntry.getKey(), imageAndMask.copyWithoutMask());
         } else {
-            final ImageAndMask maskAsImage = new ImageAndMask(imageAndMask.getMaskUrl(), null);
-            channelSpec.putMipmap(firstEntry.getKey(), maskAsImage);
+            channelSpec.putMipmap(firstEntry.getKey(), imageAndMask.maskAsImage());
         }
         tileRenderParameters.addTileSpec(simpleTileSpec);
         renderQueryParameters.applyQueryAndDefaultParameters(tileRenderParameters, null, renderDataService);

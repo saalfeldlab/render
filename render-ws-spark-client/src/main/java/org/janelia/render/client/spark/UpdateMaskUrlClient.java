@@ -58,38 +58,38 @@ public class UpdateMaskUrlClient
 
         @Parameter(
                 names = "--targetOwner",
-                description = "Name of target stack owner (default is same as source stack owner)",
-                required = false)
+                description = "Name of target stack owner (default is same as source stack owner)"
+        )
         private String targetOwner;
 
         @Parameter(
                 names = "--targetProject",
-                description = "Name of target stack project (default is same as source stack project)",
-                required = false)
+                description = "Name of target stack project (default is same as source stack project)"
+        )
         private String targetProject;
 
         @Parameter(
                 names = "--targetStack",
-                description = "Name of target stack",
-                required = false)
+                description = "Name of target stack"
+        )
         public String targetStack;
 
         @Parameter(
                 names = "--maskListFile",
-                description = "File containing paths of different sized mask files",
-                required = false)
+                description = "File containing paths of different sized mask files"
+        )
         public String maskListFile;
 
         @Parameter(
                 names = "--completeTargetStack",
                 description = "Complete the target stack after adding masks",
-                required = false, arity = 0)
+                arity = 0)
         public boolean completeTargetStack = false;
 
         @Parameter(
                 names = "--removeMasks",
                 description = "Remove all masks (instead of adding missing masks)",
-                required = false, arity = 0)
+                arity = 0)
         public boolean removeMasks = false;
 
         public String getTargetOwner() {
@@ -268,7 +268,7 @@ public class UpdateMaskUrlClient
 
     private Function<List<Double>, Integer> getUpdateMaskFunction(final List<MaskData> maskDataList) {
 
-        return (Function<List<Double>, Integer>) zBatch -> {
+        return zBatch -> {
 
             int tileCount = 0;
 
@@ -299,7 +299,7 @@ public class UpdateMaskUrlClient
                             if (parameters.removeMasks) {
 
                                 if (imageAndMask.getMaskUrl() != null) {
-                                    fixedImageAndMask = new ImageAndMask(imageAndMask.getImageUrl(), null);
+                                    fixedImageAndMask = imageAndMask.copyWithoutMask();
                                     for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
                                         channelSpec.putMipmap(firstMipmapEntry.getKey(), fixedImageAndMask);
                                     }
@@ -309,7 +309,8 @@ public class UpdateMaskUrlClient
                             } else {
 
                                 maskUrl = getMaskUrl(imageAndMask, maskDataList);
-                                fixedImageAndMask = new ImageAndMask(imageAndMask.getImageUrl(), maskUrl);
+                                fixedImageAndMask = imageAndMask.copyWithDerivedUrls(imageAndMask.getImageUrl(),
+                                                                                     maskUrl);
                                 fixedImageAndMask.validate();
                                 for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
                                     channelSpec.putMipmap(firstMipmapEntry.getKey(), fixedImageAndMask);

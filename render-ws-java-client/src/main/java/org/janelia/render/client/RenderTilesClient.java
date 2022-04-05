@@ -258,8 +258,7 @@ public class RenderTilesClient {
                 final Map.Entry<Integer, ImageAndMask> firstEntry = channelSpec.getFirstMipmapEntry();
                 final ImageAndMask imageAndMask = firstEntry.getValue();
                 if (imageAndMask.hasMask()) {
-                    final ImageAndMask maskAsImage = new ImageAndMask(imageAndMask.getMaskUrl(), null);
-                    channelSpec.putMipmap(firstEntry.getKey(), maskAsImage);
+                    channelSpec.putMipmap(firstEntry.getKey(), imageAndMask.maskAsImage());
                 } else {
                     throw new IOException("Tile " + tileId + " does not have a mask to render.");
                 }

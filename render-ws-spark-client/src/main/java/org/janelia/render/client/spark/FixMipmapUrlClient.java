@@ -57,20 +57,17 @@ public class FixMipmapUrlClient
 
         @Parameter(
                 names = "--targetOwner",
-                description = "Name of target stack owner (default is same as source stack owner)",
-                required = false)
+                description = "Name of target stack owner (default is same as source stack owner)")
         private String targetOwner;
 
         @Parameter(
                 names = "--targetProject",
-                description = "Name of target stack project (default is same as source stack project)",
-                required = false)
+                description = "Name of target stack project (default is same as source stack project)")
         private String targetProject;
 
         @Parameter(
                 names = "--targetStack",
-                description = "Name of target stack",
-                required = false)
+                description = "Name of target stack")
         private String targetStack;
 
         @Parameter(
@@ -81,14 +78,12 @@ public class FixMipmapUrlClient
 
         @Parameter(
                 names = "--urlType",
-                description = "Identifies which URLs to fix",
-                required = false)
+                description = "Identifies which URLs to fix")
         public UrlType urlType = UrlType.BOTH;
 
         @Parameter(
                 names = "--completeStackAfterFix",
                 description = "Complete the target stack after fixing all layers",
-                required = false,
                 arity = 0)
         public boolean completeStackAfterFix = false;
 
@@ -193,7 +188,7 @@ public class FixMipmapUrlClient
 
         final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
 
-        final Function<Double, Integer> transformFunction = (Function<Double, Integer>) z -> {
+        final Function<Double, Integer> transformFunction = z -> {
 
             LogUtilities.setupExecutorLog4j("z " + z);
             //get the source client
@@ -249,7 +244,7 @@ public class FixMipmapUrlClient
                                 maskUrl = imageAndMask.getMaskUrl();
                             }
 
-                                fixedImageAndMask = new ImageAndMask(imageUrl, maskUrl);
+                                fixedImageAndMask = imageAndMask.copyWithDerivedUrls(imageUrl, maskUrl);
                                 fixedImageAndMask.validate();
 
                             final boolean imagePathChanged = fixImage && (imageUrl != null) &&

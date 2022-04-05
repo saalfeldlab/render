@@ -126,7 +126,7 @@ public class FixMaskClient {
         final Path fixedMasksDirectoryPath = Paths.get(parameters.fixedMasksDirectory).toAbsolutePath();
         Files.list(fixedMasksDirectoryPath)
                 .filter(path -> path.toString().endsWith(".png"))
-                .forEach(path -> fixedMaskNamesToUrls.put(path.getFileName().toString(), "file:" + path.toString()));
+                .forEach(path -> fixedMaskNamesToUrls.put(path.getFileName().toString(), "file:" + path));
 
         if (this.fixedMaskNamesToUrls.size() == 0) {
             throw new IOException(fixedMasksDirectoryPath + " does not contain any fixed .png mask files");
@@ -179,8 +179,9 @@ public class FixMaskClient {
                     final String fixedMaskUrl = fixedMaskNamesToUrls.get(originalMaskFile.getName());
 
                     if (fixedMaskUrl != null) {
-                        final ImageAndMask updatedImageAndMask = new ImageAndMask(sourceImageAndMask.getImageUrl(),
-                                                                                  fixedMaskUrl);
+                        final ImageAndMask updatedImageAndMask =
+                                sourceImageAndMask.copyWithDerivedUrls(sourceImageAndMask.getImageUrl(),
+                                                                       fixedMaskUrl);
                         channelSpec.putMipmap(zeroLevelKey, updatedImageAndMask);
                         fixCount++;
                     }
