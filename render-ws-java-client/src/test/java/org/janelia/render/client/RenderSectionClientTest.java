@@ -23,18 +23,15 @@ public class RenderSectionClientTest {
         try {
             final String[] testArgs = {
                     "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "Z1217_19m",
+                    "--owner", "Z0720_07m_VNC",
                     "--project", "Sec06",
-                    "--stack", "v2_patch_msolve_fine",
-                    "--rootDirectory", "/Users/trautmane/Desktop/scapes",
-                    "--scale", "1.0",
-                    "--maxIntensity", "65535",
-                    "--doFilter", "false",
-                    "--fillWithNoise", "false",
-                    "--useStackBounds",
-                    "--renderTileLabels",
-                    "2309", "2310"
-            };
+                    "--stack", "v1_acquire",
+//                    "--resolutionUnit", "nm",
+                    "--rootDirectory", "/Users/trautmane/Desktop/scape_test",
+                    "--scale", "0.1",
+                    "--format", "tif",
+                    "1000", "1001"
+                    };
 
             RenderSectionClient.main(testArgs);
 

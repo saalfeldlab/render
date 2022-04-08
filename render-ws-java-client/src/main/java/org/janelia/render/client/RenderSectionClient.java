@@ -61,6 +61,12 @@ public class RenderSectionClient {
         public String format = Utils.PNG_FORMAT;
 
         @Parameter(
+                names = "--resolutionUnit",
+                description = "If specified (e.g. as 'nm') and format is tiff, " +
+                              "include resolution data in rendered tiff headers.  ")
+        public String resolutionUnit;
+
+        @Parameter(
                 names = "--doFilter",
                 description = "Use ad hoc filter to support alignment",
                 arity = 1)
@@ -293,7 +299,30 @@ public class RenderSectionClient {
 
         ArgbRenderer.render(renderParameters, sectionImage, cache);
 
-        Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), clientParameters.format, true, 0.85f);
+        final boolean isTiffWithResolutionOutput = clientParameters.resolutionUnit != null &&
+                                                   (Utils.TIFF_FORMAT.equals(clientParameters.format) ||
+                                                    Utils.TIF_FORMAT.equals(clientParameters.format));
+        if (isTiffWithResolutionOutput) {
+
+            // include pixel resolution metadata when rendering TIFF images
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(clientParameters.stack);
+            final List<Double> stackResolutionValues = stackMetaData.getCurrentResolutionValues();
+
+            Utils.saveTiffImageWithResolution(sectionImage,
+                                              stackResolutionValues,
+                                              clientParameters.resolutionUnit,
+                                              clientParameters.scale,
+                                              sectionFile.getAbsolutePath());
+
+        } else {
+
+            Utils.saveImage(sectionImage,
+                            sectionFile.getAbsolutePath(),
+                            clientParameters.format,
+                            true,
+                            0.85f);
+
+       }
 
         LOG.info("generateImageForZ: {}, exit", z);
     }

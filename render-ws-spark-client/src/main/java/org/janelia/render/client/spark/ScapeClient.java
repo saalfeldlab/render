@@ -96,6 +96,12 @@ public class ScapeClient
         public String format = Utils.JPEG_FORMAT;
 
         @Parameter(
+                names = "--resolutionUnit",
+                description = "If specified (e.g. as 'nm') and format is tiff, " +
+                              "include resolution data in rendered tiff headers.  ")
+        public String resolutionUnit;
+
+        @Parameter(
                 names = "--doFilter",
                 description = "Use ad hoc filter to support alignment"
         )
@@ -196,7 +202,8 @@ public class ScapeClient
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final ScapeClient client = new ScapeClient(parameters);
-                client.run();
+                final SparkConf conf = new SparkConf().setAppName(ScapeClient.class.getSimpleName());
+                client.run(conf);
             }
         };
         clientRunner.run();
@@ -204,14 +211,13 @@ public class ScapeClient
 
     private final Parameters parameters;
 
-    private ScapeClient(final Parameters parameters) {
+    public ScapeClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
-    public void run()
+    public void run(final SparkConf conf)
             throws IOException {
 
-        final SparkConf conf = new SparkConf().setAppName("ScapeClient");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
 
         final String sparkAppId = sparkContext.getConf().getAppId();
@@ -244,8 +250,18 @@ public class ScapeClient
 
         final JavaRDD<RenderSection> rddSectionData = sparkContext.parallelize(renderSectionList);
 
-        final Function<RenderSection, Integer> generateScapeFunction =
-                (Function<RenderSection, Integer>) renderSection -> {
+        final boolean isTiffWithResolutionOutput = parameters.resolutionUnit != null &&
+                                                   (Utils.TIFF_FORMAT.equals(parameters.format) ||
+                                                    Utils.TIF_FORMAT.equals(parameters.format));
+        final List<Double> stackResolutionValues;
+        if (isTiffWithResolutionOutput) {
+            final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+            stackResolutionValues = stackMetaData.getCurrentResolutionValues();
+        } else {
+            stackResolutionValues = null;
+        }
+
+        final Function<RenderSection, Integer> generateScapeFunction = renderSection -> {
 
                     final Double z = renderSection.getFirstZ();
                     LogUtilities.setupExecutorLog4j("z " + z);
@@ -306,7 +322,23 @@ public class ScapeClient
 
                     final File sectionFile = renderSection.getOutputFile(parameters.format);
 
-                    Utils.saveImage(sectionImage, sectionFile.getAbsolutePath(), parameters.format, true, 0.85f);
+                    if (isTiffWithResolutionOutput) {
+
+                        Utils.saveTiffImageWithResolution(sectionImage,
+                                                          stackResolutionValues,
+                                                          parameters.resolutionUnit,
+                                                          parameters.scale,
+                                                          sectionFile.getAbsolutePath());
+
+                    } else {
+
+                        Utils.saveImage(sectionImage,
+                                        sectionFile.getAbsolutePath(),
+                                        parameters.format,
+                                        true,
+                                        0.85f);
+
+                    }
 
                     return 1;
                 };

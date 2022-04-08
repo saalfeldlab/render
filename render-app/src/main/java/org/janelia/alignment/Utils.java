@@ -2,8 +2,10 @@ package org.janelia.alignment;
 
 import ij.ImagePlus;
 import ij.io.FileInfo;
+import ij.io.FileSaver;
 import ij.io.Opener;
 import ij.io.TiffEncoder;
+import ij.measure.Calibration;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
@@ -14,6 +16,7 @@ import java.io.OutputStream;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
@@ -116,6 +119,22 @@ public class Utils {
     }
 
     /**
+     * Writes {@link FileInfo} to the specified {@link OutputStream} using ImageJ's {@link TiffEncoder}.
+     *
+     * @param  fileInfo          file information (including pixels).
+     * @param  outputStream      target stream.
+     *
+     * @throws IOException
+     *   if any errors occur.
+     */
+    public static void writeTiffImage(final FileInfo fileInfo,
+                                      final OutputStream outputStream)
+            throws IOException {
+        final TiffEncoder tiffEncoder = new TiffEncoder(fileInfo);
+        tiffEncoder.write(outputStream);
+    }
+
+    /**
      * Writes a {@link BufferedImage} to the specified {@link OutputStream} using ImageJ's {@link TiffEncoder}.
      *
      * @param  bufferedImage     image to write.
@@ -128,21 +147,10 @@ public class Utils {
                                       final OutputStream outputStream)
             throws IOException {
         final ImagePlus ip = new ImagePlus("", bufferedImage);
-        final FileInfo fileInfo = ip.getFileInfo();
-        final TiffEncoder tiffEncoder = new TiffEncoder(fileInfo);
-        tiffEncoder.write(outputStream);
+        writeTiffImage(ip.getFileInfo(), outputStream);
     }
 
-    /**
-     * Saves the specified image to a file using ImageIO.
-     */
-    public static void saveImage(final BufferedImage image,
-                                 final String pathOrUriString,
-                                 final String format,
-                                 final boolean convertToGray,
-                                 final float quality)
-            throws IOException {
-
+    public static File prepareFileForWrite(final String pathOrUriString) {
         final File file = new File(convertPathOrUriStringToUri(pathOrUriString));
 
         final File parentDirectory = file.getParentFile();
@@ -155,6 +163,69 @@ public class Utils {
                 }
             }
         }
+
+        return file;
+    }
+
+    /**
+     * Saves the specified image along with resolution metadata to a file using ImageJ's {@link TiffEncoder}.
+     *
+     * @param  bufferedImage     image to write.
+     * @param  resolutionValues  full scale resolution values for stack.
+     * @param  resolutionUnit    resolution unit (e.g. nm)
+     * @param  renderScale       scale of the rendered image.
+     * @param  pathOrUriString   path for output file to be written.
+     */
+    public static void saveTiffImageWithResolution(final BufferedImage bufferedImage,
+                                                   final List<Double> resolutionValues,
+                                                   final String resolutionUnit,
+                                                   final double renderScale,
+                                                   final String pathOrUriString)
+            throws IOException {
+
+
+        final File file = prepareFileForWrite(pathOrUriString);
+
+        final ImagePlus ip = new ImagePlus("", bufferedImage);
+
+        if ((resolutionValues != null) && (resolutionUnit != null)) {
+            final Calibration calibration = new Calibration(ip);
+            if (resolutionValues.size() > 1) {
+                calibration.pixelWidth = resolutionValues.get(0) / renderScale;
+                calibration.pixelHeight = resolutionValues.get(1) / renderScale;
+            }
+            if (resolutionValues.size() > 2) {
+                calibration.pixelDepth = resolutionValues.get(2) / renderScale;
+            }
+            calibration.setUnit(resolutionUnit);
+            ip.setCalibration(calibration);
+        } else {
+            LOG.warn("saveTiffImageWithResolution: missing resolution data, resolutionValues={}, resolutionUnit={}",
+                     resolutionValues, resolutionUnit);
+        }
+
+        final FileInfo fileInfo = ip.getFileInfo();
+        final FileSaver fileSaver = new FileSaver(ip);
+        fileInfo.description = fileSaver.getDescriptionString();
+        
+        try (final FileOutputStream outputStream = new FileOutputStream(file)) {
+            writeTiffImage(fileInfo, outputStream);
+        }
+
+        LOG.info("saveTiffImageWithResolution: exit, saved {}", file.getAbsolutePath());
+    }
+
+    /**
+     * Saves the specified image to a file using ImageIO.
+     */
+    public static void saveImage(final BufferedImage image,
+                                 final String pathOrUriString,
+                                 final String format,
+                                 final boolean convertToGray,
+                                 final float quality)
+            throws IOException {
+
+        final File file = prepareFileForWrite(pathOrUriString);
 
         if (TIFF_FORMAT.equals(format) || (TIF_FORMAT.equals(format))) {
 
