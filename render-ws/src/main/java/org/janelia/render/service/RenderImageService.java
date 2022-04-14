@@ -53,7 +53,6 @@ public class RenderImageService {
         this.renderDataService = renderDataService;
     }
 
-    @SuppressWarnings("PathAnnotation")
     @Path("v1/owner/{owner}/jpeg-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
@@ -70,7 +69,6 @@ public class RenderImageService {
                                                    ResponseHelper.NO_CACHE_HELPER);
     }
 
-    @SuppressWarnings("PathAnnotation")
     @Path("v1/owner/{owner}/png-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
@@ -87,7 +85,6 @@ public class RenderImageService {
                                                    ResponseHelper.NO_CACHE_HELPER);
     }
 
-    @SuppressWarnings("PathAnnotation")
     @Path("v1/owner/{owner}/tiff-image")
     @PUT
     @Consumes(MediaType.APPLICATION_JSON)
@@ -844,7 +841,7 @@ public class RenderImageService {
             final File overviewSourceFile = getLargeDataFile(stackMetaData,
                                                              width + "x" + height,
                                                              "small",
-                                                             String.valueOf(z.intValue()) + "." + format);
+                                                             z.intValue() + "." + format);
 
             if (overviewSourceFile == null) {
 
@@ -864,11 +861,11 @@ public class RenderImageService {
                         // CATMAID overviews are expected to reflect a (0,0) origin and
                         // stacks are expected to be entirely in positive space.
                         // If the request explicitly asks for translation or
-                        // if one dimension of the stack is entirely in negative space,
+                        // if one dimension of the stack is in negative space,
                         // render the overview as if the stack's minimum coordinate was (0,0).
 
                         if (((translateOrigin != null) && translateOrigin) ||
-                            (stackWidth < 1) || (stackHeight < 1)) {
+                            (stackBounds.getMinX().intValue() < 0) || (stackBounds.getMinY().intValue() < 0)) {
                             stackMinX = stackBounds.getMinX();
                             stackMinY = stackBounds.getMinY();
                             stackWidth = stackBounds.getMaxX().intValue() - stackMinX.intValue();
