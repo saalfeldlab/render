@@ -239,8 +239,8 @@ public class CrossCorrelationPointMatchClient
         return nonEmptyMatchesList;
     }
 
-    private ImageProcessorWithMasks renderCanvas(final CanvasIdWithRenderContext canvasIdWithRenderContext,
-                                                 final ImageProcessorCache imageProcessorCache) {
+    public static ImageProcessorWithMasks renderCanvas(final CanvasIdWithRenderContext canvasIdWithRenderContext,
+                                                       final ImageProcessorCache imageProcessorCache) {
         final RenderParameters renderParameters = canvasIdWithRenderContext.loadRenderParameters();
         return Renderer.renderImageProcessorWithMasks(renderParameters,
                                                       imageProcessorCache);
