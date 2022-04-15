@@ -106,7 +106,7 @@ public class UnscaleSec19 {
 			mask1.show();
 		}
 		if (renderedQCanvas.mask != null) {
-			final ImagePlus mask2 = new ImagePlus("q mask", renderedPCanvas.mask);
+			final ImagePlus mask2 = new ImagePlus("q mask", renderedQCanvas.mask);
 			mask2.show();
 		}
 
