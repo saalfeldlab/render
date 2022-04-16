@@ -110,13 +110,14 @@ public class UnscaleSec19 {
 			mask2.show();
 		}
 
+		/*
 		getCandidateMatches(imp1,
 							renderedPCanvas.mask,
 							imp2,
 							renderedQCanvas.mask,
 							true,
 							renderScale,
-							ccParameters );
+							ccParameters );*/
 	}
 
 	private static List<PointMatch> getCandidateMatches(
