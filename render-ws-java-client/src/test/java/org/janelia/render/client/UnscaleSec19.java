@@ -3,12 +3,17 @@ package org.janelia.render.client;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.gui.Roi;
+import ij.measure.CurveFitter;
 import ij.process.ImageProcessor;
 
 import java.awt.Rectangle;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 
+import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.stitching.PairWiseStitchingImgLib;
@@ -27,6 +32,9 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import fit.PointFunctionMatch;
+import fit.polynomial.HigherOrderPolynomialFunction;
+import fit.polynomial.QuadraticFunction;
 import net.imglib2.util.Util;
 
 public class UnscaleSec19 {
@@ -75,18 +83,41 @@ public class UnscaleSec19 {
 						featureRenderClipParameters);
 
 		//layer 3781 of Sec19, tile 0 and 1
-//		ImagePlus imp1 = new ImagePlus("/Users/preibischs/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/VNC-Sec 19/Merlin-6262_21-09-20_094008_0-0-0-InLens.png");
-//		ImagePlus imp2 = new ImagePlus("/Users/preibischs/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/VNC-Sec 19/Merlin-6262_21-09-20_094008_0-0-1-InLens.png");
-//		ImagePlus mask1 = new ImagePlus("/Users/preibischs/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/VNC-Sec 19/mask_7687x3500_left_100.tif");
-//		ImagePlus mask2 = new ImagePlus("/Users/preibischs/Documents/Janelia/Projects/Male CNS+VNC Alignment/07m/VNC-Sec 19/mask_7687x3500_left_100.tif");
-
+		/*
 		final CanvasId pCanvasId = new CanvasId("3781.0",
 												"21-09-20_094008_0-0-0.3781.0",
 												MontageRelativePosition.LEFT);
 		final CanvasId qCanvasId = new CanvasId("3781.0",
 												"21-09-20_094008_0-0-1.3781.0",
 												MontageRelativePosition.RIGHT);
+		*/
 
+		//"3785.0", Merlin-6262_21-09-20_094420_0-0-0-InLens.png, Merlin-6262_21-09-20_094420_0-0-1-InLens.png
+		/*CanvasId pCanvasId = new CanvasId("3785.0",
+				"21-09-20_094420_0-0-0.3785.0",
+				MontageRelativePosition.LEFT);
+		CanvasId qCanvasId = new CanvasId("3785.0",
+				"21-09-20_094420_0-0-1.3785.0",
+				MontageRelativePosition.RIGHT);*/
+
+		/*
+		// 8783.0, Merlin-6262_21-09-24_002136_0-0-0-InLens.png, Merlin-6262_21-09-24_002136_0-0-1-InLens.png
+		CanvasId pCanvasId = new CanvasId("8783.0",
+				"21-09-24_002136_0-0-0.8783.0",
+				MontageRelativePosition.LEFT);
+		CanvasId qCanvasId = new CanvasId("8783.0",
+				"21-09-24_002136_0-0-1.8783.0",
+				MontageRelativePosition.RIGHT);
+		*/
+
+		// (CORRECT) 13240, Merlin-6262_21-09-27_060232_0-0-0-InLens.png, Merlin-6262_21-09-27_060232_0-0-1-InLens.png
+		CanvasId pCanvasId = new CanvasId("13240.0",
+				"21-09-27_060232_0-0-0.13240.0",
+				MontageRelativePosition.LEFT);
+		CanvasId qCanvasId = new CanvasId("13240.0",
+				"21-09-27_060232_0-0-1.13240.0",
+				MontageRelativePosition.RIGHT);
+		
 		final CanvasIdWithRenderContext p = CanvasIdWithRenderContext.build(pCanvasId, urlTemplateForRun);
 		final CanvasIdWithRenderContext q = CanvasIdWithRenderContext.build(qCanvasId, urlTemplateForRun);
 
@@ -101,6 +132,7 @@ public class UnscaleSec19 {
 		imp1.show();
 		imp2.show();
 
+		/*
 		if (renderedPCanvas.mask != null) {
 			final ImagePlus mask1 = new ImagePlus("p mask", renderedPCanvas.mask);
 			mask1.show();
@@ -108,16 +140,15 @@ public class UnscaleSec19 {
 		if (renderedQCanvas.mask != null) {
 			final ImagePlus mask2 = new ImagePlus("q mask", renderedQCanvas.mask);
 			mask2.show();
-		}
+		}*/
 
-		/*
 		getCandidateMatches(imp1,
 							renderedPCanvas.mask,
 							imp2,
 							renderedQCanvas.mask,
 							true,
 							renderScale,
-							ccParameters );*/
+							ccParameters );
 	}
 
 	private static List<PointMatch> getCandidateMatches(
@@ -162,6 +193,8 @@ public class UnscaleSec19 {
 
 		final List<PointMatch> candidates = new ArrayList<>();
 
+		ArrayList<PointFunctionMatch> matches = new ArrayList<>();
+
 		for (int i = 0; i < numTests; ++i) {
 
 			final int minXOrY = (int) Math.round(i * stepIncrement) + startStep;
@@ -190,10 +223,13 @@ public class UnscaleSec19 {
 			final PairWiseStitchingResult result = PairWiseStitchingImgLib.stitchPairwise(ip1, ip2, roi1, roi2, 1, 1,
 					params);
 
+
 			if (result.getCrossCorrelation() >= ccParameters.minResultThreshold) {
 
-				LOG.debug(minXOrY + " > " + maxXOrY + ", shift : " + Util.printCoordinates(result.getOffset())
-						+ ", correlation (R)=" + result.getCrossCorrelation());
+				//LOG.debug(minXOrY + " > " + maxXOrY + ", shift : " + Util.printCoordinates(result.getOffset())
+				//		+ ", correlation (R)=" + result.getCrossCorrelation());
+
+				matches.add( new PointFunctionMatch( new Point( new double[] {minXOrY,result.getOffset(1)})));
 
 				final int stepDim = stepThroughY ? 1 : 0;
 				final int otherDim = stepThroughY ? 0 : 1;
@@ -228,6 +264,59 @@ public class UnscaleSec19 {
 			}
 		}
 
+		final ArrayList<PointFunctionMatch> inliers = new ArrayList<>();
+		//final QuadraticFunction qf = new QuadraticFunction();
+		final HigherOrderPolynomialFunction hpf = new HigherOrderPolynomialFunction( 3 );
+
+		try {
+			int minX = Integer.MAX_VALUE;
+			int maxX = Integer.MIN_VALUE;
+			HashMap<Integer, Double> matchMap = new HashMap<>();
+			for ( final PointFunctionMatch pm : matches )
+			{
+				final int x = (int)Math.round(pm.getP1().getL()[0]);
+				minX = Math.min( x, minX );
+				maxX = Math.max( x, maxX );
+				matchMap.put(x, pm.getP1().getL()[1]);
+			}
+			System.out.println("minX="+minX + " maxX="+maxX);
+			hpf.filterRansac( matches, inliers, 1000, 2.5*renderScale, 0.25);
+			System.out.println( inliers.size()+ ", " + hpf);
+			Collections.sort(inliers, (o1,o2) -> (int)Math.round(o1.getP1().getL()[0]) - (int)Math.round(o2.getP1().getL()[0]));
+			
+			double[] xData = new double[ inliers.size() ];
+			double[] yData = new double[ inliers.size() ];
+			int j = 0;
+			for ( final PointFunctionMatch pm : inliers )
+			{
+				//System.out.println(pm.getP1().getL()[0]+","+(pm.getP1().getL()[1]));
+				xData[ j ] = pm.getP1().getL()[0];
+				yData[ j ] = pm.getP1().getL()[1];
+				++j;
+			}
+			//System.out.println( inliers.size() + ", " + hpf );
+			//for ( int x = 1; x <= 812;++x)
+			//	System.out.println( x+","+hpf.predict( x ) );
+			CurveFitter cf = new CurveFitter(xData, yData);
+			cf.doFit( CurveFitter.EXP_RECOVERY );
+			System.out.println( cf.getFormula() );
+			System.out.println( cf.getFitGoodness() );
+			System.out.println( cf.getResultString() );
+
+			double maxCF = -Double.MAX_VALUE;
+			for ( int x = minX; x <= maxX;++x)
+				maxCF = Math.max( maxCF, cf.f(x) );
+			System.out.println( "maxCF=" + maxCF );
+
+			for ( int x = minX; x <= maxX;++x)
+				System.out.println( x+","+(matchMap.containsKey(x) ? (matchMap.get(x)-maxCF) : "")+","+(cf.f(x)-maxCF));
+			//System.out.println( minXOrY + "," + result.getOffset(1) + "," + result.getCrossCorrelation() );
+
+			
+		} catch (NotEnoughDataPointsException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		return candidates;
 	}
 
