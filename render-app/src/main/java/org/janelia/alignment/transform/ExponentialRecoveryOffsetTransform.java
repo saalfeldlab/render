@@ -3,16 +3,16 @@ package org.janelia.alignment.transform;
 import mpicbg.trakem2.transform.CoordinateTransform;
 
 /**
- * Transform that adds <pre> a * e^b*x + c </pre> to all x (or <pre> a * e^b*y + c </pre> to all y).
+ * Transform that adds <pre> a * (1 - e^-b*x) + c </pre> to all x (or <pre> a * (1 - e^-b*y) + c </pre> to all y).
  */
-public class ExponentialFunctionOffsetTransform
+public class ExponentialRecoveryOffsetTransform
         extends ThreeParameterSingleDimensionTransform {
 
-    public ExponentialFunctionOffsetTransform() {
+    public ExponentialRecoveryOffsetTransform() {
         this(0, 0, 0,0);
     }
 
-    public ExponentialFunctionOffsetTransform(final double a,
+    public ExponentialRecoveryOffsetTransform(final double a,
                                               final double b,
                                               final double c,
                                               final int dimension) {
@@ -21,11 +21,12 @@ public class ExponentialFunctionOffsetTransform
 
     @Override
     public void applyInPlace(final double[] location) {
-        location[dimension] += a * Math.exp(b * location[dimension]) + c;
+        // TODO: verify offset is what Preibisch really wants
+        location[dimension] += a * (1 - Math.exp(-b * location[dimension])) + c;
     }
 
     @Override
     public CoordinateTransform copy() {
-        return new ExponentialFunctionOffsetTransform(a, b, c, dimension);
+        return new ExponentialRecoveryOffsetTransform(a, b, c, dimension);
     }
 }
