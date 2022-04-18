@@ -1,5 +1,8 @@
 package org.janelia.alignment.match;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import ij.ImagePlus;
 import ij.gui.Roi;
 import ij.measure.CurveFitter;
@@ -15,6 +18,7 @@ import mpicbg.stitching.PairWiseStitchingImgLib;
 import mpicbg.stitching.PairWiseStitchingResult;
 import mpicbg.stitching.StitchingParameters;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.CrossCorrelationParameters;
 import org.janelia.alignment.transform.ExponentialRecoveryOffsetTransform;
 import org.slf4j.Logger;
@@ -31,60 +35,83 @@ import fit.polynomial.HigherOrderPolynomialFunction;
 public class UnscaleTile {
 
 	public static class FitResult {
-		// model needed for actual processing
-		private CurveFitter cfFullRes = null;
+		private final CurveFitter cfFullRes;
+		private final CurveFitter cfRenderScale;
+		private final int numInliers;
 
-		// model to apply to local test images
-		private CurveFitter cfRenderScale = null;
+		public FitResult(final CurveFitter cfFullRes,
+						 final CurveFitter cfRenderScale,
+						 final Integer numInliers) {
+			this.cfFullRes = cfFullRes;
+			this.cfRenderScale = cfRenderScale;
+			this.numInliers = numInliers;
+		}
 
-		// how many points (cross-correlation ROIs) were used for the fit, should be > 500 at render scale 0.25
-		// here we use a 3rd order polynomial for separating good points from outliers
-		private int numInliers = -1;
-
-		// the goodness of the fit of the exponential decay on the inliers (should be ~0.99, is between 0 and 1)
-		private double goodnessOfFit = Double.NaN;
-
-		// the scaling at y=0 (maybe -50 for a strongly deformed one, maybe -2 for a "correct" one)
-		private double valueAt0 = Double.NaN;
-
+		/**
+		 * Model needed for actual processing
+		 */
+		@JsonIgnore
 		public CurveFitter getCfFullRes() {
 			return cfFullRes;
 		}
 
+		/**
+		 * Model to apply to local test images
+		 */
+		@JsonIgnore
 		public CurveFitter getCfRenderScale() {
 			return cfRenderScale;
 		}
 
+		/**
+		 * How many points (cross-correlation ROIs) were used for the fit, should be > 500 at render scale 0.25.
+		 * Here we use a 3rd order polynomial for separating good points from outliers.
+		 */
+		@JsonProperty("numInliers")
 		public int getNumInliers() {
 			return numInliers;
 		}
 
+		/**
+		 * @return the goodness of the full scale fit of the exponential decay on the inliers
+		 *         (should be ~0.99, is between 0 and 1).
+		 */
+		@JsonProperty("goodnessOfFit")
 		public double getGoodnessOfFit() {
-			return goodnessOfFit;
+			return cfFullRes.getFitGoodness();
 		}
 
+		/**
+		 * @return the scaling at y=0 (maybe -50 for a strongly deformed one, maybe -2 for a "correct" one)
+		 */
+		@JsonProperty("valueAt0")
+		public double getValueAt0() {
+			return cfFullRes.f( 0 );
+		}
+
+		/**
+		 * @return offset transform built from full resolution curve fitter.
+		 */
+		@JsonIgnore
 		public ExponentialRecoveryOffsetTransform buildTransform() {
 			ExponentialRecoveryOffsetTransform transform = null;
-			if (cfFullRes != null) {
-				final double[] parameters = cfFullRes.getParams();
-				if (parameters.length >= 3) {
-					transform = new ExponentialRecoveryOffsetTransform(parameters[0],
-																	   parameters[1],
-																	   parameters[2],
-																	   1);
-				}
+			final double[] parameters = cfFullRes.getParams();
+			if (parameters.length >= 3) {
+				transform = new ExponentialRecoveryOffsetTransform(parameters[0],
+																   parameters[1],
+																   parameters[2],
+																   1);
 			}
 			return transform;
 		}
 
+		public String toJson() {
+			return FIT_RESULT_JSON_HELPER.toJson(this);
+		}
+
 		@Override
 		public String toString() {
-			return "FitResult{" +
-				   "numInliers=" + numInliers +
-				   ", goodnessOfFit=" + goodnessOfFit +
-				   ", valueAt0=" + valueAt0 +
-				   ", transform=" + buildTransform() +
-				   '}';
+			return this.toJson();
 		}
 	}
 
@@ -171,7 +198,6 @@ public class UnscaleTile {
 		final ArrayList<PointFunctionMatch> inliers = new ArrayList<>();
 		//final QuadraticFunction qf = new QuadraticFunction();
 		final HigherOrderPolynomialFunction hpf = new HigherOrderPolynomialFunction( 3 );
-		final FitResult fr = new FitResult();
 		double maxCF = -Double.MAX_VALUE;
 
 		try {
@@ -191,9 +217,8 @@ public class UnscaleTile {
 			// error = 2.5, 25% inlier ratio
 			hpf.filterRansac( matches, inliers, 1000, 2.5*renderScale, 0.25);
 //			System.out.println(inliers.size()+ ", " + hpf);
-			fr.numInliers = inliers.size();
-			if ( fr.numInliers < 4 )
-				return fr;
+			if ( inliers.size() < 4 )
+				throw new IllegalStateException("only found " + inliers.size() + " inliers");
 
 			Collections.sort(inliers, (o1,o2) -> (int)Math.round(o1.getP1().getL()[0]) - (int)Math.round(o2.getP1().getL()[0]));
 
@@ -211,28 +236,28 @@ public class UnscaleTile {
 			//System.out.println( inliers.size() + ", " + hpf );
 			//for ( int x = 1; x <= 812;++x)
 			//	System.out.println( x+","+hpf.predict( x ) );
-			fr.cfRenderScale = new CurveFitter(xData, yData);
-			fr.cfRenderScale.doFit( CurveFitter.EXP_RECOVERY );
-//			System.out.println( fr.cfRenderScale.getFormula() );
-//			System.out.println( fr.cfRenderScale.getFitGoodness() );
-//			System.out.println( fr.cfRenderScale.getResultString() );
+			CurveFitter cfRenderScale = new CurveFitter(xData, yData);
+			cfRenderScale.doFit( CurveFitter.EXP_RECOVERY );
+//			System.out.println( cfRenderScale.getFormula() );
+//			System.out.println( cfRenderScale.getFitGoodness() );
+//			System.out.println( cfRenderScale.getResultString() );
 
 			for ( int x = minX; x <= maxX;++x)
-				maxCF = Math.max( maxCF, fr.cfRenderScale.f(x) );
+				maxCF = Math.max( maxCF, cfRenderScale.f(x) );
 //			System.out.println( "maxCF=" + maxCF );
 
 			// make sure the scaling base is 0
 			for ( j = 0; j < yData.length; ++j )
 				yData[ j ] -= maxCF;
 
-			fr.cfRenderScale = new CurveFitter(xData, yData);
-			fr.cfRenderScale.doFit( CurveFitter.EXP_RECOVERY );
+			cfRenderScale = new CurveFitter(xData, yData);
+			cfRenderScale.doFit( CurveFitter.EXP_RECOVERY );
 
-//			System.out.println( fr.cfRenderScale.getResultString() );
+//			System.out.println( cfRenderScale.getResultString() );
 
 			/*
 			for ( int x = minX; x <= maxX;++x)
-				System.out.println( x+","+(matchMap.containsKey(x) ? (matchMap.get(x)-maxCF) : "")+","+(fr.cfRenderScale.f(x)));
+				System.out.println( x+","+(matchMap.containsKey(x) ? (matchMap.get(x)-maxCF) : "")+","+(cfRenderScale.f(x)));
 			*/
 		} catch (final NotEnoughDataPointsException e) {
 			throw new IllegalArgumentException("unable to filter inliers", e);
@@ -252,29 +277,29 @@ public class UnscaleTile {
 			++j;
 		}
 
-		fr.cfFullRes = new CurveFitter(xData, yData);
-		fr.cfFullRes.doFit( CurveFitter.EXP_RECOVERY );
-//		System.out.println( fr.cfFullRes.getFormula() );
-//		System.out.println( fr.cfFullRes.getFitGoodness() );
-		System.out.println( fr.cfFullRes.getResultString() );
-//		System.out.println( Util.printCoordinates( fr.cfFullRes.getParams() ) );
+		final CurveFitter cfFullRes = new CurveFitter(xData, yData);
+		cfFullRes.doFit( CurveFitter.EXP_RECOVERY );
 
-		fr.goodnessOfFit = fr.cfFullRes.getFitGoodness();
-		fr.valueAt0 = fr.cfFullRes.f( 0 );
-
-		LOG.debug("getScalingFunction: exit, returning {}", fr);
+//		System.out.println( cfFullRes.getFormula() );
+//		System.out.println( cfFullRes.getFitGoodness() );
+//		System.out.println( cfFullRes.getResultString() );
+//		System.out.println( Util.printCoordinates( cfFullRes.getParams() ) );
 
 		/*
 		maxCF = -Double.MAX_VALUE;
 		for ( int x = 0; x <= 823*4;++x)
-			maxCF = Math.max( maxCF, fr.cfFullRes.f(x) );
+			maxCF = Math.max( maxCF, cfFullRes.f(x) );
 		System.out.println( "maxCF=" + maxCF );
 
 		for ( int x = 0; x <= 823*4;++x)
-			System.out.println( x+","+(fr.cfFullRes.f(x)));
+			System.out.println( x+","+(cfFullRes.f(x)));
 		*/
 
-		return fr;
+		final FitResult fitResult = new FitResult(cfFullRes, cfFullRes, inliers.size());
+
+		LOG.debug("getScalingFunction: exit, returning {}", fitResult);
+
+		return fitResult;
 	}
 
     private static Rectangle findRectangle(final ImageProcessor mask) {
@@ -303,5 +328,8 @@ public class UnscaleTile {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UnscaleTile.class);
+
+	private static final JsonUtils.Helper<FitResult> FIT_RESULT_JSON_HELPER =
+			new JsonUtils.Helper<>(FitResult.class);
 
 }
