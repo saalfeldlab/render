@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import fit.PointFunctionMatch;
 import fit.polynomial.HigherOrderPolynomialFunction;
 import fit.polynomial.QuadraticFunction;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Util;
 
 public class UnscaleSec19 {
@@ -82,6 +83,44 @@ public class UnscaleSec19 {
 						featureRenderParameters,
 						featureRenderClipParameters);
 
+		/*
+		// layer 12839, Merlin-6262_21-09-26_230432_0-0-0-InLens.png, Merlin-6262_21-09-26_230432_0-0-1-InLens.png
+		CanvasId pCanvasId = new CanvasId("12839.0",
+				"21-09-26_230432_0-0-0.12839.0",
+				MontageRelativePosition.LEFT);
+		CanvasId qCanvasId = new CanvasId("12839.0",
+				"21-09-26_230432_0-0-1.12839.0",
+				MontageRelativePosition.RIGHT);
+		*/
+
+		/*
+		// layer 12840, Merlin-6262_21-09-26_230544_0-0-0-InLens.png, Merlin-6262_21-09-26_230544_0-0-1-InLens.png
+		CanvasId pCanvasId = new CanvasId("12840.0",
+				"21-09-26_230544_0-0-0.12840.0",
+				MontageRelativePosition.LEFT);
+		CanvasId qCanvasId = new CanvasId("12840.0",
+				"21-09-26_230544_0-0-1.12840.0",
+				MontageRelativePosition.RIGHT);
+		*/
+
+		/*
+		// layer 12841, Merlin-6262_21-09-26_230647_0-0-0-InLens.png, Merlin-6262_21-09-26_230647_0-0-1-InLens.png
+		CanvasId pCanvasId = new CanvasId("12841.0",
+				"21-09-26_230647_0-0-0.12841.0",
+				MontageRelativePosition.LEFT);
+		CanvasId qCanvasId = new CanvasId("12841.0",
+				"21-09-26_230647_0-0-1.12841.0",
+				MontageRelativePosition.RIGHT);
+		*/
+
+		// layer 12842, Merlin-6262_21-09-26_230749_0-0-0-InLens.png, Merlin-6262_21-09-26_230749_0-0-1-InLens.png
+		CanvasId pCanvasId = new CanvasId("12842.0",
+				"21-09-26_230749_0-0-0.12842.0",
+				MontageRelativePosition.LEFT);
+		CanvasId qCanvasId = new CanvasId("12842.0",
+				"21-09-26_230749_0-0-1.12842.0",
+				MontageRelativePosition.RIGHT);
+
 		//layer 3781 of Sec19, tile 0 and 1
 		/*
 		final CanvasId pCanvasId = new CanvasId("3781.0",
@@ -92,13 +131,25 @@ public class UnscaleSec19 {
 												MontageRelativePosition.RIGHT);
 		*/
 
+		/*
 		//"3785.0", Merlin-6262_21-09-20_094420_0-0-0-InLens.png, Merlin-6262_21-09-20_094420_0-0-1-InLens.png
-		/*CanvasId pCanvasId = new CanvasId("3785.0",
+		CanvasId pCanvasId = new CanvasId("3785.0",
 				"21-09-20_094420_0-0-0.3785.0",
 				MontageRelativePosition.LEFT);
 		CanvasId qCanvasId = new CanvasId("3785.0",
 				"21-09-20_094420_0-0-1.3785.0",
-				MontageRelativePosition.RIGHT);*/
+				MontageRelativePosition.RIGHT);
+		*/
+
+		/*
+		// 3786, Merlin-6262_21-09-20_094523_0-0-0-InLens.png, Merlin-6262_21-09-20_094523_0-0-1-InLens.png
+		CanvasId pCanvasId = new CanvasId("3786.0",
+				"21-09-20_094523_0-0-0.3786.0",
+				MontageRelativePosition.LEFT);
+		CanvasId qCanvasId = new CanvasId("3786.0",
+				"21-09-20_094523_0-0-1.3786.0",
+				MontageRelativePosition.RIGHT);
+		*/
 
 		/*
 		// 8783.0, Merlin-6262_21-09-24_002136_0-0-0-InLens.png, Merlin-6262_21-09-24_002136_0-0-1-InLens.png
@@ -110,6 +161,7 @@ public class UnscaleSec19 {
 				MontageRelativePosition.RIGHT);
 		*/
 
+		/*
 		// (CORRECT) 13240, Merlin-6262_21-09-27_060232_0-0-0-InLens.png, Merlin-6262_21-09-27_060232_0-0-1-InLens.png
 		CanvasId pCanvasId = new CanvasId("13240.0",
 				"21-09-27_060232_0-0-0.13240.0",
@@ -117,7 +169,8 @@ public class UnscaleSec19 {
 		CanvasId qCanvasId = new CanvasId("13240.0",
 				"21-09-27_060232_0-0-1.13240.0",
 				MontageRelativePosition.RIGHT);
-		
+		*/
+
 		final CanvasIdWithRenderContext p = CanvasIdWithRenderContext.build(pCanvasId, urlTemplateForRun);
 		final CanvasIdWithRenderContext q = CanvasIdWithRenderContext.build(qCanvasId, urlTemplateForRun);
 
@@ -142,7 +195,7 @@ public class UnscaleSec19 {
 			mask2.show();
 		}*/
 
-		getCandidateMatches(imp1,
+		CurveFitter cf = getScalingFunction(imp1,
 							renderedPCanvas.mask,
 							imp2,
 							renderedQCanvas.mask,
@@ -151,7 +204,7 @@ public class UnscaleSec19 {
 							ccParameters );
 	}
 
-	private static List<PointMatch> getCandidateMatches(
+	private static CurveFitter getScalingFunction(
 			final ImagePlus ip1,
 			final ImageProcessor mask1,
 			final ImagePlus ip2,
@@ -223,7 +276,6 @@ public class UnscaleSec19 {
 			final PairWiseStitchingResult result = PairWiseStitchingImgLib.stitchPairwise(ip1, ip2, roi1, roi2, 1, 1,
 					params);
 
-
 			if (result.getCrossCorrelation() >= ccParameters.minResultThreshold) {
 
 				//LOG.debug(minXOrY + " > " + maxXOrY + ", shift : " + Util.printCoordinates(result.getOffset())
@@ -267,6 +319,7 @@ public class UnscaleSec19 {
 		final ArrayList<PointFunctionMatch> inliers = new ArrayList<>();
 		//final QuadraticFunction qf = new QuadraticFunction();
 		final HigherOrderPolynomialFunction hpf = new HigherOrderPolynomialFunction( 3 );
+		CurveFitter cf = null;
 
 		try {
 			int minX = Integer.MAX_VALUE;
@@ -297,7 +350,7 @@ public class UnscaleSec19 {
 			//System.out.println( inliers.size() + ", " + hpf );
 			//for ( int x = 1; x <= 812;++x)
 			//	System.out.println( x+","+hpf.predict( x ) );
-			CurveFitter cf = new CurveFitter(xData, yData);
+			cf = new CurveFitter(xData, yData);
 			cf.doFit( CurveFitter.EXP_RECOVERY );
 			System.out.println( cf.getFormula() );
 			System.out.println( cf.getFitGoodness() );
@@ -317,7 +370,7 @@ public class UnscaleSec19 {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return candidates;
+		return cf;
 	}
 
     private static Rectangle findRectangle(final ImageProcessor mask) {
