@@ -21,7 +21,6 @@ public class ExponentialRecoveryOffsetTransform
 
     @Override
     public void applyInPlace(final double[] location) {
-        // TODO: verify offset is what Preibisch really wants
         location[dimension] += a * (1 - Math.exp(-b * location[dimension])) + c;
     }
 

@@ -177,6 +177,12 @@
             <version>0.2.3</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.github.PreibischLab</groupId>
+            <artifactId>FunctionFit</artifactId>
+            <version>157ab01</version>
+        </dependency>
+
     </dependencies>
 
     <!--

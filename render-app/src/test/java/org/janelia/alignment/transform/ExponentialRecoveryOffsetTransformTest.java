@@ -45,7 +45,6 @@ public class ExponentialRecoveryOffsetTransformTest {
                 new ExponentialRecoveryOffsetTransform(9.47533, 0.0053344, -14.99262, 0);
 
         final double[][] testLocations = {   {0,        1111}, {200,       1111}, {600,       1111} };
-        // TODO: verify expected results are correct
         final double[][] expectedResults = { {0 - 14.9, 1111}, {200 - 8.8, 1111}, {600 - 5.9, 1111} };
 
         for (int i = 0; i < testLocations.length; i++) {
