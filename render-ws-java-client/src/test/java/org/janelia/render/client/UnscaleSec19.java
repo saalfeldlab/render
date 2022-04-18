@@ -28,6 +28,8 @@ import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.parameters.CrossCorrelationParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderParameters;
+import org.janelia.alignment.transform.CurveFitterTransform;
+import org.janelia.alignment.transform.ExponentialFunctionOffsetTransform;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +37,21 @@ import org.slf4j.LoggerFactory;
 import fit.PointFunctionMatch;
 import fit.polynomial.HigherOrderPolynomialFunction;
 import fit.polynomial.QuadraticFunction;
+import net.imglib2.Cursor;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.RealRandomAccess;
+import net.imglib2.RealRandomAccessible;
+import net.imglib2.converter.Converters;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.realtransform.RealViews;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Util;
+import net.imglib2.view.Views;
 
 public class UnscaleSec19 {
 
@@ -202,6 +217,28 @@ public class UnscaleSec19 {
 							true,
 							renderScale,
 							ccParameters );
+
+		final CurveFitterTransform t = new CurveFitterTransform(cf, 1);
+
+		final RandomAccessibleInterval<FloatType> img = Converters.convertRAI(ImageJFunctions.wrapByte( imp1 ), (i,o) -> o.setReal( i.get() ), new FloatType());
+		final RandomAccessibleInterval<FloatType> tImg = ArrayImgs.floats( img.dimensionsAsLongArray() );
+
+		final RealRandomAccessible<FloatType> interpolated = Views.interpolate(Views.extendZero(img), new NLinearInterpolatorFactory<>());
+
+		final Cursor<FloatType> c = Views.iterable( tImg ).localizingCursor();
+		final RealRandomAccess<FloatType> rra = interpolated.realRandomAccess();
+		final double[] loc = new double[ 2 ];
+
+		while ( c.hasNext() )
+		{
+			c.fwd();
+			c.localize( loc );
+			t.applyInPlace(loc);
+			rra.setPosition(loc);
+			c.get().set( rra.get());
+		}
+
+		ImageJFunctions.show(tImg);
 	}
 
 	private static CurveFitter getScalingFunction(
