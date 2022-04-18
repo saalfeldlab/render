@@ -1,25 +1,10 @@
 package org.janelia.render.client;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-import ij.gui.Roi;
-import ij.measure.CurveFitter;
-import ij.process.ImageProcessor;
-
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
-
-import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
-import mpicbg.stitching.PairWiseStitchingImgLib;
-import mpicbg.stitching.PairWiseStitchingResult;
-import mpicbg.stitching.StitchingParameters;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasIdWithRenderContext;
@@ -29,37 +14,62 @@ import org.janelia.alignment.match.parameters.CrossCorrelationParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.alignment.transform.CurveFitterTransform;
-import org.janelia.alignment.transform.ExponentialFunctionOffsetTransform;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import fit.PointFunctionMatch;
 import fit.polynomial.HigherOrderPolynomialFunction;
-import fit.polynomial.QuadraticFunction;
+import ij.ImageJ;
+import ij.ImagePlus;
+import ij.gui.Roi;
+import ij.measure.CurveFitter;
+import ij.process.ImageProcessor;
+import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
+import mpicbg.stitching.PairWiseStitchingImgLib;
+import mpicbg.stitching.PairWiseStitchingResult;
+import mpicbg.stitching.StitchingParameters;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.converter.Converters;
-import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.realtransform.RealViews;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 public class UnscaleSec19 {
 
+	public static class FitResult
+	{
+		// model needed for actual processing
+		CurveFitter cfFullRes = null;
+
+		// model to apply to local test images
+		CurveFitter cfRenderScale = null;
+
+		// how many points (cross-correlation ROIs) were used for the fit, should be > 500 at renderscale 0.25
+		// here we use a 3rd order polynomial for separating good points from outliers
+		int numInliers = -1;
+
+		// the goodness of the fit of the exponential decay on the inliers (should be ~0.99, is between 0 and 1)
+		double goodnessOfFit = Double.NaN;
+
+		// the scaling at y=0 (maybe -50 for a strongly deformed one, maybe -2 for a "correct" one)
+		double valueaAt0 = Double.NaN;
+	}
+
 	public static void main(final String[] args)
 	{
 		new ImageJ();
 
-		CrossCorrelationParameters ccParameters = new CrossCorrelationParameters();
+		final CrossCorrelationParameters ccParameters = new CrossCorrelationParameters();
 		ccParameters.fullScaleSampleSize = 250;
 		ccParameters.fullScaleStepSize = 5;
 		ccParameters.checkPeaks = 50;
@@ -128,6 +138,7 @@ public class UnscaleSec19 {
 				MontageRelativePosition.RIGHT);
 		*/
 
+		/*
 		// layer 12842, Merlin-6262_21-09-26_230749_0-0-0-InLens.png, Merlin-6262_21-09-26_230749_0-0-1-InLens.png
 		CanvasId pCanvasId = new CanvasId("12842.0",
 				"21-09-26_230749_0-0-0.12842.0",
@@ -135,6 +146,7 @@ public class UnscaleSec19 {
 		CanvasId qCanvasId = new CanvasId("12842.0",
 				"21-09-26_230749_0-0-1.12842.0",
 				MontageRelativePosition.RIGHT);
+		*/
 
 		//layer 3781 of Sec19, tile 0 and 1
 		/*
@@ -166,7 +178,6 @@ public class UnscaleSec19 {
 				MontageRelativePosition.RIGHT);
 		*/
 
-		/*
 		// 8783.0, Merlin-6262_21-09-24_002136_0-0-0-InLens.png, Merlin-6262_21-09-24_002136_0-0-1-InLens.png
 		CanvasId pCanvasId = new CanvasId("8783.0",
 				"21-09-24_002136_0-0-0.8783.0",
@@ -174,7 +185,6 @@ public class UnscaleSec19 {
 		CanvasId qCanvasId = new CanvasId("8783.0",
 				"21-09-24_002136_0-0-1.8783.0",
 				MontageRelativePosition.RIGHT);
-		*/
 
 		/*
 		// (CORRECT) 13240, Merlin-6262_21-09-27_060232_0-0-0-InLens.png, Merlin-6262_21-09-27_060232_0-0-1-InLens.png
@@ -210,15 +220,22 @@ public class UnscaleSec19 {
 			mask2.show();
 		}*/
 
-		CurveFitter cf = getScalingFunction(imp1,
-							renderedPCanvas.mask,
-							imp2,
-							renderedQCanvas.mask,
-							true,
-							renderScale,
-							ccParameters );
+		//
+		// compute the function and statistics
+		//
+		final FitResult fr = getScalingFunction(
+				imp1,
+				renderedPCanvas.mask,
+				imp2,
+				renderedQCanvas.mask,
+				true,
+				renderScale,
+				ccParameters);
 
-		final CurveFitterTransform t = new CurveFitterTransform(cf, 1);
+		//
+		// render the result
+		//
+		final CurveFitterTransform t = new CurveFitterTransform(fr.cfRenderScale, 1);
 
 		final RandomAccessibleInterval<FloatType> img = Converters.convertRAI(ImageJFunctions.wrapByte( imp1 ), (i,o) -> o.setReal( i.get() ), new FloatType());
 		final RandomAccessibleInterval<FloatType> tImg = ArrayImgs.floats( img.dimensionsAsLongArray() );
@@ -241,7 +258,7 @@ public class UnscaleSec19 {
 		ImageJFunctions.show(tImg);
 	}
 
-	private static CurveFitter getScalingFunction(
+	private static FitResult getScalingFunction(
 			final ImagePlus ip1,
 			final ImageProcessor mask1,
 			final ImagePlus ip2,
@@ -259,6 +276,7 @@ public class UnscaleSec19 {
 		final Rectangle unmaskedArea2 = mask2 == null ? new Rectangle(ip2.getWidth(), ip2.getHeight())
 				: findRectangle(mask2);
 
+		// only stepThroughY works
 		final boolean stepThroughY = ip1.getHeight() > ip1.getWidth();
 
 		final int startStep;
@@ -281,9 +299,7 @@ public class UnscaleSec19 {
 				renderScale, ccParameters.minResultThreshold, scaledSampleSize, scaledStepSize, numTests,
 				stepIncrement);
 
-		final List<PointMatch> candidates = new ArrayList<>();
-
-		ArrayList<PointFunctionMatch> matches = new ArrayList<>();
+		final ArrayList<PointFunctionMatch> matches = new ArrayList<>();
 
 		for (int i = 0; i < numTests; ++i) {
 
@@ -318,45 +334,15 @@ public class UnscaleSec19 {
 				//LOG.debug(minXOrY + " > " + maxXOrY + ", shift : " + Util.printCoordinates(result.getOffset())
 				//		+ ", correlation (R)=" + result.getCrossCorrelation());
 
-				matches.add( new PointFunctionMatch( new Point( new double[] {minXOrY,result.getOffset(1)})));
-
-				final int stepDim = stepThroughY ? 1 : 0;
-				final int otherDim = stepThroughY ? 0 : 1;
-				final double r1XOrY = 0;
-				final double center1XorY = minXOrY + scaledSampleSize / 2.0;
-
-				final double r2XOrY = -result.getOffset(otherDim);
-				final double center2XorY = center1XorY - result.getOffset(stepDim);
-
-// just to place the points within the overlapping area
-// (only matters for visualization)
-				double shiftXOrY = 0;
-
-				final int unmasked2XOrY = stepThroughY ? unmaskedArea2.x : unmaskedArea2.y;
-				final int unmasked2WidthOrHeight = stepThroughY ? unmaskedArea2.width : unmaskedArea2.height;
-				if (r2XOrY < unmasked2XOrY) {
-					shiftXOrY += unmasked2XOrY - r2XOrY;
-				} else if (r2XOrY >= unmasked2XOrY + unmasked2WidthOrHeight) {
-					shiftXOrY -= r2XOrY - (unmasked2XOrY + unmasked2WidthOrHeight);
-				}
-
-				final Point p1, p2;
-				if (stepThroughY) {
-					p1 = new Point(new double[] { r1XOrY + shiftXOrY, center1XorY });
-					p2 = new Point(new double[] { r2XOrY + shiftXOrY, center2XorY });
-				} else {
-					p1 = new Point(new double[] { center1XorY, r1XOrY + shiftXOrY });
-					p2 = new Point(new double[] { center2XorY, r2XOrY + shiftXOrY });
-				}
-
-				candidates.add(new PointMatch(p1, p2));
+				matches.add( new PointFunctionMatch( new Point( new double[] {minXOrY + r1PCM.height/2,result.getOffset(1)})));
 			}
 		}
 
 		final ArrayList<PointFunctionMatch> inliers = new ArrayList<>();
 		//final QuadraticFunction qf = new QuadraticFunction();
 		final HigherOrderPolynomialFunction hpf = new HigherOrderPolynomialFunction( 3 );
-		CurveFitter cf = null;
+		final FitResult fr = new FitResult();
+		double maxCF = -Double.MAX_VALUE;
 
 		try {
 			int minX = Integer.MAX_VALUE;
@@ -370,12 +356,19 @@ public class UnscaleSec19 {
 				matchMap.put(x, pm.getP1().getL()[1]);
 			}
 			System.out.println("minX="+minX + " maxX="+maxX);
+
+			// ransac using 3rd order polynomial on all matches
+			// error = 2.5, 25% inlier ratio
 			hpf.filterRansac( matches, inliers, 1000, 2.5*renderScale, 0.25);
 			System.out.println( inliers.size()+ ", " + hpf);
+			fr.numInliers = inliers.size();
+			if ( fr.numInliers < 4 )
+				return fr;
+
 			Collections.sort(inliers, (o1,o2) -> (int)Math.round(o1.getP1().getL()[0]) - (int)Math.round(o2.getP1().getL()[0]));
-			
-			double[] xData = new double[ inliers.size() ];
-			double[] yData = new double[ inliers.size() ];
+
+			final double[] xData = new double[ inliers.size() ];
+			final double[] yData = new double[ inliers.size() ];
 			int j = 0;
 			for ( final PointFunctionMatch pm : inliers )
 			{
@@ -384,30 +377,73 @@ public class UnscaleSec19 {
 				yData[ j ] = pm.getP1().getL()[1];
 				++j;
 			}
+
 			//System.out.println( inliers.size() + ", " + hpf );
 			//for ( int x = 1; x <= 812;++x)
 			//	System.out.println( x+","+hpf.predict( x ) );
-			cf = new CurveFitter(xData, yData);
-			cf.doFit( CurveFitter.EXP_RECOVERY );
-			System.out.println( cf.getFormula() );
-			System.out.println( cf.getFitGoodness() );
-			System.out.println( cf.getResultString() );
+			fr.cfRenderScale = new CurveFitter(xData, yData);
+			fr.cfRenderScale.doFit( CurveFitter.EXP_RECOVERY );
+			System.out.println( fr.cfRenderScale.getFormula() );
+			System.out.println( fr.cfRenderScale.getFitGoodness() );
+			System.out.println( fr.cfRenderScale.getResultString() );
 
-			double maxCF = -Double.MAX_VALUE;
 			for ( int x = minX; x <= maxX;++x)
-				maxCF = Math.max( maxCF, cf.f(x) );
+				maxCF = Math.max( maxCF, fr.cfRenderScale.f(x) );
 			System.out.println( "maxCF=" + maxCF );
 
-			for ( int x = minX; x <= maxX;++x)
-				System.out.println( x+","+(matchMap.containsKey(x) ? (matchMap.get(x)-maxCF) : "")+","+(cf.f(x)-maxCF));
-			//System.out.println( minXOrY + "," + result.getOffset(1) + "," + result.getCrossCorrelation() );
+			// make sure the scaling base is 0
+			for ( j = 0; j < yData.length; ++j )
+				yData[ j ] -= maxCF;
 
-			
+			fr.cfRenderScale = new CurveFitter(xData, yData);
+			fr.cfRenderScale.doFit( CurveFitter.EXP_RECOVERY );
+
+			System.out.println( fr.cfRenderScale.getResultString() );
+
+			/*
+			for ( int x = minX; x <= maxX;++x)
+				System.out.println( x+","+(matchMap.containsKey(x) ? (matchMap.get(x)-maxCF) : "")+","+(fr.cfRenderScale.f(x)));
+			*/
 		} catch (NotEnoughDataPointsException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return cf;
+
+		//
+		// build full-res fit
+		//
+		final double[] xData = new double[ inliers.size() ];
+		final double[] yData = new double[ inliers.size() ];
+		int j = 0;
+
+		for ( final PointFunctionMatch pm : inliers )
+		{
+			xData[ j ] = pm.getP1().getL()[0] / renderScale;
+			yData[ j ] = ( pm.getP1().getL()[1] - maxCF ) / renderScale;
+			++j;
+		}
+
+		fr.cfFullRes = new CurveFitter(xData, yData);
+		fr.cfFullRes.doFit( CurveFitter.EXP_RECOVERY );
+		System.out.println( fr.cfFullRes.getFormula() );
+		System.out.println( fr.cfFullRes.getFitGoodness() );
+		System.out.println( fr.cfFullRes.getResultString() );
+		System.out.println( Util.printCoordinates( fr.cfFullRes.getParams() ) );
+
+		fr.goodnessOfFit = fr.cfFullRes.getFitGoodness();
+		fr.valueaAt0 = fr.cfFullRes.f( 0 );
+
+		/*
+		maxCF = -Double.MAX_VALUE;
+		for ( int x = 0; x <= 823*4;++x)
+			maxCF = Math.max( maxCF, fr.cfFullRes.f(x) );
+		System.out.println( "maxCF=" + maxCF );
+
+		for ( int x = 0; x <= 823*4;++x)
+			System.out.println( x+","+(fr.cfFullRes.f(x)));
+		*/
+
+		return fr;
 	}
 
     private static Rectangle findRectangle(final ImageProcessor mask) {
