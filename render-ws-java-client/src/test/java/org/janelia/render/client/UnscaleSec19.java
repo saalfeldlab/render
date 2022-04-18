@@ -433,6 +433,7 @@ public class UnscaleSec19 {
 		fr.goodnessOfFit = fr.cfFullRes.getFitGoodness();
 		fr.valueaAt0 = fr.cfFullRes.f( 0 );
 
+		System.out.println( fr.valueaAt0 );
 		/*
 		maxCF = -Double.MAX_VALUE;
 		for ( int x = 0; x <= 823*4;++x)
