@@ -31,7 +31,6 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.transform.ExponentialRecoveryOffsetTransform;
 import org.janelia.alignment.util.FileUtil;
@@ -320,11 +319,15 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
     private void insertFitResultTransformsIntoTileSpecs(final Map<CanvasId, UnscaleTile.FitResult> canvasIdToResultsMap)
             throws IOException {
 
-        final ResolvedTileSpecCollection updatedTileSpecs = new ResolvedTileSpecCollection();
+        final ResolvedTileSpecCollection updatedCollection = new ResolvedTileSpecCollection();
 
         for (final CanvasId canvasId : canvasIdToResultsMap.keySet()) {
 
-            final TileSpec tileSpec = sourceRenderDataClient.getTile(parameters.stack, canvasId.getId());
+            final Double z = Double.parseDouble(canvasId.getGroupId());
+            final ResolvedTileSpecCollection resolvedTilesForLayer =
+                    sourceRenderDataClient.getResolvedTiles(parameters.stack, z);
+
+            final TileSpec tileSpec = resolvedTilesForLayer.getTileSpec(canvasId.getId());
             final ListTransformSpec sourceListTransformSpec = tileSpec.getTransforms();
             final int numberOfSourceTransforms = sourceListTransformSpec.size();
 
@@ -337,22 +340,16 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
 
             // then append existing source transforms
             for (int i = 0; i< numberOfSourceTransforms; i++) {
-                final TransformSpec sourceTransformSpec = sourceListTransformSpec.getSpec(i);
-                if (! sourceTransformSpec.isFullyResolved()) {
-                    // TODO: consider fetching dependencies for reference transform specs
-                    throw new UnsupportedOperationException(
-                            "tile spec " + tileSpec.getTileId() + " has unresolved transforms");
-                }
                 targetListTransformSpec.addSpec(sourceListTransformSpec.getSpec(i));
             }
 
             tileSpec.setTransforms(targetListTransformSpec);
             tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
-            updatedTileSpecs.addTileSpecToCollection(tileSpec);
+            updatedCollection.merge(resolvedTilesForLayer);
         }
 
-        targetRenderDataClient.saveResolvedTiles(updatedTileSpecs, parameters.getTargetStack(), null);
+        targetRenderDataClient.saveResolvedTiles(updatedCollection, parameters.getTargetStack(), null);
     }
 
     private void setupDerivedStack()
