@@ -84,6 +84,7 @@ public class UnscaleTile {
 		/**
 		 * @return the scaling at y=0 (maybe -50 for a strongly deformed one, maybe -2 for a "correct" one)
 		 */
+		@SuppressWarnings("unused")
 		@JsonProperty("valueAt0")
 		public double getValueAt0() {
 			return cfFullRes.f( 0 );
@@ -223,8 +224,10 @@ public class UnscaleTile {
 			// error = 2.5, 25% inlier ratio
 			hpf.filterRansac( matches, inliers, 1000, 2.5*renderScale, 0.25);
 //			System.out.println(inliers.size()+ ", " + hpf);
-			if ( inliers.size() < 4 )
-				throw new IllegalStateException("only found " + inliers.size() + " inliers");
+			if ( inliers.size() < 4 ) {
+				LOG.warn("getScalingFunction: only found " + inliers.size() + " inliers, returning null result");
+				return null;
+			}
 
 			Collections.sort(inliers, (o1,o2) -> (int)Math.round(o1.getP1().getL()[0]) - (int)Math.round(o2.getP1().getL()[0]));
 
@@ -268,7 +271,8 @@ public class UnscaleTile {
 				System.out.println( x+","+(matchMap.containsKey(x) ? (matchMap.get(x)-maxCF) : "")+","+(cfRenderScale.f(x)));
 			*/
 		} catch (final NotEnoughDataPointsException e) {
-			throw new IllegalArgumentException("unable to filter inliers", e);
+			LOG.warn("getScalingFunction: failed to filter " + inliers.size() + " inliers, returning null result", e);
+			return null;
 		}
 
 		//

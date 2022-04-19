@@ -279,7 +279,9 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
                     parameters.featureRender.renderScale,
                     parameters.correlation);
 
-            canvasIdToResultsMap.put(problemCanvasId, fitResult);
+            if (fitResult != null) {
+                canvasIdToResultsMap.put(problemCanvasId, fitResult);
+            }
         }
 
         LOG.info("deriveTransformParametersForPairs: derived parameters for {} pairs",
