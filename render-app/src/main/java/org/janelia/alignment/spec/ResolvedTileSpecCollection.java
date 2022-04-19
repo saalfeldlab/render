@@ -82,6 +82,21 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
+     * Merges transforms and tiles from the specified collection into this one.
+     */
+    public void merge(final ResolvedTileSpecCollection anotherCollection) {
+        for (final TransformSpec transformSpec : anotherCollection.getTransformSpecs()) {
+            this.addTransformSpecToCollection(transformSpec);
+        }
+        for (final TileSpec tileSpec : anotherCollection.getTileSpecs()) {
+            this.addTileSpecToCollection(tileSpec);
+        }
+        if (this.tileSpecValidator == null) {
+            this.tileSpecValidator = anotherCollection.tileSpecValidator;
+        }
+    }
+
+    /**
      * Sets the tile spec validator for this collection (a null value disables validation).
      * Any tile spec identified as invalid by this validator will be removed / filtered from the collection.
      *
