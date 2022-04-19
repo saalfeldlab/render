@@ -20,7 +20,7 @@ public class CrossCorrelationPointMatchClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new SIFTPointMatchClient.Parameters());
+        CommandLineParameters.parseHelp(new CrossCorrelationPointMatchClient.Parameters());
     }
 
     // --------------------------------------------------------------
