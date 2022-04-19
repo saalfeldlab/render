@@ -100,7 +100,7 @@ public class UnscaleTile {
 				transform = new ExponentialRecoveryOffsetTransform(parameters[0],
 																   parameters[1],
 																   parameters[2],
-																   1);
+																   1); // transform y
 			}
 			return transform;
 		}
@@ -156,6 +156,7 @@ public class UnscaleTile {
 				renderScale, ccParameters.minResultThreshold, scaledSampleSize, scaledStepSize, numTests,
 				stepIncrement);
 
+		final int numTestsDiv4 = numTests / 4;
 		final ArrayList<PointFunctionMatch> matches = new ArrayList<>();
 
 		for (int i = 0; i < numTests; ++i) {
@@ -193,6 +194,10 @@ public class UnscaleTile {
 
 				matches.add( new PointFunctionMatch( new Point( new double[] {minXOrY + r1PCM.height/2,result.getOffset(1)})));
 			}
+
+			if ((i > 0) && (i % numTestsDiv4 == 0)) {
+				LOG.debug("getScalingFunction: finished test {} of {}", i, numTests);
+			}
 		}
 
 		final ArrayList<PointFunctionMatch> inliers = new ArrayList<>();
@@ -201,6 +206,7 @@ public class UnscaleTile {
 		double maxCF = -Double.MAX_VALUE;
 
 		try {
+			LOG.debug("getScalingFunction: filter matches");
 			int minX = Integer.MAX_VALUE;
 			int maxX = Integer.MIN_VALUE;
 //			HashMap<Integer, Double> matchMap = new HashMap<>();
@@ -232,6 +238,8 @@ public class UnscaleTile {
 				yData[ j ] = pm.getP1().getL()[1];
 				++j;
 			}
+
+			LOG.debug("getScalingFunction: first fit for {} inliers at render scale {}", inliers.size(), renderScale);
 
 			//System.out.println( inliers.size() + ", " + hpf );
 			//for ( int x = 1; x <= 812;++x)
