@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +88,12 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
         }
 
         @Parameter(
+                names = "--setupTargetStack",
+                description = "Setup the target stack before transforming tiles",
+                arity = 0)
+        public boolean setupTargetStack = false;
+
+        @Parameter(
                 names = "--completeTargetStack",
                 description = "Complete the target stack after transforming all tiles",
                 arity = 0)
@@ -142,7 +149,9 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
                 final ExponentialRecoveryOffsetTransformDerivationClient
                         client = new ExponentialRecoveryOffsetTransformDerivationClient(parameters);
 
-                client.setupDerivedStack();
+                if (parameters.setupTargetStack) {
+                    client.setupDerivedStack();
+                }
 
                 for (final String pairJsonFileName : parameters.pairJson) {
                     client.deriveTransformsForPairFile(pairJsonFileName);
@@ -233,6 +242,13 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
 
             final boolean pIsProblem = problemIdPattern.matcher(pair.getP().getId()).matches();
 
+            if ((! pIsProblem) &&
+                (! problemIdPattern.matcher(pair.getQ().getId()).matches())) {
+                throw new IllegalArgumentException(
+                        "neither " + pair.getP().getId() + " nor " + pair.getQ().getId() +
+                        " matches problem pattern '" + parameters.problemIdPatternString + "'");
+            }
+
             final CanvasId problemCanvasId = pIsProblem ? pair.getP() : pair.getQ();
             final CanvasId otherCanvasId = pIsProblem ? pair.getQ() : pair.getP();
 
@@ -280,8 +296,10 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
 
         final List<FitResultWithContext> resultList = new ArrayList<>(canvasIdToResultsMap.size());
 
-        canvasIdToResultsMap.keySet().stream().sorted().forEach(
+        canvasIdToResultsMap.keySet().forEach(
                 canvasId -> resultList.add(new FitResultWithContext(canvasId, canvasIdToResultsMap.get(canvasId))));
+
+        resultList.sort(Comparator.comparing(o -> o.z));
 
         final File sourceJsonFile = new File(pairJsonFileName);
         final String sourceJsonName = sourceJsonFile.getName();
