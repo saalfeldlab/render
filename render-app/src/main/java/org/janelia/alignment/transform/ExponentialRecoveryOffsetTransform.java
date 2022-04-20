@@ -3,7 +3,8 @@ package org.janelia.alignment.transform;
 import mpicbg.trakem2.transform.CoordinateTransform;
 
 /**
- * Transform that adds <pre> a * (1 - e^-b*x) + c </pre> to all x (or <pre> a * (1 - e^-b*y) + c </pre> to all y).
+ * Transform that subtracts <pre> a * (1 - e^-b*x) + c </pre> from all x
+ * (or <pre> a * (1 - e^-b*y) + c </pre> from all y).
  */
 public class ExponentialRecoveryOffsetTransform
         extends ThreeParameterSingleDimensionTransform {
@@ -21,7 +22,7 @@ public class ExponentialRecoveryOffsetTransform
 
     @Override
     public void applyInPlace(final double[] location) {
-        location[dimension] += a * (1 - Math.exp(-b * location[dimension])) + c;
+        location[dimension] -= a * (1 - Math.exp(-b * location[dimension])) + c;
     }
 
     @Override
