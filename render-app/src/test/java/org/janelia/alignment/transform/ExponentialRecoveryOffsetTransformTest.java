@@ -3,6 +3,7 @@ package org.janelia.alignment.transform;
 import java.util.Collections;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.junit.Assert;
 import org.junit.Test;
@@ -54,6 +55,27 @@ public class ExponentialRecoveryOffsetTransformTest {
             Assert.assertEquals("bad y result for test " + i,
                                 expectedResults[i][1], result[1], 0.0001);
         }
+    }
+
+    @Test
+    public void testDerivedTileBoundsAfterTransform() {
+        final TileSpec tileSpec = new TileSpec();
+        tileSpec.setTileId("21-09-24_002136_0-0-0.8783.0");
+        tileSpec.setWidth(7687.0);
+        tileSpec.setHeight(3500.0);
+        tileSpec.addTransformSpecs(Collections.singletonList(
+                new LeafTransformSpec(ExponentialRecoveryOffsetTransform.class.getName(),
+                                      "50.263852018175896,0.0012483526717175487,-49.51720446569045,1")));
+
+        tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
+        final TileBounds bounds = tileSpec.toTileBounds();
+
+        Assert.assertEquals("invalid bounds width after transform",
+                            tileSpec.getWidth(), bounds.getWidth(), 0.1);
+
+        final double expectedHeight = tileSpec.getHeight() - 49;
+        Assert.assertEquals("invalid bounds height after transform",
+                            expectedHeight, bounds.getHeight(), 0.1);
     }
 
 }
