@@ -27,6 +27,7 @@ import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 public class UnscaleSec19 {
@@ -198,6 +199,7 @@ public class UnscaleSec19 {
 				renderScale,
 				ccParameters);
 
+		System.out.println( "function: " + Util.printCoordinates( fr.getCfFullRes().getParams() ) );
 		//
 		// render the result
 		//
