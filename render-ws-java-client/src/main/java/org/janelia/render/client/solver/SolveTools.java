@@ -1047,8 +1047,21 @@ public class SolveTools
 		// TODO: make sure there is only one transform
         final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
 
+        //
+        // after which transform was SIFT applied?
+        //
         if ( transformList.getList( null ).size() != 1 )
-        	throw new RuntimeException( "size " + transformList.getList( null ).size() );
+        {
+        	if (transformList.getList( null ).size() == 2 && ( transformList.get( 0 ).getClass().isInstance( AffineModel2D.class ) ))
+        	{
+        		// everything is good, means the first transform is a lense deformation or non-rigid scaling (e.g VNC-Sec19)
+        	}
+        	else
+        	{
+        		throw new RuntimeException( "size " + transformList.getList( null ).size() );
+        	}
+        }
+
         final AffineModel2D lastTransform = (AffineModel2D)
                 transformList.get(transformList.getList(null).size() - 1);
         return lastTransform;
