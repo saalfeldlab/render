@@ -1044,27 +1044,27 @@ public class SolveTools
 
 	public static AffineModel2D loadLastTransformFromSpec( final TileSpec tileSpec )
 	{
-		// TODO: make sure there is only one transform
         final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
+		final List<CoordinateTransform> simpleList = transformList.getList( null );
 
-        //
-        // after which transform was SIFT applied?
-        //
-        if ( transformList.getList( null ).size() != 1 )
-        {
-        	if (transformList.getList( null ).size() == 2 && ( transformList.get( 0 ).getClass().isInstance( AffineModel2D.class ) ))
-        	{
-        		// everything is good, means the first transform is a lense deformation or non-rigid scaling (e.g VNC-Sec19)
-        	}
-        	else
-        	{
-        		throw new RuntimeException( "size " + transformList.getList( null ).size() );
-        	}
-        }
+        // Assuming that the last "alignment" transform was not used when deriving SIFT point matches
+		// and that either one or no "correction" transform precedes the "alignment" transform.
 
-        final AffineModel2D lastTransform = (AffineModel2D)
-                transformList.get(transformList.getList(null).size() - 1);
-        return lastTransform;
+		// Examples of "correction" transforms are lens deformation or non-rigid scaling (e.g. Z0720-07m VNC Sec19).
+
+		// Throw an exception if this assumption is incorrect to force us to verify new use cases.
+		// TODO: update tile spec API to identify lens correction and alignment transforms (see normalizeForMatching)
+		final boolean isValidTransformList =
+				((simpleList.size() == 1) && (simpleList.get(0) instanceof AffineModel2D)) ||
+				((simpleList.size() == 2) &&
+				 (! (simpleList.get(0) instanceof AffineModel2D) && (simpleList.get(1) instanceof AffineModel2D)));
+
+		if (! isValidTransformList)	{
+			throw new RuntimeException("because tile " + tileSpec.getTileId() + " has " + simpleList.size() +
+									   " transforms, not sure what was used for SIFT point match derivation");
+		}
+
+        return (AffineModel2D) simpleList.get(simpleList.size() - 1);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(SolveTools.class);
