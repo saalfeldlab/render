@@ -205,6 +205,7 @@ public class UnscaleTile {
 		//final QuadraticFunction qf = new QuadraticFunction();
 		final HigherOrderPolynomialFunction hpf = new HigherOrderPolynomialFunction( 3 );
 		double maxCF = -Double.MAX_VALUE;
+		CurveFitter cfRenderScale = null;
 
 		try {
 			LOG.debug("getScalingFunction: filter matches");
@@ -247,7 +248,7 @@ public class UnscaleTile {
 			//System.out.println( inliers.size() + ", " + hpf );
 			//for ( int x = 1; x <= 812;++x)
 			//	System.out.println( x+","+hpf.predict( x ) );
-			CurveFitter cfRenderScale = new CurveFitter(xData, yData);
+			cfRenderScale = new CurveFitter(xData, yData);
 			cfRenderScale.doFit( CurveFitter.EXP_RECOVERY );
 //			System.out.println( cfRenderScale.getFormula() );
 //			System.out.println( cfRenderScale.getFitGoodness() );
@@ -307,7 +308,7 @@ public class UnscaleTile {
 			System.out.println( x+","+(cfFullRes.f(x)));
 		*/
 
-		final FitResult fitResult = new FitResult(cfFullRes, cfFullRes, inliers.size());
+		final FitResult fitResult = new FitResult(cfFullRes, cfRenderScale, inliers.size());
 
 		LOG.debug("getScalingFunction: exit, returning {}", fitResult);
 
