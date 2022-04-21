@@ -664,7 +664,11 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 						final String pId = solveItem.tileToIdMap().get( pair.getA().getA() );
 						final String qId = solveItem.tileToIdMap().get( pair.getA().getB() );
-		
+
+						// do not stitch first and second tile
+						if ( pId.contains("_0-0-0") || qId.contains("_0-0-0") )
+							continue;
+
 						//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
 		
 						final Tile< S > p, q;
