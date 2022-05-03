@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import java.io.PrintStream;
+
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
@@ -19,13 +21,12 @@ public class ClusterCountClientTest {
 
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[]{
                 "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
-                "--owner", "Z1217_19m",
-                "--project", "Sec08",
-                "--stack", "v1_acquire",
-//                "--minZ", "150",
-//                "--maxZ", "300",
-//                "--matchCollection", "gd_test_3_Sec07_v1",
-                "--matchCollection", "gd_test_Sec08",
+                "--owner", "hess",
+                "--project", "wafer_52",
+                "--stack", "v1_acquire_slab_001",
+//                "--minZ", "1225", // 1226
+//                "--maxZ", "1241", // 1242
+                "--matchCollection", "wafer_52_v2",
                 "--maxSmallClusterSize", "0",
                 "--includeMatchesOutsideGroup",
                 "--maxLayersPerBatch", "1000",
@@ -34,5 +35,4 @@ public class ClusterCountClientTest {
 
         ClusterCountClient.main(effectiveArgs);
     }
-    
 }
