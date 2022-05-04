@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.text.SimpleDateFormat;
 import java.util.Comparator;
 import java.util.Date;
@@ -17,6 +18,7 @@ import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
@@ -29,6 +31,7 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.spec.stack.StackStats;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.parameter.ExcludedColumnParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -101,6 +104,12 @@ public class CopyStackClient {
         )
         public List<String> excludedTileIds;
 
+        @Parameter(
+                names = "--includedTileIdsJson",
+                description = "JSON file containing array of tileIds to be included (.json, .gz, or .zip)"
+        )
+        public String includedTileIdsJson;
+
         @ParametersDelegate
         ExcludedColumnParameters excludedColumns = new ExcludedColumnParameters();
 
@@ -158,6 +167,19 @@ public class CopyStackClient {
             }
             return excludedTileIdsSet;
         }
+
+        Set<String> getIncludedTileIdsSet()
+                throws IOException {
+            final Set<String> includedTileIdsSet = new HashSet<>();
+            if (includedTileIdsJson != null) {
+                final JsonUtils.Helper<String> jsonHelper = new JsonUtils.Helper<>(String.class);
+                try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(includedTileIdsJson)) {
+                    includedTileIdsSet.addAll(jsonHelper.fromJsonArray(reader));
+                }
+            }
+            return includedTileIdsSet;
+        }
+
     }
 
     public static void main(final String[] args) {
@@ -359,6 +381,15 @@ public class CopyStackClient {
             if (tileIdsToRemove.size() > 0) {
                 sourceCollection.removeTileSpecs(tileIdsToRemove);
                 LOG.info("copyLayer: removed {} tiles in excluded columns", tileIdsToRemove.size());
+            }
+        }
+
+        if (parameters.includedTileIdsJson != null) {
+            final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
+            sourceCollection.removeDifferentTileSpecs(parameters.getIncludedTileIdsSet());
+            final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
+            if (numberOfTilesRemoved > 0) {
+                LOG.info("copyLayer: removed {} tiles that were not explicitly included", numberOfTilesRemoved);
             }
         }
 
