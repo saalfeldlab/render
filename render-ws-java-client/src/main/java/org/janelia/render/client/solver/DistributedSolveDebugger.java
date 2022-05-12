@@ -33,7 +33,7 @@ public class DistributedSolveDebugger extends DistributedSolve
 	{
 		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
 		final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w =
-				this.solveSet.leftItems.get( 114 ).createWorker( //9, 28, 57, 81
+				this.solveSet.leftItems.get( 0 ).createWorker( //9, 28, 57, 81
 						this.solveSet.getMaxId() + 1,
 						runParams.pGroupList,
 						runParams.sectionIdToZMap,
@@ -96,10 +96,10 @@ public class DistributedSolveDebugger extends DistributedSolve
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                            "--project", "Sec24", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                            "--matchCollection", "Sec24_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-                            "--stack", "v4_acquire_trimmed", //"v3_acquire",
+                            "--owner", "hess", //"Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
+                            "--project", "wafer_52c", //"Sec24", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "wafer_52c_v1", //"Sec24_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", "v1_acquire_slab_001_trimmed_mfov_04", //"v4_acquire_trimmed", //"v3_acquire",
                             //"--targetStack", "v3_acquire_sp1",
                             //"--completeTargetStack",
                             
@@ -114,8 +114,8 @@ public class DistributedSolveDebugger extends DistributedSolve
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
                             
-                            //"--minZ", "1",
-                            //"--maxZ", "34022",
+                            "--minZ", "1234",
+                            "--maxZ", "1235",
 
                             //"--excludeFromRegularization", "1-5,35-534",
                             "--maxNumMatches", "0", // no limit, default

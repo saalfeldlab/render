@@ -20,6 +20,7 @@ import bdv.util.BdvStackSource;
 import mpicbg.models.Affine2D;
 import mpicbg.spim.io.IOFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
+import stitching.utils.Log;
 
 public class DistributedSolveMultiThread extends DistributedSolve
 {
@@ -113,26 +114,28 @@ public class DistributedSolveMultiThread extends DistributedSolve
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                            "--project", "Sec36", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                            "--matchCollection", "Sec36_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-                            "--stack", "v2_acquire_trimmed", //"v3_acquire",
-                            "--targetStack", "v2_acquire_trimmed_sp1_adaptive_2",
-                            "--completeTargetStack",
+                            "--owner", "hess", //"Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
+                            "--project", "wafer_52c", //"Sec24", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "wafer_52c_v1", //"Sec24_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", "v1_acquire_slab_001_trimmed_mfov_04", //"v4_acquire_trimmed", //"v3_acquire",
+                            //"--targetStack", "test1",
+                            //"--completeTargetStack",
                             
                             //"--noreg","400, 23434, 23-254",
 
                             // note: prealign is with translation only
                             "--blockOptimizerLambdasRigid",       "1.0,1.0,0.9,0.3,0.01",
                             "--blockOptimizerLambdasTranslation", "1.0,0.0,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "1000,1000,500,250,250",
-                            "--blockMaxPlateauWidth", "250,250,150,100,100",
+                            "--blockOptimizerIterations", "100,100,50,25,25",
+                            "--blockMaxPlateauWidth", "25,25,15,10,10",
+                            //"--blockOptimizerIterations", "1000,1000,500,250,250",
+                            //"--blockMaxPlateauWidth", "250,250,150,100,100",
 
                             //"--blockSize", "100",
-                            //"--noStitching", // do not stitch first
+                            "--minStitchingInliers", "100000000",// do not stitch first
                             
-                            "--minZ", "1",
-                            "--maxZ", "38068", //"9505", //"6480",//"34022",
+                            "--minZ", "1234",
+                            "--maxZ", "1234", //"9505", //"6480",//"34022",
 
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
@@ -164,17 +167,17 @@ public class DistributedSolveMultiThread extends DistributedSolve
                 //DistributedSolve.visMaxZ = 1285;
                 
                 final SolveSetFactory solveSetFactory =
-                new SolveSetFactoryBRSec36(
-        				parameters.globalModel(),
-        				parameters.blockModel(),
-        				parameters.stitchingModel(),
-        				parameters.blockOptimizerLambdasRigid,
-        				parameters.blockOptimizerLambdasTranslation,
-        				parameters.blockOptimizerIterations,
-        				parameters.blockMaxPlateauWidth,
-        				parameters.minStitchingInliers,
-        				parameters.blockMaxAllowedError,
-        				parameters.dynamicLambdaFactor );
+                		new SolveSetFactoryAdaptiveRigid(
+		    				parameters.globalModel(),
+		    				parameters.blockModel(),
+		    				parameters.stitchingModel(),
+		    				parameters.blockOptimizerLambdasRigid,
+		    				parameters.blockOptimizerLambdasTranslation,
+		    				parameters.blockOptimizerIterations,
+		    				parameters.blockMaxPlateauWidth,
+		    				parameters.minStitchingInliers,
+	        				parameters.blockMaxAllowedError,
+	        				parameters.dynamicLambdaFactor );
 
                 final DistributedSolve solve =
                 		new DistributedSolveMultiThread(
@@ -192,7 +195,10 @@ public class DistributedSolveMultiThread extends DistributedSolve
 
 				BdvStackSource<?> vis = VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
 
-				vis = RenderTools.renderMultiRes(
+				if ( parameters.targetStack == null )
+					LOG.info("Cannot render actual stack because it wasn't saved ( parameters.targetStack == null)");
+				else
+					vis = RenderTools.renderMultiRes(
 						null,
 						parameters.renderWeb.baseDataUrl,
 						parameters.renderWeb.owner,
