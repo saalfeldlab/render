@@ -47,9 +47,13 @@ JaneliaMatchTrialImage.prototype.positionImage = function(scaledCellWidth, scale
     this.imagePositioned = true;
 };
 
-JaneliaMatchTrialImage.prototype.drawLoadedImage = function(canvas) {
+JaneliaMatchTrialImage.prototype.drawLoadedImage = function(canvas, drawBorder) {
     const context = canvas.getContext("2d");
     context.drawImage(this.image, this.x, this.y);
+    if (drawBorder) {
+        context.strokeStyle = '#e6194B';
+        context.strokeRect(this.x, this.y, this.image.naturalWidth, this.image.naturalHeight);
+    }
 };
 
 JaneliaMatchTrialImage.prototype.getCanvasWidth = function() {
@@ -58,6 +62,41 @@ JaneliaMatchTrialImage.prototype.getCanvasWidth = function() {
 
 JaneliaMatchTrialImage.prototype.getCanvasHeight = function() {
     return (this.image.naturalHeight);
+};
+
+JaneliaMatchTrialImage.prototype.drawClipLine = function(context, relativePosition, clipSize) {
+
+    const scaledClipSize = clipSize * this.viewScale;
+
+    let clipStartX, clipStartY, clipStopX, clipStopY;
+
+    if ((relativePosition === "LEFT") || (relativePosition === "RIGHT")) {
+        clipStartY = this.y;
+        clipStopY = clipStartY + this.image.naturalHeight;
+        if (relativePosition === "LEFT") {
+            clipStartX = this.x + this.image.naturalWidth - scaledClipSize;
+        } else { // RIGHT
+            clipStartX = this.x + scaledClipSize;
+        }
+        clipStopX = clipStartX;
+    } else {
+        clipStartX = this.x;
+        clipStopX = clipStartX + this.image.naturalWidth;
+        if (relativePosition === "TOP") {
+            clipStartY = this.y + this.image.naturalHeight - scaledClipSize;
+        } else { // BOTTOM
+            clipStartY = this.y + scaledClipSize;
+        }
+        clipStopY = clipStartY;
+    }
+
+    context.strokeStyle = '#e6194B';
+    context.setLineDash([10, 10]);
+
+    context.beginPath();
+    context.moveTo(clipStartX, clipStartY);
+    context.lineTo(clipStopX, clipStopY);
+    context.stroke();
 };
 
 const JaneliaMatchTrial = function (baseUrl, owner, trialId, canvas, viewScale) {
@@ -74,6 +113,7 @@ const JaneliaMatchTrial = function (baseUrl, owner, trialId, canvas, viewScale) 
     this.pImage = undefined;
     this.qImage = undefined;
     this.trialResults = undefined;
+    this.isClipped = false;
     this.matchCount = undefined;
     this.matchIndex = 0;
     this.initNewTrialAfterLoad = false;
@@ -133,7 +173,7 @@ JaneliaMatchTrial.prototype.deleteTrial = function() {
                type: 'DELETE',
                success: function () {
                    const trialIdSuffix = self.trialId.substring(self.trialId.length - 7);
-                   $('#trialId').html(trialIdSuffix + ' <font color="red">DELETED</font>');
+                   $('#trialId').html(trialIdSuffix + ' <span style="color:red;">DELETED</span>');
                    $('#deleteTrial').hide();
                },
                error: function (data,
@@ -424,13 +464,13 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     //console.log(data);
 
     const fmParams = data.parameters.featureAndMatchParameters;
-    const isClipped = (typeof fmParams.pClipPosition !== 'undefined') && (typeof fmParams.clipPixels !== 'undefined');
+    this.isClipped = (typeof fmParams.pClipPosition !== 'undefined') && (typeof fmParams.clipPixels !== 'undefined');
 
     let pRow = 0;
     let pColumn = 0;
     let qRow = 0;
     let qColumn = 1;
-    if (isClipped) {
+    if (this.isClipped) {
         if (fmParams.pClipPosition === 'RIGHT') {
             pColumn = 1;
             qColumn = 0;
@@ -455,7 +495,7 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
     $('#trialMaxScale').html(fmParams.siftFeatureParameters.maxScale);
     $('#trialSteps').html(fmParams.siftFeatureParameters.steps);
 
-    if (isClipped) {
+    if (this.isClipped) {
         const trialClipRowHtml =
                 '<td>Clip Parameters:</td>' +
                 '<td colspan="4">' +
@@ -675,6 +715,9 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
         this.pImage.positionImage(firstImage.image.naturalWidth, firstImage.image.naturalHeight);
         this.qImage.positionImage(firstImage.image.naturalWidth, firstImage.image.naturalHeight);
 
+        let pRelativePosition = "LEFT";
+        let qRelativePosition = "RIGHT";
+
         const context = this.canvas.getContext("2d");
 
         if (this.pImage.column === this.qImage.column) {
@@ -684,6 +727,8 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
             context.canvas.width = this.qImage.x + this.qImage.getCanvasWidth() + this.cellMargin;
         } else { // q is left of p
             context.canvas.width = this.pImage.x + this.pImage.getCanvasWidth() + this.cellMargin;
+            pRelativePosition = "RIGHT";
+            qRelativePosition = "LEFT";
         }
 
         if (this.pImage.row === this.qImage.row) {
@@ -691,13 +736,23 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
                                              this.qImage.getCanvasHeight()) + this.cellMargin;
         } else if (this.pImage.row === 0) { // p is above q
             context.canvas.height = this.qImage.y + this.qImage.getCanvasHeight() + this.cellMargin;
+            pRelativePosition = "TOP";
+            qRelativePosition = "BOTTOM";
         } else { // q is above p
             context.canvas.height = this.pImage.y + this.pImage.getCanvasHeight() + this.cellMargin;
+            pRelativePosition = "BOTTOM";
+            qRelativePosition = "TOP";
         }
 
         this.clearCanvas();
-        this.pImage.drawLoadedImage(this.canvas);
-        this.qImage.drawLoadedImage(this.canvas);
+        this.pImage.drawLoadedImage(this.canvas, true);
+        this.qImage.drawLoadedImage(this.canvas, false);
+
+        if (this.isClipped) {
+            const clipSize = this.trialResults.parameters.featureAndMatchParameters.clipPixels;
+            this.pImage.drawClipLine(context, pRelativePosition, clipSize);
+            this.qImage.drawClipLine(context, qRelativePosition, clipSize);
+        }
 
         if (this.matchCount > 0) {
 
