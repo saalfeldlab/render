@@ -165,9 +165,6 @@ public class MatchDerivationParameters implements Serializable {
         if (matchIterations == null) {
             matchIterations = 1000;
         }
-        if (matchMaxEpsilon == null) {
-            matchMaxEpsilon = 20.0f;
-        }
         if (matchMinInlierRatio == null) {
             matchMinInlierRatio = 0.0f;
         }
