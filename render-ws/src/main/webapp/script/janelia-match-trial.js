@@ -16,11 +16,11 @@ const JaneliaMatchTrialImage = function (renderParametersUrl, row, column, viewS
     // use viewScale for rendering image
     const trialImageUrl = new URL(renderParametersUrl.replace('render-parameters', 'jpeg-image'));
     const renderParametersScale = parseFloat(trialImageUrl.searchParams.get('scale'));
-    const trialRenderScale = isNaN(renderParametersScale) ? 1.0 : renderParametersScale;
+    this.trialRenderScale = isNaN(renderParametersScale) ? 1.0 : renderParametersScale;
     trialImageUrl.searchParams.set('scale', this.viewScale.toString());
     this.imageUrl = trialImageUrl.href;
 
-    $('#trialRenderScale').html(trialRenderScale);
+    $('#trialRenderScale').html(this.trialRenderScale);
 
     this.image = new Image();
     this.x = -1;
@@ -196,7 +196,8 @@ JaneliaMatchTrial.prototype.initNewTrialWindow = function(newTrialWindow, retryC
 
         if (typeof newTrialWindow.matchTrial !== 'undefined') {
 
-            newTrialWindow.matchTrial.initNewTrialForm(self.trialResults.parameters);
+            newTrialWindow.matchTrial.initNewTrialForm(self.trialResults.parameters,
+                                                       self.pImage.trialRenderScale);
 
         } else if (retryCount < 3) {
             setTimeout(function () {
@@ -213,10 +214,11 @@ JaneliaMatchTrial.prototype.initNewTrialWindow = function(newTrialWindow, retryC
  * @typedef {Object} parameters
  * @property {String} featureAndMatchParameters
  * @property {String} fillWithNoise
+ * @property {String} filterListName
  * @property {String} pRenderParametersUrl
  * @property {String} qRenderParametersUrl
  */
-JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
+JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters, trialRenderScale) {
 
     const fmParams = parameters.featureAndMatchParameters;
     $('#fdSize').val(fmParams.siftFeatureParameters.fdSize);
@@ -242,7 +244,12 @@ JaneliaMatchTrial.prototype.initNewTrialForm = function(parameters) {
         }
 
         $('#' + selectorPrefix + 'Iterations').val(mParams.matchIterations);
-        $('#' + selectorPrefix + 'MaxEpsilon').val(mParams.matchMaxEpsilon);
+
+        if (typeof mParams.matchMaxEpsilonFullScale === "undefined") {
+            mParams.matchMaxEpsilonFullScale = mParams.matchMaxEpsilon * (1.0 / trialRenderScale);
+        }
+
+        $('#' + selectorPrefix + 'MaxEpsilonFullScale').val(mParams.matchMaxEpsilonFullScale);
         $('#' + selectorPrefix + 'MinInlierRatio').val(mParams.matchMinInlierRatio);
         $('#' + selectorPrefix + 'MinNumInliers').val(mParams.matchMinNumInliers);
         $('#' + selectorPrefix + 'MaxTrust').val(mParams.matchMaxTrust);
@@ -312,7 +319,7 @@ JaneliaMatchTrial.prototype.runTrial = function(runTrialButtonSelector, trialRun
         const p = {
             "matchModelType": self.util.getSelectedValue(selectorPrefix + 'ModelType'),
             "matchIterations": parseInt($('#' + selectorPrefix + 'Iterations').val()),
-            "matchMaxEpsilon": parseFloat($('#' + selectorPrefix + 'MaxEpsilon').val()),
+            "matchMaxEpsilonFullScale": parseFloat($('#' + selectorPrefix + 'MaxEpsilonFullScale').val()),
             "matchMinInlierRatio": parseFloat($('#' + selectorPrefix + 'MinInlierRatio').val()),
             "matchMinNumInliers": parseInt($('#' + selectorPrefix + 'MinNumInliers').val()),
             "matchMaxTrust": parseFloat($('#' + selectorPrefix + 'MaxTrust').val()),
@@ -441,8 +448,41 @@ JaneliaMatchTrial.prototype.getRenderParametersLink = function(parametersUrl) {
 };
 
 /**
+ * @param data.parameters.featureAndMatchParameters.siftFeatureParameters.fdSize
+ * @param data.parameters.featureAndMatchParameters.siftFeatureParameters.minScale
+ * @param data.parameters.featureAndMatchParameters.siftFeatureParameters.maxScale
+ * @param data.parameters.featureAndMatchParameters.siftFeatureParameters.steps
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchRod
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchModelType
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchIterations
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchMaxEpsilon
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchMinInlierRatio
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchMinNumInliers
  * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchMaxNumInliers
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchMaxTrust
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchFilter
+ * @param data.parameters.featureAndMatchParameters.matchDerivationParameters.matchFullScaleCoverageRadius
+ * @param data.parameters.featureAndMatchParameters.pClipPosition
+ * @param data.parameters.featureAndMatchParameters.clipPixels
+ * @param data.parameters.pRenderParametersUrl
+ * @param data.parameters.qRenderParametersUrl
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.renderScale
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.renderWithFilter
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.renderFilterListName
  * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.numberOfNeighbors
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.redundancy
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.significance
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.sigma
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.threshold
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.localization
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.lookForMinima
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.lookForMaxima
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.similarOrientation
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.fullScaleBlockRadius
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.fullScaleNonMaxSuppressionRadius
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.geometricDescriptorParameters.gdStoredMatchWeight
+ * @param data.parameters.geometricDescriptorAndMatchFilterParameters.matchDerivationParameters
+ * @param data.parameters.fillWithNoise
  * @param {Array} data.matches
  * @param data.stats.pFeatureCount
  * @param data.stats.pFeatureDerivationMilliseconds
@@ -454,6 +494,9 @@ JaneliaMatchTrial.prototype.getRenderParametersLink = function(parametersUrl) {
  * @param {Array} data.stats.consensusSetDeltaXStandardDeviations
  * @param {Array} data.stats.consensusSetDeltaYStandardDeviations
  * @param data.stats.matchDerivationMilliseconds
+ * @param data.stats.overlappingImagePixels
+ * @param data.stats.overlappingCoveragePixels
+ * @param data.gdStats
  */
 JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
 
@@ -507,6 +550,8 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
         $('#trialClipRow').hide();
     }
 
+    const trialRenderScale = this.pImage.trialRenderScale;
+
     const setMatchData = function (mParams,
                                    selectPrefix) {
         $('#' + selectPrefix + 'MatchModelType').html(mParams.matchModelType);
@@ -514,7 +559,10 @@ JaneliaMatchTrial.prototype.loadTrialResults = function(data) {
             $('#' + selectPrefix + 'MatchRod').html(mParams.matchRod);
         }
         $('#' + selectPrefix + 'MatchIterations').html(mParams.matchIterations);
-        $('#' + selectPrefix + 'MatchMaxEpsilon').html(mParams.matchMaxEpsilon);
+        if (typeof mParams.matchMaxEpsilonFullScale === "undefined") {
+            mParams.matchMaxEpsilonFullScale = mParams.matchMaxEpsilon * (1.0 / trialRenderScale);
+        }
+        $('#' + selectPrefix + 'MatchMaxEpsilonFullScale').html(mParams.matchMaxEpsilonFullScale);
         $('#' + selectPrefix + 'MatchMinInlierRatio').html(mParams.matchMinInlierRatio);
         $('#' + selectPrefix + 'MatchMinNumInliers').html(mParams.matchMinNumInliers);
         $('#' + selectPrefix + 'MatchMaxTrust').html(mParams.matchMaxTrust);
@@ -883,7 +931,7 @@ JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner,
     //   <base_url>/owner/<owner>/project/<project>/stack/<stack>/tile/<tile_id>/render-parameters?...
     // where <tile_id> pattern is:
     //   <acquisition_timestamp>.<section_id>
-    const typicalTileRenderRegEx = /(.*\/render-ws).*\/owner\/([^\/]+)\/project\/([^\/]+)\/stack\/([^\/]+)\/tile\/([^\\.]+\.([0-9]+\.[0-9]+))\/render-parameters.*/;
+    const typicalTileRenderRegEx = /(.*\/render-ws).*\/owner\/([^\/]+)\/project\/([^\/]+)\/stack\/([^\/]+)\/tile\/([^\\.]+\.(\d+\.\d+))\/render-parameters.*/;
 
     const pUrlMatch = this.trialResults.parameters.pRenderParametersUrl.match(typicalTileRenderRegEx);
     const qUrlMatch = this.trialResults.parameters.qRenderParametersUrl.match(typicalTileRenderRegEx);
