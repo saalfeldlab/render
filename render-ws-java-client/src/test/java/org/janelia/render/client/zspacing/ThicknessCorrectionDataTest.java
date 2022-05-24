@@ -17,15 +17,18 @@ public class ThicknessCorrectionDataTest {
                                                   "4056 4055.890848802147\n" +
                                                   "4057 4056.8086632669383";
     @Test
-    public void testGetInterpolator() {
+    public void testGetInterpolatorForSmallCorrection() {
 
-        String context = "small correction";
-        ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
+        final String context = "small correction";
+        final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
 
         validateInterpolator(context, data, 4055, 4055, 0.92, 4056);
         validateInterpolator(context, data, 4056, 4056, 0.88, 4057);
+    }
 
-        context = "big correction";
+    @Test
+    public void testGetInterpolatorForBigCorrection() {
+
         final String zCoordsText =
                 "4100 4102.787808503473\n" +
                 "4101 4103.020253943293\n" +
@@ -42,7 +45,9 @@ public class ThicknessCorrectionDataTest {
                 "4112 4118.374343051017\n" +
                 "4113 4119.268355304987\n" +
                 "4114 4120.590465478949";
-        data = buildData(zCoordsText);
+
+        final String context = "big correction";
+        final ThicknessCorrectionData data = buildData(zCoordsText);
 
         validateInterpolator(context, data, 4103, 4100, 0.09, 4101);
         validateInterpolator(context, data, 4104, 4102, 0.07, 4103);
@@ -61,13 +66,15 @@ public class ThicknessCorrectionDataTest {
     @Test(expected = IllegalArgumentException.class)
     public void testGetInterpolatorTooSmall() {
         final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
-        final ThicknessCorrectionData.LayerInterpolator interpolator = data.getInterpolator(4054);
+        data.getInterpolator(4054);
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testGetInterpolatorTooBig() {
-        final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
-        final ThicknessCorrectionData.LayerInterpolator interpolator = data.getInterpolator(4057);
+    public void testUnorderedData() {
+        final String unorderedZCoords = "4055 4054.926248674371\n" +
+                                        "4056 4055.890848802147\n" +
+                                        "4053 4053.8086632669383";
+        buildData(unorderedZCoords);
     }
 
     private ThicknessCorrectionData buildData(final String zCoordsText) {
