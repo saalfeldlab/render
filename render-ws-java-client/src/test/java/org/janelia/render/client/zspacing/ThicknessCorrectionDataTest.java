@@ -70,6 +70,12 @@ public class ThicknessCorrectionDataTest {
     }
 
     @Test(expected = IllegalArgumentException.class)
+    public void testGetInterpolatorTooBig() {
+        final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
+        data.getInterpolator(4057);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
     public void testUnorderedData() {
         final String unorderedZCoords = "4055 4054.926248674371\n" +
                                         "4056 4055.890848802147\n" +
