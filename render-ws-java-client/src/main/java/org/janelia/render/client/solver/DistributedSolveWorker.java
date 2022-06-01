@@ -1,36 +1,22 @@
 package org.janelia.render.client.solver;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
-import org.janelia.alignment.match.CanvasMatchResult;
-import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.match.Matches;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.solver.matchfilter.MatchFilter;
-import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
-import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
-import org.janelia.render.client.solver.visualize.VisualizeTools;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import ij.ImageJ;
-import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
-import mpicbg.models.IdentityModel;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
@@ -43,6 +29,18 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
+
+import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.solver.matchfilter.MatchFilter;
+import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
+import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
@@ -664,7 +662,13 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 
 						final String pId = solveItem.tileToIdMap().get( pair.getA().getA() );
 						final String qId = solveItem.tileToIdMap().get( pair.getA().getB() );
-		
+
+						// hack for Z0720_07m_VNC Sec19
+//						if ( pId.contains("_0-0-0") || qId.contains("_0-0-0") ) {
+//							LOG.info("stitchSectionsAndCreateGroupedTiles: do not stitch first {} and second {} tiles", pId, qId);
+//							continue;
+//						}
+
 						//LOG.info( "pId=" + pId  + " (" + idTotile.containsKey( pId ) + ") " + " qId=" + qId + " (" + idTotile.containsKey( qId ) + ") " + idTotile.keySet().size() );
 		
 						final Tile< S > p, q;
@@ -712,7 +716,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				}
 
 			// Now identify connected graphs within all tiles
-			final ArrayList< Set< Tile< ? > > > sets = Tile.identifyConnectedGraphs( idTotile.values() );
+			final ArrayList< Set< Tile< ? > > > sets = safelyIdentifyConnectedGraphs( new ArrayList<>(idTotile.values()) );
 
 			LOG.info( "block " + solveItem.getId() + ": stitching z=" + z + " #sets=" + sets.size() );
 
@@ -836,7 +840,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		final ArrayList< SolveItem< G, B, S > > solveItems = new ArrayList<>();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
-		final ArrayList< Set< Tile< ? > > > graphs = Tile.identifyConnectedGraphs( new HashSet<>( inputSolveItem.tileToGroupedTile().values() ) );
+		final ArrayList< Set< Tile< ? > > > graphs = safelyIdentifyConnectedGraphs( new HashSet<>( inputSolveItem.tileToGroupedTile().values() ) );
 
 		LOG.info( "block " + inputSolveItem.getId() + ": Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
 
@@ -1137,6 +1141,75 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			solveItem.idToSolveItemErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
 		}
 		LOG.info( "computeSolveItemErrors, exit" );
+	}
+
+	/**
+	 * Adaptation of {@link Tile#traceConnectedGraph} that avoids StackOverflowError from
+	 * too much recursion when dealing with larger connected graphs.
+	 */
+	@SuppressWarnings("JavadocReference")
+	private void safelyTraceConnectedGraph(final Tile<?> forTile,
+										   final Set<Tile<?>> graph,
+										   final Set<Tile<?>> deferredTiles,
+										   final int recursionDepth) {
+		final int maxRecursionDepth = 500;
+
+		graph.add(forTile);
+
+		for (final Tile<?> t : forTile.getConnectedTiles()) {
+			if (! (graph.contains(t) || deferredTiles.contains(t))) {
+				if (recursionDepth < maxRecursionDepth) {
+					safelyTraceConnectedGraph(t, graph, deferredTiles, recursionDepth + 1);
+				} else {
+					deferredTiles.add(t);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Adaptation of {@link Tile#identifyConnectedGraphs} that avoids StackOverflowError from
+	 * too much recursion when dealing with larger connected graphs.
+	 */
+	private ArrayList< Set< Tile< ? > > > safelyIdentifyConnectedGraphs(final Collection<Tile<?>> tiles) {
+
+		LOG.info("safelyIdentifyConnectedGraphs: entry, checking {} tiles", tiles.size());
+
+		final ArrayList< Set< Tile< ? > > > graphs = new ArrayList<>();
+		int numInspectedTiles = 0;
+		A:		for ( final Tile< ? > tile : tiles )
+		{
+			for ( final Set< Tile< ? > > knownGraph : graphs ) {
+				if (knownGraph.contains(tile)) {
+					continue A;
+				}
+			}
+
+			final Set< Tile< ? > > currentGraph = new HashSet<>();
+			final Set< Tile< ? > > deferredTiles = new HashSet<>();
+			safelyTraceConnectedGraph(tile, currentGraph, deferredTiles, 0);
+
+			while (deferredTiles.size() > 0) {
+				LOG.info("safelyIdentifyConnectedGraphs: {} max recursion deferred tiles, current graph size is {}",
+						 deferredTiles.size(), currentGraph.size());
+				final List<Tile<?>> toDoList = new ArrayList<>(deferredTiles);
+				deferredTiles.clear();
+				for (final Tile<?> toDoTile : toDoList) {
+					safelyTraceConnectedGraph(toDoTile, currentGraph, deferredTiles, 0);
+				}
+			}
+
+			numInspectedTiles += currentGraph.size();
+			graphs.add(currentGraph);
+
+			if ( numInspectedTiles == tiles.size() ) {
+				break;
+			}
+		}
+
+		LOG.info("safelyIdentifyConnectedGraphs: returning {} graph(s)", graphs.size());
+
+		return graphs;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveWorker.class);
