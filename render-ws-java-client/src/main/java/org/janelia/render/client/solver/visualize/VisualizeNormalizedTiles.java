@@ -57,11 +57,11 @@ public class VisualizeNormalizedTiles {
         if (args.length == 0) {
             args = new String[] {
                     "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "hess",
-                    "--project", "wafer_52b",
-                    "--stack", "hack",
-                    "--tileId", "001_000002_067_20220401_172110.1225.0",
-                    "--tileId", "001_000004_077_20220401_172116.1225.0"
+                    "--owner", "Z0720_07m_VNC",
+                    "--project", "Sec07",
+                    "--stack", "v4_acquire_trimmed",
+                    "--tileId", "21-10-24_203442_0-0-1.20355.0",
+                    "--tileId", "21-10-24_204034_0-0-0.20356.0"
             };
         }
 
