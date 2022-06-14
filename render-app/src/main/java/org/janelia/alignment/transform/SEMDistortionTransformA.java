@@ -28,7 +28,7 @@ public class SEMDistortionTransformA
 
     @Override
     public void applyInPlace(final double[] location) {
-        location[dimension] -= (coefficients[0] * Math.exp(-location[dimension] / coefficients[1])) +
+        location[dimension] += (coefficients[0] * Math.exp(-location[dimension] / coefficients[1])) +
                                (coefficients[2] * Math.exp(-location[dimension] / coefficients[3]));
     }
 
