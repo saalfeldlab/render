@@ -3,10 +3,10 @@ package org.janelia.alignment.transform;
 import mpicbg.trakem2.transform.CoordinateTransform;
 
 /**
- * Transform that subtracts <pre> a * e^-b*x + c </pre> from all x (or <pre> a * e^-b*y + c </pre> from all y).
+ * Transform that subtracts <pre> a * exp(-b*x) + c </pre> from all x (or <pre> a * exp(-b*y) + c </pre> from all y).
  */
 public class ExponentialFunctionOffsetTransform
-        extends ThreeParameterSingleDimensionTransform {
+        extends MultiParameterSingleDimensionTransform {
 
     public ExponentialFunctionOffsetTransform() {
         this(0, 0, 0,0);
@@ -16,16 +16,24 @@ public class ExponentialFunctionOffsetTransform
                                               final double b,
                                               final double c,
                                               final int dimension) {
-        super(a, b, c, dimension);
+        super(new double[] {a, b, c}, dimension);
+    }
+
+    @Override
+    public int getNumberOfCoefficients() {
+        return 3;
     }
 
     @Override
     public void applyInPlace(final double[] location) {
-        location[dimension] -= a * Math.exp(-b * location[dimension]) + c;
+        location[dimension] -= coefficients[0] * Math.exp(-coefficients[1] * location[dimension]) + coefficients[2];
     }
 
     @Override
     public CoordinateTransform copy() {
-        return new ExponentialFunctionOffsetTransform(a, b, c, dimension);
+        return new ExponentialFunctionOffsetTransform(coefficients[0],
+                                                      coefficients[1],
+                                                      coefficients[2],
+                                                      dimension);
     }
 }
