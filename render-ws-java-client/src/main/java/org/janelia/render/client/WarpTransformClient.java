@@ -180,7 +180,8 @@ public class WarpTransformClient {
                                                                transformId);
 
         montageTiles.addTransformSpecToCollection(warpTransformSpec);
-        montageTiles.addReferenceTransformToAllTiles(warpTransformSpec.getId(), false);
+        montageTiles.addReferenceTransformToAllTiles(warpTransformSpec.getId(),
+                                                     ResolvedTileSpecCollection.TransformApplicationMethod.APPEND);
 
         LOG.info("buildTransformForZ: processed {} tiles for z {}",
                  montageTiles.getTileCount(), z);
@@ -292,7 +293,8 @@ public class WarpTransformClient {
                                                                        alignTileSpecs,
                                                                        transformId);
                 montageTiles.addTransformSpecToCollection(warpTransformSpec);
-                montageTiles.addReferenceTransformToTilesWithIds(warpTransformSpec.getId(), clusterTileIds, false);
+                montageTiles.addReferenceTransformToTilesWithIds(warpTransformSpec.getId(), clusterTileIds,
+                                                                 ResolvedTileSpecCollection.TransformApplicationMethod.APPEND);
 
                 LOG.info("buildTransformsForClusters: processed {} tiles for z {} cluster {}",
                          clusterTileIds.size(), z, clusterIndex);

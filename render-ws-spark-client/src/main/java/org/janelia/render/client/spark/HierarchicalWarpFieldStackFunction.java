@@ -68,7 +68,8 @@ public class HierarchicalWarpFieldStackFunction
                 localTilesDataClient.getResolvedTiles(parentTilesStackId.getStack(), z);
 
         tileCollection.addTransformSpecToCollection(tierWarpFieldTransform);
-        tileCollection.addReferenceTransformToAllTiles(tierWarpFieldTransform.getId(), false);
+        tileCollection.addReferenceTransformToAllTiles(tierWarpFieldTransform.getId(),
+                                                       ResolvedTileSpecCollection.TransformApplicationMethod.APPEND);
 
         localTilesDataClient.saveResolvedTiles(tileCollection, warpStackName, z);
 

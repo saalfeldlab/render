@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -24,9 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import io.swagger.annotations.ApiModelProperty;
 
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.APPEND;
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.*;
 
 /**
  * A collection of tile specifications that also includes all referenced transform specifications,
@@ -39,6 +37,9 @@ public class ResolvedTileSpecCollection implements Serializable {
     public enum TransformApplicationMethod {
         /** Indicates that the specified transform should be appended to the end of each tile's transform list. */
         APPEND,
+
+        /** Indicates that the specified transform should be inserted before each tile's last transform. */
+        INSERT_BEFORE_LAST,
 
         /** Indicates that the specified transform should replace each tile's last transform. */
         REPLACE_LAST,
@@ -214,25 +215,40 @@ public class ResolvedTileSpecCollection implements Serializable {
             }
         }
 
-        TransformSpec newTransformSpec = transformSpec;
-        if (PRE_CONCATENATE_LAST.equals(applicationMethod)) {
+        final List<TransformSpec> newTransformSpecList = new ArrayList<>();
+        switch (applicationMethod) {
+            case APPEND:
+                newTransformSpecList.add(transformSpec);
+                break;
 
-            final AffineModel2D lastAffine = getAffineModelForSpec("last",
-                                                                   tileSpec.getLastTransform());
-            final AffineModel2D preConcatenatedAffine = getAffineModelForSpec("pre-concatenated",
-                                                                              transformSpec);
-            lastAffine.preConcatenate(preConcatenatedAffine);
-            newTransformSpec = new LeafTransformSpec(AffineModel2D.class.getName(), lastAffine.toDataString());
+            case INSERT_BEFORE_LAST:
+                final TransformSpec lastTransform = tileSpec.getLastTransform();
+                newTransformSpecList.add(transformSpec);
+                if (lastTransform != null) {
+                    newTransformSpecList.add(lastTransform);
+                    tileSpec.removeLastTransformSpec();
+                }
+                break;
 
-            tileSpec.removeLastTransformSpec();
+            case REPLACE_LAST:
+                newTransformSpecList.add(transformSpec);
+                tileSpec.removeLastTransformSpec();
+                break;
 
-        } else if (REPLACE_LAST.equals(applicationMethod)) {
+            case PRE_CONCATENATE_LAST:
+                final AffineModel2D lastAffine = getAffineModelForSpec("last",
+                                                                       tileSpec.getLastTransform());
+                final AffineModel2D preConcatenatedAffine = getAffineModelForSpec("pre-concatenated",
+                                                                                  transformSpec);
+                lastAffine.preConcatenate(preConcatenatedAffine);
+                newTransformSpecList.add(new LeafTransformSpec(AffineModel2D.class.getName(),
+                                                               lastAffine.toDataString()));
 
-            tileSpec.removeLastTransformSpec();
-
+                tileSpec.removeLastTransformSpec();
+                break;
         }
 
-        tileSpec.addTransformSpecs(Collections.singletonList(newTransformSpec));
+        tileSpec.addTransformSpecs(newTransformSpecList);
 
         // addition of new transform spec obsolesces the previously resolved coordinate transform instance,
         // so we need to re-resolve the tile before re-deriving the bounding box
@@ -260,16 +276,15 @@ public class ResolvedTileSpecCollection implements Serializable {
      *
      * @param  transformId    identifies the transform to be applied to all tiles.
      *
-     * @param  replaceLast    if true, the reference transform will replace each tile's last transform;
-     *                        otherwise, the specified transform will simply be appended.
+     * @param  applicationMethod  method used to apply (add) the transform.
      *
      * @throws IllegalArgumentException
      *   if the specified transform cannot be found.
      */
     public void addReferenceTransformToAllTiles(final String transformId,
-                                                final boolean replaceLast)
+                                                final TransformApplicationMethod applicationMethod)
             throws IllegalArgumentException {
-        addReferenceTransformToTilesWithIds(transformId, tileIdToSpecMap.keySet(), replaceLast);
+        addReferenceTransformToTilesWithIds(transformId, tileIdToSpecMap.keySet(), applicationMethod);
     }
 
     /**
@@ -285,15 +300,14 @@ public class ResolvedTileSpecCollection implements Serializable {
      *
      * @param  tileIds        identifies tiles to which the transform should be applied.
      *
-     * @param  replaceLast    if true, the reference transform will replace each tile's last transform;
-     *                        otherwise, the specified transform will simply be appended.
+     * @param  applicationMethod  method used to apply (add) the transform.
      *
      * @throws IllegalArgumentException
      *   if the specified transform cannot be found.
      */
     public void addReferenceTransformToTilesWithIds(final String transformId,
                                                     final Set<String> tileIds,
-                                                    final boolean replaceLast)
+                                                    final TransformApplicationMethod applicationMethod)
             throws IllegalArgumentException {
 
         final TransformSpec transformSpec = transformIdToSpecMap.get(transformId);
@@ -302,7 +316,6 @@ public class ResolvedTileSpecCollection implements Serializable {
         }
 
         final TransformSpec referenceTransformSpec = new ReferenceTransformSpec(transformId);
-        final TransformApplicationMethod applicationMethod = replaceLast ? REPLACE_LAST : APPEND;
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;

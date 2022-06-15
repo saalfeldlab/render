@@ -395,7 +395,8 @@ public class CopyStackClient {
 
         if (moveStackTransform != null) {
             sourceCollection.addTransformSpecToCollection(moveStackTransform);
-            sourceCollection.addReferenceTransformToAllTiles(moveStackTransform.getId(), false);
+            sourceCollection.addReferenceTransformToAllTiles(moveStackTransform.getId(),
+                                                             ResolvedTileSpecCollection.TransformApplicationMethod.APPEND);
         }
 
         sourceCollection.removeUnreferencedTransforms();
