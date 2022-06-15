@@ -3,8 +3,8 @@ package org.janelia.alignment.transform;
 import mpicbg.trakem2.transform.CoordinateTransform;
 
 /**
- * Transform that subtracts <pre>a * exp(-x/b) + c * exp(-x/d)</pre> from all x
- * (or <pre>a * exp(-y/b) + c * exp(-y/d)</pre> from all y).
+ * Transform that adds <pre>a * exp(-x/b) + c * exp(-x/d)</pre> to all x
+ * (or <pre>a * exp(-y/b) + c * exp(-y/d)</pre> to all y).
  */
 public class SEMDistortionTransformA
         extends MultiParameterSingleDimensionTransform {
