@@ -144,9 +144,9 @@ public class N5Client {
 
             if (thicknessCorrectionData != null) {
                 final double minZ = Math.ceil(Math.max(runBounds.getMinZ(),
-                                                       thicknessCorrectionData.getFirstCorrectedZ()));
+                                                       Math.floor(thicknessCorrectionData.getFirstCorrectedZ())));
                 final double maxZ = Math.floor(Math.min(runBounds.getMaxZ(),
-                                                        thicknessCorrectionData.getLastCorrectedZ()));
+                                                        Math.ceil(thicknessCorrectionData.getLastCorrectedZ())));
                 runBounds = new Bounds(runBounds.getMinX(), runBounds.getMinY(), minZ,
                                        runBounds.getMaxX(), runBounds.getMaxY(), maxZ);
             }
