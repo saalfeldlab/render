@@ -72,10 +72,10 @@ public class ChannelSpec implements Serializable {
     /**
      * @param  level  desired mipmap level.
      *
-     * @return true if this tile spec contains mipmap for the specified level; otherwise false.
+     * @return true if this tile spec is missing a mipmap for the specified level; otherwise false.
      */
-    public boolean hasMipmap(final Integer level) {
-        return mipmapLevels.containsKey(level);
+    public boolean isMissingMipmap(final Integer level) {
+        return ! mipmapLevels.containsKey(level);
     }
 
     /**

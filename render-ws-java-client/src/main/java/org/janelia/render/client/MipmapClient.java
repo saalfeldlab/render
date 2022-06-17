@@ -237,7 +237,7 @@ public class MipmapClient {
                     derivedEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, firstEntry, false);
                     derivedImageAndMask = derivedEntry.getValue();
 
-                    if (! channelSpec.hasMipmap(mipmapLevel)) {
+                    if (channelSpec.isMissingMipmap(mipmapLevel)) {
 
                         final boolean isMipmapLevelInRange = mipmapLevel >= parameters.minLevel;
 
@@ -332,7 +332,7 @@ public class MipmapClient {
             derivedEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, firstEntry, false);
             derivedImageAndMask = derivedEntry.getValue();
 
-            if (! channelSpec.hasMipmap(mipmapLevel)) {
+            if (channelSpec.isMissingMipmap(mipmapLevel)) {
 
                 imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
                 if (! imageMipmapFile.exists()) {
