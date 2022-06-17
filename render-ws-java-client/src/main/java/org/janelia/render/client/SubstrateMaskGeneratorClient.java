@@ -213,7 +213,8 @@ public class SubstrateMaskGeneratorClient {
     public void run()
             throws IOException {
 
-        targetDataClient.ensureStackIsInLoadingState(parameters.getTargetStack(), null);
+        final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+        targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.getTargetStack());
 
         if (parameters.zValues != null) {
             for (final Double z : parameters.zValues) {
