@@ -104,6 +104,31 @@ public class ChannelSpec implements Serializable {
         return mipmapLevels.firstEntry();
     }
 
+    public String getContext(final String tileId) {
+        final String context;
+        if (name == null) {
+            context = "tile '" + tileId + "'";
+        } else {
+            context = "channel '" + name + "' in tile '" + tileId + "'";
+        }
+        return context;
+    }
+
+    public ImageAndMask getFirstMipmapImageAndMask(final String tileId) throws IllegalArgumentException {
+        final Map.Entry<Integer, ImageAndMask> firstEntry = getFirstMipmapEntry();
+        if (firstEntry == null) {
+            throw new IllegalArgumentException("first entry mipmap is missing from " + getContext(tileId));
+        }
+
+        final ImageAndMask imageAndMask = firstEntry.getValue();
+
+        if ((imageAndMask == null) || (! imageAndMask.hasImage())) {
+            throw new IllegalArgumentException("first entry mipmap image is missing from " + getContext(tileId));
+        }
+
+        return imageAndMask;
+    }
+
     public Map.Entry<Integer, ImageAndMask> getFloorMipmapEntry(final Integer mipmapLevel) {
         return getFloorMipmapEntry(mipmapLevel, mipmapLevels);
     }

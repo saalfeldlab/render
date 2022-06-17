@@ -200,26 +200,12 @@ public class MipmapClient {
     void generateMissingMipmapFiles(final TileSpec tileSpec)
             throws IllegalArgumentException, IOException {
 
+        final String tileId = tileSpec.getTileId();
+
         for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
 
-            final String channelName = channelSpec.getName();
-            final String context;
-            if (channelName == null) {
-                context = "tile '" + tileSpec.getTileId() + "'";
-            } else {
-                context = "channel '" + channelName + "' in tile '" + tileSpec.getTileId() + "'";
-            }
-
             final Map.Entry<Integer, ImageAndMask> firstEntry = channelSpec.getFirstMipmapEntry();
-            if (firstEntry == null) {
-                throw new IllegalArgumentException("first entry mipmap is missing from " + context);
-            }
-
-            final ImageAndMask sourceImageAndMask = firstEntry.getValue();
-
-            if ((sourceImageAndMask == null) || (!sourceImageAndMask.hasImage())) {
-                throw new IllegalArgumentException("first entry mipmap image is missing from " + context);
-            }
+            final ImageAndMask sourceImageAndMask = channelSpec.getFirstMipmapImageAndMask(tileId);
 
             if (parameters.forceGeneration || isMissingMipmaps(channelSpec, firstEntry, sourceImageAndMask.hasMask())) {
 
@@ -282,7 +268,7 @@ public class MipmapClient {
                 }
 
             } else {
-                LOG.info("generateMissingMipmapFiles: all mipmap files exist for {}", context);
+                LOG.info("generateMissingMipmapFiles: all mipmap files exist for {}", channelSpec.getContext(tileId));
             }
         }
     }
