@@ -38,6 +38,9 @@ public class ResolvedTileSpecCollection implements Serializable {
         /** Indicates that the specified transform should be appended to the end of each tile's transform list. */
         APPEND,
 
+        /** Indicates that the specified transform should be inserted as the first transform for each tile. */
+        INSERT_AS_FIRST,
+
         /** Indicates that the specified transform should be inserted before each tile's last transform. */
         INSERT_BEFORE_LAST,
 
@@ -219,6 +222,15 @@ public class ResolvedTileSpecCollection implements Serializable {
         switch (applicationMethod) {
             case APPEND:
                 newTransformSpecList.add(transformSpec);
+                break;
+
+            case INSERT_AS_FIRST:
+                newTransformSpecList.add(transformSpec);
+                final ListTransformSpec existingTransformSpecs = tileSpec.getTransforms();
+                for (int i = 0; i < existingTransformSpecs.size(); i++) {
+                    newTransformSpecList.add(existingTransformSpecs.getSpec(i));
+                }
+                tileSpec.setTransforms(new ListTransformSpec()); // remove existing transform list
                 break;
 
             case INSERT_BEFORE_LAST:
