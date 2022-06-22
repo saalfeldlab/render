@@ -200,26 +200,12 @@ public class MipmapClient {
     void generateMissingMipmapFiles(final TileSpec tileSpec)
             throws IllegalArgumentException, IOException {
 
+        final String tileId = tileSpec.getTileId();
+
         for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
 
-            final String channelName = channelSpec.getName();
-            final String context;
-            if (channelName == null) {
-                context = "tile '" + tileSpec.getTileId() + "'";
-            } else {
-                context = "channel '" + channelName + "' in tile '" + tileSpec.getTileId() + "'";
-            }
-
             final Map.Entry<Integer, ImageAndMask> firstEntry = channelSpec.getFirstMipmapEntry();
-            if (firstEntry == null) {
-                throw new IllegalArgumentException("first entry mipmap is missing from " + context);
-            }
-
-            final ImageAndMask sourceImageAndMask = firstEntry.getValue();
-
-            if ((sourceImageAndMask == null) || (!sourceImageAndMask.hasImage())) {
-                throw new IllegalArgumentException("first entry mipmap image is missing from " + context);
-            }
+            final ImageAndMask sourceImageAndMask = channelSpec.getFirstMipmapImageAndMask(tileId);
 
             if (parameters.forceGeneration || isMissingMipmaps(channelSpec, firstEntry, sourceImageAndMask.hasMask())) {
 
@@ -251,7 +237,7 @@ public class MipmapClient {
                     derivedEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, firstEntry, false);
                     derivedImageAndMask = derivedEntry.getValue();
 
-                    if (! channelSpec.hasMipmap(mipmapLevel)) {
+                    if (channelSpec.isMissingMipmap(mipmapLevel)) {
 
                         final boolean isMipmapLevelInRange = mipmapLevel >= parameters.minLevel;
 
@@ -282,7 +268,7 @@ public class MipmapClient {
                 }
 
             } else {
-                LOG.info("generateMissingMipmapFiles: all mipmap files exist for {}", context);
+                LOG.info("generateMissingMipmapFiles: all mipmap files exist for {}", channelSpec.getContext(tileId));
             }
         }
     }
@@ -346,7 +332,7 @@ public class MipmapClient {
             derivedEntry = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, firstEntry, false);
             derivedImageAndMask = derivedEntry.getValue();
 
-            if (! channelSpec.hasMipmap(mipmapLevel)) {
+            if (channelSpec.isMissingMipmap(mipmapLevel)) {
 
                 imageMipmapFile = getFileForUrlString(derivedImageAndMask.getImageUrl());
                 if (! imageMipmapFile.exists()) {
@@ -430,65 +416,6 @@ public class MipmapClient {
 
         return image;
     }
-
-// This method to calculate a zip file digest was copied here from prior mipmap generator code.
-// It was used to identify common TrakEM2 masks "hidden" in differently named zip files.
-// Since we don't currently need this functionality, the code is commented-out here.
-//
-//    private String getDigest(final File file)
-//            throws IOException {
-//
-//        messageDigest.reset();
-//
-//        ZipFile zipFile = null;
-//        InputStream inputStream = null;
-//        try {
-//
-//            if (file.getAbsolutePath().endsWith(".zip")) {
-//                zipFile = new ZipFile(file);
-//                final Enumeration<? extends ZipEntry> e = zipFile.entries();
-//                if (e.hasMoreElements()) {
-//                    final ZipEntry zipEntry = e.nextElement();
-//                    // only use unzipped input stream if the zipped file contains a single mask
-//                    if (! e.hasMoreElements()) {
-//                        inputStream = zipFile.getInputStream(zipEntry);
-//                    }
-//                }
-//            }
-//
-//            if (inputStream == null) {
-//                inputStream = new FileInputStream(file);
-//            }
-//
-//            final byte[] bytes = new byte[2048];
-//            int numBytes;
-//            while ((numBytes = inputStream.read(bytes)) != -1) {
-//                messageDigest.update(bytes, 0, numBytes);
-//            }
-//
-//        } finally {
-//            if (inputStream != null) {
-//                try {
-//                    inputStream.close();
-//                } catch (final IOException e) {
-//                    LOG.warn("failed to close " + file.getAbsolutePath() + ", ignoring error", e);
-//                }
-//            }
-//            if (zipFile != null) {
-//                try {
-//                    zipFile.close();
-//                } catch (final IOException e) {
-//                    LOG.warn("failed to close zip file " + file.getAbsolutePath() + ", ignoring error", e);
-//                }
-//            }
-//        }
-//
-//        final byte[] digest = messageDigest.digest();
-//
-//        // create string representation of digest that matches output generated by tools like md5sum
-//        final BigInteger bigInt = new BigInteger(1, digest);
-//        return bigInt.toString(16);
-//    }
 
     private static final Logger LOG = LoggerFactory.getLogger(MipmapClient.class);
 }

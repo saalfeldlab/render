@@ -9,6 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * List of connected canvas clusters sorted by cluster size (largest to smallest).
  *
@@ -39,14 +42,49 @@ public class SortedConnectedCanvasIdClusters
 
         this.sortedConnectedCanvasIdSets = new ArrayList<>();
 
+        boolean needsMerge = false;
         while (connectionsMap.size() > 0) {
             final CanvasId canvasId = connectionsMap.keySet().stream().findFirst().get();
             final Set<CanvasId> connectedTileSet = new HashSet<>();
-            addConnectedCanvases(canvasId, connectionsMap, connectedTileSet);
+            final boolean isMaxRecursion = addConnectedCanvases(canvasId,
+                                                                connectionsMap,
+                                                                connectedTileSet,
+                                                                0);
+            needsMerge = needsMerge || isMaxRecursion;
             sortedConnectedCanvasIdSets.add(connectedTileSet);
         }
 
         sortedConnectedCanvasIdSets.sort((s1, s2) -> Integer.compare(s2.size(), s1.size()));
+
+        if (needsMerge) {
+
+            final int sizeBeforeMerge = sortedConnectedCanvasIdSets.size();
+
+            LOG.debug("merging {} connected canvasId sets because max recursion occurred during initial pass",
+                      sizeBeforeMerge);
+
+            // remove all but the largest set and then merge them back in ...
+            final List<Set<CanvasId>> mergeSets = new ArrayList<>(sizeBeforeMerge);
+            for (int i = sizeBeforeMerge - 1; i >= 1; i--) {
+                mergeSets.add(sortedConnectedCanvasIdSets.remove(i));
+            }
+            for (final Set<CanvasId> mergeSet : mergeSets) {
+                this.mergeOverlappingClusters(new SortedConnectedCanvasIdClusters(mergeSet));
+            }
+
+            sortedConnectedCanvasIdSets.sort((s1, s2) -> Integer.compare(s2.size(), s1.size()));
+
+            LOG.debug("{} connected canvasId sets remain after merge", sortedConnectedCanvasIdSets.size());
+        }
+
+    }
+
+    /**
+     * Constructs a container with just one (the specified) connected cluster.
+     */
+    private SortedConnectedCanvasIdClusters(final Set<CanvasId> onlyCluster) {
+        this.sortedConnectedCanvasIdSets = new ArrayList<>();
+        this.sortedConnectedCanvasIdSets.add(onlyCluster);
     }
 
     public void mergeOverlappingClusters(final SortedConnectedCanvasIdClusters overlappingClusters) {
@@ -144,24 +182,44 @@ public class SortedConnectedCanvasIdClusters
         return size() + " clusters with sizes " + getClusterSizes();
     }
 
-    private void addConnectedCanvases(final CanvasId canvasId,
-                                      final Map<CanvasId, Set<CanvasId>> connectionsMap,
-                                      final Set<CanvasId> connectedTileSet) {
+    private boolean addConnectedCanvases(final CanvasId canvasId,
+                                         final Map<CanvasId, Set<CanvasId>> connectionsMap,
+                                         final Set<CanvasId> connectedTileSet,
+                                         final int recursionCallCount) {
 
-        final boolean isNewConnection = connectedTileSet.add(canvasId);
+        boolean isMaxRecursion = false;
+        
+        if (recursionCallCount >= MAX_RECURSION_COUNT) {
 
-        if (isNewConnection) {
+            isMaxRecursion = true;
 
-            final Set<CanvasId> connectedCanvasIds = connectionsMap.remove(canvasId);
+        } else {
 
-            if (connectedCanvasIds != null) {
-                for (final CanvasId connectedCanvasId : connectedCanvasIds) {
-                    addConnectedCanvases(connectedCanvasId, connectionsMap, connectedTileSet);
+            final boolean isNewConnection = connectedTileSet.add(canvasId);
+
+            final int nextRecursionCallCount = recursionCallCount + 1;
+
+            if (isNewConnection) {
+
+                final Set<CanvasId> connectedCanvasIds = connectionsMap.remove(canvasId);
+
+                if (connectedCanvasIds != null) {
+                    for (final CanvasId connectedCanvasId : connectedCanvasIds) {
+                        isMaxRecursion = isMaxRecursion || addConnectedCanvases(connectedCanvasId,
+                                                                                connectionsMap,
+                                                                                connectedTileSet,
+                                                                                nextRecursionCallCount);
+                    }
                 }
             }
 
         }
+
+        return isMaxRecursion;
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(SortedConnectedCanvasIdClusters.class);
 
+    /** Arbitrary recursion threshold when traversing connected graph that works well enough for current use cases. */
+    private static final int MAX_RECURSION_COUNT = 1000;
 }

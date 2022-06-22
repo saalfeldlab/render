@@ -28,6 +28,7 @@ public class NeuroglancerAttributes {
 
     /** Axis list for all render stacks. */
     public static final List<String> RENDER_AXES = Arrays.asList("x", "y", "z");
+    public static final List<String> RENDER_AXES_2D = RENDER_AXES.subList(0, 2);
 
     /** Attribute key for "intermediate" directory json files required by neuroglancer. */
     public static final String SUPPORTED_KEY = "neuroglancer_supported";
@@ -90,18 +91,34 @@ public class NeuroglancerAttributes {
                                   final List<Long> translate,
                                   final NumpyContiguousOrdering contiguousOrdering) {
 
-        this.axes = RENDER_AXES;
         this.contiguousOrdering = contiguousOrdering;
 
-        this.units = Arrays.asList(stackResolutionUnit, stackResolutionUnit, stackResolutionUnit);
+        if (stackResolutionValues.size() == 3) {
+            this.axes = RENDER_AXES;
+            this.units = Arrays.asList(stackResolutionUnit, stackResolutionUnit, stackResolutionUnit);
 
-        this.scales = new ArrayList<>();
-        this.scales.add(Arrays.asList(1, 1, 1));
-        for (int i = 0; i < numberOfDownsampledDatasets; i++) {
-            final int xScale = (int) Math.pow(downSampleFactors[0], i + 1);
-            final int yScale = (int) Math.pow(downSampleFactors[1], i + 1);
-            final int zScale = (int) Math.pow(downSampleFactors[2], i + 1);
-            this.scales.add(Arrays.asList(xScale, yScale, zScale));
+            this.scales = new ArrayList<>();
+            this.scales.add(Arrays.asList(1, 1, 1));
+            for (int i = 0; i < numberOfDownsampledDatasets; i++) {
+                final int xScale = (int) Math.pow(downSampleFactors[0], i + 1);
+                final int yScale = (int) Math.pow(downSampleFactors[1], i + 1);
+                final int zScale = (int) Math.pow(downSampleFactors[2], i + 1);
+                this.scales.add(Arrays.asList(xScale, yScale, zScale));
+            }
+        } else if (stackResolutionValues.size() == 2) {
+            this.axes = RENDER_AXES_2D;
+            this.units = Arrays.asList(stackResolutionUnit, stackResolutionUnit);
+
+            this.scales = new ArrayList<>();
+            this.scales.add(Arrays.asList(1, 1));
+            for (int i = 0; i < numberOfDownsampledDatasets; i++) {
+                final int xScale = (int) Math.pow(downSampleFactors[0], i + 1);
+                final int yScale = (int) Math.pow(downSampleFactors[1], i + 1);
+                this.scales.add(Arrays.asList(xScale, yScale));
+            }
+        } else {
+            throw new IllegalArgumentException("stackResolutionValues size is " + stackResolutionValues.size() +
+                                               " but only 2D and 3D volumes are currently supported");
         }
 
         this.pixelResolution = new PixelResolution(stackResolutionValues,

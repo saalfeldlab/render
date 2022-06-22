@@ -303,7 +303,7 @@ public class TerraceLayersClient {
         } else {
             tiles.addTransformSpecToCollection(layerTransform);
             tiles.addReferenceTransformToAllTiles(layerTransform.getId(),
-                                                  REPLACE_LAST.equals(parameters.transformApplicationMethod));
+                                                  parameters.transformApplicationMethod);
         }
 
         targetRenderDataClient.saveResolvedTiles(tiles, parameters.getTargetStack(), z);

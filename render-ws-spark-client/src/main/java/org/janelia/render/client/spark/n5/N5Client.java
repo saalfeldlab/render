@@ -144,9 +144,9 @@ public class N5Client {
 
             if (thicknessCorrectionData != null) {
                 final double minZ = Math.ceil(Math.max(runBounds.getMinZ(),
-                                                       thicknessCorrectionData.getFirstCorrectedZ()));
+                                                       Math.floor(thicknessCorrectionData.getFirstCorrectedZ())));
                 final double maxZ = Math.floor(Math.min(runBounds.getMaxZ(),
-                                                        thicknessCorrectionData.getLastCorrectedZ()));
+                                                        Math.ceil(thicknessCorrectionData.getLastCorrectedZ())));
                 runBounds = new Bounds(runBounds.getMinX(), runBounds.getMinY(), minZ,
                                        runBounds.getMaxX(), runBounds.getMaxY(), maxZ);
             }
@@ -241,7 +241,7 @@ public class N5Client {
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
         String datasetName = parameters.n5Dataset;
-        final int[] blockSize = parameters.getBlockSize();
+        int[] blockSize = parameters.getBlockSize();
         final int[] downsampleFactors = parameters.getDownsampleFactors();
         final boolean downsampleStack = downsampleFactors != null;
 
@@ -256,22 +256,34 @@ public class N5Client {
 
         final Bounds bounds = parameters.getBoundsForRun(stackMetaData, thicknessCorrectionData);
 
-        final long[] min = {
+        long[] min = {
                 bounds.getMinX().longValue(),
                 bounds.getMinY().longValue(),
                 bounds.getMinZ().longValue()
         };
-        final long[] dimensions = {
+        long[] dimensions = {
                 new Double(bounds.getDeltaX()).longValue(),
                 new Double(bounds.getDeltaY()).longValue(),
                 new Double(bounds.getDeltaZ()).longValue()
         };
+
+        String viewStackCommandOffsets = min[0] + "," + min[1] + "," + min[2];
+
+        final boolean is2DVolume = (bounds.getDeltaZ() < 1);
+
+        if (is2DVolume) {
+            resolutionValues.remove(2);
+            min = new long[] { min[0], min[1] };
+            dimensions = new long[] { dimensions[0], dimensions[1] };
+            blockSize = new int[] { blockSize[0], blockSize[1] };
+            viewStackCommandOffsets = min[0] + "," + min[1];
+        }
         
         final File datasetDir = new File(Paths.get(parameters.n5Path, fullScaleDatasetName).toString());
         if (! datasetDir.exists()) {
 
-            LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {},{},{}",
-                     parameters.n5Path, fullScaleDatasetName, min[0], min[1], min[2]);
+            LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",
+                     parameters.n5Path, datasetName, viewStackCommandOffsets);
 
             final BoxRenderer boxRenderer = new BoxRenderer(parameters.renderWeb.baseDataUrl,
                                                             parameters.renderWeb.owner,
@@ -284,17 +296,31 @@ public class N5Client {
                                                             parameters.maxIntensity);
 
             // save full scale first ...
-            saveRenderStack(
-                    sparkContext,
-                    boxRenderer,
-                    parameters.tileWidth,
-                    parameters.tileHeight,
-                    parameters.n5Path,
-                    fullScaleDatasetName,
-                    min,
-                    dimensions,
-                    blockSize,
-                    thicknessCorrectionData);
+            if (is2DVolume) {
+                save2DRenderStack(
+                        sparkContext,
+                        boxRenderer,
+                        parameters.tileWidth,
+                        parameters.tileHeight,
+                        parameters.n5Path,
+                        fullScaleDatasetName,
+                        min,
+                        dimensions,
+                        blockSize,
+                        bounds.getMinZ().longValue());
+            } else {
+                saveRenderStack(
+                        sparkContext,
+                        boxRenderer,
+                        parameters.tileWidth,
+                        parameters.tileHeight,
+                        parameters.n5Path,
+                        fullScaleDatasetName,
+                        min,
+                        dimensions,
+                        blockSize,
+                        thicknessCorrectionData);
+            }
 
         } else {
             final File s1Dir = new File(datasetDir.getParent(), "s1");
@@ -542,6 +568,79 @@ public class N5Client {
             final N5Writer anotherN5Writer = new N5FSWriter(n5Path); // needed to prevent Spark serialization error
             N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock[2], new UnsignedByteType(0));
         });
+    }
+
+    public static void save2DRenderStack(final JavaSparkContext sc,
+                                         final BoxRenderer boxRenderer,
+                                         final int tileWidth,
+                                         final int tileHeight,
+                                         final String n5Path,
+                                         final String datasetName,
+                                         final long[] min,
+                                         final long[] dimensions,
+                                         final int[] blockSize,
+                                         final long z)
+            throws IOException {
+
+        LOG.info("save2DRenderStack: entry, z={}", z);
+
+        final N5Writer n5 = new N5FSWriter(n5Path);
+
+        n5.createDataset(
+                datasetName,
+                dimensions,
+                blockSize,
+                DataType.UINT8,
+                new GzipCompression());
+
+        // grid block size for parallelization to minimize double loading of tiles
+        final int[] gridBlockSize = new int[]{
+                Math.max(blockSize[0], tileWidth),
+                Math.max(blockSize[1], tileHeight),
+        };
+
+        final JavaRDD<long[][]> rdd = sc.parallelize(
+                Grid.create(
+                        new long[] {
+                                dimensions[0],
+                                dimensions[1],
+                        },
+                        gridBlockSize,
+                        blockSize));
+
+        rdd.foreach(gridBlock -> {
+
+            // final ImageProcessorCache ipCache = new ImageProcessorCache();
+            final ImageProcessorCache ipCache = ImageProcessorCache.DISABLED_CACHE;
+
+            /* assume we can fit it in an array */
+            final ArrayImg<UnsignedByteType, ByteArray> block = ArrayImgs.unsignedBytes(gridBlock[1]);
+
+            final long x = gridBlock[0][0] + min[0];
+            final long y = gridBlock[0][1] + min[1];
+
+            final ByteProcessor currentProcessor = boxRenderer.render(x, y, z, ipCache);
+
+            final IterableInterval<UnsignedByteType> inSlice = Views
+                    .flatIterable(
+                            Views.interval(
+                                    ArrayImgs.unsignedBytes(
+                                            (byte[]) currentProcessor.getPixels(),
+                                            currentProcessor.getWidth(),
+                                            currentProcessor.getHeight()),
+                                    block));
+
+            final Cursor<UnsignedByteType> in = inSlice.cursor();
+            final Cursor<UnsignedByteType> out = block.cursor();
+            while (out.hasNext()) {
+                out.next().set(in.next());
+            }
+
+            final N5Writer anotherN5Writer = new N5FSWriter(n5Path); // needed to prevent Spark serialization error
+            N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock[2], new UnsignedByteType(0));
+        });
+
+        LOG.info("save2DRenderStack: exit");
     }
 
 }

@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -28,9 +29,8 @@ import org.janelia.alignment.match.parameters.CrossCorrelationParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.alignment.spec.LeafTransformSpec;
-import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.transform.ExponentialRecoveryOffsetTransform;
 import org.janelia.alignment.util.FileUtil;
@@ -119,6 +119,12 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
 
         @ParametersDelegate
         CrossCorrelationParameters correlation = new CrossCorrelationParameters();
+
+        @Parameter(
+                names = "--transformApplicationMethod",
+                description = "Identifies how the transform should be applied to each tile",
+                required = true)
+        public ResolvedTileSpecCollection.TransformApplicationMethod transformApplicationMethod;
 
         @Parameter(
                 names = "--fitResultsDir",
@@ -327,25 +333,15 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
             final ResolvedTileSpecCollection resolvedTilesForLayer =
                     sourceRenderDataClient.getResolvedTiles(parameters.stack, z);
 
-            final TileSpec tileSpec = resolvedTilesForLayer.getTileSpec(canvasId.getId());
-            final ListTransformSpec sourceListTransformSpec = tileSpec.getTransforms();
-            final int numberOfSourceTransforms = sourceListTransformSpec.size();
-
-            final ListTransformSpec targetListTransformSpec = new ListTransformSpec();
-
             // insert fit result transform at beginning of tile spec transform list
             final ExponentialRecoveryOffsetTransform transform = canvasIdToResultsMap.get(canvasId).buildTransform();
-            targetListTransformSpec.addSpec(new LeafTransformSpec(transform.getClass().getName(),
-                                                                  transform.toDataString()));
-
-            // then append existing source transforms
-            for (int i = 0; i< numberOfSourceTransforms; i++) {
-                targetListTransformSpec.addSpec(sourceListTransformSpec.getSpec(i));
-            }
-
-            tileSpec.setTransforms(targetListTransformSpec);
-            tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
-
+            final TransformSpec transformSpec = new LeafTransformSpec(transform.getClass().getName(),
+                                                                      transform.toDataString());
+            final String tileId = canvasId.getId();
+            resolvedTilesForLayer.addTransformSpecToTile(tileId,
+                                                         transformSpec,
+                                                         parameters.transformApplicationMethod);
+            resolvedTilesForLayer.removeDifferentTileSpecs(Collections.singleton(tileId));
             updatedCollection.merge(resolvedTilesForLayer);
         }
 

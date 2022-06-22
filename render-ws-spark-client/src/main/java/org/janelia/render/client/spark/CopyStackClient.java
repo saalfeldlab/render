@@ -225,7 +225,7 @@ public class CopyStackClient implements Serializable {
 
         if (parameters.resetMinAndMaxIntensity) {
 
-            final Function<List<Double>, Map<String, Double[]>> intensityDerivationFunction = (Function<List<Double>, Map<String, Double[]>>) zBatch -> {
+            final Function<List<Double>, Map<String, Double[]>> intensityDerivationFunction = zBatch -> {
 
                 final RenderDataClient localSourceDataClient = parameters.renderWeb.getDataClient();
 
@@ -300,7 +300,7 @@ public class CopyStackClient implements Serializable {
 
        }
 
-        final Function<List<Double>, Long> copyFunction = (Function<List<Double>, Long>) zBatch -> {
+        final Function<List<Double>, Long> copyFunction = zBatch -> {
 
             final RenderDataClient localSourceDataClient = parameters.renderWeb.getDataClient();
 
@@ -352,7 +352,8 @@ public class CopyStackClient implements Serializable {
 
                 if (moveStackTransform != null) {
                     sourceCollection.addTransformSpecToCollection(moveStackTransform);
-                    sourceCollection.addReferenceTransformToAllTiles(moveStackTransform.getId(), false);
+                    sourceCollection.addReferenceTransformToAllTiles(moveStackTransform.getId(),
+                                                                     ResolvedTileSpecCollection.TransformApplicationMethod.APPEND);
                 }
 
                 sourceCollection.removeUnreferencedTransforms();

@@ -286,7 +286,7 @@ public class TransformSectionClient {
         } else {
             tiles.addTransformSpecToCollection(layerTransform);
             tiles.addReferenceTransformToAllTiles(layerTransform.getId(),
-                                                  REPLACE_LAST.equals(parameters.transformApplicationMethod));
+                                                  parameters.transformApplicationMethod);
         }
 
         final int totalNumberOfTiles = tiles.getTileCount();

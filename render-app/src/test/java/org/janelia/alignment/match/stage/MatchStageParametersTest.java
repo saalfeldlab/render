@@ -35,7 +35,7 @@ public class MatchStageParametersTest {
         expectedSlug = "crossPass4_SIFT_s0.25e15_i150_c030pct_" +
                        "GEO_none----_----_-------_" +
                        "d003_" +
-                       "hf28a03394b65a541a6057ee3954b6845";
+                       "h94f34f08766629b82aa6c28506897514";
         Assert.assertEquals("invalid slug for " + p.getStageName(),
                             expectedSlug, p.toSlug());
     }

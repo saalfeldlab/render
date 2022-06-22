@@ -46,20 +46,17 @@ public class TransformSectionClient implements Serializable {
 
         @Parameter(
                 names = "--targetOwner",
-                description = "Name of target stack owner (default is same as source stack owner)",
-                required = false)
+                description = "Name of target stack owner (default is same as source stack owner)")
         private String targetOwner;
 
         @Parameter(
                 names = "--targetProject",
-                description = "Name of target stack project (default is same as source stack project)",
-                required = false)
+                description = "Name of target stack project (default is same as source stack project)")
         private String targetProject;
 
         @Parameter(
                 names = "--targetStack",
-                description = "Name of target stack",
-                required = false)
+                description = "Name of target stack")
         public String targetStack;
 
         @Parameter(names = "--transformId", description = "Identifier for tranformation", required = true)
@@ -154,7 +151,7 @@ public class TransformSectionClient implements Serializable {
 //      make RDD
         final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
 
-        final Function<Double, Integer> transformFunction = (Function<Double, Integer>) z -> {
+        final Function<Double, Integer> transformFunction = z -> {
 
             LogUtilities.setupExecutorLog4j("z " + z);
             //get the source client
@@ -169,7 +166,8 @@ public class TransformSectionClient implements Serializable {
                     sourceDataClient1.getResolvedTiles(parameters.stack, z);
 
             sourceCollection.addTransformSpecToCollection(stackTransform);
-            sourceCollection.addReferenceTransformToAllTiles(stackTransform.getId(), false);
+            sourceCollection.addReferenceTransformToAllTiles(stackTransform.getId(),
+                                                             ResolvedTileSpecCollection.TransformApplicationMethod.APPEND);
 
             //vs tile spec validation?
             sourceCollection.removeUnreferencedTransforms();

@@ -184,6 +184,7 @@ public class SolveSetFactoryWithStitchFirstExclusions
 		}
 
 		// set inlier count to default or to ridiculously high number for excluded layers
+		// TODO: make also per layer
 		final int minStitchingInliers = getMinStitchingInliers(setMinZ, setMaxZ);
 
 		final Affine2D<?> stitchingModelf = defaultStitchingModel;

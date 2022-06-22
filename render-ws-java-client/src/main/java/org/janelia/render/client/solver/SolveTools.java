@@ -302,8 +302,8 @@ public class SolveTools
 		//ImageJFunctions.show( valueX ).setTitle( "valueX" );
 		//ImageJFunctions.show( valueY ).setTitle( "valueY" );
 
-		RandomAccess< DoubleType > rxIn = Views.extendMirrorSingle( valueX ).randomAccess();
-		RandomAccess< DoubleType > ryIn = Views.extendMirrorSingle( valueY ).randomAccess();
+		RandomAccess< DoubleType > rxIn = Views.extendMirrorDouble( valueX ).randomAccess();
+		RandomAccess< DoubleType > ryIn = Views.extendMirrorDouble( valueY ).randomAccess();
 
 		final Img< DoubleType > derX = ArrayImgs.doubles( allZ.size() );
 		final Img< DoubleType > derY = ArrayImgs.doubles( allZ.size() );
@@ -338,8 +338,8 @@ public class SolveTools
 		final Img< DoubleType > filterX = ArrayImgs.doubles( allZ.size() );
 		final Img< DoubleType > filterY = ArrayImgs.doubles( allZ.size() );
 
-		Gauss3.gauss( 20, Views.extendMirrorSingle( derX ), filterX );
-		Gauss3.gauss( 20, Views.extendMirrorSingle( derY ), filterY );
+		Gauss3.gauss( 20, Views.extendMirrorDouble( derX ), filterX );
+		Gauss3.gauss( 20, Views.extendMirrorDouble( derY ), filterY );
 
 		//ImageJFunctions.show( filterX ).setTitle( "filterX" );
 		//ImageJFunctions.show( filterY ).setTitle( "filterY" );
@@ -362,7 +362,7 @@ public class SolveTools
 			rX.get().set( lambda );
 		}
 
-		Gauss3.gauss( 5, Views.extendMirrorSingle( filterX ), filterX );
+		Gauss3.gauss( 5, Views.extendMirrorDouble( filterX ), filterX );
 
 		final HashSet< Integer > exemptLayers = new HashSet<>();
 

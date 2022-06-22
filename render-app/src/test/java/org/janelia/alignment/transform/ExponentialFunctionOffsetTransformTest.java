@@ -42,10 +42,10 @@ public class ExponentialFunctionOffsetTransformTest {
     public void testApply() {
 
         final ExponentialFunctionOffsetTransform transform =
-                new ExponentialFunctionOffsetTransform(3.26097, -0.0060185, 0.30164, 0);
+                new ExponentialFunctionOffsetTransform(3.26097, 0.0060185, 0.30164, 0);
 
         final double[][] testLocations = {   {0,       1111}, {200,       1111}, {600,       1111} };
-        final double[][] expectedResults = { {0 + 3.5, 1111}, {200 + 1.2, 1111}, {600 + 0.3, 1111} };
+        final double[][] expectedResults = { {0 - 3.5, 1111}, {200 - 1.2, 1111}, {600 - 0.3, 1111} };
 
         for (int i = 0; i < testLocations.length; i++) {
             final double[] result = transform.apply(testLocations[i]);

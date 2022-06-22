@@ -382,11 +382,13 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         final TileConfiguration tileConfig = new TileConfiguration();
         tileConfig.addTiles(idToTileMap.values());
 
-        for (final String tileId : parameters.fixedTileIds) {
-            final Tile tile = idToTileMap.get(tileId);
-            if (tile != null) {
-                tileConfig.fixTile(tile);
-                LOG.info("run: fixed tile {}", tileId);
+        if (parameters.fixedTileIds != null) {
+            for (final String tileId : parameters.fixedTileIds) {
+                final Tile tile = idToTileMap.get(tileId);
+                if (tile != null) {
+                    tileConfig.fixTile(tile);
+                    LOG.info("run: fixed tile {}", tileId);
+                }
             }
         }
 

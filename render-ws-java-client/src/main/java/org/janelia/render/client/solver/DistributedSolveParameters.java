@@ -279,6 +279,12 @@ public class DistributedSolveParameters extends CommandLineParameters
 			description = "Full name of custom SolveSetFactory class to use instead of the default implementation")
 	public String customSolveClass;
 
+	@Parameter(
+			names = "--visualizeResults",
+			description = "Visualize results (if running interactively)",
+			arity = 0)
+	public boolean visualizeResults = false;
+
 	public DistributedSolveParameters() {}
 
 	public void initDefaultValues()

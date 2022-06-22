@@ -20,6 +20,7 @@ import bdv.util.BdvStackSource;
 import mpicbg.models.Affine2D;
 import mpicbg.spim.io.IOFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
+import stitching.utils.Log;
 
 public class DistributedSolveMultiThread extends DistributedSolve
 {
@@ -113,27 +114,49 @@ public class DistributedSolveMultiThread extends DistributedSolve
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                            "--project", "Sec36", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                            "--matchCollection", "Sec36_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-                            "--stack", "v2_acquire_trimmed", //"v3_acquire",
-                            "--targetStack", "v2_acquire_trimmed_sp1_adaptive_2",
-                            "--completeTargetStack",
-                            
+                            "--owner", "hess", //"Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
+                            "--project", "wafer_52c", //"Sec24", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "wafer_52c_v1", //"Sec24_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+
+//                            "--stack", "v1_acquire_slab_001_trimmed_mfov_04",
+//                            "--targetStack", "mfov_04_one_z_align",
+//                            "--minZ", "1234",
+//                            "--maxZ", "1234",
+//                            // errors: 0.8330135514585507/0.9516363433105897/1.1195642054611685
+
+//                            "--stack", "v1_acquire_slab_001_trimmed_mfov_04",
+//                            "--targetStack", "mfov_04_five_z_align",
+//                            "--minZ", "1225",
+//                            "--maxZ", "1229",
+//                            // errors: 1.9155474145898972/2.5098725148168426/3.16740645632977
+
+//                            "--stack", "v1_acquire_slab_001_trimmed_mfov_02_04_05",
+//                            "--targetStack", "mfov_02_04_05_one_z_align",
+//                            "--minZ", "1234",
+//                            "--maxZ", "1234",
+//                            // errors: 0.8219440784842432/0.976720860591072/1.2759657838368308
+
+//                            "--stack", "v1_acquire_slab_001_trimmed_mfov_02_04_05",
+//                            "--targetStack", "mfov_02_04_05_five_z_align",
+//                            "--minZ", "1225",
+//                            "--maxZ", "1229",
+//                            // errors: 1.915277838122907/2.5380865464826816/3.321787529996772 (took 4 minutes)
+
+//                            "--completeTargetStack",
+                            "--visualizeResults",
+
                             //"--noreg","400, 23434, 23-254",
 
                             // note: prealign is with translation only
                             "--blockOptimizerLambdasRigid",       "1.0,1.0,0.9,0.3,0.01",
                             "--blockOptimizerLambdasTranslation", "1.0,0.0,0.0,0.0,0.0",
-                            "--blockOptimizerIterations", "1000,1000,500,250,250",
-                            "--blockMaxPlateauWidth", "250,250,150,100,100",
+                            "--blockOptimizerIterations", "100,100,50,25,25",
+                            "--blockMaxPlateauWidth", "25,25,15,10,10",
+                            //"--blockOptimizerIterations", "1000,1000,500,250,250",
+                            //"--blockMaxPlateauWidth", "250,250,150,100,100",
 
                             //"--blockSize", "100",
-                            //"--noStitching", // do not stitch first
-                            
-                            "--minZ", "1",
-                            "--maxZ", "38068", //"9505", //"6480",//"34022",
-
+                            "--minStitchingInliers", "100000000",// do not stitch first
                             "--maxNumMatches", "0", // no limit, default
                             "--threadsWorker", "1", 
                             "--threadsGlobal", "60",
@@ -158,55 +181,64 @@ public class DistributedSolveMultiThread extends DistributedSolve
                 				new InterpolatedAffineModel2D< RigidModel2D, TranslationModel2D >( new RigidModel2D(), new TranslationModel2D(), 0.25 ),
                 				parameters );
                 */
-               
-                DistributedSolve.visualizeOutput = false;
-                //DistributedSolve.visMinZ = 1223;
-                //DistributedSolve.visMaxZ = 1285;
-                
-                final SolveSetFactory solveSetFactory =
-                new SolveSetFactoryBRSec36(
-        				parameters.globalModel(),
-        				parameters.blockModel(),
-        				parameters.stitchingModel(),
-        				parameters.blockOptimizerLambdasRigid,
-        				parameters.blockOptimizerLambdasTranslation,
-        				parameters.blockOptimizerIterations,
-        				parameters.blockMaxPlateauWidth,
-        				parameters.minStitchingInliers,
-        				parameters.blockMaxAllowedError,
-        				parameters.dynamicLambdaFactor );
 
-                final DistributedSolve solve =
-                		new DistributedSolveMultiThread(
-                				solveSetFactory,
-                				parameters );
+				DistributedSolve.visualizeOutput = false;
+				//DistributedSolve.visMinZ = 1223;
+				//DistributedSolve.visMaxZ = 1285;
 
-                solve.run();
+				final SolveSetFactory solveSetFactory =
+						new SolveSetFactoryAdaptiveRigid(
+								parameters.globalModel(),
+								parameters.blockModel(),
+								parameters.stitchingModel(),
+								parameters.blockOptimizerLambdasRigid,
+								parameters.blockOptimizerLambdasTranslation,
+								parameters.blockOptimizerIterations,
+								parameters.blockMaxPlateauWidth,
+								parameters.minStitchingInliers,
+								parameters.blockMaxAllowedError,
+								parameters.dynamicLambdaFactor);
 
-                final GlobalSolve gs = solve.globalSolve();
+				final DistributedSolve solve =
+						new DistributedSolveMultiThread(
+								solveSetFactory,
+								parameters);
 
-                // visualize the layers
-				final HashMap<String, Float> idToValue = new HashMap<>();
-				for ( final String tileId : gs.idToTileSpecGlobal.keySet() )
-					idToValue.put( tileId, gs.zToDynamicLambdaGlobal.get( (int)Math.round( gs.idToTileSpecGlobal.get( tileId ).getZ() ) ).floatValue() + 1 ); // between 1 and 1.2
+				solve.run();
 
-				BdvStackSource<?> vis = VisualizeTools.visualizeMultiRes( gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal );
+				if (parameters.visualizeResults) {
 
-				vis = RenderTools.renderMultiRes(
-						null,
-						parameters.renderWeb.baseDataUrl,
-						parameters.renderWeb.owner,
-						parameters.renderWeb.project,
-						parameters.targetStack,
-						gs.idToFinalModelGlobal,
-						gs.idToTileSpecGlobal,
-						vis, 36 );
-				vis.setDisplayRange(0, 255 );
-				vis.setCurrent();
-				
+					final GlobalSolve gs = solve.globalSolve();
 
-                SimpleMultiThreading.threadHaltUnClean();
-            }
+					// visualize the layers
+					final HashMap<String, Float> idToValue = new HashMap<>();
+					for (final String tileId : gs.idToTileSpecGlobal.keySet())
+						idToValue.put(tileId,
+									  gs.zToDynamicLambdaGlobal.get((int) Math.round(gs.idToTileSpecGlobal.get(tileId).getZ())).floatValue() +
+									  1); // between 1 and 1.2
+
+					BdvStackSource<?> vis =
+							VisualizeTools.visualizeMultiRes(gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, idToValue, 1, 128, 2, parameters.threadsGlobal);
+
+					if (parameters.targetStack == null)
+						LOG.info("Cannot render actual stack because it wasn't saved ( parameters.targetStack == null)");
+					else
+						vis = RenderTools.renderMultiRes(
+								null,
+								parameters.renderWeb.baseDataUrl,
+								parameters.renderWeb.owner,
+								parameters.renderWeb.project,
+								parameters.targetStack,
+								gs.idToFinalModelGlobal,
+								gs.idToTileSpecGlobal,
+								vis, 36);
+					vis.setDisplayRange(0, 255);
+					vis.setCurrent();
+
+
+					SimpleMultiThreading.threadHaltUnClean();
+				}
+			}
         };
         clientRunner.run();
 	}
