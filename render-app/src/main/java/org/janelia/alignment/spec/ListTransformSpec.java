@@ -3,7 +3,6 @@ package org.janelia.alignment.spec;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,16 +86,6 @@ public class ListTransformSpec extends TransformSpec {
         super.removeLabel(label);
         for (final TransformSpec transformSpec : specList) {
             transformSpec.removeLabel(label);
-        }
-    }
-
-    public void removeNullSpecs() {
-        TransformSpec spec;
-        for (final Iterator<TransformSpec> i = specList.iterator(); i.hasNext();) {
-            spec = i.next();
-            if (spec == null) {
-                i.remove();
-            }
         }
     }
 
@@ -215,6 +204,37 @@ public class ListTransformSpec extends TransformSpec {
                 flattenedList.specList = flattenedList.specList.subList(0, firstIndexWithLabel);
             }
 
+        }
+
+        return flattenedList;
+    }
+
+    /**
+     * Flattens this list of transform specs, removes transforms used for point match derivation,
+     * and returns the list of remaining "post match" transforms.
+     * If this list contains any transforms explicitly labelled with {@link #MATCH_LABEL},
+     * all transforms after the last labelled transform are considered "post match".
+     * Otherwise by convention, only the list's last transform is considered "post match".
+     *
+     * @return a flattened list of the "post match" transforms within this list.
+     */
+    @JsonIgnore
+    public ListTransformSpec getPostMatchSpecList() {
+        final ListTransformSpec flattenedList = new ListTransformSpec();
+
+        flatten(flattenedList);
+
+        final int listSize = flattenedList.specList.size();
+        int lastMatchIndex = listSize - 1; // convention is all but last transform are used for matching
+
+        for (int i = 0; i < listSize; i++) {
+            if (flattenedList.specList.get(i).hasMatchLabel()) {
+                lastMatchIndex = i; // override convention if explicitly labelled transforms are found
+            }
+        }
+
+        if (lastMatchIndex > -1) {
+            flattenedList.specList = flattenedList.specList.subList(lastMatchIndex, listSize);
         }
 
         return flattenedList;

@@ -710,6 +710,30 @@ public class TileSpec implements Serializable {
         return ctl;
     }
 
+    /**
+     * Get a copy of this spec's post match transforms as a {@link CoordinateTransformList}.
+     * If this spec does not have any transforms, an empty list is returned.
+     *
+     * @return list of transforms not used for point match derivation.
+     *
+     * @throws IllegalArgumentException
+     *   if the list cannot be generated.
+     */
+    @JsonIgnore
+    public CoordinateTransformList<CoordinateTransform> getPostMatchingTransformList()
+            throws IllegalArgumentException {
+
+        final CoordinateTransformList<CoordinateTransform> ctl;
+        if (transforms == null) {
+            ctl = new CoordinateTransformList<>();
+        } else {
+            final ListTransformSpec postMatchTransforms = transforms.getPostMatchSpecList();
+            ctl = postMatchTransforms.getNewInstanceAsList();
+        }
+
+        return ctl;
+    }
+
     @Override
     public String toString() {
         return tileId;

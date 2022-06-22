@@ -27,7 +27,6 @@ import org.janelia.alignment.json.JsonUtils;
  */
 @JsonTypeInfo(
         use = JsonTypeInfo.Id.NAME,
-        include = JsonTypeInfo.As.PROPERTY,
         property = "type",
         defaultImpl = LeafTransformSpec.class) // NOTE: Between Jackson 2.8 and 2.9.5 this is broken because
                                                // defaultImpl must be super class of all subtypes.
@@ -67,6 +66,10 @@ public abstract class TransformSpec implements Serializable {
 
     public boolean hasLabel(final String label) {
         return (metaData != null) && metaData.hasLabel(label);
+    }
+
+    public boolean hasMatchLabel() {
+        return (metaData != null) && metaData.hasLabel(MATCH_LABEL);
     }
 
     public boolean hasOneOfTheseLabels(final Set<String> labels) {
@@ -217,25 +220,31 @@ public abstract class TransformSpec implements Serializable {
      * method returns null.
      */
     static public TransformSpec create(final CoordinateTransform transform) {
-        if (CoordinateTransformList.class.isInstance(transform)) {
+        if (transform instanceof CoordinateTransformList) {
             final ListTransformSpec listSpec = new ListTransformSpec(UUID.randomUUID().toString(), null);
             @SuppressWarnings({ "rawtypes", "unchecked" })
             final List<CoordinateTransform> transforms = ((CoordinateTransformList)transform).getList(null);
             for (final CoordinateTransform t : transforms)
                 listSpec.addSpec(create(t));
             return listSpec;
-        } else if (InterpolatedCoordinateTransform.class.isInstance(transform)) {
+        } else if (transform instanceof InterpolatedCoordinateTransform) {
             @SuppressWarnings("rawtypes")
             final InterpolatedCoordinateTransform ab = (InterpolatedCoordinateTransform)transform;
             final CoordinateTransform a = ab.getA();
             final CoordinateTransform b = ab.getB();
             return new InterpolatedTransformSpec(UUID.randomUUID().toString(), null, create(a), create(b), ab.getLambda());
-        } else if (mpicbg.trakem2.transform.CoordinateTransform.class.isInstance(transform)) {
+        } else if (transform instanceof mpicbg.trakem2.transform.CoordinateTransform) {
             final mpicbg.trakem2.transform.CoordinateTransform t = (mpicbg.trakem2.transform.CoordinateTransform)transform;
             return new LeafTransformSpec(UUID.randomUUID().toString(), null, t.getClass().getCanonicalName(), t.toDataString());
             //return new LeafTransformSpec(UUID.randomUUID().toString(), null, t.getClass().getCanonicalName(), null);
         } else return null;
     }
+
+    /**
+     * Label to explicitly identify a transform that should be included when rendering for point match derivation.
+     * Convention assumes that all transforms except for the last one are used for point match derivation.
+     */
+    public static final String MATCH_LABEL = "match";
 
     private static final JsonUtils.Helper<TransformSpec> JSON_HELPER =
             new JsonUtils.Helper<>(TransformSpec.class);
