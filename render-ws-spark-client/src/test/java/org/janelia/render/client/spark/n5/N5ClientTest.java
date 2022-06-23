@@ -89,32 +89,18 @@ public class N5ClientTest {
         Bounds boundsForRun = p.getBoundsForRun(stackMetaData, null);
         Assert.assertEquals("null parameters should simply return stack bounds", stackBounds, boundsForRun);
 
-        ThicknessCorrectionData thicknessCorrectionData = new ThicknessCorrectionData(Arrays.asList(
+        final ThicknessCorrectionData thicknessCorrectionData = new ThicknessCorrectionData(Arrays.asList(
                 "1 1.00001", "2 2.45", "3 3", "4 4", "5 4.85", "6 6.00004"
         ));
 
         boundsForRun = p.getBoundsForRun(stackMetaData, thicknessCorrectionData);
-        Bounds expectedThicknessBounds = new Bounds(stackBounds.getMinX(),
+        final Bounds expectedThicknessBounds = new Bounds(stackBounds.getMinX(),
                                                           stackBounds.getMinY(),
                                                           1.0,
                                                           stackBounds.getMaxX(),
                                                           stackBounds.getMaxY(),
                                                           6.0);
         Assert.assertEquals("incorrect thickness data bounds for normal data",
-                            expectedThicknessBounds, boundsForRun);
-
-        thicknessCorrectionData = new ThicknessCorrectionData(Arrays.asList(
-                "1 2.23", "2 2.45", "3 3", "4 4", "5 4.85", "6 4.95"
-        ));
-
-        boundsForRun = p.getBoundsForRun(stackMetaData, thicknessCorrectionData);
-        expectedThicknessBounds = new Bounds(stackBounds.getMinX(),
-                                             stackBounds.getMinY(),
-                                             2.0,
-                                             stackBounds.getMaxX(),
-                                             stackBounds.getMaxY(),
-                                             5.0);
-        Assert.assertEquals("incorrect thickness data bounds for skewed data",
                             expectedThicknessBounds, boundsForRun);
     }
 

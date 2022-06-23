@@ -13,9 +13,11 @@ import org.junit.Test;
  */
 public class ThicknessCorrectionDataTest {
 
-    private final String smallCorrectionZCoords = "4055 4054.926248674371\n" +
+    private final String smallCorrectionZCoords = "4054 4054.000000000123\n" +
+                                                  "4055 4054.926248674371\n" +
                                                   "4056 4055.890848802147\n" +
-                                                  "4057 4056.8086632669383";
+                                                  "4057 4056.8086632669383\n" +
+                                                  "4058 4057.999999999996";
     @Test
     public void testGetInterpolatorForSmallCorrection() {
 
@@ -30,6 +32,7 @@ public class ThicknessCorrectionDataTest {
     public void testGetInterpolatorForBigCorrection() {
 
         final String zCoordsText =
+                "4099 4099.0000000000004987\n" +
                 "4100 4102.787808503473\n" +
                 "4101 4103.020253943293\n" +
                 "4102 4103.020353945556\n" +
@@ -44,7 +47,14 @@ public class ThicknessCorrectionDataTest {
                 "4111 4107.959931776086\n" +
                 "4112 4118.374343051017\n" +
                 "4113 4119.268355304987\n" +
-                "4114 4120.590465478949";
+                "4114 4120.590465478949\n" +
+                "4115 4120.690465478949\n" +
+                "4116 4120.790465478949\n" +
+                "4117 4120.890465478949\n" +
+                "4118 4120.990465478949\n" +
+                "4119 4120.991465478949\n" +
+                "4120 4120.992465478949\n" +
+                "4121 4120.999999999996";
 
         final String context = "big correction";
         final ThicknessCorrectionData data = buildData(zCoordsText);
@@ -66,13 +76,13 @@ public class ThicknessCorrectionDataTest {
     @Test(expected = IllegalArgumentException.class)
     public void testGetInterpolatorTooSmall() {
         final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
-        data.getInterpolator(4054);
+        data.getInterpolator(4052);
     }
 
     @Test(expected = IllegalArgumentException.class)
     public void testGetInterpolatorTooBig() {
         final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
-        data.getInterpolator(4057);
+        data.getInterpolator(4059);
     }
 
     @Test(expected = IllegalArgumentException.class)

@@ -150,10 +150,32 @@ public class ThicknessCorrectionData
             }
         }
 
-        if (this.orderedCorrectedZValues.size() == 0) {
+        if (lastCorrectedZ == null) {
             throw new IllegalArgumentException("no corrected z values found");
         }
-        
+
+        // pin first and last corrected z values to first and last stack z values unless they are very different
+        final double maxDelta = 0.5;
+        final Double firstCorrectedZ = orderedCorrectedZValues.get(0);
+        final Integer firstStackZ = orderedStackZValues.get(0);
+        double delta = Math.abs(firstCorrectedZ - firstStackZ);
+        if (delta < maxDelta) {
+            orderedCorrectedZValues.set(0, firstStackZ.doubleValue());
+        }  else {
+            throw new IllegalArgumentException("first stack z " + firstStackZ +
+                                               " is too far from first corrected z " + firstCorrectedZ);
+        }
+
+        final int lastIndex = orderedStackZValues.size() - 1;
+        final Integer lastStackZ = orderedStackZValues.get(lastIndex);
+        delta = Math.abs(lastCorrectedZ - lastStackZ);
+        if (delta < maxDelta) {
+            orderedCorrectedZValues.set(lastIndex, lastStackZ.doubleValue());
+        }  else {
+            throw new IllegalArgumentException("last stack z " + lastStackZ +
+                                               " is too far from last corrected z " + lastCorrectedZ);
+        }
+
         System.out.println("ThicknessCorrectionData: loaded " + this.orderedCorrectedZValues.size() + " corrected z values");
     }
 
