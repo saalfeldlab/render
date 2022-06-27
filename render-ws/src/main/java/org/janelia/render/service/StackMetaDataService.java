@@ -920,6 +920,8 @@ public class StackMetaDataService {
     public Response getStackTileIds(@PathParam("owner") final String owner,
                                     @PathParam("project") final String project,
                                     @PathParam("stack") final String stack,
+                                    @QueryParam("minZ") final Double minZ,
+                                    @QueryParam("maxZ") final Double maxZ,
                                     @QueryParam("matchPattern") final String matchPattern) {
 
         LOG.info("getStackTileIds: entry, owner={}, project={}, stack={}",
@@ -929,7 +931,11 @@ public class StackMetaDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
 
-            final StreamingOutput responseOutput = output -> renderDao.writeTileIds(stackId, matchPattern, output);
+            final StreamingOutput responseOutput = output -> renderDao.writeTileIds(stackId,
+                                                                                    minZ,
+                                                                                    maxZ,
+                                                                                    matchPattern,
+                                                                                    output);
             response = Response.ok(responseOutput).build();
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);

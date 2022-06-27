@@ -376,7 +376,7 @@ public class RenderDaoReadOnlyTest {
 
         for (int test = 0; test < matchPatterns.length; test++) {
             final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
-            dao.writeTileIds(stackId, matchPatterns[test], outputStream);
+            dao.writeTileIds(stackId, null, null, matchPatterns[test], outputStream);
             final String[] tileIds = outputStream.toString().split(",");
             Assert.assertEquals("invalid number of tileIds written for query test " + test,
                                 expectedMatchingTileCounts[test], tileIds.length);

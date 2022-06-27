@@ -1582,15 +1582,7 @@ public class RenderDao {
 
         final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
-        Document zFilter = null;
-        if (minZ != null) {
-            zFilter = new Document(MongoUtil.OP_GTE, minZ);
-            if (maxZ != null) {
-                zFilter = zFilter.append(MongoUtil.OP_LTE, maxZ);
-            }
-        } else if (maxZ != null) {
-            zFilter = new Document(MongoUtil.OP_LTE, maxZ);
-        }
+        final Document zFilter = buildMinMaxFilter(minZ, maxZ);
 
         // EXAMPLE:   find({"z": {"$gte": 4370.0, "$lte": 4370.0}}, {"tileId": 1, "z": 1, "minX": 1, "minY": 1, "layout": 1, "mipmapLevels": 1}).sort({"z": 1, "minY": 1, "minX": 1})
         // INDEX:     z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1
@@ -1636,6 +1628,8 @@ public class RenderDao {
      * Writes all tileIds for the specified stack to the specified stream (as a JSON array of strings).
      *
      * @param  stackId          stack identifier.
+     * @param  minZ             the minimum z to include (or null if no minimum).
+     * @param  maxZ             the maximum z to include (or null if no maximum).
      * @param  matchPattern     (optional) if specified, only return tileIds that match this pattern.
      * @param  outputStream     stream to which tileIds are to be written.
      *
@@ -1646,6 +1640,8 @@ public class RenderDao {
      *   if the data cannot be written for any reason.
      */
     public void writeTileIds(final StackId stackId,
+                             final Double minZ,
+                             final Double maxZ,
                              final String matchPattern,
                              final OutputStream outputStream)
             throws IllegalArgumentException, IOException {
@@ -1669,6 +1665,11 @@ public class RenderDao {
             tileQuery = new Document(tileIdKey, new Document("$gt", ""));
         } else {
             tileQuery = new Document(tileIdKey, new Document("$regex", matchPattern));
+        }
+
+        final Document zFilter = buildMinMaxFilter(minZ, maxZ);
+        if (zFilter != null) {
+            tileQuery.append("z", zFilter);
         }
 
         final Document tileKeys = new Document("_id", 0).append(tileIdKey, 1);
@@ -2019,6 +2020,21 @@ public class RenderDao {
                   bound, MongoUtil.fullName(tileCollection), query.toJson(), tileKeys.toJson(), orderBy.toJson());
 
         return bound;
+    }
+
+    private Document buildMinMaxFilter(final Double minValue,
+                                       final Double maxValue) {
+        // EXAMPLE:   {"$gte": 4370.0, "$lte": 4370.0}
+        Document zFilter = null;
+        if (minValue != null) {
+            zFilter = new Document(MongoUtil.OP_GTE, minValue);
+            if (maxValue != null) {
+                zFilter = zFilter.append(MongoUtil.OP_LTE, maxValue);
+            }
+        } else if (maxValue != null) {
+            zFilter = new Document(MongoUtil.OP_LTE, maxValue);
+        }
+        return zFilter;
     }
 
     private void cloneCollection(final MongoCollection<Document> fromCollection,
