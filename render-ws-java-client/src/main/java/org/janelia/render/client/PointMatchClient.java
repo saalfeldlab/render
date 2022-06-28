@@ -314,11 +314,7 @@ public class PointMatchClient {
                                                      clientParameters.matchClient.collection);
     }
 
-    Map<String, CanvasData> getCanvasUrlToDataMap() {
-        return canvasUrlToDataMap;
-    }
-
-    /**
+     /**
      * Extract features from distinct set of canvases.
      */
     void extractFeatures() throws Exception {
@@ -504,19 +500,12 @@ public class PointMatchClient {
             final String canvasName = "c_" + String.format("%05d", canvasIndex);
             final String id = clientParameters.getCanvasId(this.renderParameters, canvasName);
             this.canvasId = new CanvasId(groupId, id, relativePosition);
+            this.canvasId.setClipOffsets(canvasIdWithRenderContext.getClipOffsets());
             this.featureList = null;
         }
 
         void setFeatureList(final List<Feature> featureList) {
             this.featureList = featureList;
-        }
-
-        public CanvasId getCanvasId() {
-            return canvasId;
-        }
-
-        int getNumberOfFeatures() {
-            return (featureList == null) ? 0 : featureList.size();
         }
 
         @Override

@@ -32,7 +32,6 @@ public class CanvasId
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private CanvasId() {
-        //noinspection ConstantConditions
         this(null, null);
     }
 
@@ -76,6 +75,10 @@ public class CanvasId
 
     public double[] getClipOffsets() {
         return clipOffsets == null ? ZERO_OFFSETS : clipOffsets;
+    }
+
+    public void setClipOffsets(final double[] clipOffsets) {
+        this.clipOffsets = clipOffsets;
     }
 
     /**
