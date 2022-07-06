@@ -63,6 +63,8 @@ public class MipmapPathBuilder
     public static final String JANELIA_FIBSEM_H5_MIPMAP_PATTERN_STRING =
             "(.*dataSet=\\d+-\\d+-\\d+\\.mipmap\\.)\\d+(.*)";
 
+    public static final String DYNAMIC_MASK_PROTOCOL = "mask://";
+
     private final String rootPath;
     private final Integer numberOfLevels;
     private final String extension;
@@ -233,21 +235,32 @@ public class MipmapPathBuilder
                                    final int derivedLevel) {
 
         final StringBuilder sb = new StringBuilder(256);
-        sb.append(rootPath);
-        sb.append(derivedLevel);
 
-        final int colonIndex = urlString.indexOf(':');
-        if (colonIndex > -1) {
-            sb.append(urlString.substring(colonIndex + 1));
-        } else if (urlString.startsWith("/")) {
+        if (urlString.startsWith(DYNAMIC_MASK_PROTOCOL)) {
+
             sb.append(urlString);
+            sb.append("&level=");
+            sb.append(derivedLevel);
+
         } else {
-            sb.append('/');
-            sb.append(urlString);
-        }
 
-        sb.append('.');
-        sb.append(extension);
+            sb.append(rootPath);
+            sb.append(derivedLevel);
+
+            final int colonIndex = urlString.indexOf(':');
+            if (colonIndex > -1) {
+                sb.append(urlString.substring(colonIndex + 1));
+            } else if (urlString.startsWith("/")) {
+                sb.append(urlString);
+            } else {
+                sb.append('/');
+                sb.append(urlString);
+            }
+
+            sb.append('.');
+            sb.append(extension);
+
+        }
 
         return sb.toString();
     }

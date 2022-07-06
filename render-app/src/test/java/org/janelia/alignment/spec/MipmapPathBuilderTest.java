@@ -43,7 +43,8 @@ public class MipmapPathBuilderTest {
         Map.Entry<Integer, ImageAndMask> sourceEntry = buildMipmapEntry(
                 "file:///data/Merlin-6257_21-05-20_125416_0-0-0_InLens.png",
                 null,
-                "file:///masks/test-mask.png");
+                "file:///masks/test-mask.png",
+                ImageLoader.LoaderType.IMAGEJ_DEFAULT);
 
         ImageAndMask derivedImageAndMask =
                 mipmapPathBuilder.deriveImageAndMask(mipmapLevel, sourceEntry, false).getValue();
@@ -66,7 +67,8 @@ public class MipmapPathBuilderTest {
         sourceEntry = buildMipmapEntry(
                 "file:///Merlin-6257_21-05-20_125416.uint8.h5?dataSet=0-0-0.mipmap.0&z=0",
                 ImageLoader.LoaderType.H5_SLICE,
-                "file:///masks/test-another-mask.png");
+                "file:///masks/test-another-mask.png",
+                ImageLoader.LoaderType.IMAGEJ_DEFAULT);
 
         derivedImageAndMask = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, sourceEntry, false).getValue();
 
@@ -80,16 +82,30 @@ public class MipmapPathBuilderTest {
         expectedMaskUrl = "file:/mipmaps/" + mipmapLevel + "/masks/test-another-mask.png.tif";
         Assert.assertEquals("invalid derived maskUrl for " + sourceEntry.getValue(),
                             expectedMaskUrl, derivedImageAndMask.getMaskUrl());
+
+        final String baseMaskUrl = "mask://outside-box?minX=10&minY=0&maxX=56&maxY=23&width=56&height=23";
+        sourceEntry = buildMipmapEntry(
+                "file:///Merlin-6257_21-05-20_125416.uint8.h5?dataSet=0-0-0.mipmap.0&z=0",
+                ImageLoader.LoaderType.H5_SLICE,
+                baseMaskUrl,
+                ImageLoader.LoaderType.DYNAMIC_MASK);
+
+        derivedImageAndMask = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, sourceEntry, false).getValue();
+
+        expectedMaskUrl = baseMaskUrl + "&level=" + mipmapLevel;
+        Assert.assertEquals("invalid derived maskUrl for " + sourceEntry.getValue(),
+                            expectedMaskUrl, derivedImageAndMask.getMaskUrl());
     }
 
     private Map.Entry<Integer, ImageAndMask> buildMipmapEntry(final String imageUrl,
                                                               final ImageLoader.LoaderType imageLoaderType,
-                                                              final String maskUrl) {
+                                                              final String maskUrl,
+                                                              final ImageLoader.LoaderType maskLoaderType) {
         final ImageAndMask sourceImageAndMask = new ImageAndMask(imageUrl,
                                                                  imageLoaderType,
                                                                  0,
                                                                  maskUrl,
-                                                                 ImageLoader.LoaderType.IMAGEJ_DEFAULT,
+                                                                 maskLoaderType,
                                                                  null);
         final ChannelSpec channelSpec = new ChannelSpec();
         channelSpec.putMipmap(0, sourceImageAndMask);

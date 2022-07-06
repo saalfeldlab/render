@@ -11,7 +11,7 @@ import ij.process.ImageProcessor;
 public interface ImageLoader {
 
     enum LoaderType {
-        IMAGEJ_DEFAULT, IMAGEJ_TIFF_STACK, H5_SLICE, N5_SLICE, IMAGEJ_COMPOSITE
+        IMAGEJ_DEFAULT, IMAGEJ_TIFF_STACK, H5_SLICE, N5_SLICE, IMAGEJ_COMPOSITE, DYNAMIC_MASK
     }
 
     boolean hasSame3DContext(final ImageLoader otherLoader);
@@ -56,6 +56,10 @@ public interface ImageLoader {
 
                 case IMAGEJ_COMPOSITE:
                     imageLoader = ImageJCompositeLoader.INSTANCE;
+                    break;
+
+                case DYNAMIC_MASK:
+                    imageLoader = DynamicMaskLoader.INSTANCE;
                     break;
             }
         }
