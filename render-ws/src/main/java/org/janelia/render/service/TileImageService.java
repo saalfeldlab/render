@@ -64,8 +64,10 @@ public class TileImageService {
                                            @PathParam("stack") final String stack,
                                            @PathParam("tileId") final String tileId,
                                            @BeanParam final RenderQueryParameters renderQueryParameters,
-                                           @QueryParam("width") final Integer width,
-                                           @QueryParam("height") final Integer height,
+                                           @QueryParam("x") final Integer xOffset,
+                                           @QueryParam("y") final Integer yOffset,
+                                           @QueryParam("width") final Integer fullScaleWidth,
+                                           @QueryParam("height") final Integer fullScaleHeight,
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                            @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
                                            @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
@@ -79,7 +81,8 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId, renderQueryParameters,
-                                                        width, height, normalizeForMatching,
+                                                        xOffset, yOffset, fullScaleWidth, fullScaleHeight,
+                                                        normalizeForMatching,
                                                         excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
                                                         excludeAllTransforms);
             return RenderServiceUtil.renderJpegImage(renderParameters, null, responseHelper);
@@ -100,8 +103,10 @@ public class TileImageService {
                                           @PathParam("stack") final String stack,
                                           @PathParam("tileId") final String tileId,
                                           @BeanParam final RenderQueryParameters renderQueryParameters,
-                                          @QueryParam("width") final Integer width,
-                                          @QueryParam("height") final Integer height,
+                                          @QueryParam("x") final Integer xOffset,
+                                          @QueryParam("y") final Integer yOffset,
+                                          @QueryParam("width") final Integer fullScaleWidth,
+                                          @QueryParam("height") final Integer fullScaleHeight,
                                           @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                           @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
                                           @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
@@ -115,7 +120,8 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId, renderQueryParameters,
-                                                        width, height, normalizeForMatching,
+                                                        xOffset, yOffset, fullScaleWidth, fullScaleHeight,
+                                                        normalizeForMatching,
                                                         excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
                                                         excludeAllTransforms);
             return RenderServiceUtil.renderPngImage(renderParameters, null, responseHelper);
@@ -136,8 +142,10 @@ public class TileImageService {
                                            @PathParam("stack") final String stack,
                                            @PathParam("tileId") final String tileId,
                                            @BeanParam final RenderQueryParameters renderQueryParameters,
-                                           @QueryParam("width") final Integer width,
-                                           @QueryParam("height") final Integer height,
+                                           @QueryParam("x") final Integer xOffset,
+                                           @QueryParam("y") final Integer yOffset,
+                                           @QueryParam("width") final Integer fullScaleWidth,
+                                           @QueryParam("height") final Integer fullScaleHeight,
                                            @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                            @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
                                            @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
@@ -151,7 +159,8 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId, renderQueryParameters,
-                                                        width, height, normalizeForMatching,
+                                                        xOffset, yOffset, fullScaleWidth, fullScaleHeight,
+                                                        normalizeForMatching,
                                                         excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
                                                         excludeAllTransforms);
             return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper);
@@ -168,17 +177,19 @@ public class TileImageService {
             @ApiResponse(code = 404, message = "Tile not found")
     })
     public Response renderTiff16ImageForTile(@PathParam("owner") final String owner,
-                                           @PathParam("project") final String project,
-                                           @PathParam("stack") final String stack,
-                                           @PathParam("tileId") final String tileId,
-                                           @BeanParam final RenderQueryParameters renderQueryParameters,
-                                           @QueryParam("width") final Integer width,
-                                           @QueryParam("height") final Integer height,
-                                           @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
-                                           @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
-                                           @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
-                                           @QueryParam("excludeAllTransforms") final Boolean excludeAllTransforms,
-                                           @Context final Request request) {
+                                             @PathParam("project") final String project,
+                                             @PathParam("stack") final String stack,
+                                             @PathParam("tileId") final String tileId,
+                                             @BeanParam final RenderQueryParameters renderQueryParameters,
+                                             @QueryParam("x") final Integer xOffset,
+                                             @QueryParam("y") final Integer yOffset,
+                                             @QueryParam("width") final Integer fullScaleWidth,
+                                             @QueryParam("height") final Integer fullScaleHeight,
+                                             @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
+                                             @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
+                                             @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
+                                             @QueryParam("excludeAllTransforms") final Boolean excludeAllTransforms,
+                                             @Context final Request request) {
 
         LOG.info("renderTiffImageForTile: entry, owner={}, project={}, stack={}, tileId={}",
                  owner, project, stack, tileId);
@@ -187,7 +198,8 @@ public class TileImageService {
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
                     tileDataService.getRenderParameters(owner, project, stack, tileId, renderQueryParameters,
-                                                        width, height, normalizeForMatching,
+                                                        xOffset, yOffset, fullScaleWidth, fullScaleHeight,
+                                                        normalizeForMatching,
                                                         excludeAfterLastLabels, excludeFirstAndAllAfterLabels,
                                                         excludeAllTransforms);
             return RenderServiceUtil.renderTiffImage(renderParameters, null, responseHelper, true);

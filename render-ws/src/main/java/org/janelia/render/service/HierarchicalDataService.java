@@ -733,7 +733,11 @@ public class HierarchicalDataService {
         // TODO: handle all tile normalization options (this lazily assumes the legacy method)
         final RenderParameters matchRenderParameters =
                 TileDataService.getCoreTileRenderParameters(
-                        null, null, null, true, null, null, null, matchTileSpec);
+                        null, null, null, null,
+                        null,
+                        true,
+                        null, null, null,
+                        matchTileSpec);
         return matchRenderParameters.getTileSpecs().get(0);
     }
 
