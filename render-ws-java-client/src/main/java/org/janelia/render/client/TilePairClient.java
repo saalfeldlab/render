@@ -26,6 +26,7 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionMetaData;
+import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.spec.LayoutData;
@@ -139,6 +140,12 @@ public class TilePairClient {
                 description = "Name of match collection whose existing pairs should be excluded from the generated list (default is to include all pairs)"
         )
         public String excludePairsInMatchCollection;
+
+        @Parameter(
+                names = "--excludeSameLayerPairsWithPosition",
+                description = "Exclude same layer pairs that have one tile with the specified position"
+        )
+        public MontageRelativePosition excludeSameLayerPairsWithPosition;
 
         @Parameter(
                 names = "--existingMatchOwner",
@@ -432,6 +439,13 @@ public class TilePairClient {
                                                                    parameters.excludeCornerNeighbors,
                                                                    parameters.excludeSameLayerNeighbors,
                                                                    parameters.excludeSameSectionNeighbors);
+
+            if (parameters.excludeSameLayerPairsWithPosition != null) {
+                final MontageRelativePosition excludedPosition = parameters.excludeSameLayerPairsWithPosition;
+                currentNeighborPairs.removeIf(pair -> excludedPosition.equals(pair.getP().getRelativePosition()) ||
+                                                      excludedPosition.equals(pair.getQ().getRelativePosition()));
+            }
+
             if (existingMatchHelper != null) {
                 existingMatchHelper.removeExistingPairs(z, currentNeighborPairs);
 
@@ -491,7 +505,7 @@ public class TilePairClient {
             final Collection<TileSpec> tileSpecs = resolvedTiles.getTileSpecs();
 
             tileBoundsList = new ArrayList<>(tileSpecs.size());
-            totalTileCount = tileBoundsList.size();
+            totalTileCount = 0;
 
             final int tileSize = 10;
             for (final TileSpec tileSpec : tileSpecs) {
