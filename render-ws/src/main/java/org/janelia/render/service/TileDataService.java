@@ -134,8 +134,10 @@ public class TileDataService {
                                                 @PathParam("stack") final String stack,
                                                 @PathParam("tileId") final String tileId,
                                                 @BeanParam final RenderQueryParameters renderQueryParameters,
-                                                @QueryParam("width") final Integer width,// full scale width
-                                                @QueryParam("height") final Integer height,// full scale height
+                                                @QueryParam("x") final Integer xOffset,
+                                                @QueryParam("y") final Integer yOffset,
+                                                @QueryParam("width") final Integer fullScaleWidth,
+                                                @QueryParam("height") final Integer fullScaleHeight,
                                                 @QueryParam("normalizeForMatching") final Boolean normalizeForMatching,
                                                 @QueryParam("excludeTransformsAfterLast") final Set<String> excludeAfterLastLabels,
                                                 @QueryParam("excludeFirstTransformAndAllAfter") final Set<String> excludeFirstAndAllAfterLabels,
@@ -151,7 +153,8 @@ public class TileDataService {
 
             final TileSpec tileSpec = getTileSpec(owner, project, stack, tileId, true);
 
-            parameters = getCoreTileRenderParameters(width, height, renderQueryParameters.getScale(),
+            parameters = getCoreTileRenderParameters(xOffset, yOffset, fullScaleWidth, fullScaleHeight,
+                                                     renderQueryParameters.getScale(),
                                                      normalizeForMatching, excludeAfterLastLabels,
                                                      excludeFirstAndAllAfterLabels, excludeAllTransforms, tileSpec);
 
@@ -295,8 +298,10 @@ public class TileDataService {
         return parameters;
     }
 
-    static RenderParameters getCoreTileRenderParameters(final Integer width,
-                                                        final Integer height,
+    static RenderParameters getCoreTileRenderParameters(final Integer xOffset,
+                                                        final Integer yOffset,
+                                                        final Integer fullScaleWidth,
+                                                        final Integer fullScaleHeight,
                                                         final Double scale,
                                                         final Boolean normalizeForMatching,
                                                         final Set<String> excludeAfterLastLabels,
@@ -366,18 +371,26 @@ public class TileDataService {
             tileRenderY = 0.0;
         }
 
+        if (xOffset != null) {
+            tileRenderX += xOffset;
+        }
+
+        if (yOffset != null) {
+            tileRenderY += yOffset;
+        }
+
         final int tileRenderWidth;
-        if (width == null) {
+        if (fullScaleWidth == null) {
             tileRenderWidth = (int) (tileSpec.getMaxX() - tileSpec.getMinX());
         } else {
-            tileRenderWidth = width;
+            tileRenderWidth = fullScaleWidth;
         }
 
         final int tileRenderHeight;
-        if (height == null) {
+        if (fullScaleHeight == null) {
             tileRenderHeight = (int) (tileSpec.getMaxY() - tileSpec.getMinY());
         } else {
-            tileRenderHeight = height;
+            tileRenderHeight = fullScaleHeight;
         }
 
         final RenderParameters parameters =

@@ -1,4 +1,4 @@
-package org.janelia.render.trakem2;
+package org.janelia.render.fiji;
 
 import ij.IJ;
 import ij.ImageJ;
@@ -32,13 +32,13 @@ public class ImportRenderTile_Plugin
     @Override
     public void run(final String arg) {
 
-        Utils.log("\norg.janelia.render.trakem2.ImportRenderTile_Plugin.run: entry");
+        Utils.log("\norg.janelia.render.fiji.ImportRenderTile_Plugin.run: entry");
         tileData = new TileData();
         final boolean wasCancelled = tileData.loadRenderData();
         if ((! wasCancelled) && (tileData.renderParameters != null)) {
             renderTileSpec(tileData.renderParameters);
         }
-        Utils.log("\norg.janelia.render.trakem2.ImportRenderTile_Plugin.run: exit");
+        Utils.log("\norg.janelia.render.fiji.ImportRenderTile_Plugin.run: exit");
 
     }
 

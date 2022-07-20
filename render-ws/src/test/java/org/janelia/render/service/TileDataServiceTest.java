@@ -49,7 +49,7 @@ public class TileDataServiceTest {
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), force, sloppy);
 
         RenderParameters renderParameters =
-                TileDataService.getCoreTileRenderParameters(null, null, null,
+                TileDataService.getCoreTileRenderParameters(null, null, null, null, null,
                                                             null,
                                                             null, null, null,
                                                             tileSpec);
@@ -61,7 +61,7 @@ public class TileDataServiceTest {
         tileSpec = TileSpec.fromJson(json);
 
         renderParameters =
-                TileDataService.getCoreTileRenderParameters(null, null, null,
+                TileDataService.getCoreTileRenderParameters(null, null, null, null, null,
                                                             true,
                                                             null, null, null,
                                                             tileSpec);
@@ -77,7 +77,7 @@ public class TileDataServiceTest {
         tileSpec = TileSpec.fromJson(json);
 
         renderParameters =
-                TileDataService.getCoreTileRenderParameters(null, null, null,
+                TileDataService.getCoreTileRenderParameters(null, null, null, null, null,
                                                             true,
                                                             Collections.emptySet(), Collections.emptySet(), null,
                                                             tileSpec);

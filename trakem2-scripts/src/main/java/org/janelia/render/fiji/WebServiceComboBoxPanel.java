@@ -1,4 +1,4 @@
-package org.janelia.render.trakem2;
+package org.janelia.render.fiji;
 
 import java.awt.Container;
 import java.awt.Dimension;
