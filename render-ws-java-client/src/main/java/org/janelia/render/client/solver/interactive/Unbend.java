@@ -186,8 +186,8 @@ public class Unbend
 	{
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "Z0720_07m_VNC";
-		String project = "Sec13"; //"Z0419_25_Alpha3";
-		String stack = "v3_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
+		String project = "Sec29"; //"Z0419_25_Alpha3";
+		String stack = "v8_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
 		String targetStack = stack + "_straightened";
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );

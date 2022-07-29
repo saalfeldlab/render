@@ -178,9 +178,10 @@ public class Untwist
 
 	public static void main( String[] args ) throws IOException
 	{
+		// TODO: does something weird with points that are at locations greater than the stack size in z
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "Z0720_07m_VNC";
-		String project = "Sec26"; //"Z0419_25_Alpha3";
+		String project = "Sec29"; //"Z0419_25_Alpha3";
 		String stack = "v8_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
 		String targetStack = "v8_acquire_trimmed_align_untwisted";
 
