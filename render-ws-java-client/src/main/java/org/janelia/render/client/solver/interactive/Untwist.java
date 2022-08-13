@@ -178,18 +178,19 @@ public class Untwist
 
 	public static void main( String[] args ) throws IOException
 	{
-		/*
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "Z0720_07m_VNC"; //"flyem";
-		String project = "Sec32"; //"Z0419_25_Alpha3";
-		String stack = "v1_acquire_trimmed_sp1"; //"v1_acquire_sp_nodyn_v2";
-		*/
+		String owner = "Z0720_07m_VNC";
+		String project = "Sec26"; //"Z0419_25_Alpha3";
+		String stack = "v8_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
+		String targetStack = "v8_acquire_trimmed_align_untwisted";
 
+		/*
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 		String owner = "cosem"; //"flyem";
 		String project = "aic_desmosome_2"; //"Z0419_25_Alpha3";
 		String stack = "v1_acquire_align_adaptive_2"; //"v1_acquire_sp_nodyn_v2";
 		String targetStack = "v1_acquire_align_adaptive_2_untwisted";
+		*/
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		final StackMetaData meta =  renderDataClient.getStackMetaData( stack );
