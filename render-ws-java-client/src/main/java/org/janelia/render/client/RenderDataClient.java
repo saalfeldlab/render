@@ -818,6 +818,23 @@ public class RenderDataClient {
     }
 
     /**
+     * Deletes the mipmap path builder for the specified stack.
+     */
+    public void deleteMipmapPathBuilder(final String stack)
+            throws IOException {
+
+        final URI uri = getUri(urls.getStackUrlString(stack) + "/mipmapPathBuilder");
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteMipmapPathBuilder: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
+    }
+
+    /**
      * @param  stack   stack containing tile.
      * @param  tileId  identifies tile.
      *

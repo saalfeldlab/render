@@ -69,7 +69,8 @@ public class TransformRemovalClient {
         @Parameter(
                 names = "--z",
                 description = "Z value of section to be processed",
-                required = true)
+                required = true,
+                variableArity = true)
         public List<Double> zValues;
 
         String getTargetOwner() {

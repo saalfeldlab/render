@@ -3,24 +3,35 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
-import org.janelia.alignment.ArgbRenderer;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import mpicbg.trakem2.transform.TranslationModel2D;
+
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.ChannelSpec;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ListTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.RenderWebServiceUrls;
@@ -31,7 +42,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Java client for rendering individual tiles.
- * Images are placed in: [rootDirectory]/[project]/[stack]/[runtime]/[z-thousands]/[z-hundreds]/[z]/[tileId].[format]
+ *
+ * Images are placed in:
+ * <pre>
+ *   [rootDirectory]/[project]/[stack]/[runTimestamp]/[z-thousands]/[z-hundreds]/[z]/[tileId].[format]
+ * </pre>
  *
  * @author Eric Trautman
  */
@@ -50,9 +65,16 @@ public class RenderTilesClient {
 
         @Parameter(
                 names = "--rootDirectory",
-                description = "Root directory for rendered layers (e.g. /nrs/flyem/render/tiles)",
+                description = "Root directory for rendered tiles (e.g. /nrs/flyem/render/tiles)",
                 required = true)
         public String rootDirectory;
+
+        @Parameter(
+                names = "--runTimestamp",
+                description = "Run timestamp to use in directory path for rendered tiles (e.g. 20220830_093700).  " +
+                              "Omit to use calculated timestamp.  " +
+                              "Include for array jobs to ensure all tiles are rendered under same base path")
+        public String runTimestamp;
 
         @Parameter(
                 names = "--scale",
@@ -126,6 +148,33 @@ public class RenderTilesClient {
                 variableArity = true
         )
         public List<String> tileIds;
+
+        @Parameter(
+                names = "--hackStack",
+                description = "If specified, create tile specs that reference the rendered tiles " +
+                              "and save them to this stack.  The hackTransformCount determines how " +
+                              "many transforms are rendered and how many are included in each tile spec.")
+        public String hackStack;
+
+        @Parameter(
+                names = "--hackTransformCount",
+                description = "Number of transforms to remove from the end of each tile spec's list " +
+                              "during rendering but then include in the hack stack's tile specs")
+        public Integer hackTransformCount = 1;
+
+        @Parameter(
+                names = "--completeHackStack",
+                description = "Complete the hack stack after saving all tile specs",
+                arity = 0)
+        public boolean completeHackStack = false;
+
+        public String getRunTimestamp() {
+            if (this.runTimestamp == null) {
+                final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+                this.runTimestamp = sdf.format(new Date());
+            }
+            return this.runTimestamp;
+        }
     }
 
     /**
@@ -142,7 +191,7 @@ public class RenderTilesClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final RenderTilesClient client = new RenderTilesClient(parameters);
-                client.collectTileIds();
+                client.collectTileInfo();
                 client.renderTiles();
             }
         };
@@ -156,16 +205,16 @@ public class RenderTilesClient {
     private final RenderDataClient renderDataClient;
     private final List<String> tileIds;
     private final String renderParametersQueryString;
+    private final Map<Double, ResolvedTileSpecCollection> zToResolvedTiles;
 
     private RenderTilesClient(final Parameters clientParameters) {
 
         this.clientParameters = clientParameters;
 
-        final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
         final Path tileDirectoryPath = Paths.get(clientParameters.rootDirectory,
                                                  clientParameters.renderWeb.project,
                                                  clientParameters.stack,
-                                                 sdf.format(new Date()));
+                                                 clientParameters.getRunTimestamp());
         this.tileDirectory = tileDirectoryPath.toAbsolutePath().toFile();
 
         FileUtil.ensureWritableDirectory(this.tileDirectory);
@@ -189,6 +238,9 @@ public class RenderTilesClient {
             queryParameters.append("&filterListName=").append(clientParameters.filterListName);
         }
         if (clientParameters.channels != null) {
+            if (clientParameters.hackStack != null) {
+                throw new IllegalArgumentException("explicit channels cannot be specified when creating a hack stack");
+            }
             queryParameters.append("&channels=").append(clientParameters.channels);
         }
         if (clientParameters.fillWithNoise) {
@@ -206,19 +258,30 @@ public class RenderTilesClient {
         // excludeSource needs to be handled locally (not supported by web service)
 
         this.renderParametersQueryString = queryParameters.toString();
+        this.zToResolvedTiles = new HashMap<>();
     }
 
-    private void collectTileIds()
+    private void collectTileInfo()
             throws IOException {
 
         if (clientParameters.zValues != null) {
             for (final Double z : clientParameters.zValues) {
-                final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(clientParameters.stack, z);
-                tileBoundsList.forEach(tileBounds -> this.tileIds.add(tileBounds.getTileId()));
+                if (clientParameters.hackStack == null) {
+                    final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(clientParameters.stack, z);
+                    tileBoundsList.forEach(tileBounds -> this.tileIds.add(tileBounds.getTileId()));
+                } else {
+                    final ResolvedTileSpecCollection resolvedTiles =
+                            renderDataClient.getResolvedTiles(clientParameters.stack, z);
+                    zToResolvedTiles.put(z, resolvedTiles);
+                    resolvedTiles.getTileSpecs().forEach(tileSpec -> this.tileIds.add(tileSpec.getTileId()));
+                }
             }
         }
 
         if (clientParameters.tileIds != null) {
+            if (clientParameters.hackStack != null) {
+                throw new IllegalArgumentException("explicit tile ids cannot be specified when creating a hack stack");
+            }
             tileIds.addAll(clientParameters.tileIds);
         }
 
@@ -231,8 +294,23 @@ public class RenderTilesClient {
     private void renderTiles()
             throws IOException {
 
+        if (clientParameters.hackStack != null) {
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(clientParameters.stack);
+            renderDataClient.setupDerivedStack(stackMetaData, clientParameters.hackStack);
+            renderDataClient.deleteMipmapPathBuilder(clientParameters.hackStack);
+        }
+
         for (final String tileId : tileIds) {
             renderTile(tileId);
+        }
+
+        if (clientParameters.hackStack != null) {
+            for (final Double z : zToResolvedTiles.keySet().stream().sorted().collect(Collectors.toList())) {
+                renderDataClient.saveResolvedTiles(zToResolvedTiles.get(z), clientParameters.hackStack, z);
+            }
+            if (clientParameters.completeHackStack) {
+                renderDataClient.setStackState(clientParameters.hackStack, StackMetaData.StackState.COMPLETE);
+            }
         }
     }
 
@@ -266,13 +344,82 @@ public class RenderTilesClient {
 
         }
 
+        if (clientParameters.hackStack != null) {
+            for (int i = 0; i < clientParameters.hackTransformCount; i++) {
+                tileSpec.removeLastTransformSpec();
+            }
+            tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
+            renderParameters.x = tileSpec.getMinX();
+            renderParameters.y = tileSpec.getMinY();
+            renderParameters.width = (int) Math.ceil(tileSpec.getMaxX() - tileSpec.getMinX());
+            renderParameters.height = (int) Math.ceil(tileSpec.getMaxY() - tileSpec.getMinY());
+            renderParameters.binaryMask = true;
+        }
+
         final File tileFile = getTileFile(tileSpec);
 
-        final BufferedImage tileImage = renderParameters.openTargetImage();
+        final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
+                Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, tileFile);
 
-        ArgbRenderer.render(renderParameters, tileImage, imageProcessorCache);
+        if (clientParameters.hackStack != null) {
+            final ResolvedTileSpecCollection resolvedTiles = zToResolvedTiles.get(tileSpec.getZ());
+            final TileSpec hackedTileSpec = resolvedTiles.getTileSpec(tileId);
+            final double preHackMinX = hackedTileSpec.getMinX();
+            final double preHackMinY = hackedTileSpec.getMinY();
 
-        Utils.saveImage(tileImage, tileFile.getAbsolutePath(), clientParameters.format, true, 0.85f);
+            // set hacked mipmap
+            final List<ChannelSpec> allChannels = hackedTileSpec.getAllChannels();
+            if (allChannels.size() != 1) {
+                throw new IllegalArgumentException("hack stack tiles should have only one channel but tile " +
+                                                   tileId + " has " + allChannels.size() + " channels");
+            }
+            final ChannelSpec channelSpec = allChannels.get(0);
+            String maskPath = null;
+            if (imageProcessorWithMasks.mask != null) {
+                final String maskFileName = tileFile.getName().replace(clientParameters.format,
+                                                                       "mask." + clientParameters.format);
+                final File maskFile = new File(tileFile.getParentFile().getAbsolutePath(), maskFileName);
+                maskPath = maskFile.getAbsolutePath();
+                Utils.saveImage(imageProcessorWithMasks.mask.getBufferedImage(),
+                                maskPath,
+                                clientParameters.format,
+                                renderParameters.convertToGray,
+                                renderParameters.quality);
+            }
+
+            channelSpec.putMipmap(0, new ImageAndMask(tileFile.getAbsolutePath(), maskPath));
+
+            // set hacked tile width and height
+            hackedTileSpec.setWidth((double) imageProcessorWithMasks.ip.getWidth());
+            hackedTileSpec.setHeight((double) imageProcessorWithMasks.ip.getHeight());
+
+            // set hacked tile transforms
+            final Deque<TransformSpec> transformStack = new ArrayDeque<>();
+            final ListTransformSpec flattenedList = new ListTransformSpec();
+            hackedTileSpec.getTransforms().flatten(flattenedList);
+            for (int i = 0; i < clientParameters.hackTransformCount; i++) {
+                transformStack.push(flattenedList.getLastSpec());
+                flattenedList.removeLastSpec();
+            }
+
+            final ListTransformSpec hackedTransformList = new ListTransformSpec();
+            transformStack.forEach(hackedTransformList::addSpec);
+            hackedTileSpec.setTransforms(hackedTransformList);
+
+            hackedTileSpec.deriveBoundingBox(hackedTileSpec.getMeshCellSize(), true);
+
+            // translate tile spec back to original location
+            final double translateX = preHackMinX - hackedTileSpec.getMinX();
+            final double translateY = preHackMinY - hackedTileSpec.getMinY();
+            final String translateDataString = translateX + " " + translateY;
+            LOG.info("renderTile: translating hacked tile by " + translateDataString);
+            final TransformSpec translateToPreHackLocationSpec =
+                    new LeafTransformSpec(TranslationModel2D.class.getName(), translateDataString);
+            resolvedTiles.addTransformSpecToTile(
+                    tileId,
+                    translateToPreHackLocationSpec,
+                    ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST);
+        }
     }
 
     private File getTileFile(final TileSpec tileSpec) {
