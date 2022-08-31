@@ -353,6 +353,7 @@ public class RenderTilesClient {
             renderParameters.y = tileSpec.getMinY();
             renderParameters.width = (int) Math.ceil(tileSpec.getMaxX() - tileSpec.getMinX());
             renderParameters.height = (int) Math.ceil(tileSpec.getMaxY() - tileSpec.getMinY());
+            renderParameters.binaryMask = true;
         }
 
         final File tileFile = getTileFile(tileSpec);
