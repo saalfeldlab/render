@@ -22,7 +22,7 @@ public class IntensityAdjustedScapeClientTest {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "Z0720_07m_VNC",
 
-                // one two-tile layer of Sec06 or Sec07 takes roughly 60 seconds to run on laptop
+                // Sec06 has one transform per tile
 //                "--project", "Sec06",
 //                "--stack", "v5_acquire_trimmed_align",
 
