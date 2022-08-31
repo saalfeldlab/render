@@ -23,13 +23,14 @@ public class RenderTilesClientTest {
         try {
             final String[] testArgs = {
                     "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "Z1217_19m",
-                    "--project", "Sec06",
-                    "--stack", "v2_patch_msolve_fine",
-                    "--rootDirectory", "/Users/trautmane/Desktop/tiles",
-                    "--z", "2309",
-                    "2310",
-                    "--renderMaskOnly"
+                    "--owner", "Z0720_07m_VNC",
+                    "--project", "Sec07",
+                    "--stack", "v4_acquire_trimmed_align",
+                    "--rootDirectory", "/nrs/flyem/render/tiles",
+                    "--z", "1812",
+                    "--hackStack", "v4_acquire_trimmed_align_hack",
+                    "--hackMaskWidth", "85",
+                    "--completeHackStack"
             };
 
             RenderTilesClient.main(testArgs);
