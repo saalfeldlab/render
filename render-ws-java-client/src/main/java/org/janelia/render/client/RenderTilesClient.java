@@ -3,7 +3,6 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -18,14 +17,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import mpicbg.trakem2.transform.AffineModel2D;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TranslationModel2D;
 
-import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
 import org.janelia.alignment.Utils;
-import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
@@ -163,11 +161,6 @@ public class RenderTilesClient {
                 description = "Number of transforms to remove from the end of each tile spec's list " +
                               "during rendering but then include in the hack stack's tile specs")
         public Integer hackTransformCount = 1;
-
-        @Parameter(
-                names = "--hackMaskWidth",
-                description = "If specified, add a dynamic mask with this width to all hacked tile specs")
-        public String hackMaskWidth;
 
         @Parameter(
                 names = "--completeHackStack",
@@ -358,17 +351,14 @@ public class RenderTilesClient {
             tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
             renderParameters.x = tileSpec.getMinX();
             renderParameters.y = tileSpec.getMinY();
-            renderParameters.width = (int) Math.floor(tileSpec.getMaxX() - tileSpec.getMinX());
-            renderParameters.height = (int) Math.floor(tileSpec.getMaxY() - tileSpec.getMinY());
+            renderParameters.width = (int) Math.ceil(tileSpec.getMaxX() - tileSpec.getMinX());
+            renderParameters.height = (int) Math.ceil(tileSpec.getMaxY() - tileSpec.getMinY());
         }
 
         final File tileFile = getTileFile(tileSpec);
 
-        final BufferedImage tileImage = renderParameters.openTargetImage();
-
-        ArgbRenderer.render(renderParameters, tileImage, imageProcessorCache);
-
-        Utils.saveImage(tileImage, tileFile.getAbsolutePath(), clientParameters.format, true, 0.85f);
+        final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
+                Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, tileFile);
 
         if (clientParameters.hackStack != null) {
             final ResolvedTileSpecCollection resolvedTiles = zToResolvedTiles.get(tileSpec.getZ());
@@ -383,25 +373,24 @@ public class RenderTilesClient {
                                                    tileId + " has " + allChannels.size() + " channels");
             }
             final ChannelSpec channelSpec = allChannels.get(0);
-            String hackedMaskUrl = null;
-            ImageLoader.LoaderType hackedMaskLoaderType = null;
-            if (clientParameters.hackMaskWidth != null) {
-                hackedMaskUrl = "mask://outside-box?minX=" + clientParameters.hackMaskWidth +
-                                "&minY=0&maxX=" + tileImage.getWidth() + "&maxY=" + tileImage.getHeight() +
-                                "&width=" + tileImage.getWidth() + "&height=" + tileImage.getHeight();
-                hackedMaskLoaderType = ImageLoader.LoaderType.DYNAMIC_MASK;
+            String maskPath = null;
+            if (imageProcessorWithMasks.mask != null) {
+                final String maskFileName = tileFile.getName().replace(clientParameters.format,
+                                                                       "mask." + clientParameters.format);
+                final File maskFile = new File(tileFile.getParentFile().getAbsolutePath(), maskFileName);
+                maskPath = maskFile.getAbsolutePath();
+                Utils.saveImage(imageProcessorWithMasks.mask.getBufferedImage(),
+                                maskPath,
+                                clientParameters.format,
+                                renderParameters.convertToGray,
+                                renderParameters.quality);
             }
-            channelSpec.putMipmap(0,
-                                  new ImageAndMask(tileFile.getAbsolutePath(),
-                                                   null,
-                                                   null,
-                                                   hackedMaskUrl,
-                                                   hackedMaskLoaderType,
-                                                   null));
+
+            channelSpec.putMipmap(0, new ImageAndMask(tileFile.getAbsolutePath(), maskPath));
 
             // set hacked tile width and height
-            hackedTileSpec.setWidth((double) tileImage.getWidth());
-            hackedTileSpec.setHeight((double) tileImage.getHeight());
+            hackedTileSpec.setWidth((double) imageProcessorWithMasks.ip.getWidth());
+            hackedTileSpec.setHeight((double) imageProcessorWithMasks.ip.getHeight());
 
             // set hacked tile transforms
             final Deque<TransformSpec> transformStack = new ArrayDeque<>();
@@ -422,6 +411,7 @@ public class RenderTilesClient {
             final double translateX = preHackMinX - hackedTileSpec.getMinX();
             final double translateY = preHackMinY - hackedTileSpec.getMinY();
             final String translateDataString = translateX + " " + translateY;
+            LOG.info("renderTile: translating hacked tile by " + translateDataString);
             final TransformSpec translateToPreHackLocationSpec =
                     new LeafTransformSpec(TranslationModel2D.class.getName(), translateDataString);
             resolvedTiles.addTransformSpecToTile(
