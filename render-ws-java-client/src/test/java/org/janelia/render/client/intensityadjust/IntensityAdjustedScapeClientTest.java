@@ -26,13 +26,19 @@ public class IntensityAdjustedScapeClientTest {
 //                "--project", "Sec06",
 //                "--stack", "v5_acquire_trimmed_align",
 
-                "--project", "Sec07",
-                "--stack", "v4_acquire_trimmed_align",
+                // Sec07 has two transforms per tile
+//                "--project", "Sec07",
+//                "--stack", "v4_acquire_trimmed_align",
+
+                // Sec19 has three transforms for tiles in column 0 and two transforms for all other tiles
+                // z 7547 of Sec19 has obvious seam between column 0 and 1 tiles with original ic code
+                "--project", "Sec19",
+                "--stack", "v7_acquire_trimmed_align_straightened",
 
                 "--format", "png",
                 "--rootDirectory", "/nrs/flyem/render/ic_test",
                 "--correctionMethod", "GLOBAL_PER_SLICE",
-                "--z", "1812",
+                "--z", "7547",
         };
 
         IntensityAdjustedScapeClient.main(effectiveArgs);
