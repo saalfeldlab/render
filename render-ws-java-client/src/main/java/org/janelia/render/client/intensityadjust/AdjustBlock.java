@@ -36,6 +36,8 @@ import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
 import mpicbg.ij.integral.NormalizeLocalContrast;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.Point;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import mpicbg.util.RealSum;
@@ -67,17 +69,18 @@ import net.imglib2.view.Views;
 
 public class AdjustBlock {
 
-	public static List< Pair<AffineModel2D,MinimalTileSpec> > getData( final int z, final RenderDataClient renderDataClient, final String stack ) throws IOException
+	public static List< MinimalTileSpecWrapper > getData( final int z, final RenderDataClient renderDataClient, final String stack ) throws IOException
 	{
-		List< Pair<AffineModel2D,MinimalTileSpec> > data = new ArrayList<>();
+		List< MinimalTileSpecWrapper > data = new ArrayList<>();
 
 		final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, (double)z);
 		resolvedTiles.resolveTileSpecs();
 
 		for ( final TileSpec tileSpec : resolvedTiles.getTileSpecs() )
 		{
-			final AffineModel2D lastTransform = SolveTools.loadLastTransformFromSpec( tileSpec );
-			data.add( new ValuePair<>( lastTransform, new MinimalTileSpec( tileSpec ) ) );
+			//final AffineModel2D lastTransform = SolveTools.loadLastTransformFromSpec( tileSpec );
+			//data.add( new ValuePair<>( lastTransform, new MinimalTileSpec( tileSpec ) ) );
+			data.add( new MinimalTileSpecWrapper( tileSpec ) );
 		}
 
 		return data;
@@ -369,26 +372,27 @@ public class AdjustBlock {
 
 	public static  RandomAccessibleInterval< UnsignedByteType > fuseFinal(
 			final Interval interval,
-			final List<Pair<AffineModel2D,MinimalTileSpec>> data1,
+			final List<MinimalTileSpecWrapper> data1,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 )
 	{
 		// draw
 		final RandomAccessibleInterval< UnsignedByteType > slice = Views.translate( ArrayImgs.unsignedBytes( interval.dimension( 0 ), interval.dimension( 1 ) ), interval.min( 0 ), interval.min( 1 ) );
 
 		// sort both lists by descending column ids, then write as it comes
-		final List<ValuePair<Pair<AffineModel2D, MinimalTileSpec>, Pair<ByteProcessor, FloatProcessor>>> list =
+		final List<ValuePair<MinimalTileSpecWrapper, Pair<ByteProcessor, FloatProcessor>>> list =
 				IntStream
 					.range(0, Math.max(data1.size(), corrected1.size())) // max will crash if the lists have a different size, intended
 					.mapToObj(i -> new ValuePair<>(data1.get(i), corrected1.get(i)))
 					.collect(Collectors.toList());
 
-		list.sort( (a,b) ->  b.getA().getB().getImageCol() - a.getA().getB().getImageCol() );
+		list.sort( (a,b) ->  b.getA().getImageCol() - a.getA().getImageCol() );
 
-		for ( final Pair<Pair<AffineModel2D, MinimalTileSpec>, Pair<ByteProcessor, FloatProcessor>> entry : list )
+		for ( final Pair<MinimalTileSpecWrapper, Pair<ByteProcessor, FloatProcessor>> entry : list )
 		{
-			System.out.println( entry.getA().getB().getImageCol() );
+			System.out.println( entry.getA().getImageCol() );
 
-			final AffineModel2D model = entry.getA().getA();
+			//final AffineModel2D model = entry.getA().getA();
+			final CoordinateTransformList<CoordinateTransform> models = entry.getA().getTransformList();
 
 			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", entry.getB().getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
 			final RealRandomAccessible<FloatType> interpolantMask = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", entry.getB().getA()) )), (in,o) -> o.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
@@ -518,8 +522,8 @@ public class AdjustBlock {
 		final boolean isSec26 = renderDataClient.getUrls().getStackUrlString( "" ).contains( "Sec26" );
 		LOG.debug("renderIntensityAdjustedSliceGauss: isSec26=" + isSec26 );
 
-		final List<Pair<AffineModel2D,MinimalTileSpec>> data = getData(z, renderDataClient, stack);
-		final HashMap< Integer, double[] > adjustments = new HashMap<>();
+		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
+		//final HashMap< Integer, double[] > adjustments = new HashMap<>();
 
 		final double scale = 0.1;
 		final int numCoefficients = 8;
@@ -538,8 +542,8 @@ public class AdjustBlock {
 				iterations,
 				cacheOnDisk );
 
-		for ( int i = 0; i < data.size(); ++i )
-			adjustments.put( i, new double[] { 0,1,0 } );
+		//for ( int i = 0; i < data.size(); ++i )
+		//	adjustments.put( i, new double[] { 0,1,0 } );
 
 		return fuseFinal(interval, data, corrected);
 	}
@@ -557,7 +561,7 @@ public class AdjustBlock {
 		final double scale = 0.22;
 		final double[] sigma = new double[] { 0, 50 };
 
-		final List<Pair<AffineModel2D,MinimalTileSpec>> data = getData(z, renderDataClient, stack);
+		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
 		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
 		final HashMap< Integer, double[] > adjustments = new HashMap<>();
 
@@ -684,7 +688,7 @@ public class AdjustBlock {
 																						  final int z)
 			throws IOException {
 
-		final List<Pair<AffineModel2D,MinimalTileSpec>> data = getData(z, renderDataClient, stack);
+		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
 		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
 
 		for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )

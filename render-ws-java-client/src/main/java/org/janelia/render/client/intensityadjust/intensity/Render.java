@@ -45,6 +45,7 @@ import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
@@ -184,7 +185,7 @@ public class Render
 	 * @param cacheOnDisk
 	 */
 	final static public void render(
-			final Pair<AffineModel2D,MinimalTileSpec> patch,
+			final MinimalTileSpecWrapper patch,
 			final int coefficientsWidth,
 			final int coefficientsHeight,
 			final FloatProcessor targetImage,
@@ -197,17 +198,18 @@ public class Render
 			final boolean cacheOnDisk )
 	{
 		// get the entire images at the desired scale
-		final ImageProcessorWithMasks impOriginal = VisualizeTools.getImage(patch.getB(), 1.0, cacheOnDisk);
+		final ImageProcessorWithMasks impOriginal = VisualizeTools.getImage(patch, 1.0, cacheOnDisk);
 
 		/* assemble coordinate transformations and add bounding box offset */
-		final CoordinateTransformList< CoordinateTransform > ctl = new CoordinateTransformList< CoordinateTransform >();
-		ctl.add( patch.getA() ); //patch.getFullCoordinateTransform() );
+		//final CoordinateTransformList< CoordinateTransform > ctl = new CoordinateTransformList< CoordinateTransform >();
+		//ctl.add( patch.getA() ); 
+		final CoordinateTransformList< CoordinateTransform > ctl = patch.getTransformList();
 		final AffineModel2D affineScale = new AffineModel2D();
 		affineScale.set( scale, 0, 0, scale, -x * scale, -y * scale );
 		ctl.add( affineScale );
 
 		/* estimate average scale and generate downsampled source */
-		final int width = patch.getB().getWidth(), height = patch.getB().getHeight();
+		final int width = patch.getWidth(), height = patch.getHeight();
 		final double s = sampleAverageScale( ctl, width, height, width / meshResolution );
 		final int mipmapLevel = bestMipmapLevel( s );
 		//System.out.println( s +  " " + mipmapLevel );

@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
@@ -55,8 +56,8 @@ public class IntensityMatcher
 	final private class Matcher implements Runnable
 	{
 		//final private Rectangle roi;
-		final private ValuePair< Pair<AffineModel2D,MinimalTileSpec>, Pair<AffineModel2D,MinimalTileSpec> > patchPair;
-		final private HashMap< Pair<AffineModel2D,MinimalTileSpec>, ArrayList< Tile< ? > > > coefficientsTiles;
+		final private ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > patchPair;
+		final private HashMap< MinimalTileSpecWrapper, ArrayList< Tile< ? > > > coefficientsTiles;
 		final private PointMatchFilter filter;
 		final private double scale;
 		final private int numCoefficients;
@@ -64,8 +65,8 @@ public class IntensityMatcher
 		final int meshResolution;
 
 		public Matcher(
-				final ValuePair< Pair<AffineModel2D,MinimalTileSpec>, Pair<AffineModel2D,MinimalTileSpec> > patchPair,
-				final HashMap< Pair<AffineModel2D,MinimalTileSpec>, ArrayList< Tile< ? > > > coefficientsTiles,
+				final ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > patchPair,
+				final HashMap< MinimalTileSpecWrapper, ArrayList< Tile< ? > > > coefficientsTiles,
 				final PointMatchFilter filter,
 				final double scale,
 				final int numCoefficients,
@@ -85,17 +86,17 @@ public class IntensityMatcher
 		@Override
 		public void run()
 		{
-			final Pair<AffineModel2D,MinimalTileSpec> p1 = patchPair.getA();
-			final Pair<AffineModel2D,MinimalTileSpec> p2 = patchPair.getB();
+			final MinimalTileSpecWrapper p1 = patchPair.getA();
+			final MinimalTileSpecWrapper p2 = patchPair.getB();
 
-			final Interval i1 = Intervals.smallestContainingInterval( getBoundingBox( p1.getB(), p1.getA() ) );
+			final Interval i1 = Intervals.smallestContainingInterval( getBoundingBox( p1 ) );
 			final Rectangle box1 = new Rectangle( (int)i1.min( 0 ), (int)i1.min( 1 ), (int)i1.dimension( 0 ), (int)i1.dimension( 1 ));// p1.getBoundingBox().intersection( roi );
 
 			/* get the coefficient tiles */
 			final ArrayList< Tile< ? > > p1CoefficientsTiles = coefficientsTiles.get( p1 );
 
 			/* render intersection */
-			final Interval i2 = Intervals.smallestContainingInterval( getBoundingBox( p2.getB(), p2.getA() ) );
+			final Interval i2 = Intervals.smallestContainingInterval( getBoundingBox( p2 ) );
 			final Rectangle box2 = new Rectangle( (int)i2.min( 0 ), (int)i2.min( 1 ), (int)i2.dimension( 0 ), (int)i2.dimension( 1 ));//p2.getBoundingBox();
 			final Rectangle box = box1.intersection( box2 );
 
@@ -189,7 +190,7 @@ public class IntensityMatcher
 						//synchronized ( MatchIntensities.this )
 						{
 							t1.connect( t2, ra.get() );
-							System.out.println( "Connected patch " + p1.getB().getImageCol() + ", coefficient " + i + "  +  patch " + p2.getB().getImageCol() + ", coefficient " + j + " by " + matches.size() + " samples." );
+							System.out.println( "Connected patch " + p1.getImageCol() + ", coefficient " + i + "  +  patch " + p2.getImageCol() + ", coefficient " + j + " by " + matches.size() + " samples." );
 						}
 					}
 				}
@@ -198,7 +199,7 @@ public class IntensityMatcher
 	}
 
 	public < M extends Model< M > & Affine1D< M > > List<Pair<ByteProcessor, FloatProcessor>> match(
-			final List<Pair<AffineModel2D,MinimalTileSpec>> patches,
+			final List<MinimalTileSpecWrapper> patches,
 			final double scale,
 			final int numCoefficients,
 			final double lambda1,
@@ -211,7 +212,7 @@ public class IntensityMatcher
 
 		/* generate coefficient tiles for all patches
 		 * TODO consider offering alternative models */
-		final HashMap< Pair<AffineModel2D,MinimalTileSpec>, ArrayList< Tile< ? extends M > > > coefficientsTiles =
+		final HashMap< MinimalTileSpecWrapper, ArrayList< Tile< ? extends M > > > coefficientsTiles =
 				( HashMap ) generateCoefficientsTiles(
 						patches,
 						new InterpolatedAffineModel1D< InterpolatedAffineModel1D< AffineModel1D, TranslationModel1D >, IdentityModel >(
@@ -221,29 +222,29 @@ public class IntensityMatcher
 						numCoefficients * numCoefficients );
 
 		/* completed patches */
-		final HashSet< Pair<AffineModel2D,MinimalTileSpec> > completedPatches = new HashSet<>();
+		final HashSet< MinimalTileSpecWrapper > completedPatches = new HashSet<>();
 
 		/* collect patch pairs */
 		System.out.println( "Collecting patch pairs ... " );
-		final ArrayList< ValuePair< Pair<AffineModel2D,MinimalTileSpec>, Pair<AffineModel2D,MinimalTileSpec> > > patchPairs = new ArrayList<>();
+		final ArrayList< ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > > patchPairs = new ArrayList<>();
 
-		for ( final Pair<AffineModel2D,MinimalTileSpec> p1 : patches )
+		for ( final MinimalTileSpecWrapper p1 : patches )
 		{
 			completedPatches.add( p1 );
 
-			final RealInterval r1 = getBoundingBox(p1.getB(), p1.getA());
+			final RealInterval r1 = getBoundingBox(p1);
 
-			final ArrayList< Pair<AffineModel2D,MinimalTileSpec> > p2s = new ArrayList<>();
+			final ArrayList< MinimalTileSpecWrapper > p2s = new ArrayList<>();
 
-			for ( final Pair<AffineModel2D,MinimalTileSpec> p2 : patches )
+			for ( final MinimalTileSpecWrapper p2 : patches )
 			{
-				final FinalRealInterval i = Intervals.intersect( r1, getBoundingBox(p2.getB(), p2.getA()) );
+				final FinalRealInterval i = Intervals.intersect( r1, getBoundingBox(p2) );
 
 				if ( i.realMax( 0 ) - i.realMin( 0 ) > 0 && i.realMax( 1 ) - i.realMin( 1 ) > 0 )
 					p2s.add( p2 );
 			}
 
-			for ( final Pair<AffineModel2D,MinimalTileSpec> p2 : p2s )
+			for ( final MinimalTileSpecWrapper p2 : p2s )
 			{
 				/*
 				 * if this patch had been processed earlier, all matches are
@@ -253,7 +254,7 @@ public class IntensityMatcher
 					continue;
 
 				patchPairs.add( new ValuePair<>( p1, p2 ) );
-				System.out.println( p1.getB().getImageCol() + " <> " + p2.getB().getImageCol() );
+				System.out.println( p1.getImageCol() + " <> " + p2.getImageCol() );
 			}
 		}
 
@@ -264,7 +265,7 @@ public class IntensityMatcher
 
 		final ExecutorService exec = Executors.newFixedThreadPool( numThreads );
 		final ArrayList< Future< ? > > futures = new ArrayList<>();
-		for ( final ValuePair< Pair<AffineModel2D,MinimalTileSpec>, Pair<AffineModel2D,MinimalTileSpec> > patchPair : patchPairs )
+		for ( final ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > patchPair : patchPairs )
 		{
 			futures.add(
 					exec.submit(
@@ -284,7 +285,7 @@ public class IntensityMatcher
 		/* connect tiles within patches */
 		System.out.println( "Connecting coefficient tiles in the same patch  ... " );
 
-		for ( final Pair<AffineModel2D,MinimalTileSpec> p1 : completedPatches )
+		for ( final MinimalTileSpecWrapper p1 : completedPatches )
 		{
 			/* get the coefficient tiles */
 			final ArrayList< Tile< ? extends M > > p1CoefficientsTiles = coefficientsTiles.get( p1 );
@@ -342,7 +343,7 @@ public class IntensityMatcher
 		List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
 
 		// iterate in the same order as the input
-		for ( Pair<AffineModel2D,MinimalTileSpec> p : patches )
+		for ( final MinimalTileSpecWrapper p : patches )
 		//for ( final Entry< Pair<AffineModel2D,MinimalTileSpec>, ArrayList< Tile< ? extends M > > > entry : coefficientsTiles.entrySet() )
 		{
 			//final Pair<AffineModel2D,MinimalTileSpec> p = entry.getKey();
@@ -352,7 +353,7 @@ public class IntensityMatcher
 			final FloatProcessor as = new FloatProcessor( numCoefficients, numCoefficients );
 			final FloatProcessor bs = new FloatProcessor( numCoefficients, numCoefficients );
 
-			final ImageProcessorWithMasks imp = VisualizeTools.getImage( p.getB(), 1.0, cacheOnDisk );
+			final ImageProcessorWithMasks imp = VisualizeTools.getImage( p, 1.0, cacheOnDisk );
 
 			FloatProcessor fp = imp.ip.convertToFloatProcessor();
 			fp.resetMinAndMax();
@@ -411,21 +412,27 @@ public class IntensityMatcher
 		t1.connect( t2, matches );
 	}
 
-	final public static RealInterval getBoundingBox( final MinimalTileSpec m, final AffineModel2D t )
+	final public static RealInterval getBoundingBox( final MinimalTileSpecWrapper m )
 	{
+		final double[] p1min = new double[]{ m.getTileSpec().getMinX(), m.getTileSpec().getMinY() };
+		final double[] p1max = new double[]{ m.getTileSpec().getMaxX(), m.getTileSpec().getMaxY() };
+
+		/*
 		final double[] p1min = new double[]{ 0,0 };
 		final double[] p1max = new double[]{ m.getWidth() - 1, m.getHeight() - 1 };
 		t.estimateBounds( p1min, p1max );
-		return new FinalRealInterval(p1min, p1max);		
+		*/
+
+		return new FinalRealInterval(p1min, p1max);
 	}
 
-	final static protected < T extends Model< T > & Affine1D< T > > HashMap< Pair<AffineModel2D,MinimalTileSpec>, ArrayList< Tile< T > > > generateCoefficientsTiles(
-			final Collection< Pair<AffineModel2D,MinimalTileSpec> > patches,
+	final static protected < T extends Model< T > & Affine1D< T > > HashMap< MinimalTileSpecWrapper, ArrayList< Tile< T > > > generateCoefficientsTiles(
+			final Collection< MinimalTileSpecWrapper > patches,
 			final T template,
 			final int nCoefficients )
 	{
-		final HashMap< Pair<AffineModel2D,MinimalTileSpec>, ArrayList< Tile< T > > > map = new HashMap<>();
-		for ( final Pair<AffineModel2D,MinimalTileSpec> p : patches )
+		final HashMap< MinimalTileSpecWrapper, ArrayList< Tile< T > > > map = new HashMap<>();
+		for ( final MinimalTileSpecWrapper p : patches )
 		{
 			final ArrayList< Tile< T > > coefficientModels = new ArrayList< Tile< T > >();
 			for ( int i = 0; i < nCoefficients; ++i )

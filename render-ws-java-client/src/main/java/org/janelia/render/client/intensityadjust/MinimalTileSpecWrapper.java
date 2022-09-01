@@ -8,6 +8,8 @@ import org.janelia.render.client.solver.MinimalTileSpec;
 
 public class MinimalTileSpecWrapper extends MinimalTileSpec {
 
+	// needs hashcode etc
+	
     private final TileSpec tileSpec;
 
     public MinimalTileSpecWrapper(final TileSpec tileSpec) {
