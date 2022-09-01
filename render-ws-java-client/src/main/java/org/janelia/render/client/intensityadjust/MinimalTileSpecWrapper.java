@@ -1,8 +1,12 @@
 package org.janelia.render.client.intensityadjust;
 
+import java.util.Map;
+
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 
+import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.solver.MinimalTileSpec;
 
@@ -25,6 +29,12 @@ public class MinimalTileSpecWrapper extends MinimalTileSpec {
 
     public CoordinateTransformList<CoordinateTransform> getTransformList() {
         return tileSpec.getTransformList();
+    }
+
+    public String getTileImageUrl() {
+        final Map.Entry<Integer, ImageAndMask> mipmapEntry = tileSpec.getFirstMipmapEntry();
+        final ImageAndMask imageAndMask = mipmapEntry.getValue();
+        return imageAndMask.getImageUrl();
     }
 
     @Override

@@ -10,6 +10,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.ClientRunner;
@@ -78,6 +79,7 @@ public class IntensityAdjustedScapeClient
         FileUtil.ensureWritableDirectory(sectionRootDirectory);
 
         final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
+        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
         final String slicePathFormatSpec = parameters.getSlicePathFormatSpec(stackMetaData,
                                                                              sectionRootDirectory);
 
@@ -90,12 +92,9 @@ public class IntensityAdjustedScapeClient
 
                     LogUtilities.setupExecutorLog4j("z " + integralZ);
 
-                    // NOTE: need to create interval here since it is not labelled as Serializable
-                    final Interval interval = RenderTools.stackBounds(stackMetaData);
-
                     renderIntensityAdjustedScape(parameters.renderWeb.getDataClient(),
                                                  parameters.stack,
-                                                 interval,
+                                                 stackBounds,
                                                  parameters.correctionMethod,
                                                  slicePathFormatSpec,
                                                  parameters.format,

@@ -11,9 +11,13 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
 import org.janelia.render.client.solver.MinimalTileSpec;
@@ -66,6 +70,8 @@ import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
+
+import static org.janelia.alignment.util.ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS;
 
 public class AdjustBlock {
 
@@ -370,59 +376,22 @@ public class AdjustBlock {
 		return adjustments;
 	}
 
-	public static  RandomAccessibleInterval< UnsignedByteType > fuseFinal(
-			final Interval interval,
+	public static ImageProcessorWithMasks fuseFinal(
+			final RenderParameters sliceRenderParameters,
 			final List<MinimalTileSpecWrapper> data1,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 )
 	{
-		// draw
-		final RandomAccessibleInterval< UnsignedByteType > slice = Views.translate( ArrayImgs.unsignedBytes( interval.dimension( 0 ), interval.dimension( 1 ) ), interval.min( 0 ), interval.min( 1 ) );
-
-		// sort both lists by descending column ids, then write as it comes
-		final List<ValuePair<MinimalTileSpecWrapper, Pair<ByteProcessor, FloatProcessor>>> list =
-				IntStream
-					.range(0, Math.max(data1.size(), corrected1.size())) // max will crash if the lists have a different size, intended
-					.mapToObj(i -> new ValuePair<>(data1.get(i), corrected1.get(i)))
-					.collect(Collectors.toList());
-
-		list.sort( (a,b) ->  b.getA().getImageCol() - a.getA().getImageCol() );
-
-		for ( final Pair<MinimalTileSpecWrapper, Pair<ByteProcessor, FloatProcessor>> entry : list )
-		{
-			System.out.println( entry.getA().getImageCol() );
-
-			//final AffineModel2D model = entry.getA().getA();
-			final CoordinateTransformList<CoordinateTransform> models = entry.getA().getTransformList();
-
-			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", entry.getB().getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-			final RealRandomAccessible<FloatType> interpolantMask = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", entry.getB().getA()) )), (in,o) -> o.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
-
-			//final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
-			final Cursor< UnsignedByteType > c = Views.iterable( slice ).cursor();
-
-			final AffineTransform2D affine = toImgLib( model );
-
-			final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), slice ).cursor();
-			final Cursor< FloatType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), slice ).cursor();
-
-			while ( c.hasNext() )
-			{
-				c.fwd();
-				cMask.fwd();
-				cSrc.fwd();
-				if (cMask.get().get() >= 254.99 ) {
-					final FloatType srcType = cSrc.get();
-					final float value = srcType.get();
-					if (value >= 0) {
-						final UnsignedByteType type = c.get();
-						type.setReal( Math.min( 255, Math.max( 0, value ) ) );
-					}
-				}
-			}
+		// TODO: pass pre-loaded cache in and clear source data so that masks can be cached and reused across z
+		final PreloadedImageProcessorCache preloadedImageProcessorCache =
+				new PreloadedImageProcessorCache(DEFAULT_MAX_CACHED_PIXELS,
+												 false,
+												 false);
+		for (int i = 0; i < data1.size(); i++) {
+			final MinimalTileSpecWrapper wrapper = data1.get(i);
+			final FloatProcessor correctedSource = corrected1.get(i).getB();
+			preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), correctedSource);
 		}
-
-		return slice;
-
+		return Renderer.renderImageProcessorWithMasks(sliceRenderParameters, preloadedImageProcessorCache);
 	}
 
 	public static RandomAccessibleInterval< UnsignedByteType > fuse2d(
@@ -512,16 +481,13 @@ public class AdjustBlock {
 		return new FinalRealInterval( tmpMin, tmpMax );
 	}
 
-	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGlobalPerSlice(
+	public static ImageProcessorWithMasks renderIntensityAdjustedSliceGlobalPerSlice(
 			final String stack,
 			final RenderDataClient renderDataClient,
-			final Interval interval,
+			final RenderParameters sliceRenderParameters,
 			final boolean cacheOnDisk,
 			final int z) throws IOException, InterruptedException, ExecutionException
 	{
-		final boolean isSec26 = renderDataClient.getUrls().getStackUrlString( "" ).contains( "Sec26" );
-		LOG.debug("renderIntensityAdjustedSliceGauss: isSec26=" + isSec26 );
-
 		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
 		//final HashMap< Integer, double[] > adjustments = new HashMap<>();
 
@@ -542,178 +508,175 @@ public class AdjustBlock {
 				iterations,
 				cacheOnDisk );
 
-		//for ( int i = 0; i < data.size(); ++i )
-		//	adjustments.put( i, new double[] { 0,1,0 } );
-
-		return fuseFinal(interval, data, corrected);
+		return fuseFinal(sliceRenderParameters, data, corrected);
 	}
 
-	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGauss(final String stack,
-			  final RenderDataClient renderDataClient,
-			  final Interval interval,
-			  final boolean weightening,
-			  final boolean cacheOnDisk,
-			  final int z) throws IOException
-	{
-		final boolean isSec26 = renderDataClient.getUrls().getStackUrlString( "" ).contains( "Sec26" );
-		LOG.debug("renderIntensityAdjustedSliceGauss: isSec26=" + isSec26 );
-
-		final double scale = 0.22;
-		final double[] sigma = new double[] { 0, 50 };
-
-		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
-		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
-		final HashMap< Integer, double[] > adjustments = new HashMap<>();
-
-		int k = -1;
-		for (final Pair<AffineModel2D, MinimalTileSpec> tile : data) {
-			++k;
-			final MinimalTileSpec minimalTileSpec = tile.getB();
-
-			//if (minimalTileSpec.getImageCol() != 0 )
-			//	continue;
-
-			LOG.debug("renderIntensityAdjustedSliceGauss: processing tile {} in column {}", minimalTileSpec.getTileId(),
-					minimalTileSpec.getImageCol());
-
-			if ( weightening )
-			{
-				final ImageProcessorWithMasks imp = VisualizeTools.getImage(minimalTileSpec, scale, cacheOnDisk);
+//	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGauss(final String stack,
+//			  final RenderDataClient renderDataClient,
+//			  final Interval interval,
+//			  final boolean weightening,
+//			  final boolean cacheOnDisk,
+//			  final int z) throws IOException
+//	{
+//		final boolean isSec26 = renderDataClient.getUrls().getStackUrlString( "" ).contains( "Sec26" );
+//		LOG.debug("renderIntensityAdjustedSliceGauss: isSec26=" + isSec26 );
+//
+//		final double scale = 0.22;
+//		final double[] sigma = new double[] { 0, 50 };
+//
+//		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
+//		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
+//		final HashMap< Integer, double[] > adjustments = new HashMap<>();
+//
+//		int k = -1;
+//		for (final Pair<AffineModel2D, MinimalTileSpec> tile : data) {
+//			++k;
+//			final MinimalTileSpec minimalTileSpec = tile.getB();
+//
+//			//if (minimalTileSpec.getImageCol() != 0 )
+//			//	continue;
+//
+//			LOG.debug("renderIntensityAdjustedSliceGauss: processing tile {} in column {}", minimalTileSpec.getTileId(),
+//					minimalTileSpec.getImageCol());
+//
+//			if ( weightening )
+//			{
+//				final ImageProcessorWithMasks imp = VisualizeTools.getImage(minimalTileSpec, scale, cacheOnDisk);
+//
+//				//new ImagePlus("imp_" + minimalTileSpec.getImageCol(), imp.ip).duplicate().show();
+//
+//				final FloatProcessor image = imp.ip.convertToFloatProcessor();
+//
+//				// median filter smoothes resin way more than inside the sample
+//				new RankFilters().rank( image, 3, RankFilters.MEDIAN );
+//
+//				final RandomAccessibleInterval<FloatType> imgA = ArrayImgs.floats((float[]) image.getPixels(),
+//						image.getWidth(), image.getHeight());
+//				final float[] outP = new float[image.getWidth() * image.getHeight()];
+//				final Img<FloatType> out = ArrayImgs.floats(outP, image.getWidth(), image.getHeight());
+//
+//				Gauss3.gauss(sigma, Views.extendMirrorSingle(imgA), out);
+//
+//				Cursor<FloatType> ic = Views.flatIterable(imgA).cursor();
+//				Cursor<FloatType> pc = Views.flatIterable(out).cursor();
+//
+//				while (pc.hasNext()) {
+//					final FloatType p = pc.next();
+//					final FloatType j = ic.next();
+//
+//					double q = j.get() / p.get();
+//					if ( q < 1 )
+//						q = 1.0/q;
+//					if ( Double.isNaN( q ) || Double.isInfinite( q ) )
+//						q = 1.0;
+//
+//					p.set(Math.max(0, (float) Math.abs( q )));
+//				}
+//
+//				Gauss3.gauss(sigma, Views.extendMirrorSingle(out), out);
+//
+//				//for (final FloatType t : out)
+//				//	t.set((float) (Math.sqrt(t.getRealDouble())));
+//
+//				// apply weights
+//				final ImageProcessorWithMasks impFull = VisualizeTools.getImage(minimalTileSpec, 1.0, cacheOnDisk);
+//
+//				FloatProcessor fp = impFull.ip.convertToFloatProcessor();
+//				fp.setMinAndMax(0, 255);
+//				NormalizeLocalContrast nlc = new NormalizeLocalContrast( fp );
+//				nlc.run(0, impFull.getHeight(), 3.0f, true, true );
+//
+//				//if ( minimalTileSpec.getImageCol() == 2 || minimalTileSpec.getImageCol() == 3 )
+//				{
+//					//new ImagePlus( "", impFull.ip.duplicate() ).show();
+//					//new ImagePlus( "", fp.duplicate() ).show();
+//				}
+//				//ImageJFunctions.show(out);
+//
+//
+//				AffineTransform2D t = new AffineTransform2D();
+//				t.scale( 1.0/scale, 1.0/scale);
+//
+//				RealRandomAccessible scaled = RealViews.affine( Views.interpolate( Views.extendMirrorSingle( out ) , new NLinearInterpolatorFactory() ), t );
+//				RealRandomAccess rs = scaled.realRandomAccess();
+//
+//				for ( int x = 0; x < impFull.ip.getWidth(); ++x )
+//				{
+//					rs.setPosition( x, 0 );
+//					for ( int y = 0; y < impFull.ip.getHeight(); ++y )
+//					{
+//						rs.setPosition( y, 1 );
+//						final double n = fp.getf(x, y);
+//						final double i = impFull.ip.getf( x, y );
+//						final double a = ((RealType)rs.get()).getRealDouble();
+//						final double alpha = Math.min( 1, Math.max( 0, ( ( a - 1.01 ) / 0.05 ) ) );
+//
+//						if ( isSec26 && minimalTileSpec.getZ() >= 27759 && minimalTileSpec.getZ() >= 28016 && minimalTileSpec.getImageCol() == 2 )
+//							fp.setf(x, y, (float)n );
+//						else
+//							fp.setf(x, y, (float)( (1.0 - alpha ) * i + alpha * n ) );
+//					}
+//				}
+//
+//				corrected.add( new ValuePair( (ByteProcessor)impFull.mask, fp ) );
+//				adjustments.put(k, new double[] { 0,1,0 } );
+//				//new ImagePlus( "", fp ).show();
+//				//SimpleMultiThreading.threadHaltUnClean();
+//			}
+//			else
+//			{
+//				final ImageProcessorWithMasks impFull = VisualizeTools.getImage(minimalTileSpec, 1.0, cacheOnDisk);
+//
+//				FloatProcessor fp = impFull.ip.convertToFloatProcessor();
+//				fp.setMinAndMax(0, 255);
+//				NormalizeLocalContrast nlc = new NormalizeLocalContrast( fp );
+//				nlc.run(0, impFull.getHeight(), 3.0f, true, true );
+//
+//				corrected.add( new ValuePair( (ByteProcessor)impFull.mask, fp ) );
+//				adjustments.put(k, new double[] { 0,1,0 } );
+//			}
+//		}
+//
+//		//ImageJFunctions.show( fuse2d(interval, data, corrected, adjustments) );
+//		//SimpleMultiThreading.threadHaltUnClean();
+//
+//		return fuse2d(interval, data, corrected, adjustments);
+//	}
 	
-				//new ImagePlus("imp_" + minimalTileSpec.getImageCol(), imp.ip).duplicate().show();
-	
-				final FloatProcessor image = imp.ip.convertToFloatProcessor();
-	
-				// median filter smoothes resin way more than inside the sample
-				new RankFilters().rank( image, 3, RankFilters.MEDIAN );
-	
-				final RandomAccessibleInterval<FloatType> imgA = ArrayImgs.floats((float[]) image.getPixels(),
-						image.getWidth(), image.getHeight());
-				final float[] outP = new float[image.getWidth() * image.getHeight()];
-				final Img<FloatType> out = ArrayImgs.floats(outP, image.getWidth(), image.getHeight());
-	
-				Gauss3.gauss(sigma, Views.extendMirrorSingle(imgA), out);
-	
-				Cursor<FloatType> ic = Views.flatIterable(imgA).cursor();
-				Cursor<FloatType> pc = Views.flatIterable(out).cursor();
-	
-				while (pc.hasNext()) {
-					final FloatType p = pc.next();
-					final FloatType j = ic.next();
-					
-					double q = j.get() / p.get();
-					if ( q < 1 )
-						q = 1.0/q;
-					if ( Double.isNaN( q ) || Double.isInfinite( q ) )
-						q = 1.0;
-	
-					p.set(Math.max(0, (float) Math.abs( q )));
-				}
-	
-				Gauss3.gauss(sigma, Views.extendMirrorSingle(out), out);
-	
-				//for (final FloatType t : out)
-				//	t.set((float) (Math.sqrt(t.getRealDouble())));
-	
-				// apply weights
-				final ImageProcessorWithMasks impFull = VisualizeTools.getImage(minimalTileSpec, 1.0, cacheOnDisk);
-	
-				FloatProcessor fp = impFull.ip.convertToFloatProcessor();
-				fp.setMinAndMax(0, 255);
-				NormalizeLocalContrast nlc = new NormalizeLocalContrast( fp );
-				nlc.run(0, impFull.getHeight(), 3.0f, true, true );
-	
-				//if ( minimalTileSpec.getImageCol() == 2 || minimalTileSpec.getImageCol() == 3 )
-				{
-					//new ImagePlus( "", impFull.ip.duplicate() ).show();
-					//new ImagePlus( "", fp.duplicate() ).show();
-				}
-				//ImageJFunctions.show(out);
-	
-	
-				AffineTransform2D t = new AffineTransform2D();
-				t.scale( 1.0/scale, 1.0/scale);
-	
-				RealRandomAccessible scaled = RealViews.affine( Views.interpolate( Views.extendMirrorSingle( out ) , new NLinearInterpolatorFactory() ), t );
-				RealRandomAccess rs = scaled.realRandomAccess();
-	
-				for ( int x = 0; x < impFull.ip.getWidth(); ++x )
-				{
-					rs.setPosition( x, 0 );
-					for ( int y = 0; y < impFull.ip.getHeight(); ++y )
-					{
-						rs.setPosition( y, 1 );
-						final double n = fp.getf(x, y);
-						final double i = impFull.ip.getf( x, y );
-						final double a = ((RealType)rs.get()).getRealDouble();
-						final double alpha = Math.min( 1, Math.max( 0, ( ( a - 1.01 ) / 0.05 ) ) );
-	
-						if ( isSec26 && minimalTileSpec.getZ() >= 27759 && minimalTileSpec.getZ() >= 28016 && minimalTileSpec.getImageCol() == 2 )
-							fp.setf(x, y, (float)n );
-						else
-							fp.setf(x, y, (float)( (1.0 - alpha ) * i + alpha * n ) );
-					}
-				}
-	
-				corrected.add( new ValuePair( (ByteProcessor)impFull.mask, fp ) );
-				adjustments.put(k, new double[] { 0,1,0 } );
-				//new ImagePlus( "", fp ).show();
-				//SimpleMultiThreading.threadHaltUnClean();
-			}
-			else
-			{
-				final ImageProcessorWithMasks impFull = VisualizeTools.getImage(minimalTileSpec, 1.0, cacheOnDisk);
-				
-				FloatProcessor fp = impFull.ip.convertToFloatProcessor();
-				fp.setMinAndMax(0, 255);
-				NormalizeLocalContrast nlc = new NormalizeLocalContrast( fp );
-				nlc.run(0, impFull.getHeight(), 3.0f, true, true );
-
-				corrected.add( new ValuePair( (ByteProcessor)impFull.mask, fp ) );
-				adjustments.put(k, new double[] { 0,1,0 } );
-			}
-		}
-
-		//ImageJFunctions.show( fuse2d(interval, data, corrected, adjustments) );
-		//SimpleMultiThreading.threadHaltUnClean();
-
-		return fuse2d(interval, data, corrected, adjustments);
-	}
-	
-	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSlice(final String stack,
-																						  final RenderDataClient renderDataClient,
-																						  final Interval interval,
-																						  final double scale,
-																						  final boolean cacheOnDisk,
-																						  final int z)
-			throws IOException {
-
-		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
-		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
-
-		for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )
-		{
-			final MinimalTileSpec minimalTileSpec = tile.getB();
-
-			LOG.debug("renderIntensityAdjustedSlice: processing tile {} in column {}",
-					  minimalTileSpec.getTileId(), minimalTileSpec.getImageCol());
-
-			final ImageProcessorWithMasks imp = VisualizeTools.getImage(minimalTileSpec, scale, cacheOnDisk);
-			corrected.add( new ValuePair<>( (ByteProcessor)imp.mask, correct(imp, false) ) );
-
-			//new ImagePlus( "i", imp.ip ).show();
-			//new ImagePlus( "m", imp.mask ).show();
-			//new ImagePlus( "c", corrected.get( corrected.size() - 1).getB() ).show();
-			//SimpleMultiThreading.threadHaltUnClean();
-		}
-
-		//SimpleMultiThreading.threadHaltUnClean();
-
-		// order maps to [sub, mul, add]
-		final HashMap< Integer, double[] > adjustments = computeAdjustments( data, corrected );
-
-		return fuse2d(interval, data, corrected, adjustments);
-	}
+//	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSlice(final String stack,
+//																						  final RenderDataClient renderDataClient,
+//																						  final Interval interval,
+//																						  final double scale,
+//																						  final boolean cacheOnDisk,
+//																						  final int z)
+//			throws IOException {
+//
+//		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
+//		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
+//
+//		for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )
+//		{
+//			final MinimalTileSpec minimalTileSpec = tile.getB();
+//
+//			LOG.debug("renderIntensityAdjustedSlice: processing tile {} in column {}",
+//					  minimalTileSpec.getTileId(), minimalTileSpec.getImageCol());
+//
+//			final ImageProcessorWithMasks imp = VisualizeTools.getImage(minimalTileSpec, scale, cacheOnDisk);
+//			corrected.add( new ValuePair<>( (ByteProcessor)imp.mask, correct(imp, false) ) );
+//
+//			//new ImagePlus( "i", imp.ip ).show();
+//			//new ImagePlus( "m", imp.mask ).show();
+//			//new ImagePlus( "c", corrected.get( corrected.size() - 1).getB() ).show();
+//			//SimpleMultiThreading.threadHaltUnClean();
+//		}
+//
+//		//SimpleMultiThreading.threadHaltUnClean();
+//
+//		// order maps to [sub, mul, add]
+//		final HashMap< Integer, double[] > adjustments = computeAdjustments( data, corrected );
+//
+//		return fuse2d(interval, data, corrected, adjustments);
+//	}
 
 	public static void main( String[] args ) throws IOException, InterruptedException, ExecutionException
 	{
@@ -724,7 +687,7 @@ public class AdjustBlock {
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		final StackMetaData meta =  renderDataClient.getStackMetaData( stack );
-		//final StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
+		final Bounds stackBounds = meta.getStats().getStackBounds();
 		final Interval interval = RenderTools.stackBounds( meta );
 
 		final int minZ = 23850;//27759;//20000;
@@ -738,11 +701,23 @@ public class AdjustBlock {
 
 		for ( int z = minZ; z <= maxZ; ++z )
 		{
-			final RandomAccessibleInterval<UnsignedByteType> slice =
+			final String parametersUrl =
+					renderDataClient.getRenderParametersUrlString(stack,
+															stackBounds.getMinX(),
+															stackBounds.getMinY(),
+															z,
+															(int) (stackBounds.getDeltaX() + 0.5),
+															(int) (stackBounds.getDeltaY() + 0.5),
+															1.0,
+															null);
+
+			final RenderParameters sliceRenderParameters = RenderParameters.loadFromUrl(parametersUrl);
+
+			final ImageProcessorWithMasks slice =
 					//renderIntensityAdjustedSlice(stack, renderDataClient, interval, scale, cacheOnDisk, z);
 					//renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, false, cacheOnDisk, z);
-					renderIntensityAdjustedSliceGlobalPerSlice(stack, renderDataClient, interval, cacheOnDisk, z);
-			stack3d.addSlice( ImageJFunctions.wrap( slice, "" ).getProcessor() );
+					renderIntensityAdjustedSliceGlobalPerSlice(stack, renderDataClient, sliceRenderParameters, cacheOnDisk, z);
+			stack3d.addSlice( slice.ip );
 		}
 
 		final ImagePlus imp1 = new ImagePlus( project + "_" + stack, stack3d );

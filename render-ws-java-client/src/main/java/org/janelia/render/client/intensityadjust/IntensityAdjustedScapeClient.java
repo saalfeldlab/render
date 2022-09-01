@@ -6,7 +6,12 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+
+import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.ClientRunner;
@@ -74,12 +79,12 @@ public class IntensityAdjustedScapeClient
         final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
         final String slicePathFormatSpec = parameters.getSlicePathFormatSpec(stackMetaData,
                                                                              sectionRootDirectory);
-        final Interval interval = RenderTools.stackBounds(stackMetaData);
+        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
 
         for (final Double z : zValues) {
             renderIntensityAdjustedScape(sourceDataClient,
                                          parameters.stack,
-                                         interval,
+                                         stackBounds,
                                          parameters.correctionMethod,
                                          slicePathFormatSpec,
                                          parameters.format,
@@ -91,7 +96,7 @@ public class IntensityAdjustedScapeClient
 
     public static void renderIntensityAdjustedScape(final RenderDataClient dataClient,
                                                     final String stack,
-                                                    final Interval interval,
+                                                    final Bounds stackBounds,
                                                     final CorrectionMethod correctionMethod,
                                                     final String slicePathFormatSpec,
                                                     final String format,
@@ -100,37 +105,49 @@ public class IntensityAdjustedScapeClient
 
         LOG.info("renderIntensityAdjustedScape: entry, integralZ={}", integralZ);
 
-        final RandomAccessibleInterval<UnsignedByteType> slice;
-        switch (correctionMethod) {
-            case GAUSS:
-            case GAUSS_WEIGHTED:
-                slice = AdjustBlock.renderIntensityAdjustedSliceGauss(stack,
-                                                                      dataClient,
-                                                                      interval,
-                                                                      CorrectionMethod.GAUSS_WEIGHTED.equals(correctionMethod),
-                                                                      false,
-                                                                      integralZ);
+        final String parametersUrl =
+                dataClient.getRenderParametersUrlString(stack,
+                                                        stackBounds.getMinX(),
+                                                        stackBounds.getMinY(),
+                                                        integralZ,
+                                                        (int) (stackBounds.getDeltaX() + 0.5),
+                                                        (int) (stackBounds.getDeltaY() + 0.5),
+                                                        1.0,
+                                                        null);
 
-                break;
+        final RenderParameters sliceRenderParameters = RenderParameters.loadFromUrl(parametersUrl);
+
+        final ImageProcessorWithMasks slice;
+        switch (correctionMethod) {
+//            case GAUSS:
+//            case GAUSS_WEIGHTED:
+//                slice = AdjustBlock.renderIntensityAdjustedSliceGauss(stack,
+//                                                                      dataClient,
+//                                                                      interval,
+//                                                                      CorrectionMethod.GAUSS_WEIGHTED.equals(correctionMethod),
+//                                                                      false,
+//                                                                      integralZ);
+//
+//                break;
             case GLOBAL_PER_SLICE:
                 slice = AdjustBlock.renderIntensityAdjustedSliceGlobalPerSlice(stack,
                                                                                dataClient,
-                                                                               interval,
+                                                                               sliceRenderParameters,
                                                                                false,
                                                                                integralZ);
                 break;
             default:
-                slice = AdjustBlock.renderIntensityAdjustedSlice(stack,
-                                                                 dataClient,
-                                                                 interval,
-                                                                 1.0,
-                                                                 false,
-                                                                 integralZ);
-                break;
+                throw new UnsupportedOperationException("only support GLOBAL_PER_SLICE for hack");
+//                slice = AdjustBlock.renderIntensityAdjustedSlice(stack,
+//                                                                 dataClient,
+//                                                                 interval,
+//                                                                 1.0,
+//                                                                 false,
+//                                                                 integralZ);
+//                break;
         }
 
-        final BufferedImage sliceImage =
-                ImageJFunctions.wrap(slice, "").getProcessor().getBufferedImage();
+        final BufferedImage sliceImage = slice.ip.getBufferedImage();
 
         final String slicePath = String.format(slicePathFormatSpec, integralZ);
 
