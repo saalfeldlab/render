@@ -404,6 +404,7 @@ public class RenderedCanvasMipmapSource
             for (final String channelName : targetChannels.names()) {
                 final ImageProcessorWithMasks sourceChannel = sourceChannels.get(channelName);
                 final ImageProcessorWithMasks targetChannel = targetChannels.get(channelName);
+                // TODO: is this the right thing to do when source tiles have different min/max range?
                 targetChannel.ip.setMinAndMax(sourceChannel.ip.getMin(), sourceChannel.ip.getMax());
             }
 
