@@ -1,9 +1,12 @@
 package org.janelia.render.client.intensityadjust;
 
+import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +16,7 @@ import java.util.stream.IntStream;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -386,10 +390,32 @@ public class AdjustBlock {
 				new PreloadedImageProcessorCache(DEFAULT_MAX_CACHED_PIXELS,
 												 false,
 												 false);
+		final Map<String, TileSpec> tileIdToSliceSpec = new HashMap<>();
+		sliceRenderParameters.getTileSpecs().forEach(ts -> tileIdToSliceSpec.put(ts.getTileId(), ts));
+
+//		final String tileDebugDirPath = "/nrs/flyem/render/ic_test/debug-corrected-tiles/" +
+//										new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + "/";
+
 		for (int i = 0; i < data1.size(); i++) {
 			final MinimalTileSpecWrapper wrapper = data1.get(i);
 			final FloatProcessor correctedSource = corrected1.get(i).getB();
-			preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), correctedSource);
+
+//			final BufferedImage sliceImage = correctedSource.getBufferedImage();
+//			final String tilePath = tileDebugDirPath +
+//									wrapper.getTileId() + "-i" + i + "-max" + correctedSource.getMax() + ".png";
+//			try {
+//				Utils.saveImage(sliceImage, tilePath, "png", false, 0.85f);
+//			} catch (final IOException e) {
+//				throw new RuntimeException(e);
+//			}
+
+			final TileSpec tileSpec = tileIdToSliceSpec.get(wrapper.getTileId());
+			tileSpec.setMinAndMaxIntensity(correctedSource.getMin(),
+										   correctedSource.getMax(),
+										   tileSpec.getFirstChannelName());
+			final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
+			
+			preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), correctedSource8Bit);
 		}
 		return Renderer.renderImageProcessorWithMasks(sliceRenderParameters, preloadedImageProcessorCache);
 	}
