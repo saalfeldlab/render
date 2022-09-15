@@ -135,6 +135,11 @@ public class CopyStackClient {
         public boolean replaceLastTransformWithStage = false;
 
         @Parameter(
+                names = "--addToZ",
+                description = "If specified, offset each tile's z value by adding this to it")
+        public Double addToZ;
+
+        @Parameter(
                 names = "--splitMergedSections",
                 description = "Reset z values for tiles so that original sections are separated",
                 arity = 0)
@@ -237,6 +242,10 @@ public class CopyStackClient {
                 throw new IllegalArgumentException(
                         "--maxSectionsPerOriginalZ must be specified when --splitMergedSections is specified");
             }
+            if (parameters.addToZ != null) {
+                throw new IllegalArgumentException(
+                        "--addToZ may not be specified when --splitMergedSections is specified");
+            }
             this.sectionIdToZMap = getSectionIdToSplitZMap();
         } else {
             this.sectionIdToZMap = null;
@@ -320,6 +329,7 @@ public class CopyStackClient {
 
         final Set<Double> toStackZValues = new LinkedHashSet<>();
         if (parameters.splitMergedSections) {
+
             for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
                 final Double zValue = sectionIdToZMap.get(tileSpec.getLayout().getSectionId());
                 toStackZValues.add(zValue);
@@ -328,6 +338,18 @@ public class CopyStackClient {
 
             LOG.info("copyLayer: updated z values for {} tiles",
                      sourceCollection.getTileCount());
+
+        } else if (parameters.addToZ != null) {
+
+            for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
+                final Double zValue = tileSpec.getZ() + parameters.addToZ;
+                toStackZValues.add(zValue);
+                tileSpec.setZ(zValue);
+            }
+
+            LOG.info("copyLayer: updated z values for {} tiles",
+                     sourceCollection.getTileCount());
+
         } else {
             toStackZValues.add(z);
         }
