@@ -45,6 +45,7 @@ import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
@@ -182,9 +183,9 @@ public class Render
 	 * @param y target box offset in world coordinates
 	 * @param scale target scale
 	 * @param meshResolution - unclear why this is relevant (patch.getMeshResolution)
-	 * @param cacheOnDisk
+	 * @param imageProcessorCache cache of loaded image processors.
 	 */
-	final static public void render(
+	public static void render(
 			final MinimalTileSpecWrapper patch,
 			final int coefficientsWidth,
 			final int coefficientsHeight,
@@ -195,10 +196,11 @@ public class Render
 			final double y,
 			final double scale,
 			final int meshResolution,
-			final boolean cacheOnDisk )
-	{
-		// get the entire images at the desired scale
-		final ImageProcessorWithMasks impOriginal = VisualizeTools.getImage(patch, 1.0, cacheOnDisk);
+			final ImageProcessorCache imageProcessorCache) {
+
+		// get the entire images at full scale
+		final ImageProcessorWithMasks impOriginal =
+				VisualizeTools.getUntransformedProcessorWithMasks(patch.getTileSpec(), imageProcessorCache);
 
 		/* assemble coordinate transformations and add bounding box offset */
 		//final CoordinateTransformList< CoordinateTransform > ctl = new CoordinateTransformList< CoordinateTransform >();

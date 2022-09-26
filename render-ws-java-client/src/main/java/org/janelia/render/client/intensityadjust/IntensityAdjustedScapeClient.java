@@ -6,7 +6,6 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.RenderParameters;
@@ -14,18 +13,13 @@ import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
 import org.janelia.render.client.parameter.IntensityAdjustParameters.CorrectionMethod;
-import org.janelia.render.client.solver.visualize.RenderTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import net.imglib2.Interval;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
 
 /**
  * Java client for rendering intensity adjusted montage scapes for layers within a stack.
@@ -117,6 +111,12 @@ public class IntensityAdjustedScapeClient
 
         final RenderParameters sliceRenderParameters = RenderParameters.loadFromUrl(parametersUrl);
 
+        // make cache large enough to hold shared mask processors
+        final ImageProcessorCache imageProcessorCache =
+                new ImageProcessorCache(15_000L * 15_000L,
+                                        false,
+                                        false);
+
         final ImageProcessorWithMasks slice;
         switch (correctionMethod) {
 //            case GAUSS:
@@ -133,7 +133,7 @@ public class IntensityAdjustedScapeClient
                 slice = AdjustBlock.renderIntensityAdjustedSliceGlobalPerSlice(stack,
                                                                                dataClient,
                                                                                sliceRenderParameters,
-                                                                               false,
+                                                                               imageProcessorCache,
                                                                                integralZ);
                 break;
             default:

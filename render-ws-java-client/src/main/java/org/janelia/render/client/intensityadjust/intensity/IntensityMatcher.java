@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
@@ -61,8 +62,8 @@ public class IntensityMatcher
 		final private PointMatchFilter filter;
 		final private double scale;
 		final private int numCoefficients;
-		final boolean cacheOnDisk;
 		final int meshResolution;
+		final ImageProcessorCache imageProcessorCache;
 
 		public Matcher(
 				final ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > patchPair,
@@ -71,7 +72,7 @@ public class IntensityMatcher
 				final double scale,
 				final int numCoefficients,
 				final int meshResolution,
-				final boolean cacheOnDisk )
+				final ImageProcessorCache imageProcessorCache)
 		{
 			//this.roi = roi;
 			this.patchPair = patchPair;
@@ -80,7 +81,7 @@ public class IntensityMatcher
 			this.scale = scale;
 			this.numCoefficients = numCoefficients;
 			this.meshResolution = meshResolution;
-			this.cacheOnDisk = cacheOnDisk;
+			this.imageProcessorCache = imageProcessorCache;
 		}
 
 		@Override
@@ -111,8 +112,8 @@ public class IntensityMatcher
 			final FloatProcessor weights2 = new FloatProcessor( w, h );
 			final ColorProcessor coefficients2 = new ColorProcessor( w, h );
 
-			Render.render( p1, numCoefficients, numCoefficients, pixels1, weights1, coefficients1, box.x, box.y, scale, meshResolution, cacheOnDisk );
-			Render.render( p2, numCoefficients, numCoefficients, pixels2, weights2, coefficients2, box.x, box.y, scale, meshResolution, cacheOnDisk );
+			Render.render(p1, numCoefficients, numCoefficients, pixels1, weights1, coefficients1, box.x, box.y, scale, meshResolution, imageProcessorCache);
+			Render.render(p2, numCoefficients, numCoefficients, pixels2, weights2, coefficients2, box.x, box.y, scale, meshResolution, imageProcessorCache);
 
 			//new ImagePlus( "pixels1", pixels1 ).show();
 			//new ImagePlus( "weights1", weights1 ).show();
@@ -206,7 +207,7 @@ public class IntensityMatcher
 			final double lambda2,
 			final double neighborWeight,
 			final int iterations,
-			final boolean cacheOnDisk ) throws InterruptedException, ExecutionException
+			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException
 	{
 		final PointMatchFilter filter = new RansacRegressionReduceFilter();
 
@@ -276,7 +277,7 @@ public class IntensityMatcher
 									scale,
 									numCoefficients,
 									meshResolution,
-									cacheOnDisk ) ) );
+									imageProcessorCache ) ) );
 		}
 
 		for ( final Future< ? > future : futures )
@@ -353,7 +354,8 @@ public class IntensityMatcher
 			final FloatProcessor as = new FloatProcessor( numCoefficients, numCoefficients );
 			final FloatProcessor bs = new FloatProcessor( numCoefficients, numCoefficients );
 
-			final ImageProcessorWithMasks imp = VisualizeTools.getImage( p, 1.0, cacheOnDisk );
+			final ImageProcessorWithMasks imp = VisualizeTools.getUntransformedProcessorWithMasks(p.getTileSpec(),
+																								  imageProcessorCache);
 
 			FloatProcessor fp = imp.ip.convertToFloatProcessor();
 			fp.resetMinAndMax();

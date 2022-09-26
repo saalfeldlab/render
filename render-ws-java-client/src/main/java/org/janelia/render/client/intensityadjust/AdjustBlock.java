@@ -21,6 +21,7 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
@@ -495,7 +496,7 @@ public class AdjustBlock {
 			final String stack,
 			final RenderDataClient renderDataClient,
 			final RenderParameters sliceRenderParameters,
-			final boolean cacheOnDisk,
+			final ImageProcessorCache imageProcessorCache,
 			final int z) throws IOException, InterruptedException, ExecutionException
 	{
 		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
@@ -516,7 +517,7 @@ public class AdjustBlock {
 				lambda2,
 				neighborWeight,
 				iterations,
-				cacheOnDisk );
+				imageProcessorCache);
 
 		return fuseFinal(sliceRenderParameters, data, corrected);
 	}
@@ -709,6 +710,12 @@ public class AdjustBlock {
 
 		final ImageStack stack3d = new ImageStack( (int)interval.dimension( 0 ), (int)interval.dimension( 1 ) );
 
+		// make cache large enough to hold shared mask processors
+		final ImageProcessorCache imageProcessorCache =
+				new ImageProcessorCache(15_000L * 15_000L,
+										false,
+										false);
+
 		for ( int z = minZ; z <= maxZ; ++z )
 		{
 			final String parametersUrl =
@@ -726,7 +733,11 @@ public class AdjustBlock {
 			final ImageProcessorWithMasks slice =
 					//renderIntensityAdjustedSlice(stack, renderDataClient, interval, scale, cacheOnDisk, z);
 					//renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, false, cacheOnDisk, z);
-					renderIntensityAdjustedSliceGlobalPerSlice(stack, renderDataClient, sliceRenderParameters, cacheOnDisk, z);
+					renderIntensityAdjustedSliceGlobalPerSlice(stack,
+															   renderDataClient,
+															   sliceRenderParameters,
+															   imageProcessorCache,
+															   z);
 			stack3d.addSlice( slice.ip );
 		}
 

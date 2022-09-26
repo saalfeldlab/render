@@ -10,6 +10,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
+import org.janelia.alignment.spec.ChannelSpec;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.MultiResolutionSource;
 import org.slf4j.Logger;
@@ -730,6 +737,35 @@ public class VisualizeTools
 		}
 
 		return imp;
+	}
+
+	public static ImageProcessorWithMasks getUntransformedProcessorWithMasks(final TileSpec tileSpec,
+																			 final ImageProcessorCache imageProcessorCache) {
+		final String tileId = tileSpec.getTileId();
+		final List<ChannelSpec> allChannels = tileSpec.getAllChannels();
+		if (allChannels.size() > 1) {
+			throw new UnsupportedOperationException("multi-channel source for tile " + tileId +
+													" is not currently supported");
+		}
+		final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().get(0);
+		final ImageAndMask imageAndMask = firstChannelSpec.getFirstMipmapImageAndMask(tileId);
+		final ImageProcessor sourceProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
+																	   0,
+																	   false,
+																	   firstChannelSpec.is16Bit(),
+																	   imageAndMask.getImageLoaderType(),
+																	   imageAndMask.getImageSliceNumber());
+		ImageProcessor maskProcessor =null;
+		if (imageAndMask.hasMask()) {
+			maskProcessor = imageProcessorCache.get(imageAndMask.getMaskUrl(),
+													0,
+													true,
+													firstChannelSpec.is16Bit(),
+													imageAndMask.getMaskLoaderType(),
+													imageAndMask.getMaskSliceNumber());
+		}
+
+		return new ImageProcessorWithMasks(sourceProcessor, maskProcessor, null);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(VisualizeTools.class);
