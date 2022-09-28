@@ -96,11 +96,11 @@ public class DistributedSolveDebugger extends DistributedSolve
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "hess", //"Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                            "--project", "wafer_52c", //"Sec24", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                            "--matchCollection", "wafer_52c_v1", //"Sec24_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-                            "--stack", "v1_acquire_slab_001_trimmed_mfov_04", //"v4_acquire_trimmed", //"v3_acquire",
-                            //"--targetStack", "v3_acquire_sp1",
+                            "--owner", "cellmap", //"hess", //"Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
+                            "--project", "jrc_mus_liv_zon_1", //"wafer_52c", //"Sec24", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                            "--matchCollection", "jrc_mus_liv_zon_1_v1", //"wafer_52c_v1", //"Sec24_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                            "--stack", "v2_acquire", //"v1_acquire_slab_001_trimmed_mfov_04", //"v4_acquire_trimmed", //"v3_acquire",
+                            //"--targetStack", "v2_acquire_align",
                             //"--completeTargetStack",
                             
                             // note: prealign is with translation only
@@ -114,8 +114,8 @@ public class DistributedSolveDebugger extends DistributedSolve
                             //"--blockSize", "100",
                             //"--noStitching", // do not stitch first
                             
-                            "--minZ", "1234",
-                            "--maxZ", "1235",
+                            "--minZ", "2850",
+                            "--maxZ", "2853",
 
                             //"--excludeFromRegularization", "1-5,35-534",
                             "--maxNumMatches", "0", // no limit, default
@@ -147,7 +147,7 @@ public class DistributedSolveDebugger extends DistributedSolve
                 				parameters.blockMaxAllowedError,
                 				parameters.dynamicLambdaFactor );
 
-                solveSetFactory.additionalIssues.put( 57325, "problem" );
+                // solveSetFactory.additionalIssues.put( 57325, "problem" );
 
 /*                		new SolveSetFactorySimple(
                 				parameters.globalModel(),
