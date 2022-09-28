@@ -34,6 +34,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.matchfilter.MatchFilter;
 import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
 import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
@@ -299,7 +300,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					inputSolveItem.idToTileMap().put( pId, p );
 					inputSolveItem.idToPreviousModel().put( pId, pairP.getB() );
 
-					final MinimalTileSpec pTileSpecMin = new MinimalTileSpec( pTileSpec );
+					final MinimalTileSpec pTileSpecMin = new MinimalTileSpecWrapper(pTileSpec );
 					inputSolveItem.idToTileSpec().put( pId, pTileSpecMin );
 
 					inputSolveItem.tileToIdMap().put( p, pId );
@@ -319,7 +320,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					inputSolveItem.idToTileMap().put( qId, q );
 					inputSolveItem.idToPreviousModel().put( qId, pairQ.getB() );
 
-					final MinimalTileSpec qTileSpecMin = new MinimalTileSpec( qTileSpec );
+					final MinimalTileSpec qTileSpecMin = new MinimalTileSpecWrapper( qTileSpec );
 					inputSolveItem.idToTileSpec().put( qId, qTileSpecMin );
 
 					inputSolveItem.tileToIdMap().put( q, qId );

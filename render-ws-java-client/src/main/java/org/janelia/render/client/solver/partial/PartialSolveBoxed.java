@@ -16,6 +16,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SolveTools;
@@ -154,7 +155,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 					p = pairP.getA();
 					idToTileMap.put( pId, p );
 					idToPreviousModel.put( pId, pairP.getB() );
-					idToTileSpec.put( pId, new MinimalTileSpec( pTileSpec ) );
+					idToTileSpec.put( pId, new MinimalTileSpecWrapper(pTileSpec ) );
 
 					if ( pTileSpec.getZ() <= topBorder )
 						topTileIds.add( pId );
@@ -173,7 +174,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 					q = pairQ.getA();
 					idToTileMap.put( qId, q );
 					idToPreviousModel.put( qId, pairQ.getB() );
-					idToTileSpec.put( qId, new MinimalTileSpec( qTileSpec ) );
+					idToTileSpec.put( qId, new MinimalTileSpecWrapper( qTileSpec ) );
 
 					if ( qTileSpec.getZ() <= topBorder )
 						topTileIds.add( qId );

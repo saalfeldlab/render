@@ -701,8 +701,11 @@ public class VisualizeTools
 			*/
 			
 			// this gives a raw image
-			FloatProcessor imageFP = getFullResImage( tileSpec );
-			ImageProcessor maskIP = getFullResMask( tileSpec );
+			final TileSpec fullTileSpec = ((MinimalTileSpecWrapper) tileSpec).getTileSpec();
+			final ImageProcessorWithMasks fullScaleIpwm =
+					VisualizeTools.getUntransformedProcessorWithMasks(fullTileSpec, ImageProcessorCache.DISABLED_CACHE);
+			FloatProcessor imageFP = fullScaleIpwm.ip.convertToFloatProcessor();
+			ImageProcessor maskIP = fullScaleIpwm.mask;
 
 			if ( !Double.isNaN( scale ) && scale != 1.0 )
 				imageFP = (FloatProcessor)imageFP.resize( (int)Math.round( imageFP.getWidth() * scale ), (int)Math.round( imageFP.getHeight() * scale ), true );
