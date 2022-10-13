@@ -27,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Java client for calculating neighbor pairs for all tiles in a range of sections.
+ * Java client for debugging transformed corners of IBEAM-MSEM stacks.
  *
  * @author Eric Trautman
  */
@@ -41,7 +41,7 @@ public class DebugTransformedCornersClient {
 
         @Parameter(
                 names = "--stack",
-                description = "Stack name",
+                description = "Stacks to process",
                 variableArity = true,
                 required = true)
         public List<String> stackNames;
@@ -51,7 +51,7 @@ public class DebugTransformedCornersClient {
 
         @Parameter(
                 names = "--z",
-                description = "Explicit z values for layers to be processed (only valid for generating montage pairs with --zNeighborDistance 0)",
+                description = "Explicit z values for layers to be processed",
                 variableArity = true) // e.g. --z 20.0 --z 21.0 --z 22.0
         public List<Double> zValues;
 
