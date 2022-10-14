@@ -10,9 +10,13 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -285,6 +289,9 @@ public class N5Client {
             LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",
                      parameters.n5Path, datasetName, viewStackCommandOffsets);
 
+            // save full scale first ...
+            setupFullScaleExportN5(parameters, fullScaleDatasetName, stackMetaData, dimensions, blockSize);
+
             final BoxRenderer boxRenderer = new BoxRenderer(parameters.renderWeb.baseDataUrl,
                                                             parameters.renderWeb.owner,
                                                             parameters.renderWeb.project,
@@ -295,7 +302,6 @@ public class N5Client {
                                                             parameters.minIntensity,
                                                             parameters.maxIntensity);
 
-            // save full scale first ...
             if (is2DVolume) {
                 save2DRenderStack(
                         sparkContext,
@@ -389,6 +395,41 @@ public class N5Client {
         sparkContext.close();
     }
 
+    public static void setupFullScaleExportN5(final Parameters parameters,
+                                              final String fullScaleDatasetName,
+                                              final StackMetaData stackMetaData,
+                                              final long[] dimensions,
+                                              final int[] blockSize)
+            throws IOException {
+
+        String exportAttributesDatasetName = fullScaleDatasetName;
+
+        try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
+            n5.createDataset(fullScaleDatasetName,
+                             dimensions,
+                             blockSize,
+                             DataType.UINT8,
+                             new GzipCompression());
+
+            final Map<String, Object> export_attributes = new HashMap<>();
+            export_attributes.put("runTimestamp", new Date());
+            export_attributes.put("runParameters", parameters);
+            export_attributes.put("stackMetadata", stackMetaData);
+
+            final Map<String, Object> attributes = new HashMap<>();
+            attributes.put("renderExport", export_attributes);
+
+            final Path fullScaleDatasetPath = Paths.get(fullScaleDatasetName);
+            if ("s0".equals(fullScaleDatasetPath.getFileName().toString())) {
+                exportAttributesDatasetName = fullScaleDatasetPath.getParent().toString();
+            }
+            n5.setAttributes(exportAttributesDatasetName, attributes);
+        }
+
+        LOG.info("setupFullScaleExportN5: saved {}",
+                 Paths.get(parameters.n5Path, exportAttributesDatasetName, "attributes.json"));
+    }
+
     public static class BoxRenderer
             implements Serializable {
 
@@ -444,26 +485,16 @@ public class N5Client {
         }
     }
 
-    public static void saveRenderStack(final JavaSparkContext sc,
-                                       final BoxRenderer boxRenderer,
-                                       final int tileWidth,
-                                       final int tileHeight,
-                                       final String n5Path,
-                                       final String datasetName,
-                                       final long[] min,
-                                       final long[] dimensions,
-                                       final int[] blockSize,
-                                       final ThicknessCorrectionData thicknessCorrectionData)
-            throws IOException {
-
-        final N5Writer n5 = new N5FSWriter(n5Path);
-
-        n5.createDataset(
-                datasetName,
-                dimensions,
-                blockSize,
-                DataType.UINT8,
-                new GzipCompression());
+    private static void saveRenderStack(final JavaSparkContext sc,
+                                        final BoxRenderer boxRenderer,
+                                        final int tileWidth,
+                                        final int tileHeight,
+                                        final String n5Path,
+                                        final String datasetName,
+                                        final long[] min,
+                                        final long[] dimensions,
+                                        final int[] blockSize,
+                                        final ThicknessCorrectionData thicknessCorrectionData) {
 
         // grid block size for parallelization to minimize double loading of tiles
         final int[] gridBlockSize = new int[]{
@@ -570,28 +601,18 @@ public class N5Client {
         });
     }
 
-    public static void save2DRenderStack(final JavaSparkContext sc,
-                                         final BoxRenderer boxRenderer,
-                                         final int tileWidth,
-                                         final int tileHeight,
-                                         final String n5Path,
-                                         final String datasetName,
-                                         final long[] min,
-                                         final long[] dimensions,
-                                         final int[] blockSize,
-                                         final long z)
-            throws IOException {
+    private static void save2DRenderStack(final JavaSparkContext sc,
+                                          final BoxRenderer boxRenderer,
+                                          final int tileWidth,
+                                          final int tileHeight,
+                                          final String n5Path,
+                                          final String datasetName,
+                                          final long[] min,
+                                          final long[] dimensions,
+                                          final int[] blockSize,
+                                          final long z) {
 
         LOG.info("save2DRenderStack: entry, z={}", z);
-
-        final N5Writer n5 = new N5FSWriter(n5Path);
-
-        n5.createDataset(
-                datasetName,
-                dimensions,
-                blockSize,
-                DataType.UINT8,
-                new GzipCompression());
 
         // grid block size for parallelization to minimize double loading of tiles
         final int[] gridBlockSize = new int[]{

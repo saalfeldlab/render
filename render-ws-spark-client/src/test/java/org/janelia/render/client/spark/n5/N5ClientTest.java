@@ -10,6 +10,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -105,6 +106,48 @@ public class N5ClientTest {
     }
 
     @Test
+    public void testSetupFullScaleExportN5() throws Exception {
+
+        final Path n5Path = n5PathDirectory.toPath().toAbsolutePath();
+        final Path fullScaleDatasetPath = Paths.get("/z_corr/v4_acquire_align_ic/s0");
+        final String datasetName = fullScaleDatasetPath.toString();
+
+        final String[] runArgs = {
+                "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
+                "--owner", "cellmap",
+                "--project", "jrc_zf_cardiac_1",
+                "--stack", "v4_acquire_align_ic",
+                "--n5Path", n5Path.toString(),
+                "--n5Dataset", datasetName,
+                "--tileWidth", "4096",
+                "--tileHeight", "4096",
+                "--blockSize", "128,128,64",
+                "--factors", "2,2,2",
+                "--z_coords", "/test/data/solve_20221011_115958/Zcoords.txt"
+        };
+        final N5Client.Parameters p = new N5Client.Parameters();
+        p.parse(runArgs);
+
+        final long[] dimensions = { 100L, 200L, 300L };
+        final int[] blockSize = p.getBlockSize();
+
+        N5Client.setupFullScaleExportN5(p, datasetName, stackMetaData, dimensions, blockSize);
+
+        try (final N5Reader n5Reader = new N5FSReader(n5Path.toString())) {
+            Assert.assertTrue("dataset " + datasetName + " is missing", n5Reader.datasetExists(datasetName));
+
+            final String exportAttributesDatasetName = datasetName.substring(0, datasetName.length() - 3);
+            final Object renderExport = n5Reader.getAttribute(exportAttributesDatasetName,
+                                                              "renderExport",
+                                                              Map.class);
+            Assert.assertNotNull("renderExport missing from " + exportAttributesDatasetName, renderExport);
+
+            final String formattedAttributes = JsonUtils.MAPPER.writeValueAsString(renderExport);
+            System.out.println(formattedAttributes);
+        }
+    }
+
+    @Test
     public void testNeuroglancerAttributes() throws Exception {
 
         final Path n5Path = n5PathDirectory.toPath().toAbsolutePath();
@@ -113,84 +156,84 @@ public class N5ClientTest {
 
         final long[] dimensions = { 100L, 200L, 300L };
         final int[] blockSize = { 10, 20, 30 };
-        final N5Writer n5Writer = new N5FSWriter(n5Path.toString());
+        try (final N5Writer n5Writer = new N5FSWriter(n5Path.toString())) {
 
-        final DatasetAttributes datasetAttributes = new DatasetAttributes(dimensions,
-                                                                          blockSize,
-                                                                          DataType.UINT8,
-                                                                          new GzipCompression());
-        n5Writer.createDataset(datasetName, datasetAttributes);
+            final DatasetAttributes datasetAttributes = new DatasetAttributes(dimensions,
+                                                                              blockSize,
+                                                                              DataType.UINT8,
+                                                                              new GzipCompression());
+            n5Writer.createDataset(datasetName, datasetAttributes);
 
-        final N5Reader n5Reader = new N5FSReader(n5Path.toString());
-        Assert.assertTrue("dataset " + datasetName + " is missing", n5Reader.datasetExists(datasetName));
+            final N5Reader n5Reader = new N5FSReader(n5Path.toString());
+            Assert.assertTrue("dataset " + datasetName + " is missing", n5Reader.datasetExists(datasetName));
 
-        final Map<String, Object> originalDatasetAttributes = datasetAttributes.asMap();
-        final Map<String, Object> writtenDatasetAttributes = n5Reader.getDatasetAttributes(datasetName).asMap();
-        Assert.assertEquals("incorrect number of dataset attributes were written",
-                            originalDatasetAttributes.size(), writtenDatasetAttributes.size());
+            final Map<String, Object> originalDatasetAttributes = datasetAttributes.asMap();
+            final Map<String, Object> writtenDatasetAttributes = n5Reader.getDatasetAttributes(datasetName).asMap();
+            Assert.assertEquals("incorrect number of dataset attributes were written",
+                                originalDatasetAttributes.size(), writtenDatasetAttributes.size());
 
-        for (final String key : originalDatasetAttributes.keySet()) {
-            Assert.assertTrue(key + " attribute not written",
-                              writtenDatasetAttributes.containsKey(key));
+            for (final String key : originalDatasetAttributes.keySet()) {
+                Assert.assertTrue(key + " attribute not written",
+                                  writtenDatasetAttributes.containsKey(key));
+            }
+
+            // need to create downsample scale level data set directories and attributes.json files
+            final int numberOfDownsampledDatasets = 3;
+            final Path multiScaleParentPath = fullScaleDatasetPath.getParent();
+            for (int scaleLevel = 1; scaleLevel <= numberOfDownsampledDatasets; scaleLevel++) {
+                final DatasetAttributes scaleLevelAttributes = new DatasetAttributes(dimensions,
+                                                                                     blockSize,
+                                                                                     DataType.UINT8,
+                                                                                     new GzipCompression());
+                final String scaleLevelDatasetName = multiScaleParentPath + "/s" + scaleLevel;
+                n5Writer.createDataset(scaleLevelDatasetName, scaleLevelAttributes);
+            }
+
+            final List<Double> resolutionValues = stackMetaData.getCurrentResolutionValues();
+            final NeuroglancerAttributes ngAttributes =
+                    new NeuroglancerAttributes(resolutionValues,
+                                               "nm",
+                                               numberOfDownsampledDatasets,
+                                               new int[]{2, 2, 2},
+                                               Arrays.asList(5L, 25L, 125L),
+                                               NeuroglancerAttributes.NumpyContiguousOrdering.C);
+
+            ngAttributes.write(n5Path, fullScaleDatasetPath);
+
+            final String testStackDatasetName = fullScaleDatasetPath.getParent().toString();
+
+            @SuppressWarnings("unchecked") final List<String> axes = n5Reader.getAttribute(testStackDatasetName,
+                                                                                           "axes",
+                                                                                           List.class);
+
+            Assert.assertNotNull("axes attributes not written to dataset " + testStackDatasetName, axes);
+            Assert.assertArrayEquals("invalid axes attributes written",
+                                     NeuroglancerAttributes.RENDER_AXES.toArray(), axes.toArray());
+
+            final String renderDatasetName = fullScaleDatasetPath.getParent().getParent().toString();
+
+            final Boolean flag = n5Reader.getAttribute(renderDatasetName,
+                                                       NeuroglancerAttributes.SUPPORTED_KEY,
+                                                       Boolean.class);
+
+            Assert.assertEquals(NeuroglancerAttributes.SUPPORTED_KEY +
+                                " attributes not written to dataset " + renderDatasetName,
+                                Boolean.TRUE, flag);
+
+            validateTransformElement("level 0",
+                                     n5Reader,
+                                     fullScaleDatasetPath.toString(),
+                                     axes,
+                                     resolutionValues);
+
+            validateTransformElement("level 3",
+                                     n5Reader,
+                                     fullScaleDatasetPath.getParent() + "/s3",
+                                     axes,
+                                     Arrays.asList(resolutionValues.get(0) * 8,
+                                                   resolutionValues.get(1) * 8,
+                                                   resolutionValues.get(2) * 8));
         }
-
-        // need to create downsample scale level data set directories and attributes.json files
-        final int numberOfDownsampledDatasets = 3;
-        final Path multiScaleParentPath = fullScaleDatasetPath.getParent();
-        for (int scaleLevel = 1; scaleLevel <= numberOfDownsampledDatasets; scaleLevel++) {
-            final DatasetAttributes scaleLevelAttributes = new DatasetAttributes(dimensions,
-                                                                                 blockSize,
-                                                                                 DataType.UINT8,
-                                                                                 new GzipCompression());
-            final String scaleLevelDatasetName = multiScaleParentPath + "/s" + scaleLevel;
-            n5Writer.createDataset(scaleLevelDatasetName, scaleLevelAttributes);
-        }
-
-        final List<Double> resolutionValues = stackMetaData.getCurrentResolutionValues();
-        final NeuroglancerAttributes ngAttributes =
-                new NeuroglancerAttributes(resolutionValues,
-                                           "nm",
-                                           numberOfDownsampledDatasets,
-                                           new int[] {2, 2, 2},
-                                           Arrays.asList(5L, 25L, 125L),
-                                           NeuroglancerAttributes.NumpyContiguousOrdering.C);
-
-        ngAttributes.write(n5Path, fullScaleDatasetPath);
-
-        final String testStackDatasetName = fullScaleDatasetPath.getParent().toString();
-
-        @SuppressWarnings("unchecked")
-        final List<String> axes = n5Reader.getAttribute(testStackDatasetName,
-                                                        "axes",
-                                                        List.class);
-
-        Assert.assertNotNull("axes attributes not written to dataset " + testStackDatasetName, axes);
-        Assert.assertArrayEquals("invalid axes attributes written",
-                                 NeuroglancerAttributes.RENDER_AXES.toArray(), axes.toArray());
-
-        final String renderDatasetName = fullScaleDatasetPath.getParent().getParent().toString();
-
-        final Boolean flag = n5Reader.getAttribute(renderDatasetName,
-                                                   NeuroglancerAttributes.SUPPORTED_KEY,
-                                                   Boolean.class);
-
-        Assert.assertEquals(NeuroglancerAttributes.SUPPORTED_KEY +
-                            " attributes not written to dataset " + renderDatasetName,
-                            Boolean.TRUE, flag);
-
-        validateTransformElement("level 0",
-                                 n5Reader,
-                                 fullScaleDatasetPath.toString(),
-                                 axes,
-                                 resolutionValues);
-
-        validateTransformElement("level 3",
-                                 n5Reader,
-                                 fullScaleDatasetPath.getParent() + "/s3",
-                                 axes,
-                                 Arrays.asList(resolutionValues.get(0) * 8,
-                                               resolutionValues.get(1) * 8,
-                                               resolutionValues.get(2) * 8));
     }
 
     @SuppressWarnings("unchecked")
