@@ -374,11 +374,13 @@ public class VisualizeTools
 		}
 	}
 
+	// TODO: rendering should take all models (including deformations, not only one affine)
 	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, MinimalTileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
 	{
 		return render(idToModels, idToTileSpec, scale, Integer.MIN_VALUE, Integer.MAX_VALUE );
 	}
 
+	// TODO: rendering should take all models (including deformations, not only one affine)
 	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModelsIn, final HashMap<String, MinimalTileSpec> idToTileSpecIn, final double scale, final int minZ, final int maxZ ) throws NoninvertibleModelException
 	{
 		final HashMap<String, AffineModel2D> idToModels = new HashMap<String, AffineModel2D>();
