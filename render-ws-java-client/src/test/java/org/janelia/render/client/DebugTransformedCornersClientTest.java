@@ -24,14 +24,19 @@ public class DebugTransformedCornersClientTest {
 
                 // include multiple stacks to compare
                 "--stack", "v1_acquire_slab_001",
-                "--stack", "v1_acquire_slab_001_trimmed_align",
+//                "--stack", "v1_acquire_slab_001_trimmed_align",
 
                 "--xyNeighborFactor", "0.6", // for tiles completely within mFov
 //                "--xyNeighborFactor", "0.3", // for tiles that overlap another mFov
 
+//                "--zNeighborDistance", "0",
+                "--zNeighborDistance", "1",
+
 //                "--tileId", "001_000004_004_20220401_172116.1225.0", // very similar stage and align results
-                "--tileId", "001_000003_070_20220401_172114.1225.0", // slight differences between stage and align
-                "--z", "1225"
+//                "--tileId", "001_000003_070_20220401_172114.1225.0", // slight differences between stage and align
+
+                "--tileIdPattern", "001_000003_070.*",
+                "--maxZ", "1227",
         };
 
         DebugTransformedCornersClient.main(effectiveArgs);
