@@ -315,16 +315,13 @@ public class DebugTransformedCornersClient {
                             final AffineModel2D model = new AffineModel2D();
                             try {
                             	model.fit( matches );
-                    			double error = 0;
-                    			
+
                     			for ( final PointMatch pm : matches )
-                    			{
                     				pm.apply( model );
-                    				error += pm.getDistance();
-                    			}
 
                     			// apply the model to pCorners and qCorners so we only keep a relative model
-                    			for ( int i = 0; i < 4; ++i )
+                    			// so pC will be identical to p0
+                    			for ( int i = 0; i < p0.size(); ++i )
                     			{
                     				pTransformedCornersAll.add(new Point(pC.get(i).getW()));
                     				qC.get( i ).apply( model );
@@ -332,19 +329,13 @@ public class DebugTransformedCornersClient {
 
                                 	System.out.println( "p=" + Util.printCoordinates(pTransformedCornersAll.get(i).getL()) + ", q=" + Util.printCoordinates(qTransformedCornersAll.get(i).getL()));
                     			}
-                    			model.setCost( error );
-                    			System.out.println( "e=" + error + " " + model + ", " + model.getClass().getSimpleName());
+                    			System.out.println( model + ", " + model.getClass().getSimpleName());
 
                     			System.exit( 0 );
                     		} catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
                     			e.printStackTrace();
                     		}
-                        }/*
-                        else
-                        {
-                        	pTransformedCornersAll.addAll( getTransformedCornerPoints(pTileSpec) );
-                        	qTransformedCornersAll.addAll( getTransformedCornerPoints(qTileSpec) );
-                        }*/
+                        }
 
                 		// l and w are transformed
                         final List<Point> pTransformedCorners = getTransformedCornerPoints(pTileSpec);
