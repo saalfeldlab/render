@@ -29,14 +29,15 @@ public class DebugTransformedCornersClientTest {
                 "--xyNeighborFactor", "0.6", // for tiles completely within mFov
 //                "--xyNeighborFactor", "0.3", // for tiles that overlap another mFov
 
-//                "--zNeighborDistance", "0",
-                "--zNeighborDistance", "1",
+                "--zNeighborDistance", "0",
+//                "--zNeighborDistance", "1",
 
 //                "--tileId", "001_000004_004_20220401_172116.1225.0", // very similar stage and align results
 //                "--tileId", "001_000003_070_20220401_172114.1225.0", // slight differences between stage and align
 
                 "--tileIdPattern", "001_000003_070.*",
-                "--maxZ", "1227",
+                "--tileId2", "001_000003_045",
+                "--maxZ", "1230",
         };
 
         DebugTransformedCornersClient.main(effectiveArgs);

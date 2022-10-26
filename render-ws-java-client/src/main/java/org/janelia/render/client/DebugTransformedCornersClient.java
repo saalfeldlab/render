@@ -82,6 +82,12 @@ public class DebugTransformedCornersClient {
         )
         public String tileIdPattern;
 
+        @Parameter(
+                names = "--tileId2",
+                description = "Only debug pairs that contain this String"
+        )
+        public String tileId2;
+
         public Parameters() {
         }
 
@@ -270,8 +276,14 @@ public class DebugTransformedCornersClient {
                 final TileSpec qTileSpec =  zToTilesMap.get(qz).getTileSpec(qCanvasId.getId());
                 if (tileIds == null ||
                     tileIds.contains(pTileSpec.getTileId()) ||
-                    tileIds.contains(qTileSpec.getTileId())) {
+                    tileIds.contains(qTileSpec.getTileId()))
+                {
+                	
+                	if ( parameters.tileId2 == null || pTileSpec.getTileId().contains(parameters.tileId2) || qTileSpec.getTileId().contains(parameters.tileId2) ) 
+                	{
+                	//System.out.println( pTileSpec.getTileId() + "  " + qTileSpec.getTileId() );//001_000003_045
                     debugInfo.add(formatCornerPointDistances(stackName, pTileSpec, qTileSpec));
+                	}
                 }
             });
         }
