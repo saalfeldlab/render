@@ -16,9 +16,17 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
+import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.Model;
+import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
+import mpicbg.models.RigidModel2D;
+import mpicbg.models.TranslationModel2D;
+import net.imglib2.util.Util;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
@@ -282,7 +290,19 @@ public class DebugTransformedCornersClient {
                 	if ( parameters.tileId2 == null || pTileSpec.getTileId().contains(parameters.tileId2) || qTileSpec.getTileId().contains(parameters.tileId2) ) 
                 	{
                 	//System.out.println( pTileSpec.getTileId() + "  " + qTileSpec.getTileId() );//001_000003_045
-                    debugInfo.add(formatCornerPointDistances(stackName, pTileSpec, qTileSpec));
+                		debugInfo.add(formatCornerPointDistances(stackName, pTileSpec, qTileSpec));
+
+                		// l and w are transformed
+                        final List<Point> pTransformedCorners = getTransformedCornerPoints(pTileSpec);
+                        final List<Point> qTransformedCorners = getTransformedCornerPoints(qTileSpec);
+
+                        //for ( final Point p : pTransformedCorners )
+                        //	System.out.println( "l=" + Util.printCoordinates(p.getL()) + ", w=" + Util.printCoordinates(p.getW()));
+
+                        // the model tells us how much the translation changes,
+                        // the error tells us how affine it is
+                        computeError(pTransformedCorners, qTransformedCorners, new TranslationModel2D() );
+                        computeError(pTransformedCorners, qTransformedCorners, new RigidModel2D() );
                 	}
                 }
             });
@@ -291,6 +311,33 @@ public class DebugTransformedCornersClient {
         return debugInfo;
     }
 
+    public static void computeError( final List<Point> p, final List<Point> q, final Model<?> model )
+    {
+        final ArrayList< PointMatch > matches = new ArrayList<>();
+        for ( int i = 0; i < p.size(); ++i )
+        	matches.add( new PointMatch(p.get( i ), q.get( i )));
+
+        //final TranslationModel2D t = new TranslationModel2D();
+        try {
+        	model.fit( matches );
+			double error = 0;
+			
+			for ( final PointMatch pm : matches )
+			{
+				pm.apply( model );
+				error += pm.getDistance();
+			}
+
+			model.setCost( error );
+			System.out.println( model.getClass().getSimpleName() + ", e=" + error + ", " + model );
+
+		} catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
+    }
+   
     public TileBoundsRTree buildRTree(final String stackName,
                                       final double z)
             throws IOException {

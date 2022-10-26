@@ -23,8 +23,8 @@ public class DebugTransformedCornersClientTest {
                 "--project", "wafer_52c",
 
                 // include multiple stacks to compare
-                "--stack", "v1_acquire_slab_001",
-//                "--stack", "v1_acquire_slab_001_trimmed_align",
+//                "--stack", "v1_acquire_slab_001",
+                "--stack", "v1_acquire_slab_001_trimmed_align",
 
                 "--xyNeighborFactor", "0.6", // for tiles completely within mFov
 //                "--xyNeighborFactor", "0.3", // for tiles that overlap another mFov
