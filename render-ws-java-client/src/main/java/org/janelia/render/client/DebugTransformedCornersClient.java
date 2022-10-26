@@ -302,8 +302,8 @@ public class DebugTransformedCornersClient {
                         {
                         	final List<Point> p0 = getUnTransformedCornerPoints(pTileSpec);
 
-                            for ( final Point p : p0 )
-                            	System.out.println( "l=" + Util.printCoordinates(p.getL()) + ", w=" + Util.printCoordinates(p.getW()));
+                            //for ( final Point p : p0 )
+                            //	System.out.println( "l=" + Util.printCoordinates(p.getL()) + ", w=" + Util.printCoordinates(p.getW()));
 
                             final List<Point> pC = getTransformedCornerPoints(pTileSpec);
                             final List<Point> qC = getTransformedCornerPoints(qTileSpec);
@@ -327,11 +327,10 @@ public class DebugTransformedCornersClient {
                     				qC.get( i ).apply( model );
                     				qTransformedCornersAll.add(new Point(qC.get(i).getW()));
 
-                                	System.out.println( "p=" + Util.printCoordinates(pTransformedCornersAll.get(i).getL()) + ", q=" + Util.printCoordinates(qTransformedCornersAll.get(i).getL()));
+                                	//System.out.println( "p=" + Util.printCoordinates(pTransformedCornersAll.get(i).getL()) + ", q=" + Util.printCoordinates(qTransformedCornersAll.get(i).getL()));
                     			}
-                    			System.out.println( model + ", " + model.getClass().getSimpleName());
-
-                    			System.exit( 0 );
+                    			//System.out.println( model + ", " + model.getClass().getSimpleName());
+                    			//System.exit( 0 );
                     		} catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
                     			e.printStackTrace();
                     		}
@@ -375,17 +374,19 @@ public class DebugTransformedCornersClient {
         try {
         	model.fit( matches );
 			double error = 0;
+			double maxError = 0;
 			
 			for ( final PointMatch pm : matches )
 			{
 				pm.apply( model );
 				error += pm.getDistance();
+				maxError = Math.max( maxError, pm.getDistance() );
 			}
 
 			error /= matches.size();
 
 			model.setCost( error );
-			System.out.println( "e=" + error + " " + model + ", " + model.getClass().getSimpleName());
+			System.out.println( "maxE=" + maxError + " " + model + ", " + model.getClass().getSimpleName());
 
 		} catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
 			// TODO Auto-generated catch block
