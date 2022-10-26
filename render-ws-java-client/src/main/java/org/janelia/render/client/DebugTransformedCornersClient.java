@@ -269,6 +269,10 @@ public class DebugTransformedCornersClient {
             neighborPairs.addAll(currentNeighborPairs);
         }
 
+        // compute a model across all corner points
+        final List<Point> pTransformedCornersAll = new ArrayList<>();
+        final List<Point> qTransformedCornersAll = new ArrayList<>();
+        
         if (neighborPairs.size() > 0) {
             final Map<Double, ResolvedTileSpecCollection> zToTilesMap = new HashMap<>(zValues.size());
             for (final Double zVal : zValues) {
@@ -292,6 +296,58 @@ public class DebugTransformedCornersClient {
                 	//System.out.println( pTileSpec.getTileId() + "  " + qTileSpec.getTileId() );//001_000003_045
                 		debugInfo.add(formatCornerPointDistances(stackName, pTileSpec, qTileSpec));
 
+
+                        // find a model that maps the p corners to previous p corners (if they exist)
+                        // because we only want a relative model
+                        if ( pTransformedCornersAll.size() > 0 )
+                        {
+                        	final List<Point> p0 = new ArrayList<>();
+                        	for ( int i = 0; i < 4; ++i )
+                        		p0.add( new Point(pTransformedCornersAll.get( i ).getL() ) );
+
+                            //for ( final Point p : p0 )
+                            //	System.out.println( "l=" + Util.printCoordinates(p.getL()) + ", w=" + Util.printCoordinates(p.getW()));
+
+                            final List<Point> pC = getTransformedCornerPoints(pTileSpec);
+                            final List<Point> qC = getTransformedCornerPoints(qTileSpec);
+
+                            final ArrayList< PointMatch > matches = new ArrayList<>();
+                            for ( int i = 0; i < p0.size(); ++i )
+                            	matches.add( new PointMatch(pC.get( i ), p0.get( i )));
+
+                            final AffineModel2D model = new AffineModel2D();
+                            try {
+                            	model.fit( matches );
+                    			//double error = 0;
+                    			
+                    			for ( final PointMatch pm : matches )
+                    			{
+                    				pm.apply( model );
+                    				//error += pm.getDistance();
+                    			}
+
+                    			// apply the model to pCorners and qCorners so we only keep a relative model
+                    			for ( int i = 0; i < 4; ++i )
+                    			{
+                    				pTransformedCornersAll.add(new Point(pC.get(i).getW()));
+                    				qC.get( i ).apply( model );
+                    				qTransformedCornersAll.add(new Point(qC.get(i).getW()));
+
+                                	//System.out.println( "p=" + Util.printCoordinates(pTransformedCornersAll.get(i).getL()) + ", q=" + Util.printCoordinates(qTransformedCornersAll.get(i).getL()));
+                    			}
+                    			//model.setCost( error );
+                    			//System.out.println( "e=" + error + " " + model + ", " + model.getClass().getSimpleName());
+
+                    		} catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+                    			e.printStackTrace();
+                    		}
+                        }
+                        else
+                        {
+                        	pTransformedCornersAll.addAll( getTransformedCornerPoints(pTileSpec) );
+                        	qTransformedCornersAll.addAll( getTransformedCornerPoints(qTileSpec) );
+                        }
+
                 		// l and w are transformed
                         final List<Point> pTransformedCorners = getTransformedCornerPoints(pTileSpec);
                         final List<Point> qTransformedCorners = getTransformedCornerPoints(qTileSpec);
@@ -302,11 +358,20 @@ public class DebugTransformedCornersClient {
                         // the model tells us how much the translation changes,
                         // the error tells us how affine it is
                         computeError(pTransformedCorners, qTransformedCorners, new TranslationModel2D() );
-                        computeError(pTransformedCorners, qTransformedCorners, new RigidModel2D() );
+                        //computeError(pTransformedCorners, qTransformedCorners, new RigidModel2D() );
                 	}
                 }
             });
         }
+
+        System.out.println( );
+
+        //computeError(pTransformedCornersAll, qTransformedCornersAll, new TranslationModel2D() );
+        //computeError(pTransformedCornersAll, qTransformedCornersAll, new RigidModel2D() );
+        computeError(pTransformedCornersAll, qTransformedCornersAll, new AffineModel2D() );
+
+
+        System.exit( 0 );
 
         return debugInfo;
     }
@@ -328,8 +393,10 @@ public class DebugTransformedCornersClient {
 				error += pm.getDistance();
 			}
 
+			error /= matches.size();
+
 			model.setCost( error );
-			System.out.println( model.getClass().getSimpleName() + ", e=" + error + ", " + model );
+			System.out.println( "e=" + error + " " + model + ", " + model.getClass().getSimpleName());
 
 		} catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
 			// TODO Auto-generated catch block
