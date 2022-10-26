@@ -358,21 +358,45 @@ public class DebugTransformedCornersClient {
         //computeError(pTransformedCornersAll, qTransformedCornersAll, new RigidModel2D() );
         computeError(pTransformedCornersAll, qTransformedCornersAll, new AffineModel2D() );
 
+        // model from metadata
+        computeError(pTransformedCornersAll, qTransformedCornersAll, stringToModel( "[1.0, 0.0, 957.4067568339881], [0.0, 1.0, -1640.2727272727273]" ), false );
 
         System.exit( 0 );
 
         return debugInfo;
     }
 
+    // e.g. "[1.0, 0.0, 957.4067568339881], [0.0, 1.0, -1640.2727272727273]"
+    public static AffineModel2D stringToModel( String modelString )
+    {
+    	modelString = modelString.replace("[", "" );
+    	modelString = modelString.replace("]", "" );
+    	modelString = modelString.replace(" ", "" );
+    	modelString = modelString.trim();
+
+    	String[] s = modelString.split( "," );
+
+    	final AffineModel2D model = new AffineModel2D();
+        model.set(Double.parseDouble(s[0]), Double.parseDouble(s[1]), Double.parseDouble(s[3]), Double.parseDouble(s[4]), Double.parseDouble(s[2]), Double.parseDouble(s[5]));
+
+    	return model;
+    }
+
     public static void computeError( final List<Point> p, final List<Point> q, final Model<?> model )
+    {
+    	computeError(p, q, model, true );
+    }
+
+    public static void computeError( final List<Point> p, final List<Point> q, final Model<?> model, final boolean fit )
     {
         final ArrayList< PointMatch > matches = new ArrayList<>();
         for ( int i = 0; i < p.size(); ++i )
         	matches.add( new PointMatch(p.get( i ), q.get( i )));
 
-        //final TranslationModel2D t = new TranslationModel2D();
         try {
-        	model.fit( matches );
+        	if ( fit )
+        		model.fit( matches );
+
 			double error = 0;
 			double maxError = 0;
 			

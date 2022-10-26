@@ -37,7 +37,7 @@ public class DebugTransformedCornersClientTest {
 
                 "--tileIdPattern", "001_000003_070.*",
                 "--tileId2", "001_000003_045",
-                "--maxZ", "1230",
+                "--maxZ", "1235",
         };
 
         DebugTransformedCornersClient.main(effectiveArgs);
