@@ -297,16 +297,13 @@ public class DebugTransformedCornersClient {
                 		debugInfo.add(formatCornerPointDistances(stackName, pTileSpec, qTileSpec));
 
 
-                        // find a model that maps the p corners to previous p corners (if they exist)
+                        // find a model that maps the p corners to metadata p corners and apply it to q corners as well
                         // because we only want a relative model
-                        if ( pTransformedCornersAll.size() > 0 )
                         {
-                        	final List<Point> p0 = new ArrayList<>();
-                        	for ( int i = 0; i < 4; ++i )
-                        		p0.add( new Point(pTransformedCornersAll.get( i ).getL() ) );
+                        	final List<Point> p0 = getUnTransformedCornerPoints(pTileSpec);
 
-                            //for ( final Point p : p0 )
-                            //	System.out.println( "l=" + Util.printCoordinates(p.getL()) + ", w=" + Util.printCoordinates(p.getW()));
+                            for ( final Point p : p0 )
+                            	System.out.println( "l=" + Util.printCoordinates(p.getL()) + ", w=" + Util.printCoordinates(p.getW()));
 
                             final List<Point> pC = getTransformedCornerPoints(pTileSpec);
                             final List<Point> qC = getTransformedCornerPoints(qTileSpec);
@@ -318,12 +315,12 @@ public class DebugTransformedCornersClient {
                             final AffineModel2D model = new AffineModel2D();
                             try {
                             	model.fit( matches );
-                    			//double error = 0;
+                    			double error = 0;
                     			
                     			for ( final PointMatch pm : matches )
                     			{
                     				pm.apply( model );
-                    				//error += pm.getDistance();
+                    				error += pm.getDistance();
                     			}
 
                     			// apply the model to pCorners and qCorners so we only keep a relative model
@@ -333,20 +330,21 @@ public class DebugTransformedCornersClient {
                     				qC.get( i ).apply( model );
                     				qTransformedCornersAll.add(new Point(qC.get(i).getW()));
 
-                                	//System.out.println( "p=" + Util.printCoordinates(pTransformedCornersAll.get(i).getL()) + ", q=" + Util.printCoordinates(qTransformedCornersAll.get(i).getL()));
+                                	System.out.println( "p=" + Util.printCoordinates(pTransformedCornersAll.get(i).getL()) + ", q=" + Util.printCoordinates(qTransformedCornersAll.get(i).getL()));
                     			}
-                    			//model.setCost( error );
-                    			//System.out.println( "e=" + error + " " + model + ", " + model.getClass().getSimpleName());
+                    			model.setCost( error );
+                    			System.out.println( "e=" + error + " " + model + ", " + model.getClass().getSimpleName());
 
+                    			System.exit( 0 );
                     		} catch (NotEnoughDataPointsException | IllDefinedDataPointsException e) {
                     			e.printStackTrace();
                     		}
-                        }
+                        }/*
                         else
                         {
                         	pTransformedCornersAll.addAll( getTransformedCornerPoints(pTileSpec) );
                         	qTransformedCornersAll.addAll( getTransformedCornerPoints(qTileSpec) );
-                        }
+                        }*/
 
                 		// l and w are transformed
                         final List<Point> pTransformedCorners = getTransformedCornerPoints(pTileSpec);
@@ -426,6 +424,24 @@ public class DebugTransformedCornersClient {
         final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
         for (final double[] rawCornerLocation : rawCornerLocations)  {
             transformedCornerPoints.add(new Point(transformList.apply(rawCornerLocation)));
+        }
+
+        return transformedCornerPoints;
+    }
+
+    public static List<Point> getUnTransformedCornerPoints(final TileSpec tileSpec) {
+
+        final List<Point> transformedCornerPoints = new ArrayList<>();
+
+        final double[][] rawCornerLocations = {
+            {                   0,                    0 },
+            { tileSpec.getWidth(),                    0 },
+            {                   0, tileSpec.getHeight() },
+            { tileSpec.getWidth(), tileSpec.getHeight() }
+        };
+
+        for (final double[] rawCornerLocation : rawCornerLocations)  {
+            transformedCornerPoints.add(new Point(rawCornerLocation));
         }
 
         return transformedCornerPoints;
