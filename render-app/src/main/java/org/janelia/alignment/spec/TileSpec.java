@@ -451,6 +451,16 @@ public class TileSpec implements Serializable {
     }
 
     @JsonIgnore
+    public double[][] getRawCornerLocations() {
+        return new double[][] {
+                {               0,                0 },
+                { this.getWidth(),                0 },
+                {               0, this.getHeight() },
+                { this.getWidth(), this.getHeight() }
+        };
+    }
+
+    @JsonIgnore
     public List<ChannelSpec> getAllChannels() {
         final List<ChannelSpec> channelList;
         if ((channels == null) || (channels.size() == 0)) {
