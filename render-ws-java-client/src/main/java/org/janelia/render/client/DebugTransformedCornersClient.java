@@ -24,9 +24,7 @@ import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
-import net.imglib2.util.Util;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
@@ -430,12 +428,7 @@ public class DebugTransformedCornersClient {
 
         final List<Point> transformedCornerPoints = new ArrayList<>();
 
-        final double[][] rawCornerLocations = {
-            {                   0,                    0 },
-            { tileSpec.getWidth(),                    0 },
-            {                   0, tileSpec.getHeight() },
-            { tileSpec.getWidth(), tileSpec.getHeight() }
-        };
+        final double[][] rawCornerLocations = tileSpec.getRawCornerLocations();
 
         final CoordinateTransformList<CoordinateTransform> transformList = tileSpec.getTransformList();
         for (final double[] rawCornerLocation : rawCornerLocations)  {
@@ -449,12 +442,7 @@ public class DebugTransformedCornersClient {
 
         final List<Point> transformedCornerPoints = new ArrayList<>();
 
-        final double[][] rawCornerLocations = {
-            {                   0,                    0 },
-            { tileSpec.getWidth(),                    0 },
-            {                   0, tileSpec.getHeight() },
-            { tileSpec.getWidth(), tileSpec.getHeight() }
-        };
+        final double[][] rawCornerLocations = tileSpec.getRawCornerLocations();
 
         for (final double[] rawCornerLocation : rawCornerLocations)  {
             transformedCornerPoints.add(new Point(rawCornerLocation));
