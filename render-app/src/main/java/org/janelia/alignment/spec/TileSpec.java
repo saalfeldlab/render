@@ -36,6 +36,7 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.CoordinateTransformMesh;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.Point;
 import mpicbg.trakem2.transform.TransformMesh;
 
 import org.janelia.alignment.ImageAndMask;
@@ -460,6 +461,34 @@ public class TileSpec implements Serializable {
         };
     }
 
+    /**
+     * @return raw corner locations without any transformation as a list of {@link Point} objects.
+     */
+    @JsonIgnore
+    public List<Point> getUnTransformedCornerPoints() {
+        final List<Point> transformedCornerPoints = new ArrayList<>();
+        final double[][] rawCornerLocations = this.getRawCornerLocations();
+        for (final double[] rawCornerLocation : rawCornerLocations)  {
+            transformedCornerPoints.add(new Point(rawCornerLocation));
+        }
+        return transformedCornerPoints;
+    }
+
+    /**
+     * @return raw corner locations with match process (e.g. lens correction) transformations applied
+     *         as a list of {@link Point} objects.
+     */
+    @JsonIgnore
+    public List<Point> getMatchingTransformedCornerPoints() {
+        final List<Point> transformedCornerPoints = new ArrayList<>();
+        final double[][] rawCornerLocations = this.getRawCornerLocations();
+        final CoordinateTransformList<CoordinateTransform> transformList = this.getMatchingTransformList();
+        for (final double[] rawCornerLocation : rawCornerLocations)  {
+            transformedCornerPoints.add(new Point(transformList.apply(rawCornerLocation)));
+        }
+        return transformedCornerPoints;
+    }
+
     @JsonIgnore
     public List<ChannelSpec> getAllChannels() {
         final List<ChannelSpec> channelList;
@@ -715,6 +744,30 @@ public class TileSpec implements Serializable {
             ctl = new CoordinateTransformList<>();
         } else {
             ctl = transforms.getNewInstanceAsList();
+        }
+
+        return ctl;
+    }
+
+    /**
+     * Get a copy of this spec's match (e.g. lens correction) transforms as a {@link CoordinateTransformList}.
+     * If this spec does not have any transforms, an empty list is returned.
+     *
+     * @return list of transforms used for point match derivation.
+     *
+     * @throws IllegalArgumentException
+     *   if the list cannot be generated.
+     */
+    @JsonIgnore
+    public CoordinateTransformList<CoordinateTransform> getMatchingTransformList()
+            throws IllegalArgumentException {
+
+        final CoordinateTransformList<CoordinateTransform> ctl;
+        if (transforms == null) {
+            ctl = new CoordinateTransformList<>();
+        } else {
+            final ListTransformSpec matchTransforms = transforms.getMatchSpecList();
+            ctl = matchTransforms.getNewInstanceAsList();
         }
 
         return ctl;

@@ -12,7 +12,7 @@ import mpicbg.models.CoordinateTransformList;
 
 /**
  * List of transform specifications.
- *
+ * <p/>
  * NOTE: Annotations on the {@link TransformSpec} implementation handle
  * polymorphic deserialization for this class.
  *
@@ -210,11 +210,36 @@ public class ListTransformSpec extends TransformSpec {
     }
 
     /**
+     * Flattens this list of transform specs, removes transforms not used for point match derivation,
+     * and returns that list.
+     * If this list contains any transforms explicitly labelled with {@link #MATCH_LABEL},
+     * all transforms after the last labelled transform are removed.
+     * Otherwise, by convention, only the list's last transform is removed.
+     *
+     * @return a flattened list of the "match" transforms within this list.
+     */
+    @JsonIgnore
+    public ListTransformSpec getMatchSpecList() {
+        final ListTransformSpec flattenedList = new ListTransformSpec();
+
+        flatten(flattenedList);
+
+        final int listSize = flattenedList.specList.size();
+        final int lastMatchIndex = getLastMatchIndex(flattenedList, listSize);
+
+        if (lastMatchIndex > -1) {
+            flattenedList.specList = flattenedList.specList.subList(0, lastMatchIndex);
+        }
+
+        return flattenedList;
+    }
+
+    /**
      * Flattens this list of transform specs, removes transforms used for point match derivation,
      * and returns the list of remaining "post match" transforms.
      * If this list contains any transforms explicitly labelled with {@link #MATCH_LABEL},
      * all transforms after the last labelled transform are considered "post match".
-     * Otherwise by convention, only the list's last transform is considered "post match".
+     * Otherwise, by convention, only the list's last transform is considered "post match".
      *
      * @return a flattened list of the "post match" transforms within this list.
      */
@@ -225,13 +250,7 @@ public class ListTransformSpec extends TransformSpec {
         flatten(flattenedList);
 
         final int listSize = flattenedList.specList.size();
-        int lastMatchIndex = listSize - 1; // convention is all but last transform are used for matching
-
-        for (int i = 0; i < listSize; i++) {
-            if (flattenedList.specList.get(i).hasMatchLabel()) {
-                lastMatchIndex = i; // override convention if explicitly labelled transforms are found
-            }
-        }
+        final int lastMatchIndex = getLastMatchIndex(flattenedList, listSize);
 
         if (lastMatchIndex > -1) {
             flattenedList.specList = flattenedList.specList.subList(lastMatchIndex, listSize);
@@ -255,5 +274,17 @@ public class ListTransformSpec extends TransformSpec {
             ctList.add(spec.buildInstance());
         }
         return ctList;
+    }
+
+    private static int getLastMatchIndex(final ListTransformSpec flattenedList,
+                                         final int listSize) {
+        int lastMatchIndex = listSize - 1; // convention is all but last transform are used for matching
+
+        for (int i = 0; i < listSize; i++) {
+            if (flattenedList.specList.get(i).hasMatchLabel()) {
+                lastMatchIndex = i; // override convention if explicitly labelled transforms are found
+            }
+        }
+        return lastMatchIndex;
     }
 }
