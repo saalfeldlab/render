@@ -28,6 +28,7 @@ public class MFOVMatchClientTest {
                 "--matchCollection", "wafer_52c_v1",
 
                 "--mfov", "001_000004",
+                "--matchStorageFile", "/tmp/001_000004_missing.json",
         };
 
         MFOVMatchClient.main(effectiveArgs);

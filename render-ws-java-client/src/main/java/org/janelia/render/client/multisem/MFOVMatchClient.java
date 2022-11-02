@@ -4,6 +4,9 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,6 +22,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -78,11 +82,36 @@ public class MFOVMatchClient {
         )
         public Double xyNeighborFactor;
 
+        @Parameter(
+                names = "--matchStorageFile",
+                description = "File to store matches (omit if matches should be stored through web service)"
+        )
+        public String matchStorageFile = null;
+
         public Parameters() {
         }
 
         public String getMatchOwner() {
             return matchOwner == null ? renderWeb.owner : matchOwner;
+        }
+
+        public void validate()
+                throws IllegalArgumentException {
+
+            if ((multiFieldOfViewId == null) || (multiFieldOfViewId.length() != 10)) {
+                throw new IllegalArgumentException("--mfov should be a 10 character value (e.g. 001_000006)");
+            }
+
+            if (matchStorageFile != null) {
+                final Path storagePath = Paths.get(matchStorageFile).toAbsolutePath();
+                if (Files.exists(storagePath)) {
+                    if (Files.isWritable(storagePath)) {
+                        throw new IllegalArgumentException("not allowed to write to " + storagePath);
+                    }
+                } else if (!Files.isWritable(storagePath.getParent())) {
+                    throw new IllegalArgumentException("not allowed to write to " + storagePath.getParent());
+                }
+            }
         }
     }
 
@@ -95,11 +124,12 @@ public class MFOVMatchClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
+                parameters.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final MFOVMatchClient client = new MFOVMatchClient(parameters);
-                client.deriveMatchesForMissingPairs();
+                client.deriveAndSaveMatchesForMissingPairs();
             }
         };
         clientRunner.run();
@@ -117,10 +147,10 @@ public class MFOVMatchClient {
                                                 parameters.matchCollection);
     }
 
-    public void deriveMatchesForMissingPairs()
+    public void deriveAndSaveMatchesForMissingPairs()
             throws IOException {
 
-        LOG.info("deriveMatchesForMissingPairs: entry");
+        LOG.info("deriveAndSaveMatchesForMissingPairs: entry");
 
         final Map<Double, Set<String>> zToSectionIdsMap =
                 renderDataClient.getStackZToSectionIdsMap(parameters.stack,
@@ -146,27 +176,37 @@ public class MFOVMatchClient {
             positionToPairs.remove(positionPair);
         }
 
-        LOG.info("deriveMatchesForMissingPairs: {} out of {} positions are missing at least one pair across z in slab",
+        LOG.info("deriveAndSaveMatchesForMissingPairs: {} out of {} positions are missing at least one pair across z in slab",
                  positionToPairs.size(), totalNumberOfPositions);
+
+        final List<CanvasMatches> derivedMatchesForMFOV = new ArrayList<>();
 
         final List<MFOVPositionPair> sortedPositions =
                 positionToPairs.keySet().stream().sorted().collect(Collectors.toList());
         for (final MFOVPositionPair positionPair : sortedPositions) {
             final MFOVPositionPairMatchData positionPairMatchData = positionToPairs.get(positionPair);
-            final List<CanvasMatches> derivedMatches =
+            derivedMatchesForMFOV.addAll(
                     positionPairMatchData.deriveMatchesForMissingPairs(matchClient,
-                                                                       parameters.storedMatchWeight);
-            // TODO: remove debug json output
-            for (final CanvasMatches canvasMatches : derivedMatches) {
-                System.out.println(canvasMatches.toJson());
-            }
-            // TODO: remove break
-            break;
-            
-            // TODO: save matches for missing pairs
+                                                                       parameters.storedMatchWeight));
         }
 
-        LOG.info("deriveMatchesForMissingPairs: exit");
+        if (derivedMatchesForMFOV.size() > 0) {
+
+            LOG.info("deriveAndSaveMatchesForMissingPairs: saving matches for {} pairs", derivedMatchesForMFOV.size());
+
+            if (parameters.matchStorageFile != null) {
+                final Path storagePath = Paths.get(parameters.matchStorageFile).toAbsolutePath();
+                FileUtil.saveJsonFile(storagePath.toString(), derivedMatchesForMFOV);
+            } else {
+                // TODO: uncomment save when we are ready
+                // renderDataClient.saveMatches(derivedMatchesForMFOV);
+            }
+
+        } else {
+            LOG.info("deriveAndSaveMatchesForMissingPairs: no pairs have matches so there is nothing to save");
+        }
+
+        LOG.info("deriveAndSaveMatchesForMissingPairs: exit");
     }
     
     public void updatePositionPairDataForZ(final Double z,
