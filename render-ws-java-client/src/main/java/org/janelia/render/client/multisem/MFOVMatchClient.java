@@ -27,6 +27,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,6 +95,15 @@ public class MFOVMatchClient {
         )
         public String qTileId;
         public String qTileIdPrefixForRun;
+
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
+
+        @Parameter(
+                names = "--z",
+                description = "Z value of layer to be copied (omit to copy all layers)",
+                variableArity = true)
+        public List<Double> zValues;
 
         @Parameter(
                 names = "--matchStorageFile",
@@ -201,9 +211,9 @@ public class MFOVMatchClient {
 
         final Map<Double, Set<String>> zToSectionIdsMap =
                 renderDataClient.getStackZToSectionIdsMap(parameters.stack,
-                                                          null,
-                                                          null,
-                                                          null);
+                                                          parameters.layerRange.minZ,
+                                                          parameters.layerRange.maxZ,
+                                                          parameters.zValues);
 
         final Map<MFOVPositionPair, MFOVPositionPairMatchData> positionToPairs = new HashMap<>();
 
