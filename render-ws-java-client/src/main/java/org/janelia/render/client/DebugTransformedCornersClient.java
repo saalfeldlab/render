@@ -391,6 +391,12 @@ public class DebugTransformedCornersClient {
         final ArrayList< PointMatch > matches = new ArrayList<>();
         for ( int i = 0; i < p.size(); ++i )
         	matches.add( new PointMatch(p.get( i ), q.get( i )));
+        
+        computeError(matches, model, fit);
+    }
+
+    public static void computeError( final List<PointMatch> matches, final Model<?> model, final boolean fit )
+    {
 
         try {
         	if ( fit )

@@ -127,6 +127,20 @@ public class MFOVPositionPairMatchData
         final AffineModel2D existingCornerMatchModel = new AffineModel2D();
         try {
             existingCornerMatchModel.fit(existingCornerMatchList);
+
+            // compute the error & maxError, remember worst for now?
+			double error = 0;
+			double maxError = 0;
+			
+			for ( final PointMatch pm : existingCornerMatchList )
+			{
+				pm.apply( existingCornerMatchModel );
+				error += pm.getDistance();
+				maxError = Math.max( maxError, pm.getDistance() );
+			}
+
+			error /= existingCornerMatchList.size();
+
         } catch (final Exception e) {
             throw new IOException("failed to fit model for corner matches", e);
         }
