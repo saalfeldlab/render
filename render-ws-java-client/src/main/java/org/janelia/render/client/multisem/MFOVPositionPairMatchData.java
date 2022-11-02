@@ -119,6 +119,8 @@ public class MFOVPositionPairMatchData
                 final AffineModel2D existingMatchModel = new AffineModel2D();
                 try {
                     existingMatchModel.fit(existingMatchList);
+                    LOG.debug("deriveMatchesForUnconnectedPairs: existingMatchModel after fit is {}",
+                              existingMatchModel);
                 } catch (final Exception e) {
                     throw new IOException("failed to fit model for pair " + pair, e);
                 }
@@ -143,6 +145,9 @@ public class MFOVPositionPairMatchData
         try {
             existingCornerMatchModel.fit(existingCornerMatchList);
 
+            LOG.debug("deriveMatchesForUnconnectedPairs: existingCornerMatchModel after fit is {}",
+                      existingCornerMatchModel);
+
             // compute the error & maxError, remember worst for now?
 			double error = 0;
 			double maxError = 0;
@@ -155,6 +160,9 @@ public class MFOVPositionPairMatchData
 			}
 
 			error /= existingCornerMatchList.size();
+
+            LOG.info("deriveMatchesForUnconnectedPairs: existingCornerMatchModel error is {} and maxError is {}",
+                      error, maxError);
 
         } catch (final Exception e) {
             throw new IOException("failed to fit model for corner matches", e);
