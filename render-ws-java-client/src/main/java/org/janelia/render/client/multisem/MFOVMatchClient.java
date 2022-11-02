@@ -84,6 +84,12 @@ public class MFOVMatchClient {
         public String getMatchOwner() {
             return matchOwner == null ? renderWeb.owner : matchOwner;
         }
+
+        public void validate() throws IllegalArgumentException {
+            if ((multiFieldOfViewId == null) || (multiFieldOfViewId.length() != 10)) {
+                throw new IllegalArgumentException("--mfov should be a 10 character value (e.g. 001_000006)");
+            }
+        }
     }
 
     public static void main(final String[] args) {
@@ -95,6 +101,7 @@ public class MFOVMatchClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
+                parameters.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
