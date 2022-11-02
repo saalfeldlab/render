@@ -356,9 +356,10 @@ public class DebugTransformedCornersClient {
         //computeError(pTransformedCornersAll, qTransformedCornersAll, new RigidModel2D() );
         computeError(pTransformedCornersAll, qTransformedCornersAll, new AffineModel2D() );
 
+        /*
         // model from metadata
-        computeError(pTransformedCornersAll, qTransformedCornersAll, stringToModel( "[1.0, 0.0, 957.4067568339881], [0.0, 1.0, -1640.2727272727273]" ), false );
-
+        computeError(pTransformedCornersAll, qTransformedCornersAll, stringToModel( "[1.0, 0.0, 932.35990682446], [0.0, 1.0, 177.27272727272725]" ), false );
+		*/
         System.exit( 0 );
 
         return debugInfo;
@@ -390,6 +391,12 @@ public class DebugTransformedCornersClient {
         final ArrayList< PointMatch > matches = new ArrayList<>();
         for ( int i = 0; i < p.size(); ++i )
         	matches.add( new PointMatch(p.get( i ), q.get( i )));
+        
+        computeError(matches, model, fit);
+    }
+
+    public static void computeError( final List<PointMatch> matches, final Model<?> model, final boolean fit )
+    {
 
         try {
         	if ( fit )

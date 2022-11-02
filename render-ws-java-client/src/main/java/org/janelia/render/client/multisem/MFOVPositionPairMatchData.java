@@ -87,17 +87,20 @@ public class MFOVPositionPairMatchData
 
         final List<PointMatch> existingCornerMatchList = new ArrayList<>();
 
+        // a single pair of tiles across all z layers
         for (final OrderedCanvasIdPair pair : potentialPairs) {
-            if (! missingPairs.contains(pair)) {
+            if (! missingPairs.contains(pair)) { // missingPairs are those that are not connected
                 final CanvasId p = pair.getP();
                 final CanvasId q = pair.getQ();
                 final CanvasMatches canvasMatches = matchClient.getMatchesBetweenTiles(p.getGroupId(),
                                                                                        p.getId(),
                                                                                        q.getGroupId(),
                                                                                        q.getId());
+                // this is specific for a z
                 final List<PointMatch> existingMatchList =
                         CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
 
+                // PointMatch(p,q), will find a model that maps local coord of p to world coord of q
                 final AffineModel2D existingMatchModel = new AffineModel2D();
                 try {
                     existingMatchModel.fit(existingMatchList);
@@ -112,19 +115,37 @@ public class MFOVPositionPairMatchData
                 for (int i = 0; i < pLensCorrectedCorners.size(); i++) {
                     final Point pCorner = pLensCorrectedCorners.get(i);
                     final Point qCorner = qLensCorrectedCorners.get(i);
-                    qCorner.apply(existingMatchModel);
+                    qCorner.apply(existingMatchModel); // wrong? should be p or PointMatches should be (q,p) or the inverse of the model
                     existingCornerMatchList.add(new PointMatch(pCorner, qCorner));
                 }
             }
         }
 
+        // fit a model to all corner points across z that had pointmatches
+        // TODO: RANSAC?
+        // TODO: compute errors and display?
         final AffineModel2D existingCornerMatchModel = new AffineModel2D();
         try {
             existingCornerMatchModel.fit(existingCornerMatchList);
+
+            // compute the error & maxError, remember worst for now?
+			double error = 0;
+			double maxError = 0;
+			
+			for ( final PointMatch pm : existingCornerMatchList )
+			{
+				pm.apply( existingCornerMatchModel );
+				error += pm.getDistance();
+				maxError = Math.max( maxError, pm.getDistance() );
+			}
+
+			error /= existingCornerMatchList.size();
+
         } catch (final Exception e) {
             throw new IOException("failed to fit model for corner matches", e);
         }
 
+        // for each missing pair do
         for (final OrderedCanvasIdPair pair : missingPairs) {
 
             final List<PointMatch> missingCornerMatchList = new ArrayList<>();
@@ -140,11 +161,12 @@ public class MFOVPositionPairMatchData
             for (int i = 0; i < pLensCorrectedCorners.size(); i++) {
                 final Point pCorner = pLensCorrectedCorners.get(i);
                 final Point qCorner = qLensCorrectedCorners.get(i);
-                qCorner.apply(existingCornerMatchModel);
+                qCorner.apply(existingCornerMatchModel); // wrong? should be p or PointMatches should be (q,p) or the inverse of the model
                 final Point transformedQCorner = new Point(qCorner.getW()); // need to use q world coordinates
                 missingCornerMatchList.add(new PointMatch(pCorner, transformedQCorner, derivedMatchWeight));
             }
 
+            // TODO: weights?
             derivedMatchesList.add(
                     new CanvasMatches(p.getGroupId(),
                                       p.getId(),
