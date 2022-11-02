@@ -54,8 +54,7 @@ public class MFOVMatchClient {
 
         @Parameter(
                 names = "--mfov",
-                description = "Multi-field-of-view identifier <slab number>_<mfov number> (e.g. 001_000006)",
-                required = true)
+                description = "Multi-field-of-view identifier <slab number>_<mfov number> (e.g. 001_000006)")
         public String multiFieldOfViewId;
 
         @Parameter(
@@ -83,10 +82,24 @@ public class MFOVMatchClient {
         public Double xyNeighborFactor;
 
         @Parameter(
+                names = "--pTileId",
+                description = "Only derive matches for positions associated with this p tile (overrides --mfov parameter)"
+        )
+        public String pTileId;
+        public String pTileIdPrefixForRun;
+
+        @Parameter(
+                names = "--qTileId",
+                description = "Only derive matches for positions associated with this q tile (overrides --mfov parameter)"
+        )
+        public String qTileId;
+        public String qTileIdPrefixForRun;
+
+        @Parameter(
                 names = "--matchStorageFile",
                 description = "File to store matches (omit if matches should be stored through web service)"
         )
-        public String matchStorageFile = null;
+        public String matchStorageFile;
 
         public Parameters() {
         }
@@ -95,20 +108,54 @@ public class MFOVMatchClient {
             return matchOwner == null ? renderWeb.owner : matchOwner;
         }
 
-        public void validate()
+        // 001_000006_019_20220407_115555.1247.0 => 001_000006
+        public String getMFOVForTileId(final String tileId) throws IllegalArgumentException {
+            if (tileId.length() < 10) {
+                throw new IllegalArgumentException("MFOV identifier cannot be derived from tileId " + tileId);
+            }
+            return tileId.substring(0, 10);
+        }
+
+        // 001_000006_019_20220407_115555.1247.0 => 001_000006_019
+        public String getTileIdPrefixForRun(final String tileId) throws IllegalArgumentException {
+            if (tileId.length() < 14) {
+                throw new IllegalArgumentException("MFOV position cannot be derived from tileId " + tileId);
+            }
+            return tileId.substring(0, 14);
+        }
+
+        public void validateAndSetupDerivedValues()
                 throws IllegalArgumentException {
 
-            if ((multiFieldOfViewId == null) || (multiFieldOfViewId.length() != 10)) {
+            if (pTileId != null) {
+                multiFieldOfViewId = getMFOVForTileId(pTileId);
+                pTileIdPrefixForRun = getTileIdPrefixForRun(pTileId);
+                if (qTileId != null) {
+                    if (! multiFieldOfViewId.equals(getMFOVForTileId(qTileId))) {
+                        throw new IllegalArgumentException("pTileId and qTileId reference different MFOVs");
+                    }
+                    qTileIdPrefixForRun = getTileIdPrefixForRun(qTileId);
+                } else {
+                    qTileIdPrefixForRun = multiFieldOfViewId;
+                }
+            } else if (qTileId != null) {
+                multiFieldOfViewId = getMFOVForTileId(qTileId);
+                qTileIdPrefixForRun = getTileIdPrefixForRun(qTileId);
+                pTileIdPrefixForRun = multiFieldOfViewId;
+            } else if ((multiFieldOfViewId == null) || (multiFieldOfViewId.length() != 10)) {
                 throw new IllegalArgumentException("--mfov should be a 10 character value (e.g. 001_000006)");
+            } else {
+                pTileIdPrefixForRun = multiFieldOfViewId;
+                qTileIdPrefixForRun = multiFieldOfViewId;
             }
 
             if (matchStorageFile != null) {
                 final Path storagePath = Paths.get(matchStorageFile).toAbsolutePath();
                 if (Files.exists(storagePath)) {
-                    if (Files.isWritable(storagePath)) {
+                    if (! Files.isWritable(storagePath)) {
                         throw new IllegalArgumentException("not allowed to write to " + storagePath);
                     }
-                } else if (!Files.isWritable(storagePath.getParent())) {
+                } else if (! Files.isWritable(storagePath.getParent())) {
                     throw new IllegalArgumentException("not allowed to write to " + storagePath.getParent());
                 }
             }
@@ -124,7 +171,7 @@ public class MFOVMatchClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-                parameters.validate();
+                parameters.validateAndSetupDerivedValues();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -233,8 +280,8 @@ public class MFOVMatchClient {
         // add all MFOV tile pairs to unconnected set
         final Set<OrderedCanvasIdPair> unconnectedPairsForMFOV = new HashSet<>(potentialPairsForZ.size());
         for (final OrderedCanvasIdPair pair : potentialPairsForZ) {
-            if (pair.getP().getId().startsWith(parameters.multiFieldOfViewId) &&
-                pair.getQ().getId().startsWith(parameters.multiFieldOfViewId)) {
+            if (pair.getP().getId().startsWith(parameters.pTileIdPrefixForRun) &&
+                pair.getQ().getId().startsWith(parameters.qTileIdPrefixForRun)) {
                 // remove relative position info from tree search to simplify existence check later
                 final OrderedCanvasIdPair pairWithoutRelative =
                         new OrderedCanvasIdPair(pair.getP().withoutRelativePosition(),
@@ -261,7 +308,8 @@ public class MFOVMatchClient {
                                                                                           true)) {
                    final String pId = canvasMatches.getpId();
                    final String qId = canvasMatches.getqId();
-                   if (pId.startsWith(parameters.multiFieldOfViewId) && qId.startsWith(parameters.multiFieldOfViewId)) {
+                   if (pId.startsWith(parameters.pTileIdPrefixForRun) &&
+                       qId.startsWith(parameters.qTileIdPrefixForRun)) {
                        final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(new CanvasId(groupId, pId),
                                                                                 new CanvasId(groupId, qId),
                                                                                 0.0);

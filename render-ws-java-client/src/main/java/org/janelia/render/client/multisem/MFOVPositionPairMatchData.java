@@ -8,6 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Point;
@@ -160,7 +161,7 @@ public class MFOVPositionPairMatchData
         }
 
         // for each missing pair do
-        for (final OrderedCanvasIdPair pair : unconnectedPairsForPosition) {
+        for (final OrderedCanvasIdPair pair : unconnectedPairsForPosition.stream().sorted().collect(Collectors.toList())) {
 
             final List<PointMatch> missingCornerMatchList = new ArrayList<>();
 

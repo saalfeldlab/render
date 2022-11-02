@@ -28,6 +28,8 @@ public class MFOVMatchClientTest {
                 "--matchCollection", "wafer_52c_v1",
 
                 "--mfov", "001_000004",
+                "--pTileId", "001_000004_005_20220408_060427.1250.0",
+                "--qTileId", "001_000004_015_20220408_060427.1250.0",
                 "--matchStorageFile", "/tmp/001_000004_missing.json",
         };
 
