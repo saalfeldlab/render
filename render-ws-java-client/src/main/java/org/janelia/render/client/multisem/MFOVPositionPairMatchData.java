@@ -123,6 +123,7 @@ public class MFOVPositionPairMatchData
 
         // fit a model to all corner points across z that had pointmatches
         // TODO: RANSAC?
+        // TODO: compute errors and display?
         final AffineModel2D existingCornerMatchModel = new AffineModel2D();
         try {
             existingCornerMatchModel.fit(existingCornerMatchList);
