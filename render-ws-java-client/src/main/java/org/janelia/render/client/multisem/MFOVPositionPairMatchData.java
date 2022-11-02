@@ -30,25 +30,36 @@ import org.slf4j.LoggerFactory;
 public class MFOVPositionPairMatchData
         implements Serializable {
 
+    /** Identifies a pair of (single-field-of-view) tiles within a multi-field-of-view group across all z-layers in a slab. */
     private final MFOVPositionPair positionPair;
-    private final Set<OrderedCanvasIdPair> potentialPairs;
-    private final Set<OrderedCanvasIdPair> missingPairs;
+
+    /** All tile pairs, connected and unconnected, across z for this position pair. */
+    private final Set<OrderedCanvasIdPair> allPairsForPosition;
+
+    /** Tile pairs that are unconnected (missing SIFT matches) across z for this position pair. */
+    private final Set<OrderedCanvasIdPair> unconnectedPairsForPosition;
+
+    /** Tile specs for all tile pairs associated with this position. */
     private final Map<String, TileSpec> idToTileSpec;
+
+    /** The first p-tile spec for this position (used to ensure consistency across all p-tile specs). */
     private TileSpec pFirstTileSpec;
+
+    /** The first q-tile spec for this position (used to ensure consistency across all q-tile specs). */
     private TileSpec qFirstTileSpec;
 
     public MFOVPositionPairMatchData(final MFOVPositionPair positionPair) {
         this.positionPair = positionPair;
-        this.potentialPairs = new HashSet<>();
-        this.missingPairs = new HashSet<>();
+        this.allPairsForPosition = new HashSet<>();
+        this.unconnectedPairsForPosition = new HashSet<>();
         this.idToTileSpec = new HashMap<>();
     }
 
-    public void addPotentialPair(final OrderedCanvasIdPair potentialPair,
-                                 final TileSpec pTileSpec,
-                                 final TileSpec qTileSpec) throws IllegalArgumentException {
-        this.potentialPairs.add(potentialPair);
-        if (potentialPairs.size() == 1) {
+    public void addPair(final OrderedCanvasIdPair pair,
+                        final TileSpec pTileSpec,
+                        final TileSpec qTileSpec) throws IllegalArgumentException {
+        this.allPairsForPosition.add(pair);
+        if (allPairsForPosition.size() == 1) {
             this.pFirstTileSpec = pTileSpec;
             this.qFirstTileSpec = qTileSpec;
         } else {
@@ -59,37 +70,40 @@ public class MFOVPositionPairMatchData
         this.idToTileSpec.put(qTileSpec.getTileId(), qTileSpec);
     }
 
-    public void addMissingPair(final OrderedCanvasIdPair missingPair) {
-        this.missingPairs.add(missingPair);
+    public void addUnconnectedPair(final OrderedCanvasIdPair unconnectedPair) {
+        this.unconnectedPairsForPosition.add(unconnectedPair);
     }
 
-    public boolean hasMissingPairs() {
-        return missingPairs.size() > 0;
+    public boolean hasUnconnectedPairs() {
+        return unconnectedPairsForPosition.size() > 0;
     }
 
     @Override
     public String toString() {
-        return "position: " + positionPair + ", missingPairs.size: " + missingPairs.size() +
-               ", potentialPairs.size: " + potentialPairs.size();
+        return "position: " + positionPair +
+               ", unconnectedPairsSize: " + unconnectedPairsForPosition.size() +
+               ", allPairsSize: " + allPairsForPosition.size();
     }
 
-    public List<CanvasMatches> deriveMatchesForMissingPairs(final RenderDataClient matchClient,
-                                                            final double derivedMatchWeight)
+    public List<CanvasMatches> deriveMatchesForUnconnectedPairs(final RenderDataClient matchClient,
+                                                                final double derivedMatchWeight)
             throws IOException {
 
-        LOG.info("deriveMatchesForMissingPairs: entry, {}", this);
+        LOG.info("deriveMatchesForUnconnectedPairs: entry, {}", this);
 
         final List<CanvasMatches> derivedMatchesList = new ArrayList<>();
 
-        if ((missingPairs.size() == 0) || (potentialPairs.size() <= missingPairs.size())) {
+        if ((unconnectedPairsForPosition.size() == 0) ||
+            (allPairsForPosition.size() <= unconnectedPairsForPosition.size())) {
             throw new IOException("nothing to derive for " + this);
         }
 
         final List<PointMatch> existingCornerMatchList = new ArrayList<>();
 
-        // a single pair of tiles across all z layers
-        for (final OrderedCanvasIdPair pair : potentialPairs) {
-            if (! missingPairs.contains(pair)) { // missingPairs are those that are not connected
+        // loop through all tile pairs (connected and unconnected) across z for this position
+        for (final OrderedCanvasIdPair pair : allPairsForPosition) {
+
+            if (! unconnectedPairsForPosition.contains(pair)) {
                 final CanvasId p = pair.getP();
                 final CanvasId q = pair.getQ();
                 final CanvasMatches canvasMatches = matchClient.getMatchesBetweenTiles(p.getGroupId(),
@@ -146,7 +160,7 @@ public class MFOVPositionPairMatchData
         }
 
         // for each missing pair do
-        for (final OrderedCanvasIdPair pair : missingPairs) {
+        for (final OrderedCanvasIdPair pair : unconnectedPairsForPosition) {
 
             final List<PointMatch> missingCornerMatchList = new ArrayList<>();
 
@@ -176,7 +190,7 @@ public class MFOVPositionPairMatchData
                                                                                        1.0)));
         }
 
-        LOG.info("deriveMatchesForMissingPairs: exit, returning matches for {}", this);
+        LOG.info("deriveMatchesForUnconnectedPairs: exit, returning matches for {}", this);
 
         return derivedMatchesList;
     }

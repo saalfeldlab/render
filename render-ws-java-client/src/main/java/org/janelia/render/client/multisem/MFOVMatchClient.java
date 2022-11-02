@@ -129,7 +129,7 @@ public class MFOVMatchClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final MFOVMatchClient client = new MFOVMatchClient(parameters);
-                client.deriveAndSaveMatchesForMissingPairs();
+                client.deriveAndSaveMatchesForUnconnectedPairs();
             }
         };
         clientRunner.run();
@@ -147,10 +147,10 @@ public class MFOVMatchClient {
                                                 parameters.matchCollection);
     }
 
-    public void deriveAndSaveMatchesForMissingPairs()
+    public void deriveAndSaveMatchesForUnconnectedPairs()
             throws IOException {
 
-        LOG.info("deriveAndSaveMatchesForMissingPairs: entry");
+        LOG.info("deriveAndSaveMatchesForUnconnectedPairs: entry");
 
         final Map<Double, Set<String>> zToSectionIdsMap =
                 renderDataClient.getStackZToSectionIdsMap(parameters.stack,
@@ -166,17 +166,17 @@ public class MFOVMatchClient {
         }
 
         final int totalNumberOfPositions = positionToPairs.size();
-        final Set<MFOVPositionPair> positionsWithoutMissingMatches = new HashSet<>();
+        final Set<MFOVPositionPair> positionsWithoutAnyUnconnectedPairs = new HashSet<>();
         for (final MFOVPositionPair positionPair : positionToPairs.keySet()) {
-            if (! positionToPairs.get(positionPair).hasMissingPairs()) {
-                positionsWithoutMissingMatches.add(positionPair);
+            if (! positionToPairs.get(positionPair).hasUnconnectedPairs()) {
+                positionsWithoutAnyUnconnectedPairs.add(positionPair);
             }
         }
-        for (final MFOVPositionPair positionPair : positionsWithoutMissingMatches) {
+        for (final MFOVPositionPair positionPair : positionsWithoutAnyUnconnectedPairs) {
             positionToPairs.remove(positionPair);
         }
 
-        LOG.info("deriveAndSaveMatchesForMissingPairs: {} out of {} positions are missing at least one pair across z in slab",
+        LOG.info("deriveAndSaveMatchesForUnconnectedPairs: {} out of {} positions have at least one unconnected pair",
                  positionToPairs.size(), totalNumberOfPositions);
 
         final List<CanvasMatches> derivedMatchesForMFOV = new ArrayList<>();
@@ -186,13 +186,13 @@ public class MFOVMatchClient {
         for (final MFOVPositionPair positionPair : sortedPositions) {
             final MFOVPositionPairMatchData positionPairMatchData = positionToPairs.get(positionPair);
             derivedMatchesForMFOV.addAll(
-                    positionPairMatchData.deriveMatchesForMissingPairs(matchClient,
-                                                                       parameters.storedMatchWeight));
+                    positionPairMatchData.deriveMatchesForUnconnectedPairs(matchClient,
+                                                                           parameters.storedMatchWeight));
         }
 
         if (derivedMatchesForMFOV.size() > 0) {
 
-            LOG.info("deriveAndSaveMatchesForMissingPairs: saving matches for {} pairs", derivedMatchesForMFOV.size());
+            LOG.info("deriveAndSaveMatchesForUnconnectedPairs: saving matches for {} pairs", derivedMatchesForMFOV.size());
 
             if (parameters.matchStorageFile != null) {
                 final Path storagePath = Paths.get(parameters.matchStorageFile).toAbsolutePath();
@@ -203,10 +203,10 @@ public class MFOVMatchClient {
             }
 
         } else {
-            LOG.info("deriveAndSaveMatchesForMissingPairs: no pairs have matches so there is nothing to save");
+            LOG.info("deriveAndSaveMatchesForUnconnectedPairs: no pairs have matches so there is nothing to save");
         }
 
-        LOG.info("deriveAndSaveMatchesForMissingPairs: exit");
+        LOG.info("deriveAndSaveMatchesForUnconnectedPairs: exit");
     }
     
     public void updatePositionPairDataForZ(final Double z,
@@ -230,7 +230,8 @@ public class MFOVMatchClient {
                                                                                     false,
                                                                                     false);
 
-        final Set<OrderedCanvasIdPair> pairsForMFOV = new HashSet<>(potentialPairsForZ.size());
+        // add all MFOV tile pairs to unconnected set
+        final Set<OrderedCanvasIdPair> unconnectedPairsForMFOV = new HashSet<>(potentialPairsForZ.size());
         for (final OrderedCanvasIdPair pair : potentialPairsForZ) {
             if (pair.getP().getId().startsWith(parameters.multiFieldOfViewId) &&
                 pair.getQ().getId().startsWith(parameters.multiFieldOfViewId)) {
@@ -243,17 +244,18 @@ public class MFOVMatchClient {
                 final MFOVPositionPairMatchData positionPairMatchData =
                         positionToPairs.computeIfAbsent(positionPair,
                                                         d -> new MFOVPositionPairMatchData(positionPair));
-                positionPairMatchData.addPotentialPair(pairWithoutRelative,
-                                                       resolvedTiles.getTileSpec(pair.getP().getId()),
-                                                       resolvedTiles.getTileSpec(pair.getQ().getId()));
-                pairsForMFOV.add(pairWithoutRelative);
+                positionPairMatchData.addPair(pairWithoutRelative,
+                                              resolvedTiles.getTileSpec(pair.getP().getId()),
+                                              resolvedTiles.getTileSpec(pair.getQ().getId()));
+                unconnectedPairsForMFOV.add(pairWithoutRelative);
             }
         }
 
         LOG.info("updatePositionPairDataForZ: found {} pairs within mFOV {} in z {}",
-                 pairsForMFOV.size(), parameters.multiFieldOfViewId, z);
+                 unconnectedPairsForMFOV.size(), parameters.multiFieldOfViewId, z);
 
-        if (pairsForMFOV.size() > 0) {
+        // query web service to find connected tile pairs and remove them from unconnected set
+        if (unconnectedPairsForMFOV.size() > 0) {
             for (final String groupId : sectionIds) {
                for (final CanvasMatches canvasMatches : matchClient.getMatchesWithinGroup(groupId,
                                                                                           true)) {
@@ -263,7 +265,7 @@ public class MFOVMatchClient {
                        final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(new CanvasId(groupId, pId),
                                                                                 new CanvasId(groupId, qId),
                                                                                 0.0);
-                       if (! pairsForMFOV.remove(pair)) {
+                       if (! unconnectedPairsForMFOV.remove(pair)) {
                            LOG.warn("updatePositionPairDataForZ: failed to locate existing pair {} in potential set",
                                     pair);
                        }
@@ -272,14 +274,14 @@ public class MFOVMatchClient {
             }
         }
 
-        for (final OrderedCanvasIdPair missingPair : pairsForMFOV) {
-            final MFOVPositionPair positionPair = new MFOVPositionPair(missingPair);
+        for (final OrderedCanvasIdPair unconnectedPair : unconnectedPairsForMFOV) {
+            final MFOVPositionPair positionPair = new MFOVPositionPair(unconnectedPair);
             final MFOVPositionPairMatchData positionPairMatchData = positionToPairs.get(positionPair);
-            positionPairMatchData.addMissingPair(missingPair);
+            positionPairMatchData.addUnconnectedPair(unconnectedPair);
         }
 
-        LOG.info("updatePositionPairDataForZ: exit, found {} missing pairs within mFOV {} in z {}",
-                 pairsForMFOV.size(), parameters.multiFieldOfViewId, z);
+        LOG.info("updatePositionPairDataForZ: exit, found {} unconnected tile pairs within mFOV {} in z {}",
+                 unconnectedPairsForMFOV.size(), parameters.multiFieldOfViewId, z);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVMatchClient.class);
