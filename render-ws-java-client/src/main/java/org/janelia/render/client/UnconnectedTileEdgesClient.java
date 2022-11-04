@@ -17,6 +17,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.CellId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,47 +184,47 @@ public class UnconnectedTileEdgesClient {
 
         final Set<Integer> rowsForZ = new HashSet<>();
         final Set<Integer> columnsForZ = new HashSet<>();
-        final Map<String, RowAndColumn> tileIdToRowColumn = new HashMap<>();
+        final Map<String, CellId> tileIdToCell = new HashMap<>();
         for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
             final LayoutData layout = tileSpec.getLayout();
             if (layout != null) {
                 rowsForZ.add(layout.getImageRow());
                 columnsForZ.add(layout.getImageCol());
-                tileIdToRowColumn.put(tileSpec.getTileId(), new RowAndColumn(layout.getImageRow(),
-                                                                             layout.getImageCol()));
+                tileIdToCell.put(tileSpec.getTileId(), new CellId(layout.getImageRow(),
+                                                                       layout.getImageCol()));
             }
         }
 
         final List<Integer> sortedRows = rowsForZ.stream().sorted().collect(Collectors.toList());
         final List<Integer> sortedColumns = columnsForZ.stream().sorted().collect(Collectors.toList());
-        final Set<RowAndColumn> rowAndColumnsForZ = new HashSet<>(tileIdToRowColumn.values());
+        final Set<CellId> cellsForZ = new HashSet<>(tileIdToCell.values());
 
         final List<TileEdge> expectedConnectedEdges = new ArrayList<>();
 
         for (final Integer row : sortedRows) {
             for (int i = 1; i < sortedColumns.size(); i++) {
-                final RowAndColumn previousRowColumn = new RowAndColumn(row, sortedColumns.get(i-1));
-                final RowAndColumn rowColumn = new RowAndColumn(row, sortedColumns.get(i));
+                final CellId previousCell = new CellId(row, sortedColumns.get(i - 1));
+                final CellId cell = new CellId(row, sortedColumns.get(i));
 
-                if (((rowColumn.column - previousRowColumn.column) == 1) &&
-                    rowAndColumnsForZ.contains(previousRowColumn)  &&
-                    rowAndColumnsForZ.contains(rowColumn)) {
+                if (((cell.column - previousCell.column) == 1) &&
+                    cellsForZ.contains(previousCell)  &&
+                    cellsForZ.contains(cell)) {
 
-                    expectedConnectedEdges.add(new TileEdge(previousRowColumn, rowColumn));
+                    expectedConnectedEdges.add(new TileEdge(previousCell, cell));
                 } // else gap in columns so skip
             }
         }
 
         for (final Integer column : sortedColumns) {
             for (int i = 1; i < sortedRows.size(); i++) {
-                final RowAndColumn previousRowColumn = new RowAndColumn(sortedRows.get(i-1), column);
-                final RowAndColumn rowColumn = new RowAndColumn(sortedRows.get(i), column);
+                final CellId previousCell = new CellId(sortedRows.get(i - 1), column);
+                final CellId cell = new CellId(sortedRows.get(i), column);
 
-                if ((rowColumn.row - previousRowColumn.row) == 1 &&
-                    rowAndColumnsForZ.contains(previousRowColumn)  &&
-                    rowAndColumnsForZ.contains(rowColumn)) {
+                if ((cell.row - previousCell.row) == 1 &&
+                    cellsForZ.contains(previousCell)  &&
+                    cellsForZ.contains(cell)) {
 
-                    expectedConnectedEdges.add(new TileEdge(previousRowColumn, rowColumn));
+                    expectedConnectedEdges.add(new TileEdge(previousCell, cell));
                 } // else gap in rows so skip
             }
         }
@@ -272,92 +273,41 @@ public class UnconnectedTileEdgesClient {
 
     }
 
-    public static class RowAndColumn implements Comparable<RowAndColumn> {
-        private final int row;
-        private final int column;
-
-        public RowAndColumn(final Integer row,
-                            final Integer column) {
-            this.row = row;
-            this.column = column;
-        }
-
-        @Override
-        public boolean equals(final Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-
-            final RowAndColumn that = (RowAndColumn) o;
-
-            if (row != that.row) {
-                return false;
-            }
-            return column == that.column;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = row;
-            result = 31 * result + column;
-            return result;
-        }
-
-        @Override
-        public int compareTo(final RowAndColumn that) {
-            int result = this.row - that.row;
-            if (result == 0) {
-                result = this.column - that.column;
-            }
-            return result;
-        }
-
-        @Override
-        public String toString() {
-            return "{\"row\": " + row +
-                   ", \"column\": " + column +
-                   '}';
-        }
-    }
-
     public static class TileEdge implements Comparable<TileEdge> {
-        private final RowAndColumn fromRowAndColumn;
-        private final RowAndColumn toRowAndColumn;
+        private final CellId fromCell;
+        private final CellId toCell;
 
-        public TileEdge(final RowAndColumn rowAndColumnA,
-                        final RowAndColumn rowAndColumnB) {
+        public TileEdge(final CellId cellA,
+                        final CellId cellB) {
             // need to normalize edge ordering
-            if (rowAndColumnA.row == rowAndColumnB.row) {
+            if (cellA.row == cellB.row) {
 
-                if (rowAndColumnA.column < rowAndColumnB.column) {
-                    this.fromRowAndColumn = rowAndColumnA;
-                    this.toRowAndColumn = rowAndColumnB;
-                } else if (rowAndColumnA.column > rowAndColumnB.column) {
-                    this.fromRowAndColumn = rowAndColumnB;
-                    this.toRowAndColumn = rowAndColumnA;
+                if (cellA.column < cellB.column) {
+                    this.fromCell = cellA;
+                    this.toCell = cellB;
+                } else if (cellA.column > cellB.column) {
+                    this.fromCell = cellB;
+                    this.toCell = cellA;
                 } else {
                     throw new IllegalArgumentException("tile edge cannot have both same row and same column");
                 }
 
-                final int delta = this.toRowAndColumn.column - this.fromRowAndColumn.column;
+                final int delta = this.toCell.column - this.fromCell.column;
                 if (delta != 1) {
                     throw new IllegalArgumentException("tile edge cannot have column delta " +   delta);
                 }
 
-            } else if (rowAndColumnA.column == rowAndColumnB.column) {
+            } else if (cellA.column == cellB.column) {
 
-                if (rowAndColumnA.row < rowAndColumnB.row) {
-                    this.fromRowAndColumn = rowAndColumnA;
-                    this.toRowAndColumn = rowAndColumnB;
+                if (cellA.row < cellB.row) {
+                    this.fromCell = cellA;
+                    this.toCell = cellB;
                 } else {
-                    this.fromRowAndColumn = rowAndColumnB;
-                    this.toRowAndColumn = rowAndColumnA;
+                    this.fromCell = cellB;
+                    this.toCell = cellA;
                 }
 
-                final int delta = this.toRowAndColumn.row - this.fromRowAndColumn.row;
+                final int delta = this.toCell.row - this.fromCell.row;
                 if (delta != 1) {
                     throw new IllegalArgumentException("tile edge cannot have row delta " +   delta);
                 }
@@ -378,55 +328,55 @@ public class UnconnectedTileEdgesClient {
 
             final TileEdge tileEdge = (TileEdge) o;
 
-            if (!fromRowAndColumn.equals(tileEdge.fromRowAndColumn)) {
+            if (!fromCell.equals(tileEdge.fromCell)) {
                 return false;
             }
-            return toRowAndColumn.equals(tileEdge.toRowAndColumn);
+            return toCell.equals(tileEdge.toCell);
         }
 
         @Override
         public int hashCode() {
-            int result = fromRowAndColumn.hashCode();
-            result = 31 * result + toRowAndColumn.hashCode();
+            int result = fromCell.hashCode();
+            result = 31 * result + toCell.hashCode();
             return result;
         }
 
         @Override
         public int compareTo(final TileEdge that) {
-            int result = this.fromRowAndColumn.compareTo(that.fromRowAndColumn);
+            int result = this.fromCell.compareTo(that.fromCell);
             if (result == 0) {
-                result = this.toRowAndColumn.compareTo(that.toRowAndColumn);
+                result = this.toCell.compareTo(that.toCell);
             }
             return result;
         }
 
         @Override
         public String toString() {
-            return "{\"from\": " + fromRowAndColumn +
-                   ", \"to\": " + toRowAndColumn +
+            return "{\"from\": " + fromCell +
+                   ", \"to\": " + toCell +
                    '}';
         }
     }
 
-    public static RowAndColumn fromTileSpec(final TileSpec tileSpec) {
-        RowAndColumn rowAndColumn = null;
+    public static CellId fromTileSpec(final TileSpec tileSpec) {
+        CellId cell = null;
         if (tileSpec != null) {
             final LayoutData layout = tileSpec.getLayout();
             if (layout != null) {
-                rowAndColumn = new RowAndColumn(layout.getImageRow(), layout.getImageCol());
+                cell = new CellId(layout.getImageRow(), layout.getImageCol());
             }
         }
-        return rowAndColumn;
+        return cell;
     }
 
     private TileEdge getEdgeForPair(final String pId,
                                     final String qId,
                                     final ResolvedTileSpecCollection resolvedTiles) {
         TileEdge edge = null;
-        final RowAndColumn pRowColumn = fromTileSpec(resolvedTiles.getTileSpec(pId));
-        final RowAndColumn qRowColumn = fromTileSpec(resolvedTiles.getTileSpec(qId));
-        if ((pRowColumn != null) && (qRowColumn != null)) {
-            edge = new TileEdge(pRowColumn, qRowColumn);
+        final CellId pCell = fromTileSpec(resolvedTiles.getTileSpec(pId));
+        final CellId qCell = fromTileSpec(resolvedTiles.getTileSpec(qId));
+        if ((pCell != null) && (qCell != null)) {
+            edge = new TileEdge(pCell, qCell);
         }
         return edge;
     }
