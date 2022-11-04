@@ -13,6 +13,9 @@ import java.util.stream.Collectors;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
+import mpicbg.models.RigidModel2D;
+import mpicbg.models.TranslationModel2D;
+import net.imglib2.util.Util;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatchResult;
@@ -114,11 +117,20 @@ public class MFOVPositionPairMatchData
                                                                                        q.getGroupId(),
                                                                                        q.getId());
                 // this is specific for a z
-                final List<PointMatch> existingMatchList =
+                List<PointMatch> existingMatchList =
                         CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
 
+                // because fit() maps p.l to q.w, we need to apply the model to q
+                // we want the model that maps q onto p
+                // alternatively invert the model or apply to p
+                existingMatchList = (List< PointMatch >)PointMatch.flip( existingMatchList );
+
                 // PointMatch(p,q), will find a model that maps local coord of p to world coord of q
-                AffineModel2D existingMatchModel = new AffineModel2D();
+
+                // AffineModel and RigidModel introduce artifacts because the pointmatches are far away from the corners
+                //AffineModel2D existingMatchModel = new AffineModel2D();
+                //RigidModel2D existingMatchModel = new RigidModel2D();
+                TranslationModel2D existingMatchModel = new TranslationModel2D();
                 try {
                     existingMatchModel.fit(existingMatchList);
                     
@@ -136,15 +148,15 @@ public class MFOVPositionPairMatchData
         			error /= existingMatchList.size();
                     
         			System.out.println( "e=" + error + " model=" + existingMatchModel );
-        			
-                    //LOG.debug("deriveMatchesForUnconnectedPairs: existingMatchModel after fit is {}", existingMatchModel);
+
+        			//LOG.debug("deriveMatchesForUnconnectedPairs: existingMatchModel after fit is {}", existingMatchModel);
                 } catch (final Exception e) {
                     throw new IOException("failed to fit model for pair " + pair, e);
                 }
 
                 // because fit() maps p.l to q.w, we need to apply the model to q
                 // we want the model that maps q onto p
-                existingMatchModel = existingMatchModel.createInverse();
+                //existingMatchModel = existingMatchModel.createInverse();
 
                 final TileSpec pTileSpec = idToTileSpec.get(p.getId());
                 final TileSpec qTileSpec = idToTileSpec.get(q.getId());
@@ -153,7 +165,9 @@ public class MFOVPositionPairMatchData
                 for (int i = 0; i < pLensCorrectedCorners.size(); i++) {
                     final Point pCorner = pLensCorrectedCorners.get(i);
                     final Point qCorner = qLensCorrectedCorners.get(i);
-                    qCorner.apply(existingMatchModel); // wrong? should be p or PointMatches should be (q,p) or the inverse of the model
+                    qCorner.apply(existingMatchModel); // apply to q
+
+                    //System.out.println( "p=" + Util.printCoordinates(pCorner.getW()) + ", q=" + Util.printCoordinates(qCorner.getW()));
                     existingCornerMatchList.add(new PointMatch(pCorner, qCorner));
                 }
             }
