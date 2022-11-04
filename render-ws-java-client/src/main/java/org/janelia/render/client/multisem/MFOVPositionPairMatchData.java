@@ -107,6 +107,8 @@ public class MFOVPositionPairMatchData
             if (! unconnectedPairsForPosition.contains(pair)) {
                 final CanvasId p = pair.getP();
                 final CanvasId q = pair.getQ();
+
+                // there is magic in here that fixes the order (String comparison)
                 final CanvasMatches canvasMatches = matchClient.getMatchesBetweenTiles(p.getGroupId(),
                                                                                        p.getId(),
                                                                                        q.getGroupId(),
@@ -116,14 +118,33 @@ public class MFOVPositionPairMatchData
                         CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
 
                 // PointMatch(p,q), will find a model that maps local coord of p to world coord of q
-                final AffineModel2D existingMatchModel = new AffineModel2D();
+                AffineModel2D existingMatchModel = new AffineModel2D();
                 try {
                     existingMatchModel.fit(existingMatchList);
-                    LOG.debug("deriveMatchesForUnconnectedPairs: existingMatchModel after fit is {}",
-                              existingMatchModel);
+                    
+                    
+                    double error = 0;
+        			double maxError = 0;
+        			
+        			for ( final PointMatch pm : existingMatchList )
+        			{
+        				pm.apply( existingMatchModel );
+        				error += pm.getDistance();
+        				maxError = Math.max( maxError, pm.getDistance() );
+        			}
+
+        			error /= existingMatchList.size();
+                    
+        			System.out.println( "e=" + error + " model=" + existingMatchModel );
+        			
+                    //LOG.debug("deriveMatchesForUnconnectedPairs: existingMatchModel after fit is {}", existingMatchModel);
                 } catch (final Exception e) {
                     throw new IOException("failed to fit model for pair " + pair, e);
                 }
+
+                // because fit() maps p.l to q.w, we need to apply the model to q
+                // we want the model that maps q onto p
+                existingMatchModel = existingMatchModel.createInverse();
 
                 final TileSpec pTileSpec = idToTileSpec.get(p.getId());
                 final TileSpec qTileSpec = idToTileSpec.get(q.getId());
