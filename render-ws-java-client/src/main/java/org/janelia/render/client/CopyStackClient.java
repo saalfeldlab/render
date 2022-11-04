@@ -33,7 +33,8 @@ import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ProcessTimer;
-import org.janelia.render.client.parameter.ExcludedColumnParameters;
+import org.janelia.render.client.parameter.CellId;
+import org.janelia.render.client.parameter.ExcludedCellParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -111,7 +112,7 @@ public class CopyStackClient {
         public String includedTileIdsJson;
 
         @ParametersDelegate
-        ExcludedColumnParameters excludedColumns = new ExcludedColumnParameters();
+        ExcludedCellParameters excludedCells = new ExcludedCellParameters();
 
         @ParametersDelegate
         LayerBoundsParameters layerBounds = new LayerBoundsParameters();
@@ -213,7 +214,7 @@ public class CopyStackClient {
     }
 
     private final Parameters parameters;
-    private final ExcludedColumnParameters.ExcludedColumnList excludedColumnList;
+    private final ExcludedCellParameters.ExcludedCellList excludedCellList;
     private final RenderDataClient fromDataClient;
     private final RenderDataClient toDataClient;
     private final Map<String, Double> sectionIdToZMap;
@@ -223,7 +224,7 @@ public class CopyStackClient {
     private CopyStackClient(final Parameters parameters) throws Exception {
 
         this.parameters = parameters;
-        this.excludedColumnList = parameters.excludedColumns.toList();
+        this.excludedCellList = parameters.excludedCells.toList();
 
         this.fromDataClient = parameters.renderWeb.getDataClient();
 
@@ -391,12 +392,13 @@ public class CopyStackClient {
             }
         }
 
-        if (excludedColumnList.isDefined()) {
+        if (excludedCellList.isDefined()) {
             final Set<String> tileIdsToRemove = new HashSet<>();
             sourceCollection.getTileSpecs().forEach(tileSpec -> {
                 final LayoutData layoutData = tileSpec.getLayout();
-                if (excludedColumnList.isExcludedColumn(layoutData.getImageCol(),
-                                                        tileSpec.getZ())) {
+                final CellId cell = new CellId(layoutData.getImageRow(), layoutData.getImageCol());
+                if (excludedCellList.isExcludedCell(cell,
+                                                    tileSpec.getZ())) {
                     tileIdsToRemove.add(tileSpec.getTileId());
                 }
             });
