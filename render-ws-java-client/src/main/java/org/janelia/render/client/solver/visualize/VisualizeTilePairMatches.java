@@ -220,8 +220,9 @@ public class VisualizeTilePairMatches {
         final ImageProcessor pIp = pTile.render();
         final ImageProcessor qIp = qTile.render();
 
-        final int width = Math.max(pIp.getWidth(), qIp.getWidth());
-        final int height = Math.max(pIp.getHeight(), qIp.getHeight());
+        // double height and width of view to handle offset tile overlaps as found in multi-SEM data
+        final int width = Math.max(pIp.getWidth(), qIp.getWidth()) * 2;
+        final int height = Math.max(pIp.getHeight(), qIp.getHeight()) * 2;
 
         // later visualization stuff assumes float, so convert here to simplify
         final ImageProcessor pSlice = padProcessor(pIp, width, height).convertToFloat();
@@ -403,7 +404,8 @@ public class VisualizeTilePairMatches {
         ImageProcessor paddedProcessor = imageProcessor;
         if ((imageProcessor.getWidth() != width) || (imageProcessor.getHeight() != height)) {
             paddedProcessor = imageProcessor.createProcessor(width, height);
-            paddedProcessor.insert(imageProcessor, 0, 0);
+            // center tile in larger area
+            paddedProcessor.insert(imageProcessor, width / 2, height /2);
         }
         return paddedProcessor;
     }
