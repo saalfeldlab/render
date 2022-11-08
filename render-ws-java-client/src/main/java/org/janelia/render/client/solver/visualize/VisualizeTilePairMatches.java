@@ -405,7 +405,7 @@ public class VisualizeTilePairMatches {
         if ((imageProcessor.getWidth() != width) || (imageProcessor.getHeight() != height)) {
             paddedProcessor = imageProcessor.createProcessor(width, height);
             // center tile in larger area
-            paddedProcessor.insert(imageProcessor, width / 2, height /2);
+            paddedProcessor.insert(imageProcessor, width / 4, height / 4);
         }
         return paddedProcessor;
     }
