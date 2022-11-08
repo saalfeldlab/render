@@ -65,9 +65,14 @@ public class MFOVMatchClient {
 
         @Parameter(
                 names = "--matchCollection",
-                description = "Match collection name",
+                description = "Match collection with unconnected MFOV tile pairs",
                 required = true)
         public String matchCollection;
+
+        @Parameter(
+                names = "--matchStorageCollection",
+                description = "Collection for storage of derived matches (omit to store to source collection)")
+        public String matchStorageCollection;
 
         @Parameter(
                 names = "--stored_match_weight",
@@ -195,6 +200,7 @@ public class MFOVMatchClient {
     private final Parameters parameters;
     private final RenderDataClient renderDataClient;
     private final RenderDataClient matchClient;
+    private final RenderDataClient matchStorageClient;
 
     MFOVMatchClient(final Parameters parameters) {
         this.parameters = parameters;
@@ -202,6 +208,13 @@ public class MFOVMatchClient {
         this.matchClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                                 parameters.getMatchOwner(),
                                                 parameters.matchCollection);
+        if (parameters.matchStorageCollection == null) {
+            this.matchStorageClient = this.matchClient;
+        } else {
+            this.matchStorageClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
+                                                           parameters.getMatchOwner(),
+                                                           parameters.matchStorageCollection);
+        }
     }
 
     public void deriveAndSaveMatchesForUnconnectedPairs()
@@ -255,7 +268,7 @@ public class MFOVMatchClient {
                 final Path storagePath = Paths.get(parameters.matchStorageFile).toAbsolutePath();
                 FileUtil.saveJsonFile(storagePath.toString(), derivedMatchesForMFOV);
             } else {
-                matchClient.saveMatches(derivedMatchesForMFOV);
+                matchStorageClient.saveMatches(derivedMatchesForMFOV);
             }
 
         } else {

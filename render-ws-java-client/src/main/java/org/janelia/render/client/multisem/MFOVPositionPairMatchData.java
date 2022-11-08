@@ -115,13 +115,15 @@ public class MFOVPositionPairMatchData
                                                                                        q.getGroupId(),
                                                                                        q.getId());
                 // this is specific for a z
-                List<PointMatch> existingMatchList =
+                final List<PointMatch> existingMatchList =
                         CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
 
                 // because fit() maps p.l to q.w, we need to apply the model to q
                 // we want the model that maps q onto p
                 // alternatively invert the model or apply to p
-                existingMatchList = (List< PointMatch >)PointMatch.flip( existingMatchList );
+//                existingMatchList = (List< PointMatch >)PointMatch.flip( existingMatchList );
+
+                // TODO: pretty sure SP's idea to flip/invert above is not correct, let's review this again
 
                 // PointMatch(p,q), will find a model that maps local coord of p to world coord of q
 
