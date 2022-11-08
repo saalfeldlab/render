@@ -13,9 +13,7 @@ import java.util.stream.Collectors;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
-import net.imglib2.util.Util;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatchResult;
@@ -130,7 +128,7 @@ public class MFOVPositionPairMatchData
                 // AffineModel and RigidModel introduce artifacts because the pointmatches are far away from the corners
                 //AffineModel2D existingMatchModel = new AffineModel2D();
                 //RigidModel2D existingMatchModel = new RigidModel2D();
-                TranslationModel2D existingMatchModel = new TranslationModel2D();
+                final TranslationModel2D existingMatchModel = new TranslationModel2D();
                 try {
                     existingMatchModel.fit(existingMatchList);
                     
@@ -147,9 +145,8 @@ public class MFOVPositionPairMatchData
 
         			error /= existingMatchList.size();
                     
-        			System.out.println( "e=" + error + " model=" + existingMatchModel );
-
-        			//LOG.debug("deriveMatchesForUnconnectedPairs: existingMatchModel after fit is {}", existingMatchModel);
+        			LOG.debug("deriveMatchesForUnconnectedPairs: after fit, error is {} and existingMatchModel is {}",
+                              error, existingMatchModel);
                 } catch (final Exception e) {
                     throw new IOException("failed to fit model for pair " + pair, e);
                 }
@@ -224,7 +221,8 @@ public class MFOVPositionPairMatchData
                 missingCornerMatchList.add(new PointMatch(pCorner, transformedQCorner, derivedMatchWeight));
             }
 
-            // TODO: weights?
+            // Note: derivedMatchWeight is included in missingCornerMatchList PointMatch constructor (above)
+            //       and then saved with converted canvas matches here
             derivedMatchesList.add(
                     new CanvasMatches(p.getGroupId(),
                                       p.getId(),

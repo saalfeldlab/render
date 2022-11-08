@@ -255,8 +255,7 @@ public class MFOVMatchClient {
                 final Path storagePath = Paths.get(parameters.matchStorageFile).toAbsolutePath();
                 FileUtil.saveJsonFile(storagePath.toString(), derivedMatchesForMFOV);
             } else {
-                // TODO: uncomment save when we are ready
-                // matchClient.saveMatches(derivedMatchesForMFOV);
+                matchClient.saveMatches(derivedMatchesForMFOV);
             }
 
         } else {
