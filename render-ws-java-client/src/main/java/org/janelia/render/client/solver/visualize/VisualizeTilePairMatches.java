@@ -95,29 +95,17 @@ public class VisualizeTilePairMatches {
 
         if (args.length == 0) {
             args = new String[] {
+                    // parameters for multi-SEM debug ...
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "Z0720_07m_BR",
-                    "--project", "Sec24",
-                    "--stack", "v5_acquire_trimmed",
-                    "--pTileId", "21-04-29_151034_0-0-1.57325.0",
-                    "--qTileId", "21-04-29_151547_0-0-0.57326.0",
+                    "--owner", "hess",
+                    "--project", "wafer_52c",
+                    "--stack", "v1_acquire_slab_001",
+                    "--pTileId", "001_000004_005_20220407_224812.1249.0",
+                    "--qTileId", "001_000004_006_20220407_224812.1249.0",
 //                    "--alignWithPlugin",
-
-                    // -----------------------------------------
-                    // Sec24_wobble_fix_5 (or Sec24_wobble_fiji)
-//                    "--collection", "Sec24_wobble_fix_5",
-
-                    // -----------------------------------------
-                    // Sec24_geo_only (see http://renderer-dev.int.janelia.org:8080/render-ws/view/match-trial.html?matchTrialId=611bc5f057de7c1b09f946a4 )
-                    // match distances: mean 1.57, max 5.74
-//                    "--collection", "Sec24_geo_only",
-
-                    // -----------------------------------------
-                    // Sec24_v1
-                    // match distances: mean 2.17, max 13.19
-                    "--collection", "Sec24_v4_fix",
-                    "--renderScale", "0.1",
-                    "--renderWithFilter",
+                    "--collection", "wafer_52c_v2",
+                    "--renderScale", "1.0",
+//                    "--renderWithFilter",
 
                     /*
                     // -----------------------------------------
@@ -235,8 +223,9 @@ public class VisualizeTilePairMatches {
         final int width = Math.max(pIp.getWidth(), qIp.getWidth());
         final int height = Math.max(pIp.getHeight(), qIp.getHeight());
 
-        final ImageProcessor pSlice = padProcessor(pIp, width, height);
-        final ImageProcessor qSlice = padProcessor(qIp, width, height);
+        // later visualization stuff assumes float, so convert here to simplify
+        final ImageProcessor pSlice = padProcessor(pIp, width, height).convertToFloat();
+        final ImageProcessor qSlice = padProcessor(qIp, width, height).convertToFloat();
 
         if (parameters.collection != null) {
             showMatchesAndAlign(pTile, qTile, pSlice, qSlice, true);
