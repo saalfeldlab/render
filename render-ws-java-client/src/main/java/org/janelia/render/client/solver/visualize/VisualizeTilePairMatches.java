@@ -12,7 +12,9 @@ import ij.process.ImageProcessor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import mpicbg.imagefeatures.Feature;
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
@@ -31,9 +33,9 @@ import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
-import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -64,6 +66,11 @@ public class VisualizeTilePairMatches {
         @Parameter(names = "--collection",  description = "Match collection name") public String collection;
         @Parameter(names = "--renderScale", description = "Scale to render tiles and matches") public Double renderScale = 1.0;
         @Parameter(names = "--renderWithFilter", description = "Render tiles with filter") public boolean renderWithFilter = false;
+        @Parameter(
+                names = "--renderMfovWithSize",
+                description = "If specified, render all tiles in specified tiles' MFOV " +
+                              "and scale max dimension of result to this size (omit to just render tiles)")
+        public Integer renderMfovWithSize;
 
         @Parameter(
                 names = "--alignWithPlugin",
@@ -81,12 +88,6 @@ public class VisualizeTilePairMatches {
         @ParametersDelegate
         public FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
 
-        @Parameter(
-                names = "--firstCanvasPosition",
-                description = "When clipping, identifies the relative position of the first canvas to the second canvas"
-        )
-        public MontageRelativePosition firstCanvasPosition;
-
         public Parameters() {
         }
     }
@@ -95,7 +96,32 @@ public class VisualizeTilePairMatches {
 
         if (args.length == 0) {
             args = new String[] {
-                    // parameters for multi-SEM debug ...
+                    // -----------------------------------------
+                    // parameters for MFOV debug
+                    "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
+                    "--owner", "hess",
+                    "--project", "wafer_52c",
+                    "--stack", "v1_acquire_slab_001_align_w0p1",
+                    "--pTileId", "001_000004_005_20220407_224812.1249.0",
+                    "--qTileId", "001_000004_005_20220408_060427.1250.0",
+                    "--renderMfovWithSize", "1024",
+                    "--alignWithRender",
+                    "--matchRod", "0.92",
+                    "--matchModelType", "RIGID",
+                    "--matchIterations", "1000",
+                    "--matchMaxEpsilonFullScale", "2",
+                    "--matchMinInlierRatio", "0",
+                    "--matchMinNumInliers", "20",
+                    "--matchMaxTrust", "4",
+                    "--matchFilter", "SINGLE_SET",
+                    "--SIFTfdSize", "4",
+                    "--SIFTminScale", "0.0125",
+                    "--SIFTmaxScale", "1.0",
+                    "--SIFTsteps", "5",
+
+                    /*
+                    // -----------------------------------------
+                    // parameters for multi-SEM tile pair debug
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                     "--owner", "hess",
                     "--project", "wafer_52c",
@@ -106,6 +132,7 @@ public class VisualizeTilePairMatches {
                     "--collection", "wafer_52c_v2",
                     "--renderScale", "1.0",
 //                    "--renderWithFilter",
+                     */
 
                     /*
                     // -----------------------------------------
@@ -422,13 +449,52 @@ public class VisualizeTilePairMatches {
         final RenderParameters renderParameters;
         final TileSpec tileSpec;
 
-        public DebugTile(final String tileId) {
-            final String tileUrl = renderDataClient.getUrls().getTileUrlString(parameters.stack, tileId) +
-                                   "/render-parameters?normalizeForMatching=true&filter=" +
-                                   parameters.renderWithFilter + "&scale=" + parameters.renderScale;
-            this.renderParameters = RenderParameters.loadFromUrl(tileUrl);
-            this.renderParameters.initializeDerivedValues();
-            this.tileSpec = renderParameters.getTileSpecs().get(0);
+        public DebugTile(final String tileId)
+                throws IOException {
+
+            if (parameters.renderMfovWithSize == null) {
+
+                final String tileUrl = renderDataClient.getUrls().getTileUrlString(parameters.stack, tileId) +
+                                       "/render-parameters?normalizeForMatching=true&filter=" +
+                                       parameters.renderWithFilter + "&scale=" + parameters.renderScale;
+                this.renderParameters = RenderParameters.loadFromUrl(tileUrl);
+                this.renderParameters.initializeDerivedValues();
+                this.tileSpec = renderParameters.getTileSpecs().get(0);
+
+            } else {
+
+                this.tileSpec = renderDataClient.getTile(parameters.stack, tileId);
+                this.renderParameters = renderDataClient.getRenderParametersForZ(parameters.stack, tileSpec.getZ());
+                final String mfovId = tileSpec.getTileId().substring(0, 10);
+
+                Bounds mfovBounds = tileSpec.toTileBounds();
+                final Set<String> tileIdsToKeep = new HashSet<>();
+                for (final TileSpec layerTileSpec : renderParameters.getTileSpecs()) {
+                    if (layerTileSpec.getTileId().startsWith(mfovId)) {
+                        tileIdsToKeep.add(layerTileSpec.getTileId());
+                        mfovBounds = mfovBounds.union(layerTileSpec.toTileBounds());
+                    }
+                }
+                this.renderParameters.removeTileSpecsOutsideSet(tileIdsToKeep);
+
+                this.renderParameters.x = mfovBounds.getMinX();
+                this.renderParameters.y = mfovBounds.getMinY();
+                this.renderParameters.width = mfovBounds.getWidth();
+                this.renderParameters.height = mfovBounds.getHeight();
+
+                final double maxMfovDimension = Math.max(renderParameters.width, renderParameters.height);
+                if (maxMfovDimension > parameters.renderMfovWithSize) {
+                    this.renderParameters.scale = parameters.renderMfovWithSize / maxMfovDimension;
+                } else {
+                    this.renderParameters.scale = 1.0;
+                }
+
+                this.renderParameters.setDoFilter(parameters.renderWithFilter);
+                this.renderParameters.initializeDerivedValues();
+
+                LOG.debug("DebugTile: using renderMfovWithSize {}, derived scale is {}",
+                          parameters.renderMfovWithSize, renderParameters.scale);
+            }
         }
 
         public String getGroupId() {
