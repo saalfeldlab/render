@@ -840,14 +840,15 @@ public class RenderDataService {
     public List<TileSpec> getTileSpecsForZ(@PathParam("owner") final String owner,
                                            @PathParam("project") final String project,
                                            @PathParam("stack") final String stack,
-                                           @PathParam("z") final Double z) {
+                                           @PathParam("z") final Double z,
+                                           @QueryParam("tileIdPattern") final String tileIdPattern) {
 
         LOG.info("getTileSpecsForZ: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
 
         List<TileSpec> tileSpecList = null;
         try {
-            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z,
+            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z, tileIdPattern,
                                                                         new RenderQueryParameters(1.0));
             tileSpecList = parameters.getTileSpecs();
         } catch (final Throwable t) {
@@ -872,14 +873,15 @@ public class RenderDataService {
     public List<LastTileTransform> getLastTileTransformsForZ(@PathParam("owner") final String owner,
                                                              @PathParam("project") final String project,
                                                              @PathParam("stack") final String stack,
-                                                             @PathParam("z") final Double z) {
+                                                             @PathParam("z") final Double z,
+                                                             @QueryParam("tileIdPattern") final String tileIdPattern) {
 
         LOG.info("getLastTileTransformsForZ: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
 
         List<LastTileTransform> lastTileTransformList = null;
         try {
-            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z,
+            final RenderParameters parameters = getRenderParametersForZ(owner, project, stack, z, tileIdPattern,
                                                                         new RenderQueryParameters(1.0));
             final List<TileSpec> tileSpecList = parameters.getTileSpecs();
             lastTileTransformList = new ArrayList<>(tileSpecList.size());
@@ -913,6 +915,7 @@ public class RenderDataService {
                                                     @PathParam("project") final String project,
                                                     @PathParam("stack") final String stack,
                                                     @PathParam("z") final Double z,
+                                                    @QueryParam("tileIdPattern") final String tileIdPattern,
                                                     @BeanParam final RenderQueryParameters renderQueryParameters) {
 
         LOG.info("getRenderParametersForZ: entry, owner={}, project={}, stack={}, z={}",
@@ -923,7 +926,7 @@ public class RenderDataService {
             final StackId stackId = new StackId(owner, project, stack);
             final StackMetaData stackMetaData = getStackMetaData(stackId);
 
-            parameters = renderDao.getParameters(stackId, z, renderQueryParameters.getScale());
+            parameters = renderDao.getParameters(stackId, z, tileIdPattern, renderQueryParameters.getScale());
 
             renderQueryParameters.applyQueryAndDefaultParameters(parameters, stackMetaData, this);
 

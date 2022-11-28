@@ -161,7 +161,8 @@ public class RenderDataServiceTest {
                 service.getLastTileTransformsForZ(alignStackId.getOwner(),
                                                   alignStackId.getProject(),
                                                   alignStackId.getStack(),
-                                                  2337.0);
+                                                  2337.0,
+                                                  null);
 
         Assert.assertNotNull("null list returned", lastTileTransformList);
         Assert.assertEquals("invalid number of tiles", 1, lastTileTransformList.size());

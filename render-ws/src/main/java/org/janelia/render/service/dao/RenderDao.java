@@ -117,23 +117,44 @@ public class RenderDao {
      */
     public RenderParameters getParameters(final StackId stackId,
                                           final Double z,
+                                          final String tileIdPattern,
                                           final Double scale)
             throws IllegalArgumentException, ObjectNotFoundException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
         MongoUtil.validateRequiredParameter("z", z);
 
-        final Bounds bounds = getLayerBounds(stackId, z);
+        final Bounds bounds;
+        final Document tileQuery = new Document("z", z);
+        if (tileIdPattern == null) {
+            bounds = getLayerBounds(stackId, z);
+        } else {
+            tileQuery.append(TILE_ID_KEY, new Document("$regex", tileIdPattern));
+            bounds = new Bounds(0.0, 0.0, z, 0.0, 0.0, z); // built after query
+        }
+
         final Double x = bounds.getMinX();
         final Double y = bounds.getMinY();
         final double width = bounds.getMaxX() - x;
         final double height = bounds.getMaxY() - y;
 
-        final Document tileQuery = new Document("z", z);
-
         final RenderParameters renderParameters =
                 new RenderParameters(null, x, y, (int) width, (int) height, scale);
         addResolvedTileSpecs(stackId, tileQuery, renderParameters);
+
+        if (tileIdPattern != null) {
+            final List<TileSpec> tileSpecList = renderParameters.getTileSpecs();
+            if (tileSpecList.size() > 0) {
+                Bounds filteredBounds = tileSpecList.get(0).toTileBounds();
+                for (int i = 1; i < tileSpecList.size(); i++) {
+                    filteredBounds = filteredBounds.union(tileSpecList.get(i).toTileBounds());
+                }
+                renderParameters.x = filteredBounds.getMinX();
+                renderParameters.y = filteredBounds.getMinY();
+                renderParameters.width = (int) (filteredBounds.getMaxX() - renderParameters.x);
+                renderParameters.height = (int) (filteredBounds.getMaxY() - renderParameters.y);
+            }
+        }
 
         return renderParameters;
     }
@@ -1650,7 +1671,6 @@ public class RenderDao {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
 
-        final String tileIdKey = "tileId";
         final byte[] commaBytes = ",".getBytes();
         final byte[] doubleQuoteBytes = "\"".getBytes();
 
@@ -1662,9 +1682,9 @@ public class RenderDao {
         if (matchPattern == null) {
             // Add a $gt constraint to ensure that null values aren't included and
             // that an indexOnly query is possible ($exists is not sufficient).
-            tileQuery = new Document(tileIdKey, new Document("$gt", ""));
+            tileQuery = new Document(TILE_ID_KEY, new Document("$gt", ""));
         } else {
-            tileQuery = new Document(tileIdKey, new Document("$regex", matchPattern));
+            tileQuery = new Document(TILE_ID_KEY, new Document("$regex", matchPattern));
         }
 
         final Document zFilter = buildMinMaxFilter(minZ, maxZ);
@@ -1672,13 +1692,13 @@ public class RenderDao {
             tileQuery.append("z", zFilter);
         }
 
-        final Document tileKeys = new Document("_id", 0).append(tileIdKey, 1);
+        final Document tileKeys = new Document("_id", 0).append(TILE_ID_KEY, 1);
 
         outputStream.write("[".getBytes());
 
         final ProcessTimer timer = new ProcessTimer();
         int tileSpecCount = 0;
-        final Document orderBy = new Document(tileIdKey, 1);
+        final Document orderBy = new Document(TILE_ID_KEY, 1);
         try (final MongoCursor<Document> cursor =
                      tileCollection.find(tileQuery).projection(tileKeys).sort(orderBy).iterator()) {
 
@@ -1686,7 +1706,7 @@ public class RenderDao {
             String tileId;
             while (cursor.hasNext()) {
                 document = cursor.next();
-                tileId = document.getString(tileIdKey);
+                tileId = document.getString(TILE_ID_KEY);
 
                 if (tileSpecCount > 0) {
                     outputStream.write(commaBytes);
@@ -1846,7 +1866,7 @@ public class RenderDao {
         // INDEXES:   z_1_minY_1_minX_1_maxY_1_maxX_1_tileId_1 (z1_minX_1, z1_maxX_1, ... used for edge cases)
 
         // order tile specs by tileId to ensure consistent coordinate mapping
-        final Document orderBy = new Document("tileId", 1);
+        final Document orderBy = new Document(TILE_ID_KEY, 1);
 
         try (final MongoCursor<Document> cursor = tileCollection.find(tileQuery).sort(orderBy).iterator()) {
             Document document;
@@ -2245,4 +2265,6 @@ public class RenderDao {
     private static final IndexOptions TILE_H_OPTIONS = new IndexOptions().background(true).name("H");
     private static final IndexOptions TILE_I_OPTIONS = new IndexOptions().background(true).name("I");
     private static final IndexOptions TILE_J_OPTIONS = new IndexOptions().background(true).name("J");
+
+    private static final String TILE_ID_KEY = "tileId";
 }

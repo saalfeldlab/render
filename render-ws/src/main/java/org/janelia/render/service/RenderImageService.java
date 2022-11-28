@@ -111,6 +111,7 @@ public class RenderImageService {
                                         @PathParam("project") final String project,
                                         @PathParam("stack") final String stack,
                                         @PathParam("z") final Double z,
+                                        @QueryParam("tileIdPattern") final String tileIdPattern,
                                         @BeanParam final RenderQueryParameters renderQueryParameters,
                                         @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
                                         @Context final Request request) {
@@ -123,7 +124,8 @@ public class RenderImageService {
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
-                    renderDataService.getRenderParametersForZ(owner, project, stack, z, renderQueryParameters);
+                    renderDataService.getRenderParametersForZ(owner, project, stack, z, tileIdPattern,
+                                                              renderQueryParameters);
             return RenderServiceUtil.renderJpegImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -140,6 +142,7 @@ public class RenderImageService {
                                        @PathParam("project") final String project,
                                        @PathParam("stack") final String stack,
                                        @PathParam("z") final Double z,
+                                       @QueryParam("tileIdPattern") final String tileIdPattern,
                                        @BeanParam final RenderQueryParameters renderQueryParameters,
                                        @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
                                        @Context final Request request) {
@@ -152,7 +155,8 @@ public class RenderImageService {
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
-                    renderDataService.getRenderParametersForZ(owner, project, stack, z, renderQueryParameters);
+                    renderDataService.getRenderParametersForZ(owner, project, stack, z, tileIdPattern,
+                                                              renderQueryParameters);
             return RenderServiceUtil.renderPngImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
@@ -169,6 +173,7 @@ public class RenderImageService {
                                         @PathParam("project") final String project,
                                         @PathParam("stack") final String stack,
                                         @PathParam("z") final Double z,
+                                        @QueryParam("tileIdPattern") final String tileIdPattern,
                                         @BeanParam final RenderQueryParameters renderQueryParameters,
                                         @QueryParam("maxTileSpecsToRender") final Integer maxTileSpecsToRender,
                                         @Context final Request request) {
@@ -181,7 +186,8 @@ public class RenderImageService {
         final ResponseHelper responseHelper = new ResponseHelper(request, getStackMetaData(owner, project, stack));
         if (responseHelper.isModified()) {
             final RenderParameters renderParameters =
-                    renderDataService.getRenderParametersForZ(owner, project, stack, z, renderQueryParameters);
+                    renderDataService.getRenderParametersForZ(owner, project, stack, z, tileIdPattern,
+                                                              renderQueryParameters);
             return RenderServiceUtil.renderTiffImage(renderParameters, maxTileSpecsToRender, responseHelper);
         } else {
             return responseHelper.getNotModifiedResponse();
