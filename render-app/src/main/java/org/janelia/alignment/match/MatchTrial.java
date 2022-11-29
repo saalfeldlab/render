@@ -1,12 +1,15 @@
 package org.janelia.alignment.match;
 
 import java.io.Serializable;
+import java.net.URISyntaxException;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import org.apache.http.NameValuePair;
+import org.apache.http.client.utils.URIBuilder;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.FeatureAndMatchParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
@@ -95,7 +98,6 @@ public class MatchTrial implements Serializable {
             qClipPosition = pClipPosition.getOpposite();
         }
 
-        final Double maxNeighborDistance = null;
         final MatchStageParameters matchStageParameters =
                 new MatchStageParameters("matchTrial",
                                          FeatureRenderParameters.fromUrl(parameters.getpRenderParametersUrl()),
@@ -103,7 +105,7 @@ public class MatchTrial implements Serializable {
                                          featureAndMatchParameters.getSiftFeatureParameters(),
                                          featureAndMatchParameters.getMatchDerivationParameters(),
                                          gdmfParameters,
-                                         maxNeighborDistance);
+                                         null);
 
         final String urlTemplateString = getTemplateString(parameters.getpRenderParametersUrl());
         final FeatureStorageParameters featureStorageParameters = new FeatureStorageParameters();
@@ -155,18 +157,36 @@ public class MatchTrial implements Serializable {
 
     private static Matcher getTileUrlMatcher(final String tileUrlString)
             throws IllegalArgumentException {
-        final Matcher m = TILE_TEMPLATE_PATTERN.matcher(tileUrlString);
-        if (m.matches()) {
-            return m;
+        final Matcher tileIdMatcher = TILE_TEMPLATE_PATTERN.matcher(tileUrlString);
+        if (tileIdMatcher.matches()) {
+            return tileIdMatcher;
         } else {
-            throw new IllegalArgumentException("tileUrlString '" + tileUrlString + "' does not match pattern");
+            final Matcher zMatcher = Z_LAYER_TEMPLATE_PATTERN.matcher(tileUrlString);
+            if (zMatcher.matches()) {
+                return zMatcher;
+            } else {
+                throw new IllegalArgumentException("tileUrlString '" + tileUrlString + "' does not match pattern");
+            }
         }
     }
 
     private static String getTemplateString(final String tileUrlString)
             throws IllegalArgumentException {
         final Matcher m = getTileUrlMatcher(tileUrlString);
-        return m.group(1) + TEMPLATE_ID_TOKEN + m.group(3);
+        String queryParameters = "";
+        final URIBuilder uriBuilder;
+        try {
+            uriBuilder = new URIBuilder(tileUrlString);
+            for (final NameValuePair nameValuePair : uriBuilder.getQueryParams()) {
+                if ("tileIdPattern".equals(nameValuePair.getName())) {
+                    queryParameters = "?tileIdPattern=" + nameValuePair.getValue();
+                    break;
+                }
+            }
+        } catch (final URISyntaxException e) {
+            throw new IllegalArgumentException("invalid tileUrlString " + tileUrlString, e);
+        }
+        return m.group(1) + TEMPLATE_ID_TOKEN + m.group(3) + queryParameters;
     }
 
     private static String getTileId(final String tileUrlString)
@@ -178,4 +198,6 @@ public class MatchTrial implements Serializable {
     // "http://renderer-dev:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/19-02-24_090152_0-0-1.29351.0/render-parameters?filter=true&scale=0.05"
     private static final Pattern TILE_TEMPLATE_PATTERN =
             Pattern.compile("(.*/tile/)([^/]++)(/render-parameters).*");
+    private static final Pattern Z_LAYER_TEMPLATE_PATTERN =
+            Pattern.compile("(.*/z/)([^/]++)(/render-parameters).*");
 }
