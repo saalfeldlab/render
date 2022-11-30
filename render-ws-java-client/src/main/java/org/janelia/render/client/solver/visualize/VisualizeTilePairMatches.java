@@ -344,6 +344,8 @@ public class VisualizeTilePairMatches {
         System.out.println(titlePrefix + " full scale mean match distance: " + PointMatch.meanDistance(fullScalePointMatchList));
         System.out.println(titlePrefix + " full scale max match distance: " + PointMatch.maxDistance(fullScalePointMatchList));
 
+        final int widthOffset = pSlice.getWidth() / 4;
+        final int heightOffset = pSlice.getHeight() / 4;
         final List<Point> pPointList = new ArrayList<>(fullScalePointMatchList.size());
         final List<Point> qPointList = new ArrayList<>(fullScalePointMatchList.size());
         fullScalePointMatchList.forEach(pm -> {
@@ -353,6 +355,10 @@ public class VisualizeTilePairMatches {
                 scaleLocal(pPoint);
                 scaleLocal(qPoint);
             }
+            pPoint.getL()[0] += widthOffset;
+            pPoint.getL()[1] += heightOffset;
+            qPoint.getL()[0] += widthOffset;
+            qPoint.getL()[1] += heightOffset;
             pPointList.add(pPoint);
             qPointList.add(qPoint);
         });
