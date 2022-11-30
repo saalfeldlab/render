@@ -96,6 +96,7 @@ public class VisualizeTilePairMatches {
 
         if (args.length == 0) {
             args = new String[] {
+                    /*
                     // -----------------------------------------
                     // parameters for MFOV debug
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
@@ -118,21 +119,20 @@ public class VisualizeTilePairMatches {
                     "--SIFTminScale", "0.0125",
                     "--SIFTmaxScale", "1.0",
                     "--SIFTsteps", "5",
+                     */
 
-                    /*
                     // -----------------------------------------
                     // parameters for multi-SEM tile pair debug
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                     "--owner", "hess",
                     "--project", "wafer_52c",
                     "--stack", "v1_acquire_slab_001",
-                    "--pTileId", "001_000004_005_20220407_224812.1249.0",
-                    "--qTileId", "001_000004_006_20220407_224812.1249.0",
+                    "--pTileId", "001_000003_046_20220407_224810.1249.0",
+                    "--qTileId", "001_000003_046_20220408_060424.1250.0",
 //                    "--alignWithPlugin",
                     "--collection", "wafer_52c_v2",
                     "--renderScale", "1.0",
 //                    "--renderWithFilter",
-                     */
 
                     /*
                     // -----------------------------------------

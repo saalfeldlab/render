@@ -81,6 +81,25 @@ public class MultiStagePointMatchClient
                 required = true,
                 order = 5)
         public List<String> pairJson;
+
+        public Parameters() {
+        }
+
+        public Parameters(final MatchWebServiceParameters matchClient,
+                          final FeatureStorageParameters featureStorage,
+                          final Integer maxPeakCacheGb,
+                          final boolean cacheFullScaleSourcePixels,
+                          final String failedPairsDir,
+                          final String stageJson,
+                          final List<String> pairJson) {
+            this.matchClient = matchClient;
+            this.featureStorage = featureStorage;
+            this.maxPeakCacheGb = maxPeakCacheGb;
+            this.cacheFullScaleSourcePixels = cacheFullScaleSourcePixels;
+            this.failedPairsDir = failedPairsDir;
+            this.stageJson = stageJson;
+            this.pairJson = pairJson;
+        }
     }
 
     public static void main(final String[] args) {
@@ -110,7 +129,7 @@ public class MultiStagePointMatchClient
     private final ImageProcessorCache sourceImageProcessorCache;
     private final List<MatchStageParameters> stageParametersList;
 
-    MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException, IOException {
+    public MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException, IOException {
         this.parameters = parameters;
         this.matchStorageClient = new RenderDataClient(parameters.matchClient.baseDataUrl,
                                                        parameters.matchClient.owner,
@@ -171,7 +190,7 @@ public class MultiStagePointMatchClient
         }
     }
 
-    private List<CanvasMatches> generateMatchesForPairs(final RenderableCanvasIdPairs renderableCanvasIdPairs) {
+    public List<CanvasMatches> generateMatchesForPairs(final RenderableCanvasIdPairs renderableCanvasIdPairs) {
         final String urlTemplateString =
                 renderableCanvasIdPairs.getRenderParametersUrlTemplate(parameters.matchClient.baseDataUrl);
 

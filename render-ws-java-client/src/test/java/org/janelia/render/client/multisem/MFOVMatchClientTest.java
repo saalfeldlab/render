@@ -23,7 +23,7 @@ public class MFOVMatchClientTest {
                 "--project", "wafer_52c",
                 "--stack", "v1_acquire_slab_001",
                 "--xyNeighborFactor", "0.6", // for tiles completely within mFov
-                "--stored_match_weight", "0.0001",
+                "--stored_match_weight", "0.1",
 
                 "--matchCollection", "wafer_52c_v1",
 

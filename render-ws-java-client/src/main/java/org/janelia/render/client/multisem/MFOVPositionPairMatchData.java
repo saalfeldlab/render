@@ -16,7 +16,6 @@ import mpicbg.models.PointMatch;
 import mpicbg.models.TranslationModel2D;
 
 import org.janelia.alignment.match.CanvasId;
-import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.spec.TileSpec;
@@ -115,47 +114,13 @@ public class MFOVPositionPairMatchData
                                                                                        q.getGroupId(),
                                                                                        q.getId());
                 // this is specific for a z
-                final List<PointMatch> existingMatchList =
-                        CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
-
-                // because fit() maps p.l to q.w, we need to apply the model to q
-                // we want the model that maps q onto p
-                // alternatively invert the model or apply to p
-//                existingMatchList = (List< PointMatch >)PointMatch.flip( existingMatchList );
-
-                // TODO: pretty sure SP's idea to flip/invert above is not correct, let's review this again
-
-                // PointMatch(p,q), will find a model that maps local coord of p to world coord of q
-
-                // AffineModel and RigidModel introduce artifacts because the pointmatches are far away from the corners
-                //AffineModel2D existingMatchModel = new AffineModel2D();
-                //RigidModel2D existingMatchModel = new RigidModel2D();
+                // AffineModel and RigidModel introduce artifacts because the point matches are far away from the corners
+                // AffineModel2D existingMatchModel = new AffineModel2D();
+                // RigidModel2D existingMatchModel = new RigidModel2D();
                 final TranslationModel2D existingMatchModel = new TranslationModel2D();
-                try {
-                    existingMatchModel.fit(existingMatchList);
-                    
-                    
-                    double error = 0;
-        			double maxError = 0;
-        			
-        			for ( final PointMatch pm : existingMatchList )
-        			{
-        				pm.apply( existingMatchModel );
-        				error += pm.getDistance();
-        				maxError = Math.max( maxError, pm.getDistance() );
-        			}
-
-        			error /= existingMatchList.size();
-                    
-        			LOG.debug("deriveMatchesForUnconnectedPairs: after fit, error is {} and existingMatchModel is {}",
-                              error, existingMatchModel);
-                } catch (final Exception e) {
-                    throw new IOException("failed to fit model for pair " + pair, e);
-                }
-
-                // because fit() maps p.l to q.w, we need to apply the model to q
-                // we want the model that maps q onto p
-                //existingMatchModel = existingMatchModel.createInverse();
+                Utilities.fitModelAndLogError(existingMatchModel,
+                                              canvasMatches,
+                                              "existing pair " + pair);
 
                 final TileSpec pTileSpec = idToTileSpec.get(p.getId());
                 final TileSpec qTileSpec = idToTileSpec.get(q.getId());
@@ -177,61 +142,23 @@ public class MFOVPositionPairMatchData
         // TODO: compute errors and display?
         final AffineModel2D existingCornerMatchModel = new AffineModel2D();
         try {
-            existingCornerMatchModel.fit(existingCornerMatchList);
-
-            LOG.debug("deriveMatchesForUnconnectedPairs: existingCornerMatchModel after fit is {}",
-                      existingCornerMatchModel);
-
-            // compute the error & maxError, remember worst for now?
-			double error = 0;
-			double maxError = 0;
-			
-			for ( final PointMatch pm : existingCornerMatchList )
-			{
-				pm.apply( existingCornerMatchModel );
-				error += pm.getDistance();
-				maxError = Math.max( maxError, pm.getDistance() );
-			}
-
-			error /= existingCornerMatchList.size();
-
-            LOG.info("deriveMatchesForUnconnectedPairs: existingCornerMatchModel error is {} and maxError is {}",
-                      error, maxError);
-
+            Utilities.fitModelAndLogError(existingCornerMatchModel, existingCornerMatchList, "corner matches");
         } catch (final Exception e) {
             throw new IOException("failed to fit model for corner matches", e);
         }
 
         // for each missing pair do
         for (final OrderedCanvasIdPair pair : unconnectedPairsForPosition.stream().sorted().collect(Collectors.toList())) {
-
-            final List<PointMatch> missingCornerMatchList = new ArrayList<>();
-
-            final CanvasId p = pair.getP();
-            final CanvasId q = pair.getQ();
-
-            final TileSpec pTileSpec = idToTileSpec.get(p.getId());
-            final TileSpec qTileSpec = idToTileSpec.get(q.getId());
-
-            final List<Point> pLensCorrectedCorners = pTileSpec.getMatchingTransformedCornerPoints();
-            final List<Point> qLensCorrectedCorners = qTileSpec.getMatchingTransformedCornerPoints();
-            for (int i = 0; i < pLensCorrectedCorners.size(); i++) {
-                final Point pCorner = pLensCorrectedCorners.get(i);
-                final Point qCorner = qLensCorrectedCorners.get(i);
-                qCorner.apply(existingCornerMatchModel); // wrong? should be p or PointMatches should be (q,p) or the inverse of the model
-                final Point transformedQCorner = new Point(qCorner.getW()); // need to use q world coordinates
-                missingCornerMatchList.add(new PointMatch(pCorner, transformedQCorner, derivedMatchWeight));
-            }
-
+            final TileSpec pTileSpec = idToTileSpec.get(pair.getP().getId());
+            final TileSpec qTileSpec = idToTileSpec.get(pair.getQ().getId());
             // Note: derivedMatchWeight is included in missingCornerMatchList PointMatch constructor (above)
             //       and then saved with converted canvas matches here
             derivedMatchesList.add(
-                    new CanvasMatches(p.getGroupId(),
-                                      p.getId(),
-                                      q.getGroupId(),
-                                      q.getId(),
-                                      CanvasMatchResult.convertPointMatchListToMatches(missingCornerMatchList,
-                                                                                       1.0)));
+                    Utilities.buildCornerMatches(pair,
+                                                 pTileSpec,
+                                                 qTileSpec,
+                                                 existingCornerMatchModel,
+                                                 derivedMatchWeight));
         }
 
         LOG.info("deriveMatchesForUnconnectedPairs: exit, returning matches for {}", this);

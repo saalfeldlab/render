@@ -4,7 +4,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -106,7 +105,7 @@ public class MFOVMatchClient {
 
         @Parameter(
                 names = "--z",
-                description = "Z value of layer to be copied (omit to copy all layers)",
+                description = "Z value of layer to be matched (omit to process all layers)",
                 variableArity = true)
         public List<Double> zValues;
 
@@ -123,14 +122,6 @@ public class MFOVMatchClient {
             return matchOwner == null ? renderWeb.owner : matchOwner;
         }
 
-        // 001_000006_019_20220407_115555.1247.0 => 001_000006
-        public String getMFOVForTileId(final String tileId) throws IllegalArgumentException {
-            if (tileId.length() < 10) {
-                throw new IllegalArgumentException("MFOV identifier cannot be derived from tileId " + tileId);
-            }
-            return tileId.substring(0, 10);
-        }
-
         // 001_000006_019_20220407_115555.1247.0 => 001_000006_019
         public String getTileIdPrefixForRun(final String tileId) throws IllegalArgumentException {
             if (tileId.length() < 14) {
@@ -143,10 +134,10 @@ public class MFOVMatchClient {
                 throws IllegalArgumentException {
 
             if (pTileId != null) {
-                multiFieldOfViewId = getMFOVForTileId(pTileId);
+                multiFieldOfViewId = Utilities.getMFOVForTileId(pTileId);
                 pTileIdPrefixForRun = getTileIdPrefixForRun(pTileId);
                 if (qTileId != null) {
-                    if (! multiFieldOfViewId.equals(getMFOVForTileId(qTileId))) {
+                    if (! multiFieldOfViewId.equals(Utilities.getMFOVForTileId(qTileId))) {
                         throw new IllegalArgumentException("pTileId and qTileId reference different MFOVs");
                     }
                     qTileIdPrefixForRun = getTileIdPrefixForRun(qTileId);
@@ -154,7 +145,7 @@ public class MFOVMatchClient {
                     qTileIdPrefixForRun = multiFieldOfViewId;
                 }
             } else if (qTileId != null) {
-                multiFieldOfViewId = getMFOVForTileId(qTileId);
+                multiFieldOfViewId = Utilities.getMFOVForTileId(qTileId);
                 qTileIdPrefixForRun = getTileIdPrefixForRun(qTileId);
                 pTileIdPrefixForRun = multiFieldOfViewId;
             } else if ((multiFieldOfViewId == null) || (multiFieldOfViewId.length() != 10)) {
@@ -165,14 +156,7 @@ public class MFOVMatchClient {
             }
 
             if (matchStorageFile != null) {
-                final Path storagePath = Paths.get(matchStorageFile).toAbsolutePath();
-                if (Files.exists(storagePath)) {
-                    if (! Files.isWritable(storagePath)) {
-                        throw new IllegalArgumentException("not allowed to write to " + storagePath);
-                    }
-                } else if (! Files.isWritable(storagePath.getParent())) {
-                    throw new IllegalArgumentException("not allowed to write to " + storagePath.getParent());
-                }
+                Utilities.validateMatchStorageLocation(matchStorageFile);
             }
         }
     }
