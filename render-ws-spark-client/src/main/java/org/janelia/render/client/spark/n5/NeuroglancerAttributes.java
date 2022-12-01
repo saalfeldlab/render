@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Attributes used by neuroglancer to display n5 volumes.
- *
  * For details, see
  * <a href="https://github.com/google/neuroglancer/blob/master/src/neuroglancer/datasource/n5/README.md">
  *   neuroglancer n5 datasource
@@ -48,10 +47,16 @@ public class NeuroglancerAttributes {
 
     public enum NumpyContiguousOrdering {
 
-        /** C contiguous arrays have rows stored as contiguous blocks of memory. */
+        /**
+         * C contiguous arrays have rows stored as contiguous blocks of memory.
+         * Axes z, y, x => C ordering.
+         */
         C("C"),
 
-        /** Fortran contiguous arrays have columns stored as contiguous blocks of memory. */
+        /**
+         * Fortran contiguous arrays have columns stored as contiguous blocks of memory.
+         * Axes x, y, z => F ordering.
+         */
         FORTRAN("F"),
 
         /** Any contiguous order indicates the array may be in any order (C, F, or even not contiguous). */
