@@ -24,7 +24,7 @@ public class MFOVCrossMatchClientTest {
                 "--stack", "v1_acquire_slab_001_align_w0p1",
 //                "--stored_match_weight", "0.1",
                 "--stored_match_weight", "0.0001",
-                "--stageJson", "/Users/trautmane/Desktop/mfov/stage_parameters.mfov_cross.json",
+                "--stageJson", "render-ws-java-client/src/test/resources/multisem/stage_parameters.mfov_cross.json",
 
                 "--matchCollection", "wafer_52c_v2",
 
