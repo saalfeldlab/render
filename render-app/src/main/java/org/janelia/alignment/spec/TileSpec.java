@@ -462,29 +462,20 @@ public class TileSpec implements Serializable {
     }
 
     /**
-     * @return raw corner locations without any transformation as a list of {@link Point} objects.
-     */
-    @JsonIgnore
-    public List<Point> getUnTransformedCornerPoints() {
-        final List<Point> transformedCornerPoints = new ArrayList<>();
-        final double[][] rawCornerLocations = this.getRawCornerLocations();
-        for (final double[] rawCornerLocation : rawCornerLocations)  {
-            transformedCornerPoints.add(new Point(rawCornerLocation));
-        }
-        return transformedCornerPoints;
-    }
-
-    /**
      * @return raw corner locations with match process (e.g. lens correction) transformations applied
      *         as a list of {@link Point} objects.
      */
     @JsonIgnore
     public List<Point> getMatchingTransformedCornerPoints() {
+        return getMatchingTransformedPoints(getRawCornerLocations());
+    }
+
+    @JsonIgnore
+    public List<Point> getMatchingTransformedPoints(final double[][] rawLocations) {
         final List<Point> transformedCornerPoints = new ArrayList<>();
-        final double[][] rawCornerLocations = this.getRawCornerLocations();
         final CoordinateTransformList<CoordinateTransform> transformList = this.getMatchingTransformList();
-        for (final double[] rawCornerLocation : rawCornerLocations)  {
-            transformedCornerPoints.add(new Point(transformList.apply(rawCornerLocation)));
+        for (final double[] rawLocation : rawLocations)  {
+            transformedCornerPoints.add(new Point(transformList.apply(rawLocation)));
         }
         return transformedCornerPoints;
     }
@@ -727,7 +718,7 @@ public class TileSpec implements Serializable {
     /**
      * Get a copy of this {@link TileSpec}'s transforms as a {@link CoordinateTransformList}.
      * If this {@link TileSpec} does not have any transforms, an empty list is returned.
-     *
+     * <br/>
      * The returned list is no longer cached, so it can be used/changed safely without affecting this {@link TileSpec}.
      *
      * @return transform list copy for this tile spec.

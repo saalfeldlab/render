@@ -154,11 +154,11 @@ public class MFOVPositionPairMatchData
             // Note: derivedMatchWeight is included in missingCornerMatchList PointMatch constructor (above)
             //       and then saved with converted canvas matches here
             derivedMatchesList.add(
-                    Utilities.buildCornerMatches(pair,
-                                                 pTileSpec,
-                                                 qTileSpec,
-                                                 existingCornerMatchModel,
-                                                 derivedMatchWeight));
+                    Utilities.buildPointMatches(pair,
+                                                pTileSpec.getMatchingTransformedCornerPoints(),
+                                                qTileSpec.getMatchingTransformedCornerPoints(),
+                                                existingCornerMatchModel,
+                                                derivedMatchWeight));
         }
 
         LOG.info("deriveMatchesForUnconnectedPairs: exit, returning matches for {}", this);

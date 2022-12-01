@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 
@@ -285,11 +286,11 @@ public class MFOVCrossMatchClient {
                         final TileSpec pTileSpec = pResolvedTiles.getTileSpec(pair.getP().getId());
                         final TileSpec qTileSpec = qResolvedTiles.getTileSpec(pair.getQ().getId());
                         cornerMatchesList.add(
-                                Utilities.buildCornerMatches(pair,
-                                                             pTileSpec,
-                                                             qTileSpec,
-                                                             mFOVModel,
-                                                             parameters.storedMatchWeight));
+                                Utilities.buildPointMatches(pair,
+                                                            getMatchingTransformedPointsForTile(pTileSpec),
+                                                            getMatchingTransformedPointsForTile(qTileSpec),
+                                                            mFOVModel,
+                                                            parameters.storedMatchWeight));
                     }
 
                     LOG.info("deriveAndSaveMatchesForUnconnectedPairs: saving matches for {} z {} mFOV {} pairs",
@@ -398,6 +399,25 @@ public class MFOVCrossMatchClient {
             mFOVList = parameters.mFOVList;
         }
         return mFOVList;
+    }
+
+    private List<Point> getMatchingTransformedPointsForTile(final TileSpec tileSpec) {
+        final int offset = 700;
+        final int maxX = tileSpec.getWidth() - offset;
+        final int maxY = tileSpec.getHeight() - offset;
+        final double[][] rawLocations;
+        if ((maxX > offset) && (maxY > offset)) {
+            rawLocations = new double[][]{
+                    {offset, offset},
+                    {maxX, offset},
+                    {offset, maxY},
+                    {maxX, maxY},
+                    {tileSpec.getWidth() / 2.0, tileSpec.getHeight() / 2.0}
+            };
+        } else {
+            rawLocations = tileSpec.getRawCornerLocations();
+        }
+        return tileSpec.getMatchingTransformedPoints(rawLocations);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVCrossMatchClient.class);

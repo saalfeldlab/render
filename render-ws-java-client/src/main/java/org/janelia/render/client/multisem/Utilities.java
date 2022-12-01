@@ -108,25 +108,22 @@ public class Utilities {
                   logContext, error, matchModel);
     }
 
-    public static CanvasMatches buildCornerMatches(final OrderedCanvasIdPair pair,
-                                                   final TileSpec pTileSpec,
-                                                   final TileSpec qTileSpec,
-                                                   final AbstractAffineModel2D<?> matchModel,
-                                                   final double derivedMatchWeight) {
+    public static CanvasMatches buildPointMatches(final OrderedCanvasIdPair pair,
+                                                  final List<Point> pLensCorrectedPoints,
+                                                  final List<Point> qLensCorrectedPoints,
+                                                  final AbstractAffineModel2D<?> matchModel,
+                                                  final double derivedMatchWeight) {
         final List<PointMatch> missingCornerMatchList = new ArrayList<>();
 
         final CanvasId p = pair.getP();
         final CanvasId q = pair.getQ();
 
-        final List<Point> pLensCorrectedCorners = pTileSpec.getMatchingTransformedCornerPoints();
-        final List<Point> qLensCorrectedCorners = qTileSpec.getMatchingTransformedCornerPoints();
-
-        for (int i = 0; i < pLensCorrectedCorners.size(); i++) {
-            final Point pCorner = pLensCorrectedCorners.get(i);
-            final Point qCorner = qLensCorrectedCorners.get(i);
-            qCorner.apply(matchModel);
-            final Point transformedQCorner = new Point(qCorner.getW()); // need to use q world coordinates
-            missingCornerMatchList.add(new PointMatch(pCorner, transformedQCorner, derivedMatchWeight));
+        for (int i = 0; i < pLensCorrectedPoints.size(); i++) {
+            final Point pPoint = pLensCorrectedPoints.get(i);
+            final Point qPoint = qLensCorrectedPoints.get(i);
+            qPoint.apply(matchModel);
+            final Point transformedQCorner = new Point(qPoint.getW()); // need to use q world coordinates
+            missingCornerMatchList.add(new PointMatch(pPoint, transformedQCorner, derivedMatchWeight));
         }
 
         return new CanvasMatches(p.getGroupId(),
