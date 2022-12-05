@@ -194,6 +194,7 @@ public class MFOVCrossMatchClient {
     private final RenderDataClient matchClient;
     private final RenderDataClient matchStorageClient;
     private final MultiStagePointMatchClient multiStagePointMatchClient;
+    private final boolean matchCollectionExists;
 
     private ResolvedTileSpecCollection pResolvedTiles;
     private ResolvedTileSpecCollection qResolvedTiles;
@@ -214,6 +215,18 @@ public class MFOVCrossMatchClient {
                                                            parameters.matchStorageCollection);
         }
         this.multiStagePointMatchClient = new MultiStagePointMatchClient(parameters.matchDerivationClientParameters);
+
+        final Set<String> exitingCollectionNames =
+                this.matchClient.getOwnerMatchCollections().stream()
+                        .map(d -> d.getCollectionId().getName())
+                        .collect(Collectors.toSet());
+
+        this.matchCollectionExists = exitingCollectionNames.contains(parameters.matchCollection);
+
+        if (! this.matchCollectionExists) {
+            LOG.info("match collection {} does not exist so all pairs will be considered unconnected",
+                     parameters.matchCollection);
+        }
     }
 
     public void deriveAndSaveMatchesForUnconnectedMFOVs()
@@ -362,7 +375,7 @@ public class MFOVCrossMatchClient {
         }
 
         // query web service to find connected tile pairs and remove them from unconnected set
-        if (unconnectedPairsForMFOV.size() > 0) {
+        if ((unconnectedPairsForMFOV.size() > 0) && matchCollectionExists) {
             for (final CanvasMatches canvasMatches : matchClient.getMatchesBetweenGroups(pGroupId,
                                                                                          qGroupId,
                                                                                          true)) {
