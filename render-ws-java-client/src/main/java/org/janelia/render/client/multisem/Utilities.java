@@ -11,6 +11,10 @@ import java.util.List;
 import java.util.Map;
 
 import mpicbg.models.AbstractAffineModel2D;
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.InvertibleCoordinateTransform;
+import mpicbg.models.InvertibleCoordinateTransformList;
+import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
@@ -132,6 +136,36 @@ public class Utilities {
                                  q.getId(),
                                  CanvasMatchResult.convertPointMatchListToMatches(missingCornerMatchList,
                                                                                   1.0));
+    }
+
+    public static List<Point> transformMFOVMatchesForTile(final List<PointMatch> mFOVMatches,
+                                                          final TileSpec tileSpec,
+                                                          final boolean isP) {
+
+        final List<Point> tileRelativePoints = new ArrayList<>();
+
+        final List<CoordinateTransform> postMatchingTransformList =
+                tileSpec.getPostMatchingTransformList().getList(null);
+
+        final InvertibleCoordinateTransformList<InvertibleCoordinateTransform> postMatchingInvertibleTransformList =
+                new InvertibleCoordinateTransformList<>();
+        for (final CoordinateTransform coordinateTransform : postMatchingTransformList) {
+            postMatchingInvertibleTransformList.add((InvertibleCoordinateTransform) coordinateTransform);
+        }
+
+        for (final PointMatch pointMatch : mFOVMatches) {
+            final double[] world = isP ? pointMatch.getP1().getW() : pointMatch.getP2().getW();
+            final double[] local;
+            try {
+                local = postMatchingInvertibleTransformList.applyInverse(world);
+                tileRelativePoints.add(new Point(local));
+            } catch (final NoninvertibleModelException e) {
+                LOG.warn("transformMFOVMatchesForTile: skipping nom-invertible point in tile " + tileSpec.getTileId(),
+                         e);
+                tileRelativePoints.add(null);
+            }
+        }
+        return tileRelativePoints;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(Utilities.class);

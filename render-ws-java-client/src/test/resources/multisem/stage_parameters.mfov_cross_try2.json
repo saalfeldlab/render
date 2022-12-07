@@ -15,7 +15,7 @@
       "matchMinCoveragePercentage": 0.0,
       "matchMinInlierRatio": 0.0,
       "matchMinNumInliers": 10,
-      "matchModelType": "TRANSLATION",
+      "matchModelType": "RIGID",
       "matchRod": 0.92
     },
     "featureRender": {

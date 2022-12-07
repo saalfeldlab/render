@@ -21,16 +21,19 @@ public class MFOVCrossMatchClientTest {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "hess",
                 "--project", "wafer_52c",
-                "--stack", "v1_acquire_slab_001_align_w0p1",
-//                "--stored_match_weight", "0.1",
-                "--stored_match_weight", "0.0001",
-                "--stageJson", "render-ws-java-client/src/test/resources/multisem/stage_parameters.mfov_cross.json",
+                "--stack", "v1_acquire_001_000003_montage",
+                "--stored_match_weight", "0.1",
+                "--stageJson", "render-ws-java-client/src/test/resources/multisem/stage_parameters.mfov_cross_try2.json",
 
-                "--matchCollection", "wafer_52c_v2",
+                "--matchCollection", "wafer_52c_v1_cross_patch",
 
-                //"--mfov", "001_000001",
+                // "--mfov", "001_000003",
                 //"--matchStorageFile", "/Users/trautmane/Desktop/mfov/missing_cross_matches.json",
-                "--z", "1249"
+
+                "--sfov", "001_000003_001", "001_000003_067",
+                // "--sfov", "001_000003_062", "001_000003_077",
+                // "--sfov", "001_000003_067", "001_000003_072",
+                "--z", "1248", "1249"
 
                 
         };

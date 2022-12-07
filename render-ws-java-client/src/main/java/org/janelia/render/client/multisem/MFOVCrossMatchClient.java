@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -66,10 +67,23 @@ public class MFOVCrossMatchClient {
 
         @Parameter(
                 names = "--mfov",
-                description = "Multi-field-of-view identifier <slab number>_<mfov number> (e.g. 001_000006)",
+                description = "Multi-field-of-view identifier <slab number>_<mFOV number> (e.g. 001_000006).  " +
+                              "If specified, only generate cross matches for this mFOV.  " +
+                              "Omit to generate for all mFOVs ",
                 variableArity = true
         )
         public List<String> mFOVList;
+
+        @Parameter(
+                names = "--sfov",
+                description = "Single-field-of-view identifier <slab number>_<mfov number>_<sfov number> " +
+                              "(e.g. 001_000006_026).  " +
+                              "If specified, only generate cross matches for this sFOV " +
+                              "and use transformed mFOV points instead of using mFOV model with center points.  " +
+                              "Omit to generate for all sFOVs using mFOV model with center points.",
+                variableArity = true
+        )
+        public List<String> sFOVList;
 
         @Parameter(
                 names = "--matchOwner",
@@ -116,6 +130,7 @@ public class MFOVCrossMatchClient {
         public String matchStorageFile;
 
         private MultiStagePointMatchClient.Parameters matchDerivationClientParameters;
+        private Set<String> sFOVSet;
 
         public Parameters() {
         }
@@ -163,9 +178,21 @@ public class MFOVCrossMatchClient {
                 Utilities.validateMatchStorageLocation(matchStorageFile);
             }
 
-            if (mFOVList == null) {
-                mFOVList = new ArrayList<>();
+            if (sFOVList == null) {
+                sFOVList = new ArrayList<>();
+                if (mFOVList == null) {
+                    mFOVList = new ArrayList<>();
+                }
+            } else if (mFOVList == null) {
+                // remove duplicates and sort sFOV list
+                sFOVList = sFOVList.stream().distinct().sorted().collect(Collectors.toList());
+                // build mFOV list based upon sFOVs
+                mFOVList = sFOVList.stream().map(Utilities::getMFOVForTileId).distinct().collect(Collectors.toList());
+            } else {
+                throw new IllegalArgumentException("must specify either --mfov or --sfov but not both");
             }
+
+            sFOVSet = new HashSet<>(sFOVList);
         }
     }
 
@@ -286,38 +313,33 @@ public class MFOVCrossMatchClient {
 
                 if (mFOVMatchesList.size() == 1) {
 
-                    final List<CanvasMatches> cornerMatchesList = new ArrayList<>();
-
                     final List<PointMatch> mFOVMatches =
                             CanvasMatchResult.convertMatchesToPointMatchList(mFOVMatchesList.get(0).getMatches());
-                    final RigidModel2D mFOVModel = new RigidModel2D(); // TODO: derive model type from match parameters?
-                    Utilities.fitModelAndLogError(mFOVModel, mFOVMatches, "pair " + mFOVPair);
 
-                    final List<OrderedCanvasIdPair> sortedUnconnectedPairs =
-                            unconnectedPairsForMFOV.stream().sorted().collect(Collectors.toList());
-                    for (final OrderedCanvasIdPair pair : sortedUnconnectedPairs) {
-                        final TileSpec pTileSpec = pResolvedTiles.getTileSpec(pair.getP().getId());
-                        final TileSpec qTileSpec = qResolvedTiles.getTileSpec(pair.getQ().getId());
-                        cornerMatchesList.add(
-                                Utilities.buildPointMatches(pair,
-                                                            getMatchingTransformedPointsForTile(pTileSpec),
-                                                            getMatchingTransformedPointsForTile(qTileSpec),
-                                                            mFOVModel,
-                                                            parameters.storedMatchWeight));
+                    final List<CanvasMatches> sFOVMatchesList;
+                    if (parameters.sFOVList == null) {
+                        sFOVMatchesList = buildMatchesUsingModel(mFOVPair, mFOVMatches);
+                    } else {
+                        sFOVMatchesList = buildMatchesUsingInvertedTransform(mFOVMatches);
                     }
 
-                    LOG.info("deriveAndSaveMatchesForUnconnectedPairs: saving matches for {} z {} mFOV {} pairs",
-                             cornerMatchesList.size(), pZ, mFOVId);
+                    if (sFOVMatchesList.size() > 0) {
+                        LOG.info("deriveAndSaveMatchesForUnconnectedPairs: saving matches for {} z {} mFOV {} pairs",
+                                 sFOVMatchesList.size(), pZ, mFOVId);
 
-                    if (parameters.matchStorageFile != null) {
-                        final Path storagePath = parameters.getStoragePath(pZ, mFOVId);
-                        FileUtil.saveJsonFile(storagePath.toString(), cornerMatchesList);
+                        if (parameters.matchStorageFile != null) {
+                            final Path storagePath = parameters.getStoragePath(pZ, mFOVId);
+                            FileUtil.saveJsonFile(storagePath.toString(), sFOVMatchesList);
+                        } else {
+                            matchStorageClient.saveMatches(sFOVMatchesList);
+                        }
                     } else {
-                        matchStorageClient.saveMatches(cornerMatchesList);
+                        LOG.warn("deriveAndSaveMatchesForUnconnectedPairs: no sFOV matches derived for z {} and mFOV {}",
+                                 pZ, mFOVId);
                     }
 
                 } else {
-                    LOG.warn("deriveAndSaveMatchesForUnconnectedPairs: no matches derived for z {} and mFOV {}",
+                    LOG.warn("deriveAndSaveMatchesForUnconnectedPairs: no mFOV matches derived for z {} and mFOV {}",
                              pZ, mFOVId);
                 }
 
@@ -395,6 +417,97 @@ public class MFOVCrossMatchClient {
 
         LOG.info("buildUnconnectedData: exit, found {} unconnected tile pairs within mFOV {} in z {}",
                  unconnectedPairsForMFOV.size(), mFOVId, pZ);
+    }
+
+    private List<CanvasMatches> buildMatchesUsingModel(final OrderedCanvasIdPair mFOVPair,
+                                                       final List<PointMatch> mFOVMatches)
+            throws IOException {
+
+        final List<CanvasMatches> sFOVMatchesList = new ArrayList<>();
+
+        final List<OrderedCanvasIdPair> sortedUnconnectedPairs =
+                unconnectedPairsForMFOV.stream().sorted().collect(Collectors.toList());
+
+        LOG.info("buildMatchesUsingModel: mFOVMatches.size={}, sortedUnconnectedPairs.size={}",
+                 mFOVMatches.size(), sortedUnconnectedPairs.size());
+
+        final RigidModel2D mFOVModel = new RigidModel2D(); // TODO: derive model type from match parameters?
+        Utilities.fitModelAndLogError(mFOVModel, mFOVMatches, "pair " + mFOVPair);
+
+        for (final OrderedCanvasIdPair pair : sortedUnconnectedPairs) {
+            final TileSpec pTileSpec = pResolvedTiles.getTileSpec(pair.getP().getId());
+            final TileSpec qTileSpec = qResolvedTiles.getTileSpec(pair.getQ().getId());
+            sFOVMatchesList.add(
+                    Utilities.buildPointMatches(pair,
+                                                getMatchingTransformedPointsForTile(pTileSpec),
+                                                getMatchingTransformedPointsForTile(qTileSpec),
+                                                mFOVModel,
+                                                parameters.storedMatchWeight));
+        }
+
+        return sFOVMatchesList;
+    }
+
+    private List<CanvasMatches> buildMatchesUsingInvertedTransform(final List<PointMatch> mFOVMatches)
+            throws IOException {
+
+        final List<CanvasMatches> sFOVMatchesList = new ArrayList<>();
+
+        final List<OrderedCanvasIdPair> sortedUnconnectedPairs =
+                unconnectedPairsForMFOV.stream()
+                        .filter(p -> {
+                            final String sFOV = Utilities.getSFOVForTileId(p.getP().getId());
+                            return parameters.sFOVSet.contains(sFOV);
+                        })
+                        .sorted()
+                        .collect(Collectors.toList());
+
+        LOG.info("buildMatchesUsingInvertedTransform: mFOVMatches.size={}, sortedUnconnectedPairs.size={}",
+                 mFOVMatches.size(), sortedUnconnectedPairs.size());
+
+        for (final OrderedCanvasIdPair sFOVPair : sortedUnconnectedPairs) {
+            sFOVMatchesList.add(
+                    buildMatchesUsingInvertedTransformForSFOVPair(mFOVMatches,
+                                                                  sFOVPair,
+                                                                  parameters.storedMatchWeight));
+        }
+
+        return sFOVMatchesList;
+    }
+
+    private CanvasMatches buildMatchesUsingInvertedTransformForSFOVPair(final List<PointMatch> mFOVMatches,
+                                                                        final OrderedCanvasIdPair sFOVPair,
+                                                                        final double derivedMatchWeight)
+            throws IOException {
+
+        final CanvasId p = sFOVPair.getP();
+        final CanvasId q = sFOVPair.getQ();
+
+        final TileSpec pTileSpec = pResolvedTiles.getTileSpec(p.getId());
+        final TileSpec qTileSpec = qResolvedTiles.getTileSpec(q.getId());
+
+        final List<Point> pPoints = Utilities.transformMFOVMatchesForTile(mFOVMatches, pTileSpec, true);
+        final List<Point> qPoints = Utilities.transformMFOVMatchesForTile(mFOVMatches, qTileSpec, false);
+
+        final List<PointMatch> matchList = new ArrayList<>(pPoints.size());
+        for (int i = 0; i < pPoints.size(); i++) {
+            final Point pPoint = pPoints.get(i);
+            final Point qPoint = qPoints.get(i);
+            if ((pPoint != null) && (qPoint != null)) {
+                matchList.add(new PointMatch(pPoints.get(i), qPoints.get(i), derivedMatchWeight));
+            }
+        }
+
+        if (matchList.size() == 0) {
+            throw new IOException("unable to invert matches for sFOV pair " + sFOVPair);
+        }
+
+        return new CanvasMatches(p.getGroupId(),
+                                 p.getId(),
+                                 q.getGroupId(),
+                                 q.getId(),
+                                 CanvasMatchResult.convertPointMatchListToMatches(matchList,
+                                                                                  1.0));
     }
 
     private List<String> getMFOVIdList(final Double z) {
