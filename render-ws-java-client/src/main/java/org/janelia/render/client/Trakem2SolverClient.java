@@ -209,21 +209,21 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 if (args.length == 0) {
                     final String[] testArgs = {
                             "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                            "--owner", "Z1217_33m_BR",
-                            "--project", "Sec10",
+                            "--owner", "hess",
+                            "--project", "wafer_52c",
 
-                            "--stack", "v2_acquire_merged",
-                            "--minZ", "4157",
-                            "--maxZ", "4158",
+                            "--stack", "v1_acquire_001_000003_montage",
+                            "--minZ", "1225",
+                            "--maxZ", "1250",
 
-                            "--targetStack", "test_restart_2",
+                            "--targetStack", "v1_acquire_001_000003_align_t2",
                             "--regularizerModelType", "RIGID",
                             "--optimizerLambdas", "1.0,0.5,0.1,0.01",
                             "--maxIterations", "1000",
 
                             "--threads", "1",
                             "--completeTargetStack",
-                            "--matchCollection", "Sec10_multi"
+                            "--matchCollection", "wafer_52c_v2"
                     };
                     parameters.parse(testArgs);
                 } else {
