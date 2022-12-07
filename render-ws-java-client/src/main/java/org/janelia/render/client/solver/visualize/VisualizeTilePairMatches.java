@@ -126,11 +126,22 @@ public class VisualizeTilePairMatches {
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                     "--owner", "hess",
                     "--project", "wafer_52c",
-                    "--stack", "v1_acquire_slab_001",
-                    "--pTileId", "001_000003_046_20220407_224810.1249.0",
-                    "--qTileId", "001_000003_046_20220408_060424.1250.0",
+                    "--stack", "v1_acquire_001_000003",
+
+//                    "--pTileId", "001_000003_001_20220407_224810.1249.0",
+//                    "--qTileId", "001_000003_001_20220408_060424.1250.0",
+
+//                    "--pTileId", "001_000003_026_20220407_224810.1249.0",
+//                    "--qTileId", "001_000003_026_20220408_060424.1250.0",
+                    
+//                    "--pTileId", "001_000003_062_20220407_224810.1249.0",
+//                    "--qTileId", "001_000003_062_20220408_060424.1250.0",
+
+                    "--pTileId", "001_000003_067_20220407_224810.1249.0",
+                    "--qTileId", "001_000003_067_20220408_060424.1250.0",
+
 //                    "--alignWithPlugin",
-                    "--collection", "wafer_52c_v2",
+                    "--collection", "wafer_52c_mfov3_cross_inverted",
                     "--renderScale", "1.0",
 //                    "--renderWithFilter",
 
