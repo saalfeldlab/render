@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import mpicbg.models.TranslationModel2D;
+
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
@@ -21,26 +23,37 @@ public class Trakem2SolverClientTest {
 
     public static void main(final String[] args) {
         final String[] testArgs = {
-                "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
-                "--owner", "Z0620_23m_VNC",
-                "--project", "Sec25",
-                "--stack", "v2_acquire_trimmed",
-                "--targetStack", "test_cc",
+                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                "--owner", "hess",
+                "--project", "wafer_52c",
 
-//                "--minZ", "2610",
-//                "--maxZ", "2610",
-//                "--matchCollection", "Sec25_v2_b",
+                "--stack", "v1_acquire_001_000003",
+                "--minZ", "1225",
+                "--maxZ", "1225",
 
-                "--minZ", "10772",
-                "--maxZ", "10772",
-                "--matchCollection", "Sec25_v2_test_cc",
+                "--targetStack", "v1_acquire_001_000003_montage",
+                "--regularizerModelType", "TRANSLATION",
+//                "--optimizerLambdas", "1.0,0.5,0.1,0.01",
+                "--optimizerLambdas", "0.1,0.01",
+                "--maxIterations", "1000",
 
+                "--threads", "1",
                 "--completeTargetStack",
-                "--regularizerModelType", "RIGID",
-//                "--optimizerLambdas", "0.1"
+                "--matchCollection", "wafer_52c_v2"
         };
 
-        Trakem2SolverClient.main(testArgs);
+        for (double z = 1225.0; z < 1251.0; z++) {
+            testArgs[9] = String.valueOf(z);
+            testArgs[11] = String.valueOf(z);
+            final Trakem2SolverClient.Parameters parameters = new Trakem2SolverClient.Parameters();
+            parameters.parse(testArgs);
+            try {
+                final Trakem2SolverClient<TranslationModel2D> client = new Trakem2SolverClient<>(parameters);
+                client.run();
+            } catch (final Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
 }
