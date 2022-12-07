@@ -26,9 +26,9 @@ public class MFOVMatchClientTest {
                 "--stored_match_weight", "0.1",
 
                 "--matchCollection", "wafer_52c_v1",
+                "--matchStorageCollection", "wafer_52c_v1_montage_patch",
 
-                "--mfov", "001_000004",
-                "--matchStorageFile", "/tmp/001_000004_missing.json",
+                "--mfov", "001_000003",
 
                 // from Stephan's DebugTransformed... run:
                 //"--tileIdPattern", "001_000004_005.*", "--tileId2", "001_000004_006",
@@ -37,9 +37,9 @@ public class MFOVMatchClientTest {
                 //maxE=2.3338589474988547 [3,3](AffineTransform[[1.0, -0.0, 946.3353229867118], [0.0, 1.0, 1650.4545454545455]]) 0.9487593150079552, AffineModel2D
 
                 // same run with MFOVMatchClient has different results, need to determine why ...
-                "--pTileId", "001_000004_005_20220408_060427.1250.0",
-                "--qTileId", "001_000004_006_20220408_060427.1250.0",
-//                "--minZ", "1234",
+//                "--pTileId", "001_000004_005_20220408_060427.1250.0",
+//                "--qTileId", "001_000004_006_20220408_060427.1250.0",
+//                "--minZ", "12",
 //                "--maxZ", "1235",
                 //"--z", "1234", "1249", //"1250"
                 // existingMatchModel after fit is [3,3](AffineTransform[[1.000174236446295, 0.004337017990846, -956.3291600882663], [-0.001175823861387, 1.000052427782231, -1648.7027966452395]]) 1.7976931348623157E308
