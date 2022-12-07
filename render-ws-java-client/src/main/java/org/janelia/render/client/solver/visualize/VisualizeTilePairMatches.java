@@ -141,7 +141,7 @@ public class VisualizeTilePairMatches {
                     "--qTileId", "001_000003_067_20220408_060424.1250.0",
 
 //                    "--alignWithPlugin",
-                    "--collection", "wafer_52c_mfov3_cross_inverted",
+                    "--collection", "wafer_52c_v1_cross_patch",
                     "--renderScale", "1.0",
 //                    "--renderWithFilter",
 
