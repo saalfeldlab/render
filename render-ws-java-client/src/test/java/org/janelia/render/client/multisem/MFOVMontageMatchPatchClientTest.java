@@ -4,15 +4,15 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
- * Tests the {@link MFOVMatchClient} class.
+ * Tests the {@link MFOVMontageMatchPatchClient} class.
  *
  * @author Eric Trautman
  */
-public class MFOVMatchClientTest {
+public class MFOVMontageMatchPatchClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new MFOVMatchClient.Parameters());
+        CommandLineParameters.parseHelp(new MFOVMontageMatchPatchClient.Parameters());
     }
 
     public static void main(final String[] args) {
@@ -47,7 +47,7 @@ public class MFOVMatchClientTest {
                 // existingCornerMatchModel error is 4.720476749908454 and maxError is 23.305402102991575
         };
 
-        MFOVMatchClient.main(effectiveArgs);
+        MFOVMontageMatchPatchClient.main(effectiveArgs);
 
     }
 }

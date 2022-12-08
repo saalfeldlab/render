@@ -31,13 +31,28 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Java client for deriving point matches for adjacent same-z-layer tile pairs using SIFT match
- * data from related tile pairs the same multi-field-of-view (mFOV) but different z-layers.
+ * Java client for patching matches missing from adjacent SFOV tile pairs within the same MFOV and z layer.
+ * <br/><br/>
+ * The client:
+ * <ul>
+ *   <li>
+ *     Finds adjacent SFOV tile pairs within the same MFOV and z layer that remain unconnected
+ *     after standard matching (typically because of substrate or resin borders).
+ *   </li>
+ *   <li>
+ *     For each unconnected pair, the client first fetches any existing standard matches for the
+ *     same SFOV pair in other z layers in the slab.
+ *     The existing matches are then fit to a montage patch match model.
+ *     Finally, montage patch matches for the pair are derived by applying the model to each SFOV tile's
+ *     corners and the matches are stored with a specified weight (typically reduced to something
+ *     like 0.1 to ensure that standard matches are given precedence in future solves).
+ *   </li>
+ * </ul>
  *
  * @author Stephan Preibisch
  * @author Eric Trautman
  */
-public class MFOVMatchClient {
+public class MFOVMontageMatchPatchClient {
 
     public static class Parameters
             extends CommandLineParameters {
@@ -174,7 +189,7 @@ public class MFOVMatchClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final MFOVMatchClient client = new MFOVMatchClient(parameters);
+                final MFOVMontageMatchPatchClient client = new MFOVMontageMatchPatchClient(parameters);
                 client.deriveAndSaveMatchesForUnconnectedPairs();
             }
         };
@@ -186,7 +201,7 @@ public class MFOVMatchClient {
     private final RenderDataClient matchClient;
     private final RenderDataClient matchStorageClient;
 
-    MFOVMatchClient(final Parameters parameters) {
+    MFOVMontageMatchPatchClient(final Parameters parameters) {
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
         this.matchClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
@@ -338,5 +353,5 @@ public class MFOVMatchClient {
                  unconnectedPairsForMFOV.size(), parameters.multiFieldOfViewId, z);
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(MFOVMatchClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MFOVMontageMatchPatchClient.class);
 }
