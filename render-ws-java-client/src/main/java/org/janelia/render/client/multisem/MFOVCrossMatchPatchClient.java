@@ -41,16 +41,35 @@ import org.slf4j.LoggerFactory;
 import static org.janelia.alignment.match.RenderableCanvasIdPairs.TEMPLATE_GROUP_ID_TOKEN;
 
 /**
- * Java client that first creates a pMFOV by rendering a downsampled view of all tiles
- * in a single MFOV in a single z-layer. It then creates a qMFOV by doing the same for
- * the same MFOV in the adjacent following z-layer.
- * The rendered MFOV pair is aligned and the alignment transformation is applied to the
- * corners of each SFOV tile which are stored as cross layer SFOV matches to be used
- * in a subsequent global solve.
+ * Java client for patching matches missing between the same MFOV in adjacent (cross) z layers.
+ * <br/><br/>
+ * The client:
+ * <ul>
+ *   <li>
+ *       Finds adjacent z (cross) layer MFOVs that do not contain enough connected SFOV tile pairs
+ *       after standard matching where "enough" is specified by the --min_pairs_for_connection parameter.
+ *   </li>
+ *   <li>
+ *       For each unconnected cross MFOV pair, renders the stitched MFOVs and generates matches between them.
+ *       The hope is that enough matches can be found when comparing scaled views of entire MFOVs.
+ *       Note that the rendered MFOVs should be stitched in isolation, meaning that the SFOV tiles
+ *       in each MFOV contain transforms solely derived from matches with SFOV tiles in the same MFOV.
+ *   </li>
+ *   <li>
+ *       Transforms the MFOV pair matches into SFOV tile matches for one or more SFOV tile pairs.
+ *       Most (if not all) of the transformed match point locations will be outside the bounds of the SFOV tiles,
+ *       but that does not matter to solvers.  It simply means that the match points may not be visible in some
+ *       tile pair views since match points are typically within the bounds of the tile.
+ *   </li>
+ *       Stores the transformed matches with a specified weight (typically something like 0.99 to help
+ *       differentiate patch matches from standard matches which have a weight of 1.0).
+ *   </li>
+ * </ul>
  *
+ * @author Stephan Preibisch
  * @author Eric Trautman
  */
-public class MFOVCrossMatchClient {
+public class MFOVCrossMatchPatchClient {
 
     public static class Parameters
             extends CommandLineParameters {
@@ -209,7 +228,7 @@ public class MFOVCrossMatchClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final MFOVCrossMatchClient client = new MFOVCrossMatchClient(parameters);
+                final MFOVCrossMatchPatchClient client = new MFOVCrossMatchPatchClient(parameters);
                 client.deriveAndSaveMatchesForUnconnectedMFOVs();
             }
         };
@@ -227,7 +246,7 @@ public class MFOVCrossMatchClient {
     private ResolvedTileSpecCollection qResolvedTiles;
     private List<OrderedCanvasIdPair> unconnectedPairsForMFOV;
 
-    MFOVCrossMatchClient(final Parameters parameters)
+    MFOVCrossMatchPatchClient(final Parameters parameters)
             throws IOException {
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
@@ -546,5 +565,5 @@ public class MFOVCrossMatchClient {
         return tileSpec.getMatchingTransformedPoints(rawLocations);
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(MFOVCrossMatchClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MFOVCrossMatchPatchClient.class);
 }

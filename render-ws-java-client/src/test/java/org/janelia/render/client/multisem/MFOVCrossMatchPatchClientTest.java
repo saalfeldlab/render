@@ -4,15 +4,15 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
- * Tests the {@link MFOVCrossMatchClient} class.
+ * Tests the {@link MFOVCrossMatchPatchClient} class.
  *
  * @author Eric Trautman
  */
-public class MFOVCrossMatchClientTest {
+public class MFOVCrossMatchPatchClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new MFOVCrossMatchClient.Parameters());
+        CommandLineParameters.parseHelp(new MFOVCrossMatchPatchClient.Parameters());
     }
 
     public static void main(final String[] args) {
@@ -38,7 +38,7 @@ public class MFOVCrossMatchClientTest {
                 
         };
 
-        MFOVCrossMatchClient.main(effectiveArgs);
+        MFOVCrossMatchPatchClient.main(effectiveArgs);
 
     }
 }
