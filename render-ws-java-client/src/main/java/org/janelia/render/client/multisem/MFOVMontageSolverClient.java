@@ -78,46 +78,6 @@ public class MFOVMontageSolverClient {
         public String matchCollection;
 
         @Parameter(
-                names = "--samplesPerDimension",
-                description = "Samples per dimension"
-        )
-        public Integer samplesPerDimension = 2;
-
-        @Parameter(
-                names = "--maxAllowedError",
-                description = "Max allowed error"
-        )
-        public Double maxAllowedError = 200.0;
-
-        @Parameter(
-                names = "--maxIterations",
-                description = "Max iterations"
-        )
-        public Integer maxIterations = 2000;
-
-        @Parameter(
-                names = "--maxPlateauWidth",
-                description = "Max allowed error"
-        )
-        public Integer maxPlateauWidth = 200;
-
-        @Parameter(
-                names = "--startLambda",
-                description = "Starting lambda for optimizer.  " +
-                              "Optimizer loops through lambdas 1.0, 0.5, 0.1. 0.01.  " +
-                              "If you know your starting alignment is good, " +
-                              "set this to one of the smaller values to improve performance."
-        )
-        public Double startLambda = 0.01;
-
-        @Parameter(
-                names = "--optimizerLambdas",
-                description = "Explicit optimizer lambda values.",
-                variableArity = true
-        )
-        public List<Double> optimizerLambdas;
-
-        @Parameter(
                 names = "--targetStack",
                 description = "Name for aligned result stack",
                 required = true)
@@ -270,18 +230,19 @@ public class MFOVMontageSolverClient {
                     mFOVTileIds.add(pId);
                     mFOVTileIds.add(qId);
 
+                    final int samplesPerDimension = 2;
                     final Tile<InterpolatedAffineModel2D<AffineModel2D, TranslationModel2D>> p =
                             idToTileMap.computeIfAbsent(
                                     pId,
                                     pTile -> Trakem2SolverClient.buildTileFromSpec(pTileSpec,
-                                                                                   parameters.samplesPerDimension,
+                                                                                   samplesPerDimension,
                                                                                    ModelType.TRANSLATION));
 
                     final Tile<InterpolatedAffineModel2D<AffineModel2D, TranslationModel2D>> q =
                             idToTileMap.computeIfAbsent(
                                     qId,
                                     qTile -> Trakem2SolverClient.buildTileFromSpec(qTileSpec,
-                                                                                   parameters.samplesPerDimension,
+                                                                                   samplesPerDimension,
                                                                                    ModelType.TRANSLATION));
 
                     p.connect(q,
@@ -298,28 +259,23 @@ public class MFOVMontageSolverClient {
 
                 LOG.info("run: optimizing {} tiles for mFOV {} in z {}", mFOVTileIds.size(), mFOV, z);
 
-                final List<Double> lambdaValues = Trakem2SolverClient.buildLambdaList(parameters.optimizerLambdas,
-                                                                                      parameters.startLambda);
-                for (final double lambda : lambdaValues) {
-
-                    for (final Tile tile : tileConfig.getTiles()) {
-                        ((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
-                    }
-
-                    // tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
-
-                    final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1);
-                    final float damp = 1.0f;
-                    TileUtil.optimizeConcurrently(observer,
-                                                  parameters.maxAllowedError,
-                                                  parameters.maxIterations,
-                                                  parameters.maxPlateauWidth,
-                                                  damp,
-                                                  tileConfig,
-                                                  tileConfig.getTiles(),
-                                                  tileConfig.getFixedTiles(),
-                                                  1);
+                final double lambda = 0.01; // stage SFOV tile positions are very close to correct, so use small lambda
+                for (final Tile tile : tileConfig.getTiles()) {
+                    ((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
                 }
+
+                final int maxPlateauWidth = 200;
+                final ErrorStatistic observer = new ErrorStatistic(maxPlateauWidth + 1);
+                final float damp = 1.0f;
+                TileUtil.optimizeConcurrently(observer,
+                                              200,
+                                              2000,
+                                              maxPlateauWidth,
+                                              damp,
+                                              tileConfig,
+                                              tileConfig.getTiles(),
+                                              tileConfig.getFixedTiles(),
+                                              1);
             }
 
             saveTargetStackTiles(idToTileMap, z);
