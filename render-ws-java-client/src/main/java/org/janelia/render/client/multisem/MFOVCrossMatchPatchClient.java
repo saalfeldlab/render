@@ -453,13 +453,14 @@ public class MFOVCrossMatchPatchClient {
         final RigidModel2D mFOVModel = new RigidModel2D(); // TODO: derive model type from match parameters?
         Utilities.fitModelAndLogError(mFOVModel, mFOVMatches, "pair " + mFOVPair);
 
+        final int cornerMargin = 700;
         for (final OrderedCanvasIdPair pair : sortedUnconnectedPairs) {
             final TileSpec pTileSpec = pResolvedTiles.getTileSpec(pair.getP().getId());
             final TileSpec qTileSpec = qResolvedTiles.getTileSpec(pair.getQ().getId());
             sFOVMatchesList.add(
                     Utilities.buildPointMatches(pair,
-                                                getMatchingTransformedPointsForTile(pTileSpec),
-                                                getMatchingTransformedPointsForTile(qTileSpec),
+                                                Utilities.getMatchingTransformedCornersForTile(pTileSpec, cornerMargin),
+                                                Utilities.getMatchingTransformedCornersForTile(qTileSpec, cornerMargin),
                                                 mFOVModel,
                                                 parameters.storedMatchWeight));
         }
@@ -544,25 +545,6 @@ public class MFOVCrossMatchPatchClient {
             mFOVList = parameters.mFOVList;
         }
         return mFOVList;
-    }
-
-    private List<Point> getMatchingTransformedPointsForTile(final TileSpec tileSpec) {
-        final int offset = 700;
-        final int maxX = tileSpec.getWidth() - offset;
-        final int maxY = tileSpec.getHeight() - offset;
-        final double[][] rawLocations;
-        if ((maxX > offset) && (maxY > offset)) {
-            rawLocations = new double[][]{
-                    {offset, offset},
-                    {maxX, offset},
-                    {offset, maxY},
-                    {maxX, maxY},
-                    {tileSpec.getWidth() / 2.0, tileSpec.getHeight() / 2.0}
-            };
-        } else {
-            rawLocations = tileSpec.getRawCornerLocations();
-        }
-        return tileSpec.getMatchingTransformedPoints(rawLocations);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVCrossMatchPatchClient.class);

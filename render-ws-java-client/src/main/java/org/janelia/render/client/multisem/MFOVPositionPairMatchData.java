@@ -148,6 +148,7 @@ public class MFOVPositionPairMatchData
         }
 
         // for each missing pair do
+        final int cornerMargin = 50; // move corner match points slightly inside tile to improve visualization
         for (final OrderedCanvasIdPair pair : unconnectedPairsForPosition.stream().sorted().collect(Collectors.toList())) {
             final TileSpec pTileSpec = idToTileSpec.get(pair.getP().getId());
             final TileSpec qTileSpec = idToTileSpec.get(pair.getQ().getId());
@@ -155,8 +156,8 @@ public class MFOVPositionPairMatchData
             //       and then saved with converted canvas matches here
             derivedMatchesList.add(
                     Utilities.buildPointMatches(pair,
-                                                pTileSpec.getMatchingTransformedCornerPoints(),
-                                                qTileSpec.getMatchingTransformedCornerPoints(),
+                                                Utilities.getMatchingTransformedCornersForTile(pTileSpec, cornerMargin),
+                                                Utilities.getMatchingTransformedCornersForTile(qTileSpec, cornerMargin),
                                                 existingCornerMatchModel,
                                                 derivedMatchWeight));
         }

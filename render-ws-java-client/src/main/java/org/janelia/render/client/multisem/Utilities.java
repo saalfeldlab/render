@@ -168,5 +168,34 @@ public class Utilities {
         return tileRelativePoints;
     }
 
+    /**
+     * @param  tileSpec  tile with transformations.
+     * @param  margin    pixels to add/subtract from raw corner edges before transformation.
+     *
+     * @return raw corner points of the tile offset by margin and transformed by same
+     *         transformations used for matching (e.g. lens correction).
+     */
+    public static List<Point> getMatchingTransformedCornersForTile(final TileSpec tileSpec,
+                                                                   final int margin) {
+        final double[][] rawLocations;
+        if (margin == 0) {
+            rawLocations = tileSpec.getRawCornerLocations();
+        } else {
+            final int maxX = tileSpec.getWidth() - margin;
+            final int maxY = tileSpec.getHeight() - margin;
+            if ((maxX > margin) && (maxY > margin)) {
+                rawLocations = new double[][]{
+                        {margin, margin},
+                        {maxX, margin},
+                        {margin, maxY},
+                        {maxX, maxY}
+                };
+            } else {
+                rawLocations = tileSpec.getRawCornerLocations();
+            }
+        }
+        return tileSpec.getMatchingTransformedPoints(rawLocations);
+    }
+
     private static final Logger LOG = LoggerFactory.getLogger(Utilities.class);
 }
