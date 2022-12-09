@@ -394,17 +394,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
         LOG.info("run: optimizing {} tiles", idToTileMap.size());
 
-        final List<Double> lambdaValues;
-        if (parameters.optimizerLambdas == null) {
-            lambdaValues = Stream.of(1.0, 0.5, 0.1, 0.01)
-                    .filter(lambda -> lambda <= parameters.startLambda)
-                    .collect(Collectors.toList());
-        } else {
-            lambdaValues = parameters.optimizerLambdas.stream()
-                    .sorted(Comparator.reverseOrder())
-                    .collect(Collectors.toList());
-        }
-
+        final List<Double> lambdaValues = buildLambdaList(parameters.optimizerLambdas, parameters.startLambda);
         for (final double lambda : lambdaValues) {
 
             for (final Tile tile : idToTileMap.values()) {
@@ -441,6 +431,17 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         }
 
         LOG.info("run: exit");
+    }
+
+    public static List<Double> buildLambdaList(final List<Double> optimizerLambdas,
+                                               final Double startLambda) {
+        return optimizerLambdas == null ?
+               Stream.of(1.0, 0.5, 0.1, 0.01)
+                       .filter(lambda -> lambda <= startLambda)
+                       .collect(Collectors.toList()) :
+               optimizerLambdas.stream()
+                       .sorted(Comparator.reverseOrder())
+                       .collect(Collectors.toList());
     }
 
     public static <T extends Model<T> & Affine2D<T>> Tile<InterpolatedAffineModel2D<AffineModel2D, T>>
