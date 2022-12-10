@@ -25,21 +25,14 @@ public class MFOVMontageSolverClientTest {
                 "--owner", "hess",
                 "--project", "wafer_52c",
 
+                "--matchCollection", "wafer_52c_v1_patched",
                 "--stack", "v1_acquire_slab_001",
+                "--targetStack", "v1_acquire_slab_001_montage_20221209_1712",
+                "--completeTargetStack",
+
                 "--z", "1247", "1248", "1249", "1250",
                 "--mfov", "001_000001", "001_000002", "001_000003", "001_000004",
-                "001_000005", "001_000006", "001_000007",
-
-//                "--z", "1250",
-//                "--mfov", "001_000003",
-
-                "--targetStack", "v1_acquire_slab_001_montage_20221209_1712",
-//                "--optimizerLambdas", "1.0,0.5,0.1,0.01",
-                "--optimizerLambdas", "0.01",
-                "--maxIterations", "1000",
-
-                "--completeTargetStack",
-                "--matchCollection", "wafer_52c_v1_patched"
+                "001_000005", "001_000006", "001_000007"
         };
 
         MFOVMontageSolverClient.main(testArgs);
