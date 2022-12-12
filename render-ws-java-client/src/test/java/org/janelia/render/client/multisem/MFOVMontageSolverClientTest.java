@@ -23,7 +23,6 @@ public class MFOVMontageSolverClientTest {
         final String[] testArgs = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--unconnectedMFOVPairsFile", "/Users/trautmane/Desktop/mfov/unconnected_mfov_pairs.json",
-                "--montageStackSuffix", "_montage_20221212_1145",
                 "--completeMontageStacks",
         };
 

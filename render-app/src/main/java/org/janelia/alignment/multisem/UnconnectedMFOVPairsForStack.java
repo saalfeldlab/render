@@ -27,25 +27,39 @@ import org.slf4j.LoggerFactory;
 public class UnconnectedMFOVPairsForStack
         implements Serializable {
 
+    /** Acquisition stack that contains source tile specs. */
     private final StackId renderStackId;
+
+    /** Name of stack that contains (or will contain) single layer MFOVs that have been stitched in isolation. */
+    private final String mFOVMontageStackName;
+
+    /** Match collection that is missing cross-layer matches for SFOV tile pairs within the unconnected MFOVs. */
     private final MatchCollectionId matchCollectionId;
+
+    /** List of unconnected (or poorly connected) MFOV pairs. */
     private final List<OrderedMFOVPair> unconnectedMFOVPairs;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private UnconnectedMFOVPairsForStack() {
-        this(null, null);
+        this(null, null, null);
     }
 
     public UnconnectedMFOVPairsForStack(final StackId renderStackId,
+                                        final String mFOVMontageStackName,
                                         final MatchCollectionId matchCollectionId) {
         this.renderStackId = renderStackId;
+        this.mFOVMontageStackName = mFOVMontageStackName;
         this.matchCollectionId = matchCollectionId;
         this.unconnectedMFOVPairs = new ArrayList<>();
     }
 
     public StackId getRenderStackId() {
         return renderStackId;
+    }
+
+    public String getmFOVMontageStackName() {
+        return mFOVMontageStackName;
     }
 
     public MatchCollectionId getMatchCollectionId() {

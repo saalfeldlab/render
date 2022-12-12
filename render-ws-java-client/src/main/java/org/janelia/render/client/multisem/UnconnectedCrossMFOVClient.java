@@ -49,6 +49,11 @@ public class UnconnectedCrossMFOVClient {
         public List<String> stackNames;
 
         @Parameter(
+                names = "--montageStackSuffix",
+                description = "Suffix to append to source stack names when creating mfov montage stack names")
+        public String montageStackSuffix = "_mfov_montage";
+
+        @Parameter(
                 names = "--matchCollection",
                 description = "Match collection with unconnected MFOV tile pairs",
                 variableArity = true,
@@ -116,8 +121,10 @@ public class UnconnectedCrossMFOVClient {
             final MatchCollectionId matchCollectionId = new MatchCollectionId(parameters.renderWeb.owner,
                                                                               parameters.matchCollectionNames.get(i));
 
+            final String mFOVMontageStackName = renderStackId.getStack() + parameters.montageStackSuffix;
             final UnconnectedMFOVPairsForStack
                     unconnectedMFOVPairsForStack = new UnconnectedMFOVPairsForStack(renderStackId,
+                                                                                    mFOVMontageStackName,
                                                                                     matchCollectionId);
             final Map<Double, Set<String>> zToSectionIdsMap =
                     renderDataClient.getStackZToSectionIdsMap(renderStackId.getStack(),

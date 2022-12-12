@@ -61,12 +61,6 @@ public class MFOVMontageSolverClient {
         public String unconnectedMFOVPairsFile;
 
         @Parameter(
-                names = "--montageStackSuffix",
-                description = "Suffix to append to source stack names for resulting montage stacks (e.g. '_montage') ",
-                required = true)
-        public String montageStackSuffix;
-
-        @Parameter(
                 names = "--completeMontageStacks",
                 description = "Complete the montage stacks after processing",
                 arity = 0)
@@ -100,14 +94,12 @@ public class MFOVMontageSolverClient {
                 UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFile);
         for (final UnconnectedMFOVPairsForStack unconnectedMFOVPairsForStack : unconnectedMFOVsForAllStacks) {
             solveUnconnectedStack(parameters.baseDataUrl,
-                                  parameters.montageStackSuffix,
                                   unconnectedMFOVPairsForStack,
                                   parameters.completeMontageStacks);
         }
     }
 
     public static void solveUnconnectedStack(final String baseDataUrl,
-                                             final String montageStackSuffix,
                                              final UnconnectedMFOVPairsForStack unconnectedMFOVPairsForStack,
                                              final boolean completeMontageStacks)
             throws IOException {
@@ -120,7 +112,7 @@ public class MFOVMontageSolverClient {
                                                                        stackId.getOwner(),
                                                                        stackId.getProject());
         final String stack = stackId.getStack();
-        final String montageStack = stack + montageStackSuffix;
+        final String montageStack = unconnectedMFOVPairsForStack.getmFOVMontageStackName();
 
         final StackMetaData sourceStackMetaData = renderDataClient.getStackMetaData(stack);
         renderDataClient.setupDerivedStack(sourceStackMetaData, montageStack);

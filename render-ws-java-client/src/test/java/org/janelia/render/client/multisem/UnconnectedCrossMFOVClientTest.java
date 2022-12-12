@@ -25,9 +25,9 @@ public class UnconnectedCrossMFOVClientTest {
                 "--matchCollection", "wafer_52c_v1_patched",
                 "--minPairsForConnection", "6",
                 "--unconnectedMFOVPairsFile", "/Users/trautmane/Desktop/mfov/unconnected_mfov_pairs.json",
+                "--montageStackSuffix", "_mfov_montage_20221212_1322"
         };
 
         UnconnectedCrossMFOVClient.main(effectiveArgs);
-
     }
 }
