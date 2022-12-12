@@ -27,7 +27,6 @@ public class MFOVCrossMatchPatchClientTest {
 
                 "--matchCollection", "wafer_52c_v1_cross_patch",
 
-                // "--mfov", "001_000003",
                 //"--matchStorageFile", "/Users/trautmane/Desktop/mfov/missing_cross_matches.json",
 
                 "--sfov", "001_000003_001", "001_000003_067",
