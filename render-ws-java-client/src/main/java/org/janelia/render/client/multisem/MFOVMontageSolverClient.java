@@ -56,7 +56,8 @@ public class MFOVMontageSolverClient {
 
         @Parameter(
                 names = "--unconnectedMFOVPairsFile",
-                description = "File with unconnected MFOV pairs"
+                description = "File with unconnected MFOV pairs",
+                required = true
         )
         public String unconnectedMFOVPairsFile;
 
