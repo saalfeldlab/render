@@ -63,10 +63,10 @@ public class UnconnectedCrossMFOVClient {
         public Integer minPairsForConnection;
 
         @Parameter(
-                names = "--unconnectedResultsFile",
-                description = "File to store unconnected results (omit to simply print results to stdout)"
+                names = "--unconnectedMFOVPairsFile",
+                description = "File to store unconnected MFOV pair results (omit to simply print results to stdout)"
         )
-        public String unconnectedResultsFile;
+        public String unconnectedMFOVPairsFile;
 
     }
 
@@ -143,13 +143,13 @@ public class UnconnectedCrossMFOVClient {
             }
         }
 
-        if (parameters.unconnectedResultsFile == null) {
+        if (parameters.unconnectedMFOVPairsFile == null) {
             LOG.info("findUnconnectedMFOVs: unconnected MFOV pairs for all stacks are:");
             for (final UnconnectedMFOVPairsForStack pairsForStack : unconnectedMFOVsForAllStacks) {
                 System.out.println(JsonUtils.FAST_MAPPER.writeValueAsString(pairsForStack));
             }
         } else {
-            final Path storagePath = Paths.get(parameters.unconnectedResultsFile).toAbsolutePath();
+            final Path storagePath = Paths.get(parameters.unconnectedMFOVPairsFile).toAbsolutePath();
             FileUtil.saveJsonFile(storagePath.toString(), unconnectedMFOVsForAllStacks);
         }
     }

@@ -22,17 +22,9 @@ public class MFOVMontageSolverClientTest {
     public static void main(final String[] args) {
         final String[] testArgs = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--owner", "hess",
-                "--project", "wafer_52c",
-
-                "--matchCollection", "wafer_52c_v1_patched",
-                "--stack", "v1_acquire_slab_001",
-                "--targetStack", "v1_acquire_slab_001_montage_20221209_1712",
-                "--completeTargetStack",
-
-                "--z", "1247", "1248", "1249", "1250",
-                "--mfov", "001_000001", "001_000002", "001_000003", "001_000004",
-                "001_000005", "001_000006", "001_000007"
+                "--unconnectedMFOVPairsFile", "/Users/trautmane/Desktop/mfov/unconnected_mfov_pairs.json",
+                "--montageStackSuffix", "_montage_20221212_1145",
+                "--completeMontageStacks",
         };
 
         MFOVMontageSolverClient.main(testArgs);

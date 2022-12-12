@@ -22,9 +22,9 @@ public class UnconnectedCrossMFOVClientTest {
                 "--owner", "hess",
                 "--project", "wafer_52c",
                 "--stack", "v1_acquire_slab_001",
-                "--matchCollection", "wafer_52c_v1",
+                "--matchCollection", "wafer_52c_v1_patched",
                 "--minPairsForConnection", "6",
-//                "--unconnectedResultsFile", "/Users/trautmane/Desktop/mfov/unconnected_mfovs.json",
+                "--unconnectedMFOVPairsFile", "/Users/trautmane/Desktop/mfov/unconnected_mfov_pairs.json",
         };
 
         UnconnectedCrossMFOVClient.main(effectiveArgs);

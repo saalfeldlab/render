@@ -27,6 +27,14 @@ public class LayerMFOV
         this.name = name;
     }
 
+    public double getZ() {
+        return z;
+    }
+
+    public String getName() {
+        return name;
+    }
+
     @Override
     public boolean equals(final Object that) {
         if (this == that) {
