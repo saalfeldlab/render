@@ -96,7 +96,8 @@ public class MFOVPositionPairMatchData
 
         if ((unconnectedPairsForPosition.size() == 0) ||
             (allPairsForPosition.size() <= unconnectedPairsForPosition.size())) {
-            throw new IOException("nothing to derive for " + this);
+            LOG.warn("nothing to derive for " + this);
+            return derivedMatchesList;
         }
 
         final List<PointMatch> existingCornerMatchList = new ArrayList<>();
