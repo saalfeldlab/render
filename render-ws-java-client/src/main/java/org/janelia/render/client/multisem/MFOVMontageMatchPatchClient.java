@@ -89,7 +89,7 @@ public class MFOVMontageMatchPatchClient {
         public String matchStorageCollection;
 
         @Parameter(
-                names = "--stored_match_weight",
+                names = "--storedMatchWeight",
                 description = "Weight for stored matches (e.g. 0.0001)",
                 required = true)
         public Double storedMatchWeight;
