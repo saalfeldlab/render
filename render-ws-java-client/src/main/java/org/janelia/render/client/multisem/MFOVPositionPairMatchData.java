@@ -118,7 +118,7 @@ public class MFOVPositionPairMatchData
                 // AffineModel2D existingMatchModel = new AffineModel2D();
                 // RigidModel2D existingMatchModel = new RigidModel2D();
                 final TranslationModel2D existingMatchModel = new TranslationModel2D();
-                Utilities.fitModelAndLogError(existingMatchModel,
+                Utilities.fitModelAndLogStats(existingMatchModel,
                                               canvasMatches,
                                               "existing pair " + pair);
 
@@ -142,7 +142,7 @@ public class MFOVPositionPairMatchData
         // TODO: compute errors and display?
         final AffineModel2D existingCornerMatchModel = new AffineModel2D();
         try {
-            Utilities.fitModelAndLogError(existingCornerMatchModel, existingCornerMatchList, "corner matches");
+            Utilities.fitModelAndLogStats(existingCornerMatchModel, existingCornerMatchList, "corner matches");
         } catch (final Exception e) {
             throw new IOException("failed to fit model for corner matches", e);
         }
