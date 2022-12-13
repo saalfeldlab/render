@@ -14,7 +14,7 @@
       "matchMaxTrust": 4.0,
       "matchMinCoveragePercentage": 0.0,
       "matchMinInlierRatio": 0.0,
-      "matchMinNumInliers": 20,
+      "matchMinNumInliers": 30,
       "matchModelType": "RIGID",
       "matchRod": 0.92
     },
@@ -44,12 +44,12 @@
       "matchMaxTrust": 4.0,
       "matchMinCoveragePercentage": 0.0,
       "matchMinInlierRatio": 0.0,
-      "matchMinNumInliers": 10,
+      "matchMinNumInliers": 20,
       "matchModelType": "RIGID",
       "matchRod": 0.92
     },
     "featureRender": {
-      "renderScale": 0.15,
+      "renderScale": 0.12,
       "renderWithFilter": false,
       "renderWithoutMask": false
     },
@@ -58,5 +58,35 @@
     },
     "maxNeighborDistance": 1,
     "stageName": "mFOVCrossPass2"
+  },
+  {
+    "featureExtraction": {
+      "fdSize": 4,
+      "maxScale": 1.0,
+      "minScale": 0.125,
+      "steps": 5
+    },
+    "featureMatchDerivation": {
+      "matchFilter": "SINGLE_SET",
+      "matchFullScaleCoverageRadius": 2000.0,
+      "matchIterations": 1000,
+      "matchMaxEpsilonFullScale": 5.0,
+      "matchMaxTrust": 4.0,
+      "matchMinCoveragePercentage": 0.0,
+      "matchMinInlierRatio": 0.0,
+      "matchMinNumInliers": 10,
+      "matchModelType": "RIGID",
+      "matchRod": 0.92
+    },
+    "featureRender": {
+      "renderScale": 0.16,
+      "renderWithFilter": false,
+      "renderWithoutMask": false
+    },
+    "geometricDescriptorAndMatch": {
+      "gdEnabled": false
+    },
+    "maxNeighborDistance": 1,
+    "stageName": "mFOVCrossPass3"
   }
 ]

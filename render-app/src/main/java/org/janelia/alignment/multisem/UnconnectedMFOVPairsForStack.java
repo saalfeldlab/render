@@ -66,6 +66,10 @@ public class UnconnectedMFOVPairsForStack
         return matchCollectionId;
     }
 
+    public List<OrderedMFOVPair> getUnconnectedMFOVPairs() {
+        return unconnectedMFOVPairs;
+    }
+
     public List<LayerMFOV> getOrderedDistinctUnconnectedMFOVs() {
         final Set<LayerMFOV> distinctMFOVs = new HashSet<>();
         for (final OrderedMFOVPair pair : unconnectedMFOVPairs) {
