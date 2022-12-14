@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -173,7 +174,7 @@ public class UnconnectedCrossMFOVClient {
                 final String fileName = "unconnected_mfov_pairs." + stack + "." + pZ + fileNameSuffix;
                 final Path storagePath = Paths.get(parameters.unconnectedMFOVPairsDirectory,
                                                    fileName).toAbsolutePath();
-                FileUtil.saveJsonFile(storagePath.toString(), pairsForZ);
+                FileUtil.saveJsonFile(storagePath.toString(), Collections.singletonList(pairsForZ));
             }
         }
     }
