@@ -7,8 +7,10 @@ import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -102,6 +104,32 @@ public class UnconnectedMFOVPairsForStack
 
         LOG.info("load: exit, loaded {} pairs", list.size());
 
+        return list;
+    }
+
+    /**
+     * @return specified stack pairs split in a list of pair groups, grouped by pZ.
+     */
+    public static List<UnconnectedMFOVPairsForStack> groupByPZ(final UnconnectedMFOVPairsForStack pairsForStack) {
+
+        final Map<Double, List<OrderedMFOVPair>> zToPairs = new HashMap<>();
+        for (final OrderedMFOVPair pair : pairsForStack.getUnconnectedMFOVPairs()) {
+            final Double pZ = pair.getP().getZ();
+            final List<OrderedMFOVPair> pairsForZ = zToPairs.computeIfAbsent(pZ, k -> new ArrayList<>());
+            pairsForZ.add(pair);
+        }
+
+
+        final List<UnconnectedMFOVPairsForStack> list = new ArrayList<>();
+        for (final Double pZ : zToPairs.keySet().stream().sorted().collect(Collectors.toList())) {
+            final UnconnectedMFOVPairsForStack pairsForZ =
+                    new UnconnectedMFOVPairsForStack(pairsForStack.renderStackId,
+                                                     pairsForStack.mFOVMontageStackName,
+                                                     pairsForStack.matchCollectionId);
+            pairsForZ.unconnectedMFOVPairs.addAll(zToPairs.get(pZ));
+            list.add(pairsForZ);
+        }
+        
         return list;
     }
 

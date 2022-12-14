@@ -68,10 +68,10 @@ public class UnconnectedCrossMFOVClient {
         public Integer minPairsForConnection;
 
         @Parameter(
-                names = "--unconnectedMFOVPairsFile",
-                description = "File to store unconnected MFOV pair results (omit to simply print results to stdout)"
+                names = "--unconnectedMFOVPairsDirectory",
+                description = "Directory to store unconnected MFOV pair results (omit to simply print results to stdout)"
         )
-        public String unconnectedMFOVPairsFile;
+        public String unconnectedMFOVPairsDirectory;
 
     }
 
@@ -150,14 +150,28 @@ public class UnconnectedCrossMFOVClient {
             }
         }
 
-        if (parameters.unconnectedMFOVPairsFile == null) {
+        if (parameters.unconnectedMFOVPairsDirectory == null) {
             LOG.info("findUnconnectedMFOVs: unconnected MFOV pairs for all stacks are:");
             for (final UnconnectedMFOVPairsForStack pairsForStack : unconnectedMFOVsForAllStacks) {
                 System.out.println(JsonUtils.FAST_MAPPER.writeValueAsString(pairsForStack));
             }
         } else {
-            final Path storagePath = Paths.get(parameters.unconnectedMFOVPairsFile).toAbsolutePath();
-            FileUtil.saveJsonFile(storagePath.toString(), unconnectedMFOVsForAllStacks);
+            storeUnconnectedMFOVPairs(unconnectedMFOVsForAllStacks);
+        }
+    }
+
+    private void storeUnconnectedMFOVPairs(final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks)
+            throws IOException {
+
+        for (final UnconnectedMFOVPairsForStack pairsForStack : unconnectedMFOVsForAllStacks) {
+            final String stack = pairsForStack.getRenderStackId().getStack();
+            for (final UnconnectedMFOVPairsForStack pairsForZ : UnconnectedMFOVPairsForStack.groupByPZ(pairsForStack)) {
+                final int pZ = (int) pairsForZ.getUnconnectedMFOVPairs().get(0).getP().getZ();
+                final String fileName = "unconnected_mfov_pairs." + stack + "." + pZ + ".json";
+                final Path storagePath = Paths.get(parameters.unconnectedMFOVPairsDirectory,
+                                                   fileName).toAbsolutePath();
+                FileUtil.saveJsonFile(storagePath.toString(), pairsForZ);
+            }
         }
     }
 

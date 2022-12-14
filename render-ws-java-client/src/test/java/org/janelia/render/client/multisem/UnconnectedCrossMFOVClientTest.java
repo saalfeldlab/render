@@ -22,10 +22,10 @@ public class UnconnectedCrossMFOVClientTest {
                 "--owner", "hess",
                 "--project", "wafer_52c",
                 "--stack", "v1_acquire_slab_001",
-                "--matchCollection", "wafer_52c_v1_patched",
+                "--matchCollection", "wafer_52_cut_00030_to_00039_v1",
                 "--minPairsForConnection", "6",
-                "--unconnectedMFOVPairsFile", "/Users/trautmane/Desktop/mfov/unconnected_mfov_pairs.json",
-                "--montageStackSuffix", "_mfov_montage_20221212_1322"
+                "--unconnectedMFOVPairsDirectory", "/Users/trautmane/Desktop/mfov",
+                "--montageStackSuffix", "_mfov_montage_20221214_1217"
         };
 
         UnconnectedCrossMFOVClient.main(effectiveArgs);
