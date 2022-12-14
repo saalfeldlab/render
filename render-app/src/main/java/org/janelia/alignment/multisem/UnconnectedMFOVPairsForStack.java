@@ -119,7 +119,6 @@ public class UnconnectedMFOVPairsForStack
             pairsForZ.add(pair);
         }
 
-
         final List<UnconnectedMFOVPairsForStack> list = new ArrayList<>();
         for (final Double pZ : zToPairs.keySet().stream().sorted().collect(Collectors.toList())) {
             final UnconnectedMFOVPairsForStack pairsForZ =
