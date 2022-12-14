@@ -412,7 +412,7 @@ public class MFOVCrossMatchPatchClient {
             } else {
                 LOG.warn("buildMatches: no unconnected pairs with SFOVIndex {} exist for {}, using {} instead",
                          parameters.sFOVIndexList, context, firstUnconnectedPairWithWrongSFOVIndex);
-                unconnectedPairsForMFOV.add(firstUnconnectedPairWithWrongSFOVIndex);
+                unconnectedPairsWithSFOVIndex.add(firstUnconnectedPairWithWrongSFOVIndex);
             }
         }
 

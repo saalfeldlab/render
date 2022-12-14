@@ -125,23 +125,23 @@ public class VisualizeTilePairMatches {
                     // parameters for multi-SEM tile pair debug
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                     "--owner", "hess",
-                    "--project", "wafer_52c",
-                    "--stack", "v1_acquire_001_000003",
+                    "--project", "wafer_52_cut_00030_to_00039",
+                    "--stack", "slab_001_all",
 
 //                    "--pTileId", "001_000003_001_20220407_224810.1249.0",
 //                    "--qTileId", "001_000003_001_20220408_060424.1250.0",
 
-//                    "--pTileId", "001_000003_026_20220407_224810.1249.0",
-//                    "--qTileId", "001_000003_026_20220408_060424.1250.0",
+                    "--pTileId", "001_000003_026_20220407_224810.1249.0",
+                    "--qTileId", "001_000003_026_20220408_060424.1250.0",
                     
 //                    "--pTileId", "001_000003_062_20220407_224810.1249.0",
 //                    "--qTileId", "001_000003_062_20220408_060424.1250.0",
 
-                    "--pTileId", "001_000003_067_20220407_224810.1249.0",
-                    "--qTileId", "001_000003_067_20220408_060424.1250.0",
+//                    "--pTileId", "001_000003_067_20220407_224810.1249.0",
+//                    "--qTileId", "001_000003_067_20220408_060424.1250.0",
 
 //                    "--alignWithPlugin",
-                    "--collection", "wafer_52c_v1_cross_patch",
+                    "--collection", "wafer_52_cut_00030_to_00039_v1",
                     "--renderScale", "1.0",
 //                    "--renderWithFilter",
 
