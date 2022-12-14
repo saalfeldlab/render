@@ -22,7 +22,10 @@ public class MFOVMontageSolverClientTest {
     public static void main(final String[] args) {
         final String[] testArgs = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--unconnectedMFOVPairsFile", "/Users/trautmane/Desktop/mfov/unconnected_mfov_pairs.json",
+                "--unconnectedMFOVPairsFile",
+                "/Users/trautmane/Desktop/mfov/unconnected_mfov_pairs.v1_acquire_slab_001.1247.json",
+                "/Users/trautmane/Desktop/mfov/unconnected_mfov_pairs.v1_acquire_slab_001.1248.json",
+                "/Users/trautmane/Desktop/mfov/unconnected_mfov_pairs.v1_acquire_slab_001.1249.json",
                 "--completeMontageStacks",
         };
 

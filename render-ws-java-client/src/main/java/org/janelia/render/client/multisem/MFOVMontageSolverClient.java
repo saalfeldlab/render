@@ -57,8 +57,9 @@ public class MFOVMontageSolverClient {
         @Parameter(
                 names = "--unconnectedMFOVPairsFile",
                 description = "File with unconnected MFOV pairs",
+                variableArity = true,
                 required = true)
-        public String unconnectedMFOVPairsFile;
+        public List<String> unconnectedMFOVPairsFiles;
 
         @Parameter(
                 names = "--completeMontageStacks",
@@ -90,12 +91,27 @@ public class MFOVMontageSolverClient {
     }
 
     public void loadAndSolveUnconnectedMFOVs(final Parameters parameters) throws IOException {
-        final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
-                UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFile);
-        for (final UnconnectedMFOVPairsForStack unconnectedMFOVPairsForStack : unconnectedMFOVsForAllStacks) {
-            solveUnconnectedStack(parameters.baseDataUrl,
-                                  unconnectedMFOVPairsForStack,
-                                  parameters.completeMontageStacks);
+        if (parameters.unconnectedMFOVPairsFiles.size() > 0) {
+
+            final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
+                    UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFiles.get(0));
+
+            // add more pairs if multiple files have been specified
+            // note: pairs for same stack are not merged back together here because it is not worth the trouble
+            for (int i = 1; i < parameters.unconnectedMFOVPairsFiles.size(); i++) {
+                final List<UnconnectedMFOVPairsForStack> morePairs =
+                        UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFiles.get(i));
+                unconnectedMFOVsForAllStacks.addAll(morePairs);
+            }
+
+            for (final UnconnectedMFOVPairsForStack pairs : unconnectedMFOVsForAllStacks) {
+                solveUnconnectedStack(parameters.baseDataUrl,
+                                      pairs,
+                                      parameters.completeMontageStacks);
+            }
+
+        } else {
+            LOG.warn("loadAndSolveUnconnectedMFOVs: nothing to do!");
         }
     }
 
