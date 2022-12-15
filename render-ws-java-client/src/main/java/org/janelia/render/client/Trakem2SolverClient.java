@@ -1,7 +1,6 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,17 +14,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.CoordinateTransformList;
-import mpicbg.models.ErrorStatistic;
-import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.Model;
-import mpicbg.models.Tile;
-import mpicbg.models.TileConfiguration;
-import mpicbg.models.TileUtil;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
@@ -45,7 +33,19 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.CoordinateTransformList;
+import mpicbg.models.ErrorStatistic;
+import mpicbg.models.InterpolatedAffineModel2D;
+import mpicbg.models.Model;
+import mpicbg.models.Tile;
+import mpicbg.models.TileConfiguration;
+import mpicbg.models.TileUtil;
 
 /**
  * Java client for running TrakEM2 tile optimizer.
@@ -391,6 +391,10 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                 }
             }
         }
+
+        // We dont need to do that because 'buildTileFromSpec' applies the metadata - if there is no metadata, we need prealign
+        //LOG.info("run: prealigning {} tiles", idToTileMap.size());
+		//tileConfig.preAlign();
 
         LOG.info("run: optimizing {} tiles", idToTileMap.size());
 
