@@ -4,9 +4,14 @@ import ij.ImageJ;
 import ij.ImagePlus;
 
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
 
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.solver.visualize.ErrorTools;
@@ -22,11 +27,19 @@ import net.imglib2.multithreading.SimpleMultiThreading;
 
 public class DistributedSolveDebugger extends DistributedSolve
 {
+
+	private final int blockIndexToSolve;
+	private final String includeTilePatternForAlignedVisualization;
+
 	public DistributedSolveDebugger(
 			final SolveSetFactory solveSetFactory,
-			final DistributedSolveParameters parameters ) throws IOException
+			final DistributedSolveParameters parameters,
+			final int blockIndexToSolve,
+			final String includeTilePatternForAlignedVisualization) throws IOException
 	{
 		super( solveSetFactory, parameters );
+		this.blockIndexToSolve = blockIndexToSolve;
+		this.includeTilePatternForAlignedVisualization = includeTilePatternForAlignedVisualization;
 	}
 
 	@Override
@@ -34,7 +47,7 @@ public class DistributedSolveDebugger extends DistributedSolve
 	{
 		//this.solveSet.leftItems.get( 44 ).maxZ = 22100;
 		final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w =
-				this.solveSet.leftItems.get( 1 ).createWorker( //9, 28, 57, 81
+				this.solveSet.leftItems.get( blockIndexToSolve ).createWorker(
 						this.solveSet.getMaxId() + 1,
 						runParams.pGroupList,
 						runParams.sectionIdToZMap,
@@ -70,6 +83,21 @@ public class DistributedSolveDebugger extends DistributedSolve
 
 				vis = VisualizeTools.renderDynamicLambda( vis, s.zToDynamicLambda(), s.idToNewModel(), s.idToTileSpec(), parameters.dynamicLambdaFactor );
 
+				// now that solve is done, filter out any unwanted tiles (just for the aligned visualization)
+				if (includeTilePatternForAlignedVisualization != null) {
+					final Pattern includePattern = Pattern.compile(includeTilePatternForAlignedVisualization);
+					final Map<String, AffineModel2D> idToNewModel = s.idToNewModel();
+					final Set<String> allTileIds = new HashSet<>(idToNewModel.keySet()); // need key set copy to avoid concurrent mod errors
+					final int originalNumberOfTiles = allTileIds.size();
+					for (final String tileId : allTileIds) {
+						if (! includePattern.matcher(tileId).matches()) {
+							idToNewModel.remove(tileId);
+						}
+					}
+					LOG.info("distributedSolve: removed {} tiles from visualization that do not match pattern {}",
+							 (originalNumberOfTiles - idToNewModel.size()), includeTilePatternForAlignedVisualization);
+				}
+
 				final ImagePlus imp = s.visualizeAligned( 0.5 );
 				VisualizeTools.renderBDV( vis, imp, 0.5 );
 			}
@@ -93,8 +121,20 @@ public class DistributedSolveDebugger extends DistributedSolve
 
                 final DistributedSolveParameters parameters = new DistributedSolveParameters();
 
+				int blockIndexToSolve = 0;
+				String includeTilePatternForVisualization = null;
+
                 // TODO: remove testing hack ...
                 if (args.length == 0) {
+
+					// with blockSize=3 and minZ=1246, blockIndex 1 should contain 1249 and 1250
+					blockIndexToSolve = 1;
+
+					// multi-SEM tile ids have pattern <slab>_<mfov>_<sfov>_<scan time>.<z>.0
+					//   for example: 001_000006_019_20220407_115555.1247.0
+					// pattern 001_000003.* will visualize only tiles in mfov 3
+					includeTilePatternForVisualization = "001_000003.*";
+
                     final String[] testArgs = {
                             "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                             "--owner", "hess",
@@ -159,7 +199,9 @@ public class DistributedSolveDebugger extends DistributedSolve
                 final DistributedSolve solve =
                 		new DistributedSolveDebugger(
                 				solveSetFactory,
-                				parameters );
+                				parameters,
+								blockIndexToSolve,
+								includeTilePatternForVisualization );
 
                 solve.run();
             }
