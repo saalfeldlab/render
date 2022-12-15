@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -105,30 +106,24 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
         @Parameter(
                 names = "--maxAllowedError",
-                description = "Max allowed error"
+                description = "Max allowed error",
+                variableArity = true
         )
-        public Double maxAllowedError = 200.0;
+        public List<Double> maxAllowedErrorList;
 
         @Parameter(
                 names = "--maxIterations",
-                description = "Max iterations"
+                description = "Max iterations",
+                variableArity = true
         )
-        public Integer maxIterations = 2000;
+        public List<Integer> maxIterationsList;
 
         @Parameter(
                 names = "--maxPlateauWidth",
-                description = "Max allowed error"
+                description = "Max allowed error",
+                variableArity = true
         )
-        public Integer maxPlateauWidth = 200;
-
-        @Parameter(
-                names = "--startLambda",
-                description = "Starting lambda for optimizer.  " +
-                              "Optimizer loops through lambdas 1.0, 0.5, 0.1. 0.01.  " +
-                              "If you know your starting alignment is good, " +
-                              "set this to one of the smaller values to improve performance."
-        )
-        public Double startLambda = 1.0;
+        public List<Integer> maxPlateauWidthList;
 
         @Parameter(
                 names = "--optimizerLambdas",
@@ -180,7 +175,8 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         }
 
         @SuppressWarnings("Duplicates")
-        void initDefaultValues() {
+        void initDefaultValues()
+                throws IllegalArgumentException {
 
             if (this.matchOwner == null) {
                 this.matchOwner = renderWeb.owner;
@@ -193,8 +189,41 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
             if (this.targetProject == null) {
                 this.targetProject = renderWeb.project;
             }
+
+            if (this.optimizerLambdas == null) {
+                this.optimizerLambdas = Stream.of(1.0, 0.5, 0.1, 0.01).collect(Collectors.toList());
+            } else {
+                // make sure lambdas are properly ordered
+                this.optimizerLambdas = this.optimizerLambdas.stream()
+                        .sorted(Comparator.reverseOrder())
+                        .collect(Collectors.toList());
+            }
+
+            final int numberOfLambdas = this.optimizerLambdas.size();
+
+            if (this.maxAllowedErrorList == null) {
+                this.maxAllowedErrorList = Collections.nCopies(numberOfLambdas, 200.0); // defaultMaxAllowedError
+            }
+            if (this.maxIterationsList == null) {
+                this.maxIterationsList = Collections.nCopies(numberOfLambdas, 2000);    // defaultMaxIterations
+            }
+            if (this.maxPlateauWidthList == null) {
+                this.maxPlateauWidthList = Collections.nCopies(numberOfLambdas, 200);   // defaultMaxPlateauWidth
+            }
+
+            validateListSize("--maxAllowedError", this.maxAllowedErrorList.size());
+            validateListSize("--maxIterations", this.maxIterationsList.size());
+            validateListSize("--maxPlateauWidth", this.maxPlateauWidthList.size());
         }
 
+        private void validateListSize(final String name,
+                                      final int actualSize)
+                throws IllegalArgumentException {
+            if (actualSize != optimizerLambdas.size()) {
+                throw new IllegalArgumentException(
+                        "number of " + name + " values differs from number of --optimizerLambdas values");
+            }
+        }
     }
 
     public static void main(final String[] args) {
@@ -394,8 +423,12 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
         LOG.info("run: optimizing {} tiles", idToTileMap.size());
 
-        final List<Double> lambdaValues = buildLambdaList(parameters.optimizerLambdas, parameters.startLambda);
-        for (final double lambda : lambdaValues) {
+        for (int i = 0; i < parameters.optimizerLambdas.size(); i++) {
+
+            final double lambda = parameters.optimizerLambdas.get(i);
+            final double maxAllowedError = parameters.maxAllowedErrorList.get(i);
+            final int maxIterations = parameters.maxIterationsList.get(i);
+            final int maxPlateauWidth = parameters.maxPlateauWidthList.get(i);
 
             for (final Tile tile : idToTileMap.values()) {
                 ((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
@@ -403,12 +436,12 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
             // tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
 
-            final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
+            final ErrorStatistic observer = new ErrorStatistic(maxPlateauWidth + 1 );
             final float damp = 1.0f;
             TileUtil.optimizeConcurrently(observer,
-                                          parameters.maxAllowedError,
-                                          parameters.maxIterations,
-                                          parameters.maxPlateauWidth,
+                                          maxAllowedError,
+                                          maxIterations,
+                                          maxPlateauWidth,
                                           damp,
                                           tileConfig,
                                           tileConfig.getTiles(),
@@ -431,17 +464,6 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
         }
 
         LOG.info("run: exit");
-    }
-
-    public static List<Double> buildLambdaList(final List<Double> optimizerLambdas,
-                                               final Double startLambda) {
-        return optimizerLambdas == null ?
-               Stream.of(1.0, 0.5, 0.1, 0.01)
-                       .filter(lambda -> lambda <= startLambda)
-                       .collect(Collectors.toList()) :
-               optimizerLambdas.stream()
-                       .sorted(Comparator.reverseOrder())
-                       .collect(Collectors.toList());
     }
 
     public static <T extends Model<T> & Affine2D<T>> Tile<InterpolatedAffineModel2D<AffineModel2D, T>>

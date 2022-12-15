@@ -31,11 +31,11 @@ public class Trakem2SolverClientTest {
                 "--minZ", "1225",
                 "--maxZ", "1225",
 
-                "--targetStack", "v1_acquire_001_000003_montage",
+//                "--targetStack", "v1_acquire_001_000003_montage",
                 "--regularizerModelType", "TRANSLATION",
 //                "--optimizerLambdas", "1.0,0.5,0.1,0.01",
                 "--optimizerLambdas", "0.1,0.01",
-                "--maxIterations", "1000",
+                "--maxIterations", "250,250",
 
                 "--threads", "1",
                 "--completeTargetStack",
