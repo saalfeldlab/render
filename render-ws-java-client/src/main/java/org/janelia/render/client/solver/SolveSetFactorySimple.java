@@ -8,6 +8,7 @@ import java.util.function.Function;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
+import mpicbg.trakem2.transform.AffineModel2D;
 
 public class SolveSetFactorySimple extends SolveSetFactory
 {
@@ -95,4 +96,14 @@ public class SolveSetFactorySimple extends SolveSetFactory
 
 		return new SolveSet( leftSets, rightSets );
 	}
+
+	public static void main( String[] args )
+	{
+		SolveSetFactorySimple setF = new SolveSetFactorySimple(new AffineModel2D(), new AffineModel2D(), new AffineModel2D(), null, null, null, null, 0, 0, 0);
+		SolveSet set = setF.defineSolveSet(0, 500, 100, null);
+
+		System.out.println( "Defined sets for global solve" );
+		System.out.println( "\n" + set );
+	}
+	
 }

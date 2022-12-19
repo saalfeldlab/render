@@ -55,10 +55,10 @@ public class SolveSet
 
 		for ( int i = 0; i < numSetsLeft; ++i )
 		{
-			out += leftItems.get( i ).getId() + ": " + leftItems.get( i ).minZ() + " >> " + leftItems.get( i ).maxZ();
+			out += leftItems.get( i ).getId() + ": " + leftItems.get( i ).minZ() + " >> " + leftItems.get( i ).maxZ() + " [#"+(leftItems.get( i ).maxZ()-leftItems.get( i ).minZ()+1) + "]";
 
 			if ( i < numSetsLeft - 1 )
-				out += "\n\t" + rightItems.get( i ).getId() + ": " + rightItems.get( i ).minZ() + " >> " + rightItems.get( i ).maxZ() + "\n";
+				out += "\n\t" + rightItems.get( i ).getId() + ": " + rightItems.get( i ).minZ() + " >> " + rightItems.get( i ).maxZ() + " [#"+(leftItems.get( i ).maxZ()-leftItems.get( i ).minZ()+1) + "]\n";
 		}
 
 		out += "\nmaxId = " + maxId;
