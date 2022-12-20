@@ -1,10 +1,10 @@
 package org.janelia.render.client.response;
 
+import java.io.IOException;
+
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ResponseHandler;
-
-import java.io.IOException;
 
 /**
  * Handler for responses where an {@link org.apache.http.HttpStatus#SC_CREATED} status code is expected.

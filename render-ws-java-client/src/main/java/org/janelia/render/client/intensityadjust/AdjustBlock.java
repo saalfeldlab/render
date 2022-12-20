@@ -1,22 +1,17 @@
 package org.janelia.render.client.intensityadjust;
 
-import java.awt.image.BufferedImage;
+import static org.janelia.alignment.util.ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS;
+
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
-import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -26,10 +21,7 @@ import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
 import org.janelia.render.client.solver.MinimalTileSpec;
-import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.RenderTools;
-import org.janelia.render.client.solver.visualize.VisualizeTools;
-import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,13 +32,9 @@ import ij.ImageStack;
 import ij.gui.Line;
 import ij.gui.ProfilePlot;
 import ij.measure.Calibration;
-import ij.plugin.filter.RankFilters;
 import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
-import mpicbg.ij.integral.NormalizeLocalContrast;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.Point;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import mpicbg.util.RealSum;
@@ -57,26 +45,20 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.algorithm.gauss3.Gauss3;
 import net.imglib2.converter.Converters;
-import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.iterator.IntervalIterator;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.RealViews;
-import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
-
-import static org.janelia.alignment.util.ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS;
 
 public class AdjustBlock {
 

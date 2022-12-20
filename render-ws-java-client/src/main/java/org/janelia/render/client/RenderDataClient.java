@@ -1,7 +1,5 @@
 package org.janelia.render.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -39,6 +37,7 @@ import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
 import org.janelia.alignment.util.RenderWebServiceUrls;
@@ -51,7 +50,7 @@ import org.janelia.render.client.response.TextResponseHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.spec.stack.StackMetaData.StackState;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 /**
  * HTTP client "wrapper" for retrieving and storing render data via the render web service.

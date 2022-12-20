@@ -1,6 +1,6 @@
 package org.janelia.render.client.multisem;
 
-import com.beust.jcommander.Parameter;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -9,14 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.ErrorStatistic;
-import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.Tile;
-import mpicbg.models.TileConfiguration;
-import mpicbg.models.TileUtil;
-import mpicbg.models.TranslationModel2D;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
@@ -35,7 +27,15 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+import com.beust.jcommander.Parameter;
+
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.ErrorStatistic;
+import mpicbg.models.InterpolatedAffineModel2D;
+import mpicbg.models.Tile;
+import mpicbg.models.TileConfiguration;
+import mpicbg.models.TileUtil;
+import mpicbg.models.TranslationModel2D;
 
 /**
  * Adaptation of {@link Trakem2SolverClient} that stitches MFOVs "in isolation" by solving each MFOV in a z-layer

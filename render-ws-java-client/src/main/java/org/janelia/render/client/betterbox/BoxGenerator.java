@@ -12,8 +12,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
-import mpicbg.trakem2.transform.AffineModel2D;
-
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
@@ -35,6 +33,8 @@ import org.janelia.render.client.parameter.MaterializedBoxParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import mpicbg.trakem2.transform.AffineModel2D;
 
 /**
  * Utility for rendering uniform (but arbitrarily sized) boxes (derived tiles) to disk.

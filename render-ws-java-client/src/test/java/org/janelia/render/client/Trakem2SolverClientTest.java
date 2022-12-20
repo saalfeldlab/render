@@ -1,9 +1,9 @@
 package org.janelia.render.client;
 
-import mpicbg.models.TranslationModel2D;
-
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
+
+import mpicbg.models.TranslationModel2D;
 
 /**
  * Tests the {@link Trakem2SolverClient} class.

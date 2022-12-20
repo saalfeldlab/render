@@ -94,6 +94,12 @@ public class DistributedSolveParameters extends CommandLineParameters
     )
     public Integer blockSize = 500;
 
+    @Parameter(
+            names = "--minBlockSize",
+            description = "The minimal size of the blocks in z, which will be computed in paralell (default:0) "
+    )
+    public Integer minBlockSize = 0;
+
     //
     // not required parameters
     //

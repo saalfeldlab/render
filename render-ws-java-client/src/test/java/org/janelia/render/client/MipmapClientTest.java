@@ -1,7 +1,5 @@
 package org.janelia.render.client;
 
-import ij.process.ImageProcessor;
-
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -18,6 +16,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import ij.process.ImageProcessor;
 
 /**
  * Tests the {@link MipmapClient} class.

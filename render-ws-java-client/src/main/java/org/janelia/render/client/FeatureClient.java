@@ -1,8 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -10,9 +7,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import mpicbg.imagefeatures.Feature;
-import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
@@ -28,6 +22,12 @@ import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.imagefeatures.Feature;
+import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 /**
  * Java client for extracting and storing SIFT features for a specified set of canvas (e.g. tile) pairs.

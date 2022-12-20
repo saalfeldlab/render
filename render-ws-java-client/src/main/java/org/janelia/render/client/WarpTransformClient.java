@@ -1,15 +1,10 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import mpicbg.trakem2.transform.CoordinateTransform;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
@@ -29,6 +24,11 @@ import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.janelia.render.client.parameter.WarpStackParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.trakem2.transform.CoordinateTransform;
 
 /**
  * Java client for generating warp transform (TPS or MLS) stack data.

@@ -47,7 +47,6 @@ import javax.imageio.ImageIO;
 
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import ij.process.ByteProcessor;
@@ -67,7 +66,6 @@ import mpicbg.models.TransformMesh;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import mpicbg.trakem2.util.Downsampler;
-import net.imglib2.util.Pair;
 
 /**
  * Render a patch.

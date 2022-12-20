@@ -11,11 +11,11 @@ import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.solver.visualize.ErrorTools;
-import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.janelia.render.client.solver.visualize.ErrorTools.ErrorFilter;
 import org.janelia.render.client.solver.visualize.ErrorTools.ErrorType;
 import org.janelia.render.client.solver.visualize.ErrorTools.Errors;
 import org.janelia.render.client.solver.visualize.RenderTools;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

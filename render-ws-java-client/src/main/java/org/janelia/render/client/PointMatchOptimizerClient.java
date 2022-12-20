@@ -1,25 +1,25 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import mpicbg.imagefeatures.Feature;
-import mpicbg.imagefeatures.FloatArray2DSIFT;
-
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
-import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
-import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.imagefeatures.Feature;
+import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 /**
  * Java client for identifying optimal render scale and match ratio of distances values

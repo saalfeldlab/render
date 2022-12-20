@@ -10,7 +10,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.solver.custom.SolveSetFactoryBRSec36;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
@@ -20,7 +19,6 @@ import bdv.util.BdvStackSource;
 import mpicbg.models.Affine2D;
 import mpicbg.spim.io.IOFunctions;
 import net.imglib2.multithreading.SimpleMultiThreading;
-import stitching.utils.Log;
 
 public class DistributedSolveMultiThread extends DistributedSolve
 {

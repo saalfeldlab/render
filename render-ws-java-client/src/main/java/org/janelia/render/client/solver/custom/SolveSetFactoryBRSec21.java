@@ -2,9 +2,9 @@ package org.janelia.render.client.solver.custom;
 
 import java.util.List;
 
-import mpicbg.models.Affine2D;
-
 import org.apache.commons.lang3.Range;
+
+import mpicbg.models.Affine2D;
 
 public class SolveSetFactoryBRSec21
         extends SolveSetFactoryWithStitchFirstExclusions

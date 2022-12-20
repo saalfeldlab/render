@@ -73,7 +73,7 @@ public abstract class DistributedSolve
 		final int minZ = (int)Math.round( this.runParams.minZ );
 		final int maxZ = (int)Math.round( this.runParams.maxZ );
 
-		this.solveSet = solveSetFactory.defineSolveSet( minZ, maxZ, parameters.blockSize, runParams.zToGroupIdMap );
+		this.solveSet = solveSetFactory.defineSolveSet( minZ, maxZ, parameters.blockSize, parameters.minBlockSize, runParams.zToGroupIdMap );
 
 		LOG.info( "Defined sets for global solve" );
 		LOG.info( "\n" + solveSet );

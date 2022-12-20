@@ -1,14 +1,14 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.Parameters;
-
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
 
 /**
  * Parameters for specifying a tile validator instance.

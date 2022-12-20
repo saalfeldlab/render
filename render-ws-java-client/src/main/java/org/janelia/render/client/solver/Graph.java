@@ -1,9 +1,11 @@
 package org.janelia.render.client.solver;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import mpicbg.models.Tile;
-import mpicbg.models.TranslationModel2D;
 
 /**
  * Tests if a set of tiles has cycles. Only then a full solve is necessary, otherwise calling

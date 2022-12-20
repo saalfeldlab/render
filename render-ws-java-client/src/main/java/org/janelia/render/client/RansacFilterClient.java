@@ -1,8 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.file.FileSystems;
@@ -10,8 +7,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-
-import mpicbg.models.PointMatch;
 
 import org.apache.commons.io.FilenameUtils;
 import org.janelia.alignment.match.CanvasMatchResult;
@@ -23,6 +18,11 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.models.PointMatch;
 
 /**
  * Java client for RANSAC filtering a list of point matches.

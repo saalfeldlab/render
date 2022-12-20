@@ -1,7 +1,5 @@
 package org.janelia.render.client;
 
-import java.io.PrintStream;
-
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 

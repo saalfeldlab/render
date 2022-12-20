@@ -1,18 +1,8 @@
 package org.janelia.render.client.zspacing;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import ij.ImageJ;
-import ij.ImagePlus;
-import ij.ImageStack;
-import ij.process.FloatProcessor;
-
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-
-import mpicbg.imglib.multithreading.SimpleMultiThreading;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -28,6 +18,14 @@ import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
 import org.janelia.thickness.plugin.RealSumFloatNCC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import ij.ImageJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import mpicbg.imglib.multithreading.SimpleMultiThreading;
 
 /**
  * Java client for debugging resin mask parameterization.

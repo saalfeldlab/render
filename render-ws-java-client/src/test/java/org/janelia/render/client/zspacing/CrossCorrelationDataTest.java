@@ -10,7 +10,6 @@ import java.util.List;
 import org.junit.Assert;
 import org.junit.Test;
 
-import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvStackSource;
 import net.imglib2.RandomAccessibleInterval;

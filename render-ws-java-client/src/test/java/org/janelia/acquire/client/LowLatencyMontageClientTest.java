@@ -1,5 +1,7 @@
 package org.janelia.acquire.client;
 
+import static org.mockserver.model.JsonBody.json;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
@@ -23,8 +25,6 @@ import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.JsonBody;
 import org.mockserver.socket.PortFactory;
-
-import static org.mockserver.model.JsonBody.json;
 
 /**
  * Tests the {@link LowLatencyMontageClient} class.

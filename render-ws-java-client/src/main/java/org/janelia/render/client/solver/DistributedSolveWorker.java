@@ -1,8 +1,5 @@
 package org.janelia.render.client.solver;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,6 +11,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
+import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
+import org.janelia.render.client.solver.matchfilter.MatchFilter;
+import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
+import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import ij.ImageJ;
+import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -29,19 +40,6 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
-
-import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
-import org.janelia.render.client.solver.matchfilter.MatchFilter;
-import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
-import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
-import org.janelia.render.client.solver.visualize.VisualizeTools;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;

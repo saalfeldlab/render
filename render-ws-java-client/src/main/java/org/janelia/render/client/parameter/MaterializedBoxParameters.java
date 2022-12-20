@@ -1,12 +1,12 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.Parameter;
-
 import java.io.Serializable;
 import java.util.Comparator;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.TileSpec;
+
+import com.beust.jcommander.Parameter;
 
 /**
  * Parameters for rendering box images to disk.

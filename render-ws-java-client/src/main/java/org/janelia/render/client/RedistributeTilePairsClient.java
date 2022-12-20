@@ -1,7 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -17,6 +15,8 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
 
 /**
  * Java client for redistributing (batching) neighbor tile pair information from one set of files to another.

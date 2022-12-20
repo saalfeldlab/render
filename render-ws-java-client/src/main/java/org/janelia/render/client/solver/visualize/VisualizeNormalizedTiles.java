@@ -1,15 +1,6 @@
 package org.janelia.render.client.solver.visualize;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import ij.ImageJ;
-import ij.ImagePlus;
-
 import java.util.List;
-
-import mpicbg.imglib.multithreading.SimpleMultiThreading;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -20,6 +11,14 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import ij.ImageJ;
+import ij.ImagePlus;
+import mpicbg.imglib.multithreading.SimpleMultiThreading;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 /**
  * Java client for visualizing one or more matching normalized render tiles in ImageJ.

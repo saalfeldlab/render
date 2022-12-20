@@ -1,30 +1,10 @@
 package org.janelia.render.client.solver.visualize;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-import com.fasterxml.jackson.core.JsonProcessingException;
-
-import ij.ImageJ;
-import ij.ImagePlus;
-import ij.ImageStack;
-import ij.plugin.RGBStackMerge;
-import ij.process.ImageProcessor;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
-import mpicbg.imagefeatures.Feature;
-import mpicbg.imglib.multithreading.SimpleMultiThreading;
-import mpicbg.models.AbstractAffineModel2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.IllDefinedDataPointsException;
-import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -46,6 +26,24 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+import com.fasterxml.jackson.core.JsonProcessingException;
+
+import ij.ImageJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.plugin.RGBStackMerge;
+import ij.process.ImageProcessor;
+import mpicbg.imagefeatures.Feature;
+import mpicbg.imglib.multithreading.SimpleMultiThreading;
+import mpicbg.models.AbstractAffineModel2D;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;

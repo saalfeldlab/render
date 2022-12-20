@@ -9,14 +9,16 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import mpicbg.models.Affine2D;
-
 import org.apache.commons.lang3.Range;
 import org.janelia.render.client.solver.SolveItemData;
 import org.janelia.render.client.solver.SolveSet;
 import org.janelia.render.client.solver.SolveSetFactory;
+import org.janelia.render.client.solver.SolveSetFactory.SetInit;
+import org.janelia.render.client.solver.SolveSetFactory.SetInit.Location;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import mpicbg.models.Affine2D;
 
 /**
  * {@link SolveSetFactory} implementation that supports excluding ranges of layers from stitch first processing.
@@ -73,36 +75,20 @@ public class SolveSetFactoryWithStitchFirstExclusions
 	}
 
 	@Override
-	public SolveSet defineSolveSet( final int minZ, final int maxZ, final int setSize, final Map<Integer, String> zToGroupIdMap )
+	public SolveSet defineSolveSet( final int minZ, final int maxZ, final int blockSize, final int minBlockSize, final Map<Integer, String> zToGroupIdMap )
 	{
-		final int modulo = ( maxZ - minZ + 1 ) % setSize;
-
-		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
+		// left/right set init
+		final List< SetInit > initSets = SolveSetFactory.defineSolveSetLayout( minZ, maxZ, blockSize, minBlockSize );
 
 		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > leftSets = new ArrayList<>();
 		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rightSets = new ArrayList<>();
 
-		int id = 0;
-
-		for ( int i = 0; i < numSetsLeft; ++i )
+		for ( final SetInit initSet : initSets )
 		{
-			final int setMinZ = minZ + i * setSize;
-			final int setMaxZ = Math.min( minZ + (i + 1) * setSize - 1, maxZ );
-
-			addSolveItemDataToSets(setMinZ, setMaxZ, zToGroupIdMap, id, leftSets);
-			++id;
-		}
-
-		for ( int i = 0; i < numSetsLeft - 1; ++i )
-		{
-			final SolveItemData< ?, ?, ? > set0 = leftSets.get( i );
-			final SolveItemData< ?, ?, ? > set1 = leftSets.get( i + 1 );
-
-			final int setMinZ = ( set0.minZ() + set0.maxZ() ) / 2;
-			final int setMaxZ = ( set1.minZ() + set1.maxZ() ) / 2 - 1;
-
-			addSolveItemDataToSets(setMinZ, setMaxZ, zToGroupIdMap, id, rightSets);
-			++id;
+			if ( initSet.location() == Location.LEFT )
+				addSolveItemDataToSets(initSet.minZ(), initSet.maxZ(), zToGroupIdMap, initSet.getId(), leftSets);
+			else
+				addSolveItemDataToSets(initSet.minZ(), initSet.maxZ(), zToGroupIdMap, initSet.getId(), rightSets);
 		}
 
 		return new SolveSet( leftSets, rightSets );

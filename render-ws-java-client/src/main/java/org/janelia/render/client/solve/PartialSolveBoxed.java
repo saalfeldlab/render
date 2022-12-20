@@ -1,8 +1,5 @@
 package org.janelia.render.client.solve;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -15,6 +12,17 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.janelia.alignment.match.CanvasMatchResult;
+import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.FileUtil;
+import org.janelia.render.client.ClientRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import ij.ImageJ;
+import ij.ImagePlus;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
@@ -27,16 +35,6 @@ import mpicbg.models.RigidModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
-
-import org.janelia.alignment.match.CanvasMatchResult;
-import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.util.FileUtil;
-import org.janelia.render.client.ClientRunner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
