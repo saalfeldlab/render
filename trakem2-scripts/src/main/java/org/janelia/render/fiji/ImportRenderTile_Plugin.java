@@ -31,15 +31,25 @@ public class ImportRenderTile_Plugin
 
     @Override
     public void run(final String arg) {
+        importRenderTile();
+    }
 
-        Utils.log("\norg.janelia.render.fiji.ImportRenderTile_Plugin.run: entry");
-        tileData = new TileData();
+    public boolean importRenderTile() {
+        Utils.log("\norg.janelia.render.fiji.ImportRenderTile_Plugin.importRenderTile: entry");
+
+        if (tileData == null) {
+            tileData = new TileData();
+        }
+
         final boolean wasCancelled = tileData.loadRenderData();
         if ((! wasCancelled) && (tileData.renderParameters != null)) {
             renderTileSpec(tileData.renderParameters);
         }
-        Utils.log("\norg.janelia.render.fiji.ImportRenderTile_Plugin.run: exit");
 
+        Utils.log("\norg.janelia.render.fiji.ImportRenderTile_Plugin.importRenderTile: exit, returning " +
+                  wasCancelled);
+
+        return wasCancelled;
     }
 
     private void renderTileSpec(final RenderParameters renderParameters) {
@@ -100,6 +110,9 @@ public class ImportRenderTile_Plugin
     private static TileData tileData = null;
 
     private static class TileData {
+        private final GenericDialog dialog;
+        private final RenderContextPanel renderContextPanel;
+
         private String tileId;
 
         private String tileUrlString;
@@ -108,16 +121,16 @@ public class ImportRenderTile_Plugin
 
         private RenderParameters renderParameters;
 
-        boolean setParametersFromDialog() {
-
-            final GenericDialog dialog = new GenericDialog("Import Parameters");
-            final RenderContextPanel renderContextPanel = new RenderContextPanel(true,
-                                                                                 DEFAULT_VALUES);
+        public TileData() {
+            this.dialog = new GenericDialog("Import Parameters");
+            this.renderContextPanel = new RenderContextPanel(true,
+                                                             DEFAULT_VALUES);
             dialog.addPanel(renderContextPanel);
             dialog.addCheckbox("Render locally (if possible)", true);
+        }
 
+        boolean setParametersFromDialog() {
             dialog.showDialog();
-            dialog.repaint(); // seems to help with missing dialog elements, but shouldn't be necessary
 
             final boolean wasCancelled = dialog.wasCanceled();
 
@@ -155,6 +168,10 @@ public class ImportRenderTile_Plugin
 
     public static void main(final String[] args) {
         new ImageJ();
-        new ImportRenderTile_Plugin().run("");
+        final ImportRenderTile_Plugin p = new ImportRenderTile_Plugin();
+        boolean wasCancelled = p.importRenderTile();
+        while (! wasCancelled) {
+            wasCancelled = p.importRenderTile();
+        }
     }
 }
