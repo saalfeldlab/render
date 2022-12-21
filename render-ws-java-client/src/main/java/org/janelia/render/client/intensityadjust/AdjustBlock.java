@@ -379,13 +379,18 @@ public class AdjustBlock {
 		for (int i = 0; i < data1.size(); i++) {
 			final MinimalTileSpecWrapper wrapper = data1.get(i);
 
-			final FloatProcessor correctedSource = corrected1.get( i ).computeIntensityCorrectionOnTheFly(imageProcessorCache);
+			// this should be a virtual construct
+			{
+				/*
+				final FloatProcessor correctedSource = corrected1.get( i ).computeIntensityCorrectionOnTheFly(imageProcessorCache);
+	
+				// Need to reset intensity range back to full 8-bit before converting to byte processor!
+				correctedSource.setMinAndMax(0, 255);
+				final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
+				*/
 
-			// Need to reset intensity range back to full 8-bit before converting to byte processor!
-			correctedSource.setMinAndMax(0, 255);
-			final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
-			
-			preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), correctedSource8Bit); // this should be a virtual construct
+				preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), corrected1.get( i ).computeIntensityCorrection8BitOnTheFly(imageProcessorCache) );
+			}
 		}
 		// TODO: this will be bigger than 2^31
 		return Renderer.renderImageProcessorWithMasks(sliceRenderParameters, preloadedImageProcessorCache);

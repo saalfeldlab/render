@@ -446,6 +446,17 @@ public class IntensityMatcher
 		{
 			return IntensityMatcher.computeIntensityCorrectionOnTheFly( p, ab_coefficients, numCoefficients, imageProcessorCache);
 		}
+
+		public ByteProcessor computeIntensityCorrection8BitOnTheFly( final ImageProcessorCache imageProcessorCache )
+		{
+			final FloatProcessor correctedSource = computeIntensityCorrectionOnTheFly(imageProcessorCache);
+			
+			// Need to reset intensity range back to full 8-bit before converting to byte processor!
+			correctedSource.setMinAndMax(0, 255);
+			final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
+
+			return correctedSource8Bit;
+		}
 	}
 
 	public static /*Pair<ByteProcessor, */FloatProcessor/*>*/ computeIntensityCorrectionOnTheFly(
