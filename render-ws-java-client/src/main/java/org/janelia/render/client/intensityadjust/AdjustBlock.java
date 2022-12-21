@@ -20,6 +20,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
+import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher.OnTheFlyIntensity;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.slf4j.Logger;
@@ -366,7 +367,34 @@ public class AdjustBlock {
 	public static ImageProcessorWithMasks fuseFinal(
 			final RenderParameters sliceRenderParameters,
 			final List<MinimalTileSpecWrapper> data1,
-			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 )
+			final ArrayList < OnTheFlyIntensity > corrected1 )
+	{
+		// TODO: pass pre-loaded cache in and clear source data so that masks can be cached and reused across z
+		final PreloadedImageProcessorCache preloadedImageProcessorCache =
+				new PreloadedImageProcessorCache(DEFAULT_MAX_CACHED_PIXELS,
+												 false,
+												 false);
+
+		for (int i = 0; i < data1.size(); i++) {
+			final MinimalTileSpecWrapper wrapper = data1.get(i);
+
+			final Pair<ByteProcessor, FloatProcessor> corrected = corrected1.get( i ).computeIntensityCorrectionOnTheFly(ImageProcessorCache.DISABLED_CACHE);
+			final FloatProcessor correctedSource = corrected.getB();
+
+			// Need to reset intensity range back to full 8-bit before converting to byte processor!
+			correctedSource.setMinAndMax(0, 255);
+			final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
+			
+			preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), correctedSource8Bit); // this should be a virtual construct
+		}
+		// TODO: this will be bigger than 2^31
+		return Renderer.renderImageProcessorWithMasks(sliceRenderParameters, preloadedImageProcessorCache);
+	}
+
+	public static ImageProcessorWithMasks fuseFinal(
+			final RenderParameters sliceRenderParameters,
+			final List<MinimalTileSpecWrapper> data1,
+			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 ) // TODO: this will likely cause outofmemory
 	{
 		// TODO: pass pre-loaded cache in and clear source data so that masks can be cached and reused across z
 		final PreloadedImageProcessorCache preloadedImageProcessorCache =
@@ -384,6 +412,7 @@ public class AdjustBlock {
 			
 			preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), correctedSource8Bit);
 		}
+		// TODO: this will be bigger than 2^31
 		return Renderer.renderImageProcessorWithMasks(sliceRenderParameters, preloadedImageProcessorCache);
 	}
 
@@ -491,7 +520,8 @@ public class AdjustBlock {
 		final double neighborWeight = 0.1;
 		final int iterations = 2000;
 
-		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
+		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
+		final ArrayList < OnTheFlyIntensity > corrected = new IntensityMatcher().match(
 				data,
 				scale,
 				numCoefficients,
@@ -501,6 +531,7 @@ public class AdjustBlock {
 				iterations,
 				imageProcessorCache);
 
+		// TODO: why is fuseFinal limited to 2^31, how was the same thing done in TrakEM2?
 		return fuseFinal(sliceRenderParameters, data, corrected);
 	}
 
