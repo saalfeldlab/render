@@ -1,7 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-
 import java.io.File;
 import java.io.Serializable;
 import java.util.List;
@@ -10,6 +8,8 @@ import org.apache.commons.io.FileUtils;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
 
 /**
  * Java client for removing images from a CATMAID LargeDataTileSource directory structure that looks like this:

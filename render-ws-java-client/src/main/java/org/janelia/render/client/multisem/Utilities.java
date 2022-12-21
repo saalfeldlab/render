@@ -11,14 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import mpicbg.models.AbstractAffineModel2D;
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.InvertibleCoordinateTransform;
-import mpicbg.models.InvertibleCoordinateTransformList;
-import mpicbg.models.NoninvertibleModelException;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
-
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
@@ -27,6 +19,14 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import mpicbg.models.AbstractAffineModel2D;
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.InvertibleCoordinateTransform;
+import mpicbg.models.InvertibleCoordinateTransformList;
+import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 
 /**
  * Utility methods for working with Multi-SEM data sets.

@@ -1,7 +1,5 @@
 package org.janelia.render.client;
 
-import com.google.common.io.Files;
-
 import java.io.File;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -20,6 +18,8 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
+
+import com.google.common.io.Files;
 
 /**
  * Tests the {@link CoordinateClient} class.

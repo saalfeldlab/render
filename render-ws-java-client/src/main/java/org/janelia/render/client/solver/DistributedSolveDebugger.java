@@ -1,17 +1,11 @@
 package org.janelia.render.client.solver;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-
-import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
 
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.solver.visualize.ErrorTools;
@@ -23,6 +17,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import bdv.util.BdvStackSource;
+import ij.ImageJ;
+import ij.ImagePlus;
+import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
 import net.imglib2.multithreading.SimpleMultiThreading;
 
 public class DistributedSolveDebugger extends DistributedSolve

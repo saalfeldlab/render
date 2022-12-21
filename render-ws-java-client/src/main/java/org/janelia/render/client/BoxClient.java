@@ -1,8 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import java.util.List;
 
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -10,6 +7,9 @@ import org.janelia.render.client.parameter.MaterializedBoxParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Java client for rendering uniform (but arbitrarily sized) boxes (derived tiles) to disk for one or more layers.

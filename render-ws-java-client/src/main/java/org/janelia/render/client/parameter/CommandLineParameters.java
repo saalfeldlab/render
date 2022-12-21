@@ -1,16 +1,16 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.JCommander;
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParameterException;
-import com.beust.jcommander.Parameters;
-import com.fasterxml.jackson.core.JsonProcessingException;
-
 import java.io.Serializable;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.JCommander;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParameterException;
+import com.beust.jcommander.Parameters;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 /**
  * Base parameters for all command line tools.

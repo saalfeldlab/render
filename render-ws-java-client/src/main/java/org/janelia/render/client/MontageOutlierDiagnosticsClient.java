@@ -1,8 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -22,8 +19,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import mpicbg.models.NoninvertibleModelException;
-
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
@@ -38,6 +33,11 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.models.NoninvertibleModelException;
 
 /**
  * Java client for loading outlier residual data from the Matlab montage diagnostics tool

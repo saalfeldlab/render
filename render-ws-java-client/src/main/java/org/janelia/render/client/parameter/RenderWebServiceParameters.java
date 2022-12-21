@@ -1,12 +1,12 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.Parameters;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 
 import org.janelia.render.client.RenderDataClient;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * Parameters for render web service clients.

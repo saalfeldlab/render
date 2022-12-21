@@ -1,14 +1,11 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.APPEND;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
@@ -24,7 +21,10 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.APPEND;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.trakem2.transform.TranslationModel2D;
 
 /**
  * Java client for copying the tiles from one stack that are not in another stack to a third stack.

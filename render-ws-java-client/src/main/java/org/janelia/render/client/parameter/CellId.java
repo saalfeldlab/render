@@ -1,9 +1,9 @@
 package org.janelia.render.client.parameter;
 
+import java.util.regex.Pattern;
+
 import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.ParameterException;
-
-import java.util.regex.Pattern;
 
 /**
  * Identifies a row and column cell position.

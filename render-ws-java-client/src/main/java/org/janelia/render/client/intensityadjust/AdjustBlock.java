@@ -1,22 +1,17 @@
 package org.janelia.render.client.intensityadjust;
 
-import java.awt.image.BufferedImage;
+import static org.janelia.alignment.util.ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS;
+
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
-import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -25,11 +20,9 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
+import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher.OnTheFlyIntensity;
 import org.janelia.render.client.solver.MinimalTileSpec;
-import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.RenderTools;
-import org.janelia.render.client.solver.visualize.VisualizeTools;
-import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,13 +33,9 @@ import ij.ImageStack;
 import ij.gui.Line;
 import ij.gui.ProfilePlot;
 import ij.measure.Calibration;
-import ij.plugin.filter.RankFilters;
 import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
-import mpicbg.ij.integral.NormalizeLocalContrast;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.CoordinateTransformList;
 import mpicbg.models.Point;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import mpicbg.util.RealSum;
@@ -57,26 +46,20 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.algorithm.gauss3.Gauss3;
 import net.imglib2.converter.Converters;
-import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.iterator.IntervalIterator;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.RealViews;
-import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
-
-import static org.janelia.alignment.util.ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS;
 
 public class AdjustBlock {
 
@@ -384,7 +367,39 @@ public class AdjustBlock {
 	public static ImageProcessorWithMasks fuseFinal(
 			final RenderParameters sliceRenderParameters,
 			final List<MinimalTileSpecWrapper> data1,
-			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 )
+			final ArrayList < OnTheFlyIntensity > corrected1,
+			final ImageProcessorCache imageProcessorCache )
+	{
+		// TODO: pass pre-loaded cache in and clear source data so that masks can be cached and reused across z
+		final PreloadedImageProcessorCache preloadedImageProcessorCache =
+				new PreloadedImageProcessorCache(DEFAULT_MAX_CACHED_PIXELS,
+												 false,
+												 false);
+
+		for (int i = 0; i < data1.size(); i++) {
+			final MinimalTileSpecWrapper wrapper = data1.get(i);
+
+			// this should be a virtual construct
+			{
+				/*
+				final FloatProcessor correctedSource = corrected1.get( i ).computeIntensityCorrectionOnTheFly(imageProcessorCache);
+	
+				// Need to reset intensity range back to full 8-bit before converting to byte processor!
+				correctedSource.setMinAndMax(0, 255);
+				final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
+				*/
+
+				preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), corrected1.get( i ).computeIntensityCorrection8BitOnTheFly(imageProcessorCache) );
+			}
+		}
+		// TODO: this will be bigger than 2^31
+		return Renderer.renderImageProcessorWithMasks(sliceRenderParameters, preloadedImageProcessorCache);
+	}
+
+	public static ImageProcessorWithMasks fuseFinal(
+			final RenderParameters sliceRenderParameters,
+			final List<MinimalTileSpecWrapper> data1,
+			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 ) // TODO: this will likely cause outofmemory
 	{
 		// TODO: pass pre-loaded cache in and clear source data so that masks can be cached and reused across z
 		final PreloadedImageProcessorCache preloadedImageProcessorCache =
@@ -402,6 +417,7 @@ public class AdjustBlock {
 			
 			preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), correctedSource8Bit);
 		}
+		// TODO: this will be bigger than 2^31
 		return Renderer.renderImageProcessorWithMasks(sliceRenderParameters, preloadedImageProcessorCache);
 	}
 
@@ -509,7 +525,8 @@ public class AdjustBlock {
 		final double neighborWeight = 0.1;
 		final int iterations = 2000;
 
-		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
+		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
+		final ArrayList < OnTheFlyIntensity > corrected = new IntensityMatcher().match(
 				data,
 				scale,
 				numCoefficients,
@@ -519,7 +536,8 @@ public class AdjustBlock {
 				iterations,
 				imageProcessorCache);
 
-		return fuseFinal(sliceRenderParameters, data, corrected);
+		// TODO: why is fuseFinal limited to 2^31, how was the same thing done in TrakEM2?
+		return fuseFinal(sliceRenderParameters, data, corrected, imageProcessorCache);
 	}
 
 //	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGauss(final String stack,

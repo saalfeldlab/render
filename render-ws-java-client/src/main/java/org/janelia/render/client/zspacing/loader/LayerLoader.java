@@ -1,9 +1,9 @@
 package org.janelia.render.client.zspacing.loader;
 
+import org.janelia.alignment.RenderParameters;
+
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
-
-import org.janelia.alignment.RenderParameters;
 
 /**
  * Interface for loading aligned layer pixels for z position correction.

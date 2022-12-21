@@ -1,15 +1,5 @@
 package org.janelia.render.client.solve;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import ij.IJ;
-import ij.ImagePlus;
-import ij.io.FileSaver;
-import ij.measure.Calibration;
-import ij.process.FloatProcessor;
-import ij.process.ImageProcessor;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -19,16 +9,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
-
-import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.CoordinateTransformList;
-import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.Model;
-import mpicbg.models.NoninvertibleModelException;
-import mpicbg.models.Tile;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.ModelType;
@@ -50,6 +30,24 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import ij.IJ;
+import ij.ImagePlus;
+import ij.io.FileSaver;
+import ij.measure.Calibration;
+import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
+import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.CoordinateTransformList;
+import mpicbg.models.InterpolatedAffineModel2D;
+import mpicbg.models.Model;
+import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.Tile;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.Cursor;
 import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccessibleInterval;

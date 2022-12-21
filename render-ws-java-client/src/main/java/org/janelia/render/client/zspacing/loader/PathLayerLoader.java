@@ -1,10 +1,10 @@
 package org.janelia.render.client.zspacing.loader;
 
-import ij.ImagePlus;
-import ij.process.ImageProcessor;
-
 import java.io.Serializable;
 import java.util.List;
+
+import ij.ImagePlus;
+import ij.process.ImageProcessor;
 
 /**
  * Loads layer image data from an image file on disk.

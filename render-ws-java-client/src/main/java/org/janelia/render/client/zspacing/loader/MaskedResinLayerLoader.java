@@ -1,7 +1,5 @@
 package org.janelia.render.client.zspacing.loader;
 
-import ij.process.FloatProcessor;
-
 import java.util.Arrays;
 import java.util.List;
 
@@ -9,6 +7,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ij.process.FloatProcessor;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;

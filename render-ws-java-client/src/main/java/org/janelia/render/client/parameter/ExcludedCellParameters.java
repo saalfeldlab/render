@@ -1,7 +1,5 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.Parameter;
-
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.Serializable;
@@ -9,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
+
+import com.beust.jcommander.Parameter;
 
 /**
  * Parameters for specifying cells to be excluded from a tile based operation.

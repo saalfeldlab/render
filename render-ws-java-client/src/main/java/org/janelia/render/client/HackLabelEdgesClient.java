@@ -1,11 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import ij.process.ImageProcessor;
-import ij.process.ShortProcessor;
-
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -40,7 +34,12 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import au.com.bytecode.opencsv.CSVReader;
+import ij.process.ImageProcessor;
+import ij.process.ShortProcessor;
 
 /**
  * Java client for rendering tile labels with separate labelling of specified edge pixels.

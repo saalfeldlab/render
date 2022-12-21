@@ -1,7 +1,6 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -15,8 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
@@ -34,14 +31,17 @@ import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.client.parameter.CellId;
-import org.janelia.render.client.parameter.ExcludedCellParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.ExcludedCellParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.trakem2.transform.AffineModel2D;
 
 /**
  * Java client for copying tiles from one stack to another.

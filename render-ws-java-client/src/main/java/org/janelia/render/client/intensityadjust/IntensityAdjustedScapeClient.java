@@ -6,8 +6,6 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
@@ -20,6 +18,8 @@ import org.janelia.render.client.parameter.IntensityAdjustParameters;
 import org.janelia.render.client.parameter.IntensityAdjustParameters.CorrectionMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 /**
  * Java client for rendering intensity adjusted montage scapes for layers within a stack.

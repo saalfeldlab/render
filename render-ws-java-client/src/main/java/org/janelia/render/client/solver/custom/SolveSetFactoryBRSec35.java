@@ -11,7 +11,10 @@ import java.util.stream.Stream;
 
 import org.janelia.render.client.solver.SolveItemData;
 import org.janelia.render.client.solver.SolveSet;
+import org.janelia.render.client.solver.SolveSetFactory;
 import org.janelia.render.client.solver.SolveSetFactoryAdaptiveRigid;
+import org.janelia.render.client.solver.SolveSetFactory.SetInit;
+import org.janelia.render.client.solver.SolveSetFactory.SetInit.Location;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.InterpolatedAffineModel2D;
@@ -61,22 +64,16 @@ public class SolveSetFactoryBRSec35 extends SolveSetFactoryAdaptiveRigid
 	}
 
 	@Override
-	public SolveSet defineSolveSet( final int minZ, final int maxZ, final int setSize, final Map<Integer, String> zToGroupIdMap )
+	public SolveSet defineSolveSet( final int minZ, final int maxZ, final int blockSize, final int minBlockSize, final Map<Integer, String> zToGroupIdMap )
 	{
-		final int modulo = ( maxZ - minZ + 1 ) % setSize;
-
-		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
+		// left/right set init
+		final List< SetInit > initSets = SolveSetFactory.defineSolveSetLayout( minZ, maxZ, blockSize, minBlockSize );
 
 		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > leftSets = new ArrayList<>();
 		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rightSets = new ArrayList<>();
 
-		int id = 0;
-
-		for ( int i = 0; i < numSetsLeft; ++i )
+		for ( final SetInit initSet : initSets )
 		{
-			final int setMinZ = minZ + i * setSize;
-			final int setMaxZ = Math.min( minZ + (i + 1) * setSize - 1, maxZ );
-
 			boolean rigidPreAlign = false;
 			Affine2D< ? > stitchingModel = defaultStitchingModel;
 			int minStitchingInliers = defaultMinStitchingInliers;
@@ -85,7 +82,7 @@ public class SolveSetFactoryBRSec35 extends SolveSetFactoryAdaptiveRigid
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
 
-			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
+			if ( containsIssue( initSet.minZ(), initSet.maxZ(), zToGroupIdMap, additionalIssues ) )
 			{
 				// rigid alignment
 				rigidPreAlign = true;
@@ -100,7 +97,7 @@ public class SolveSetFactoryBRSec35 extends SolveSetFactoryAdaptiveRigid
 				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
 				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
 
-				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
+				System.out.println( "set " + initSet.minZ() + ">>" + initSet.maxZ() + " ("  + initSet.getId() + ") contains issues, using rigid align." );
 			}
 
 			// allow translation stitching obly
@@ -109,9 +106,9 @@ public class SolveSetFactoryBRSec35 extends SolveSetFactoryAdaptiveRigid
 
 			final Affine2D<?> stitchingModelf = stitchingModel;
 
-			leftSets.add(
+			SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid =
 					instantiateSolveItemData(
-							id,
+							initSet.getId(),
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
 							(Function< Integer, Affine2D<?> > & Serializable )(z) -> stitchingModelf,
@@ -123,68 +120,13 @@ public class SolveSetFactoryBRSec35 extends SolveSetFactoryAdaptiveRigid
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
 							rigidPreAlign,
-							setMinZ,
-							setMaxZ ) );
-			++id;
-		}
+							initSet.minZ(),
+							initSet.maxZ() );
 
-		for ( int i = 0; i < numSetsLeft - 1; ++i )
-		{
-			final SolveItemData< ?, ?, ? > set0 = leftSets.get( i );
-			final SolveItemData< ?, ?, ? > set1 = leftSets.get( i + 1 );
-
-			final int setMinZ = ( set0.minZ() + set0.maxZ() ) / 2;
-			final int setMaxZ = ( set1.minZ() + set1.maxZ() ) / 2 - 1;
-
-			boolean rigidPreAlign = false;
-			Affine2D< ? > stitchingModel = defaultStitchingModel;
-			int minStitchingInliers = defaultMinStitchingInliers;
-			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
-			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
-			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
-			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
-
-			if ( containsIssue( setMinZ, setMaxZ, zToGroupIdMap, additionalIssues ) )
-			{
-				// rigid alignment
-				rigidPreAlign = true;
-
-				// allow rigid stitching
-				stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
-				((InterpolatedAffineModel2D) stitchingModel ).setLambda( 1.0 );
-	
-				// only rigid/affine solve
-				blockOptimizerLambdasRigid = Stream.of( 1.0,0.9,0.3,0.01 ).collect(Collectors.toList());
-				blockOptimizerLambdasTranslation = Stream.of( 0.0,0.0,0.0,0.0 ).collect(Collectors.toList());
-				blockOptimizerIterations = Stream.of( 2000,500,250,250 ).collect(Collectors.toList());
-				blockMaxPlateauWidth = Stream.of( 250,150,100,100 ).collect(Collectors.toList());
-
-				System.out.println( "set " + setMinZ + ">>" + setMaxZ + " ("  + i + ") contains issues, using rigid align." );
-			}
-
-			// allow translation stitching obly
-			stitchingModel = ((InterpolatedAffineModel2D) stitchingModel ).copy();
-			((InterpolatedAffineModel2D) stitchingModel ).setLambda( 0.0 );
-
-			final Affine2D<?> stitchingModelf = stitchingModel;
-
-			rightSets.add(
-					instantiateSolveItemData(
-							id,
-							this.defaultGlobalSolveModel,
-							this.defaultBlockSolveModel,
-							(Function< Integer, Affine2D<?> > & Serializable )(z) -> stitchingModelf,
-							blockOptimizerLambdasRigid,
-							blockOptimizerLambdasTranslation,
-							blockOptimizerIterations,
-							blockMaxPlateauWidth,
-							minStitchingInliers,
-							this.defaultBlockMaxAllowedError,
-							this.defaultDynamicLambdaFactor,
-							rigidPreAlign,
-							setMinZ,
-							setMaxZ ) );
-			++id;
+			if ( initSet.location() == Location.LEFT )
+				leftSets.add( sid );
+			else
+				rightSets.add( sid );
 		}
 
 		return new SolveSet( leftSets, rightSets );

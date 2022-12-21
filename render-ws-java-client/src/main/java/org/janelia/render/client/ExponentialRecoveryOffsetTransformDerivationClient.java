@@ -1,9 +1,6 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import ij.ImagePlus;
+import static org.janelia.render.client.CrossCorrelationPointMatchClient.renderCanvas;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,8 +12,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasId;
@@ -40,7 +35,11 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.render.client.CrossCorrelationPointMatchClient.renderCanvas;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import ij.ImagePlus;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 /**
  * Java client for generating offset transforms for one tile in each pair

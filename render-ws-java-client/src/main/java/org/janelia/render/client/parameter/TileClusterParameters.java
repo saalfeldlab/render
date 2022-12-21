@@ -1,10 +1,10 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.Parameter;
-
 import java.io.Serializable;
 
 import org.janelia.render.client.RenderDataClient;
+
+import com.beust.jcommander.Parameter;
 
 /**
  * Parameters and methods for determining clusters of connected tiles within a layer.

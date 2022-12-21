@@ -1,10 +1,5 @@
 package org.janelia.render.client;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
-
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasRenderParametersUrlTemplate;
@@ -18,6 +13,9 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;

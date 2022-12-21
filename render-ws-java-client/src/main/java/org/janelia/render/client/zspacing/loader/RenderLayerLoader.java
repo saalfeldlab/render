@@ -4,11 +4,11 @@ import java.io.File;
 import java.io.Serializable;
 import java.util.List;
 
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.util.ImageProcessorCache;
+
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 /**
  * Loads layer image data from render web service.

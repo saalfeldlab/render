@@ -1,9 +1,5 @@
 package org.janelia.render.client.zspacing;
 
-import ij.ImageJ;
-import ij.process.FloatProcessor;
-import ij.process.ImageProcessor;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -22,10 +18,12 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.render.client.zspacing.loader.LayerLoader;
 import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
-import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
 import org.janelia.thickness.inference.Options;
 import org.junit.Test;
 
+import ij.ImageJ;
+import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.display.imagej.ImageJFunctions;

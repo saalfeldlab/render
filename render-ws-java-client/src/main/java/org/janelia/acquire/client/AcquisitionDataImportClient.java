@@ -1,8 +1,5 @@
 package org.janelia.acquire.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -33,6 +30,9 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Java client that pulls tile data from an acquisition system and stores it in the render database.

@@ -1,7 +1,5 @@
 package org.janelia.render.client.zspacing;
 
-import com.beust.jcommander.Parameter;
-
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -27,6 +25,8 @@ import org.janelia.thickness.inference.visitor.Visitor;
 import org.janelia.thickness.plugin.RealSumFloatNCC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
 
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.DoubleType;

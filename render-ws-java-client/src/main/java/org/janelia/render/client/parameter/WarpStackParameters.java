@@ -1,11 +1,11 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.Parameter;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-
 import java.io.Serializable;
 
 import org.janelia.render.client.RenderDataClient;
+
+import com.beust.jcommander.Parameter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
  * Parameters for deriving warp transformations.

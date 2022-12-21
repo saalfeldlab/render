@@ -1,8 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,16 +13,6 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.CoordinateTransformList;
-import mpicbg.models.IllDefinedDataPointsException;
-import mpicbg.models.Model;
-import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
-import mpicbg.models.TranslationModel2D;
-
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -37,6 +24,19 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.CoordinateTransformList;
+import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.Model;
+import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
+import mpicbg.models.TranslationModel2D;
 
 /**
  * Java client for debugging transformed corners of IBEAM-MSEM stacks.

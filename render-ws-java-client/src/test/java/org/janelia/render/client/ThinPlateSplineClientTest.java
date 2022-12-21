@@ -3,12 +3,12 @@ package org.janelia.render.client;
 import java.util.ArrayList;
 import java.util.List;
 
-import mpicbg.models.CoordinateTransform;
-
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Assert;
 import org.junit.Test;
+
+import mpicbg.models.CoordinateTransform;
 
 /**
  * Tests the {@link ThinPlateSplineClient} class.

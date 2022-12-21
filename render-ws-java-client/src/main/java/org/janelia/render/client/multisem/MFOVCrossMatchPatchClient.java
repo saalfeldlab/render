@@ -1,6 +1,6 @@
 package org.janelia.render.client.multisem;
 
-import com.beust.jcommander.Parameter;
+import static org.janelia.alignment.match.RenderableCanvasIdPairs.TEMPLATE_GROUP_ID_TOKEN;
 
 import java.io.IOException;
 import java.net.URLEncoder;
@@ -15,9 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatchResult;
@@ -40,7 +37,10 @@ import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.match.RenderableCanvasIdPairs.TEMPLATE_GROUP_ID_TOKEN;
+import com.beust.jcommander.Parameter;
+
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 
 /**
  * Java client for patching matches missing between the same MFOV in adjacent (cross) z layers.

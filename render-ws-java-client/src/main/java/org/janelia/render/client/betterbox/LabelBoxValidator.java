@@ -1,8 +1,5 @@
 package org.janelia.render.client.betterbox;
 
-import ij.ImagePlus;
-import ij.process.ImageProcessor;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -21,6 +18,9 @@ import org.janelia.render.client.parameter.MaterializedBoxParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ij.ImagePlus;
+import ij.process.ImageProcessor;
 
 /**
  * Utility for validating rendered label boxes.

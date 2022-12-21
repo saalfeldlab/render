@@ -1,16 +1,12 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
-
-import mpicbg.models.Affine2D;
-import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
@@ -34,7 +30,11 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.models.Affine2D;
+import mpicbg.trakem2.transform.AffineModel2D;
 
 /**
  * This client currently is a one-off hack that could be improved later to make it more generally useful.

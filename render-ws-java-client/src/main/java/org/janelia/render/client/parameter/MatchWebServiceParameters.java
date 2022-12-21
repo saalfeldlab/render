@@ -1,9 +1,9 @@
 package org.janelia.render.client.parameter;
 
+import java.io.Serializable;
+
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-
-import java.io.Serializable;
 
 /**
  * Parameters for match web service clients.

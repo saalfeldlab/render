@@ -1,10 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import ij.process.ImageProcessor;
-
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.File;
@@ -14,8 +9,6 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import mpicbg.trakem2.util.Downsampler;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.Utils;
@@ -31,6 +24,12 @@ import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import ij.process.ImageProcessor;
+import mpicbg.trakem2.util.Downsampler;
 
 /**
  * Java client for generating mipmap files into a {@link org.janelia.alignment.spec.stack.MipmapPathBuilder}

@@ -1,7 +1,6 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
+import static org.janelia.alignment.match.MatchFilter.FilterType.CONSENSUS_SETS;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,11 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
-import mpicbg.imglib.type.numeric.real.FloatType;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
@@ -33,7 +27,6 @@ import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.PointMatchQualityStats;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.alignment.match.stage.StageMatcher;
 import org.janelia.alignment.match.cache.CachedCanvasFeatures;
 import org.janelia.alignment.match.cache.CachedCanvasPeaks;
 import org.janelia.alignment.match.cache.CanvasDataCache;
@@ -46,6 +39,7 @@ import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.GeometricDescriptorAndMatchFilterParameters;
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
+import org.janelia.alignment.match.stage.StageMatcher;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -53,7 +47,13 @@ import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.alignment.match.MatchFilter.FilterType.CONSENSUS_SETS;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
+import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
+import mpicbg.imglib.type.numeric.real.FloatType;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 
 /**
  * Java client for generating and storing SIFT point matches for a specified set of canvas (e.g. tile) pairs.

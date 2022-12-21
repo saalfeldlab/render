@@ -1,10 +1,10 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.Parameter;
-
 import java.io.Serializable;
 
 import org.janelia.alignment.spec.Bounds;
+
+import com.beust.jcommander.Parameter;
 
 /**
  * Parameters for specifying layer bounds.

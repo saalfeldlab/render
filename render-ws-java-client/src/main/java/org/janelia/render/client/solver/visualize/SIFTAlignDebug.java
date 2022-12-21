@@ -1,14 +1,5 @@
 package org.janelia.render.client.solver.visualize;
 
-import ij.IJ;
-import ij.ImagePlus;
-import ij.ImageStack;
-import ij.WindowManager;
-import ij.gui.GenericDialog;
-import ij.plugin.PlugIn;
-import ij.process.FloatProcessor;
-import ij.process.ImageProcessor;
-
 import java.awt.Color;
 import java.awt.TextField;
 import java.awt.event.KeyEvent;
@@ -17,6 +8,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
+import ij.IJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.WindowManager;
+import ij.gui.GenericDialog;
+import ij.plugin.PlugIn;
+import ij.process.FloatProcessor;
+import ij.process.ImageProcessor;
 import mpicbg.ij.InverseTransformMapping;
 import mpicbg.ij.Mapping;
 import mpicbg.ij.SIFT;

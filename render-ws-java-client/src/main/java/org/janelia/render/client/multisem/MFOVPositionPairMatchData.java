@@ -10,11 +10,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
-import mpicbg.models.TranslationModel2D;
-
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
@@ -22,6 +17,11 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
+import mpicbg.models.TranslationModel2D;
 
 /**
  * Match data for a {@link MFOVPositionPair}.

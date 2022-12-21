@@ -5,23 +5,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.RenderTools;
 
 import bdv.util.BdvStackSource;
-import mpicbg.models.AffineModel2D;
 import net.imglib2.Interval;
 import net.imglib2.RealPoint;
 import net.imglib2.cache.Invalidate;

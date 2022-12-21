@@ -1,13 +1,13 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.Parameter;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
+
+import com.beust.jcommander.Parameter;
 
 /**
  * Parameters for mipmap generation.

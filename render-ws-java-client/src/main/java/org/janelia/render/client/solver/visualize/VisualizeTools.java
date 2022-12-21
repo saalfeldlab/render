@@ -11,8 +11,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.Renderer;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;

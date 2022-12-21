@@ -6,8 +6,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.janelia.render.client.solver.SolveSetFactory.SetInit.Location;
+
 import mpicbg.models.Affine2D;
-import mpicbg.models.Model;
+import mpicbg.trakem2.transform.AffineModel2D;
 
 public class SolveSetFactorySimple extends SolveSetFactory
 {
@@ -37,22 +39,19 @@ public class SolveSetFactorySimple extends SolveSetFactory
 	}
 
 	@Override
-	public SolveSet defineSolveSet( final int minZ, final int maxZ, final int setSize, final Map<Integer, String> zToGroupIdMap )
+	public SolveSet defineSolveSet( final int minZ, final int maxZ, final int blockSize, final int minBlockSize, final Map<Integer, String> zToGroupIdMap )
 	{
-		final int modulo = ( maxZ - minZ + 1 ) % setSize;
-
-		final int numSetsLeft = ( maxZ - minZ + 1 ) / setSize + Math.min( 1, modulo );
+		// left/right set init
+		final List< SetInit > initSets = SolveSetFactory.defineSolveSetLayout( minZ, maxZ, blockSize, minBlockSize );
 
 		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > leftSets = new ArrayList<>();
 		final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > rightSets = new ArrayList<>();
 
-		int id = 0;
-		
-		for ( int i = 0; i < numSetsLeft; ++i )
+		for ( final SetInit initSet : initSets )
 		{
-			leftSets.add(
+			SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid = 
 					instantiateSolveItemData(
-							id,
+							initSet.getId(),
 							this.defaultGlobalSolveModel,
 							this.defaultBlockSolveModel,
 							(Function< Integer, Affine2D<?> > & Serializable )(z) -> defaultStitchingModel,
@@ -64,35 +63,25 @@ public class SolveSetFactorySimple extends SolveSetFactory
 							this.defaultBlockMaxAllowedError,
 							this.defaultDynamicLambdaFactor,
 							false,
-							minZ + i * setSize,
-							Math.min( minZ + (i + 1) * setSize - 1, maxZ ) ) );
-			++id;
-		}
+							initSet.minZ(),
+							initSet.maxZ() );
 
-		for ( int i = 0; i < numSetsLeft - 1; ++i )
-		{
-			final SolveItemData< ?, ?, ? > set0 = leftSets.get( i );
-			final SolveItemData< ?, ?, ? > set1 = leftSets.get( i + 1 );
-
-			rightSets.add(
-					instantiateSolveItemData(
-							id,
-							this.defaultGlobalSolveModel,
-							this.defaultBlockSolveModel,
-							(Function< Integer, Affine2D<?> > & Serializable )(z) -> defaultStitchingModel,
-							this.defaultBlockOptimizerLambdasRigid,
-							this.defaultBlockOptimizerLambdasTranslation,
-							this.defaultBlockOptimizerIterations,
-							this.defaultBlockMaxPlateauWidth,
-							this.defaultMinStitchingInliers,
-							this.defaultBlockMaxAllowedError,
-							this.defaultDynamicLambdaFactor,
-							false,
-							( set0.minZ() + set0.maxZ() ) / 2,
-							( set1.minZ() + set1.maxZ() ) / 2 - 1 ) );
-			++id;
+			if ( initSet.location() == Location.LEFT )
+				leftSets.add( sid );
+			else
+				rightSets.add( sid );
 		}
 
 		return new SolveSet( leftSets, rightSets );
 	}
+
+	public static void main( String[] args )
+	{
+		SolveSetFactorySimple setF = new SolveSetFactorySimple(new AffineModel2D(), new AffineModel2D(), new AffineModel2D(), null, null, null, null, 0, 0, 0);
+		SolveSet set = setF.defineSolveSet(0, 100, 50, 30, null);
+
+		System.out.println( "Defined sets for global solve" );
+		System.out.println( "\n" + set );
+	}
+	
 }

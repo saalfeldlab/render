@@ -3,11 +3,11 @@ package org.janelia.render.client.solver.custom;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
-import mpicbg.models.Affine2D;
-
 import org.janelia.render.client.solver.SolveSetFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import mpicbg.models.Affine2D;
 
 /**
  * Uses reflection to build a {@link SolveSetFactory} instance.

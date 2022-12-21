@@ -2,13 +2,12 @@ package org.janelia.render.client.intensityadjust;
 
 import java.util.Map;
 
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.CoordinateTransformList;
-
 import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.solver.MinimalTileSpec;
+
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.CoordinateTransformList;
 
 public class MinimalTileSpecWrapper extends MinimalTileSpec {
 
