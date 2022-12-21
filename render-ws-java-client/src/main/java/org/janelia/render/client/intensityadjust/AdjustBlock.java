@@ -367,7 +367,8 @@ public class AdjustBlock {
 	public static ImageProcessorWithMasks fuseFinal(
 			final RenderParameters sliceRenderParameters,
 			final List<MinimalTileSpecWrapper> data1,
-			final ArrayList < OnTheFlyIntensity > corrected1 )
+			final ArrayList < OnTheFlyIntensity > corrected1,
+			final ImageProcessorCache imageProcessorCache )
 	{
 		// TODO: pass pre-loaded cache in and clear source data so that masks can be cached and reused across z
 		final PreloadedImageProcessorCache preloadedImageProcessorCache =
@@ -378,8 +379,7 @@ public class AdjustBlock {
 		for (int i = 0; i < data1.size(); i++) {
 			final MinimalTileSpecWrapper wrapper = data1.get(i);
 
-			final Pair<ByteProcessor, FloatProcessor> corrected = corrected1.get( i ).computeIntensityCorrectionOnTheFly(ImageProcessorCache.DISABLED_CACHE);
-			final FloatProcessor correctedSource = corrected.getB();
+			final FloatProcessor correctedSource = corrected1.get( i ).computeIntensityCorrectionOnTheFly(imageProcessorCache);
 
 			// Need to reset intensity range back to full 8-bit before converting to byte processor!
 			correctedSource.setMinAndMax(0, 255);
@@ -532,7 +532,7 @@ public class AdjustBlock {
 				imageProcessorCache);
 
 		// TODO: why is fuseFinal limited to 2^31, how was the same thing done in TrakEM2?
-		return fuseFinal(sliceRenderParameters, data, corrected);
+		return fuseFinal(sliceRenderParameters, data, corrected, imageProcessorCache);
 	}
 
 //	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGauss(final String stack,

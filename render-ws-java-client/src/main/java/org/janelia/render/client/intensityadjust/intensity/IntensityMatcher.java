@@ -442,13 +442,13 @@ public class IntensityMatcher
 		// e.g. if numCoefficients==4, then we have 16 tiles per image
 		int numCoefficients;
 
-		public Pair<ByteProcessor, FloatProcessor> computeIntensityCorrectionOnTheFly( final ImageProcessorCache imageProcessorCache )
+		public FloatProcessor computeIntensityCorrectionOnTheFly( final ImageProcessorCache imageProcessorCache )
 		{
 			return IntensityMatcher.computeIntensityCorrectionOnTheFly( p, ab_coefficients, numCoefficients, imageProcessorCache);
 		}
 	}
 
-	public static Pair<ByteProcessor, FloatProcessor> computeIntensityCorrectionOnTheFly(
+	public static /*Pair<ByteProcessor, */FloatProcessor/*>*/ computeIntensityCorrectionOnTheFly(
 			final MinimalTileSpecWrapper p,
 			final double[][] ab_coefficients, // all coefficients needed for a single image (depends how its broken up initially), each tile is a 1D affine, i.e. 2 numbers
 			final int numCoefficients, // e.g. if numCoefficients==4, then we have 16 tiles per image
@@ -499,7 +499,6 @@ public class IntensityMatcher
 				new LinearIntensityMap<FloatType>(
 						(FloatImagePlus)ImagePlusImgs.from( new ImagePlus( "", coefficientsStack ) ));
 
-
 		final long[] dims = new long[]{imp.getWidth(), imp.getHeight()};
 		final Img< FloatType > img = ArrayImgs.floats((float[])fp.getPixels(), dims);
 
@@ -509,7 +508,7 @@ public class IntensityMatcher
 		//new ImagePlus( "fp", fp ).show();
 		//SimpleMultiThreading.threadHaltUnClean();
 
-		return new ValuePair<>( (ByteProcessor)imp.mask, fp );
+		return fp;
 	}
 	
 	final static protected void identityConnect( final Tile< ? > t1, final Tile< ? > t2, final double weight )
