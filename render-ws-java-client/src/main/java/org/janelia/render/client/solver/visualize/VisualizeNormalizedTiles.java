@@ -6,6 +6,7 @@ import com.beust.jcommander.ParametersDelegate;
 import ij.ImageJ;
 import ij.ImagePlus;
 
+import java.util.Collections;
 import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
@@ -13,6 +14,8 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -48,6 +51,9 @@ public class VisualizeNormalizedTiles {
         @Parameter(names = "--renderWithFilter", description = "Render tiles with filter")
         public boolean renderWithFilter = false;
 
+        @Parameter(names = "--hackDataString", description = "Hack: override last transform data string with this one")
+        public String hackDataString;
+
         public Parameters() {
         }
     }
@@ -55,13 +61,20 @@ public class VisualizeNormalizedTiles {
     public static void main(String[] args) {
 
         if (args.length == 0) {
+            //           {
+            //            "type" : "leaf",
+            //            "id" : "FIBSEM_correct",
+            //            "className" : "org.janelia.alignment.transform.SEMDistortionTransformA",
+            //            "dataString" : "19.4 64.8 24.4 972.0 0"
+            //          }
             args = new String[] {
                     "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "Z0720_07m_VNC",
-                    "--project", "Sec07",
-                    "--stack", "v4_acquire_trimmed",
-                    "--tileId", "21-10-24_203442_0-0-1.20355.0",
-                    "--tileId", "21-10-24_204034_0-0-0.20356.0"
+                    "--owner", "reiser",
+                    "--project", "Z0422_05_Ocellar",
+                    "--stack", "v3_acquire",
+                    "--tileId", "22-06-17_080526_0-0-1.1263.0",
+                    //"--tileId", "22-06-17_081143_0-0-1.1264.0",
+                    "--hackDataString", "1900.4 64.8 24.4 972.0 0"
             };
         }
 
@@ -110,6 +123,25 @@ public class VisualizeNormalizedTiles {
 
             final RenderParameters renderParameters = RenderParameters.loadFromUrl(tileUrl);
             renderParameters.initializeDerivedValues();
+
+            if (parameters.hackDataString != null) {
+                final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+                final LeafTransformSpec lastTransformSpec = (LeafTransformSpec) tileSpec.getLastTransform();
+                final LeafTransformSpec hackedTransformSpec = new LeafTransformSpec(lastTransformSpec.getClassName(),
+                                                                                    parameters.hackDataString);
+                tileSpec.removeLastTransformSpec();
+                tileSpec.addTransformSpecs(Collections.singletonList(hackedTransformSpec));
+                tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
+
+            }
+
+            if (LOG.isInfoEnabled()) {
+                try {
+                    LOG.info("tile {} render parameters are:\n{}", tileId, renderParameters.toJson());
+                } catch (final Exception e) {
+                    LOG.error("failed to log render parameters for tile " + tileId, e);
+                }
+            }
 
             final TransformMeshMappingWithMasks.ImageProcessorWithMasks
                     ipwm = Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache);
