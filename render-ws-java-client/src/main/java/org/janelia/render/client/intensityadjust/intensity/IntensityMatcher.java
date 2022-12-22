@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Supplier;
 
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
@@ -427,6 +428,40 @@ public class IntensityMatcher
 
 		return corrected;
 		*/
+	}
+
+	public static class OnTheFlyIntensityFloatProcessorSupplier extends OnTheFlyIntensitySupplier implements Supplier<FloatProcessor>
+	{
+		public OnTheFlyIntensityFloatProcessorSupplier( final OnTheFlyIntensity otfi, final ImageProcessorCache imageProcessorCache )
+		{
+			super(otfi, imageProcessorCache);
+		}
+
+		@Override
+		public FloatProcessor get() { return otfi.computeIntensityCorrectionOnTheFly(imageProcessorCache); }
+	}
+
+	public static class OnTheFlyIntensityByteProcessorSupplier extends OnTheFlyIntensitySupplier implements Supplier<ByteProcessor>
+	{
+		public OnTheFlyIntensityByteProcessorSupplier( final OnTheFlyIntensity otfi, final ImageProcessorCache imageProcessorCache )
+		{
+			super(otfi, imageProcessorCache);
+		}
+
+		@Override
+		public ByteProcessor get() { return otfi.computeIntensityCorrection8BitOnTheFly(imageProcessorCache); }
+	}
+
+	public static abstract class OnTheFlyIntensitySupplier
+	{
+		final OnTheFlyIntensity otfi;
+		final ImageProcessorCache imageProcessorCache;
+
+		public OnTheFlyIntensitySupplier( final OnTheFlyIntensity otfi, final ImageProcessorCache imageProcessorCache )
+		{
+			this.otfi = otfi;
+			this.imageProcessorCache = imageProcessorCache;
+		}
 	}
 
 	public static class OnTheFlyIntensity
