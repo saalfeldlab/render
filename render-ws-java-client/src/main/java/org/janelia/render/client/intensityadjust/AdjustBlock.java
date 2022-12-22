@@ -20,7 +20,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
-import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher.OnTheFlyIntensity;
+import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.slf4j.Logger;
