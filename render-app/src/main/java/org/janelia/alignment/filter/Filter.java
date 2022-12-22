@@ -4,6 +4,7 @@ import ij.process.ImageProcessor;
 
 import java.io.Serializable;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /**
  * Common interface for all filter implementations.
@@ -87,4 +88,15 @@ public interface Filter extends Serializable {
         }
     }
 
+    static String[] getCommaSeparatedStringParameter(final String parameterName,
+                                                     final Map<String, String> params)
+            throws IllegalArgumentException {
+        final String valueString = params.get(parameterName);
+        if (valueString == null) {
+            throw new IllegalArgumentException("'" + parameterName + "' is not defined");
+        }
+        return COMMA_SEPARATED_VALUE_PATTERN.split(valueString);
+    }
+
+    Pattern COMMA_SEPARATED_VALUE_PATTERN = Pattern.compile(",");
 }

@@ -2,7 +2,7 @@ package org.janelia.render.client.intensityadjust.virtual;
 
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
-import org.janelia.render.client.intensityadjust.intensity.LinearIntensityMap;
+import org.janelia.alignment.intensity.LinearIntensityMap;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import ij.ImagePlus;
