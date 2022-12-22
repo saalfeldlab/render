@@ -10,9 +10,11 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.function.Supplier;
 
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
+import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import ij.ImagePlus;
@@ -338,13 +340,8 @@ public class IntensityMatcher
 
 		for ( final MinimalTileSpecWrapper p : patches )
 		{
-			final OnTheFlyIntensity otfi = new OnTheFlyIntensity();
-
-			otfi.numCoefficients = numCoefficients;
-			otfi.p = p;
-
 			/* save coefficients */
-			otfi.ab_coefficients = new double[ numCoefficients * numCoefficients ][ 2 ];
+			final double[][] ab_coefficients = new double[ numCoefficients * numCoefficients ][ 2 ];
 
 			final ArrayList< Tile< ? extends M > > tiles = coefficientsTiles.get( p );
 
@@ -352,10 +349,10 @@ public class IntensityMatcher
 			{
 				final Tile< ? extends M > t = tiles.get( i );
 				final Affine1D< ? > affine = t.getModel();
-				affine.toArray( otfi.ab_coefficients[ i ] );
+				affine.toArray( ab_coefficients[ i ] );
 			}
 
-			correctedOnTheFly.add( otfi );
+			correctedOnTheFly.add( new OnTheFlyIntensity( p, ab_coefficients, numCoefficients ) );
 		}
 
 		return correctedOnTheFly;
@@ -429,99 +426,6 @@ public class IntensityMatcher
 		*/
 	}
 
-	public static class OnTheFlyIntensity
-	{
-		MinimalTileSpecWrapper p;
-
-		// all coefficients needed for a single image (depends how its broken up initially), each tile is a 1D affine, i.e. 2 numbers
-		// ArrayList< Tile< ? extends Affine1D< ? > > > subRegionTiles;
-		// we only store the actual coefficients
-		// contains [numCoefficients * numCoefficients][ab]
-		double[][] ab_coefficients;
-
-		// e.g. if numCoefficients==4, then we have 16 tiles per image
-		int numCoefficients;
-
-		public FloatProcessor computeIntensityCorrectionOnTheFly( final ImageProcessorCache imageProcessorCache )
-		{
-			return IntensityMatcher.computeIntensityCorrectionOnTheFly( p, ab_coefficients, numCoefficients, imageProcessorCache);
-		}
-
-		public ByteProcessor computeIntensityCorrection8BitOnTheFly( final ImageProcessorCache imageProcessorCache )
-		{
-			final FloatProcessor correctedSource = computeIntensityCorrectionOnTheFly(imageProcessorCache);
-			
-			// Need to reset intensity range back to full 8-bit before converting to byte processor!
-			correctedSource.setMinAndMax(0, 255);
-			final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
-
-			return correctedSource8Bit;
-		}
-	}
-
-	public static /*Pair<ByteProcessor, */FloatProcessor/*>*/ computeIntensityCorrectionOnTheFly(
-			final MinimalTileSpecWrapper p,
-			final double[][] ab_coefficients, // all coefficients needed for a single image (depends how its broken up initially), each tile is a 1D affine, i.e. 2 numbers
-			final int numCoefficients, // e.g. if numCoefficients==4, then we have 16 tiles per image
-			final ImageProcessorCache imageProcessorCache )
-	{
-		//final ArrayList< Tile< ? extends M > > tiles = coefficientsTiles.get( p );
-
-		final FloatProcessor as = new FloatProcessor( numCoefficients, numCoefficients );
-		final FloatProcessor bs = new FloatProcessor( numCoefficients, numCoefficients );
-
-		final ImageProcessorWithMasks imp = VisualizeTools.getUntransformedProcessorWithMasks(p.getTileSpec(),
-																							  imageProcessorCache);
-
-		FloatProcessor fp = imp.ip.convertToFloatProcessor();
-		fp.resetMinAndMax();
-		final double min = 0;//fp.getMin();//patch.getMin();
-		final double max = 255;//fp.getMax();//patch.getMax();
-		System.out.println( min + ", " + max );
-
-		for ( int i = 0; i < numCoefficients * numCoefficients; ++i )
-		{
-			/*
-			final Tile< ? extends Affine1D< ? > > t = tiles.get( i );
-			final Affine1D< ? > affine = t.getModel();
-			affine.toArray( ab );
-			*/
-
-			final double[] ab = ab_coefficients[ i ];
-
-			/* coefficients mapping into existing [min, max] */
-			as.setf( i, ( float ) ab[ 0 ] );
-			bs.setf( i, ( float ) ( ( max - min ) * ab[ 1 ] + min - ab[ 0 ] * min ) );
-		}
-		final ImageStack coefficientsStack = new ImageStack( numCoefficients, numCoefficients );
-		coefficientsStack.addSlice( as );
-		coefficientsStack.addSlice( bs );
-
-		//new ImagePlus( "a", as ).show();
-		//new ImagePlus( "b", bs ).show();
-		//SimpleMultiThreading.threadHaltUnClean();
-
-		//final String itsPath = itsDir + FSLoader.createIdPath( Long.toString( p.getId() ), "it", ".tif" );
-		//new File( itsPath ).getParentFile().mkdirs();
-		//IJ.saveAs( new ImagePlus( "", coefficientsStack ), "tif", itsPath );
-
-		@SuppressWarnings({"rawtypes"})
-		final LinearIntensityMap<FloatType> map =
-				new LinearIntensityMap<FloatType>(
-						(FloatImagePlus)ImagePlusImgs.from( new ImagePlus( "", coefficientsStack ) ));
-
-		final long[] dims = new long[]{imp.getWidth(), imp.getHeight()};
-		final Img< FloatType > img = ArrayImgs.floats((float[])fp.getPixels(), dims);
-
-		map.run(img);
-
-		//new ImagePlus( "imp.ip", imp.ip ).show();
-		//new ImagePlus( "fp", fp ).show();
-		//SimpleMultiThreading.threadHaltUnClean();
-
-		return fp;
-	}
-	
 	final static protected void identityConnect( final Tile< ? > t1, final Tile< ? > t2, final double weight )
 	{
 		final ArrayList< PointMatch > matches = new ArrayList< PointMatch >();
