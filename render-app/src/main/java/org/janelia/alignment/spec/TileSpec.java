@@ -41,6 +41,7 @@ import mpicbg.trakem2.transform.TransformMesh;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 
@@ -69,6 +70,8 @@ public class TileSpec implements Serializable {
     private TreeMap<Integer, ImageAndMask> mipmapLevels;
     private List<ChannelSpec> channels;
     private MipmapPathBuilder mipmapPathBuilder;
+    @SuppressWarnings("unused")
+    private FilterSpec filterSpec;
     private ListTransformSpec transforms;
     private double meshCellSize = RenderParameters.DEFAULT_MESH_CELL_SIZE;
 
@@ -488,7 +491,8 @@ public class TileSpec implements Serializable {
                                                                     minIntensity,
                                                                     maxIntensity,
                                                                     mipmapLevels,
-                                                                    mipmapPathBuilder));
+                                                                    mipmapPathBuilder,
+                                                                    filterSpec));
         } else {
             channelList = channels;
         }
@@ -503,7 +507,8 @@ public class TileSpec implements Serializable {
                                                 minIntensity,
                                                 maxIntensity,
                                                 mipmapLevels,
-                                                mipmapPathBuilder));
+                                                mipmapPathBuilder,
+                                                filterSpec));
             }
         } else {
             for (final ChannelSpec channelSpec : channels) {
@@ -540,7 +545,8 @@ public class TileSpec implements Serializable {
                                          minIntensity,
                                          maxIntensity,
                                          mipmapLevels,
-                                         mipmapPathBuilder));
+                                         mipmapPathBuilder,
+                                         filterSpec));
             this.minIntensity = null;
             this.maxIntensity = null;
             this.mipmapLevels = null;

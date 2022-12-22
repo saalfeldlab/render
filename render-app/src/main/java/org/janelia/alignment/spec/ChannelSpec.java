@@ -6,6 +6,7 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 
 /**
@@ -21,30 +22,35 @@ public class ChannelSpec implements Serializable {
     private final TreeMap<Integer, ImageAndMask> mipmapLevels;
     private MipmapPathBuilder mipmapPathBuilder;
 
+    private final FilterSpec filterSpec;
+
     public ChannelSpec() {
         this(null, null);
     }
 
     public ChannelSpec(final Double minIntensity,
                        final Double maxIntensity) {
-        this(null, minIntensity, maxIntensity, new TreeMap<>(), null);
+        this(null, minIntensity, maxIntensity, new TreeMap<>(), null, null);
     }
 
     public ChannelSpec(final String name,
                        final Double minIntensity,
                        final Double maxIntensity) {
-        this(name, maxIntensity, minIntensity, new TreeMap<>(), null);      
+        this(name, maxIntensity, minIntensity, new TreeMap<>(), null, null);
     }
+
     public ChannelSpec(final String name,
                        final Double minIntensity,
                        final Double maxIntensity,
                        final TreeMap<Integer, ImageAndMask> mipmapLevels,
-                       final MipmapPathBuilder mipmapPathBuilder) {
+                       final MipmapPathBuilder mipmapPathBuilder,
+                       final FilterSpec filterSpec) {
         this.name = name;
         this.minIntensity = minIntensity == null ? 0 : minIntensity;
         this.maxIntensity = maxIntensity == null ? 255 : maxIntensity;
         this.mipmapLevels = mipmapLevels;
         this.mipmapPathBuilder = mipmapPathBuilder;
+        this.filterSpec = filterSpec;
     }
 
     public String getName() {
@@ -184,5 +190,13 @@ public class ChannelSpec implements Serializable {
                 }
 
         return mipmapLevels;
+    }
+
+    public FilterSpec getFilterSpec() {
+        return filterSpec;
+    }
+
+    public boolean hasFilterSpec() {
+        return filterSpec != null;
     }
 }

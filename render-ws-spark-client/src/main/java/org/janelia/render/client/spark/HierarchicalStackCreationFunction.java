@@ -155,6 +155,7 @@ public class HierarchicalStackCreationFunction
                                               minIntensity,
                                               maxIntensity,
                                               new TreeMap<>(),
+                                              null,
                                               null);
 
                 boxUrl = boxUrlPrefix + splitStack.getBoxPathForZ(z) + boxUrlSuffix + (int) z + ".tif";

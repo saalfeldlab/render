@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.filter.FilterSpec;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -46,6 +47,9 @@ public class TileSpecTest {
         Assert.assertNotNull("floor 4 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
                             new Integer(3), floorMipMap.getKey());
+
+        final FilterSpec filterSpec = channelSpec.getFilterSpec();
+        Assert.assertNotNull("filterSpec is null", filterSpec);
     }
 
     @Test
@@ -125,8 +129,8 @@ public class TileSpecTest {
         tileSpec.convertLegacyToChannel(firstName);
         Assert.assertEquals("incorrect first channel name with 1 channel", firstName, tileSpec.getFirstChannelName());
 
-        tileSpec.addChannel(new ChannelSpec("TdTomato", 0.0, 0.0, new TreeMap<>(), null));
-        tileSpec.addChannel(new ChannelSpec("ACQTdtomato", 0.0, 0.0, new TreeMap<>(), null));
+        tileSpec.addChannel(new ChannelSpec("TdTomato", 0.0, 0.0, new TreeMap<>(), null, null));
+        tileSpec.addChannel(new ChannelSpec("ACQTdtomato", 0.0, 0.0, new TreeMap<>(), null, null));
         Assert.assertEquals("incorrect first channel name with 3 channels", firstName, tileSpec.getFirstChannelName());
     }
 
@@ -206,6 +210,15 @@ public class TileSpecTest {
             "    },\n" +
             "    \"3\": {\n" +
             "      \"imageUrl\": \"file:///Users/trautmane/spec0-level3.png\"\n" +
+            "    }\n" +
+            "  },\n" +
+            "  \"filterSpec\": {\n" +
+            "    \"className\": \"org.janelia.alignment.filter.CLAHE\",\n" +
+            "    \"parameters\": {\n" +
+            "      \"fast\": \"true\",\n" +
+            "      \"blockRadius\": \"500\",\n" +
+            "      \"bins\": \"256\",\n" +
+            "      \"slope\": \"2.5\"\n" +
             "    }\n" +
             "  },\n" +
             "  \"transforms\": {\n" +

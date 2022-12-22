@@ -249,6 +249,7 @@ public class RenderedCanvasMipmapSource
                                          renderParameters.getMinIntensity(),
                                          renderParameters.getMaxIntensity(),
                                          renderParameters.excludeMask(),
+                                         renderParameters.getScale(),
                                          imageProcessorCache);
 
             if (renderParameters.hasFilters()) {
