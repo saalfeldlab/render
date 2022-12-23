@@ -40,12 +40,12 @@ public abstract class MultiParameterSingleDimensionTransform
     @Override
     public void init(final String data) throws IllegalArgumentException {
 
-        final String[] fields = DELIM_PATTERN.split(data);
+        final String[] fields = DELIM_PATTERN.split(data.trim());
         final int numberOfCoefficients = getNumberOfCoefficients();
         final int numberOfValues = numberOfCoefficients + 1;
         if (fields.length != numberOfValues) {
             throw new IllegalArgumentException("transform data must contain " + numberOfValues +
-                                               " comma separated values (" + numberOfCoefficients +
+                                               " comma or space separated values (" + numberOfCoefficients +
                                                " coefficients followed by dimension), found " +
                                                fields.length + " values instead");
         }
