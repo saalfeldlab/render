@@ -125,12 +125,14 @@ public class UrlMipmapSource
                                                                     firstChannelSpec.is16Bit(),
                                                                     imageAndMask.getImageLoaderType(),
                                                                     imageAndMask.getImageSliceNumber());
+            final long loadMipStop = System.currentTimeMillis();
+
             if (firstChannelSpec.hasFilterSpec()) {
                 final Filter filter = firstChannelSpec.getFilterSpec().buildInstance();
                 imageProcessor = filter.process(imageProcessor, renderScale);
             }
 
-            final long loadMipStop = System.currentTimeMillis();
+            final long filterStop = System.currentTimeMillis();
 
             if (imageProcessor.getWidth() == 0 || imageProcessor.getHeight() == 0) {
 
@@ -179,13 +181,14 @@ public class UrlMipmapSource
 
                 final long loadAdditionalChannelsStop = System.currentTimeMillis();
 
-                LOG.debug("getChannels: {} took {} milliseconds to load level {} (first mip:{}, downSampleLevels:{}, first mask:{}, additional channels:{}), cacheSize:{}",
+                LOG.debug("getChannels: {} took {} milliseconds to load level {} (first mip:{}, downSampleLevels:{}, filter:{}, first mask:{}, additional channels:{}), cacheSize:{}",
                           sourceName,
                           loadAdditionalChannelsStop - loadMipStart,
                           mipmapLevel,
                           loadMipStop - loadMipStart,
                           downSampleLevels,
-                          loadMaskStop - loadMipStop,
+                          filterStop - loadMipStop,
+                          loadMaskStop - filterStop,
                           loadAdditionalChannelsStop - loadMaskStop,
                           imageProcessorCache.size());
             }
