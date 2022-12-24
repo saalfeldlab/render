@@ -38,9 +38,14 @@ public class IntensityAdjustParameters
     public String stack;
 
     @Parameter(
+            names = "--intensityCorrectedFilterStack",
+            description = "Name of stack to store tile specs with intensity corrected filter data.  " +
+                          "Omit to render intensity corrected scape-images to disk.")
+    public String intensityCorrectedFilterStack;
+
+    @Parameter(
             names = "--rootDirectory",
-            description = "Root directory for rendered layers (e.g. /nrs/flyem/render/scapes)",
-            required = true)
+            description = "Root directory for rendered layers (e.g. /nrs/flyem/render/scapes)")
     public String rootDirectory;
 
     @Parameter(
@@ -68,7 +73,13 @@ public class IntensityAdjustParameters
     @Parameter(
             names = "--correctionMethod",
             description = "Correction method to use")
-    public CorrectionMethod correctionMethod = CorrectionMethod.DEFAULT;
+    public CorrectionMethod correctionMethod;
+
+    @Parameter(
+            names = "--completeCorrectedStack",
+            description = "Complete the intensity corrected stack after processing",
+            arity = 0)
+    public boolean completeCorrectedStack = false;
 
     public File getSectionRootDirectory(final Date forRunTime) {
 
@@ -98,4 +109,20 @@ public class IntensityAdjustParameters
         return sectionRootDirectory.getAbsolutePath() + "/z.%0" + maxZCharacters + "d." + format;
     }
 
+    public void validateAndSetDefaults() throws IllegalArgumentException {
+        if ((correctionMethod != null) && (! CorrectionMethod.GLOBAL_PER_SLICE.equals(correctionMethod))) {
+            throw new IllegalArgumentException(
+                    "current implementation only supports --correctionMethod of " +
+                    CorrectionMethod.GLOBAL_PER_SLICE + ", so specify that or omit the parameter");
+        }
+
+        if ((intensityCorrectedFilterStack == null) && (rootDirectory == null)) {
+                throw new IllegalArgumentException(
+                        "must specify either --intensityCorrectedFilterStack or --rootDirectory");
+        }
+    }
+
+    public boolean deriveFilterData() {
+        return intensityCorrectedFilterStack != null;
+    }
 }

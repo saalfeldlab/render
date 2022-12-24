@@ -5,7 +5,7 @@ import ij.ImageStack;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.janelia.alignment.intensity.LinearIntensityMap;
@@ -75,9 +75,7 @@ public class LinearIntensityMap8BitFilter
         }
     }
 
-    @Override
-    public Map<String, String> toParametersMap() {
-        final Map<String, String> map = new LinkedHashMap<>();
+    public String toDataString() {
         final StringBuilder sb = new StringBuilder();
         sb.append(numberOfRegionRows).append(',');
         sb.append(numberOfRegionColumns).append(',');
@@ -87,7 +85,18 @@ public class LinearIntensityMap8BitFilter
                 sb.append(',').append(coefficient);
             }
         }
-        map.put(DATA_STRING_NAME, sb.toString());
+        return sb.toString();
+    }
+
+    @Override
+    public String toString() {
+        return this.toDataString();
+    }
+
+    @Override
+    public Map<String, String> toParametersMap() {
+        final Map<String, String> map = new HashMap<>();
+        map.put(DATA_STRING_NAME, this.toDataString());
         return map;
     }
 
@@ -136,7 +145,9 @@ public class LinearIntensityMap8BitFilter
 
         map.run(img);
 
-        return fp;
+        // Need to reset intensity range back to full 8-bit before converting to byte processor!
+        fp.setMinAndMax(0, 255);
+        return fp.convertToByteProcessor();
     }
 
     private static final String DATA_STRING_NAME = "dataString";

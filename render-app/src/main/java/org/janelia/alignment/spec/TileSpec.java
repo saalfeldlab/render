@@ -618,6 +618,15 @@ public class TileSpec implements Serializable {
         }
     }
 
+    public void setFilterSpec(final FilterSpec filterSpec) {
+        this.filterSpec = filterSpec;
+        if (channels != null) {
+            for (final ChannelSpec channelSpec : channels) {
+                channelSpec.setFilterSpec(filterSpec);
+            }
+        }
+    }
+
     public boolean hasTransforms() {
         return ((transforms != null) && (transforms.size() > 0));
     }

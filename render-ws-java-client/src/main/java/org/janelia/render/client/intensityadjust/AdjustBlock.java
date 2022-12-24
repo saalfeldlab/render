@@ -63,13 +63,9 @@ import net.imglib2.view.Views;
 
 public class AdjustBlock {
 
-	public static List< MinimalTileSpecWrapper > getData( final int z, final RenderDataClient renderDataClient, final String stack ) throws IOException
+	public static List< MinimalTileSpecWrapper > getTilesForZ(final ResolvedTileSpecCollection resolvedTiles)
 	{
-		List< MinimalTileSpecWrapper > data = new ArrayList<>();
-
-		final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, (double)z);
-		resolvedTiles.resolveTileSpecs();
-
+		final List< MinimalTileSpecWrapper > data = new ArrayList<>(resolvedTiles.getTileCount());
 		for ( final TileSpec tileSpec : resolvedTiles.getTileSpecs() )
 		{
 			//final AffineModel2D lastTransform = SolveTools.loadLastTransformFromSpec( tileSpec );
@@ -508,26 +504,21 @@ public class AdjustBlock {
 		return new FinalRealInterval( tmpMin, tmpMax );
 	}
 
-	public static ImageProcessorWithMasks renderIntensityAdjustedSliceGlobalPerSlice(
-			final String stack,
-			final RenderDataClient renderDataClient,
-			final RenderParameters sliceRenderParameters,
+	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForSliceTiles(
+			final List<MinimalTileSpecWrapper> sliceTiles,
 			final ImageProcessorCache imageProcessorCache,
-			final int z) throws IOException, InterruptedException, ExecutionException
-	{
-		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
-		//final HashMap< Integer, double[] > adjustments = new HashMap<>();
+			final int numCoefficients)
+			throws InterruptedException, ExecutionException {
 
 		final double scale = 0.1;
-		final int numCoefficients = 8;
 		final double lambda1 = 0.01;
 		final double lambda2 = 0.01;
 		final double neighborWeight = 0.1;
 		final int iterations = 2000;
 
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
-		final ArrayList < OnTheFlyIntensity > corrected = new IntensityMatcher().match(
-				data,
+		return new IntensityMatcher().match(
+				sliceTiles,
 				scale,
 				numCoefficients,
 				lambda1,
@@ -535,9 +526,25 @@ public class AdjustBlock {
 				neighborWeight,
 				iterations,
 				imageProcessorCache);
+	}
+
+	public static ImageProcessorWithMasks renderIntensityAdjustedSliceGlobalPerSlice(
+			final ResolvedTileSpecCollection resolvedTiles,
+			final RenderParameters sliceRenderParameters,
+			final ImageProcessorCache imageProcessorCache,
+			final int z,
+			final int numCoefficients) throws InterruptedException, ExecutionException
+	{
+		final List<MinimalTileSpecWrapper> tilesForZ = getTilesForZ(resolvedTiles);
+		//final HashMap< Integer, double[] > adjustments = new HashMap<>();
+
+		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
+		final ArrayList < OnTheFlyIntensity > corrected = correctIntensitiesForSliceTiles(tilesForZ,
+																						  imageProcessorCache,
+																						  numCoefficients);
 
 		// TODO: why is fuseFinal limited to 2^31, how was the same thing done in TrakEM2?
-		return fuseFinal(sliceRenderParameters, data, corrected, imageProcessorCache);
+		return fuseFinal(sliceRenderParameters, tilesForZ, corrected, imageProcessorCache);
 	}
 
 //	public static RandomAccessibleInterval<UnsignedByteType> renderIntensityAdjustedSliceGauss(final String stack,
@@ -748,14 +755,17 @@ public class AdjustBlock {
 
 			final RenderParameters sliceRenderParameters = RenderParameters.loadFromUrl(parametersUrl);
 
+			final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, (double) z);
+			resolvedTiles.resolveTileSpecs();
+
 			final ImageProcessorWithMasks slice =
 					//renderIntensityAdjustedSlice(stack, renderDataClient, interval, scale, cacheOnDisk, z);
 					//renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, false, cacheOnDisk, z);
-					renderIntensityAdjustedSliceGlobalPerSlice(stack,
-															   renderDataClient,
+					renderIntensityAdjustedSliceGlobalPerSlice(resolvedTiles,
 															   sliceRenderParameters,
 															   imageProcessorCache,
-															   z);
+															   z,
+															   DEFAULT_NUM_COEFFICIENTS);
 			stack3d.addSlice( slice.ip );
 		}
 
@@ -772,6 +782,8 @@ public class AdjustBlock {
 
 		imp1.show();
 	}
+
+	public static int DEFAULT_NUM_COEFFICIENTS = 8;
 
 	private static final Logger LOG = LoggerFactory.getLogger(AdjustBlock.class);
 

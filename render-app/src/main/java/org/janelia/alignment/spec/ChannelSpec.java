@@ -22,7 +22,7 @@ public class ChannelSpec implements Serializable {
     private final TreeMap<Integer, ImageAndMask> mipmapLevels;
     private MipmapPathBuilder mipmapPathBuilder;
 
-    private final FilterSpec filterSpec;
+    private FilterSpec filterSpec;
 
     public ChannelSpec() {
         this(null, null);
@@ -198,5 +198,9 @@ public class ChannelSpec implements Serializable {
 
     public boolean hasFilterSpec() {
         return filterSpec != null;
+    }
+
+    public void setFilterSpec(final FilterSpec filterSpec) {
+        this.filterSpec = filterSpec;
     }
 }
