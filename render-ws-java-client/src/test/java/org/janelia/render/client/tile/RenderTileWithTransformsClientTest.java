@@ -68,6 +68,7 @@ public class RenderTileWithTransformsClientTest {
         parameters.renderWeb.owner = "reiser";
         parameters.renderWeb.project = "Z0422_05_Ocellar";
         parameters.stack = "v3_acquire";
+        parameters.scale = 0.25;
 
         // TODO: Preibisch - add tileIds as needed
         parameters.tileIds = Arrays.asList(
@@ -97,7 +98,7 @@ public class RenderTileWithTransformsClientTest {
                 final List<TransformSpec> tileTransforms = Collections.singletonList(transformSpec);
 
                 final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
-                        client.renderTile(tileId, tileTransforms, null);
+                        client.renderTile(tileId, tileTransforms, parameters.scale, null);
 
                 new ImagePlus(testName + "::" + tileId, imageProcessorWithMasks.ip).show();
             }

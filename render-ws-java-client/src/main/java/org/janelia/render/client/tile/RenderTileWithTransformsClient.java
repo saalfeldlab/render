@@ -59,6 +59,12 @@ public class RenderTileWithTransformsClient {
         public String format = Utils.PNG_FORMAT;
 
         @Parameter(
+                names = "--scale",
+                description = "Scale for each rendered tile"
+        )
+        public Double scale = 1.0;
+
+        @Parameter(
                 names = "--tileId",
                 description = "Explicit IDs for tiles to render",
                 variableArity = true,
@@ -131,12 +137,13 @@ public class RenderTileWithTransformsClient {
         for (final String tileId : parameters.tileIds) {
             final File saveTileFile = new File(tileDirectory,
                                                tileId + "." + parameters.format.toLowerCase());
-            renderTile(tileId, transformSpecList, saveTileFile);
+            renderTile(tileId, transformSpecList, parameters.scale, saveTileFile);
         }
     }
 
     public TransformMeshMappingWithMasks.ImageProcessorWithMasks renderTile(final String tileId,
                                                                             final List<TransformSpec> tileTransforms,
+                                                                            final double renderScale,
                                                                             final File saveTileFile)
             throws IOException {
 
@@ -165,7 +172,7 @@ public class RenderTileWithTransformsClient {
                                      tileRenderY,
                                      tileRenderWidth,
                                      tileRenderHeight,
-                                     1.0);
+                                     renderScale);
         renderParameters.addTileSpec(tileSpec);
         renderParameters.initializeDerivedValues();
 
