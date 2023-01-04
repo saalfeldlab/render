@@ -17,6 +17,9 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.util.FileUtil;
@@ -63,6 +66,9 @@ public class RenderTileWithTransformsClient {
                 description = "Scale for each rendered tile"
         )
         public Double scale = 1.0;
+
+        @ParametersDelegate
+        FeatureRenderClipParameters featureRenderClip = new FeatureRenderClipParameters();
 
         @Parameter(
                 names = "--tileId",
@@ -137,13 +143,14 @@ public class RenderTileWithTransformsClient {
         for (final String tileId : parameters.tileIds) {
             final File saveTileFile = new File(tileDirectory,
                                                tileId + "." + parameters.format.toLowerCase());
-            renderTile(tileId, transformSpecList, parameters.scale, saveTileFile);
+            renderTile(tileId, transformSpecList, parameters.scale, null, saveTileFile);
         }
     }
 
     public TransformMeshMappingWithMasks.ImageProcessorWithMasks renderTile(final String tileId,
                                                                             final List<TransformSpec> tileTransforms,
                                                                             final double renderScale,
+                                                                            final CanvasId canvasIdForClipping,
                                                                             final File saveTileFile)
             throws IOException {
 
@@ -175,6 +182,18 @@ public class RenderTileWithTransformsClient {
                                      renderScale);
         renderParameters.addTileSpec(tileSpec);
         renderParameters.initializeDerivedValues();
+
+        if (canvasIdForClipping != null) {
+            // this is awful, but currently necessary ...
+            canvasIdForClipping.setClipOffsets(renderParameters.getWidth(),
+                                               renderParameters.getHeight(),
+                                               parameters.featureRenderClip.clipWidth,
+                                               parameters.featureRenderClip.clipHeight);
+            CanvasIdWithRenderContext.clipRenderParameters(canvasIdForClipping,
+                                                           parameters.featureRenderClip.clipWidth,
+                                                           parameters.featureRenderClip.clipHeight,
+                                                           renderParameters);
+        }
 
         final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
                 Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, null);
