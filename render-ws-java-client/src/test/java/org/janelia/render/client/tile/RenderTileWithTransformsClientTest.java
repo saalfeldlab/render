@@ -2,7 +2,9 @@ package org.janelia.render.client.tile;
 
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.process.ImageProcessor;
 
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -68,8 +70,8 @@ public class RenderTileWithTransformsClientTest {
         parameters.renderWeb.project = "Z0422_05_Ocellar";
         parameters.stack = "v3_acquire";
 
-        parameters.featureRenderClip.clipWidth = 1000;
-        parameters.featureRenderClip.clipHeight = 1000;
+        parameters.featureRenderClip.clipWidth = 2000;
+        parameters.featureRenderClip.clipHeight = 2000;
 
         parameters.scale = 0.25;
 
@@ -116,7 +118,8 @@ public class RenderTileWithTransformsClientTest {
         final String tileId = canvasId.getId();
         final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
                 client.renderTile(tileId, tileTransforms, scale, canvasId, null);
-        new ImagePlus(testName + "::" + tileId, ipwm.ip).show();
+        final ImageProcessor croppedTile = quickCropMaskedArea(ipwm);
+        new ImagePlus(testName + "__" + tileId, croppedTile).show();
     }
 
     public static OrderedCanvasIdPair buildPair(final String pId,
@@ -164,6 +167,49 @@ public class RenderTileWithTransformsClientTest {
         return new OrderedCanvasIdPair(new CanvasId(pGroupId, pId, pPos),
                                        new CanvasId(qGroupId, qId, qPos),
                                        0.0);
+    }
+
+    /**
+     * @return image processor with masked area cropped away
+     *         ("quick" hack looks for first unmasked pixel and crops rectangle from there)
+     */
+    private static ImageProcessor quickCropMaskedArea(final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm) {
+
+        final ImageProcessor croppedTile;
+
+        if (ipwm.mask != null) {
+
+            Integer cropX = null;
+            int cropY = 0;
+
+            // find first non-zero intensity pixel and crop from there
+            for (int y = 0; y < ipwm.getHeight(); y++) {
+                for (int x = 0; x < ipwm.getWidth(); x++) {
+                    final int i = ipwm.mask.get(x, y);
+                    if ((i != 0) && (cropX == null)) {
+                        cropX = x;
+                        cropY = y;
+                        break;
+                    }
+                }
+            }
+
+            if (cropX == null) {
+                cropX = 0;
+            }
+
+            final int cropWidth = ipwm.getWidth() - cropX;
+            final int cropHeight = ipwm.getHeight() - cropY;
+
+            final Rectangle roi = new Rectangle(cropX, cropY, cropWidth, cropHeight);
+            ipwm.ip.setRoi(roi);
+            croppedTile = ipwm.ip.crop();
+
+        } else {
+            croppedTile = ipwm.ip;
+        }
+
+        return croppedTile;
     }
 
     private static final Pattern TILE_ID_PATTERN = Pattern.compile(".*_0-(\\d)-(\\d)\\.(\\d++)\\.0");
