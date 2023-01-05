@@ -70,8 +70,8 @@ public class RenderTileWithTransformsClientTest {
         parameters.renderWeb.project = "Z0422_05_Ocellar";
         parameters.stack = "v3_acquire";
 
-        parameters.featureRenderClip.clipWidth = 2000;
-        parameters.featureRenderClip.clipHeight = 2000;
+        parameters.featureRenderClip.clipWidth = 1000;  // full scale clip pixels
+        parameters.featureRenderClip.clipHeight = 1000; // full scale clip pixels
 
         parameters.scale = 0.25;
 
@@ -92,6 +92,8 @@ public class RenderTileWithTransformsClientTest {
 
         final RenderTileWithTransformsClient client = new RenderTileWithTransformsClient(parameters);
 
+        // TODO: Preibisch - change this to your Fiji plugins directory so that stitching plugin is available
+        System.getProperties().setProperty("plugins.dir", "/Applications/Fiji.app/plugins");
         new ImageJ();
 
         for (final OrderedCanvasIdPair tilePair : tilePairs) {
@@ -173,7 +175,7 @@ public class RenderTileWithTransformsClientTest {
      * @return image processor with masked area cropped away
      *         ("quick" hack looks for first unmasked pixel and crops rectangle from there)
      */
-    private static ImageProcessor quickCropMaskedArea(final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm) {
+    public static ImageProcessor quickCropMaskedArea(final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm) {
 
         final ImageProcessor croppedTile;
 
@@ -212,5 +214,5 @@ public class RenderTileWithTransformsClientTest {
         return croppedTile;
     }
 
-    private static final Pattern TILE_ID_PATTERN = Pattern.compile(".*_0-(\\d)-(\\d)\\.(\\d++)\\.0");
+    private static final Pattern TILE_ID_PATTERN = Pattern.compile(".*_0-(\\d)-(\\d)\\.(?:patch\\.)?(\\d++)\\.0");
 }
