@@ -38,6 +38,15 @@ public class ListTransformSpec extends TransformSpec {
         return specList.get(index);
     }
 
+    /**
+     * note: important that this is not named getSpecList since that screws up Jackson serialization
+     *
+     * @return copy of the internal spec list
+     */
+    public List<TransformSpec> toUtilList() {
+        return new ArrayList<>(specList);
+    }
+
     @JsonIgnore
     public TransformSpec getLastSpec() {
         final TransformSpec lastSpec;
