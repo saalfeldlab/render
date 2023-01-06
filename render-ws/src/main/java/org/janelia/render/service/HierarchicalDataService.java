@@ -548,7 +548,7 @@ public class HierarchicalDataService {
             final MatchCollectionId matchCollectionId =
                     MatchService.getCollectionId(effectiveMatchOwner, matchCollection);
 
-            final List<TileBounds> allTileBounds = renderDao.getTileBoundsForZ(stackId, z);
+            final List<TileBounds> allTileBounds = renderDao.getTileBoundsForZ(stackId, z, null);
 
             final Set<String> distinctSectionIds = new HashSet<>(allTileBounds.size());
             final Map<String, TileBounds> tileIdToBoundsMap = new HashMap<>(allTileBounds.size());

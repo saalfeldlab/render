@@ -3,6 +3,7 @@ package org.janelia.render.client.multisem;
 import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -93,8 +94,10 @@ public class MFOVMontageSolverClient {
     public void loadAndSolveUnconnectedMFOVs(final Parameters parameters) throws IOException {
         if (parameters.unconnectedMFOVPairsFiles.size() > 0) {
 
-            final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
-                    UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFiles.get(0));
+            final ArrayList<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
+                    new ArrayList<>(
+                            UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFiles.get(0))
+                    );
 
             // add more pairs if multiple files have been specified
             // note: pairs for same stack are not merged back together here because it is not worth the trouble

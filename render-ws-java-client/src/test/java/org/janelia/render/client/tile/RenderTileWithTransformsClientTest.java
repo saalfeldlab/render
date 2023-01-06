@@ -1,16 +1,25 @@
 package org.janelia.render.client.tile;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
+import ij.ImageJ;
+import ij.ImagePlus;
+import ij.process.ImageProcessor;
 
+import java.awt.Rectangle;
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import mpicbg.imglib.multithreading.SimpleMultiThreading;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.MontageRelativePosition;
+import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.transform.SEMDistortionTransformA;
-import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.junit.Test;
@@ -44,22 +53,15 @@ public class RenderTileWithTransformsClientTest {
 //
 //            RenderTileWithTransformsClient.main(testArgs);
 
-            saveTilesWithDifferentScanCorrections();
+            showTilesWithDifferentScanCorrections();
             
         } catch (final Throwable t) {
             t.printStackTrace();
         }
     }
 
-    /**
-     * Loops through tile list and scan correction parameter list to render full scale tiles
-     * in logical subdirectories within the root.  Scan correction parameters are also saved
-     * in transformSpecList.json files in case they are needed for later reference.
-     */
-    public static void saveTilesWithDifferentScanCorrections()
+    public static void showTilesWithDifferentScanCorrections()
             throws IOException {
-
-        final String runTimestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
 
         final RenderTileWithTransformsClient.Parameters parameters = new RenderTileWithTransformsClient.Parameters();
         parameters.renderWeb = new RenderWebServiceParameters();
@@ -68,43 +70,149 @@ public class RenderTileWithTransformsClientTest {
         parameters.renderWeb.project = "Z0422_05_Ocellar";
         parameters.stack = "v3_acquire";
 
-        // TODO: Preibisch - add tileIds as needed
-        parameters.tileIds = Arrays.asList(
-                "22-06-17_080526_0-0-0.1263.0", "22-06-17_080526_0-0-1.1263.0", // z 1263, row 0, columns 0 and 1
-                "22-06-17_081143_0-0-0.1264.0", "22-06-17_081143_0-0-1.1264.0", // z 1264, row 0, columns 0 and 1
+        parameters.featureRenderClip.clipWidth = 1000;  // full scale clip pixels
+        parameters.featureRenderClip.clipHeight = 1000; // full scale clip pixels
 
-                "22-06-18_034043_0-0-0.2097.0",       "22-06-18_034043_0-0-1.2097.0",       // z 2097, row 0, columns 0 and 1
-                "22-06-18_125654_0-0-0.patch.2098.0", "22-06-18_125654_0-0-1.patch.2098.0"  // z 2098, row 0, columns 0 and 1 (patched, so really from z 2099)
-        );
+        parameters.scale = 0.25;
 
-        // TODO: Preibisch - change path (recommend you keep runTimestamp suffix)
-        final String scanCorrectionDir = "/Users/preibischs/Desktop/fibsem_scan_correction_" + runTimestamp;
+        // TODO: Preibisch - add/remove tile pairs
+        final OrderedCanvasIdPair[] tilePairs = new OrderedCanvasIdPair[] {
+                buildPair("22-06-17_080526_0-0-0.1263.0",       "22-06-17_080526_0-0-1.1263.0"),
+                buildPair("22-06-17_081143_0-0-0.1264.0",       "22-06-17_081143_0-0-1.1264.0"),
+//                buildPair("22-06-18_034043_0-0-0.2097.0",       "22-06-18_034043_0-0-1.2097.0"),
+//                buildPair("22-06-18_125654_0-0-0.patch.2098.0", "22-06-18_125654_0-0-1.patch.2098.0") // (patched, so really from z 2099)
+        };
 
         // TODO: Preibisch - add/change scan correction parameters as needed (my test_a is just an example)
         final String[][] testSpecificArgs = {
-                // subdirectory, scan correction parameters: a * exp(-x/b) + c * exp(-x/d) , last param 0 => x dimension
+                // test name, scan correction parameters: a * exp(-x/b) + c * exp(-x/d) , last param 0 => x dimension
                 {    "original", "  19.4   64.8   24.4   972.0   0"},
                 {      "test_a", "1900.4   64.8   24.4   972.0   0"},
         };
 
-        // you should not need to change anything below ...
-        for (final String[] testArgs : testSpecificArgs) {
+        final RenderTileWithTransformsClient client = new RenderTileWithTransformsClient(parameters);
 
-            parameters.rootDirectory = Paths.get(scanCorrectionDir, testArgs[0]).toString();
-            FileUtil.ensureWritableDirectory(new File(parameters.rootDirectory));
+        // TODO: Preibisch - change this to your Fiji plugins directory so that stitching plugin is available
+        System.getProperties().setProperty("plugins.dir", "/Applications/Fiji.app/plugins");
+        new ImageJ();
 
-            parameters.transformFile = Paths.get(parameters.rootDirectory, "transformSpecList.json").toString();
-
-            final LeafTransformSpec transformSpec = new LeafTransformSpec(SEMDistortionTransformA.class.getName(),
-                                                                          testArgs[1]);
-            FileUtil.saveJsonFile(parameters.transformFile,
-                                  Collections.singletonList(transformSpec)); // nest single transform in list
-
-            final RenderTileWithTransformsClient client = new RenderTileWithTransformsClient(parameters);
-            client.renderTiles();
-
+        for (final OrderedCanvasIdPair tilePair : tilePairs) {
+            final CanvasId p = tilePair.getP();
+            final CanvasId q = tilePair.getQ();
+            for (final String[] testArgs : testSpecificArgs) {
+                final LeafTransformSpec transformSpec = new LeafTransformSpec(SEMDistortionTransformA.class.getName(),
+                                                                              testArgs[1]);
+                final List<TransformSpec> tileTransforms = Collections.singletonList(transformSpec);
+                showTile(client, tileTransforms, parameters.scale, testArgs[0], p);
+                showTile(client, tileTransforms, parameters.scale, testArgs[0], q);
+            }
         }
 
+        SimpleMultiThreading.threadHaltUnClean();
     }
 
+    private static void showTile(final RenderTileWithTransformsClient client,
+                                 final List<TransformSpec> tileTransforms,
+                                 final double scale,
+                                 final String testName,
+                                 final CanvasId canvasId)
+            throws IOException {
+        final String tileId = canvasId.getId();
+        final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+                client.renderTile(tileId, tileTransforms, scale, canvasId, null);
+        final ImageProcessor croppedTile = quickCropMaskedArea(ipwm);
+        new ImagePlus(testName + "__" + tileId, croppedTile).show();
+    }
+
+    public static OrderedCanvasIdPair buildPair(final String pId,
+                                                final String qId) throws IllegalArgumentException {
+
+        final Matcher pMatcher = TILE_ID_PATTERN.matcher(pId);
+        final Matcher qMatcher = TILE_ID_PATTERN.matcher(qId);
+
+        if (! (pMatcher.matches() && qMatcher.matches())) {
+            throw new IllegalArgumentException("pId " + pId + " and qId "+ qId + " do not match FIB-SEM tile pattern");
+        }
+
+        final int pRow = Integer.parseInt(pMatcher.group(1));
+        final int pColumn = Integer.parseInt(pMatcher.group(2));
+        final String pGroupId = pMatcher.group(3);
+
+        final int qRow = Integer.parseInt(qMatcher.group(1));
+        final int qColumn = Integer.parseInt(qMatcher.group(2));
+        final String qGroupId = qMatcher.group(3);
+
+        if (! pGroupId.equals(qGroupId)) {
+            throw new IllegalArgumentException("pId " + pId + " and qId "+ qId + " must be in same z-layer");
+        }
+
+        if ((pRow != qRow) && (pColumn != qColumn)) {
+            throw new IllegalArgumentException("pId " + pId + " and qId "+ qId + " must be in same row or column");
+        }
+
+        final MontageRelativePosition pPos;
+        final MontageRelativePosition qPos;
+        if (pColumn < qColumn) {
+            pPos = MontageRelativePosition.LEFT;
+            qPos = MontageRelativePosition.RIGHT;
+        } else if (qColumn < pColumn) {
+            qPos = MontageRelativePosition.LEFT;
+            pPos = MontageRelativePosition.RIGHT;
+        } else if (pRow < qRow) {
+            pPos = MontageRelativePosition.TOP;
+            qPos = MontageRelativePosition.BOTTOM;
+        } else { // qRow < pRow
+            qPos = MontageRelativePosition.TOP;
+            pPos = MontageRelativePosition.BOTTOM;
+        }
+
+        return new OrderedCanvasIdPair(new CanvasId(pGroupId, pId, pPos),
+                                       new CanvasId(qGroupId, qId, qPos),
+                                       0.0);
+    }
+
+    /**
+     * @return image processor with masked area cropped away
+     *         ("quick" hack looks for first unmasked pixel and crops rectangle from there)
+     */
+    public static ImageProcessor quickCropMaskedArea(final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm) {
+
+        final ImageProcessor croppedTile;
+
+        if (ipwm.mask != null) {
+
+            Integer cropX = null;
+            int cropY = 0;
+
+            // find first non-zero intensity pixel and crop from there
+            for (int y = 0; y < ipwm.getHeight(); y++) {
+                for (int x = 0; x < ipwm.getWidth(); x++) {
+                    final int i = ipwm.mask.get(x, y);
+                    if ((i != 0) && (cropX == null)) {
+                        cropX = x;
+                        cropY = y;
+                        break;
+                    }
+                }
+            }
+
+            if (cropX == null) {
+                cropX = 0;
+            }
+
+            final int cropWidth = ipwm.getWidth() - cropX;
+            final int cropHeight = ipwm.getHeight() - cropY;
+
+            final Rectangle roi = new Rectangle(cropX, cropY, cropWidth, cropHeight);
+            ipwm.ip.setRoi(roi);
+            croppedTile = ipwm.ip.crop();
+
+        } else {
+            croppedTile = ipwm.ip;
+        }
+
+        return croppedTile;
+    }
+
+    private static final Pattern TILE_ID_PATTERN = Pattern.compile(".*_0-(\\d)-(\\d)\\.(?:patch\\.)?(\\d++)\\.0");
 }

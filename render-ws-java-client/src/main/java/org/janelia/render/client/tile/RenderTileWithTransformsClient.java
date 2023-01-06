@@ -3,6 +3,7 @@ package org.janelia.render.client.tile;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
@@ -11,9 +12,14 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasIdWithRenderContext;
+import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.util.FileUtil;
@@ -56,6 +62,15 @@ public class RenderTileWithTransformsClient {
         public String format = Utils.PNG_FORMAT;
 
         @Parameter(
+                names = "--scale",
+                description = "Scale for each rendered tile"
+        )
+        public Double scale = 1.0;
+
+        @ParametersDelegate
+        FeatureRenderClipParameters featureRenderClip = new FeatureRenderClipParameters();
+
+        @Parameter(
                 names = "--tileId",
                 description = "Explicit IDs for tiles to render",
                 variableArity = true,
@@ -92,7 +107,6 @@ public class RenderTileWithTransformsClient {
     private final Parameters parameters;
     private final List<TransformSpec> transformSpecList;
 
-    private final File tileDirectory;
     private final ImageProcessorCache imageProcessorCache;
     private final RenderDataClient renderDataClient;
 
@@ -100,11 +114,6 @@ public class RenderTileWithTransformsClient {
             throws IOException {
 
         this.parameters = parameters;
-
-        final Path tileDirectoryPath = Paths.get(parameters.rootDirectory);
-        this.tileDirectory = tileDirectoryPath.toAbsolutePath().toFile();
-
-        FileUtil.ensureWritableDirectory(this.tileDirectory);
 
         if (parameters.transformFile != null) {
             try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(parameters.transformFile)) {
@@ -125,12 +134,24 @@ public class RenderTileWithTransformsClient {
 
     public void renderTiles()
             throws IOException {
+
+        final Path tileDirectoryPath = Paths.get(parameters.rootDirectory);
+        final File tileDirectory = tileDirectoryPath.toAbsolutePath().toFile();
+
+        FileUtil.ensureWritableDirectory(tileDirectory);
+
         for (final String tileId : parameters.tileIds) {
-            renderTile(tileId);
+            final File saveTileFile = new File(tileDirectory,
+                                               tileId + "." + parameters.format.toLowerCase());
+            renderTile(tileId, transformSpecList, parameters.scale, null, saveTileFile);
         }
     }
 
-    public void renderTile(final String tileId)
+    public TransformMeshMappingWithMasks.ImageProcessorWithMasks renderTile(final String tileId,
+                                                                            final List<TransformSpec> tileTransforms,
+                                                                            final double renderScale,
+                                                                            final CanvasId canvasIdForClipping,
+                                                                            final File saveTileFile)
             throws IOException {
 
         final TileSpec tileSpec = renderDataClient.getTile(parameters.stack, tileId);
@@ -140,10 +161,10 @@ public class RenderTileWithTransformsClient {
             removalCount++;
         }
 
-        tileSpec.addTransformSpecs(transformSpecList);
+        tileSpec.addTransformSpecs(tileTransforms);
 
         LOG.info("renderTile: removed {} existing transforms and added {} new transforms to tile {}",
-                 removalCount, transformSpecList.size(), tileId);
+                 removalCount, tileTransforms.size(), tileId);
 
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
@@ -158,14 +179,40 @@ public class RenderTileWithTransformsClient {
                                      tileRenderY,
                                      tileRenderWidth,
                                      tileRenderHeight,
-                                     1.0);
+                                     renderScale);
         renderParameters.addTileSpec(tileSpec);
         renderParameters.initializeDerivedValues();
 
-        final File tileFile = new File(tileDirectory,
-                                       tileSpec.getTileId() + "." + parameters.format.toLowerCase());
+        if (canvasIdForClipping != null) {
+            // this is awful, but currently necessary ...
+            canvasIdForClipping.setClipOffsets(renderParameters.getWidth(),
+                                               renderParameters.getHeight(),
+                                               parameters.featureRenderClip.clipWidth,
+                                               parameters.featureRenderClip.clipHeight);
+            CanvasIdWithRenderContext.clipRenderParameters(canvasIdForClipping,
+                                                           parameters.featureRenderClip.clipWidth,
+                                                           parameters.featureRenderClip.clipHeight,
+                                                           renderParameters);
+        }
 
-        Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, tileFile);
+        final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
+                Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, null);
+
+
+        if (saveTileFile != null) {
+            final BufferedImage bufferedImage = renderParameters.openTargetImage();
+            try {
+                Utils.saveImage(bufferedImage,
+                                saveTileFile,
+                                renderParameters.isConvertToGray(),
+                                renderParameters.getQuality());
+            } catch (final Throwable t) {
+                LOG.warn("renderTile: failed to save " + saveTileFile.getAbsolutePath(), t);
+            }
+
+        }
+
+        return imageProcessorWithMasks;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderTileWithTransformsClient.class);

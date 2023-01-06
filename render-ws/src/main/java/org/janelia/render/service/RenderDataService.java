@@ -434,7 +434,8 @@ public class RenderDataService {
     public List<TileBounds> getTileBoundsForZ(@PathParam("owner") final String owner,
                                               @PathParam("project") final String project,
                                               @PathParam("stack") final String stack,
-                                              @PathParam("z") final Double z) {
+                                              @PathParam("z") final Double z,
+                                              @QueryParam("tileIdPattern") final String tileIdPattern) {
 
         LOG.info("getTileBoundsForZ: entry, owner={}, project={}, stack={}, z={}",
                  owner, project, stack, z);
@@ -442,7 +443,7 @@ public class RenderDataService {
         List<TileBounds> list = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            list = renderDao.getTileBoundsForZ(stackId, z);
+            list = renderDao.getTileBoundsForZ(stackId, z, tileIdPattern);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -722,7 +723,8 @@ public class RenderDataService {
     public List<TileBounds> getTileBoundsForSection(@PathParam("owner") final String owner,
                                                     @PathParam("project") final String project,
                                                     @PathParam("stack") final String stack,
-                                                    @PathParam("sectionId") final String sectionId) {
+                                                    @PathParam("sectionId") final String sectionId,
+                                                    @QueryParam("tileIdPattern") final String tileIdPattern) {
 
         LOG.info("getTileBoundsForSection: entry, owner={}, project={}, stack={}, sectionId={}",
                  owner, project, stack, sectionId);
@@ -730,7 +732,7 @@ public class RenderDataService {
         List<TileBounds> list = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            list = renderDao.getTileBoundsForSection(stackId, sectionId);
+            list = renderDao.getTileBoundsForSection(stackId, sectionId, tileIdPattern);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
