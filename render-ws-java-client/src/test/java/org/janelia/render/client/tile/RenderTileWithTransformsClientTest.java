@@ -78,7 +78,7 @@ public class RenderTileWithTransformsClientTest {
         );
 
         // TODO: Preibisch - change path (recommend you keep runTimestamp suffix)
-        final String scanCorrectionDir = "/Users/trautmane/Desktop/fibsem_scan_correction_" + runTimestamp;
+        final String scanCorrectionDir = "/Users/preibischs/Desktop/fibsem_scan_correction_" + runTimestamp;
 
         // TODO: Preibisch - add/change scan correction parameters as needed (my test_a is just an example)
         final String[][] testSpecificArgs = {
