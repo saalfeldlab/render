@@ -85,6 +85,6 @@ public class ByteRenderer {
         return new BufferedImage(targetWidth, targetHeight, BufferedImage.TYPE_BYTE_GRAY);
     };
 
-    private static final Renderer.ProcessorWithMasksConverter CONVERTER =
+    public static final Renderer.ProcessorWithMasksConverter CONVERTER =
             (renderParameters, renderedImageProcessorWithMasks) -> targetToByteImage(renderedImageProcessorWithMasks);
 }
