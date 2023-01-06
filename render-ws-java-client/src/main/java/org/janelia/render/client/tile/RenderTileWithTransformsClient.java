@@ -3,6 +3,7 @@ package org.janelia.render.client.tile;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -14,6 +15,7 @@ import java.util.List;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
+import org.janelia.alignment.ByteRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.Utils;
@@ -200,9 +202,15 @@ public class RenderTileWithTransformsClient {
 
 
         if (saveTileFile != null) {
-            final BufferedImage bufferedImage = renderParameters.openTargetImage();
+            final BufferedImage targetImage = renderParameters.openTargetImage();
+            final Graphics2D targetGraphics = targetImage.createGraphics();
+            final BufferedImage image =
+                    ByteRenderer.CONVERTER.convertProcessorWithMasksToImage(renderParameters,
+                                                                            imageProcessorWithMasks);
+            targetGraphics.drawImage(image, 0, 0, null);
+
             try {
-                Utils.saveImage(bufferedImage,
+                Utils.saveImage(image,
                                 saveTileFile,
                                 renderParameters.isConvertToGray(),
                                 renderParameters.getQuality());
