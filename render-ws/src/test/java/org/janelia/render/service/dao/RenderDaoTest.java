@@ -72,12 +72,12 @@ public class RenderDaoTest {
     }
 
     @AfterClass
-    public static void after() throws Exception {
+    public static void after() {
         embeddedMongoDb.stop();
     }
 
     @Test
-    public void testRenameStack() throws Exception {
+    public void testRenameStack() {
 
         StackId fromStackId = stackId;
         final List<Double> fromZValues = dao.getZValues(fromStackId);
@@ -131,7 +131,7 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testCloneStack() throws Exception {
+    public void testCloneStack() {
 
         final StackId toStackId = new StackId(stackId.getOwner(), stackId.getProject(), "clonedStack");
 
@@ -181,7 +181,7 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testSaveStackMetaDataAndDeriveStats() throws Exception {
+    public void testSaveStackMetaDataAndDeriveStats() {
 
         final StackVersion secondTry = new StackVersion(new Date(),
                                                         "second try",
@@ -229,7 +229,7 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testRemoveStack() throws Exception {
+    public void testRemoveStack() {
 
         final StackMetaData stackMetaBeforeRemove = dao.getStackMetaData(stackId);
         Assert.assertNotNull("meta data for " + stackId + " missing before removal", stackMetaBeforeRemove);
@@ -253,17 +253,17 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testRemoveTilesWithSectionId() throws Exception {
+    public void testRemoveTilesWithSectionId() {
 
         final Double z = 3903.0;
-        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z);
+        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z, null);
 
         Assert.assertNotNull("tileBoundsBeforeRemove null for " + stackId + " before removal",
                              tileBoundsBeforeRemove);
 
         dao.removeTilesWithSectionId(stackId, "mis-ordered-section");
 
-        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z);
+        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z, null);
 
         Assert.assertNotNull("tileBoundsAfterRemove null for " + stackId + " after removal",
                              tileBoundsAfterRemove);
@@ -272,35 +272,35 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testRemoveTilesWithIds() throws Exception {
+    public void testRemoveTilesWithIds() {
 
         final Double z = 3903.0;
-        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z);
+        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z, null);
 
         dao.removeTilesWithIds(stackId, Arrays.asList("134", "135", "136"));
 
-        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z);
+        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z, null);
 
         Assert.assertEquals("invalid tile count after tile list removal",
                             (tileBoundsBeforeRemove.size() - 3), tileBoundsAfterRemove.size());
     }
 
     @Test
-    public void testRemoveTile() throws Exception {
+    public void testRemoveTile() {
 
         final Double z = 3903.0;
-        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z);
+        final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z, null);
 
         dao.removeTile(stackId, "134");
 
-        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z);
+        final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z, null);
 
         Assert.assertEquals("invalid tile count after tile removal",
                             (tileBoundsBeforeRemove.size() - 1), tileBoundsAfterRemove.size());
     }
 
     @Test
-    public void testRemoveTilesWithZ() throws Exception {
+    public void testRemoveTilesWithZ() {
 
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setTileId("testTileId");
@@ -324,7 +324,7 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testSaveTileSpec() throws Exception {
+    public void testSaveTileSpec() {
         final String tileId = "new-tile-1";
         final String temca = "0";
         final LayoutData layoutData = new LayoutData("s123", temca, null, null, null, null, null, null);
@@ -362,7 +362,7 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testSaveTransformSpec() throws Exception {
+    public void testSaveTransformSpec() {
 
         final String transformId = "new-transform-1";
         final String testGroupLabel = "test-group";
@@ -395,14 +395,14 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testUpdateZForSection() throws Exception {
+    public void testUpdateZForSection() {
 
         final String sectionId = "mis-ordered-section";
         final Double zBeforeUpdate = dao.getZForSection(stackId, sectionId);
 
         Assert.assertEquals("incorrect z before update", 3903.0, zBeforeUpdate, 0.1);
 
-        final Double updatedZ = 999.0;
+        final double updatedZ = 999.0;
         dao.updateZForSection(stackId, "mis-ordered-section", updatedZ);
 
         final Double zAfterUpdate = dao.getZForSection(stackId, sectionId);
@@ -411,7 +411,7 @@ public class RenderDaoTest {
     }
 
     @Test
-    public void testUpdateZForTiles() throws Exception {
+    public void testUpdateZForTiles() {
         final String tileIdA = "134";
         final String tileIdB = "135";
 

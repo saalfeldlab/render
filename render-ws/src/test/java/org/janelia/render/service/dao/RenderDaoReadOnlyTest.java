@@ -252,7 +252,7 @@ public class RenderDaoReadOnlyTest {
     @Test
     public void testGetTileBoundsForZ() {
         final Double z = 3903.0;
-        final List<TileBounds> list = dao.getTileBoundsForZ(stackId, z);
+        final List<TileBounds> list = dao.getTileBoundsForZ(stackId, z, null);
 
         Assert.assertNotNull("null list retrieved", list);
         Assert.assertEquals("invalid number of tiles found", 12, list.size());
@@ -271,7 +271,7 @@ public class RenderDaoReadOnlyTest {
     @Test
     public void testGetTileBoundsForSection() {
         final String sectionId = "3903.0";
-        final List<TileBounds> list = dao.getTileBoundsForSection(stackId, sectionId);
+        final List<TileBounds> list = dao.getTileBoundsForSection(stackId, sectionId, null);
 
         Assert.assertNotNull("null list retrieved", list);
         Assert.assertEquals("invalid number of tiles found", 2, list.size());

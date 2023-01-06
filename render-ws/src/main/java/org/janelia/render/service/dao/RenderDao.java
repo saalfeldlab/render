@@ -949,7 +949,7 @@ public class RenderDao {
      * @param  owner    owner for all stacks.
      * @param  project  project for all stacks (or null to include all projects).
      *
-     * @return list of stack meta data objects for the specified owner and project.
+     * @return list of stack metadata objects for the specified owner and project.
      *
      * @throws IllegalArgumentException
      *   if required parameters are not specified.
@@ -990,7 +990,7 @@ public class RenderDao {
     }
 
     /**
-     * @return meta data for the specified stack or null if the stack cannot be found.
+     * @return metadata for the specified stack or null if the stack cannot be found.
      *
      * @throws IllegalArgumentException
      *   if required parameters are not specified.
@@ -1413,7 +1413,7 @@ public class RenderDao {
                                                 final Double z)
             throws IllegalArgumentException, ObjectNotFoundException {
 
-        final List<TileBounds> tileBoundsList = getTileBoundsForZ(stackId, z);
+        final List<TileBounds> tileBoundsList = getTileBoundsForZ(stackId, z, null);
 
         final Map<String, SectionData> sectionIdToDataMap = new TreeMap<>();
         
@@ -1447,13 +1447,17 @@ public class RenderDao {
      *    if the stack cannot be found.
      */
     public List<TileBounds> getTileBoundsForZ(final StackId stackId,
-                                              final Double z)
+                                              final Double z,
+                                              final String tileIdPattern)
             throws IllegalArgumentException, ObjectNotFoundException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
         MongoUtil.validateRequiredParameter("z", z);
 
         final Document tileQuery = new Document("z", z);
+        if (tileIdPattern != null) {
+            tileQuery.append(TILE_ID_KEY, new Document("$regex", tileIdPattern));
+        }
         return getTileBounds(stackId, tileQuery);
     }
 
@@ -1467,13 +1471,17 @@ public class RenderDao {
      *    if the stack cannot be found.
      */
     public List<TileBounds> getTileBoundsForSection(final StackId stackId,
-                                                    final String sectionId)
+                                                    final String sectionId,
+                                                    final String tileIdPattern)
             throws IllegalArgumentException, ObjectNotFoundException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
         MongoUtil.validateRequiredParameter("sectionId", sectionId);
 
         final Document tileQuery = new Document("layout.sectionId", sectionId);
+        if (tileIdPattern != null) {
+            tileQuery.append(TILE_ID_KEY, new Document("$regex", tileIdPattern));
+        }
         return getTileBounds(stackId, tileQuery);
     }
 
@@ -2227,7 +2235,7 @@ public class RenderDao {
 
         // compound index used for most box intersection queries
         // - z, minY, minX order used to match layout file sorting needs
-        // - appended tileId so that getTileBoundsForZ query can be index only (must not sort)
+        // - appended tileId so that getTileBoundsForZ query can be indexed only (must not sort)
         MongoUtil.createIndex(tileCollection,
                               new Document("z", 1).append("minY", 1).append("minX", 1).append(
                                       "maxY", 1).append("maxX", 1).append("tileId", 1),
