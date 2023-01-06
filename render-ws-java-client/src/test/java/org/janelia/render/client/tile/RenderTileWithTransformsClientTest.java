@@ -77,6 +77,7 @@ public class RenderTileWithTransformsClientTest {
 
         // TODO: Preibisch - add/remove tile pairs
         final OrderedCanvasIdPair[] tilePairs = new OrderedCanvasIdPair[] {
+        		// TODO: sorry, 0-0-0.1263.0 <> 0-0-0.1263.0 with overlap of ~1000 px
                 buildPair("22-06-17_080526_0-0-0.1263.0",       "22-06-17_080526_0-0-1.1263.0"),
                 buildPair("22-06-17_081143_0-0-0.1264.0",       "22-06-17_081143_0-0-1.1264.0"),
 //                buildPair("22-06-18_034043_0-0-0.2097.0",       "22-06-18_034043_0-0-1.2097.0"),
@@ -87,7 +88,7 @@ public class RenderTileWithTransformsClientTest {
         final String[][] testSpecificArgs = {
                 // test name, scan correction parameters: a * exp(-x/b) + c * exp(-x/d) , last param 0 => x dimension
                 {    "original", "  19.4   64.8   24.4   972.0   0"},
-                {      "test_a", "1900.4   64.8   24.4   972.0   0"},
+                {      "test_a", "  25.4   70.8   30.4   980.0   0"},
         };
 
         final RenderTileWithTransformsClient client = new RenderTileWithTransformsClient(parameters);
@@ -188,7 +189,7 @@ public class RenderTileWithTransformsClientTest {
             for (int y = 0; y < ipwm.getHeight(); y++) {
                 for (int x = 0; x < ipwm.getWidth(); x++) {
                     final int i = ipwm.mask.get(x, y);
-                    if ((i != 0) && (cropX == null)) {
+                    if ((i == 255) && (cropX == null)) { // let's look for the first unmasked, non-interpolated pixel
                         cropX = x;
                         cropY = y;
                         break;
