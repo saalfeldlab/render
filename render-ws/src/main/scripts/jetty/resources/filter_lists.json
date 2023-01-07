@@ -1,6 +1,14 @@
 {
   "namedFilterSpecLists" : {
 
+    "invert" : [
+      {
+        "className" : "org.janelia.alignment.filter.Invert",
+        "parameters" : {
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
