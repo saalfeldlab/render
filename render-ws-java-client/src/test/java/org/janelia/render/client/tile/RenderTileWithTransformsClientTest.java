@@ -10,6 +10,9 @@ import java.util.Collections;
 import java.util.List;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
+import mpicbg.stitching.PairWiseStitchingImgLib;
+import mpicbg.stitching.PairWiseStitchingResult;
+import mpicbg.stitching.StitchingParameters;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.match.CanvasId;
@@ -89,6 +92,69 @@ public class RenderTileWithTransformsClientTest {
                 {      "test_a", "  25.4   70.8   30.4   980.0   0"},
         };
 
+        /*
+
+		for Stitching/Cross correlation: org.janelia.render.client.UnscaleSec19.java >> UnscaleTile
+
+			final StitchingParameters params = ccParameters.toStitchingParameters();
+
+			final PairWiseStitchingResult result = PairWiseStitchingImgLib.stitchPairwise(ip1, ip2, roi1, roi2, 1, 1, // tests only the ROI's
+					params);
+
+			if (result.getCrossCorrelation() >= ccParameters.minResultThreshold) {
+
+
+		double[] stepSizeA = new double[]{ 10, ...., 0.01 }; // factors of 2
+		double[] stepSizeB = new double[]{ 10, ...., 0.01 }; // factors of 2
+		double[] stepSizeC = new double[]{ 10, ...., 0.01 }; // factors of 2
+		double[] stepSizeD = new double[]{ 10, ...., 0.01 }; // factors of 2
+
+		int currentStepSizeA = 0; // index
+		...
+		int currentStepSizeD = 0; // index
+
+		double currentValueA = 19.4;
+		double currentValueB = 64.8;
+		double currentValueC = 24.4;
+		double currentValueD = 972.0;
+
+		// compute current cross correlation (and test that overlap is good)
+		double bestR = applyParamtersAndComputeCrossCorrelationAndTestOverlap( impA, impB, currentValueA ... currentValueD ); // test a lot of peaks (parameters of Stitching)
+
+		boolean[] foundSomethingBetter = new boolean[ 4 ];
+		do
+		{
+			// randomly pick [0...3] (one of the paramters)
+			final int pick = rnd.nextInt( 4 );
+
+			// assuming A was picked randomly
+			double currentValueA_Up = currentValueA + stepSizeA[ currentStepSizeA ];
+			double currentValueA_Down = currentValueA - stepSizeA[ currentStepSizeA ];
+			valuePlus = applyParamtersAndComputeCrossCorrelationAndTestOverlap( impA, impB, currentValueA_Up ... currentValueD );
+			valueMinus = applyParamtersAndComputeCrossCorrelationAndTestOverlap( impA, impB, currentValueA_Down ... currentValueD );
+
+			
+			if ( valuePlus > bestR )
+			{
+				bestR =  valuePlus;
+				currentValueA = currentValueA_Up;
+				foundSomethingBetter[ A ] = true;
+			}
+			else if ( valueUp > bestR )
+			{
+				...
+			}
+			else
+			{
+				// if none was better, reduce stepsize
+				if ( currentStepSizeA < stepSizeA.length )
+					++currentStepSizeA;
+				foundSomethingBetter[ A ] = false;
+			}
+		}
+		while ( all stepsizes > 0.01 && all foundSomethingBetter == false )
+
+         */
         final RenderTileWithTransformsClient client = new RenderTileWithTransformsClient(parameters);
 
         // TODO: Preibisch - change this to your Fiji plugins directory so that stitching plugin is available
