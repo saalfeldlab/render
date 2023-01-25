@@ -89,8 +89,8 @@ public class RenderTileWithTransformsClientTest {
         final boolean subpixelAccuracy = true;
 
         // column 0, top relative position => crop and view bottom edge of tiles
-        final CanvasId p = new CanvasId("", "22-06-17_080526_0-0-0.1263.0", MontageRelativePosition.TOP);
-        final CanvasId q = new CanvasId("", "22-06-17_081143_0-0-0.1264.0", MontageRelativePosition.TOP);
+        final CanvasId p = new CanvasId("", "22-06-17_080526_0-0-0.1263.0", MontageRelativePosition.LEFT);
+        final CanvasId q = new CanvasId("", "22-06-17_081143_0-0-1.1264.0", MontageRelativePosition.RIGHT);
 
         // tile ids for next problem area (z 2097 to 2098), z 2098 is patched, so really z 2099
 //        final CanvasId p = new CanvasId("", "22-06-18_034043_0-0-0.2097.0", MontageRelativePosition.LEFT);
