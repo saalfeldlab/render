@@ -218,12 +218,12 @@ public class RenderTilesTest {
             // TODO: set z bounds, row, and column for tiles of interest
             //   see http://renderer.int.janelia.org:8080/ng/#!%7B%22dimensions%22:%7B%22x%22:%5B8e-9%2C%22m%22%5D%2C%22y%22:%5B8e-9%2C%22m%22%5D%2C%22z%22:%5B8e-9%2C%22m%22%5D%7D%2C%22position%22:%5B26771.75%2C9907.5%2C28131.9765625%5D%2C%22crossSectionScale%22:128%2C%22projectionScale%22:65536%2C%22layers%22:%5B%7B%22type%22:%22image%22%2C%22source%22:%22n5://http://renderer.int.janelia.org:8080/n5_sources/fibsem/Z0422_17_VNC_1.n5/render/Z0422_17_VNC_1/v4_acquire_trimmed_align___20221108_150533%22%2C%22tab%22:%22source%22%2C%22name%22:%22Z0422_17_VNC_1%20v4_acquire_trimmed_align%22%7D%5D%2C%22selectedLayer%22:%7B%22layer%22:%22Z0422_17_VNC_1%20v4_acquire_trimmed_align%22%7D%2C%22layout%22:%224panel%22%7D
             final Double minZ = 28131.0;
-            final Double maxZ = 28133.0;
+            final Double maxZ = 28131.0;
             final int row = 0;
             final int column = 2;
 
             // TODO: set to true to include scan correction, set to false for completely raw tile
-            final boolean includeScanCorrectionTransforms = true;
+            final boolean includeScanCorrectionTransforms = false;
 
             // TODO: downscale if you like
             final double renderScale = 1.0;
@@ -234,6 +234,11 @@ public class RenderTilesTest {
             // TODO: change to another format if you are saving files and don't want pngs
             parameters.format = Utils.PNG_FORMAT;
 
+            //
+            // For Eric
+            // TODO: there are masks applied here, we do not want that, we want the raw-raw image
+            //
+            //
             renderTiles(parameters,
                         minZ,
                         maxZ,
