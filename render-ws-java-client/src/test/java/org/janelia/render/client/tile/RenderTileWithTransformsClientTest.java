@@ -1,5 +1,6 @@
 package org.janelia.render.client.tile;
 
+import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
@@ -217,21 +218,26 @@ public class RenderTileWithTransformsClientTest {
             do {
 
                 // randomly pick [0...3] (one of the parameters)
+            	// TODO: always all four, but not always in the same order
                 final int changeIndex = random.nextInt(4);
 
+                // TODO: fix, which one is better? +1, 0, -1?
                 // test step up
                 foundBetterResult = runOneTest(changeIndex, 1);
+                // test step down
+                foundBetterResult = runOneTest(changeIndex, -1);
 
-                if (! foundBetterResult) {
-                    // test step down
-                    foundBetterResult = runOneTest(changeIndex, -1);
-                }
+                IJ.log( oldV + "" + newV + " " + CC );
 
                 if (foundBetterResult) {
                     foundSomethingBetter[changeIndex] = true;
                 } else {
+                	// TODO: only change that once none of the 4 values improves at the current resolution
+                	// TODO: keep only one stepsize for all 4 values
+
                     // if none was better, reduce step size
                     if (currentStepSizeIndexes[changeIndex] < stepSizes.length - 1) {
+                    	IJ.log( "changed stepsize to: " );
                         currentStepSizeIndexes[changeIndex]++;
                     }
                     // TODO: not sure about this
@@ -283,10 +289,7 @@ public class RenderTileWithTransformsClientTest {
             boolean foundBetterResult = false;
 
             final double stepValue = stepSizes[currentStepSizeIndexes[indexOfTransformParameterToChange]] * stepFactor;
-            final double[] testValues = new double[currentTestTransformValues.length];
-            System.arraycopy(currentTestTransformValues, 0,
-                             testValues, 0,
-                             currentTestTransformValues.length);
+            final double[] testValues = currentTestTransformValues.clone();
             testValues[indexOfTransformParameterToChange] = testValues[indexOfTransformParameterToChange] + stepValue;
 
             final String testDataString = buildTransformDataString(testValues);
