@@ -1,16 +1,11 @@
 package org.janelia.render.client.tile;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -19,6 +14,36 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import net.imglib2.Cursor;
+import net.imglib2.Dimensions;
+import net.imglib2.FinalDimensions;
+import net.imglib2.Interval;
+import net.imglib2.RandomAccess;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.algorithm.fft.FourierTransform;
+import net.imglib2.algorithm.fft.InverseFourierTransform;
+import net.imglib2.algorithm.fft2.FFTConvolution;
+import net.imglib2.algorithm.gauss3.Gauss3;
+import net.imglib2.converter.Converters;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImg;
+import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.basictypeaccess.array.FloatArray;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.type.NativeType;
+import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.complex.ComplexFloatType;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.RealSum;
+import net.imglib2.util.Util;
+import net.imglib2.view.Views;
+
 /**
  * Utility to render tiles locally for debugging issues.
  *
@@ -26,8 +51,158 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
  */
 public class RenderTilesTest {
 
+	public static < T extends RealType<T> & NativeType<T>> Img< T > fftBandpasscorrection( final RandomAccessibleInterval<T> input, final int numThreads )
+	{
+		FourierTransform<T, ComplexFloatType > fft = new FourierTransform<T, ComplexFloatType>( input, new ArrayImgFactory<ComplexFloatType>( new ComplexFloatType() ),new ComplexFloatType() );
+		fft.process();
+		fft.setNumThreads( numThreads );
+		final Img<ComplexFloatType> fftImg = fft.getResult();
+
+		System.out.println( Util.printInterval( fftImg ) );
+		//ImageJFunctions.show( fftImg ).setTitle( "fft" );
+
+		applyMask( fftImg, createMask( fftImg ) );
+
+		//ImageJFunctions.show( fftImg ).setTitle( "fft bandpass" );
+
+		final InverseFourierTransform< T, ComplexFloatType > ifft = new InverseFourierTransform<>( fftImg, fft );
+		ifft.process();
+		ifft.setNumThreads( numThreads );
+		final Img< T > templateInverse = ifft.getResult();
+
+		//ImageJFunctions.show( templateInverse ).setTitle("ifft");
+
+		return templateInverse;
+		
+		//Gauss3.gauss( 500, Views.extendMirrorDouble( templateInverse ), templateInverse );
+		//ImageJFunctions.show( templateInverse ).setTitle("ifft bg");
+
+		// TODO: get pattern along X and remove
+
+		//check: FFTConvolution<RealType<R>>
+
+		/*
+		final T type = Util.getTypeFromInterval( input );
+		final RandomAccessibleInterval<T> img = Views.zeroMin( input );
+		final RandomAccessibleInterval<T> out = new ArrayImgFactory<T>( type ).create( img.dimensionsAsLongArray() );
+		final Img<ComplexFloatType> fft = FFT.realToComplex(img, new ArrayImgFactory<>( new ComplexFloatType() ) );
+		ImageJFunctions.show( fft );
+		FFT.complexToReal( fft, out );
+		ImageJFunctions.show( out );
+		*/
+	}
+
+	final static int extraY = 6;
+
+	private static <T extends RealType<T>> void clear( final RandomAccessibleInterval<T> img, final int x, final int y, final int w, final int h)
+	{
+		final RandomAccess< T > r = img.randomAccess();
+
+		for ( int y1 = y-extraY; y1 < y+h+extraY; ++y1 )
+			for ( int x1 = x; x1 < x+w; ++x1 )
+			{
+				r.setPosition(x1, 0);
+				r.setPosition(y1, 1);
+				r.get().setZero();
+			}
+	}
+
+	public static Img<FloatType> createMask( final Dimensions dim )
+	{
+		if ( dim.dimension( 0 ) != 6161 || dim.dimension( 1 ) != 10920 )
+			throw new RuntimeException( "this mask is hard-coded for an FFT size of 6161x10920.");
+
+		final ArrayImg<FloatType, FloatArray> mask = ArrayImgs.floats( dim.dimensionsAsLongArray() );
+
+		for ( final FloatType t : mask )
+			t.setOne();
+
+		//makeRectangle(6043, 5459, 113, 3);
+		clear(mask, 6043, 5459, 113, 3);
+
+		//makeRectangle(5960, 5458, 83, 5);
+		clear(mask, 5960, 5458, 83, 5);
+
+		//makeRectangle(5798, 5456, 162, 9);
+		clear(mask, 5798, 5456, 162, 9);
+
+		//makeRectangle(5573, 5453, 225, 15);
+		clear(mask, 5573, 5453, 225, 15);
+
+		//makeRectangle(0, 5448, 5573, 25);
+		clear(mask, 0, 5448, 5573, 25);
+
+		// top stripe
+		//makeRectangle(0, 5360, 4569, 5);
+		clear(mask, 0, 5360, 4569, 5);
+
+		// bot stripe
+		//makeRectangle(0, 5556, 4569, 5);
+		clear(mask, 0, 5556, 4569, 5);
+
+		// does not work, image gets darker
+		//Gauss3.gauss(1, Views.extendPeriodic( mask ), mask );
+
+		return mask;
+	}
+
+	public static void applyMask( final RandomAccessibleInterval<ComplexFloatType> fft, final RandomAccessibleInterval<FloatType> mask )
+	{
+		final Cursor<ComplexFloatType> cFFT = Views.flatIterable( fft ).cursor();
+		final Cursor<FloatType> cM = Views.flatIterable( mask ).cursor();
+
+		while (cM.hasNext() )
+		{
+			cFFT.next().mul( cM.next().get() );
+		}
+	}
+
+	public static Img<FloatType> createPattern( final long[] dimensions, final double avgIntensity, final int numThreads )
+	{
+		final Img<FloatType> pattern = ArrayImgs.floats( dimensions );
+
+    	for ( final FloatType t : pattern )
+    		t.set( 1 );
+
+    	final Img<FloatType> patternFiltered = fftBandpasscorrection( pattern, numThreads ); // this could be loaded from disc, always the same
+
+    	for ( final FloatType t : patternFiltered )
+    		t.set( (float)(t.get() * avgIntensity - avgIntensity) );
+
+    	return patternFiltered;
+	}
+
+	public static < T extends RealType<T>> double avgIntensity( final RandomAccessibleInterval< T > img )
+	{
+		final long numPx = Views.iterable(img).size();
+		final RealSum s = new RealSum( (int)numPx );
+
+		for ( final T type : Views.iterable(img) )
+			s.add( type.getRealDouble() );
+
+		return s.getSum() / (double)numPx;
+	}
+
     public static void main(final String[] args) {
 
+    	final int numThreads = 8;
+    	new ImageJ();
+    	final ImagePlus imp = new ImagePlus( "/Users/preibischs/Documents/Janelia/Projects/FIB-SEM/22-08-23_114401_0-0-2.28132-crop.0.tif" );
+    	final Img<UnsignedByteType> img = ImageJFunctions.wrapByte( imp );
+
+    	//ImageJFunctions.show( img ).setTitle( "input" );
+    	final double avg = avgIntensity( img );
+    	System.out.println( avg );
+
+    	final Img<UnsignedByteType> imgCorr = fftBandpasscorrection( img, numThreads );
+    	final Img<FloatType> patternCorr = createPattern(imgCorr.dimensionsAsLongArray(), avg, numThreads);
+    	final RandomAccessibleInterval<UnsignedByteType> fixed = Converters.convertRAI(imgCorr, patternCorr, (i1,i2,o) -> { o.set( Math.max( 0, Math.min( 255, Math.round( i1.get() - i2.get() ) ) ) ); }, new UnsignedByteType() );
+
+    	ImageJFunctions.show( imgCorr ).setTitle( "imgCorr" );
+    	ImageJFunctions.show( patternCorr ).setTitle( "patternCorr" );
+    	ImageJFunctions.show( fixed ).setTitle( "fixed" );
+
+    	SimpleMultiThreading.threadHaltUnClean();
 
         try {
             final RenderTileWithTransformsClient.Parameters parameters = new RenderTileWithTransformsClient.Parameters();
