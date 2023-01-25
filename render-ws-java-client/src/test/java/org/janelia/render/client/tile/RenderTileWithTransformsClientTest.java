@@ -1,6 +1,5 @@
 package org.janelia.render.client.tile;
 
-import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
@@ -11,8 +10,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.stitching.PairWiseStitchingImgLib;
@@ -25,6 +25,7 @@ import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.transform.SEMDistortionTransformA;
+import org.janelia.alignment.util.LogbackTestTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.junit.Test;
@@ -48,6 +49,7 @@ public class RenderTileWithTransformsClientTest {
     // Consequently, they aren't included in the unit test suite.
 
     public static void main(final String[] args) {
+        //noinspection CommentedOutCode
         try {
 //            final String[] testArgs = {
 //                    "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
@@ -67,6 +69,7 @@ public class RenderTileWithTransformsClientTest {
         }
     }
 
+    @SuppressWarnings({"ConstantConditions", "CommentedOutCode"})
     public static void findBestScanCorrectionParameters()
             throws IOException {
 
@@ -77,28 +80,29 @@ public class RenderTileWithTransformsClientTest {
         parameters.renderWeb.project = "Z0422_05_Ocellar";
         parameters.stack = "v3_acquire";
 
-        parameters.featureRenderClip.clipWidth = 2000;  // full scale clip pixels
-        parameters.featureRenderClip.clipHeight = 1000; // full scale clip pixels
+        parameters.featureRenderClip.clipWidth = 1200;  // full scale clip pixels
+        parameters.featureRenderClip.clipHeight = 1200; // full scale clip pixels
 
         parameters.scale = 0.25;
 
         // http://renderer.int.janelia.org:8080/ng/#!%7B%22dimensions%22:%7B%22x%22:%5B8e-9%2C%22m%22%5D%2C%22y%22:%5B8e-9%2C%22m%22%5D%2C%22z%22:%5B8e-9%2C%22m%22%5D%7D%2C%22position%22:%5B-163.37060546875%2C-4313.3564453125%2C1263.5%5D%2C%22crossSectionScale%22:2%2C%22projectionScale%22:32768%2C%22layers%22:%5B%7B%22type%22:%22image%22%2C%22source%22:%7B%22url%22:%22render://http://renderer.int.janelia.org:8080/reiser/Z0422_05_Ocellar/v3_acquire_align%22%2C%22subsources%22:%7B%22default%22:true%2C%22bounds%22:true%7D%2C%22enableDefaultSubsources%22:false%7D%2C%22tab%22:%22source%22%2C%22name%22:%22v3_acquire_align%22%7D%5D%2C%22selectedLayer%22:%7B%22layer%22:%22v3_acquire_align%22%7D%2C%22layout%22:%22xy%22%7D
 
-        final boolean visualizeTiles = false;
+        final int numberOfPairsToVisualize = 0; // change to 1 to see original pair (or more to see test pairs)
         final int checkPeaks = 50;
         final boolean subpixelAccuracy = true;
+        final int maxTestsToRun = 1000;
 
         // column 0, top relative position => crop and view bottom edge of tiles
         final CanvasId p = new CanvasId("", "22-06-17_080526_0-0-0.1263.0", MontageRelativePosition.LEFT);
         final CanvasId q = new CanvasId("", "22-06-17_081143_0-0-1.1264.0", MontageRelativePosition.RIGHT);
 
         // tile ids for next problem area (z 2097 to 2098), z 2098 is patched, so really z 2099
-//        final CanvasId p = new CanvasId("", "22-06-18_034043_0-0-0.2097.0", MontageRelativePosition.LEFT);
-//        final CanvasId q = new CanvasId("", "22-06-18_125654_0-0-0.patch.2098.0", MontageRelativePosition.LEFT);
+        // final CanvasId p = new CanvasId("", "22-06-18_034043_0-0-0.2097.0", MontageRelativePosition.LEFT);
+        // final CanvasId q = new CanvasId("", "22-06-18_125654_0-0-1.patch.2098.0", MontageRelativePosition.RIGHT);
 
         final RenderTileWithTransformsClient client = new RenderTileWithTransformsClient(parameters);
 
-        if (visualizeTiles) {
+        if (numberOfPairsToVisualize > 0) {
             // TODO: Preibisch - change this to your Fiji plugins directory so that stitching plugin is available
             System.getProperties().setProperty("plugins.dir", "/Applications/Fiji.app/plugins");
             new ImageJ();
@@ -108,19 +112,24 @@ public class RenderTileWithTransformsClientTest {
         final double[] stepSizes = {10.0, 5.0, 2.5, 1.25, 0.625, 0.3125, 0.15625,
                                     0.078125, 0.0390625, 0.01953125, 0.009765625};
 
+        // hide all logging except from this test class
+        LogbackTestTools.setRootLogLevelToError();
+        LogbackTestTools.setLogLevelToInfo(LOG.getName()); // another option: setLogLevelToInfoToDebug
+
         final Tester tester = new Tester(client,
                                          parameters.scale,
                                          p,
                                          q,
                                          checkPeaks,
                                          subpixelAccuracy,
-                                         visualizeTiles,
+                                         numberOfPairsToVisualize,
                                          originalParameters,
-                                         stepSizes);
+                                         stepSizes,
+                                         maxTestsToRun);
 
-        tester.runAllTests(500);
+        tester.optimizeTransformParametersForAllSteps();
 
-        if (visualizeTiles) {
+        if (numberOfPairsToVisualize > 0) {
             SimpleMultiThreading.threadHaltUnClean();
         }
     }
@@ -131,25 +140,22 @@ public class RenderTileWithTransformsClientTest {
         private final CanvasId pCanvasId;
         private final CanvasId qCanvasId;
         private final StitchingParameters stitchingParameters;
-        private final boolean visualizeTiles;
+        private final int numberOfPairsToVisualize;
         private final double[] originalParameters;
         private final double[] stepSizes;
+        private final int maxNumberOfTests;
 
         private PairWiseStitchingResult bestResult;
         private String bestTransformDataString;
         private final Set<String> testedDataStrings;
 
         /** Current test's (4) transform coefficient parameters. */
-        private final double[] currentTestTransformValues;
-
-        /** Current step index for each of the (4) transform coefficient parameters. */
-        private int[] currentStepSizeIndexes;
+        private double[] currentTestTransformValues;
 
         /**
-         * Flag indicating whether an improved parameter has been found
+         * Flag indicating whether an improved parameter has been found in the current step
          * for each of the (4) transform coefficient parameters
          */
-        private boolean[] foundSomethingBetter;
         private int totalTestCount;
 
         public Tester(final RenderTileWithTransformsClient client,
@@ -158,9 +164,10 @@ public class RenderTileWithTransformsClientTest {
                       final CanvasId qCanvasId,
                       final int checkPeaks,
                       final boolean subpixelAccuracy,
-                      final boolean visualizeTiles,
+                      final int numberOfPairsToVisualize,
                       final double[] originalParameters,
-                      final double[] stepSizes) {
+                      final double[] stepSizes,
+                      final int maxNumberOfTests) {
 
             this.client = client;
             this.renderScale = renderScale;
@@ -187,138 +194,122 @@ public class RenderTileWithTransformsClientTest {
             this.stitchingParameters.checkPeaks = checkPeaks;
             this.stitchingParameters.subpixelAccuracy = subpixelAccuracy;
 
-            this.visualizeTiles = visualizeTiles;
+            this.numberOfPairsToVisualize = numberOfPairsToVisualize;
             this.originalParameters = originalParameters;
             this.stepSizes = stepSizes;
+            this.maxNumberOfTests = maxNumberOfTests;
             this.testedDataStrings = new HashSet<>();
 
             this.currentTestTransformValues = new double[originalParameters.length];
         }
 
-        public void runAllTests(final int maxNumberOfTests)
+        public void optimizeTransformParametersForAllSteps()
                 throws IOException {
 
             final String originalTransformDataString = buildTransformDataString(originalParameters);
             this.testedDataStrings.clear();
             this.testedDataStrings.add(originalTransformDataString);
 
-            this.bestResult = deriveStitchingResult(originalTransformDataString);
+            this.bestResult = deriveStitchingResult(originalTransformDataString, 0);
             this.bestTransformDataString = originalTransformDataString;
-
-            System.arraycopy(originalParameters, 0,
-                             this.currentTestTransformValues, 0,
-                             originalParameters.length);
-
-            this.currentStepSizeIndexes = new int[originalParameters.length]; // defaulted to 0
-            this.foundSomethingBetter = new boolean[originalParameters.length]; // defaulted to false
+            this.currentTestTransformValues = originalParameters.clone();
             this.totalTestCount = 0;
 
-            final Random random = new Random();
-            boolean foundBetterResult;
-            do {
+            for (final double stepSize : stepSizes) {
 
-                // randomly pick [0...3] (one of the parameters)
-            	// TODO: always all four, but not always in the same order
-                final int changeIndex = random.nextInt(4);
+                LOG.info("optimizeTransformParametersForAllSteps: begin stepSize {}, best parameters are {} with {}",
+                         stepSize,
+                         bestTransformDataString,
+                         resultToString(bestResult));
 
-                // TODO: fix, which one is better? +1, 0, -1?
-                // test step up
-                foundBetterResult = runOneTest(changeIndex, 1);
-                // test step down
-                foundBetterResult = runOneTest(changeIndex, -1);
+                // randomly order parameter optimization for each step
+                final List<Integer> transformParameterIndexes =
+                        IntStream.range(0, originalParameters.length).boxed().collect(Collectors.toList());
+                Collections.shuffle(transformParameterIndexes);
 
-                IJ.log( oldV + "" + newV + " " + CC );
-
-                if (foundBetterResult) {
-                    foundSomethingBetter[changeIndex] = true;
-                } else {
-                	// TODO: only change that once none of the 4 values improves at the current resolution
-                	// TODO: keep only one stepsize for all 4 values
-
-                    // if none was better, reduce step size
-                    if (currentStepSizeIndexes[changeIndex] < stepSizes.length - 1) {
-                    	IJ.log( "changed stepsize to: " );
-                        currentStepSizeIndexes[changeIndex]++;
-                    }
-                    // TODO: not sure about this
-                    foundSomethingBetter[changeIndex] = false;
+                for (final int indexOfTransformParameterToChange : transformParameterIndexes) {
+                    optimizeTransformParameterForStep(indexOfTransformParameterToChange,
+                                                      stepSize);
                 }
 
                 if (totalTestCount >= maxNumberOfTests) {
                     break;
                 }
+            }
 
-            } while (anyRemainingStepSizes() || anyUnimprovedParameters());
-
-            LOG.info("runAllTests: after {} tests, best parameters are {} with {}, foundSomethingBetter {}, currentStepSizeIndexes {} with {} steps",
+            LOG.info("optimizeTransformParametersForAllSteps: after {} tests, best parameters are {} with {}",
                      totalTestCount,
                      bestTransformDataString,
+                     resultToString(bestResult));
+        }
+
+        private void optimizeTransformParameterForStep(final int indexOfTransformParameterToChange,
+                                                       final double stepSize)
+                throws IOException {
+
+            if (totalTestCount < maxNumberOfTests) {
+                boolean isUpBetter = true;
+                boolean isDownBetter = true;
+                do {
+
+                    if (isUpBetter) {
+                        // test another step up if previous step up was better (or this is the first test)
+                        isUpBetter = runOneTest(indexOfTransformParameterToChange, stepSize);
+                    }
+                    if (isDownBetter) {
+                        // test another step down if previous step down was better (or this is the first test)
+                        isDownBetter = runOneTest(indexOfTransformParameterToChange, -stepSize); // test step down
+                    }
+
+                    // update current parameter value if better result was found
+                    // must check isDownBetter first in case both up and down are better
+                    if (isDownBetter) {
+                        currentTestTransformValues[indexOfTransformParameterToChange] -= stepSize;
+                    } else if (isUpBetter) {
+                        currentTestTransformValues[indexOfTransformParameterToChange] += stepSize;
+                    }
+                } while ((isUpBetter || isDownBetter) && (totalTestCount < maxNumberOfTests));
+            }
+
+            LOG.info("optimizeTransformParameterForStep: for parameter {} and step {}, best parameters are {} with {}, totalTestCount is {}",
+                     indexOfTransformParameterToChange,
+                     stepSize,
+                     bestTransformDataString,
                      resultToString(bestResult),
-                     Arrays.toString(foundSomethingBetter),
-                     Arrays.toString(currentStepSizeIndexes),
-                     stepSizes.length);
-        }
-
-        private boolean anyRemainingStepSizes() {
-            boolean anyRemaining = false;
-            final int lastStepSizeIndex = stepSizes.length - 1;
-            for (final int index : currentStepSizeIndexes) {
-                if (index != lastStepSizeIndex) {
-                    anyRemaining = true;
-                    break;
-                }
-            }
-            return anyRemaining;
-        }
-
-        private boolean anyUnimprovedParameters() {
-            boolean anyUnimproved = false;
-            for (final boolean foundBetter : foundSomethingBetter) {
-                if (! foundBetter) {
-                    anyUnimproved = true;
-                    break;
-                }
-            }
-            return anyUnimproved;
+                     totalTestCount);
         }
 
         private boolean runOneTest(final int indexOfTransformParameterToChange,
-                                   final int stepFactor)
+                                   final double stepSize)
                 throws IOException {
 
             boolean foundBetterResult = false;
+            totalTestCount++;
 
-            final double stepValue = stepSizes[currentStepSizeIndexes[indexOfTransformParameterToChange]] * stepFactor;
             final double[] testValues = currentTestTransformValues.clone();
-            testValues[indexOfTransformParameterToChange] = testValues[indexOfTransformParameterToChange] + stepValue;
+            testValues[indexOfTransformParameterToChange] = testValues[indexOfTransformParameterToChange] + stepSize;
 
             final String testDataString = buildTransformDataString(testValues);
 
             if (testedDataStrings.contains(testDataString)) {
-
-                LOG.info("runTest: already tested {}", testDataString);
-
+                LOG.info("runOneTest: already tested {}", testDataString);
             } else {
 
-                final PairWiseStitchingResult testResult = deriveStitchingResult(testDataString);
+                final PairWiseStitchingResult testResult = deriveStitchingResult(testDataString,
+                                                                                 testedDataStrings.size());
                 testedDataStrings.add(testDataString);
 
                 if (testResult.getCrossCorrelation() > bestResult.getCrossCorrelation()) {
-                    final double improvement = testResult.getCrossCorrelation() - bestResult.getCrossCorrelation();
-                    LOG.info("runTest: changing parameter {} from {} to {} improved crossCorrelation by {}",
-                             indexOfTransformParameterToChange,
-                             currentTestTransformValues[indexOfTransformParameterToChange],
-                             testValues[indexOfTransformParameterToChange],
-                             improvement);
                     bestResult = testResult;
                     bestTransformDataString = testDataString;
-                    currentTestTransformValues[indexOfTransformParameterToChange] =
-                            testValues[indexOfTransformParameterToChange];
                     foundBetterResult = true;
                 }
-            }
 
-            totalTestCount++;
+                LOG.info("runOneTest: returning {} for parameters {} with {}",
+                         foundBetterResult,
+                         testDataString,
+                         resultToString(testResult));
+            }
 
             return foundBetterResult;
         }
@@ -332,7 +323,8 @@ public class RenderTileWithTransformsClientTest {
             return dataStringBuilder.toString();
         }
 
-        private PairWiseStitchingResult deriveStitchingResult(final String transformDataString)
+        private PairWiseStitchingResult deriveStitchingResult(final String transformDataString,
+                                                              final int numberOfPairsTested)
                 throws IOException {
 
             final LeafTransformSpec transformSpec = new LeafTransformSpec(SEMDistortionTransformA.class.getName(),
@@ -351,9 +343,9 @@ public class RenderTileWithTransformsClientTest {
                                                                                           1,
                                                                                           stitchingParameters);
 
-            LOG.info("deriveStitchingResult: {} for parameters {}", resultToString(result), transformDataString);
+            LOG.debug("deriveStitchingResult: {} for parameters {}", resultToString(result), transformDataString);
 
-            if (visualizeTiles) {
+            if (numberOfPairsTested < numberOfPairsToVisualize) {
                 pTilePlus.show();
                 qTilePlus.show();
             }
