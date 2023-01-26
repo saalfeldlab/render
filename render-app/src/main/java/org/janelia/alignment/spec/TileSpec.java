@@ -812,6 +812,11 @@ public class TileSpec implements Serializable {
         return JSON_HELPER.toJson(this);
     }
 
+    public TileSpec slowClone() {
+        final String json = this.toJson();
+        return TileSpec.fromJson(json);
+    }
+
     public static TileSpec fromJson(final String json) {
         return JSON_HELPER.fromJson(json);
     }
