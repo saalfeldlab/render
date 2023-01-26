@@ -1,11 +1,16 @@
 package org.janelia.render.client.tile;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -14,19 +19,12 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import net.imglib2.Cursor;
 import net.imglib2.Dimensions;
-import net.imglib2.FinalDimensions;
-import net.imglib2.Interval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.algorithm.fft.FourierTransform;
 import net.imglib2.algorithm.fft.InverseFourierTransform;
-import net.imglib2.algorithm.fft2.FFTConvolution;
-import net.imglib2.algorithm.gauss3.Gauss3;
 import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImg;
@@ -303,7 +301,7 @@ public class RenderTilesTest {
                             savedTileDirectory == null ? null : new File(savedTileDirectory,
                                                                          tileId + "." + parameters.format);
                     final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
-                            client.renderTile(tileId,
+                            client.renderTile(tileSpec,
                                               transformSpecs,
                                               renderScale,
                                               null,

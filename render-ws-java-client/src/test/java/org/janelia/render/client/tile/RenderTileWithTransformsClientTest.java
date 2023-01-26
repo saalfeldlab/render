@@ -19,10 +19,12 @@ import mpicbg.stitching.PairWiseStitchingImgLib;
 import mpicbg.stitching.PairWiseStitchingResult;
 import mpicbg.stitching.StitchingParameters;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import mpicbg.util.Timer;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.transform.SEMDistortionTransformA;
 import org.janelia.alignment.util.LogbackTestTools;
@@ -91,6 +93,7 @@ public class RenderTileWithTransformsClientTest {
         final int checkPeaks = 50;
         final boolean subpixelAccuracy = true;
         final int maxTestsToRun = 1000;
+        final int maxNumberOfRuns = 6;
 
         // column 0, top relative position => crop and view bottom edge of tiles
         final CanvasId p = new CanvasId("", "22-06-17_080526_0-0-0.1263.0", MontageRelativePosition.LEFT);
@@ -116,18 +119,43 @@ public class RenderTileWithTransformsClientTest {
         LogbackTestTools.setRootLogLevelToError();
         LogbackTestTools.setLogLevelToInfo(LOG.getName()); // another option: setLogLevelToInfoToDebug
 
-        final Tester tester = new Tester(client,
-                                         parameters.scale,
-                                         p,
-                                         q,
-                                         checkPeaks,
-                                         subpixelAccuracy,
-                                         numberOfPairsToVisualize,
-                                         originalParameters,
-                                         stepSizes,
-                                         maxTestsToRun);
+        final Timer timer = new Timer();
+        timer.start();
 
-        tester.optimizeTransformParametersForAllSteps();
+        int testCountForAllRuns = 0;
+        String bestDataString = "";
+        Tester tester = null;
+
+        for (int i = 0; i < maxNumberOfRuns; i++) {
+            LOG.info("\n\n");
+            LOG.info("findBestScanCorrectionParameters: begin run {} of {}\n", (i+1), maxNumberOfRuns);
+
+            tester = new Tester(client,
+                                parameters.scale,
+                                p,
+                                q,
+                                checkPeaks,
+                                subpixelAccuracy,
+                                numberOfPairsToVisualize,
+                                originalParameters,
+                                stepSizes,
+                                maxTestsToRun);
+
+            bestDataString = tester.optimizeTransformParametersForAllSteps();
+
+            final String[] parameterStrings = bestDataString.split(" ");
+            for (int parameterIndex = 0; parameterIndex < originalParameters.length; parameterIndex++) {
+                originalParameters[parameterIndex] = Double.parseDouble(parameterStrings[parameterIndex]);
+            }
+
+            testCountForAllRuns += tester.totalTestCount;
+        }
+
+        LOG.info("findBestScanCorrectionParameters: done, ran {} tests in {} seconds, best parameters are {} with {}",
+                 testCountForAllRuns,
+                 (int) (timer.stop() / 1000),
+                 bestDataString,
+                 tester.resultToString(tester.bestResult));
 
         if (numberOfPairsToVisualize > 0) {
             SimpleMultiThreading.threadHaltUnClean();
@@ -138,7 +166,9 @@ public class RenderTileWithTransformsClientTest {
         private final RenderTileWithTransformsClient client;
         private final double renderScale;
         private final CanvasId pCanvasId;
+        private final TileSpec pTileSpec;
         private final CanvasId qCanvasId;
+        private final TileSpec qTileSpec;
         private final StitchingParameters stitchingParameters;
         private final int numberOfPairsToVisualize;
         private final double[] originalParameters;
@@ -167,12 +197,15 @@ public class RenderTileWithTransformsClientTest {
                       final int numberOfPairsToVisualize,
                       final double[] originalParameters,
                       final double[] stepSizes,
-                      final int maxNumberOfTests) {
+                      final int maxNumberOfTests)
+                throws IOException {
 
             this.client = client;
             this.renderScale = renderScale;
             this.pCanvasId = pCanvasId;
+            this.pTileSpec = client.fetchTileSpec(pCanvasId.getId());
             this.qCanvasId = qCanvasId;
+            this.qTileSpec = client.fetchTileSpec(qCanvasId.getId());
 
             this.stitchingParameters = new StitchingParameters();
             // static parameters
@@ -203,8 +236,7 @@ public class RenderTileWithTransformsClientTest {
             this.currentTestTransformValues = new double[originalParameters.length];
         }
 
-        public void optimizeTransformParametersForAllSteps()
-                throws IOException {
+        public String optimizeTransformParametersForAllSteps() {
 
             final String originalTransformDataString = buildTransformDataString(originalParameters);
             this.testedDataStrings.clear();
@@ -217,10 +249,12 @@ public class RenderTileWithTransformsClientTest {
 
             for (final double stepSize : stepSizes) {
 
+                LOG.info("---------------------------------");
                 LOG.info("optimizeTransformParametersForAllSteps: begin stepSize {}, best parameters are {} with {}",
                          stepSize,
                          bestTransformDataString,
                          resultToString(bestResult));
+                LOG.info("---------------------------------");
 
                 // randomly order parameter optimization for each step
                 final List<Integer> transformParameterIndexes =
@@ -241,11 +275,12 @@ public class RenderTileWithTransformsClientTest {
                      totalTestCount,
                      bestTransformDataString,
                      resultToString(bestResult));
+
+            return bestTransformDataString;
         }
 
         private void optimizeTransformParameterForStep(final int indexOfTransformParameterToChange,
-                                                       final double stepSize)
-                throws IOException {
+                                                       final double stepSize) {
 
             if (totalTestCount < maxNumberOfTests) {
                 boolean isUpBetter = true;
@@ -280,8 +315,7 @@ public class RenderTileWithTransformsClientTest {
         }
 
         private boolean runOneTest(final int indexOfTransformParameterToChange,
-                                   final double stepSize)
-                throws IOException {
+                                   final double stepSize) {
 
             boolean foundBetterResult = false;
             totalTestCount++;
@@ -305,8 +339,9 @@ public class RenderTileWithTransformsClientTest {
                     foundBetterResult = true;
                 }
 
-                LOG.info("runOneTest: returning {} for parameters {} with {}",
-                         foundBetterResult,
+                final String betterOrWorse = foundBetterResult ? "better" : "worse";
+                LOG.info("runOneTest: {} for parameters {} with {}",
+                         betterOrWorse,
                          testDataString,
                          resultToString(testResult));
             }
@@ -324,15 +359,14 @@ public class RenderTileWithTransformsClientTest {
         }
 
         private PairWiseStitchingResult deriveStitchingResult(final String transformDataString,
-                                                              final int numberOfPairsTested)
-                throws IOException {
+                                                              final int numberOfPairsTested) {
 
             final LeafTransformSpec transformSpec = new LeafTransformSpec(SEMDistortionTransformA.class.getName(),
                                                                           transformDataString);
             final List<TransformSpec> tileTransformSpecList = Collections.singletonList(transformSpec);
 
-            final ImagePlus pTilePlus = renderTile(tileTransformSpecList, transformDataString, pCanvasId);
-            final ImagePlus qTilePlus = renderTile(tileTransformSpecList, transformDataString, qCanvasId);
+            final ImagePlus pTilePlus = renderTile(pTileSpec, tileTransformSpecList, transformDataString, pCanvasId);
+            final ImagePlus qTilePlus = renderTile(qTileSpec, tileTransformSpecList, transformDataString, qCanvasId);
 
             // stitch pair ...
             final PairWiseStitchingResult result = PairWiseStitchingImgLib.stitchPairwise(pTilePlus,
@@ -355,19 +389,18 @@ public class RenderTileWithTransformsClientTest {
 
         private String resultToString(final PairWiseStitchingResult result) {
             return "crossCorrelation " + result.getCrossCorrelation() +
-                   ", phaseCorrelation " + result.getCrossCorrelation() +
+                   ", phaseCorrelation " + result.getPhaseCorrelation() +
                    ", offset " + Arrays.toString(result.getOffset());
         }
 
-        private ImagePlus renderTile(final List<TransformSpec> tileTransforms,
+        private ImagePlus renderTile(final TileSpec tileSpec,
+                                     final List<TransformSpec> tileTransforms,
                                      final String dataString,
-                                     final CanvasId canvasId)
-                throws IOException {
-            final String tileId = canvasId.getId();
+                                     final CanvasId canvasId) {
             final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
-                    client.renderTile(tileId, tileTransforms, renderScale, canvasId, null);
+                    client.renderTile(tileSpec, tileTransforms, renderScale, canvasId, null);
             final ImageProcessor croppedTile = quickCropMaskedArea(ipwm);
-            return new ImagePlus(tileId + " " + dataString, croppedTile);
+            return new ImagePlus(tileSpec.getTileId() + " " + dataString, croppedTile);
         }
 
     }

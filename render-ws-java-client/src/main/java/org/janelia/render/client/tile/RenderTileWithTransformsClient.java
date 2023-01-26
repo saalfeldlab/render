@@ -134,6 +134,7 @@ public class RenderTileWithTransformsClient {
         this.renderDataClient = parameters.renderWeb.getDataClient();
     }
 
+
     public void renderTiles()
             throws IOException {
 
@@ -145,18 +146,23 @@ public class RenderTileWithTransformsClient {
         for (final String tileId : parameters.tileIds) {
             final File saveTileFile = new File(tileDirectory,
                                                tileId + "." + parameters.format.toLowerCase());
-            renderTile(tileId, transformSpecList, parameters.scale, null, saveTileFile);
+            final TileSpec tileSpec = fetchTileSpec(tileId);
+            renderTile(tileSpec, transformSpecList, parameters.scale, null, saveTileFile);
         }
     }
 
-    public TransformMeshMappingWithMasks.ImageProcessorWithMasks renderTile(final String tileId,
+    public TileSpec fetchTileSpec(final String tileId)
+            throws IOException {
+        return renderDataClient.getTile(parameters.stack, tileId);
+    }
+
+    public TransformMeshMappingWithMasks.ImageProcessorWithMasks renderTile(final TileSpec originalTileSpec,
                                                                             final List<TransformSpec> tileTransforms,
                                                                             final double renderScale,
                                                                             final CanvasId canvasIdForClipping,
-                                                                            final File saveTileFile)
-            throws IOException {
+                                                                            final File saveTileFile) {
 
-        final TileSpec tileSpec = renderDataClient.getTile(parameters.stack, tileId);
+        final TileSpec tileSpec = originalTileSpec.slowClone();
         int removalCount = 0;
         while (tileSpec.hasTransforms()) {
             tileSpec.removeLastTransformSpec();
@@ -166,7 +172,7 @@ public class RenderTileWithTransformsClient {
         tileSpec.addTransformSpecs(tileTransforms);
 
         LOG.info("renderTile: removed {} existing transforms and added {} new transforms to tile {}",
-                 removalCount, tileTransforms.size(), tileId);
+                 removalCount, tileTransforms.size(), tileSpec.getTileId());
 
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
 
