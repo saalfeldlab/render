@@ -84,6 +84,12 @@ public class RenderTileWithTransformsClient {
                 names = "--transformFile",
                 description = "File containing list of transform changes (.json, .gz, or .zip).  Omit to exclude all transforms.")
         public String transformFile;
+
+        @Parameter(
+                names = "--renderWithoutMask",
+                description = "Render tiles without a mask",
+                arity = 0)
+        public boolean renderWithoutMask;
     }
 
     /**
@@ -190,6 +196,7 @@ public class RenderTileWithTransformsClient {
                                      renderScale);
         renderParameters.addTileSpec(tileSpec);
         renderParameters.initializeDerivedValues();
+        renderParameters.setExcludeMask(parameters.renderWithoutMask);
 
         if (canvasIdForClipping != null) {
             // this is awful, but currently necessary ...
