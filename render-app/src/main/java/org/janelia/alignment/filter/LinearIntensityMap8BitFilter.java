@@ -149,6 +149,4 @@ public class LinearIntensityMap8BitFilter
         fp.setMinAndMax(0, 255);
         return fp.convertToByteProcessor();
     }
-
-    private static final String DATA_STRING_NAME = "dataString";
 }

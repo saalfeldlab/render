@@ -86,17 +86,23 @@ public abstract class StreakCorrector {
                                               final int y,
                                               final int w,
                                               final int h,
+                                              final int extraX,
                                               final int extraY)
     {
         final RandomAccess< T > r = img.randomAccess();
 
-        for ( int y1 = y-extraY; y1 < y+h+extraY; ++y1 )
-            for ( int x1 = x; x1 < x+w; ++x1 )
-            {
+        final int startY = y - extraY;
+        final int stopY = y + h + extraY;
+        final int startX = x - extraX;
+        final int stopX = x + w + extraX;
+
+        for (int y1 = startY; y1 < stopY; ++y1) {
+            for (int x1 = startX; x1 < stopX; ++x1) {
                 r.setPosition(x1, 0);
                 r.setPosition(y1, 1);
                 r.get().setZero();
             }
+        }
     }
 
     public void applyMask(final RandomAccessibleInterval<ComplexFloatType> fft,

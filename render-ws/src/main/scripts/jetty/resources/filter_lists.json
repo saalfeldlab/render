@@ -9,6 +9,14 @@
       }
     ],
 
+    "Z0422_17_VNC_1" : [
+      {
+        "className" : "org.janelia.alignment.destreak.ConfigurableMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "6161,10920,0,6,6043,5459,113,3,5960,5458,83,5,5798,5456,162,9,5573,5453,225,15,0,5448,5573,25,0,5360,4569,5,0,5556,4569,5"
+        }      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",

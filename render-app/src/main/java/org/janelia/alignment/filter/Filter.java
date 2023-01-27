@@ -99,4 +99,7 @@ public interface Filter extends Serializable {
     }
 
     Pattern COMMA_SEPARATED_VALUE_PATTERN = Pattern.compile(",");
+
+    /** Commonly used parameter name for filter data string. */
+    String DATA_STRING_NAME = "dataString";
 }
