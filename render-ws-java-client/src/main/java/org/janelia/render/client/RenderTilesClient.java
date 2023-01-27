@@ -1,5 +1,8 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -13,6 +16,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
@@ -34,16 +40,8 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
-import mpicbg.trakem2.transform.TranslationModel2D;
-
 /**
- * Java client for rendering individual tiles.
- *
- * Images are placed in:
+ * Java client for rendering individual tiles.  Images are placed in:
  * <pre>
  *   [rootDirectory]/[project]/[stack]/[runTimestamp]/[z-thousands]/[z-hundreds]/[z]/[tileId].[format]
  * </pre>
@@ -129,6 +127,12 @@ public class RenderTilesClient {
                 description = "Exclude tile masks when rendering",
                 arity = 0)
         public boolean excludeMask = false;
+
+        @Parameter(
+                names = "--excludeAllTransforms",
+                description = "Exclude all tile transforms when rendering",
+                arity = 0)
+        public boolean excludeAllTransforms = false;
 
         @Parameter(
                 names = "--renderMaskOnly",
@@ -254,6 +258,9 @@ public class RenderTilesClient {
         }
         if (clientParameters.excludeMask) {
             queryParameters.append("&excludeMask=true");
+        }
+        if (clientParameters.excludeAllTransforms) {
+            queryParameters.append("&excludeAllTransforms=true");
         }
         // excludeSource needs to be handled locally (not supported by web service)
 
