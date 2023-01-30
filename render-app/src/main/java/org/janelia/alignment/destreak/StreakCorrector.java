@@ -1,5 +1,8 @@
 package org.janelia.alignment.destreak;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.imglib2.Cursor;
 import net.imglib2.Dimensions;
 import net.imglib2.RandomAccess;
@@ -45,7 +48,7 @@ public abstract class StreakCorrector {
         fft.setNumThreads( numThreads );
         final Img<ComplexFloatType> fftImg = fft.getResult();
 
-        System.out.println(Util.printInterval(fftImg ) );
+        LOG.info("fftBandpassCorrection: {}", Util.printInterval(fftImg ) );
         //ImageJFunctions.show( fftImg ).setTitle( "fft" );
 
         applyMask( fftImg, createMask( fftImg ) );
@@ -144,4 +147,5 @@ public abstract class StreakCorrector {
         return s.getSum() / (double)numPx;
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(StreakCorrector.class);
 }
