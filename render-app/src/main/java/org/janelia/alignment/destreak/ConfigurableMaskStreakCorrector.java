@@ -141,6 +141,10 @@ public class ConfigurableMaskStreakCorrector
 
         final ImagePlus imp = new ImagePlus("input", ip);
         final Img<UnsignedByteType> img = ImageJFunctions.wrapByte(imp);
+        if (img == null) {
+            throw new IllegalArgumentException("failed to wrap " + ip.getClass().getName() +
+                                               " as Img<UnsignedByteType>");
+        }
 
         final double avg = StreakCorrector.avgIntensity(img);
         LOG.debug("process: average intensity is {}", avg);
@@ -155,8 +159,14 @@ public class ConfigurableMaskStreakCorrector
                                                              Math.min( 255, Math.round( i1.get() - i2.get() ) ) ) ),
                                       new UnsignedByteType());
 
+        // TODO: check with @StephanPreibisch to see if there is a better way to copy fixedIp to input
         final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
-        return fixedImp.getProcessor();
+        final ImageProcessor fixedIp = fixedImp.getProcessor();
+        for (int i = 0; i < ip.getPixelCount(); i++) {
+            ip.set(i, fixedIp.get(i));
+        }
+
+        return ip;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ConfigurableMaskStreakCorrector.class);
