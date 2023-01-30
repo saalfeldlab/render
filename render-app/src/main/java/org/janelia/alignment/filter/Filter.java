@@ -28,11 +28,9 @@ public interface Filter extends Serializable {
      *
      * @param  ip     pixels to process.
      * @param  scale  current render scale.
-     *
-     * @return filtered image.
      */
-    ImageProcessor process(final ImageProcessor ip,
-                           final double scale);
+    void process(final ImageProcessor ip,
+                 final double scale);
 
 
     // Utility methods for parameter parsing ...

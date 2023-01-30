@@ -33,8 +33,8 @@ public class RollingBallSubtraction implements Filter {
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip,
-                                  final double scale) {
+    public void process(final ImageProcessor ip,
+                        final double scale) {
         final BackgroundSubtracter backgroundSubtracter = new BackgroundSubtracter();
         backgroundSubtracter.rollingBallBackground(ip,
                                                    (double) Math.round(radius * scale),
@@ -43,6 +43,5 @@ public class RollingBallSubtraction implements Filter {
                                                    false,
                                                    true,
                                                    true);
-        return ip;
     }
 }

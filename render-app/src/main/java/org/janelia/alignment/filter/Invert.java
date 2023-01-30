@@ -24,8 +24,8 @@ public class Invert
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip,
-                                  final double scale) {
+    public void process(final ImageProcessor ip,
+                        final double scale) {
         // copied from https://imagej.nih.gov/ij/plugins/download/Image_Inverter.java
         final Rectangle r = ip.getRoi();
         final int maxY = r.y + r.height;
@@ -35,8 +35,6 @@ public class Invert
                 ip.set(x, y, ~ip.get(x, y));
             }
         }
-
-        return ip;
     }
 
 }

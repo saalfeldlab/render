@@ -50,12 +50,11 @@ public class Rank
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip,
-                                  final double scale) {
+    public void process(final ImageProcessor ip,
+                        final double scale) {
         final RankFilters rankFilters = new RankFilters();
         rankFilters.rank(ip,
                          (double) Math.round(radius * scale),
                          filterType);
-        return ip;
     }
 }

@@ -33,11 +33,10 @@ public class EqualizeHistogram implements Filter {
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip,
-                                  final double scale) {
+    public void process(final ImageProcessor ip,
+                        final double scale) {
         final ContrastEnhancer contrastEnhancer = new ContrastEnhancer();
         contrastEnhancer.equalize(ip);
-        return ip;
     }
 
 }

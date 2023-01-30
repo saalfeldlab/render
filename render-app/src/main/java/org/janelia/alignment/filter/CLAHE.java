@@ -54,8 +54,8 @@ public class CLAHE implements Filter {
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip,
-                                  final double scale) {
+    public void process(final ImageProcessor ip,
+                        final double scale) {
         if (fast) {
             Flat.getFastInstance()
                     .run(new ImagePlus("", ip),
@@ -67,6 +67,5 @@ public class CLAHE implements Filter {
                          (int) Math.round(blockRadius * scale), bins, slope, null,
                          false);
         }
-        return ip;
     }
 }

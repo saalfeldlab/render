@@ -119,17 +119,17 @@ public class UrlMipmapSource
                         " mipmap is needed.  Upscaling is not currently supported.");
             }
 
-            ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
-                                                                    downSampleLevels,
-                                                                    false,
-                                                                    firstChannelSpec.is16Bit(),
-                                                                    imageAndMask.getImageLoaderType(),
-                                                                    imageAndMask.getImageSliceNumber());
+            final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
+                                                                          downSampleLevels,
+                                                                          false,
+                                                                          firstChannelSpec.is16Bit(),
+                                                                          imageAndMask.getImageLoaderType(),
+                                                                          imageAndMask.getImageSliceNumber());
             final long loadMipStop = System.currentTimeMillis();
 
             if (firstChannelSpec.hasFilterSpec()) {
                 final Filter filter = firstChannelSpec.getFilterSpec().buildInstance();
-                imageProcessor = filter.process(imageProcessor, renderScale);
+                filter.process(imageProcessor, renderScale);
             }
 
             final long filterStop = System.currentTimeMillis();
@@ -223,15 +223,15 @@ public class UrlMipmapSource
                 downSampleLevels = mipmapLevel - currentMipmapLevel;
             }
 
-            ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
-                                                                    downSampleLevels,
-                                                                    false,
-                                                                    channelSpec.is16Bit(),
-                                                                    imageAndMask.getImageLoaderType(),
-                                                                    imageAndMask.getImageSliceNumber());
+            final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
+                                                                          downSampleLevels,
+                                                                          false,
+                                                                          channelSpec.is16Bit(),
+                                                                          imageAndMask.getImageLoaderType(),
+                                                                          imageAndMask.getImageSliceNumber());
             if (channelSpec.hasFilterSpec()) {
                 final Filter filter = channelSpec.getFilterSpec().buildInstance();
-                imageProcessor = filter.process(imageProcessor, renderScale);
+                filter.process(imageProcessor, renderScale);
             }
 
             if (imageProcessor.getWidth() == firstChannelWidth && imageProcessor.getWidth() == firstChannelHeight) {

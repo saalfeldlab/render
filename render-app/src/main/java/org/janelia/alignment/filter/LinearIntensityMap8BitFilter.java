@@ -106,12 +106,10 @@ public class LinearIntensityMap8BitFilter
      *
      * @param ip     pixels to process.
      * @param scale  current render scale.
-     *
-     * @return intensity corrected result.
      */
     @Override
-    public ImageProcessor process(final ImageProcessor ip,
-                                  final double scale) {
+    public void process(final ImageProcessor ip,
+                        final double scale) {
 
         final FloatProcessor as = new FloatProcessor(numberOfRegionColumns, numberOfRegionRows);
         final FloatProcessor bs = new FloatProcessor(numberOfRegionColumns, numberOfRegionRows);
@@ -147,6 +145,6 @@ public class LinearIntensityMap8BitFilter
 
         // Need to reset intensity range back to full 8-bit before converting to byte processor!
         fp.setMinAndMax(0, 255);
-        return fp.convertToByteProcessor();
+        ip.setPixels(0, fp);
     }
 }

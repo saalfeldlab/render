@@ -132,8 +132,8 @@ public class ConfigurableMaskStreakCorrector
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip,
-                                  final double scale) {
+    public void process(final ImageProcessor ip,
+                        final double scale) {
         // TODO: check with @StephanPreibisch to see if it makes sense to scale clear regions
         if (scale != 1.0) {
             throw new UnsupportedOperationException("this filter only supports full scale images");
@@ -165,8 +165,6 @@ public class ConfigurableMaskStreakCorrector
         for (int i = 0; i < ip.getPixelCount(); i++) {
             ip.set(i, fixedIp.get(i));
         }
-
-        return ip;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ConfigurableMaskStreakCorrector.class);

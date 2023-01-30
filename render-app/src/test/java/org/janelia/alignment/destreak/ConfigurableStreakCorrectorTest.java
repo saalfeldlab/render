@@ -2,7 +2,6 @@ package org.janelia.alignment.destreak;
 
 import ij.ImageJ;
 import ij.ImagePlus;
-import ij.process.ImageProcessor;
 
 import java.util.Map;
 
@@ -99,8 +98,8 @@ public class ConfigurableStreakCorrectorTest {
         } else {
 
             // simply display fixed result (using same logic copied into process method without correction display)
-            final ImageProcessor fixedProcessor = Z0422_17_VNC_1_CORRECTOR.process(imp.getProcessor(), 1.0);
-            new ImagePlus("fixedProcessor", fixedProcessor).show();
+            Z0422_17_VNC_1_CORRECTOR.process(imp.getProcessor(), 1.0);
+            imp.show();
 
         }
 

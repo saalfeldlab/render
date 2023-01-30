@@ -45,16 +45,16 @@ public class ValueToNoise implements Filter {
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip,
-                                  final double scale) {
+    public void process(final ImageProcessor ip,
+                        final double scale) {
         try {
-            if (FloatProcessor.class.isInstance(ip)) {
+            if (ip instanceof FloatProcessor) {
                 if (Double.isNaN(value))
                     processFloatNaN((FloatProcessor) ip, min, max);
                 else
                     processFloat((FloatProcessor) ip, (float) value, min, max);
             } else {
-                if (ColorProcessor.class.isInstance(ip))
+                if (ip instanceof ColorProcessor)
                     processColor((ColorProcessor) ip, (int) Math.round(value),
                             (int) Math.round(min), (int) Math.round(max));
                 else
@@ -64,7 +64,6 @@ public class ValueToNoise implements Filter {
         } catch (final Exception e) {
             e.printStackTrace();
         }
-        return ip;
     }
 
     private static void processFloatNaN(final FloatProcessor ip,

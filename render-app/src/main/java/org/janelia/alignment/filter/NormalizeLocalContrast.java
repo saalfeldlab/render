@@ -52,15 +52,14 @@ public class NormalizeLocalContrast implements Filter {
     }
 
     @Override
-    public ImageProcessor process(final ImageProcessor ip,
-                                  final double scale) {
+    public void process(final ImageProcessor ip,
+                        final double scale) {
         mpicbg.ij.plugin.NormalizeLocalContrast.run(ip,
                                                     (int) Math.round(blockRadiusX * scale),
                                                     (int) Math.round(blockRadiusY * scale),
                                                     meanFactor,
                                                     center,
                                                     stretch);
-        return ip;
     }
 
 }
