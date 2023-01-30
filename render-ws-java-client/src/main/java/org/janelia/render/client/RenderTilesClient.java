@@ -3,6 +3,7 @@ package org.janelia.render.client;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -15,11 +16,13 @@ import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TranslationModel2D;
 
+import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -152,6 +155,12 @@ public class RenderTilesClient {
                 variableArity = true
         )
         public List<String> tileIds;
+
+        @Parameter(
+                names = "--tileIdPattern",
+                description = "Only include tileIds that match this pattern (filters z based and explicit tile ids)"
+        )
+        public String tileIdPattern;
 
         @Parameter(
                 names = "--hackStack",
@@ -292,6 +301,11 @@ public class RenderTilesClient {
             tileIds.addAll(clientParameters.tileIds);
         }
 
+        if (clientParameters.tileIdPattern != null) {
+             final Pattern tileIdPattern = Pattern.compile(clientParameters.tileIdPattern);
+             tileIds.removeIf(tileId -> ! tileIdPattern.matcher(tileId).matches());
+        }
+
         if (tileIds.size() == 0) {
             throw new IllegalArgumentException("There are no tiles to render!");
         }
@@ -363,10 +377,26 @@ public class RenderTilesClient {
             renderParameters.binaryMask = true;
         }
 
-        final File tileFile = getTileFile(tileSpec);
-
         final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
-                Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, tileFile);
+                Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, null);
+
+        final File tileFile = getTileFile(tileSpec);
+        final BufferedImage bufferedImage;
+        if (clientParameters.excludeMask) {
+            // skip conversion step if we don't need to worry about mask
+            bufferedImage = imageProcessorWithMasks.ip.getBufferedImage();
+        } else {
+            // if we need to include mask, convert as was done before
+            // TODO: revisit legacy usage of ARGB which is very wasteful
+            bufferedImage = renderParameters.openTargetImage();
+            ArgbRenderer.CONVERTER.convertProcessorWithMasksToImage(renderParameters,
+                                                                    imageProcessorWithMasks);
+        }
+
+        Utils.saveImage(bufferedImage,
+                        tileFile,
+                        renderParameters.isConvertToGray(),
+                        renderParameters.getQuality());
 
         if (clientParameters.hackStack != null) {
             final ResolvedTileSpecCollection resolvedTiles = zToResolvedTiles.get(tileSpec.getZ());
