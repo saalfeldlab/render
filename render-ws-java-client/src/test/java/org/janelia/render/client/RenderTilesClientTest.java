@@ -29,6 +29,7 @@ public class RenderTilesClientTest {
 //                    "--rootDirectory", "/nrs/flyem/render/tiles",
 //                    "--z", "1817",
 //                    "--hackStack", "v4_acquire_trimmed_align_hack",
+//                    "--hackTransformCount", "1",
 
 //                    "--owner", "Z0720_07m_VNC",
 //                    "--project", "Sec19",
@@ -36,19 +37,22 @@ public class RenderTilesClientTest {
 //                    "--rootDirectory", "/nrs/flyem/render/tiles",
 //                    "--z", "7547",
 //                    "--hackStack", "v7_acquire_trimmed_align_straightened_hack",
+//                    "--hackTransformCount", "1",
 //                    "--completeHackStack"
 
                     "--owner", "fibsem",
                     "--project", "Z0422_17_VNC_1",
-                    "--stack", "v4_acquire_trimmed",
-                    "--rootDirectory", "/Users/trautmane/Desktop/destreak",
+                    "--stack", "v4_acquire_trimmed_align",
+                    "--rootDirectory", "/nrs/fibsem/render/tiles_destreak",
                     "--scale", "1.0",
                     "--format", "png",
                     "--excludeMask",
                     "--excludeAllTransforms",
                     "--filterListName", "Z0422_17_VNC_1",
                     "--tileIdPattern", ".*0-.-2.*",
-                    "--z", "28132",
+                    "--hackStack", "v4_acquire_trimmed_align_destreak_test_b",
+                    "--completeHackStack",
+                    "--z", "28132", "28133",
             };
 
             RenderTilesClient.main(testArgs);
