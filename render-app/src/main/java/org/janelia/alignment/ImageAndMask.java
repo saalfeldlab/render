@@ -62,6 +62,28 @@ public class ImageAndMask implements Serializable {
         this.maskSliceNumber = maskSliceNumber;
     }
 
+    public ImageAndMask copyWithImage(final String changedImageUrl,
+                                      final LoaderType changedImageLoaderType,
+                                      final Integer changedImageSliceNumber) {
+        return new ImageAndMask(changedImageUrl,
+                                changedImageLoaderType,
+                                changedImageSliceNumber,
+                                this.maskUrl,
+                                this.maskLoaderType,
+                                this.maskSliceNumber);
+    }
+
+    public ImageAndMask copyWithMask(final String changedMaskUrl,
+                                     final LoaderType changedMaskLoaderType,
+                                     final Integer changedMaskSliceNumber) {
+        return new ImageAndMask(this.imageUrl,
+                                this.imageLoaderType,
+                                this.imageSliceNumber,
+                                changedMaskUrl,
+                                changedMaskLoaderType,
+                                changedMaskSliceNumber);
+    }
+
     public ImageAndMask copyWithDerivedUrls(final String derivedImageUrl,
                                             final String derivedMaskUrl) {
         return new ImageAndMask(derivedImageUrl,
@@ -73,12 +95,7 @@ public class ImageAndMask implements Serializable {
     }
 
     public ImageAndMask copyWithoutMask() {
-        return new ImageAndMask(this.imageUrl,
-                                this.imageLoaderType,
-                                this.imageSliceNumber,
-                                null,
-                                null,
-                                null);
+        return copyWithMask(null, null, null);
     }
 
     public ImageAndMask maskAsImage() {
@@ -216,5 +233,5 @@ public class ImageAndMask implements Serializable {
     }
 
     private static final String FILE_SCHEME = "file";
-    private static final Pattern FILE_NAME_PATTERN = Pattern.compile("file:[/]+");
+    private static final Pattern FILE_NAME_PATTERN = Pattern.compile("file:/+");
 }
