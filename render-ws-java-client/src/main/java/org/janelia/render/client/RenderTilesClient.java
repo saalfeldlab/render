@@ -14,8 +14,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -27,6 +29,8 @@ import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.loader.DynamicMaskLoader;
+import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
@@ -173,7 +177,7 @@ public class RenderTilesClient {
                 names = "--hackTransformCount",
                 description = "Number of transforms to remove from the end of each tile spec's list " +
                               "during rendering but then include in the hack stack's tile specs")
-        public Integer hackTransformCount = 1;
+        public Integer hackTransformCount;
 
         @Parameter(
                 names = "--completeHackStack",
@@ -304,6 +308,12 @@ public class RenderTilesClient {
         if (clientParameters.tileIdPattern != null) {
              final Pattern tileIdPattern = Pattern.compile(clientParameters.tileIdPattern);
              tileIds.removeIf(tileId -> ! tileIdPattern.matcher(tileId).matches());
+            if (clientParameters.hackStack != null) {
+                final Set<String> tileIdsToKeep = new HashSet<>(tileIds);
+                for (final ResolvedTileSpecCollection resolvedTiles : zToResolvedTiles.values()) {
+                    resolvedTiles.removeDifferentTileSpecs(tileIdsToKeep);
+                }
+            }
         }
 
         if (tileIds.size() == 0) {
@@ -366,8 +376,10 @@ public class RenderTilesClient {
         }
 
         if (clientParameters.hackStack != null) {
-            for (int i = 0; i < clientParameters.hackTransformCount; i++) {
-                tileSpec.removeLastTransformSpec();
+            if (clientParameters.hackTransformCount != null) {
+                for (int i = 0; i < clientParameters.hackTransformCount; i++) {
+                    tileSpec.removeLastTransformSpec();
+                }
             }
             tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
             renderParameters.x = tileSpec.getMinX();
@@ -411,51 +423,76 @@ public class RenderTilesClient {
                                                    tileId + " has " + allChannels.size() + " channels");
             }
             final ChannelSpec channelSpec = allChannels.get(0);
-            String maskPath = null;
-            if (imageProcessorWithMasks.mask != null) {
-                final String maskFileName = tileFile.getName().replace(clientParameters.format,
-                                                                       "mask." + clientParameters.format);
-                final File maskFile = new File(tileFile.getParentFile().getAbsolutePath(), maskFileName);
-                maskPath = maskFile.getAbsolutePath();
-                Utils.saveImage(imageProcessorWithMasks.mask.getBufferedImage(),
-                                maskPath,
-                                clientParameters.format,
-                                renderParameters.convertToGray,
-                                renderParameters.quality);
+
+            ImageAndMask renderedImageAndMask =
+                    channelSpec.getFirstMipmapImageAndMask(tileId).copyWithImage(tileFile.getAbsolutePath(),
+                                                                                 null,
+                                                                                 null);
+            if (channelSpec.hasMask()) {
+                if (ImageLoader.LoaderType.DYNAMIC_MASK.equals(renderedImageAndMask.getMaskLoaderType())) {
+                    // if original tile spec has a dynamic mask, update the width and height to match rendered tile
+                    final DynamicMaskLoader.DynamicMaskDescription description =
+                            DynamicMaskLoader.parseUrl(renderedImageAndMask.getMaskUrl())
+                                    .withWidthAndHeight(imageProcessorWithMasks.getWidth(),
+                                                        imageProcessorWithMasks.getHeight());
+                    renderedImageAndMask = renderedImageAndMask.copyWithMask(description.toString(),
+                                                                             ImageLoader.LoaderType.DYNAMIC_MASK,
+                                                                             null);
+                } else if (imageProcessorWithMasks.mask != null) {
+                    // if we rendered a new mask, save it to disk and update the tile spec reference
+                    final String maskFileName =
+                            tileFile.getName().replace(clientParameters.format,
+                                                       "mask." + clientParameters.format);
+                    final File maskFile = new File(tileFile.getParentFile().getAbsolutePath(), maskFileName);
+                    final String maskPath = maskFile.getAbsolutePath();
+                    Utils.saveImage(imageProcessorWithMasks.mask.getBufferedImage(),
+                                    maskPath,
+                                    clientParameters.format,
+                                    renderParameters.convertToGray,
+                                    renderParameters.quality);
+                    renderedImageAndMask = renderedImageAndMask.copyWithMask(maskPath,
+                                                                             null,
+                                                                             null);
+                }
             }
 
-            channelSpec.putMipmap(0, new ImageAndMask(tileFile.getAbsolutePath(), maskPath));
+            channelSpec.putMipmap(0, renderedImageAndMask);
 
             // set hacked tile width and height
             hackedTileSpec.setWidth((double) imageProcessorWithMasks.ip.getWidth());
             hackedTileSpec.setHeight((double) imageProcessorWithMasks.ip.getHeight());
 
-            // set hacked tile transforms
-            final Deque<TransformSpec> transformStack = new ArrayDeque<>();
-            final ListTransformSpec flattenedList = new ListTransformSpec();
-            hackedTileSpec.getTransforms().flatten(flattenedList);
-            for (int i = 0; i < clientParameters.hackTransformCount; i++) {
-                transformStack.push(flattenedList.getLastSpec());
-                flattenedList.removeLastSpec();
-            }
+            if (clientParameters.hackTransformCount != null) {
+                // set hacked tile transforms
+                final Deque<TransformSpec> transformStack = new ArrayDeque<>();
+                final ListTransformSpec flattenedList = new ListTransformSpec();
+                hackedTileSpec.getTransforms().flatten(flattenedList);
+                for (int i = 0; i < clientParameters.hackTransformCount; i++) {
+                    transformStack.push(flattenedList.getLastSpec());
+                    flattenedList.removeLastSpec();
+                }
 
-            final ListTransformSpec hackedTransformList = new ListTransformSpec();
-            transformStack.forEach(hackedTransformList::addSpec);
-            hackedTileSpec.setTransforms(hackedTransformList);
+                final ListTransformSpec hackedTransformList = new ListTransformSpec();
+                transformStack.forEach(hackedTransformList::addSpec);
+                hackedTileSpec.setTransforms(hackedTransformList);
+            }
 
             hackedTileSpec.deriveBoundingBox(hackedTileSpec.getMeshCellSize(), true);
 
             // translate tile spec back to original location
             final double translateX = preHackMinX - hackedTileSpec.getMinX();
             final double translateY = preHackMinY - hackedTileSpec.getMinY();
-            final String translateDataString = translateX + " " + translateY;
-            LOG.info("renderTile: translating hacked tile by " + translateDataString);
-            final TransformSpec translateToPreHackLocationSpec =
-                    new LeafTransformSpec(TranslationModel2D.class.getName(), translateDataString);
-            resolvedTiles.addTransformSpecToTile(
-                    tileId,
-                    translateToPreHackLocationSpec,
-                    ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST);
+
+            if ((translateX != 0.0) || (translateY != 0.0)) {
+                final String translateDataString = translateX + " " + translateY;
+                LOG.info("renderTile: translating hacked tile by " + translateDataString);
+                final TransformSpec translateToPreHackLocationSpec =
+                        new LeafTransformSpec(TranslationModel2D.class.getName(), translateDataString);
+                resolvedTiles.addTransformSpecToTile(
+                        tileId,
+                        translateToPreHackLocationSpec,
+                        ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST);
+            }
         }
     }
 
