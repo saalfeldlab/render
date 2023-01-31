@@ -111,7 +111,7 @@ public class RenderTileWithTransformsClientTest {
             new ImageJ();
         }
 
-        final double[] originalParameters = { 19.4, 64.8, 24.4, 972.0 };
+        double[] originalParameters = { 19.4, 64.8, 24.4, 972.0 };
         final double[] stepSizes = {10.0, 5.0, 2.5, 1.25, 0.625, 0.3125, 0.15625,
                                     0.078125, 0.0390625, 0.01953125, 0.009765625};
 
@@ -123,8 +123,9 @@ public class RenderTileWithTransformsClientTest {
         timer.start();
 
         int testCountForAllRuns = 0;
-        String bestDataString = "";
-        Tester tester = null;
+        TestResultWithContext bestResult = null;
+        TestResultWithContext previousBestResult = null;
+        Tester tester;
 
         for (int i = 0; i < maxNumberOfRuns; i++) {
             LOG.info("\n\n");
@@ -141,24 +142,50 @@ public class RenderTileWithTransformsClientTest {
                                 stepSizes,
                                 maxTestsToRun);
 
-            bestDataString = tester.optimizeTransformParametersForAllSteps();
-
-            final String[] parameterStrings = bestDataString.split(" ");
-            for (int parameterIndex = 0; parameterIndex < originalParameters.length; parameterIndex++) {
-                originalParameters[parameterIndex] = Double.parseDouble(parameterStrings[parameterIndex]);
-            }
-
+            bestResult = tester.optimizeTransformParametersForAllSteps();
+            originalParameters = bestResult.transformValues.clone();
             testCountForAllRuns += tester.totalTestCount;
+
+            if ((previousBestResult != null) && previousBestResult.dataString.equals(bestResult.dataString)) {
+                LOG.info("best result for run {} was identical to previous run, ending tests", i+1);
+                break;
+            } else {
+                previousBestResult = bestResult;
+            }
         }
 
-        LOG.info("findBestScanCorrectionParameters: done, ran {} tests in {} seconds, best parameters are {} with {}",
+        LOG.info("findBestScanCorrectionParameters: done, ran {} tests in {} seconds, best result is {}",
                  testCountForAllRuns,
                  (int) (timer.stop() / 1000),
-                 bestDataString,
-                 tester.resultToString(tester.bestResult));
+                 bestResult);
 
         if (numberOfPairsToVisualize > 0) {
             SimpleMultiThreading.threadHaltUnClean();
+        }
+    }
+
+    private static class TestResultWithContext {
+
+        public final String dataString;
+        public final double[] transformValues;
+        public final PairWiseStitchingResult result;
+
+        public TestResultWithContext(final String dataString,
+                                     final double[] transformValues,
+                                     final PairWiseStitchingResult result) {
+            this.dataString = dataString;
+            this.transformValues = transformValues;
+            this.result = result;
+        }
+
+        @Override
+        public String toString() {
+            return "parameters " + dataString + " with " + resultToString(result);
+        }
+
+        private boolean isBetter(final TestResultWithContext that) {
+            return (this.result != null) &&
+                   ((that.result == null) || (this.result.getCrossCorrelation() > that.result.getCrossCorrelation()));
         }
     }
 
@@ -175,12 +202,8 @@ public class RenderTileWithTransformsClientTest {
         private final double[] stepSizes;
         private final int maxNumberOfTests;
 
-        private PairWiseStitchingResult bestResult;
-        private String bestTransformDataString;
+        private TestResultWithContext bestResult;
         private final Set<String> testedDataStrings;
-
-        /** Current test's (4) transform coefficient parameters. */
-        private double[] currentTestTransformValues;
 
         /**
          * Flag indicating whether an improved parameter has been found in the current step
@@ -232,28 +255,27 @@ public class RenderTileWithTransformsClientTest {
             this.stepSizes = stepSizes;
             this.maxNumberOfTests = maxNumberOfTests;
             this.testedDataStrings = new HashSet<>();
-
-            this.currentTestTransformValues = new double[originalParameters.length];
         }
 
-        public String optimizeTransformParametersForAllSteps() {
+        public TestResultWithContext optimizeTransformParametersForAllSteps() {
 
             final String originalTransformDataString = buildTransformDataString(originalParameters);
             this.testedDataStrings.clear();
             this.testedDataStrings.add(originalTransformDataString);
 
-            this.bestResult = deriveStitchingResult(originalTransformDataString, 0);
-            this.bestTransformDataString = originalTransformDataString;
-            this.currentTestTransformValues = originalParameters.clone();
+            final PairWiseStitchingResult originalResult = deriveStitchingResult(originalTransformDataString,
+                                                                                 0);
+            this.bestResult = new TestResultWithContext(originalTransformDataString,
+                                                        originalParameters,
+                                                        originalResult);
             this.totalTestCount = 0;
 
             for (final double stepSize : stepSizes) {
 
                 LOG.info("---------------------------------");
-                LOG.info("optimizeTransformParametersForAllSteps: begin stepSize {}, best parameters are {} with {}",
+                LOG.info("optimizeTransformParametersForAllSteps: begin stepSize {} with best result {}",
                          stepSize,
-                         bestTransformDataString,
-                         resultToString(bestResult));
+                         bestResult);
                 LOG.info("---------------------------------");
 
                 // randomly order parameter optimization for each step
@@ -271,82 +293,83 @@ public class RenderTileWithTransformsClientTest {
                 }
             }
 
-            LOG.info("optimizeTransformParametersForAllSteps: after {} tests, best parameters are {} with {}",
+            LOG.info("optimizeTransformParametersForAllSteps: after {} tests, best result is {}",
                      totalTestCount,
-                     bestTransformDataString,
-                     resultToString(bestResult));
+                     bestResult);
 
-            return bestTransformDataString;
+            return bestResult;
         }
 
         private void optimizeTransformParameterForStep(final int indexOfTransformParameterToChange,
                                                        final double stepSize) {
 
             if (totalTestCount < maxNumberOfTests) {
-                boolean isUpBetter = true;
-                boolean isDownBetter = true;
+                boolean checkStepUp = true;
+                boolean checkStepDown = true;
                 do {
+                    // clone best result as base before running tests
+                    final double[] baseValues = bestResult.transformValues.clone();
+                    
+                    if (checkStepUp) {
+                        final TestResultWithContext upResult = runOneTest(baseValues,
+                                                                          indexOfTransformParameterToChange,
+                                                                          stepSize);
+                        if (upResult.isBetter(bestResult)) {
+                            bestResult = upResult;
+                        } else {
+                            checkStepUp = false;
+                        }
+                    }
 
-                    if (isUpBetter) {
-                        // test another step up if previous step up was better (or this is the first test)
-                        isUpBetter = runOneTest(indexOfTransformParameterToChange, stepSize);
-                    }
-                    if (isDownBetter) {
-                        // test another step down if previous step down was better (or this is the first test)
-                        isDownBetter = runOneTest(indexOfTransformParameterToChange, -stepSize); // test step down
+                    if (checkStepDown) {
+                        final TestResultWithContext downResult = runOneTest(baseValues,
+                                                                            indexOfTransformParameterToChange,
+                                                                            -stepSize);
+                        if (downResult.isBetter(bestResult)) {
+                            bestResult = downResult;
+                            checkStepUp = false; // make sure up isn't checked again, since down must be better than up
+                        } else {
+                            checkStepDown = false;
+                        }
                     }
 
-                    // update current parameter value if better result was found
-                    // must check isDownBetter first in case both up and down are better
-                    if (isDownBetter) {
-                        currentTestTransformValues[indexOfTransformParameterToChange] -= stepSize;
-                    } else if (isUpBetter) {
-                        currentTestTransformValues[indexOfTransformParameterToChange] += stepSize;
-                    }
-                } while ((isUpBetter || isDownBetter) && (totalTestCount < maxNumberOfTests));
+                } while ((checkStepUp || checkStepDown) && (totalTestCount < maxNumberOfTests));
             }
 
-            LOG.info("optimizeTransformParameterForStep: for parameter {} and step {}, best parameters are {} with {}, totalTestCount is {}",
+            LOG.info("optimizeTransformParameterForStep: for arg {} stepSize {}, best result is {}, totalTestCount is {}",
                      indexOfTransformParameterToChange,
                      stepSize,
-                     bestTransformDataString,
-                     resultToString(bestResult),
+                     bestResult,
                      totalTestCount);
         }
 
-        private boolean runOneTest(final int indexOfTransformParameterToChange,
-                                   final double stepSize) {
-
-            boolean foundBetterResult = false;
+        private TestResultWithContext runOneTest(final double[] baseValues,
+                                                 final int indexOfTransformParameterToChange,
+                                                 final double stepSize) {
             totalTestCount++;
 
-            final double[] testValues = currentTestTransformValues.clone();
+            final double[] testValues = baseValues.clone();
             testValues[indexOfTransformParameterToChange] = testValues[indexOfTransformParameterToChange] + stepSize;
-
             final String testDataString = buildTransformDataString(testValues);
 
+            final PairWiseStitchingResult testResult;
             if (testedDataStrings.contains(testDataString)) {
                 LOG.info("runOneTest: already tested {}", testDataString);
+                testResult = null;
             } else {
-
-                final PairWiseStitchingResult testResult = deriveStitchingResult(testDataString,
-                                                                                 testedDataStrings.size());
+                testResult = deriveStitchingResult(testDataString, testedDataStrings.size());
                 testedDataStrings.add(testDataString);
-
-                if (testResult.getCrossCorrelation() > bestResult.getCrossCorrelation()) {
-                    bestResult = testResult;
-                    bestTransformDataString = testDataString;
-                    foundBetterResult = true;
-                }
-
-                final String betterOrWorse = foundBetterResult ? "better" : "worse";
-                LOG.info("runOneTest: {} for parameters {} with {}",
-                         betterOrWorse,
-                         testDataString,
-                         resultToString(testResult));
             }
 
-            return foundBetterResult;
+            final TestResultWithContext testResultWithContext = new TestResultWithContext(testDataString,
+                                                                                          testValues,
+                                                                                          testResult);
+            LOG.info("runOneTest: returning {} for arg {} stepSize {}",
+                     testResultWithContext,
+                     indexOfTransformParameterToChange,
+                     stepSize);
+
+            return testResultWithContext;
         }
 
         private String buildTransformDataString(final double[] transformationParameters) {
@@ -387,12 +410,6 @@ public class RenderTileWithTransformsClientTest {
             return result;
         }
 
-        private String resultToString(final PairWiseStitchingResult result) {
-            return "crossCorrelation " + result.getCrossCorrelation() +
-                   ", phaseCorrelation " + result.getPhaseCorrelation() +
-                   ", offset " + Arrays.toString(result.getOffset());
-        }
-
         private ImagePlus renderTile(final TileSpec tileSpec,
                                      final List<TransformSpec> tileTransforms,
                                      final String dataString,
@@ -403,6 +420,13 @@ public class RenderTileWithTransformsClientTest {
             return new ImagePlus(tileSpec.getTileId() + " " + dataString, croppedTile);
         }
 
+    }
+
+    public static String resultToString(final PairWiseStitchingResult result) {
+        return result == null ? "null" :
+               "crossCorrelation " + result.getCrossCorrelation() +
+               ", phaseCorrelation " + result.getPhaseCorrelation() +
+               ", offset " + Arrays.toString(result.getOffset());
     }
 
     /**
