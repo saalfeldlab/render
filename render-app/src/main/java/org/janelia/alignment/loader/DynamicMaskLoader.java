@@ -39,38 +39,73 @@ public class DynamicMaskLoader
 
         ByteProcessor maskProcessor;
 
-        final Matcher m = OUTSIDE_BOX_URL_PATTERN.matcher(urlString);
-        if (m.matches() && m.groupCount() == 6) {
+        final DynamicMaskDescription description = parseUrl(urlString);
+        final int unmaskedWidth = description.maxX - description.minX;
+        final int unmaskedHeight = description.maxY - description.minY;
 
-            try {
-                final int unmaskedX = Integer.parseInt(m.group(1));
-                final int unmaskedY = Integer.parseInt(m.group(2));
-                final int unmaskedWidth = Integer.parseInt(m.group(3)) - unmaskedX;
-                final int unmaskedHeight = Integer.parseInt(m.group(4)) - unmaskedY;
-                final int fullWidth = Integer.parseInt(m.group(5));
-                final int fullHeight = Integer.parseInt(m.group(6));
+        maskProcessor = new ByteProcessor(description.width, description.height);
 
-                maskProcessor = new ByteProcessor(fullWidth, fullHeight);
+        maskProcessor.setColor(255);
+        maskProcessor.fillRect(description.minX, description.minY, unmaskedWidth, unmaskedHeight);
 
-                maskProcessor.setColor(255);
-                maskProcessor.fillRect(unmaskedX, unmaskedY, unmaskedWidth, unmaskedHeight);
-
-                final Matcher levelMatcher = LEVEL_PATTERN.matcher(urlString);
-                if (levelMatcher.matches() && levelMatcher.groupCount() == 1) {
-                    final int desiredLevel = Integer.parseInt(levelMatcher.group(1));
-                    if (desiredLevel > 0) {
-                        maskProcessor = Downsampler.downsampleByteProcessor(maskProcessor, desiredLevel);
-                    }
-                }
-
-            } catch (final NumberFormatException e) {
-                throw new IllegalArgumentException("failed to build dynamic mask for: " + urlString, e);
+        final Matcher levelMatcher = LEVEL_PATTERN.matcher(urlString);
+        if (levelMatcher.matches() && levelMatcher.groupCount() == 1) {
+            final int desiredLevel = Integer.parseInt(levelMatcher.group(1));
+            if (desiredLevel > 0) {
+                maskProcessor = Downsampler.downsampleByteProcessor(maskProcessor, desiredLevel);
             }
-
-        } else {
-            throw new IllegalArgumentException("failed to parse dynamic mask URL: " + urlString);
         }
 
         return maskProcessor;
+    }
+
+    public static class DynamicMaskDescription {
+        public final int minX;
+        public final int minY;
+        public final int maxX;
+        public final int maxY;
+        public final int width;
+        public final int height;
+
+        public DynamicMaskDescription(final int minX,
+                                      final int minY,
+                                      final int maxX,
+                                      final int maxY,
+                                      final int width,
+                                      final int height) {
+            this.minX = minX;
+            this.minY = minY;
+            this.maxX = maxX;
+            this.maxY = maxY;
+            this.width = width;
+            this.height = height;
+        }
+
+        @Override
+        public String toString() {
+            return "mask://outside-box?minX=" + minX + "&minY=" + minY + "&maxX=" + maxX + "&maxY=" + maxY +
+                   "&width=" + width + "&height=" + height;
+        }
+
+        public DynamicMaskDescription withWidthAndHeight(final int changedWidth,
+                                                         final int changedHeight) {
+            return new DynamicMaskDescription(minX, minY,
+                                              Math.min(maxX, changedWidth), Math.min(maxY, changedHeight),
+                                              changedWidth, changedHeight);
+        }
+    }
+
+    public static DynamicMaskDescription parseUrl(final String urlString) throws IllegalArgumentException {
+        final Matcher m = OUTSIDE_BOX_URL_PATTERN.matcher(urlString);
+        if (m.matches() && m.groupCount() == 6) {
+            return new DynamicMaskDescription(Integer.parseInt(m.group(1)),
+                                              Integer.parseInt(m.group(2)),
+                                              Integer.parseInt(m.group(3)),
+                                              Integer.parseInt(m.group(4)),
+                                              Integer.parseInt(m.group(5)),
+                                              Integer.parseInt(m.group(6)));
+        } else {
+            throw new IllegalArgumentException("failed to parse dynamic mask URL: " + urlString);
+        }
     }
 }
