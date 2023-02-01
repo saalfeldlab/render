@@ -183,9 +183,26 @@ public class RenderTileWithTransformsClientTest {
             return "parameters " + dataString + " with " + resultToString(result);
         }
 
-        private boolean isBetter(final TestResultWithContext that) {
-            return (this.result != null) &&
-                   ((that.result == null) || (this.result.getCrossCorrelation() > that.result.getCrossCorrelation()));
+        @SuppressWarnings("SameParameterValue")
+        private boolean isBetter(final TestResultWithContext that,
+                                 final float[] originalOffset,
+                                 final float offsetThreshold) {
+            boolean better = false;
+            if (this.result != null) {
+                if (this.result.getCrossCorrelation() > that.result.getCrossCorrelation()) {
+                    final float[] offset = this.result.getOffset();
+                    final float deltaX = Math.abs(originalOffset[0] - offset[0]);
+                    final float deltaY = Math.abs(originalOffset[1] - offset[1]);
+                    if ((deltaX > offsetThreshold) || (deltaY > offsetThreshold)) {
+                        LOG.warn("isBetter: ignoring better correlation result {} " +
+                                 "because offset changed too much from original offset {}",
+                                 this, Arrays.toString(originalOffset));
+                    } else {
+                        better = true;
+                    }
+                }
+            }
+            return better;
         }
     }
 
@@ -202,6 +219,7 @@ public class RenderTileWithTransformsClientTest {
         private final double[] stepSizes;
         private final int maxNumberOfTests;
 
+        private TestResultWithContext originalResult;
         private TestResultWithContext bestResult;
         private final Set<String> testedDataStrings;
 
@@ -263,11 +281,13 @@ public class RenderTileWithTransformsClientTest {
             this.testedDataStrings.clear();
             this.testedDataStrings.add(originalTransformDataString);
 
-            final PairWiseStitchingResult originalResult = deriveStitchingResult(originalTransformDataString,
-                                                                                 0);
-            this.bestResult = new TestResultWithContext(originalTransformDataString,
-                                                        originalParameters,
-                                                        originalResult);
+            final PairWiseStitchingResult originalStitchResult = deriveStitchingResult(originalTransformDataString,
+                                                                                       0);
+            this.originalResult = new TestResultWithContext(originalTransformDataString,
+                                                            originalParameters,
+                                                            originalStitchResult);
+            this.bestResult = this.originalResult;
+
             this.totalTestCount = 0;
 
             for (final double stepSize : stepSizes) {
@@ -303,6 +323,8 @@ public class RenderTileWithTransformsClientTest {
         private void optimizeTransformParameterForStep(final int indexOfTransformParameterToChange,
                                                        final double stepSize) {
 
+            final float offsetThreshold = 5.0f;
+
             if (totalTestCount < maxNumberOfTests) {
                 boolean checkStepUp = true;
                 boolean checkStepDown = true;
@@ -314,7 +336,9 @@ public class RenderTileWithTransformsClientTest {
                         final TestResultWithContext upResult = runOneTest(baseValues,
                                                                           indexOfTransformParameterToChange,
                                                                           stepSize);
-                        if (upResult.isBetter(bestResult)) {
+                        if (upResult.isBetter(bestResult,
+                                              originalResult.result.getOffset(),
+                                              offsetThreshold)) {
                             bestResult = upResult;
                         } else {
                             checkStepUp = false;
@@ -325,7 +349,9 @@ public class RenderTileWithTransformsClientTest {
                         final TestResultWithContext downResult = runOneTest(baseValues,
                                                                             indexOfTransformParameterToChange,
                                                                             -stepSize);
-                        if (downResult.isBetter(bestResult)) {
+                        if (downResult.isBetter(bestResult,
+                                                originalResult.result.getOffset(),
+                                                offsetThreshold)) {
                             bestResult = downResult;
                             checkStepUp = false; // make sure up isn't checked again, since down must be better than up
                         } else {
