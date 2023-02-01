@@ -65,8 +65,10 @@ public class RenderTileWithTransformsClientTest {
 //
 //            RenderTileWithTransformsClient.main(testArgs);
 
-            findBestScanCorrectionParameters();
-            
+            //for (int i = 0; i < 10; i++) {
+                findBestScanCorrectionParameters();
+            //}
+
         } catch (final Throwable t) {
             t.printStackTrace();
         }
@@ -120,9 +122,9 @@ public class RenderTileWithTransformsClientTest {
         LogbackTestTools.setRootLogLevelToError();
         LogbackTestTools.setLogLevelToInfo(LOG.getName()); // another option: setLogLevelToInfoToDebug
 
-        // uncomment to log scan results to a timestamped file
-        // LogbackTestTools.setRootFileAppenderWithTimestamp(new File("/tmp"),
-        //                                                  "scan_parameters");
+        // uncomment to log scan test results to a timestamped file
+//        LogbackTestTools.setRootFileAppenderWithTimestamp(new File("/Users/trautmane/Desktop/reiser/logs"),
+//                                                          "scan_parameters");
 
         final Timer timer = new Timer();
         timer.start();
