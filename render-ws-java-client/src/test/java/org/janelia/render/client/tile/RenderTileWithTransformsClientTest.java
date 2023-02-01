@@ -5,6 +5,7 @@ import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
 import java.awt.Rectangle;
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -118,6 +119,10 @@ public class RenderTileWithTransformsClientTest {
         // hide all logging except from this test class
         LogbackTestTools.setRootLogLevelToError();
         LogbackTestTools.setLogLevelToInfo(LOG.getName()); // another option: setLogLevelToInfoToDebug
+
+        // uncomment to log scan results to a timestamped file
+        // LogbackTestTools.setRootFileAppenderWithTimestamp(new File("/tmp"),
+        //                                                  "scan_parameters");
 
         final Timer timer = new Timer();
         timer.start();
