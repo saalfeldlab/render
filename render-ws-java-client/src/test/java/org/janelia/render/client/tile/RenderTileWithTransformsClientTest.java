@@ -187,6 +187,7 @@ public class RenderTileWithTransformsClientTest {
         private boolean isBetter(final TestResultWithContext that,
                                  final float[] originalOffset,
                                  final float offsetThreshold) {
+            // TODO: find 'limitMaxOverlap' parameter that Preibisch mentioned (or confirm offset check is sufficient)
             boolean better = false;
             if (this.result != null) {
                 if (this.result.getCrossCorrelation() > that.result.getCrossCorrelation()) {
