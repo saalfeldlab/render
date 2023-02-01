@@ -91,7 +91,7 @@ public class RenderTileWithTransformsClientTest {
 
         final int numberOfPairsToVisualize = 0; // change to 1 to see original pair (or more to see test pairs)
         final int checkPeaks = 50;
-        final boolean subpixelAccuracy = true;
+        final boolean subpixelAccuracy = false;
         final int maxTestsToRun = 1000;
         final int maxNumberOfRuns = 6;
 
