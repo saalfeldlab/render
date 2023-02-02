@@ -13,7 +13,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.stitching.PairWiseStitchingImgLib;
@@ -52,7 +51,6 @@ public class RenderTileWithTransformsClientTest {
     // Consequently, they aren't included in the unit test suite.
 
     public static void main(final String[] args) {
-        //noinspection CommentedOutCode
         try {
 //            final String[] testArgs = {
 //                    "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
@@ -115,6 +113,8 @@ public class RenderTileWithTransformsClientTest {
         }
 
         double[] originalParameters = { 19.4, 64.8, 24.4, 972.0 };
+
+        final int[] parameterIndexesToTest = { 0, 1, 2, 3 };
         final double[] stepSizes = {10.0, 5.0, 2.5, 1.25, 0.625, 0.3125, 0.15625,
                                     0.078125, 0.0390625, 0.01953125, 0.009765625};
 
@@ -123,8 +123,8 @@ public class RenderTileWithTransformsClientTest {
         LogbackTestTools.setLogLevelToInfo(LOG.getName()); // another option: setLogLevelToInfoToDebug
 
         // uncomment to log scan test results to a timestamped file
-//        LogbackTestTools.setRootFileAppenderWithTimestamp(new File("/Users/trautmane/Desktop/reiser/logs"),
-//                                                          "scan_parameters");
+        LogbackTestTools.setRootFileAppenderWithTimestamp(new File("/Users/trautmane/Desktop/reiser/logs"),
+                                                          "scan_parameters");
 
         final Timer timer = new Timer();
         timer.start();
@@ -146,6 +146,7 @@ public class RenderTileWithTransformsClientTest {
                                 subpixelAccuracy,
                                 numberOfPairsToVisualize,
                                 originalParameters,
+                                parameterIndexesToTest,
                                 stepSizes,
                                 maxTestsToRun);
 
@@ -224,6 +225,7 @@ public class RenderTileWithTransformsClientTest {
         private final StitchingParameters stitchingParameters;
         private final int numberOfPairsToVisualize;
         private final double[] originalParameters;
+        private final int[] parameterIndexesToTest;
         private final double[] stepSizes;
         private final int maxNumberOfTests;
 
@@ -245,6 +247,7 @@ public class RenderTileWithTransformsClientTest {
                       final boolean subpixelAccuracy,
                       final int numberOfPairsToVisualize,
                       final double[] originalParameters,
+                      final int[] parameterIndexesToTest,
                       final double[] stepSizes,
                       final int maxNumberOfTests)
                 throws IOException {
@@ -278,6 +281,7 @@ public class RenderTileWithTransformsClientTest {
 
             this.numberOfPairsToVisualize = numberOfPairsToVisualize;
             this.originalParameters = originalParameters;
+            this.parameterIndexesToTest = parameterIndexesToTest;
             this.stepSizes = stepSizes;
             this.maxNumberOfTests = maxNumberOfTests;
             this.testedDataStrings = new HashSet<>();
@@ -308,12 +312,13 @@ public class RenderTileWithTransformsClientTest {
 
                 // randomly order parameter optimization for each step
                 final List<Integer> transformParameterIndexes =
-                        IntStream.range(0, originalParameters.length).boxed().collect(Collectors.toList());
+                        Arrays.stream(parameterIndexesToTest).boxed().collect(Collectors.toList());
                 Collections.shuffle(transformParameterIndexes);
 
                 for (final int indexOfTransformParameterToChange : transformParameterIndexes) {
+                    final double adjustedStepSize = indexOfTransformParameterToChange == 3 ? 10.0 * stepSize : stepSize;
                     optimizeTransformParameterForStep(indexOfTransformParameterToChange,
-                                                      stepSize);
+                                                      adjustedStepSize);
                 }
 
                 if (totalTestCount >= maxNumberOfTests) {
