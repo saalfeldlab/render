@@ -1,12 +1,15 @@
 package org.janelia.render.client.tile;
 
+import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.WindowManager;
+import ij.plugin.ImagesToStack;
 import ij.process.ImageProcessor;
 
 import java.awt.Rectangle;
-import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -15,9 +18,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
+import mpicbg.models.InvertibleBoundable;
+import mpicbg.models.TranslationModel2D;
 import mpicbg.stitching.PairWiseStitchingImgLib;
 import mpicbg.stitching.PairWiseStitchingResult;
 import mpicbg.stitching.StitchingParameters;
+import mpicbg.stitching.fusion.Fusion;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.util.Timer;
 
@@ -34,11 +40,15 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import net.imglib2.type.numeric.integer.UnsignedByteType;
+import plugin.Stitching_Pairwise;
+
 /**
  * Tests the {@link RenderTileWithTransformsClient} class.
  *
  * @author Eric Trautman
  */
+@SuppressWarnings({"ConstantConditions", "CommentedOutCode"})
 public class RenderTileWithTransformsClientTest {
 
     @Test
@@ -63,39 +73,38 @@ public class RenderTileWithTransformsClientTest {
 //
 //            RenderTileWithTransformsClient.main(testArgs);
 
-            //for (int i = 0; i < 10; i++) {
-                findBestScanCorrectionParameters();
-            //}
+            debugOcellarScanCorrection();
 
         } catch (final Throwable t) {
             t.printStackTrace();
         }
     }
 
-    @SuppressWarnings({"ConstantConditions", "CommentedOutCode"})
-    public static void findBestScanCorrectionParameters()
+    public static void debugOcellarScanCorrection()
             throws IOException {
+        // hide all logging except from this test class
+        LogbackTestTools.setRootLogLevelToError();
+        LogbackTestTools.setLogLevelToInfo(LOG.getName()); // another option: setLogLevelToInfoToDebug
 
-        final RenderTileWithTransformsClient.Parameters parameters = new RenderTileWithTransformsClient.Parameters();
-        parameters.renderWeb = new RenderWebServiceParameters();
-        parameters.renderWeb.baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
-        parameters.renderWeb.owner = "reiser";
-        parameters.renderWeb.project = "Z0422_05_Ocellar";
-        parameters.stack = "v3_acquire";
+        // uncomment to log scan test results to a timestamped file
+        // LogbackTestTools.setRootFileAppenderWithTimestamp(new File("/Users/trautmane/Desktop/reiser/logs"),
+        //                                                   "scan_parameters");
 
-        parameters.featureRenderClip.clipWidth = 1200;  // full scale clip pixels
-        parameters.featureRenderClip.clipHeight = 1200; // full scale clip pixels
+        final boolean visualizeData = true;
+        if (visualizeData) {
+            // TODO: Preibisch - change this to your Fiji plugins directory so that stitching plugin is available
+            System.getProperties().setProperty("plugins.dir", "/Applications/Fiji.app/plugins");
+            new ImageJ();
+        }
 
-        parameters.scale = 0.25;
-
-        // http://renderer.int.janelia.org:8080/ng/#!%7B%22dimensions%22:%7B%22x%22:%5B8e-9%2C%22m%22%5D%2C%22y%22:%5B8e-9%2C%22m%22%5D%2C%22z%22:%5B8e-9%2C%22m%22%5D%7D%2C%22position%22:%5B-163.37060546875%2C-4313.3564453125%2C1263.5%5D%2C%22crossSectionScale%22:2%2C%22projectionScale%22:32768%2C%22layers%22:%5B%7B%22type%22:%22image%22%2C%22source%22:%7B%22url%22:%22render://http://renderer.int.janelia.org:8080/reiser/Z0422_05_Ocellar/v3_acquire_align%22%2C%22subsources%22:%7B%22default%22:true%2C%22bounds%22:true%7D%2C%22enableDefaultSubsources%22:false%7D%2C%22tab%22:%22source%22%2C%22name%22:%22v3_acquire_align%22%7D%5D%2C%22selectedLayer%22:%7B%22layer%22:%22v3_acquire_align%22%7D%2C%22layout%22:%22xy%22%7D
-
-        final int numberOfPairsToVisualize = 0; // change to 1 to see original pair (or more to see test pairs)
         final int checkPeaks = 50;
         final boolean subpixelAccuracy = false;
-        final int maxTestsToRun = 1000;
-        final int maxNumberOfRuns = 6;
+        final int fullScaleClipPixels = 1200;
+        final double renderScale = 0.25;
+        final double[] originalParameters = {19.4, 64.8, 24.4, 972.0};
+                                            //{34.5953125, 175.7765625, 39.10703125, 1089.96875}; // best individual (doesn't help)
 
+        // http://renderer.int.janelia.org:8080/ng/#!%7B%22dimensions%22:%7B%22x%22:%5B8e-9%2C%22m%22%5D%2C%22y%22:%5B8e-9%2C%22m%22%5D%2C%22z%22:%5B8e-9%2C%22m%22%5D%7D%2C%22position%22:%5B-163.37060546875%2C-4313.3564453125%2C1263.5%5D%2C%22crossSectionScale%22:2%2C%22projectionScale%22:32768%2C%22layers%22:%5B%7B%22type%22:%22image%22%2C%22source%22:%7B%22url%22:%22render://http://renderer.int.janelia.org:8080/reiser/Z0422_05_Ocellar/v3_acquire_align%22%2C%22subsources%22:%7B%22default%22:true%2C%22bounds%22:true%7D%2C%22enableDefaultSubsources%22:false%7D%2C%22tab%22:%22source%22%2C%22name%22:%22v3_acquire_align%22%7D%5D%2C%22selectedLayer%22:%7B%22layer%22:%22v3_acquire_align%22%7D%2C%22layout%22:%22xy%22%7D
         // column 0, top relative position => crop and view bottom edge of tiles
         final CanvasId p = new CanvasId("", "22-06-17_080526_0-0-0.1263.0", MontageRelativePosition.LEFT);
         final CanvasId q = new CanvasId("", "22-06-17_081143_0-0-1.1264.0", MontageRelativePosition.RIGHT);
@@ -104,27 +113,64 @@ public class RenderTileWithTransformsClientTest {
         // final CanvasId p = new CanvasId("", "22-06-18_034043_0-0-0.2097.0", MontageRelativePosition.LEFT);
         // final CanvasId q = new CanvasId("", "22-06-18_125654_0-0-1.patch.2098.0", MontageRelativePosition.RIGHT);
 
-        final RenderTileWithTransformsClient client = new RenderTileWithTransformsClient(parameters);
+        final int maxNumberOfRuns = 1;
+        final int numberOfPairsToVisualize = 0; // change to 1 to see original pair (or more to see test pairs)
 
-        if (numberOfPairsToVisualize > 0) {
-            // TODO: Preibisch - change this to your Fiji plugins directory so that stitching plugin is available
-            System.getProperties().setProperty("plugins.dir", "/Applications/Fiji.app/plugins");
-            new ImageJ();
+        // uncomment this and comment next to hack result to visualize and skip find process
+//        final TestResultWithContext bestResult = new TestResultWithContext("24.4 70.591015625 34.4 842.1171875 0",
+//                                                                           null,
+//                                                                           null);
+
+        final TestResultWithContext bestResult = findBestScanCorrectionParameters(p,
+                                                                                  q,
+                                                                                  checkPeaks,
+                                                                                  subpixelAccuracy,
+                                                                                  numberOfPairsToVisualize,
+                                                                                  fullScaleClipPixels,
+                                                                                  renderScale,
+                                                                                  originalParameters,
+                                                                                  maxNumberOfRuns);
+
+        if (visualizeData) {
+            final String qInPLayerTileId = p.getId().replace("0-0-0", "0-0-1");
+            final String pInQLayerTileId = q.getId().replace("0-0-1", "0-0-0");
+            final CanvasId qInPLayer = new CanvasId("", qInPLayerTileId, MontageRelativePosition.RIGHT);
+            final CanvasId pInQLayer = new CanvasId("", pInQLayerTileId, MontageRelativePosition.LEFT);
+
+            stitchFuseAndShowLayers(p, qInPLayer,
+                                    pInQLayer, q,
+                                    buildTransformDataString(originalParameters));
+
+            stitchFuseAndShowLayers(p, qInPLayer,
+                                    pInQLayer, q,
+                                    bestResult.dataString);
+
+            LOG.info("Processing is done!  Kill main thread when done viewing ...");
+
+            SimpleMultiThreading.threadHaltUnClean();
         }
+    }
 
-        double[] originalParameters = { 19.4, 64.8, 24.4, 972.0 };
+    public static TestResultWithContext findBestScanCorrectionParameters(final CanvasId p,
+                                                                         final CanvasId q,
+                                                                         final int checkPeaks,
+                                                                         final boolean subpixelAccuracy,
+                                                                         final int numberOfPairsToVisualize,
+                                                                         final int fullScaleClipPixels,
+                                                                         final double renderScale,
+                                                                         final double[] startingParameters,
+                                                                         final int maxNumberOfRuns)
+            throws IOException {
+
+        final int maxTestsToRun = 1000;
+
+        final RenderTileWithTransformsClient client = getOcellarClient(fullScaleClipPixels, renderScale);
+        double[] originalParameters = startingParameters.clone();
 
         final int[] parameterIndexesToTest = { 0, 1, 2, 3 };
+//        final int[] parameterIndexesToTest = { 3 }; // don't forget to change maxNumberOfRuns = 1
         final double[] stepSizes = {10.0, 5.0, 2.5, 1.25, 0.625, 0.3125, 0.15625,
                                     0.078125, 0.0390625, 0.01953125, 0.009765625};
-
-        // hide all logging except from this test class
-        LogbackTestTools.setRootLogLevelToError();
-        LogbackTestTools.setLogLevelToInfo(LOG.getName()); // another option: setLogLevelToInfoToDebug
-
-        // uncomment to log scan test results to a timestamped file
-        LogbackTestTools.setRootFileAppenderWithTimestamp(new File("/Users/trautmane/Desktop/reiser/logs"),
-                                                          "scan_parameters");
 
         final Timer timer = new Timer();
         timer.start();
@@ -139,9 +185,9 @@ public class RenderTileWithTransformsClientTest {
             LOG.info("findBestScanCorrectionParameters: begin run {} of {}\n", (i+1), maxNumberOfRuns);
 
             tester = new Tester(client,
-                                parameters.scale,
                                 p,
                                 q,
+                                renderScale,
                                 checkPeaks,
                                 subpixelAccuracy,
                                 numberOfPairsToVisualize,
@@ -167,9 +213,120 @@ public class RenderTileWithTransformsClientTest {
                  (int) (timer.stop() / 1000),
                  bestResult);
 
-        if (numberOfPairsToVisualize > 0) {
-            SimpleMultiThreading.threadHaltUnClean();
-        }
+        return bestResult;
+    }
+
+    public static void stitchFuseAndShowLayers(final CanvasId firstLayerP,
+                                               final CanvasId firstLayerQ,
+                                               final CanvasId secondLayerP,
+                                               final CanvasId secondLayerQ,
+                                               final String scanCorrectionTransformDataString)
+            throws IOException {
+
+        final int fullScaleClipPixels = 3000; // increase clip size to help with visualization
+        final double renderScale = 1.0;
+        final RenderTileWithTransformsClient client = getOcellarClient(fullScaleClipPixels, renderScale);
+        final LeafTransformSpec transformSpec = new LeafTransformSpec(SEMDistortionTransformA.class.getName(),
+                                                                      scanCorrectionTransformDataString);
+        final List<TransformSpec> tileTransformSpecList = Collections.singletonList(transformSpec);
+
+        final ImagePlus firstLayerFused = stitchAndFusePair(firstLayerP,
+                                                            firstLayerQ,
+                                                            tileTransformSpecList,
+                                                            scanCorrectionTransformDataString,
+                                                            renderScale,
+                                                            client);
+        // firstLayerFused.show();
+
+        final ImagePlus secondLayerFused = stitchAndFusePair(secondLayerP,
+                                                             secondLayerQ,
+                                                             tileTransformSpecList,
+                                                             scanCorrectionTransformDataString,
+                                                             renderScale,
+                                                             client);
+        // secondLayerFused.show();
+
+        final ImagePlus fusedStack = ImagesToStack.run(new ImagePlus[] {firstLayerFused, secondLayerFused});
+        fusedStack.setTitle("fusedStack " + scanCorrectionTransformDataString);
+
+        fusedStack.show();
+
+        IJ.run("Linear Stack Alignment with SIFT");
+
+        final ImagePlus alignedStack = WindowManager.getCurrentImage();
+        alignedStack.setTitle("alignedStack " + scanCorrectionTransformDataString);
+    }
+
+    public static ImagePlus stitchAndFusePair(final CanvasId p,
+                                              final CanvasId q,
+                                              final List<TransformSpec> tileTransformSpecList,
+                                              final String scanCorrectionTransformDataString,
+                                              final double renderScale,
+                                              final RenderTileWithTransformsClient client)
+            throws IOException {
+
+        LOG.info("stitchAndFusePair: entry, dataString={}", scanCorrectionTransformDataString);
+
+        final TileSpec pTileSpec = client.fetchTileSpec(p.getId());
+        final ImagePlus pTilePlus = renderTile(pTileSpec,
+                                               tileTransformSpecList,
+                                               scanCorrectionTransformDataString,
+                                               p,
+                                               renderScale,
+                                               client);
+
+        LOG.info("stitchAndFusePair: rendered scan corrected tile for {}", p);
+
+        final TileSpec qTileSpec = client.fetchTileSpec(q.getId());
+        final ImagePlus qTilePlus = renderTile(qTileSpec,
+                                               tileTransformSpecList,
+                                               scanCorrectionTransformDataString,
+                                               q,
+                                               renderScale,
+                                               client);
+
+        LOG.info("stitchAndFusePair: rendered scan corrected tile for {}, stitching tiles ...", q);
+
+        final StitchingParameters stitchingParameters =
+                buildStitchingParameters(Stitching_Pairwise.defaultCheckPeaks,
+                                         Stitching_Pairwise.defaultSubpixelAccuracy);
+
+        final PairWiseStitchingResult result = PairWiseStitchingImgLib.stitchPairwise(pTilePlus,
+                                                                                      qTilePlus,
+                                                                                      null,
+                                                                                      null,
+                                                                                      1,
+                                                                                      1,
+                                                                                      stitchingParameters);
+
+        LOG.info("stitchAndFusePair: fusing tiles ...");
+
+        final ArrayList<ImagePlus> images = new ArrayList<>();
+        images.add(pTilePlus);
+        images.add(qTilePlus);
+
+        final ArrayList<InvertibleBoundable> models = new ArrayList<>();
+        final TranslationModel2D model1 = new TranslationModel2D();
+        final TranslationModel2D model2 = new TranslationModel2D();
+        model2.set( result.getOffset( 0 ), result.getOffset( 1 ) );
+        models.add( model1 );
+        models.add( model2 );
+
+        final ImagePlus fused = Fusion.fuse(new UnsignedByteType(),
+                                            images,
+                                            models,
+                                            2,
+                                            Stitching_Pairwise.defaultSubpixelAccuracy,
+                                            Stitching_Pairwise.defaultFusionMethod,
+                                            null,
+                                            false,
+                                            true,
+                                            false);
+        fused.setTitle(pTileSpec.getZ() + " fused " + scanCorrectionTransformDataString);
+
+        LOG.info("stitchAndFusePair: exit");
+
+        return fused;
     }
 
     private static class TestResultWithContext {
@@ -240,9 +397,9 @@ public class RenderTileWithTransformsClientTest {
         private int totalTestCount;
 
         public Tester(final RenderTileWithTransformsClient client,
-                      final double renderScale,
                       final CanvasId pCanvasId,
                       final CanvasId qCanvasId,
+                      final double renderScale,
                       final int checkPeaks,
                       final boolean subpixelAccuracy,
                       final int numberOfPairsToVisualize,
@@ -258,27 +415,7 @@ public class RenderTileWithTransformsClientTest {
             this.pTileSpec = client.fetchTileSpec(pCanvasId.getId());
             this.qCanvasId = qCanvasId;
             this.qTileSpec = client.fetchTileSpec(qCanvasId.getId());
-
-            this.stitchingParameters = new StitchingParameters();
-            // static parameters
-            this.stitchingParameters.dimensionality = 2;
-            this.stitchingParameters.fusionMethod = 0;
-            this.stitchingParameters.fusedName = "";
-            this.stitchingParameters.addTilesAsRois = false;
-            this.stitchingParameters.computeOverlap = true;
-            this.stitchingParameters.ignoreZeroValuesFusion = false;
-            this.stitchingParameters.downSample = false;
-            this.stitchingParameters.displayFusion = false;
-            this.stitchingParameters.invertX = false;
-            this.stitchingParameters.invertY = false;
-            this.stitchingParameters.ignoreZStage = false;
-            this.stitchingParameters.xOffset = 0.0;
-            this.stitchingParameters.yOffset = 0.0;
-            this.stitchingParameters.zOffset = 0.0;
-            // dynamic parameters
-            this.stitchingParameters.checkPeaks = checkPeaks;
-            this.stitchingParameters.subpixelAccuracy = subpixelAccuracy;
-
+            this.stitchingParameters = buildStitchingParameters(checkPeaks, subpixelAccuracy);
             this.numberOfPairsToVisualize = numberOfPairsToVisualize;
             this.originalParameters = originalParameters;
             this.parameterIndexesToTest = parameterIndexesToTest;
@@ -411,15 +548,6 @@ public class RenderTileWithTransformsClientTest {
             return testResultWithContext;
         }
 
-        private String buildTransformDataString(final double[] transformationParameters) {
-            final StringBuilder dataStringBuilder = new StringBuilder();
-            for (final double p : transformationParameters) {
-                dataStringBuilder.append(p).append(" ");
-            }
-            dataStringBuilder.append("0"); // last 0 = x dimension
-            return dataStringBuilder.toString();
-        }
-
         private PairWiseStitchingResult deriveStitchingResult(final String transformDataString,
                                                               final int numberOfPairsTested) {
 
@@ -427,8 +555,10 @@ public class RenderTileWithTransformsClientTest {
                                                                           transformDataString);
             final List<TransformSpec> tileTransformSpecList = Collections.singletonList(transformSpec);
 
-            final ImagePlus pTilePlus = renderTile(pTileSpec, tileTransformSpecList, transformDataString, pCanvasId);
-            final ImagePlus qTilePlus = renderTile(qTileSpec, tileTransformSpecList, transformDataString, qCanvasId);
+            final ImagePlus pTilePlus = renderTile(pTileSpec, tileTransformSpecList, transformDataString,
+                                                   pCanvasId, renderScale, client);
+            final ImagePlus qTilePlus = renderTile(qTileSpec, tileTransformSpecList, transformDataString,
+                                                   qCanvasId, renderScale, client);
 
             // stitch pair ...
             final PairWiseStitchingResult result = PairWiseStitchingImgLib.stitchPairwise(pTilePlus,
@@ -449,16 +579,55 @@ public class RenderTileWithTransformsClientTest {
             return result;
         }
 
-        private ImagePlus renderTile(final TileSpec tileSpec,
-                                     final List<TransformSpec> tileTransforms,
-                                     final String dataString,
-                                     final CanvasId canvasId) {
-            final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
-                    client.renderTile(tileSpec, tileTransforms, renderScale, canvasId, null);
-            final ImageProcessor croppedTile = quickCropMaskedArea(ipwm);
-            return new ImagePlus(tileSpec.getTileId() + " " + dataString, croppedTile);
-        }
 
+    }
+
+    public static String buildTransformDataString(final double[] transformationParameters) {
+        final StringBuilder dataStringBuilder = new StringBuilder();
+        for (final double p : transformationParameters) {
+            dataStringBuilder.append(p).append(" ");
+        }
+        dataStringBuilder.append("0"); // last 0 = x dimension
+        return dataStringBuilder.toString();
+    }
+
+    public static ImagePlus renderTile(final TileSpec tileSpec,
+                                       final List<TransformSpec> tileTransforms,
+                                       final String dataString,
+                                       final CanvasId canvasId,
+                                       final double renderScale,
+                                       final RenderTileWithTransformsClient client) {
+        final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+                client.renderTile(tileSpec, tileTransforms, renderScale, canvasId, null);
+        final ImageProcessor croppedTile = quickCropMaskedArea(ipwm);
+        return new ImagePlus(tileSpec.getTileId() + " " + dataString, croppedTile);
+    }
+
+    public static StitchingParameters buildStitchingParameters(final int checkPeaks,
+                                                               final boolean subpixelAccuracy) {
+        final StitchingParameters stitchingParameters = new StitchingParameters();
+
+        // static parameters
+        stitchingParameters.dimensionality = 2;
+        stitchingParameters.fusionMethod = 0;
+        stitchingParameters.fusedName = "";
+        stitchingParameters.addTilesAsRois = false;
+        stitchingParameters.computeOverlap = true;
+        stitchingParameters.ignoreZeroValuesFusion = false;
+        stitchingParameters.downSample = false;
+        stitchingParameters.displayFusion = false;
+        stitchingParameters.invertX = false;
+        stitchingParameters.invertY = false;
+        stitchingParameters.ignoreZStage = false;
+        stitchingParameters.xOffset = 0.0;
+        stitchingParameters.yOffset = 0.0;
+        stitchingParameters.zOffset = 0.0;
+
+        // dynamic parameters
+        stitchingParameters.checkPeaks = checkPeaks;
+        stitchingParameters.subpixelAccuracy = subpixelAccuracy;
+
+        return stitchingParameters;
     }
 
     public static String resultToString(final PairWiseStitchingResult result) {
@@ -509,6 +678,25 @@ public class RenderTileWithTransformsClientTest {
         }
 
         return croppedTile;
+    }
+
+    public static RenderTileWithTransformsClient getOcellarClient(final Integer fullScaleClipPixels,
+                                                                   final double renderScale)
+            throws IOException {
+        final RenderTileWithTransformsClient.Parameters parameters = new RenderTileWithTransformsClient.Parameters();
+        parameters.renderWeb = new RenderWebServiceParameters();
+        parameters.renderWeb.baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
+        parameters.renderWeb.owner = "reiser";
+        parameters.renderWeb.project = "Z0422_05_Ocellar";
+        parameters.stack = "v3_acquire";
+
+        if (fullScaleClipPixels != null) {
+            parameters.featureRenderClip.clipWidth = fullScaleClipPixels;
+            parameters.featureRenderClip.clipHeight = fullScaleClipPixels;
+        }
+        parameters.scale = renderScale;
+
+        return new RenderTileWithTransformsClient(parameters);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderTileWithTransformsClientTest.class);
