@@ -442,7 +442,7 @@ public class RenderTileWithTransformsClientTest {
             for (final double stepSize : stepSizes) {
 
                 LOG.info("---------------------------------");
-                LOG.info("optimizeTransformParametersForAllSteps: begin stepSize {} with best result {}",
+                LOG.info("optimizeTransformParametersForAllSteps: begin stepSize {} with {}",
                          stepSize,
                          bestResult);
                 LOG.info("---------------------------------");
@@ -512,9 +512,9 @@ public class RenderTileWithTransformsClientTest {
                 } while ((checkStepUp || checkStepDown) && (totalTestCount < maxNumberOfTests));
             }
 
-            LOG.info("optimizeTransformParameterForStep: for arg {} stepSize {}, best result is {}, totalTestCount is {}",
+            LOG.info("optimizeStep: for arg {} stepSize {}, found best {}, totalTestCount is {}",
                      indexOfTransformParameterToChange,
-                     stepSize,
+                     String.format("% 16.10f", stepSize),
                      bestResult,
                      totalTestCount);
         }
@@ -540,10 +540,10 @@ public class RenderTileWithTransformsClientTest {
             final TestResultWithContext testResultWithContext = new TestResultWithContext(testDataString,
                                                                                           testValues,
                                                                                           testResult);
-            LOG.info("runOneTest: returning {} for arg {} stepSize {}",
-                     testResultWithContext,
+            LOG.info("runOneTest:   for arg {} stepSize {},  returning {}",
                      indexOfTransformParameterToChange,
-                     stepSize);
+                     String.format("% 16.10f", stepSize),
+                     testResultWithContext);
 
             return testResultWithContext;
         }
@@ -585,7 +585,7 @@ public class RenderTileWithTransformsClientTest {
     public static String buildTransformDataString(final double[] transformationParameters) {
         final StringBuilder dataStringBuilder = new StringBuilder();
         for (final double p : transformationParameters) {
-            dataStringBuilder.append(p).append(" ");
+            dataStringBuilder.append(String.format("%9.4f", p)).append(" ");
         }
         dataStringBuilder.append("0"); // last 0 = x dimension
         return dataStringBuilder.toString();
@@ -632,9 +632,10 @@ public class RenderTileWithTransformsClientTest {
 
     public static String resultToString(final PairWiseStitchingResult result) {
         return result == null ? "null" :
-               "crossCorrelation " + result.getCrossCorrelation() +
-               ", phaseCorrelation " + result.getPhaseCorrelation() +
-               ", offset " + Arrays.toString(result.getOffset());
+               String.format("crossCorrelation %7.5f, phaseCorrelation %7.5f, offset %s",
+                             result.getCrossCorrelation(),
+                             result.getPhaseCorrelation(),
+                             Arrays.toString(result.getOffset()));
     }
 
     /**
