@@ -452,11 +452,18 @@ public class RenderTileWithTransformsClientTest {
                         Arrays.stream(parameterIndexesToTest).boxed().collect(Collectors.toList());
                 Collections.shuffle(transformParameterIndexes);
 
-                for (final int indexOfTransformParameterToChange : transformParameterIndexes) {
-                    final double adjustedStepSize = indexOfTransformParameterToChange == 3 ? 10.0 * stepSize : stepSize;
-                    optimizeTransformParameterForStep(indexOfTransformParameterToChange,
-                                                      adjustedStepSize);
-                }
+                boolean foundSomethingBetter;
+                do {
+                    foundSomethingBetter = false;
+                    for (final int indexOfTransformParameterToChange : transformParameterIndexes) {
+                        final double adjustedStepSize =
+                                indexOfTransformParameterToChange == 3 ? 10.0 * stepSize : stepSize;
+                        final boolean foundSomethingBetterForParameter =
+                                optimizeTransformParameterForStep(indexOfTransformParameterToChange,
+                                                                  adjustedStepSize);
+                        foundSomethingBetter = foundSomethingBetter || foundSomethingBetterForParameter;
+                    }
+                } while (foundSomethingBetter);
 
                 if (totalTestCount >= maxNumberOfTests) {
                     break;
@@ -470,53 +477,49 @@ public class RenderTileWithTransformsClientTest {
             return bestResult;
         }
 
-        private void optimizeTransformParameterForStep(final int indexOfTransformParameterToChange,
-                                                       final double stepSize) {
+        private boolean optimizeTransformParameterForStep(final int indexOfTransformParameterToChange,
+                                                          final double stepSize) {
 
             final float offsetThreshold = 5.0f;
 
+            boolean foundSomethingBetter = false;
+
             if (totalTestCount < maxNumberOfTests) {
-                boolean checkStepUp = true;
-                boolean checkStepDown = true;
-                do {
-                    // clone best result as base before running tests
-                    final double[] baseValues = bestResult.transformValues.clone();
-                    
-                    if (checkStepUp) {
-                        final TestResultWithContext upResult = runOneTest(baseValues,
-                                                                          indexOfTransformParameterToChange,
-                                                                          stepSize);
-                        if (upResult.isBetter(bestResult,
-                                              originalResult.result.getOffset(),
-                                              offsetThreshold)) {
-                            bestResult = upResult;
-                        } else {
-                            checkStepUp = false;
-                        }
-                    }
 
-                    if (checkStepDown) {
-                        final TestResultWithContext downResult = runOneTest(baseValues,
-                                                                            indexOfTransformParameterToChange,
-                                                                            -stepSize);
-                        if (downResult.isBetter(bestResult,
-                                                originalResult.result.getOffset(),
-                                                offsetThreshold)) {
-                            bestResult = downResult;
-                            checkStepUp = false; // make sure up isn't checked again, since down must be better than up
-                        } else {
-                            checkStepDown = false;
-                        }
-                    }
+                // clone best result as base before running tests
+                final double[] baseValues = bestResult.transformValues.clone();
 
-                } while ((checkStepUp || checkStepDown) && (totalTestCount < maxNumberOfTests));
+                final TestResultWithContext upResult = runOneTest(baseValues,
+                                                                  indexOfTransformParameterToChange,
+                                                                  stepSize);
+                if (upResult.isBetter(bestResult,
+                                      originalResult.result.getOffset(),
+                                      offsetThreshold)) {
+                    bestResult = upResult;
+                    foundSomethingBetter = true;
+                }
+
+                final TestResultWithContext downResult = runOneTest(baseValues,
+                                                                    indexOfTransformParameterToChange,
+                                                                    -stepSize);
+                if (downResult.isBetter(bestResult,
+                                        originalResult.result.getOffset(),
+                                        offsetThreshold)) {
+                    bestResult = downResult;
+                    foundSomethingBetter = true;
+                }
+
             }
 
-            LOG.info("optimizeStep: for arg {} stepSize {}, found best {}, totalTestCount is {}",
+            final String betterMsg = foundSomethingBetter ? "found best" : " kept best";
+            LOG.info("optimizeStep: for arg {} stepSize {}, {} {}, totalTestCount is {}",
                      indexOfTransformParameterToChange,
                      String.format("% 16.10f", stepSize),
+                     betterMsg,
                      bestResult,
                      totalTestCount);
+
+            return foundSomethingBetter;
         }
 
         private TestResultWithContext runOneTest(final double[] baseValues,
