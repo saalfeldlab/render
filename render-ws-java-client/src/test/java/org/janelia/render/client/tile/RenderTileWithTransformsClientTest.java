@@ -13,9 +13,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.models.InvertibleBoundable;
@@ -100,7 +101,7 @@ public class RenderTileWithTransformsClientTest {
         final int checkPeaks = 50;
         final boolean subpixelAccuracy = false;
         final int fullScaleClipPixels = 1200;
-        final double renderScale = 0.25;
+        final List<StepParameters> stepParametersList = buildStepParameters();
         final double[] originalParameters = {19.4, 64.8, 24.4, 972.0};
                                             //{34.5953125, 175.7765625, 39.10703125, 1089.96875}; // best individual (doesn't help)
 
@@ -127,7 +128,7 @@ public class RenderTileWithTransformsClientTest {
                                                                                   subpixelAccuracy,
                                                                                   numberOfPairsToVisualize,
                                                                                   fullScaleClipPixels,
-                                                                                  renderScale,
+                                                                                  stepParametersList,
                                                                                   originalParameters,
                                                                                   maxNumberOfRuns);
 
@@ -151,26 +152,48 @@ public class RenderTileWithTransformsClientTest {
         }
     }
 
+    public static List<StepParameters> buildStepParameters() {
+        final List<StepParameters> stepParametersList = new ArrayList<>();
+        double stepSize = 10.0; // 5.0, 2.5, 1.25, 0.625, 0.3125, 0.15625, 0.078125, 0.0390625, 0.01953125, 0.009765625
+        double renderScale = 0.25;
+        for (int i = 0; i < 10; i++) {
+            final Map<Integer, Double> parameterIndexToStepSize = new LinkedHashMap<>();
+            parameterIndexToStepSize.put(0, stepSize);
+            parameterIndexToStepSize.put(1, stepSize);
+            parameterIndexToStepSize.put(2, stepSize);
+            parameterIndexToStepSize.put(3, stepSize * 10.0);
+
+            final StepParameters stepParameters = new StepParameters(i + 1,
+                                                                     parameterIndexToStepSize,
+                                                                     renderScale);
+
+            LOG.info("buildStepParameters: created {}", stepParameters);
+
+            stepParametersList.add(stepParameters);
+
+            stepSize = stepSize / 2.0;
+            if (stepSize == 0.625) {
+                renderScale = 0.5;
+            }
+        }
+        return stepParametersList;
+    }
+
     public static TestResultWithContext findBestScanCorrectionParameters(final CanvasId p,
                                                                          final CanvasId q,
                                                                          final int checkPeaks,
                                                                          final boolean subpixelAccuracy,
                                                                          final int numberOfPairsToVisualize,
                                                                          final int fullScaleClipPixels,
-                                                                         final double renderScale,
+                                                                         final List<StepParameters> stepParametersList,
                                                                          final double[] startingParameters,
                                                                          final int maxNumberOfRuns)
             throws IOException {
 
         final int maxTestsToRun = 1000;
-
-        final RenderTileWithTransformsClient client = getOcellarClient(fullScaleClipPixels, renderScale);
+        final double firstRenderScale = stepParametersList.get(0).renderScale;
+        final RenderTileWithTransformsClient client = getOcellarClient(fullScaleClipPixels, firstRenderScale);
         double[] originalParameters = startingParameters.clone();
-
-        final int[] parameterIndexesToTest = { 0, 1, 2, 3 };
-//        final int[] parameterIndexesToTest = { 3 }; // don't forget to change maxNumberOfRuns = 1
-        final double[] stepSizes = {10.0, 5.0, 2.5, 1.25, 0.625, 0.3125, 0.15625,
-                                    0.078125, 0.0390625, 0.01953125, 0.009765625};
 
         final Timer timer = new Timer();
         timer.start();
@@ -187,13 +210,11 @@ public class RenderTileWithTransformsClientTest {
             tester = new Tester(client,
                                 p,
                                 q,
-                                renderScale,
                                 checkPeaks,
                                 subpixelAccuracy,
                                 numberOfPairsToVisualize,
                                 originalParameters,
-                                parameterIndexesToTest,
-                                stepSizes,
+                                stepParametersList,
                                 maxTestsToRun);
 
             bestResult = tester.optimizeTransformParametersForAllSteps();
@@ -372,9 +393,43 @@ public class RenderTileWithTransformsClientTest {
         }
     }
 
+    private static class StepParameters {
+        private final int stepNumber;
+        private final Map<Integer, Double> parameterIndexToStepSize;
+        private final double renderScale;
+
+        public StepParameters(final int stepNumber,
+                              final Map<Integer, Double> parameterIndexToStepSize,
+                              final double renderScale) {
+            this.stepNumber = stepNumber;
+            this.parameterIndexToStepSize = parameterIndexToStepSize;
+            this.renderScale = renderScale;
+        }
+
+        @Override
+        public String toString() {
+            final StringBuilder sb = new StringBuilder(1024);
+            sb.append("{stepNumber: ").append(String.format("%2d", stepNumber)).append(", parameterIndexToStepSize:{");
+            for (final Integer index : parameterIndexToStepSize.keySet()) {
+                final double stepSize = parameterIndexToStepSize.get(index);
+                sb.append(String.format("%2d", index)).append("=").append(String.format("% 16.10f", stepSize));
+            }
+            sb.append("}, renderScale: ").append(String.format("% 4.2f", renderScale)).append("}");
+            return sb.toString();
+        }
+
+        public List<Integer> getParameterIndexesToTest() {
+            return new ArrayList<>(parameterIndexToStepSize.keySet());
+        }
+
+        public double getStepSize(final int forParameterIndex) {
+            return parameterIndexToStepSize.get(forParameterIndex);
+        }
+    }
+
     private static class Tester {
         private final RenderTileWithTransformsClient client;
-        private final double renderScale;
+        private final List<StepParameters> stepParametersList;
         private final CanvasId pCanvasId;
         private final TileSpec pTileSpec;
         private final CanvasId qCanvasId;
@@ -382,8 +437,6 @@ public class RenderTileWithTransformsClientTest {
         private final StitchingParameters stitchingParameters;
         private final int numberOfPairsToVisualize;
         private final double[] originalParameters;
-        private final int[] parameterIndexesToTest;
-        private final double[] stepSizes;
         private final int maxNumberOfTests;
 
         private TestResultWithContext originalResult;
@@ -399,18 +452,15 @@ public class RenderTileWithTransformsClientTest {
         public Tester(final RenderTileWithTransformsClient client,
                       final CanvasId pCanvasId,
                       final CanvasId qCanvasId,
-                      final double renderScale,
                       final int checkPeaks,
                       final boolean subpixelAccuracy,
                       final int numberOfPairsToVisualize,
                       final double[] originalParameters,
-                      final int[] parameterIndexesToTest,
-                      final double[] stepSizes,
+                      final List<StepParameters> stepParametersList,
                       final int maxNumberOfTests)
                 throws IOException {
 
             this.client = client;
-            this.renderScale = renderScale;
             this.pCanvasId = pCanvasId;
             this.pTileSpec = client.fetchTileSpec(pCanvasId.getId());
             this.qCanvasId = qCanvasId;
@@ -418,19 +468,23 @@ public class RenderTileWithTransformsClientTest {
             this.stitchingParameters = buildStitchingParameters(checkPeaks, subpixelAccuracy);
             this.numberOfPairsToVisualize = numberOfPairsToVisualize;
             this.originalParameters = originalParameters;
-            this.parameterIndexesToTest = parameterIndexesToTest;
-            this.stepSizes = stepSizes;
+            this.stepParametersList = stepParametersList;
             this.maxNumberOfTests = maxNumberOfTests;
             this.testedDataStrings = new HashSet<>();
         }
 
         public TestResultWithContext optimizeTransformParametersForAllSteps() {
 
+            final StepParameters firstStepParameters = stepParametersList.get(0);
             final String originalTransformDataString = buildTransformDataString(originalParameters);
+            final String originalDataStringWithRenderScale = dataStringWithRenderScale(originalTransformDataString,
+                                                                                       firstStepParameters.renderScale);
+
             this.testedDataStrings.clear();
-            this.testedDataStrings.add(originalTransformDataString);
+            this.testedDataStrings.add(originalDataStringWithRenderScale);
 
             final PairWiseStitchingResult originalStitchResult = deriveStitchingResult(originalTransformDataString,
+                                                                                       firstStepParameters.renderScale,
                                                                                        0);
             this.originalResult = new TestResultWithContext(originalTransformDataString,
                                                             originalParameters,
@@ -439,35 +493,58 @@ public class RenderTileWithTransformsClientTest {
 
             this.totalTestCount = 0;
 
-            for (final double stepSize : stepSizes) {
+            int stepCount = 0;
+            int failedStepCount = 0;
+            for (final StepParameters stepParameters : stepParametersList) {
 
                 LOG.info("---------------------------------");
-                LOG.info("optimizeTransformParametersForAllSteps: begin stepSize {} with {}",
-                         stepSize,
+                LOG.info("optimizeTransformParametersForAllSteps: begin step {} with {}",
+                         stepParameters.stepNumber,
                          bestResult);
                 LOG.info("---------------------------------");
 
                 // randomly order parameter optimization for each step
-                final List<Integer> transformParameterIndexes =
-                        Arrays.stream(parameterIndexesToTest).boxed().collect(Collectors.toList());
+                final List<Integer> transformParameterIndexes = stepParameters.getParameterIndexesToTest();
                 Collections.shuffle(transformParameterIndexes);
 
-                boolean foundSomethingBetter;
+                boolean foundSomethingBetterForStepSize = false;
+                boolean foundSomethingBetterForPass;
                 do {
-                    foundSomethingBetter = false;
+
+                    foundSomethingBetterForPass = false;
                     for (final int indexOfTransformParameterToChange : transformParameterIndexes) {
-                        final double adjustedStepSize =
-                                indexOfTransformParameterToChange == 3 ? 10.0 * stepSize : stepSize;
                         final boolean foundSomethingBetterForParameter =
                                 optimizeTransformParameterForStep(indexOfTransformParameterToChange,
-                                                                  adjustedStepSize);
-                        foundSomethingBetter = foundSomethingBetter || foundSomethingBetterForParameter;
+                                                                  stepParameters);
+                        foundSomethingBetterForPass = foundSomethingBetterForPass || foundSomethingBetterForParameter;
                     }
-                } while (foundSomethingBetter);
+
+                    foundSomethingBetterForStepSize = foundSomethingBetterForStepSize || foundSomethingBetterForPass;
+
+                } while (foundSomethingBetterForPass);
+
+                if (! foundSomethingBetterForStepSize) {
+                    failedStepCount++;
+                    if (failedStepCount > 1) {
+                        LOG.info("optimizeTransformParametersForAllSteps: stopping tests since nothing improved for steps {} or {}",
+                                 stepParameters.stepNumber - 1,
+                                 stepParameters.stepNumber);
+                        break;
+                    }
+                }
 
                 if (totalTestCount >= maxNumberOfTests) {
                     break;
                 }
+
+                final int nextStepIndex = stepCount + 1;
+                if (nextStepIndex < stepParametersList.size()) {
+                    final double nextStepRenderScale = stepParametersList.get(nextStepIndex).renderScale;
+                    if (stepParameters.renderScale != nextStepRenderScale) {
+                        scaleResultsForNextStep(nextStepRenderScale);
+                    }
+                }
+                stepCount++;
             }
 
             LOG.info("optimizeTransformParametersForAllSteps: after {} tests, best result is {}",
@@ -477,8 +554,39 @@ public class RenderTileWithTransformsClientTest {
             return bestResult;
         }
 
-        private boolean optimizeTransformParameterForStep(final int indexOfTransformParameterToChange,
-                                                          final double stepSize) {
+        private void scaleResultsForNextStep(final double nextStepRenderScale) {
+
+            LOG.info("scaleResultsForNextStep: entry, nextStepRenderScale is {}", nextStepRenderScale);
+
+            PairWiseStitchingResult rescaledResult = deriveStitchingResult(bestResult.dataString,
+                                                                           nextStepRenderScale,
+                                                                           0);
+            bestResult = new TestResultWithContext(bestResult.dataString,
+                                                   bestResult.transformValues,
+                                                   rescaledResult);
+            testedDataStrings.add(dataStringWithRenderScale(bestResult.dataString,
+                                                            nextStepRenderScale));
+
+            LOG.info("scaleResultsForNextStep: rescaled                 best result {} with renderScale {}",
+                     bestResult,
+                     nextStepRenderScale);
+
+            rescaledResult = deriveStitchingResult(originalResult.dataString,
+                                                   nextStepRenderScale,
+                                                   0);
+            originalResult = new TestResultWithContext(originalResult.dataString,
+                                                       originalResult.transformValues,
+                                                       rescaledResult);
+            testedDataStrings.add(dataStringWithRenderScale(originalResult.dataString,
+                                                            nextStepRenderScale));
+
+            LOG.info("scaleResultsForNextStep: rescaled             original result {} with renderScale {}",
+                     originalResult,
+                     nextStepRenderScale);
+        }
+
+        private boolean optimizeTransformParameterForStep(final int forParameterIndex,
+                                                          final StepParameters stepParameters) {
 
             final float offsetThreshold = 5.0f;
 
@@ -488,10 +596,12 @@ public class RenderTileWithTransformsClientTest {
 
                 // clone best result as base before running tests
                 final double[] baseValues = bestResult.transformValues.clone();
+                final double stepSize = stepParameters.getStepSize(forParameterIndex);
 
                 final TestResultWithContext upResult = runOneTest(baseValues,
-                                                                  indexOfTransformParameterToChange,
-                                                                  stepSize);
+                                                                  forParameterIndex,
+                                                                  stepSize,
+                                                                  stepParameters.renderScale);
                 if (upResult.isBetter(bestResult,
                                       originalResult.result.getOffset(),
                                       offsetThreshold)) {
@@ -500,8 +610,9 @@ public class RenderTileWithTransformsClientTest {
                 }
 
                 final TestResultWithContext downResult = runOneTest(baseValues,
-                                                                    indexOfTransformParameterToChange,
-                                                                    -stepSize);
+                                                                    forParameterIndex,
+                                                                    -stepSize,
+                                                                    stepParameters.renderScale);
                 if (downResult.isBetter(bestResult,
                                         originalResult.result.getOffset(),
                                         offsetThreshold)) {
@@ -512,9 +623,9 @@ public class RenderTileWithTransformsClientTest {
             }
 
             final String betterMsg = foundSomethingBetter ? "found best" : " kept best";
-            LOG.info("optimizeStep: for arg {} stepSize {}, {} {}, totalTestCount is {}",
-                     indexOfTransformParameterToChange,
-                     String.format("% 16.10f", stepSize),
+            LOG.info("optimizeStep: for arg {} step {},         {}            {}, totalTestCount is {}",
+                     forParameterIndex,
+                     stepParameters.stepNumber,
                      betterMsg,
                      bestResult,
                      totalTestCount);
@@ -524,20 +635,22 @@ public class RenderTileWithTransformsClientTest {
 
         private TestResultWithContext runOneTest(final double[] baseValues,
                                                  final int indexOfTransformParameterToChange,
-                                                 final double stepSize) {
+                                                 final double stepSize,
+                                                 final double renderScale) {
             totalTestCount++;
 
             final double[] testValues = baseValues.clone();
             testValues[indexOfTransformParameterToChange] = testValues[indexOfTransformParameterToChange] + stepSize;
             final String testDataString = buildTransformDataString(testValues);
+            final String dataStringWithRenderScale = dataStringWithRenderScale(testDataString, renderScale);
 
             final PairWiseStitchingResult testResult;
-            if (testedDataStrings.contains(testDataString)) {
+            if (testedDataStrings.contains(dataStringWithRenderScale)) {
                 LOG.info("runOneTest: already tested {}", testDataString);
                 testResult = null;
             } else {
-                testResult = deriveStitchingResult(testDataString, testedDataStrings.size());
-                testedDataStrings.add(testDataString);
+                testResult = deriveStitchingResult(testDataString, renderScale, testedDataStrings.size());
+                testedDataStrings.add(dataStringWithRenderScale);
             }
 
             final TestResultWithContext testResultWithContext = new TestResultWithContext(testDataString,
@@ -552,6 +665,7 @@ public class RenderTileWithTransformsClientTest {
         }
 
         private PairWiseStitchingResult deriveStitchingResult(final String transformDataString,
+                                                              final double renderScale,
                                                               final int numberOfPairsTested) {
 
             final LeafTransformSpec transformSpec = new LeafTransformSpec(SEMDistortionTransformA.class.getName(),
@@ -592,6 +706,11 @@ public class RenderTileWithTransformsClientTest {
         }
         dataStringBuilder.append("0"); // last 0 = x dimension
         return dataStringBuilder.toString();
+    }
+
+    public static String dataStringWithRenderScale(final String dataString,
+                                                   final double renderScale) {
+        return dataString + " renderScale:" + renderScale;
     }
 
     public static ImagePlus renderTile(final TileSpec tileSpec,
@@ -685,7 +804,7 @@ public class RenderTileWithTransformsClientTest {
     }
 
     public static RenderTileWithTransformsClient getOcellarClient(final Integer fullScaleClipPixels,
-                                                                   final double renderScale)
+                                                                  final double renderScale)
             throws IOException {
         final RenderTileWithTransformsClient.Parameters parameters = new RenderTileWithTransformsClient.Parameters();
         parameters.renderWeb = new RenderWebServiceParameters();
