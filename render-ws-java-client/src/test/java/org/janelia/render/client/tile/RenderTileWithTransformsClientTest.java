@@ -30,6 +30,7 @@ import mpicbg.util.Timer;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.MontageRelativePosition;
+import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
@@ -75,10 +76,66 @@ public class RenderTileWithTransformsClientTest {
 //            RenderTileWithTransformsClient.main(testArgs);
 
             debugOcellarScanCorrection();
+//            visualizeOcellarScanCorrection();
 
         } catch (final Throwable t) {
             t.printStackTrace();
         }
+    }
+
+    public static List<OrderedCanvasIdPair> getTilePairsForOcellarProblemAreas() {
+
+        // first problem area in neuroglancer:
+        //   http://renderer.int.janelia.org:8080/ng/#!%7B%22dimensions%22:%7B%22x%22:%5B8e-9%2C%22m%22%5D%2C%22y%22:%5B8e-9%2C%22m%22%5D%2C%22z%22:%5B8e-9%2C%22m%22%5D%7D%2C%22position%22:%5B-163.37060546875%2C-4313.3564453125%2C1263.5%5D%2C%22crossSectionScale%22:2%2C%22projectionScale%22:32768%2C%22layers%22:%5B%7B%22type%22:%22image%22%2C%22source%22:%7B%22url%22:%22render://http://renderer.int.janelia.org:8080/reiser/Z0422_05_Ocellar/v3_acquire_align%22%2C%22subsources%22:%7B%22default%22:true%2C%22bounds%22:true%7D%2C%22enableDefaultSubsources%22:false%7D%2C%22tab%22:%22source%22%2C%22name%22:%22v3_acquire_align%22%7D%5D%2C%22selectedLayer%22:%7B%22layer%22:%22v3_acquire_align%22%7D%2C%22layout%22:%22xy%22%7D
+
+        // TODO: comment/uncomment pairs based upon what you want to process
+        return Arrays.asList(
+                // tile ids for first problem area (z 1263 to 1264)
+                //   for column 0 tile, left relative position means crop and view right edge of tile
+//                new OrderedCanvasIdPair(
+//                        new CanvasId("", "22-06-17_080526_0-0-0.1263.0", MontageRelativePosition.LEFT),
+//                        new CanvasId("", "22-06-17_081143_0-0-1.1264.0", MontageRelativePosition.RIGHT),
+//                        1.0)
+//                ,
+                // tile ids for next problem area (z 2097 to 2098), z 2098 is patched, so really z 2099
+                new OrderedCanvasIdPair(
+                        new CanvasId("", "22-06-18_034043_0-0-0.2097.0", MontageRelativePosition.LEFT),
+                        new CanvasId("", "22-06-18_125654_0-0-1.patch.2098.0", MontageRelativePosition.RIGHT),
+                        1.0)
+        );
+    }
+
+    public static void visualizeOcellarScanCorrection()
+            throws IOException {
+
+        // TODO: Preibisch - change this to your Fiji plugins directory so that stitching plugin is available
+        System.getProperties().setProperty("plugins.dir", "/Applications/Fiji.app/plugins");
+        new ImageJ();
+
+        final String[] scanParameterDataStrings = {
+                "19.4 64.8 24.4 972.0 0",
+                "32.6031   67.1633   35.4156  962.6250 0"
+        };
+        //{34.5953125, 175.7765625, 39.10703125, 1089.96875}; // best individual (doesn't help)
+
+        for (final OrderedCanvasIdPair problemTilePair : getTilePairsForOcellarProblemAreas()) {
+            for (final String scanParameterDataString : scanParameterDataStrings) {
+                final CanvasId p = problemTilePair.getP();
+                final CanvasId q = problemTilePair.getQ();
+                final String qInPLayerTileId = p.getId().replace("0-0-0", "0-0-1");
+                final String pInQLayerTileId = q.getId().replace("0-0-1", "0-0-0");
+                final CanvasId qInPLayer = new CanvasId("", qInPLayerTileId, MontageRelativePosition.RIGHT);
+                final CanvasId pInQLayer = new CanvasId("", pInQLayerTileId, MontageRelativePosition.LEFT);
+
+                stitchFuseAndShowLayers(p, qInPLayer,
+                                        pInQLayer, q,
+                                        scanParameterDataString);
+            }
+        }
+
+        LOG.info("visualizeOcellarScanCorrection: kill main thread when done viewing ...");
+
+        SimpleMultiThreading.threadHaltUnClean();
     }
 
     public static void debugOcellarScanCorrection()
@@ -105,49 +162,43 @@ public class RenderTileWithTransformsClientTest {
         final double[] originalParameters = {19.4, 64.8, 24.4, 972.0};
                                             //{34.5953125, 175.7765625, 39.10703125, 1089.96875}; // best individual (doesn't help)
 
-        // http://renderer.int.janelia.org:8080/ng/#!%7B%22dimensions%22:%7B%22x%22:%5B8e-9%2C%22m%22%5D%2C%22y%22:%5B8e-9%2C%22m%22%5D%2C%22z%22:%5B8e-9%2C%22m%22%5D%7D%2C%22position%22:%5B-163.37060546875%2C-4313.3564453125%2C1263.5%5D%2C%22crossSectionScale%22:2%2C%22projectionScale%22:32768%2C%22layers%22:%5B%7B%22type%22:%22image%22%2C%22source%22:%7B%22url%22:%22render://http://renderer.int.janelia.org:8080/reiser/Z0422_05_Ocellar/v3_acquire_align%22%2C%22subsources%22:%7B%22default%22:true%2C%22bounds%22:true%7D%2C%22enableDefaultSubsources%22:false%7D%2C%22tab%22:%22source%22%2C%22name%22:%22v3_acquire_align%22%7D%5D%2C%22selectedLayer%22:%7B%22layer%22:%22v3_acquire_align%22%7D%2C%22layout%22:%22xy%22%7D
-        // column 0, top relative position => crop and view bottom edge of tiles
-        final CanvasId p = new CanvasId("", "22-06-17_080526_0-0-0.1263.0", MontageRelativePosition.LEFT);
-        final CanvasId q = new CanvasId("", "22-06-17_081143_0-0-1.1264.0", MontageRelativePosition.RIGHT);
-
-        // tile ids for next problem area (z 2097 to 2098), z 2098 is patched, so really z 2099
-        // final CanvasId p = new CanvasId("", "22-06-18_034043_0-0-0.2097.0", MontageRelativePosition.LEFT);
-        // final CanvasId q = new CanvasId("", "22-06-18_125654_0-0-1.patch.2098.0", MontageRelativePosition.RIGHT);
-
         final int maxNumberOfRuns = 1;
         final int numberOfPairsToVisualize = 0; // change to 1 to see original pair (or more to see test pairs)
 
-        // uncomment this and comment next to hack result to visualize and skip find process
-//        final TestResultWithContext bestResult = new TestResultWithContext("24.4 70.591015625 34.4 842.1171875 0",
-//                                                                           null,
-//                                                                           null);
+        for (final OrderedCanvasIdPair problemTilePair : getTilePairsForOcellarProblemAreas()) {
 
-        final TestResultWithContext bestResult = findBestScanCorrectionParameters(p,
-                                                                                  q,
-                                                                                  checkPeaks,
-                                                                                  subpixelAccuracy,
-                                                                                  numberOfPairsToVisualize,
-                                                                                  fullScaleClipPixels,
-                                                                                  stepParametersList,
-                                                                                  originalParameters,
-                                                                                  maxNumberOfRuns);
+            final CanvasId p = problemTilePair.getP();
+            final CanvasId q = problemTilePair.getQ();
+
+            final TestResultWithContext bestResult = findBestScanCorrectionParameters(p,
+                                                                                      q,
+                                                                                      checkPeaks,
+                                                                                      subpixelAccuracy,
+                                                                                      numberOfPairsToVisualize,
+                                                                                      fullScaleClipPixels,
+                                                                                      stepParametersList,
+                                                                                      originalParameters,
+                                                                                      maxNumberOfRuns);
+
+            if (visualizeData) {
+                final String qInPLayerTileId = p.getId().replace("0-0-0", "0-0-1");
+                final String pInQLayerTileId = q.getId().replace("0-0-1", "0-0-0");
+                final CanvasId qInPLayer = new CanvasId("", qInPLayerTileId, MontageRelativePosition.RIGHT);
+                final CanvasId pInQLayer = new CanvasId("", pInQLayerTileId, MontageRelativePosition.LEFT);
+
+                stitchFuseAndShowLayers(p, qInPLayer,
+                                        pInQLayer, q,
+                                        buildTransformDataString(originalParameters));
+
+                stitchFuseAndShowLayers(p, qInPLayer,
+                                        pInQLayer, q,
+                                        bestResult.dataString);
+
+            }
+        }
 
         if (visualizeData) {
-            final String qInPLayerTileId = p.getId().replace("0-0-0", "0-0-1");
-            final String pInQLayerTileId = q.getId().replace("0-0-1", "0-0-0");
-            final CanvasId qInPLayer = new CanvasId("", qInPLayerTileId, MontageRelativePosition.RIGHT);
-            final CanvasId pInQLayer = new CanvasId("", pInQLayerTileId, MontageRelativePosition.LEFT);
-
-            stitchFuseAndShowLayers(p, qInPLayer,
-                                    pInQLayer, q,
-                                    buildTransformDataString(originalParameters));
-
-            stitchFuseAndShowLayers(p, qInPLayer,
-                                    pInQLayer, q,
-                                    bestResult.dataString);
-
-            LOG.info("Processing is done!  Kill main thread when done viewing ...");
-
+            LOG.info("debugOcellarScanCorrection: processing is done, kill main thread when done viewing ...");
             SimpleMultiThreading.threadHaltUnClean();
         }
     }
