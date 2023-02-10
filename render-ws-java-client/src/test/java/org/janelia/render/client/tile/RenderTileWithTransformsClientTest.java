@@ -371,12 +371,14 @@ public class RenderTileWithTransformsClientTest {
 
         @SuppressWarnings("SameParameterValue")
         private boolean isBetter(final TestResultWithContext that,
+                                 final double correlationThreshold,
                                  final float[] originalOffset,
                                  final float offsetThreshold) {
             // TODO: find 'limitMaxOverlap' parameter that Preibisch mentioned (or confirm offset check is sufficient)
             boolean better = false;
             if (this.result != null) {
-                if (this.result.getCrossCorrelation() > that.result.getCrossCorrelation()) {
+                final double correlationDelta = this.result.getCrossCorrelation() - that.result.getCrossCorrelation();
+                if (correlationDelta > correlationThreshold) {
                     final float[] offset = this.result.getOffset();
                     final float deltaX = Math.abs(originalOffset[0] - offset[0]);
                     final float deltaY = Math.abs(originalOffset[1] - offset[1]);
@@ -491,6 +493,7 @@ public class RenderTileWithTransformsClientTest {
                                                             originalStitchResult);
             this.bestResult = this.originalResult;
 
+            final int maxFailedSteps = 3;
             this.totalTestCount = 0;
 
             int stepCount = 0;
@@ -525,10 +528,9 @@ public class RenderTileWithTransformsClientTest {
 
                 if (! foundSomethingBetterForStepSize) {
                     failedStepCount++;
-                    if (failedStepCount > 1) {
-                        LOG.info("optimizeTransformParametersForAllSteps: stopping tests since nothing improved for steps {} or {}",
-                                 stepParameters.stepNumber - 1,
-                                 stepParameters.stepNumber);
+                    if (failedStepCount >= maxFailedSteps) {
+                        LOG.info("optimizeTransformParametersForAllSteps: stopping tests since nothing improved for last {} steps",
+                                 maxFailedSteps);
                         break;
                     }
                 }
@@ -588,6 +590,7 @@ public class RenderTileWithTransformsClientTest {
         private boolean optimizeTransformParameterForStep(final int forParameterIndex,
                                                           final StepParameters stepParameters) {
 
+            final double correlationThreshold = 0.0000001;
             final float offsetThreshold = 5.0f;
 
             boolean foundSomethingBetter = false;
@@ -603,6 +606,7 @@ public class RenderTileWithTransformsClientTest {
                                                                   stepSize,
                                                                   stepParameters.renderScale);
                 if (upResult.isBetter(bestResult,
+                                      correlationThreshold,
                                       originalResult.result.getOffset(),
                                       offsetThreshold)) {
                     bestResult = upResult;
@@ -614,6 +618,7 @@ public class RenderTileWithTransformsClientTest {
                                                                     -stepSize,
                                                                     stepParameters.renderScale);
                 if (downResult.isBetter(bestResult,
+                                        correlationThreshold,
                                         originalResult.result.getOffset(),
                                         offsetThreshold)) {
                     bestResult = downResult;
@@ -656,10 +661,12 @@ public class RenderTileWithTransformsClientTest {
             final TestResultWithContext testResultWithContext = new TestResultWithContext(testDataString,
                                                                                           testValues,
                                                                                           testResult);
-            LOG.info("runOneTest:   for arg {} stepSize {},  returning {}",
-                     indexOfTransformParameterToChange,
-                     String.format("% 16.10f", stepSize),
-                     testResultWithContext);
+            if (testResult != null) {
+                LOG.info("runOneTest:   for arg {} stepSize {},  returning {}",
+                         indexOfTransformParameterToChange,
+                         String.format("% 16.10f", stepSize),
+                         testResultWithContext);
+            }
 
             return testResultWithContext;
         }
@@ -754,7 +761,7 @@ public class RenderTileWithTransformsClientTest {
 
     public static String resultToString(final PairWiseStitchingResult result) {
         return result == null ? "null" :
-               String.format("crossCorrelation %7.5f, phaseCorrelation %7.5f, offset %s",
+               String.format("crossCorrelation %9.7f, phaseCorrelation %7.5f, offset %s",
                              result.getCrossCorrelation(),
                              result.getPhaseCorrelation(),
                              Arrays.toString(result.getOffset()));
