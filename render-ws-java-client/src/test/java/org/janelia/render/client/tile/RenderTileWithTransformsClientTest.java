@@ -8,6 +8,7 @@ import ij.plugin.ImagesToStack;
 import ij.process.ImageProcessor;
 
 import java.awt.Rectangle;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,7 +51,7 @@ import plugin.Stitching_Pairwise;
  *
  * @author Eric Trautman
  */
-@SuppressWarnings({"ConstantConditions", "CommentedOutCode"})
+@SuppressWarnings({"ConstantConditions", "CommentedOutCode", "unused"})
 public class RenderTileWithTransformsClientTest {
 
     @Test
@@ -89,6 +90,7 @@ public class RenderTileWithTransformsClientTest {
         //   http://renderer.int.janelia.org:8080/ng/#!%7B%22dimensions%22:%7B%22x%22:%5B8e-9%2C%22m%22%5D%2C%22y%22:%5B8e-9%2C%22m%22%5D%2C%22z%22:%5B8e-9%2C%22m%22%5D%7D%2C%22position%22:%5B-163.37060546875%2C-4313.3564453125%2C1263.5%5D%2C%22crossSectionScale%22:2%2C%22projectionScale%22:32768%2C%22layers%22:%5B%7B%22type%22:%22image%22%2C%22source%22:%7B%22url%22:%22render://http://renderer.int.janelia.org:8080/reiser/Z0422_05_Ocellar/v3_acquire_align%22%2C%22subsources%22:%7B%22default%22:true%2C%22bounds%22:true%7D%2C%22enableDefaultSubsources%22:false%7D%2C%22tab%22:%22source%22%2C%22name%22:%22v3_acquire_align%22%7D%5D%2C%22selectedLayer%22:%7B%22layer%22:%22v3_acquire_align%22%7D%2C%22layout%22:%22xy%22%7D
 
         // TODO: comment/uncomment pairs based upon what you want to process
+        //noinspection ArraysAsListWithZeroOrOneArgument
         return Arrays.asList(
                 // tile ids for first problem area (z 1263 to 1264)
                 //   for column 0 tile, left relative position means crop and view right edge of tile
@@ -104,6 +106,15 @@ public class RenderTileWithTransformsClientTest {
                         1.0)
         );
     }
+
+    /** Threshold for minimum correlation improvement to consider a scan parameter change "better". */
+    private static final double CORRELATION_THRESHOLD = 0.0000001;
+
+    /** Threshold to flag correlation/stitch result as unreliable (looking at difference from original stitch offset). */
+    private static final float OFFSET_THRESHOLD = 5.0f;
+
+    /** Set this to null to disable logging to files or set it to a valid path if you want to log runs to files. */
+    private static final File TEST_RESULT_LOG_DIR = null; //new File("/Users/trautmane/Desktop/reiser/logs");
 
     public static void visualizeOcellarScanCorrection()
             throws IOException {
@@ -144,9 +155,9 @@ public class RenderTileWithTransformsClientTest {
         LogbackTestTools.setRootLogLevelToError();
         LogbackTestTools.setLogLevelToInfo(LOG.getName()); // another option: setLogLevelToInfoToDebug
 
-        // uncomment to log scan test results to a timestamped file
-        // LogbackTestTools.setRootFileAppenderWithTimestamp(new File("/Users/trautmane/Desktop/reiser/logs"),
-        //                                                   "scan_parameters");
+        if ((TEST_RESULT_LOG_DIR != null) && TEST_RESULT_LOG_DIR.exists()) {
+            LogbackTestTools.setRootFileAppenderWithTimestamp(TEST_RESULT_LOG_DIR, "scan_parameters");
+        }
 
         final boolean visualizeData = true;
         if (visualizeData) {
@@ -640,10 +651,6 @@ public class RenderTileWithTransformsClientTest {
 
         private boolean optimizeTransformParameterForStep(final int forParameterIndex,
                                                           final StepParameters stepParameters) {
-
-            final double correlationThreshold = 0.0000001;
-            final float offsetThreshold = 5.0f;
-
             boolean foundSomethingBetter = false;
 
             if (totalTestCount < maxNumberOfTests) {
@@ -657,9 +664,9 @@ public class RenderTileWithTransformsClientTest {
                                                                   stepSize,
                                                                   stepParameters.renderScale);
                 if (upResult.isBetter(bestResult,
-                                      correlationThreshold,
+                                      CORRELATION_THRESHOLD,
                                       originalResult.result.getOffset(),
-                                      offsetThreshold)) {
+                                      OFFSET_THRESHOLD)) {
                     bestResult = upResult;
                     foundSomethingBetter = true;
                 }
@@ -669,9 +676,9 @@ public class RenderTileWithTransformsClientTest {
                                                                     -stepSize,
                                                                     stepParameters.renderScale);
                 if (downResult.isBetter(bestResult,
-                                        correlationThreshold,
+                                        CORRELATION_THRESHOLD,
                                         originalResult.result.getOffset(),
-                                        offsetThreshold)) {
+                                        OFFSET_THRESHOLD)) {
                     bestResult = downResult;
                     foundSomethingBetter = true;
                 }
