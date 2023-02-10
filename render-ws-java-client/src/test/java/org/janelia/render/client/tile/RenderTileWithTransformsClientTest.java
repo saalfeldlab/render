@@ -70,11 +70,28 @@ public class RenderTileWithTransformsClientTest {
 //                    "--owner", "reiser",
 //                    "--project", "Z0422_05_Ocellar",
 //                    "--stack", "v3_acquire",
-//                    "--rootDirectory", "/Users/trautmane/Desktop/fibsem_scan_correction",
-//                    "--tileId", "22-06-17_080526_0-0-1.1263.0"
+//                    "--rootDirectory", "/Users/trautmane/Desktop/reiser/scan_1263_best",
+//                    "--transformFile", "/Users/trautmane/Desktop/reiser/scan_1263_best/transform.json",
+//                    "--tileId",
+//                    "22-06-17_080526_0-0-0.1263.0", "22-06-17_080526_0-0-1.1263.0",
+//                    "22-06-17_081143_0-0-0.1264.0", "22-06-17_081143_0-0-1.1264.0",
+//                    "--renderWithoutMask"
 //            };
 //
 //            RenderTileWithTransformsClient.main(testArgs);
+
+            // TODO: consider these ideas from Preibisch if we ever need to revisit a similar problem
+            // a) only apply improved scan correction to second tile/layer
+            //    - should have done this originally, but likely wasn't a problem because
+            //      problem areas were left-right pairs and first tile's right edge was likely
+            //      not affected much by changes in scan correction (since corrections primarily
+            //      altered left edge)
+            // b) use SIFT with translation to align pair first and
+            //    then calculate cross correlation (do not compute overlap + pass in transform)
+            // c) use SIFT with translation number of inliers instead of cross correlation as quality metric
+            //    - must first determine optimal SIFT maxError value by stepping through very low
+            //      pixel error values (0.1, 0.2, .... 1.0, ... 2.0) with a tile pair from a
+            //      good region of the volume and finding where the maxError peaks and then plateaus
 
             final boolean visualizeResult = true;
             debugOcellarScanCorrection(visualizeResult);
@@ -115,7 +132,7 @@ public class RenderTileWithTransformsClientTest {
     private static final float OFFSET_THRESHOLD = 5.0f;
 
     /** Set this to null to disable logging to files or set it to a valid path if you want to log runs to files. */
-    private static final File TEST_RESULT_LOG_DIR = new File("/Users/trautmane/Desktop/reiser/logs");
+    private static final File TEST_RESULT_LOG_DIR = new File("/Users/trautmane/Desktop/reiser/logs_2097");
 
     /** Number of times to repeat scan correction test run (to explore differences with random ordering). */
     private static final int MAX_NUMBER_OF_RUNS = 5;
@@ -157,8 +174,9 @@ public class RenderTileWithTransformsClientTest {
         new ImageJ();
 
         final String[] scanParameterDataStrings = {
-                "19.4 64.8 24.4 972.0 0",
-                "32.6031   67.1633   35.4156  962.6250 0"
+                "19.4 64.8 24.4 972.0 0",                                 // original
+                "21.17734375 74.809765625 42.730078125 1223.513671875 0", // best 1263
+                "19.4 301.05 54.4 3428.25 0"                              // best 2097
         };
         //{34.5953125, 175.7765625, 39.10703125, 1089.96875}; // best individual (doesn't help)
 
