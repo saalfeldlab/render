@@ -76,7 +76,8 @@ public class RenderTileWithTransformsClientTest {
 //
 //            RenderTileWithTransformsClient.main(testArgs);
 
-            debugOcellarScanCorrection();
+            final boolean visualizeResult = true;
+            debugOcellarScanCorrection(visualizeResult);
 //            visualizeOcellarScanCorrection();
 
         } catch (final Throwable t) {
@@ -114,7 +115,39 @@ public class RenderTileWithTransformsClientTest {
     private static final float OFFSET_THRESHOLD = 5.0f;
 
     /** Set this to null to disable logging to files or set it to a valid path if you want to log runs to files. */
-    private static final File TEST_RESULT_LOG_DIR = null; //new File("/Users/trautmane/Desktop/reiser/logs");
+    private static final File TEST_RESULT_LOG_DIR = new File("/Users/trautmane/Desktop/reiser/logs");
+
+    /** Number of times to repeat scan correction test run (to explore differences with random ordering). */
+    private static final int MAX_NUMBER_OF_RUNS = 5;
+
+    @SuppressWarnings("LocalCanBeFinal")
+    private static List<StepParameters> buildStepParameters() {
+        final List<StepParameters> stepParametersList = new ArrayList<>();
+        double stepSize = 10.0; // 5.0, 2.5, 1.25, 0.625, 0.3125, 0.15625, 0.078125, 0.0390625, 0.01953125, 0.009765625
+        double renderScale = 0.25;
+        for (int i = 0; i < 10; i++) {
+            final Map<Integer, Double> parameterIndexToStepSize = new LinkedHashMap<>();
+            parameterIndexToStepSize.put(0, stepSize);
+            parameterIndexToStepSize.put(1, stepSize);
+            parameterIndexToStepSize.put(2, stepSize);
+            parameterIndexToStepSize.put(3, stepSize * 10.0);
+
+            final StepParameters stepParameters = new StepParameters(i + 1,
+                                                                     parameterIndexToStepSize,
+                                                                     renderScale);
+
+            LOG.info("buildStepParameters: created {}", stepParameters);
+
+            stepParametersList.add(stepParameters);
+
+            stepSize = stepSize / 2.0;
+            // changing renderScale did not improve results for first problem area (and significantly slowed process)
+//            if (stepSize == 0.625) {
+//                renderScale = 0.5;
+//            }
+        }
+        return stepParametersList;
+    }
 
     public static void visualizeOcellarScanCorrection()
             throws IOException {
@@ -149,7 +182,7 @@ public class RenderTileWithTransformsClientTest {
         SimpleMultiThreading.threadHaltUnClean();
     }
 
-    public static void debugOcellarScanCorrection()
+    public static void debugOcellarScanCorrection(final boolean visualizeResult)
             throws IOException {
         // hide all logging except from this test class
         LogbackTestTools.setRootLogLevelToError();
@@ -159,8 +192,7 @@ public class RenderTileWithTransformsClientTest {
             LogbackTestTools.setRootFileAppenderWithTimestamp(TEST_RESULT_LOG_DIR, "scan_parameters");
         }
 
-        final boolean visualizeData = true;
-        if (visualizeData) {
+        if (visualizeResult) {
             // TODO: Preibisch - change this to your Fiji plugins directory so that stitching plugin is available
             System.getProperties().setProperty("plugins.dir", "/Applications/Fiji.app/plugins");
             new ImageJ();
@@ -173,7 +205,6 @@ public class RenderTileWithTransformsClientTest {
         final double[] originalParameters = {19.4, 64.8, 24.4, 972.0};
                                             //{34.5953125, 175.7765625, 39.10703125, 1089.96875}; // best individual (doesn't help)
 
-        final int maxNumberOfRuns = 1;
         final int numberOfPairsToVisualize = 0; // change to 1 to see original pair (or more to see test pairs)
 
         for (final OrderedCanvasIdPair problemTilePair : getTilePairsForOcellarProblemAreas()) {
@@ -189,9 +220,9 @@ public class RenderTileWithTransformsClientTest {
                                                                                       fullScaleClipPixels,
                                                                                       stepParametersList,
                                                                                       originalParameters,
-                                                                                      maxNumberOfRuns);
+                                                                                      MAX_NUMBER_OF_RUNS);
 
-            if (visualizeData) {
+            if (visualizeResult) {
                 final String qInPLayerTileId = p.getId().replace("0-0-0", "0-0-1");
                 final String pInQLayerTileId = q.getId().replace("0-0-1", "0-0-0");
                 final CanvasId qInPLayer = new CanvasId("", qInPLayerTileId, MontageRelativePosition.RIGHT);
@@ -208,37 +239,10 @@ public class RenderTileWithTransformsClientTest {
             }
         }
 
-        if (visualizeData) {
+        if (visualizeResult) {
             LOG.info("debugOcellarScanCorrection: processing is done, kill main thread when done viewing ...");
             SimpleMultiThreading.threadHaltUnClean();
         }
-    }
-
-    public static List<StepParameters> buildStepParameters() {
-        final List<StepParameters> stepParametersList = new ArrayList<>();
-        double stepSize = 10.0; // 5.0, 2.5, 1.25, 0.625, 0.3125, 0.15625, 0.078125, 0.0390625, 0.01953125, 0.009765625
-        double renderScale = 0.25;
-        for (int i = 0; i < 10; i++) {
-            final Map<Integer, Double> parameterIndexToStepSize = new LinkedHashMap<>();
-            parameterIndexToStepSize.put(0, stepSize);
-            parameterIndexToStepSize.put(1, stepSize);
-            parameterIndexToStepSize.put(2, stepSize);
-            parameterIndexToStepSize.put(3, stepSize * 10.0);
-
-            final StepParameters stepParameters = new StepParameters(i + 1,
-                                                                     parameterIndexToStepSize,
-                                                                     renderScale);
-
-            LOG.info("buildStepParameters: created {}", stepParameters);
-
-            stepParametersList.add(stepParameters);
-
-            stepSize = stepSize / 2.0;
-            if (stepSize == 0.625) {
-                renderScale = 0.5;
-            }
-        }
-        return stepParametersList;
     }
 
     public static TestResultWithContext findBestScanCorrectionParameters(final CanvasId p,
@@ -417,18 +421,21 @@ public class RenderTileWithTransformsClientTest {
         public final String dataString;
         public final double[] transformValues;
         public final PairWiseStitchingResult result;
+        public final double renderScale;
 
         public TestResultWithContext(final String dataString,
                                      final double[] transformValues,
-                                     final PairWiseStitchingResult result) {
+                                     final PairWiseStitchingResult result,
+                                     final double renderScale) {
             this.dataString = dataString;
             this.transformValues = transformValues;
             this.result = result;
+            this.renderScale = renderScale;
         }
 
         @Override
         public String toString() {
-            return "parameters " + dataString + " with " + resultToString(result);
+            return "parameters " + dataString + " with " + resultToString(result) + ", renderScale " + renderScale;
         }
 
         @SuppressWarnings("SameParameterValue")
@@ -552,7 +559,8 @@ public class RenderTileWithTransformsClientTest {
                                                                                        0);
             this.originalResult = new TestResultWithContext(originalTransformDataString,
                                                             originalParameters,
-                                                            originalStitchResult);
+                                                            originalStitchResult,
+                                                            firstStepParameters.renderScale);
             this.bestResult = this.originalResult;
 
             final int maxFailedSteps = 3;
@@ -627,7 +635,8 @@ public class RenderTileWithTransformsClientTest {
                                                                            0);
             bestResult = new TestResultWithContext(bestResult.dataString,
                                                    bestResult.transformValues,
-                                                   rescaledResult);
+                                                   rescaledResult,
+                                                   nextStepRenderScale);
             testedDataStrings.add(dataStringWithRenderScale(bestResult.dataString,
                                                             nextStepRenderScale));
 
@@ -640,7 +649,8 @@ public class RenderTileWithTransformsClientTest {
                                                    0);
             originalResult = new TestResultWithContext(originalResult.dataString,
                                                        originalResult.transformValues,
-                                                       rescaledResult);
+                                                       rescaledResult,
+                                                       nextStepRenderScale);
             testedDataStrings.add(dataStringWithRenderScale(originalResult.dataString,
                                                             nextStepRenderScale));
 
@@ -718,7 +728,8 @@ public class RenderTileWithTransformsClientTest {
 
             final TestResultWithContext testResultWithContext = new TestResultWithContext(testDataString,
                                                                                           testValues,
-                                                                                          testResult);
+                                                                                          testResult,
+                                                                                          renderScale);
             if (testResult != null) {
                 LOG.info("runOneTest:   for arg {} stepSize {},  returning {}",
                          indexOfTransformParameterToChange,
