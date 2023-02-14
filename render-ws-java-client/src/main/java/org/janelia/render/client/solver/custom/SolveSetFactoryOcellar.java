@@ -82,7 +82,7 @@ public class SolveSetFactoryOcellar
 			blockOptimizerLambdasRigid = Stream.of(1.0, 0.9, 0.3, 0.1, 0.0).collect(Collectors.toList());
 			blockOptimizerLambdasTranslation = Stream.of(0.0, 0.0, 0.0, 0.0, 0.0).collect(Collectors.toList());
 			blockOptimizerIterations = Stream.of(2000, 500, 250, 250, 250).collect(Collectors.toList());
-			blockMaxPlateauWidth = Stream.of(250, 150, 100, 100, 100).collect(Collectors.toList());
+			blockMaxPlateauWidth = Stream.of(250, 150, 100, 100, 500).collect(Collectors.toList());
 
 			LOG.info("addSolveItemDataToSets: set {}>>{} (index {}, id {}) contains issues, using rigid align", setMinZ,
 					setMaxZ, sets.size(), id);
