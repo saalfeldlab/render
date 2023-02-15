@@ -4,9 +4,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import ij.process.ByteProcessor;
-import ij.process.ColorProcessor;
 
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -18,11 +16,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
-import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.Grid;
@@ -466,9 +466,9 @@ public class N5Client {
             if (maxIntensity != null) {
                 renderParameters.setMaxIntensity(maxIntensity);
             }
-            final BufferedImage image = renderParameters.openTargetImage();
-            ArgbRenderer.render(renderParameters, image, ipCache);
-            return new ColorProcessor(image).convertToByteProcessor();
+            final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+                    Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
+            return ipwm.ip.convertToByteProcessor();
         }
     }
 
