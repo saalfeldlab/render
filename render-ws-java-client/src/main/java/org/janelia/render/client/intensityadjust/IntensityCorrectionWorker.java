@@ -95,31 +95,37 @@ public class IntensityCorrectionWorker implements Serializable {
 
         LOG.info("deriveAndStoreIntensityFilterData: entry, integralZ={}", integralZ);
 
-        // make cache large enough to hold shared mask processors
-        final ImageProcessorCache imageProcessorCache =
-                new ImageProcessorCache(15_000L * 15_000L,
-                                        false,
-                                        false);
+        if (resolvedTiles.getTileCount() > 1) {
+            // make cache large enough to hold shared mask processors
+            final ImageProcessorCache imageProcessorCache =
+                    new ImageProcessorCache(15_000L * 15_000L,
+                                            false,
+                                            false);
 
-        final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
+            final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
 
-        final List<MinimalTileSpecWrapper> tilesForZ = AdjustBlock.getTilesForZ(resolvedTiles);
-        final ArrayList<OnTheFlyIntensity> corrected =
-                AdjustBlock.correctIntensitiesForSliceTiles(tilesForZ,
-                                                            imageProcessorCache,
-                                                            numCoefficients);
+            final List<MinimalTileSpecWrapper> tilesForZ = AdjustBlock.getTilesForZ(resolvedTiles);
+            final ArrayList<OnTheFlyIntensity> corrected =
+                    AdjustBlock.correctIntensitiesForSliceTiles(tilesForZ,
+                                                                imageProcessorCache,
+                                                                numCoefficients);
 
-        for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
-            final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
-            final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
-            final LinearIntensityMap8BitFilter filter =
-                    new LinearIntensityMap8BitFilter(numCoefficients,
-                                                     numCoefficients,
-                                                     2,
-                                                     onTheFlyIntensity.getCoefficients());
-            final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(),
-                                                         filter.toParametersMap());
-            tileSpec.setFilterSpec(filterSpec);
+            for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
+                final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
+                final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
+                final LinearIntensityMap8BitFilter filter =
+                        new LinearIntensityMap8BitFilter(numCoefficients,
+                                                         numCoefficients,
+                                                         2,
+                                                         onTheFlyIntensity.getCoefficients());
+                final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(),
+                                                             filter.toParametersMap());
+                tileSpec.setFilterSpec(filterSpec);
+            }
+        } else {
+            final String tileCountMsg = resolvedTiles.getTileCount() == 1 ? "1 tile" : "0 tiles";
+            LOG.info("deriveAndStoreIntensityFilterData: skipping correction because z {} contains {}",
+                     integralZ, tileCountMsg);
         }
 
         dataClient.saveResolvedTiles(resolvedTiles,
