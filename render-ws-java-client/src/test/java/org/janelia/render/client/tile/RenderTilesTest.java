@@ -36,26 +36,26 @@ public class RenderTilesTest {
 
             parameters.renderWeb = new RenderWebServiceParameters();
             parameters.renderWeb.baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
-            parameters.renderWeb.owner = "fibsem";
-            parameters.renderWeb.project = "Z0422_17_VNC_1";
-            parameters.stack = "v4_acquire_trimmed_align";
+            parameters.renderWeb.owner = "reiser";
+            parameters.renderWeb.project = "Z0422_05_Ocellar";
+            parameters.stack = "v7_acquire_align_ic";
             parameters.renderWithoutMask = true; // exclude masks since we want the raw-raw image
 
             // TODO: set z bounds, row, and column for tiles of interest
             //   see http://renderer.int.janelia.org:8080/ng/#!%7B%22dimensions%22:%7B%22x%22:%5B8e-9%2C%22m%22%5D%2C%22y%22:%5B8e-9%2C%22m%22%5D%2C%22z%22:%5B8e-9%2C%22m%22%5D%7D%2C%22position%22:%5B26771.75%2C9907.5%2C28131.9765625%5D%2C%22crossSectionScale%22:128%2C%22projectionScale%22:65536%2C%22layers%22:%5B%7B%22type%22:%22image%22%2C%22source%22:%22n5://http://renderer.int.janelia.org:8080/n5_sources/fibsem/Z0422_17_VNC_1.n5/render/Z0422_17_VNC_1/v4_acquire_trimmed_align___20221108_150533%22%2C%22tab%22:%22source%22%2C%22name%22:%22Z0422_17_VNC_1%20v4_acquire_trimmed_align%22%7D%5D%2C%22selectedLayer%22:%7B%22layer%22:%22Z0422_17_VNC_1%20v4_acquire_trimmed_align%22%7D%2C%22layout%22:%224panel%22%7D
-            final Double minZ = 28132.0;
-            final Double maxZ = 28132.0;
+            final Double minZ = 5827.0;
+            final Double maxZ = 5828.0;
             final int row = 0;
-            final int column = 2;
+            final int column = 0;
 
             // TODO: set to true to include scan correction, set to false for completely raw tile
-            final boolean includeScanCorrectionTransforms = false;
+            final boolean includeScanCorrectionTransforms = true;
 
             // TODO: downscale if you like
             final double renderScale = 1.0;
 
             // TODO: set this to null to view them interactively or to an existing directory to save tiles
-            final File savedTileDirectory = new File("/Users/trautmane/Desktop/stern/streak_fix/rendered_images");
+            final File savedTileDirectory = new File("/Users/trautmane/Desktop");
 
             // TODO: change to another format if you are saving files and don't want pngs
             parameters.format = Utils.TIF_FORMAT;
