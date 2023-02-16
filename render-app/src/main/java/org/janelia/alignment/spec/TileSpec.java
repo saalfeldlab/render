@@ -556,6 +556,23 @@ public class TileSpec implements Serializable {
         }
     }
 
+    public void convertSingleChannelSpecToLegacyForm()
+            throws IllegalStateException {
+        if (channels != null) {
+            if (channels.size() != 1) {
+                throw new IllegalStateException(channels.size() +
+                                                " channels exist but must only have one to convert to legacy form");
+            }
+            final ChannelSpec channelSpec = channels.get(0);
+            channels = null;
+            minIntensity = channelSpec.getMinIntensity();
+            maxIntensity = channelSpec.getMaxIntensity();
+            mipmapLevels = channelSpec.getMipmapLevels();
+            mipmapPathBuilder = channelSpec.getMipmapPathBuilder();
+            filterSpec = channelSpec.getFilterSpec();
+        }
+    }
+
     public void addChannel(final ChannelSpec channelSpec) {
         if (channels == null) {
             channels = new ArrayList<>();
