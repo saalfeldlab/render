@@ -2,7 +2,6 @@ package org.janelia.alignment.spec;
 
 import java.io.Serializable;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import org.janelia.alignment.ImageAndMask;
@@ -155,6 +154,10 @@ public class ChannelSpec implements Serializable {
         return floorEntry;
     }
 
+    public MipmapPathBuilder getMipmapPathBuilder() {
+        return mipmapPathBuilder;
+    }
+
     public void setMipmapPathBuilder(final MipmapPathBuilder mipmapPathBuilder) {
         this.mipmapPathBuilder = mipmapPathBuilder;
     }
@@ -173,22 +176,13 @@ public class ChannelSpec implements Serializable {
     }
 
     /**
-     * @return an as-complete-as-possible copy of the map of mipmap levels.
+     * Note that an earlier implementation of this method intended to return a complete list of mipmap levels
+     * but the implementation had a bug in it so the raw data was actually returned.
+     * The buggy implementation was never used and I now need the raw data, so I've simplified the implementation.
+     *
+     * @return raw (possibly incomplete) mipmap levels.
      */
-    public Map<Integer, ImageAndMask> getMipmapLevels() {
-
-        final TreeMap<Integer, ImageAndMask> completeMipmapLevels = new TreeMap<>();
-        completeMipmapLevels.putAll(mipmapLevels);
-
-        if (mipmapPathBuilder != null)
-            for (int level = 0; level < mipmapPathBuilder.getNumberOfLevels(); ++level)
-                if (!completeMipmapLevels.containsKey(level)) {
-                    final Entry<Integer, ImageAndMask> entry =
-                            mipmapPathBuilder.deriveImageAndMask(level, mipmapLevels.firstEntry(), true);
-                    if (entry != null)
-                        completeMipmapLevels.put(entry.getKey(), entry.getValue());
-                }
-
+    public TreeMap<Integer, ImageAndMask> getMipmapLevels() {
         return mipmapLevels;
     }
 
