@@ -2,6 +2,7 @@ package org.janelia.alignment.spec;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.awt.Rectangle;
 import java.io.Serializable;
 
 import org.janelia.alignment.json.JsonUtils;
@@ -163,21 +164,8 @@ public class Bounds implements Serializable {
         return result;
     }
 
-    public boolean intersects(final Bounds that) {
-
-        boolean result = false;
-
-        if (this.hasXAndYDimensionsDefined() && that.hasXAndYDimensionsDefined()) {
-
-            result = (this.minX <= that.maxX) && (this.minY <= that.maxY) &&
-                     (this.maxX >= that.minX) && (this.maxY >= that.minY);
-
-            if (result && this.hasZDimensionsDefined() && that.hasZDimensionsDefined()) {
-                result = (this.minZ <= that.maxZ) && (this.maxZ >= that.minZ);
-            }
-        }
-
-        return result;
+    public Rectangle toRectangle() {
+        return new Rectangle(minX.intValue(), minY.intValue(), getWidth(), getHeight());
     }
 
     public Bounds union(final Bounds that) {
@@ -195,16 +183,6 @@ public class Bounds implements Serializable {
 
     public static Bounds fromJson(final String json) {
         return JSON_HELPER.fromJson(json);
-    }
-
-    @JsonIgnore
-    private boolean hasXAndYDimensionsDefined() {
-        return (minX != null) && (minY != null) && (maxX != null) && (maxY != null);
-    }
-
-    @JsonIgnore
-    private boolean hasZDimensionsDefined() {
-        return (minZ != null) && (maxZ != null);
     }
 
     private static final JsonUtils.Helper<Bounds> JSON_HELPER =
