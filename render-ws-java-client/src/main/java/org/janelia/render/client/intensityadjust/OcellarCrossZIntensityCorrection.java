@@ -19,7 +19,9 @@ import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
@@ -31,41 +33,62 @@ import net.imglib2.realtransform.AffineTransform;
 
 public class OcellarCrossZIntensityCorrection {
 
+    @SuppressWarnings("ConstantValue")
     public static void main(final String[] args) {
-        new ImageJ();
+
+        final boolean visualizeData = true;
+
         try {
-            deriveCrossLayerIntensityFilterData(
-                    "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                    "reiser",
-                    "Z0422_05_Ocellar",
-                    "v7_acquire_align_ic",
-                    5827,
-                    200);
+            final RenderDataClient dataClient =
+                    new RenderDataClient("http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                                         "reiser",
+                                         "Z0422_05_Ocellar");
+            final String alignedIntensityCorrectedStack = "v9_acquire_align_ic";
+            final double lastFourTileZ = 5827;
+            final double firstSingleTileZ = lastFourTileZ + 1;
+
+            if (visualizeData) {
+                new ImageJ();
+            }
+
+            final FilterSpec filterSpec = deriveCrossLayerFilterSpec(dataClient,
+                                                                     alignedIntensityCorrectedStack,
+                                                                     lastFourTileZ,
+                                                                     firstSingleTileZ,
+                                                                     200,
+                                                                     visualizeData);
+
+            // uncomment to actually apply the derived filter spec to all single tiles ...
+//            addAndSaveRelativeFilter(dataClient,
+//                                     alignedIntensityCorrectedStack,
+//                                     firstSingleTileZ,
+//                                     filterSpec);
+
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static void deriveCrossLayerIntensityFilterData(final String baseRenderUrl,
-                                                           final String renderOwner,
-                                                           final String renderProject,
-                                                           final String alignedRenderStack,
-                                                           final int firstIntegralZ,
-                                                           final int overlapClipMarginPixels)
+    public static FilterSpec deriveCrossLayerFilterSpec(final RenderDataClient dataClient,
+                                                        final String alignedIntensityCorrectedStack,
+                                                        final double pz,
+                                                        final double qz,
+                                                        final int overlapClipMarginPixels,
+                                                        final boolean visualizeData)
             throws ExecutionException, InterruptedException, IOException {
 
-        LOG.info("deriveCrossLayerIntensityFilterData: entry, firstIntegralZ={}", firstIntegralZ);
+        LOG.info("deriveCrossLayerFilterSpec: entry, alignedIntensityCorrectedStack={}, pz={}, qz={}, overlapClipMarginPixels={}",
+                 alignedIntensityCorrectedStack,
+                 pz,
+                 qz,
+                 overlapClipMarginPixels);
 
-        final RenderDataClient dataClient = new RenderDataClient(baseRenderUrl, renderOwner, renderProject);
+        FilterSpec crossLayerFilterSpec = null;
 
-        @SuppressWarnings("UnnecessaryLocalVariable")
-        final double firstZ = firstIntegralZ;
-        final Rectangle firstBounds = dataClient.getLayerBounds(alignedRenderStack, firstZ).toRectangle();
+        final Rectangle pBounds = dataClient.getLayerBounds(alignedIntensityCorrectedStack, pz).toRectangle();
+        final Rectangle qBounds = dataClient.getLayerBounds(alignedIntensityCorrectedStack, qz).toRectangle();
 
-        final double secondZ = firstZ + 1;
-        final Rectangle secondBounds = dataClient.getLayerBounds(alignedRenderStack, secondZ).toRectangle();
-
-        Rectangle overlap = firstBounds.intersection(secondBounds);
+        Rectangle overlap = pBounds.intersection(qBounds);
 
         if (! overlap.isEmpty()) {
             final int margin2x = 2 * overlapClipMarginPixels;
@@ -84,13 +107,15 @@ public class OcellarCrossZIntensityCorrection {
 
             final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
 
-            final String stackUrl = dataClient.getUrls().getStackUrlString(alignedRenderStack);
+            final String stackUrl = dataClient.getUrls().getStackUrlString(alignedIntensityCorrectedStack);
 
-            final TileSpec firstOverlapSpec = buildLocalOverlapTileSpec(overlap, firstZ, stackUrl, imageProcessorCache);
-            final TileSpec secondOverlapSpec = buildLocalOverlapTileSpec(overlap, secondZ, stackUrl, imageProcessorCache);
+            final TileSpec firstOverlapSpec = buildLocalOverlapTileSpec(overlap, pz, stackUrl, imageProcessorCache);
+            final TileSpec secondOverlapSpec = buildLocalOverlapTileSpec(overlap, qz, stackUrl, imageProcessorCache);
 
-            showTileSpec("P original", firstOverlapSpec, 0.1, imageProcessorCache);
-            showTileSpec("Q original", secondOverlapSpec, 0.1, imageProcessorCache);
+            if (visualizeData) {
+                showTileSpec("P original", firstOverlapSpec, 0.1, imageProcessorCache);
+                showTileSpec("Q original", secondOverlapSpec, 0.1, imageProcessorCache);
+            }
 
             final List<MinimalTileSpecWrapper> alignedOverlapBoxes = new ArrayList<>();
             alignedOverlapBoxes.add(new MinimalTileSpecWrapper(firstOverlapSpec));
@@ -101,8 +126,6 @@ public class OcellarCrossZIntensityCorrection {
                                                                 imageProcessorCache,
                                                                 numCoefficients);
 
-            LOG.info("p corrected[0] tileId is {}", corrected.get(0).getMinimalTileSpecWrapper().getTileId());
-            LOG.info("q corrected[1] tileId is {}", corrected.get(1).getMinimalTileSpecWrapper().getTileId());
             final double[][] pCoefficients = corrected.get(0).getCoefficients();
             final double[][] qCoefficients = corrected.get(1).getCoefficients();
             final double[][] qRelativeToPCoefficients = normalizeCoefficientsForQRelativeToP(pCoefficients,
@@ -117,15 +140,20 @@ public class OcellarCrossZIntensityCorrection {
             final TileSpec qRelativeSpec = deriveTileSpecWithFilter(secondOverlapSpec,
                                                                     numCoefficients,
                                                                     qRelativeToPCoefficients);
+            crossLayerFilterSpec = qRelativeSpec.getFilterSpec();
 
-            showTileSpec("P corrected", correctedPSpec, 0.1, imageProcessorCache);
-            showTileSpec("Q corrected", correctedQSpec, 0.1, imageProcessorCache);
-            showTileSpec("Q relative", qRelativeSpec, 0.1, imageProcessorCache);
+            if (visualizeData) {
+                showTileSpec("P corrected", correctedPSpec, 0.1, imageProcessorCache);
+                showTileSpec("Q corrected", correctedQSpec, 0.1, imageProcessorCache);
+                showTileSpec("Q relative", qRelativeSpec, 0.1, imageProcessorCache);
+            }
 
         } else {
             LOG.warn("deriveCrossLayerIntensityFilterData: stack {} z {} and {} do not overlap - is the stack aligned?",
-                     alignedRenderStack, firstZ, secondZ);
+                     alignedIntensityCorrectedStack, pz, qz);
         }
+
+        return crossLayerFilterSpec;
     }
     public static TileSpec deriveTileSpecWithFilter(final TileSpec tileSpec,
                                                     final int numCoefficients,
@@ -233,6 +261,36 @@ public class OcellarCrossZIntensityCorrection {
         new ImagePlus(title, ipwm.ip.convertToByteProcessor()).show();
     }
 
+    public static void addAndSaveRelativeFilter(final RenderDataClient dataClient,
+                                                final String alignedIntensityCorrectedStack,
+                                                final double firstSingleTileZ,
+                                                final FilterSpec filterSpec)
+            throws IOException {
+
+        final StackMetaData stackMetaData = dataClient.getStackMetaData(alignedIntensityCorrectedStack);
+        final double stackMaxZ = stackMetaData.getStats().getStackBounds().getMaxZ();
+
+        dataClient.ensureStackIsInLoadingState(alignedIntensityCorrectedStack, stackMetaData);
+
+        final int tilesPerBatch = 1000;
+        double z = firstSingleTileZ;
+        for (; z < stackMaxZ; z += tilesPerBatch) {
+            final double maxZ = z + tilesPerBatch - 1;
+            final ResolvedTileSpecCollection resolvedTilesForBatch =
+                    dataClient.getResolvedTiles(alignedIntensityCorrectedStack, z, maxZ,
+                                                null, null, null, null, null);
+            for (final TileSpec tileSpec : resolvedTilesForBatch.getTileSpecs()) {
+                tileSpec.setFilterSpec(filterSpec);
+            }
+
+            LOG.info("addAndSaveRelativeFilter: added filter to {} tile specs in z {} to {}",
+                     resolvedTilesForBatch.getTileCount(), z, maxZ);
+
+            dataClient.saveResolvedTiles(resolvedTilesForBatch, alignedIntensityCorrectedStack, null);
+        }
+
+        dataClient.setStackState(alignedIntensityCorrectedStack, StackMetaData.StackState.COMPLETE);
+    }
 
     private static final Logger LOG = LoggerFactory.getLogger(OcellarCrossZIntensityCorrection.class);
 }

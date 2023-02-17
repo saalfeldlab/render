@@ -635,6 +635,14 @@ public class TileSpec implements Serializable {
         }
     }
 
+    public FilterSpec getFilterSpec() {
+        FilterSpec spec = filterSpec;
+        if ((spec == null) && (channels != null) && (channels.size() > 0)) {
+            spec = channels.get(0).getFilterSpec();
+        }
+        return spec;
+    }
+
     public void setFilterSpec(final FilterSpec filterSpec) {
         this.filterSpec = filterSpec;
         if (channels != null) {
