@@ -401,6 +401,20 @@ public class RenderParameters implements Serializable {
         return parameters;
     }
 
+    public static RenderParameters fromTileSpec(final TileSpec tileSpec) {
+        final double tileRenderX = tileSpec.getMinX();
+        final double tileRenderY = tileSpec.getMinY();
+        final int tileRenderWidth = (int) (tileSpec.getMaxX() - tileRenderX);
+        final int tileRenderHeight = (int) (tileSpec.getMaxY() - tileRenderY);
+        final RenderParameters parameters = new RenderParameters(null,
+                                                                 tileRenderX, tileRenderY,
+                                                                 tileRenderWidth, tileRenderHeight,
+                                                                 1.0);
+        parameters.addTileSpec(tileSpec);
+        parameters.initializeDerivedValues();
+        return parameters;
+    }
+
     /**
      * Initialize derived parameter values.
      */
