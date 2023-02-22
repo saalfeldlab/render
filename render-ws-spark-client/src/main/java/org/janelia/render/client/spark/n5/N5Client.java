@@ -466,9 +466,21 @@ public class N5Client {
             if (maxIntensity != null) {
                 renderParameters.setMaxIntensity(maxIntensity);
             }
-            final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
-                    Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
-            return ipwm.ip.convertToByteProcessor();
+
+            final ByteProcessor renderedProcessor;
+            if (renderParameters.numberOfTileSpecs() > 0) {
+                final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+                        Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
+                renderedProcessor = ipwm.ip.convertToByteProcessor();
+            } else {
+                LOG.info("BoxRenderer.render: no tiles found in {}", renderParametersUrlString);
+                final double derivedScale = renderParameters.getScale();
+                final int targetWidth = (int) (derivedScale * renderParameters.getWidth());
+                final int targetHeight = (int) (derivedScale * renderParameters.getHeight());
+                renderedProcessor = new ByteProcessor(targetWidth, targetHeight);
+            }
+
+            return renderedProcessor;
         }
     }
 
