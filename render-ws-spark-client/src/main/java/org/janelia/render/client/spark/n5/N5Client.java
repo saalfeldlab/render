@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import ij.process.ByteProcessor;
 
+import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -24,6 +25,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.Grid;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -140,11 +142,43 @@ public class N5Client {
                 description = "Unit description for stack resolution values (e.g. nm, um, ...)")
         public String stackResolutionUnit = "nm";
 
-        public Bounds getBoundsForRun(final StackMetaData stackMetaData,
-                                      final ThicknessCorrectionData thicknessCorrectionData) {
-            final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
+        @Parameter(
+                names = "--exportMinimumBox",
+                description = "Only export minimum bounding box that includes tiles across all z-layers")
+        public boolean exportMinimumBox = false;
+
+        public Bounds getBoundsForRun(final Bounds defaultBounds,
+                                      final ThicknessCorrectionData thicknessCorrectionData,
+                                      final List<SectionData> sectionDataList) {
             final Bounds defaultedLayerBounds = layerBounds.overrideBounds(defaultBounds);
             Bounds runBounds = layerRange.overrideBounds(defaultedLayerBounds);
+
+            if (exportMinimumBox) {
+                sectionDataList.sort(SectionData.Z_COMPARATOR);
+                SectionData sectionData = sectionDataList.get(0);
+
+                double previousZ = sectionData.getZ();
+                Rectangle previousBox = sectionData.toRectangle();
+                Rectangle minimumBox = previousBox;
+                for (int i = 1; i < sectionDataList.size(); i++) {
+                    sectionData = sectionDataList.get(i);
+                    if (sectionData.getZ() > previousZ) {
+                        minimumBox = minimumBox.intersection(previousBox);
+                        previousZ = sectionData.getZ();
+                        previousBox = sectionData.toRectangle();
+                    } else {
+                        previousBox.add(sectionData.toRectangle());
+                    }
+                }
+
+                minimumBox = minimumBox.intersection(previousBox);
+                final Bounds minimumBoxBounds =
+                        new Bounds(minimumBox.getMinX(), minimumBox.getMinY(), runBounds.getMinZ(),
+                                   minimumBox.getMaxX(), minimumBox.getMaxY(), runBounds.getMaxZ());
+
+                LOG.info("getBoundsForRun: minimumBox for {} is {}", runBounds, minimumBoxBounds);
+                runBounds = minimumBoxBounds;
+            }
 
             if (thicknessCorrectionData != null) {
                 final double minZ = Math.ceil(Math.max(runBounds.getMinZ(),
@@ -258,22 +292,30 @@ public class N5Client {
         final ThicknessCorrectionData thicknessCorrectionData =
                 parameters.zCoordsPath == null ? null : new ThicknessCorrectionData(parameters.zCoordsPath);
 
-        final Bounds bounds = parameters.getBoundsForRun(stackMetaData, thicknessCorrectionData);
+        final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
+        final List<SectionData> sectionDataList =
+                parameters.exportMinimumBox ? renderDataClient.getStackSectionData(parameters.stack,
+                                                                                   defaultBounds.getMinZ(),
+                                                                                   defaultBounds.getMaxZ()) : null;
+
+        final Bounds boundsForRun = parameters.getBoundsForRun(defaultBounds,
+                                                               thicknessCorrectionData,
+                                                               sectionDataList);
 
         long[] min = {
-                bounds.getMinX().longValue(),
-                bounds.getMinY().longValue(),
-                bounds.getMinZ().longValue()
+                boundsForRun.getMinX().longValue(),
+                boundsForRun.getMinY().longValue(),
+                boundsForRun.getMinZ().longValue()
         };
         long[] dimensions = {
-                new Double(bounds.getDeltaX()).longValue(),
-                new Double(bounds.getDeltaY()).longValue(),
-                new Double(bounds.getDeltaZ()).longValue()
+                new Double(boundsForRun.getDeltaX()).longValue(),
+                new Double(boundsForRun.getDeltaY()).longValue(),
+                new Double(boundsForRun.getDeltaZ()).longValue()
         };
 
         String viewStackCommandOffsets = min[0] + "," + min[1] + "," + min[2];
 
-        final boolean is2DVolume = (bounds.getDeltaZ() < 1);
+        final boolean is2DVolume = (boundsForRun.getDeltaZ() < 1);
 
         if (is2DVolume) {
             resolutionValues.remove(2);
@@ -313,7 +355,7 @@ public class N5Client {
                         min,
                         dimensions,
                         blockSize,
-                        bounds.getMinZ().longValue());
+                        boundsForRun.getMinZ().longValue());
             } else {
                 saveRenderStack(
                         sparkContext,

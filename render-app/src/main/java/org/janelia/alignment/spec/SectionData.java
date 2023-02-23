@@ -1,5 +1,6 @@
 package org.janelia.alignment.spec;
 
+import java.awt.Rectangle;
 import java.beans.Transient;
 import java.io.Serializable;
 import java.util.Comparator;
@@ -103,6 +104,10 @@ public class SectionData
 
     public Bounds toBounds() {
         return new Bounds(minX, minY, z, maxX, maxY, z);
+    }
+
+    public Rectangle toRectangle() {
+        return new Rectangle(minX.intValue(), minY.intValue(), getWidth(), getHeight());
     }
 
     public String toJson() {
