@@ -43,6 +43,8 @@ import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.loader.DynamicMaskLoader;
+import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 
 /**
@@ -676,6 +678,47 @@ public class TileSpec implements Serializable {
             }
         }
         return hasMasks;
+    }
+
+    /**
+     * Utility for altering this tile spec to support rendering/exporting of transformed mask data.
+     * If the first channel has a mask, replace the source image with that mask.
+     * Otherwise, replace the source image with a dynamic empty mask that covers the full tile area.
+     * Also removes this tile spec's filter if it has one.
+     */
+    public void replaceFirstChannelImageWithItsMask() {
+
+        final TreeMap<Integer, ImageAndMask> levels;
+        if ((channels == null) || (channels.size() == 0)) {
+            levels = mipmapLevels;
+            filterSpec = null;
+        } else {
+            final ChannelSpec firstChannelSpec = channels.get(0);
+            levels = firstChannelSpec.getMipmapLevels();
+            firstChannelSpec.setFilterSpec(null);
+        }
+
+        final Map.Entry<Integer, ImageAndMask> firstEntry = levels.firstEntry();
+        final ImageAndMask imageAndMask = firstEntry.getValue();
+        if (imageAndMask.hasMask()) {
+            levels.put(firstEntry.getKey(),
+                       new ImageAndMask(imageAndMask.getMaskUrl(),
+                                        imageAndMask.getMaskLoaderType(),
+                                        imageAndMask.getMaskSliceNumber(),
+                                        null,
+                                        null,
+                                        null));
+        } else {
+            final String emptyMaskUrl = DynamicMaskLoader.buildEmptyMaskDescription(getWidth(),
+                                                                                    getHeight()).toString();
+            levels.put(firstEntry.getKey(),
+                       new ImageAndMask(emptyMaskUrl,
+                                        ImageLoader.LoaderType.DYNAMIC_MASK,
+                                        null,
+                                        null,
+                                        null,
+                                        null));
+        }
     }
 
     public ListTransformSpec getTransforms() {

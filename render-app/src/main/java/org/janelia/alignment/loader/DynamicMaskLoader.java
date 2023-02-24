@@ -108,4 +108,13 @@ public class DynamicMaskLoader
             throw new IllegalArgumentException("failed to parse dynamic mask URL: " + urlString);
         }
     }
+
+    /**
+     * @return an "empty" mask description for and image with the specified width and height.
+     *         Empty means nothing in the image will be masked.
+     */
+    public static DynamicMaskDescription buildEmptyMaskDescription(final int width,
+                                                                   final int height) {
+        return new DynamicMaskDescription(0, 0, width, height, width, height);
+    }
 }

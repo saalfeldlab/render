@@ -82,14 +82,14 @@ public class N5ClientTest {
     public void testGetBoundsForRun() {
         final N5Client.Parameters p = new N5Client.Parameters();
         final Bounds stackBounds = new Bounds(222.0,333.0,1.0,444.0,555.0,6.0);
-        Bounds boundsForRun = p.getBoundsForRun(stackBounds, null, null);
+        Bounds boundsForRun = p.getBoundsForRun(stackBounds, null);
         Assert.assertEquals("null parameters should simply return stack bounds", stackBounds, boundsForRun);
 
         final ThicknessCorrectionData thicknessCorrectionData = new ThicknessCorrectionData(Arrays.asList(
                 "1 1.00001", "2 2.45", "3 3", "4 4", "5 4.85", "6 6.00004"
         ));
 
-        boundsForRun = p.getBoundsForRun(stackBounds, thicknessCorrectionData, null);
+        boundsForRun = p.getBoundsForRun(stackBounds, thicknessCorrectionData);
         final Bounds expectedThicknessBounds = new Bounds(stackBounds.getMinX(),
                                                           stackBounds.getMinY(),
                                                           1.0,

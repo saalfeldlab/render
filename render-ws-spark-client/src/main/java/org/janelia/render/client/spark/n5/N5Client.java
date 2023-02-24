@@ -5,7 +5,6 @@ import com.beust.jcommander.ParametersDelegate;
 
 import ij.process.ByteProcessor;
 
-import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -22,13 +21,15 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.SectionData;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.Grid;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.alignment.util.ImageProcessorCacheSpec;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -143,42 +144,14 @@ public class N5Client {
         public String stackResolutionUnit = "nm";
 
         @Parameter(
-                names = "--exportMinimumBox",
-                description = "Only export minimum bounding box that includes tiles across all z-layers")
-        public boolean exportMinimumBox = false;
+                names = "--exportMask",
+                description = "Export mask volume instead of pixel volume")
+        public boolean exportMask = false;
 
         public Bounds getBoundsForRun(final Bounds defaultBounds,
-                                      final ThicknessCorrectionData thicknessCorrectionData,
-                                      final List<SectionData> sectionDataList) {
+                                      final ThicknessCorrectionData thicknessCorrectionData) {
             final Bounds defaultedLayerBounds = layerBounds.overrideBounds(defaultBounds);
             Bounds runBounds = layerRange.overrideBounds(defaultedLayerBounds);
-
-            if (exportMinimumBox) {
-                sectionDataList.sort(SectionData.Z_COMPARATOR);
-                SectionData sectionData = sectionDataList.get(0);
-
-                double previousZ = sectionData.getZ();
-                Rectangle previousBox = sectionData.toRectangle();
-                Rectangle minimumBox = previousBox;
-                for (int i = 1; i < sectionDataList.size(); i++) {
-                    sectionData = sectionDataList.get(i);
-                    if (sectionData.getZ() > previousZ) {
-                        minimumBox = minimumBox.intersection(previousBox);
-                        previousZ = sectionData.getZ();
-                        previousBox = sectionData.toRectangle();
-                    } else {
-                        previousBox.add(sectionData.toRectangle());
-                    }
-                }
-
-                minimumBox = minimumBox.intersection(previousBox);
-                final Bounds minimumBoxBounds =
-                        new Bounds(minimumBox.getMinX(), minimumBox.getMinY(), runBounds.getMinZ(),
-                                   minimumBox.getMaxX(), minimumBox.getMaxY(), runBounds.getMaxZ());
-
-                LOG.info("getBoundsForRun: minimumBox for {} is {}", runBounds, minimumBoxBounds);
-                runBounds = minimumBoxBounds;
-            }
 
             if (thicknessCorrectionData != null) {
                 final double minZ = Math.ceil(Math.max(runBounds.getMinZ(),
@@ -293,14 +266,8 @@ public class N5Client {
                 parameters.zCoordsPath == null ? null : new ThicknessCorrectionData(parameters.zCoordsPath);
 
         final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
-        final List<SectionData> sectionDataList =
-                parameters.exportMinimumBox ? renderDataClient.getStackSectionData(parameters.stack,
-                                                                                   defaultBounds.getMinZ(),
-                                                                                   defaultBounds.getMaxZ()) : null;
-
         final Bounds boundsForRun = parameters.getBoundsForRun(defaultBounds,
-                                                               thicknessCorrectionData,
-                                                               sectionDataList);
+                                                               thicknessCorrectionData);
 
         long[] min = {
                 boundsForRun.getMinX().longValue(),
@@ -342,7 +309,18 @@ public class N5Client {
                                                             parameters.tileHeight,
                                                             1.0,
                                                             parameters.minIntensity,
-                                                            parameters.maxIntensity);
+                                                            parameters.maxIntensity,
+                                                            parameters.exportMask);
+
+            // This "spec" is broadcast to Spark executors allowing each one to construct and share
+            // an ImageProcessor cache across each task assigned to the executor.
+            // This should be most useful for caching common masks but could also help
+            // when the same executor gets adjacent blocks.
+            // Cache parameters are hard-coded for now but could be exposed to command-line later if necessary.
+            final ImageProcessorCacheSpec cacheSpec =
+                    new ImageProcessorCacheSpec(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+                                                true,
+                                                false);
 
             if (is2DVolume) {
                 save2DRenderStack(
@@ -355,7 +333,8 @@ public class N5Client {
                         min,
                         dimensions,
                         blockSize,
-                        boundsForRun.getMinZ().longValue());
+                        boundsForRun.getMinZ().longValue(),
+                        cacheSpec);
             } else {
                 saveRenderStack(
                         sparkContext,
@@ -367,7 +346,8 @@ public class N5Client {
                         min,
                         dimensions,
                         blockSize,
-                        thicknessCorrectionData);
+                        thicknessCorrectionData,
+                        cacheSpec);
             }
 
         } else {
@@ -479,6 +459,7 @@ public class N5Client {
         private final String boxUrlSuffix;
         private final Double minIntensity;
         private final Double maxIntensity;
+        private final boolean exportMaskOnly;
 
         public BoxRenderer(final String baseUrl,
                            final String owner,
@@ -488,11 +469,13 @@ public class N5Client {
                            final long height,
                            final double scale,
                            final Double minIntensity,
-                           final Double maxIntensity) {
+                           final Double maxIntensity,
+                           final boolean exportMaskOnly) {
             this.stackUrl = String.format("%s/owner/%s/project/%s/stack/%s", baseUrl, owner, project, stack);
             this.boxUrlSuffix = String.format("%d,%d,%f/render-parameters", width, height, scale);
             this.minIntensity = minIntensity;
             this.maxIntensity = maxIntensity;
+            this.exportMaskOnly = exportMaskOnly;
         }
 
         public ByteProcessor render(final long x,
@@ -511,6 +494,11 @@ public class N5Client {
 
             final ByteProcessor renderedProcessor;
             if (renderParameters.numberOfTileSpecs() > 0) {
+                if (exportMaskOnly) {
+                    for (final TileSpec tileSpec : renderParameters.getTileSpecs()) {
+                        tileSpec.replaceFirstChannelImageWithItsMask();
+                    }
+                }
                 final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
                         Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
                 renderedProcessor = ipwm.ip.convertToByteProcessor();
@@ -548,7 +536,8 @@ public class N5Client {
                                         final long[] min,
                                         final long[] dimensions,
                                         final int[] blockSize,
-                                        final ThicknessCorrectionData thicknessCorrectionData) {
+                                        final ThicknessCorrectionData thicknessCorrectionData,
+                                        final ImageProcessorCacheSpec cacheSpec) {
 
         // grid block size for parallelization to minimize double loading of tiles
         final int[] gridBlockSize = new int[]{
@@ -567,16 +556,21 @@ public class N5Client {
                         gridBlockSize,
                         blockSize));
 
+        final Broadcast<ImageProcessorCacheSpec> broadcastCacheSpec = sc.broadcast(cacheSpec);
+
         rdd.foreach(gridBlock -> {
 
-            // final ImageProcessorCache ipCache = new ImageProcessorCache();
-            final ImageProcessorCache ipCache = ImageProcessorCache.DISABLED_CACHE;
+            final ImageProcessorCache ipCache = broadcastCacheSpec.getValue().getSharableInstance();
 
             /* assume we can fit it in an array */
             final ArrayImg<UnsignedByteType, ByteArray> block = ArrayImgs.unsignedBytes(gridBlock[1]);
 
             final long x = gridBlock[0][0] + min[0];
             final long y = gridBlock[0][1] + min[1];
+            final long startZ = gridBlock[0][2] + min[2];
+
+            // enable logging on executors and add gridBlock context to log messages
+            LogUtilities.setupExecutorLog4j(x + ":" + y + ":" + startZ);
 
             ThicknessCorrectionData.LayerInterpolator priorInterpolator = null;
             ByteProcessor currentProcessor;
@@ -664,7 +658,8 @@ public class N5Client {
                                           final long[] min,
                                           final long[] dimensions,
                                           final int[] blockSize,
-                                          final long z) {
+                                          final long z,
+                                          final ImageProcessorCacheSpec cacheSpec) {
 
         LOG.info("save2DRenderStack: entry, z={}", z);
 
@@ -683,16 +678,20 @@ public class N5Client {
                         gridBlockSize,
                         blockSize));
 
+        final Broadcast<ImageProcessorCacheSpec> broadcastCacheSpec = sc.broadcast(cacheSpec);
+        
         rdd.foreach(gridBlock -> {
 
-            // final ImageProcessorCache ipCache = new ImageProcessorCache();
-            final ImageProcessorCache ipCache = ImageProcessorCache.DISABLED_CACHE;
+            final ImageProcessorCache ipCache = broadcastCacheSpec.value().getSharableInstance();
 
             /* assume we can fit it in an array */
             final ArrayImg<UnsignedByteType, ByteArray> block = ArrayImgs.unsignedBytes(gridBlock[1]);
 
             final long x = gridBlock[0][0] + min[0];
             final long y = gridBlock[0][1] + min[1];
+
+            // enable logging on executors and add gridBlock context to log messages
+            LogUtilities.setupExecutorLog4j(x + ":" + y + ":" + z);
 
             final ByteProcessor currentProcessor = boxRenderer.render(x, y, z, ipCache);
 
