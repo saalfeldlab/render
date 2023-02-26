@@ -141,6 +141,13 @@ public class CopyStackClient {
         public Double addToZ;
 
         @Parameter(
+                names = "--hackSectionIdToMatchAddedZ",
+                description = "Replace sectionId of each tile with string value of its altered z value " +
+                              "(only applies when using --addToZ option)",
+                arity = 0)
+        public boolean hackSectionIdToMatchAddedZ = false;
+
+        @Parameter(
                 names = "--splitMergedSections",
                 description = "Reset z values for tiles so that original sections are separated",
                 arity = 0)
@@ -346,6 +353,9 @@ public class CopyStackClient {
                 final Double zValue = tileSpec.getZ() + parameters.addToZ;
                 toStackZValues.add(zValue);
                 tileSpec.setZ(zValue);
+                if (parameters.hackSectionIdToMatchAddedZ) {
+                    tileSpec.setLayout(tileSpec.getLayout().copyWithSectionId(String.valueOf(zValue)));
+                }
             }
 
             LOG.info("copyLayer: updated z values for {} tiles",

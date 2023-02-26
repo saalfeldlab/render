@@ -120,4 +120,17 @@ public class LayoutData implements Serializable {
     public Double getDistanceZ() {
         return distanceZ;
     }
+
+    public LayoutData copyWithSectionId(final String newSectionId) {
+        return new LayoutData(newSectionId,
+                              temca,
+                              camera,
+                              imageRow,
+                              imageCol,
+                              stageX,
+                              stageY,
+                              rotation,
+                              pixelsize,
+                              distanceZ);
+    }
 }
