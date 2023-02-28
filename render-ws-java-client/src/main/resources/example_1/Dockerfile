@@ -24,7 +24,7 @@
 #   docker run -it --entrypoint /bin/bash --rm render_example_1:latest
 # ======================================================================================
 
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 LABEL maintainer="Eric Trautman <trautmane@janelia.hhmi.org>"
 
 RUN apt-get update
@@ -56,25 +56,25 @@ RUN mvn --version; mvn --batch-mode -Dproject.build.sourceEncoding=UTF-8 package
 # 5. Deploy Web Service
 RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
 
-# 6. Install MongoDB 4.0.6
+# 6. Install MongoDB 6.0.4
 
 # needed for access to https mongodb resources
-RUN apt-get install apt-transport-https
+RUN apt-get install apt-transport-https gnupg
 
-# steps from https://docs.mongodb.com/manual/tutorial/install-mongodb-on-ubuntu/
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4 && \
-    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/4.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.0.list && \
-    apt-get update && \
-    apt-get install -y mongodb && \
-    apt-get install -y mongodb-org=4.0.6 mongodb-org-server=4.0.6 mongodb-org-shell=4.0.6 mongodb-org-mongos=4.0.6 mongodb-org-tools=4.0.6 && \
-    echo "mongodb-org hold" | dpkg --set-selections && \
-    echo "mongodb-org-server hold" | dpkg --set-selections && \
-    echo "mongodb-org-shell hold" | dpkg --set-selections && \
-    echo "mongodb-org-mongos hold" | dpkg --set-selections && \
-    echo "mongodb-org-tools hold" | dpkg --set-selections
+# steps from https://www.mongodb.com/docs/v6.0/tutorial/install-mongodb-on-ubuntu/#install-mongodb-community-edition
+RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add - && \
+    echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list && \
+    sudo apt-get update && \
+    sudo apt-get install -y mongodb-org=6.0.4 mongodb-org-database=6.0.4 mongodb-org-server=6.0.4 mongodb-org-mongos=6.0.4 mongodb-org-tools=6.0.4 && \
+    echo "mongodb-org hold" | sudo dpkg --set-selections && \
+    echo "mongodb-org-database hold" | sudo dpkg --set-selections && \
+    echo "mongodb-org-server hold" | sudo dpkg --set-selections && \
+    echo "mongodb-mongosh hold" | sudo dpkg --set-selections && \
+    echo "mongodb-org-mongos hold" | sudo dpkg --set-selections && \
+    echo "mongodb-org-tools hold" | sudo dpkg --set-selections
 
 # NOTE: This file has to be named mongodb.service (instead of mongod.service) for some reason
-RUN curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.com/mongodb/mongo/v4.0/rpm/mongod.service"
+RUN curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.com/mongodb/mongo/v6.0/rpm/mongod.service"
 
 # expose the render port
 EXPOSE 8080

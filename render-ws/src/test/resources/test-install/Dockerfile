@@ -9,7 +9,7 @@
 #   docker build -t render-ws-install:latest .
 #   docker run -it --rm render-ws-install:latest
 
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 LABEL maintainer="Eric Trautman <trautmane@janelia.hhmi.org>"
 
 # update apt repo and add sudo before test to mimic standard Ubuntu install

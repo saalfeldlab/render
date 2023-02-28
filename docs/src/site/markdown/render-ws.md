@@ -14,7 +14,7 @@ machines that are tuned for their specific purpose.
 
 ## Basic Installation
 These installation instructions cover setup of an evaluation instance with a collocated web server and 
-database running on Ubuntu 16.04.
+database running on Ubuntu 22.04.
 
 > Note: In lieu of running these steps manually, you may prefer to use a [Docker deployment] instead.
 Finally, if you'd like to run this exact installation process along with the [Render Web Services Example] in Docker, 
@@ -45,32 +45,30 @@ mvn package
 # assumes current directory is still the cloned render repository root (./render)
 cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
 ```
-### 6. Install MongoDB 4.0.6
-> These instructions were taken from <https://docs.mongodb.com/v4.0/tutorial/install-mongodb-on-ubuntu/>
+### 6. Install MongoDB 6.0.4
+> These instructions were taken from <https://www.mongodb.com/docs/v6.0/tutorial/install-mongodb-on-ubuntu/#install-mongodb-community-edition>
 
 ```bash
 # needed for access to https mongodb resources
-RUN apt-get install apt-transport-https
+apt-get install apt-transport-https gnupg
 
-# steps from https://docs.mongodb.com/v4.0/tutorial/install-mongodb-on-ubuntu/
-sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75D9DCB49F368818C72E52529D4
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/4.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.0.list
+# steps from https://www.mongodb.com/docs/v6.0/tutorial/install-mongodb-on-ubuntu/#install-mongodb-community-edition
+wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
 sudo apt-get update
 
-# NOTE: This step is not documented on the MongoDB web site, but for some reason is required to avoid "mongod: unrecognized service" errors later
-#       See https://github.com/Microsoft/WSL/issues/1822 for details
-sudo apt-get install -y mongodb
+sudo apt-get install -y mongodb-org=6.0.4 mongodb-org-database=6.0.4 mongodb-org-server=6.0.4 mongodb-org-mongos=6.0.4 mongodb-org-tools=6.0.4
 
-sudo apt-get install -y mongodb-org=4.0.6 mongodb-org-server=4.0.6 mongodb-org-shell=4.0.6 mongodb-org-mongos=4.0.6 mongodb-org-tools=4.0.6
 echo "mongodb-org hold" | sudo dpkg --set-selections
+echo "mongodb-org-database hold" | sudo dpkg --set-selections
 echo "mongodb-org-server hold" | sudo dpkg --set-selections
-echo "mongodb-org-shell hold" | sudo dpkg --set-selections
+echo "mongodb-mongosh hold" | sudo dpkg --set-selections
 echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
 echo "mongodb-org-tools hold" | sudo dpkg --set-selections
 
 # Create systemd service file
 # NOTE: This file has to be named mongodb.service (instead of mongod.service) for some reason
-sudo curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.com/mongodb/mongo/v4.0/rpm/mongod.service"
+sudo curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.com/mongodb/mongo/v6.0/rpm/mongod.service"
 ```
 
 ### 7. Start MongoDB

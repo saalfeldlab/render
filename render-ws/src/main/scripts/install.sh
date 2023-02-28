@@ -119,7 +119,9 @@ else
 fi
 
 echo """
-completed installation in ${INSTALL_DIR}
+Completed installation in ${INSTALL_DIR}:
+
+$(ls -alh "${INSTALL_DIR}")
 
 Jetty wrapper script is ${JETTY_WRAPPER_SCRIPT}
 """
