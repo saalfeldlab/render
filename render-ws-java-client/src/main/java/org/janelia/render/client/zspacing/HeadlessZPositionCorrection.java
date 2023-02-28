@@ -1,5 +1,7 @@
 package org.janelia.render.client.zspacing;
 
+import com.beust.jcommander.Parameter;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
@@ -20,13 +22,10 @@ import org.janelia.thickness.inference.Options;
 import org.janelia.thickness.inference.fits.AbstractCorrelationFit;
 import org.janelia.thickness.inference.fits.GlobalCorrelationFitAverage;
 import org.janelia.thickness.inference.fits.LocalCorrelationFitAverage;
-import org.janelia.thickness.inference.visitor.LazyVisitor;
 import org.janelia.thickness.inference.visitor.Visitor;
 import org.janelia.thickness.plugin.RealSumFloatNCC;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.Parameter;
 
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.DoubleType;
@@ -89,7 +88,7 @@ public class HeadlessZPositionCorrection {
 
         final double[] transform;
         try {
-            final Visitor visitor = new LazyVisitor(); // always use do-nothing visitor
+            final Visitor visitor = new LoggingVisitor(); // simply logs progress and does nothing else
             //final Visitor visitor = new LUTVisitor("", "", "," );
             //final Visitor visitor = new ScalingFactorsVisitor("", "", "," );
             transform = inf.estimateZCoordinates(crossCorrelationMatrix, startingCoordinates, visitor, options);
