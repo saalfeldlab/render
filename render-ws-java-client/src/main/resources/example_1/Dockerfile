@@ -59,7 +59,10 @@ RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
 # 6. Install MongoDB 6.0.4
 
 # needed for access to https mongodb resources
-RUN apt-get install apt-transport-https gnupg
+RUN apt-get -y install apt-transport-https gnupg wget
+
+# this line is not in the MongoDB steps, but is needed to skip interactive tzdata prompt ( see https://stackoverflow.com/a/44333806 )
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
 
 # steps from https://www.mongodb.com/docs/v6.0/tutorial/install-mongodb-on-ubuntu/#install-mongodb-community-edition
 RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add - && \

@@ -50,13 +50,14 @@ cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
 
 ```bash
 # needed for access to https mongodb resources
-apt-get install apt-transport-https gnupg
+apt-get install -y apt-transport-https gnupg wget
 
 # steps from https://www.mongodb.com/docs/v6.0/tutorial/install-mongodb-on-ubuntu/#install-mongodb-community-edition
 wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
 echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
 sudo apt-get update
 
+# note: you will be prompted to select a geographic area and city for tzdata
 sudo apt-get install -y mongodb-org=6.0.4 mongodb-org-database=6.0.4 mongodb-org-server=6.0.4 mongodb-org-mongos=6.0.4 mongodb-org-tools=6.0.4
 
 echo "mongodb-org hold" | sudo dpkg --set-selections
