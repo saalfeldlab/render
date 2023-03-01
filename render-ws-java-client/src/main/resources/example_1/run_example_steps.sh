@@ -6,7 +6,7 @@ set -e
 # From https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws.md
 
 # 7. Start MongoDB
-service mongodb start
+sudo -u mongodb /usr/bin/mongod -f /etc/mongod.conf &
 
 # 8. Start Jetty
 deploy/jetty_base/jetty_wrapper.sh start
