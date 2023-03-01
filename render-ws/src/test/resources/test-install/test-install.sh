@@ -20,6 +20,10 @@ echo """
 """
 
 git clone https://github.com/saalfeldlab/render.git
+# TODO: remove switch to branch once testing is done
+cd ./render
+git fetch origin
+git switch ubuntu-22-04-and-mongodb-6-0
 
 echo """
 # --------------------------------------------------------------------
@@ -27,7 +31,8 @@ echo """
 """
 
 # assumes cloned render repository is in ./render
-cd ./render
+# TODO: uncomment next line once testing is done
+#cd ./render
 ./render-ws/src/main/scripts/install.sh
 
 echo """
@@ -36,7 +41,7 @@ echo """
 """
 
 # assumes current directory is still the cloned render repository root (./render)
-JAVA_HOME=$(readlink -m ./deploy/jdk*)
+JAVA_HOME=$(readlink -m ./deploy/*jdk*)
 export JAVA_HOME
 echo "JAVA_HOME is ${JAVA_HOME}"
 mvn package
