@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # ======================================================================================
 # Runs basic installation instructions documented at:
@@ -7,23 +7,19 @@
 set -e
 
 
-echo """
+if [ "${SKIP_RENDER_BUILD}" != "y" ]; then
+  echo """
 # --------------------------------------------------------------------
 # 1. Install Git and Maven
 """
+  sudo apt-get install -y git maven
 
-sudo apt-get install -y git maven
-
-echo """
-# --------------------------------------------------------------------
-# 2. Clone the Repository
+  echo """
+  # --------------------------------------------------------------------
+  # 2. Clone the Repository
 """
-
-git clone https://github.com/saalfeldlab/render.git
-# TODO: 2204 - remove switch to branch once testing is done
-cd ./render
-git fetch origin
-git switch ubuntu-22-04-and-mongodb-6-0
+  git clone https://github.com/saalfeldlab/render.git
+fi
 
 echo """
 # --------------------------------------------------------------------
@@ -31,20 +27,21 @@ echo """
 """
 
 # assumes cloned render repository is in ./render
-# TODO: 2204 - uncomment next line once testing is done
-#cd ./render
+cd ./render
 ./render-ws/src/main/scripts/install.sh
 
-echo """
+if [ "${SKIP_RENDER_BUILD}" != "y" ]; then
+  echo """
 # --------------------------------------------------------------------
 # 4. Build the Render Modules
 """
 
-# assumes current directory is still the cloned render repository root (./render)
-JAVA_HOME=$(readlink -m ./deploy/*jdk*)
-export JAVA_HOME
-echo "JAVA_HOME is ${JAVA_HOME}"
-mvn package
+  # assumes current directory is still the cloned render repository root (./render)
+  JAVA_HOME=$(readlink -m ./deploy/*jdk*)
+  export JAVA_HOME
+  echo "JAVA_HOME is ${JAVA_HOME}"
+  mvn package
+fi
 
 echo """
 # --------------------------------------------------------------------

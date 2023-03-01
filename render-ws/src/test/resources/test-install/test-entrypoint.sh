@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # --------------------------------------------------------------------
 # Runs basic installation instructions documented at:
