@@ -20,7 +20,7 @@ echo """
 """
 
 git clone https://github.com/saalfeldlab/render.git
-# TODO: remove switch to branch once testing is done
+# TODO: 2204 - remove switch to branch once testing is done
 cd ./render
 git fetch origin
 git switch ubuntu-22-04-and-mongodb-6-0
@@ -31,7 +31,7 @@ echo """
 """
 
 # assumes cloned render repository is in ./render
-# TODO: uncomment next line once testing is done
+# TODO: 2204 - uncomment next line once testing is done
 #cd ./render
 ./render-ws/src/main/scripts/install.sh
 
