@@ -71,6 +71,8 @@ sudo apt-get update
 
 # this line is not in the MongoDB steps, but is needed to skip interactive tzdata prompt ( see https://stackoverflow.com/a/44333806 )
 DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+# this line is not in the MongoDB steps, but is needed to workaround 'mongodb-org-server.postinst: systemctl: not found' error
+sudo ln -s /bin/true /bin/systemctl
 
 sudo apt-get install -y mongodb-org=6.0.4 mongodb-org-database=6.0.4 mongodb-org-server=6.0.4 mongodb-org-mongos=6.0.4 mongodb-org-tools=6.0.4
 
@@ -81,17 +83,16 @@ echo "mongodb-mongosh hold" | sudo dpkg --set-selections
 echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
 echo "mongodb-org-tools hold" | sudo dpkg --set-selections
 
-# Create systemd service file
-# NOTE: This file has to be named mongodb.service (instead of mongod.service) for some reason
-sudo curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.com/mongodb/mongo/v6.0/rpm/mongod.service"
+# this line is not in the MongoDB steps, but is needed to workaround 'mongodb-org-server.postinst: systemctl: not found' error
+sudo rm /bin/systemctl
 
 echo """
 # --------------------------------------------------------------------
 # 7. Start MongoDB
 """
 
-# NOTE: The service has to be mongodb (instead of mongod) for some reason.
-sudo service mongodb start
+# launch mongodb in background (can't run service in Docker container)
+sudo -u mongodb /usr/bin/mongod -f /etc/mongod.conf &
 
 echo """
 # --------------------------------------------------------------------
