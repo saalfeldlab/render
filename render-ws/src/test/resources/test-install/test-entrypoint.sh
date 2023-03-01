@@ -1,7 +1,5 @@
 #!/bin/sh
 
-set -e
-
 # --------------------------------------------------------------------
 # Runs basic installation instructions documented at:
 #   https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws.md
