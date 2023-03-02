@@ -35,7 +35,9 @@ JAVA_HOME=$(readlink -m ./deploy/*jdk*)
 export JAVA_HOME
 echo "JAVA_HOME is ${JAVA_HOME}"
 
-if [ "${SKIP_RENDER_BUILD}" != "y" ]; then
+if [ "${SKIP_RENDER_BUILD}" == "y" ]; then
+  export PATH="${PATH}:${JAVA_HOME}/bin"
+else
   echo """
 # --------------------------------------------------------------------
 # 4. Build the Render Modules
