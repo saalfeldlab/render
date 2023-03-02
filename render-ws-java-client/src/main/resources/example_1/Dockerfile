@@ -59,7 +59,7 @@ RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
 # 6. Install MongoDB 6.0.4
 
 # needed for access to https mongodb resources
-RUN apt-get -y install apt-transport-https gnupg wget
+RUN apt-get -y install apt-transport-https gnupg wget sudo
 
 # this line is not in the MongoDB steps, but is needed to skip interactive tzdata prompt ( see https://stackoverflow.com/a/44333806 )
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
@@ -82,4 +82,4 @@ RUN curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.c
 # expose the render port
 EXPOSE 8080
 
-CMD ./render-ws-java-client/src/main/resources/example_1/run_example_steps.sh
+CMD ./strender-ws-java-client/src/main/resources/example_1/run_example_eps.sh
