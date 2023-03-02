@@ -15,23 +15,23 @@
 #
 # then build the render-ws-install:latest-post-build image and run it as often as needed:
 #   cd -
-#   docker build -t render-ws-install:latest-post-build -f test-post-build.Dockerfile
-#   docker run -it --rm render-ws-install:latest-post-build
+#   docker build -t janelia-render:latest-install-post-build --file test-post-build.Dockerfile .
+#   docker run -it --rm janelia-render:latest-install-post-build
 #
 # To see what is in the image before running the install script (or to run it manually):
-#   docker run -it --rm --entrypoint /bin/bash render-ws-install:latest-post-build
+#   docker run -it --rm --entrypoint /bin/bash janelia-render:latest-install-post-build
 
 FROM ubuntu:22.04
 LABEL maintainer="Eric Trautman <trautmane@janelia.hhmi.org>"
 
 # update apt repo and add sudo before test to mimic standard Ubuntu install
-RUN apt-get update && apt-get install -y sudo curl
+RUN apt-get update && apt-get install -y sudo curl wget
 
 WORKDIR /var/www/
 COPY *.sh ./
 RUN chmod 755 *.sh
 
-COPY --from=janelia-render:latest-builder /var/www/render .
+COPY --from=janelia-render:latest-builder /var/www/render ./render
 
 ENV SKIP_RENDER_BUILD="y"
 

@@ -30,16 +30,16 @@ echo """
 cd ./render
 ./render-ws/src/main/scripts/install.sh
 
+# assumes current directory is still the cloned render repository root (./render)
+JAVA_HOME=$(readlink -m ./deploy/*jdk*)
+export JAVA_HOME
+echo "JAVA_HOME is ${JAVA_HOME}"
+
 if [ "${SKIP_RENDER_BUILD}" != "y" ]; then
   echo """
 # --------------------------------------------------------------------
 # 4. Build the Render Modules
 """
-
-  # assumes current directory is still the cloned render repository root (./render)
-  JAVA_HOME=$(readlink -m ./deploy/*jdk*)
-  export JAVA_HOME
-  echo "JAVA_HOME is ${JAVA_HOME}"
   mvn package
 fi
 

@@ -6,8 +6,8 @@
 #   https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws-example.md
 #
 # To test:
-#   docker build -t render-ws-install:latest .
-#   docker run -it --rm render-ws-install:latest
+#   docker build -t janelia-render:latest-install .
+#   docker run -it --rm janelia-render:latest-install
 
 FROM ubuntu:22.04
 LABEL maintainer="Eric Trautman <trautmane@janelia.hhmi.org>"
