@@ -47,4 +47,8 @@ running example ...
 "
 
 cd render || exit 1
+JAVA_HOME=$(readlink -m ./deploy/*jdk*)
+PATH="${PATH}:${JAVA_HOME}/bin"
+export PATH
+
 ../test-example.sh
