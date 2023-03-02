@@ -82,4 +82,4 @@ RUN curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.c
 # expose the render port
 EXPOSE 8080
 
-CMD ./render-ws-java-client/src/main/resources/example_1/run_example.sh
+CMD ./render-ws-java-client/src/main/resources/example_1/run_example_steps.sh
