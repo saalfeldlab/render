@@ -13,6 +13,9 @@ echo """
 """
 deploy/jetty_base/jetty_wrapper.sh start
 
+# reset terminal that gets messed up by jetty start failure
+reset
+
 # hack that waits for web service to start up successfully by retrying GET request ...
 wget --tries=20 "http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_acquire"
 
