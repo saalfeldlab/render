@@ -66,6 +66,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tz
 
 # steps from https://www.mongodb.com/docs/v6.0/tutorial/install-mongodb-on-ubuntu/#install-mongodb-community-edition
 RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add - && \
+    sudo ln -s /bin/true /bin/systemctl && \
     echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list && \
     sudo apt-get update && \
     sudo apt-get install -y mongodb-org=6.0.4 mongodb-org-database=6.0.4 mongodb-org-server=6.0.4 mongodb-org-mongos=6.0.4 mongodb-org-tools=6.0.4 && \
@@ -74,10 +75,8 @@ RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key 
     echo "mongodb-org-server hold" | sudo dpkg --set-selections && \
     echo "mongodb-mongosh hold" | sudo dpkg --set-selections && \
     echo "mongodb-org-mongos hold" | sudo dpkg --set-selections && \
-    echo "mongodb-org-tools hold" | sudo dpkg --set-selections
-
-# NOTE: This file has to be named mongodb.service (instead of mongod.service) for some reason
-RUN curl -o /lib/systemd/system/mongodb.service "https://raw.githubusercontent.com/mongodb/mongo/v6.0/rpm/mongod.service"
+    echo "mongodb-org-tools hold" | sudo dpkg --set-selections && \
+    sudo rm /bin/systemctl
 
 # expose the render port
 EXPOSE 8080

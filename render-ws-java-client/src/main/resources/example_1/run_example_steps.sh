@@ -1,14 +1,16 @@
 #!/bin/bash
 
-set -e
-
 # ------------------------------------------------------------------------------------------------------
 # From https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws.md
 
-# 7. Start MongoDB
+echo """
+  Install 7. Start MongoDB
+"""
 sudo -u mongodb /usr/bin/mongod -f /etc/mongod.conf &
 
-# 8. Start Jetty
+echo """
+  Install 8. Start Jetty
+"""
 deploy/jetty_base/jetty_wrapper.sh start
 
 # hack that waits for web service to start up successfully by retrying GET request ...
