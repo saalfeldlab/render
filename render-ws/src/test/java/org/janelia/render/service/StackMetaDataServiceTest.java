@@ -19,7 +19,7 @@ import org.janelia.render.service.dao.RenderDaoTest;
 import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
-import org.jboss.resteasy.spi.ResteasyUriInfo;
+import org.jboss.resteasy.specimpl.ResteasyUriInfo;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
