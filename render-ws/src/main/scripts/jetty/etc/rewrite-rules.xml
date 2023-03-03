@@ -2,7 +2,7 @@
 <!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "https://www.eclipse.org/jetty/configure_10_0.dtd">
 
 <!-- =============================================================== -->
-<!-- Configure the rewrite rules                                     -->
+<!-- Configure the demos                                             -->
 <!-- =============================================================== -->
 <Configure id="Server" class="org.eclipse.jetty.server.Server">
 
@@ -14,7 +14,7 @@
                 <Arg>
                     <New class="org.eclipse.jetty.rewrite.handler.RedirectRegexRule">
                         <Set name="regex">^(.*?)/render-ws/view/$</Set>
-                        <Set name="replacement">$1/render-ws/view/index.html</Set>
+                        <Set name="location">$1/render-ws/view/index.html</Set>
                         <Set name="terminating">true</Set>
                     </New>
                 </Arg>
