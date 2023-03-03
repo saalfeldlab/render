@@ -28,7 +28,7 @@
 # Install library dependencies before actually building source.
 # This caches libraries into an image layer that can be reused when only source code has changed.
 
-FROM azul/zulu-openjdk-debian:8 as build_environment
+FROM azul/zulu-openjdk-debian:11 as build_environment
 LABEL maintainer="Forrest Collman <forrestc@alleninstitute.org>, Eric Trautman <trautmane@janelia.hhmi.org>"
 
 RUN apt-get update && apt-get install -y maven
