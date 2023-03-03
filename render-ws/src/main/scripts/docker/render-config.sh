@@ -81,58 +81,40 @@ fi
 # --------------------------------------------------------------
 # Jetty thread pool config
 
-JETTY_SERVER_INI="${JETTY_BASE}/start.d/server.ini"
+JETTY_THREADPOOL_INI="${JETTY_BASE}/start.d/threadpool.ini"
 
 if [ -n "${JETTY_THREADPOOL_MIN_THREADS}" ]; then
-  sed -i "s/^.*jetty.threadPool.minThreads=.*/jetty.threadPool.minThreads=${JETTY_THREADPOOL_MIN_THREADS}/" ${JETTY_SERVER_INI}
+  sed -i "s/^.*jetty.threadPool.minThreads=.*/jetty.threadPool.minThreads=${JETTY_THREADPOOL_MIN_THREADS}/" ${JETTY_THREADPOOL_INI}
 fi
 
 if [ -n "${JETTY_THREADPOOL_MAX_THREADS}" ]; then
-  sed -i "s/^.*jetty.threadPool.maxThreads=.*/jetty.threadPool.maxThreads=${JETTY_THREADPOOL_MAX_THREADS}/" ${JETTY_SERVER_INI}
+  sed -i "s/^.*jetty.threadPool.maxThreads=.*/jetty.threadPool.maxThreads=${JETTY_THREADPOOL_MAX_THREADS}/" ${JETTY_THREADPOOL_INI}
 fi
 
 # --------------------------------------------------------------
 # Logging config
 
-if [ "${LOG_ACCESS_ROOT_APPENDER}" = "NONE" ]; then
-
-  # disable access logging in jetty.xml
-  sed -i """
-    s/<!-- remove close comment to disable access log -->/<!-- DISABLE ACCESS LOG/
-    s/<!-- remove open comment to disable access log -->/DISABLE ACCESS LOG -->/
-  """ "${JETTY_BASE}/etc/jetty.xml"
-
-  # set appender to valid value just in case logback cares
-  LOG_ACCESS_ROOT_APPENDER="STDOUT"
-
-else
-
-  # enable access logging in jetty.xml
-  sed -i """
-    s/<!-- DISABLE ACCESS LOG/<!-- remove close comment to disable access log -->/
-    s/DISABLE ACCESS LOG -->/<!-- remove open comment to disable access log -->/
-  """ "${JETTY_BASE}/etc/jetty.xml"
-
-fi
-
 if [ "${LOG_JETTY_ROOT_APPENDER}" = "NONE" ]; then
   # turn off jetty server logging
   LOG_JETTY_ROOT_LEVEL="OFF"
   LOG_JETTY_JANELIA_LEVEL="OFF"
+  LOG_JETTY_ACCESS_LEVEL="OFF"
 
   # set appender to valid value just in case logback cares
   LOG_JETTY_ROOT_APPENDER="STDOUT"
+
+else
+  LOG_JETTY_ACCESS_LEVEL="INFO"
 fi
 
 sed -i """
   s@logger name=\"org.janelia\" level=\".*\"@logger name=\"org.janelia\" level=\"${LOG_JETTY_JANELIA_LEVEL}\"@
   s@root level=\".*\"@root level=\"${LOG_JETTY_ROOT_LEVEL}\"@
-  s@appender-ref ref=\".*\"@appender-ref ref=\"${LOG_JETTY_ROOT_APPENDER}\"@
-""" "${JETTY_BASE}/resources/logback.xml"
+  s@appender-ref ref=\"FILE\"@appender-ref ref=\"${LOG_JETTY_ROOT_APPENDER}\"@
+  s@appender-ref ref=\"ACCESS_FILE\"@appender-ref ref=\"${LOG_JETTY_ROOT_APPENDER}\"@
+  s@RequestLog\" level=\"INFO@RequestLog\" level=\"${LOG_JETTY_ACCESS_LEVEL}@
 
-sed -i """
-  s@appender-ref ref=\".*\"@appender-ref ref=\"${LOG_ACCESS_ROOT_APPENDER}\"@
-""" "${JETTY_BASE}/resources/logback-access.xml"
+""" "${JETTY_BASE}/resources/logback.xml"
 
 # --------------------------------------------------------------
 # Render server properties

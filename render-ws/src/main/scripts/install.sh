@@ -1,17 +1,17 @@
 #!/bin/bash
 
-JDK_VERSION="zulu8.50.0.51-ca-jdk8.0.275-linux_x64"
-JETTY_VERSION="9.4.43.v20210629" # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/Dockerfile
-JETTY_DIST="jetty-distribution-${JETTY_VERSION}"
+JDK_VERSION="zulu11.62.17-ca-jdk11.0.18-linux_x64"
+JETTY_VERSION="10.0.13" # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/Dockerfile
+JETTY_DIST="jetty-home-${JETTY_VERSION}"
 
-# URL for JDK 8
+# URL for JDK
 # You can find latest Linux x64 download links at:
 # https://www.azul.com/downloads/?version=java-8-lts&os=linux&architecture=x86-64-bit&package=jdk&show-old-builds=true
 JDK_URL="https://cdn.azul.com/zulu/bin/${JDK_VERSION}.tar.gz"
 
-# URLs for Jetty 9, SLF4J 1.7, Logback 1.1, and Swagger 2.1
+# URLs for Jetty 10, SLF4J 1.7, Logback 1.1, and Swagger 2.1
 MAVEN_CENTRAL_URL="https://repo1.maven.org"
-JETTY_URL="${MAVEN_CENTRAL_URL}/maven2/org/eclipse/jetty/jetty-distribution/${JETTY_VERSION}/${JETTY_DIST}.tar.gz"
+JETTY_URL="${MAVEN_CENTRAL_URL}/maven2/org/eclipse/jetty/jetty-home/${JETTY_VERSION}/${JETTY_DIST}.tar.gz"
 
 ABSOLUTE_SCRIPT=`readlink -m $0`
 SCRIPTS_DIR=`dirname ${ABSOLUTE_SCRIPT}`
@@ -91,7 +91,7 @@ JETTY_WRAPPER_SCRIPT="${JETTY_BASE}/jetty_wrapper.sh"
 sed "
   s~/opt/local/jetty_home~${JETTY_HOME}~
   s~/opt/local/jetty_base~${JETTY_BASE}~
-  s~/misc/sc/jdks/8.0.275.fx-zulu~${JAVA_HOME}~
+  s~/misc/sc/jdks/zulu11~${JAVA_HOME}~
 " ${SCRIPTS_DIR}/jetty/jetty_wrapper.sh > ${JETTY_WRAPPER_SCRIPT}
 
 chmod 755 ${JETTY_WRAPPER_SCRIPT}

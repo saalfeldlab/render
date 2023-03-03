@@ -11,8 +11,8 @@ else
   JETTY_BASE_DIR="${JETTY_BASE}"
 fi
 
-LOGBACK_VERSION="1.1.5"
-SLF4J_VERSION="1.7.16"
+LOGBACK_VERSION="1.3.5"
+SLF4J_VERSION="1.7.36"
 SWAGGER_UI_VERSION="2.1.4"
 
 MAVEN_CENTRAL_URL="https://repo1.maven.org"
@@ -30,7 +30,7 @@ SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
 JETTY_LIB_EXT="${JETTY_BASE_DIR}/lib/ext"
 mkdir -p "${JETTY_BASE_DIR}/logs" "${JETTY_LIB_EXT}"
 
-for MODULE in access classic core; do
+for MODULE in classic core; do
   MODULE_JAR="logback-${MODULE}-${LOGBACK_VERSION}.jar"
   curl -o "${JETTY_LIB_EXT}/${MODULE_JAR}" "${LOGBACK_URL}/logback-${MODULE}/${LOGBACK_VERSION}/${MODULE_JAR}"
 done

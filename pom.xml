@@ -151,7 +151,18 @@
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
 
-<!--        <deploy.path>/Users/trautmane/projects/git/maven</deploy.path>-->
+        <!-- Override JDK 8 settings in pom-scijava-base now that Jetty 10 has forced us to JDK 11  -->
+        <scijava.jvm.version>11</scijava.jvm.version>
+        <scijava.jvm.build.version>[11,]</scijava.jvm.build.version>
+
+        <!--
+             Work-around duplicate class enforcer errors introduced by having to explicitly include JAXB
+             stuff from Jakarta and Sun after JAXB was removed from JDK 11.
+             TODO: revisit JAXB duplicates hack when migrating to new jakarta.xml.bind namespace ( see https://stackoverflow.com/questions/52502189/java-11-package-javax-xml-bind-does-not-exist )
+        -->
+        <allowedDuplicateClasses>${scijava.allowedDuplicateClasses},javax.activation.*,javax.xml.*,com.sun.activation.*</allowedDuplicateClasses>
+
+        <!--        <deploy.path>/Users/trautmane/projects/git/maven</deploy.path>-->
     </properties>
 
     <build>
@@ -159,10 +170,9 @@
             <plugins>
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.6.1</version>
+                    <version>3.8.1</version>
                     <configuration>
-                        <source>1.8</source>
-                        <target>1.8</target>
+                        <release>11</release>
                     </configuration>
                 </plugin>
                 <!--

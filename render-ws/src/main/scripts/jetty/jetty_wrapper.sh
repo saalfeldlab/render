@@ -16,7 +16,7 @@ export JETTY_STATE="${JETTY_RUN}/jetty.state"
 # JETTY_USER
 # JETTY_SHELL
  
-export JAVA_HOME="/misc/sc/jdks/8.0.275.fx-zulu"
+export JAVA_HOME="/misc/sc/jdks/zulu11"
 export PATH="${JAVA_HOME}/bin:${PATH}"
 export JAVA="${JAVA_HOME}/bin/java"
  

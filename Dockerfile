@@ -81,9 +81,9 @@ RUN mkdir -p /root/render-lib && \
 # Once web service application is built, set up jetty server and deploy application to it.
 
 # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/render-ws/src/main/scripts/install.sh
-FROM jetty:9.4.43-jdk8-slim as render-ws
+FROM jetty:10.0.13-jre11 as render-ws
 
-# add packages not included in slim base image:
+# add packages not included in base image:
 #   curl and coreutils for gnu readlink
 USER root
 RUN apt-get update && apt-get install -y curl coreutils

@@ -54,6 +54,22 @@
 
     <dependencies>
 
+        <!--
+             JAXB dependencies now needed for JDK 11
+             TODO: see if JAXB is only needed for Swagger and remove dependencies if newer Swagger doesn't need them
+        -->
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <version>2.3.3</version>
+        </dependency>
+        <dependency>
+            <groupId>com.sun.xml.bind</groupId>
+            <artifactId>jaxb-impl</artifactId>
+            <version>2.2.4</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- SciJava Dependencies -->
         <dependency>
             <groupId>mpicbg</groupId>
