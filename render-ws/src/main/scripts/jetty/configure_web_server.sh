@@ -11,8 +11,8 @@ else
   JETTY_BASE_DIR="${JETTY_BASE}"
 fi
 
-LOGBACK_VERSION="1.3.5"
-SLF4J_VERSION="2.0.5"
+LOGBACK_VERSION="1.2.11" # should be kept in sync with root pom.xml logback.version
+SLF4J_VERSION="1.7.36" # should be kept in sync with root Dockerfile SLF4J_VERSION (for jetty)
 SWAGGER_UI_VERSION="2.1.4"
 
 MAVEN_CENTRAL_URL="https://repo1.maven.org"
