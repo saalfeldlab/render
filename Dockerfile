@@ -18,6 +18,7 @@
 #
 # To build a slimmed down image with just a Jetty server hosting compiled render web services:
 #   docker build -t janelia-render:latest-ws --target render-ws .
+#   docker build -t janelia-render:latest-ws --target render-ws --build-arg EXTRA_JETTY_PACKAGES=vim .
 #
 # To run a container with the Jetty server hosting compiled render web services:
 #   docker run -it --rm janelia-render:latest-ws
@@ -84,9 +85,12 @@ RUN mkdir -p /root/render-lib && \
 FROM jetty:10.0.13-jre11 as render-ws
 
 # add packages not included in base image:
-#   curl and coreutils for gnu readlink
+#   curl and coreutils are always needed for gnu readlink
+#   other packages can be added from build command (e.g. docker build ... --build-arg EXTRA_JETTY_PACKAGES=vim )
+ARG EXTRA_JETTY_PACKAGES
+
 USER root
-RUN apt-get update && apt-get install -y curl coreutils
+RUN apt-get update && apt-get install -y curl coreutils $EXTRA_JETTY_PACKAGES
 
 ## need to replace jetty 10 default slf4j-api-2.x.jar with slf4j-api-1.7.x version
 ## see https://github.com/eclipse/jetty.project/issues/5943#issuecomment-773334144
