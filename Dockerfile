@@ -88,6 +88,21 @@ FROM jetty:10.0.13-jre11 as render-ws
 USER root
 RUN apt-get update && apt-get install -y curl coreutils
 
+# need to replace jetty 10 default slf4j-api-2.x.jar with slf4j-api-1.7.x version
+# see https://github.com/eclipse/jetty.project/issues/5943#issuecomment-773334144
+WORKDIR $JETTY_HOME/lib/logging
+
+# should be kept in sync with render-ws/src/main/scripts/jetty/configure_web_server.sh
+ARG SLF4J_VERSION="1.7.36"
+
+RUN echo && echo "before SLF4J fix, $PWD :" && \
+    ls -alh && \
+    rm *slf4j*.jar && \
+    curl -o "slf4j-api-$SLF4J_VERSION.jar" "https://repo1.maven.org/maven2/org/slf4j/slf4j-api/$SLF4J_VERSION/slf4j-api-$SLF4J_VERSION.jar" && \
+    echo && echo "after SLF4J fix, $PWD :" && \
+    ls -alh && \
+    echo
+
 WORKDIR $JETTY_BASE
 
 COPY render-ws/src/main/scripts/jetty/ .
@@ -100,21 +115,6 @@ RUN ls -al $JETTY_BASE/* && \
 COPY --from=archive /root/render-lib/render-ws-*.war webapps/render-ws.war
 COPY render-ws/src/main/scripts/docker /render-docker
 RUN chown -R jetty:jetty $JETTY_BASE 
-
-# need to replace jetty 10 default slf4j-api-2.x.jar with slf4j-api-1.7.x version
-# see https://github.com/eclipse/jetty.project/issues/5943#issuecomment-773334144
-WORKDIR $JETTY_HOME/lib/logging
-
-# should be kept in sync with render-ws/src/main/scripts/jetty/configure_web_server.sh
-ARG SLF4J_VERSION="1.7.36"
-
-RUN echo && echo "before SLF4J fix, $PWD :" && \
-    ls -alh && \\
-    rm *slf4j*.jar && \\
-    curl -o "lib/logging/slf4j-api-$SLF4J_VERSION.jar" "https://repo1.maven.org/maven2/org/slf4j/slf4j-api/$SLF4J_VERSION/slf4j-api-$SLF4J_VERSION.jar" && \
-    echo && echo "after SLF4J fix, $PWD :" && \
-    ls -alh && \
-    echo
 
 EXPOSE 8080
 
