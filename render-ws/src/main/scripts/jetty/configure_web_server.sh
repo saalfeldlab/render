@@ -11,8 +11,8 @@ else
   JETTY_BASE_DIR="${JETTY_BASE}"
 fi
 
-LOGBACK_VERSION="1.2.11" # should be kept in sync with root pom.xml logback.version
-SLF4J_VERSION="1.7.36" # should be kept in sync with root Dockerfile SLF4J_VERSION (for jetty)
+SLF4J_VERSION="2.0.5" # should be kept in sync with root pom.xml slf4j.version and root Dockerfile SLF4J_VERSION (for jetty)
+LOGBACK_VERSION="1.3.5" # should be kept in sync with root pom.xml logback.version
 SWAGGER_UI_VERSION="2.1.4"
 
 MAVEN_CENTRAL_URL="https://repo1.maven.org"
@@ -35,7 +35,7 @@ for MODULE in classic core; do
   curl -o "${JETTY_LIB_EXT}/${MODULE_JAR}" "${LOGBACK_URL}/logback-${MODULE}/${LOGBACK_VERSION}/${MODULE_JAR}"
 done
 
-for MODULE in jcl-over-slf4j jul-to-slf4j log4j-over-slf4j slf4j-api; do
+for MODULE in jcl-over-slf4j jul-to-slf4j log4j-over-slf4j; do
   MODULE_JAR="${MODULE}-${SLF4J_VERSION}.jar"
   curl -o "${JETTY_LIB_EXT}/${MODULE_JAR}" "${SLF4J_URL}/${MODULE}/${SLF4J_VERSION}/${MODULE_JAR}"
 done

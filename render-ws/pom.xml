@@ -19,7 +19,10 @@
                 <artifactId>maven-war-plugin</artifactId>
                 <version>2.6</version>
                 <configuration>
-                    <packagingExcludes>WEB-INF/lib/log4j*.jar</packagingExcludes>
+                    <packagingExcludes>
+                        WEB-INF/lib/log4j*.jar,
+                        WEB-INF/lib/logback*.jar
+                    </packagingExcludes>
                     <attachClasses>true</attachClasses>
                     <classesClassifier>classes</classesClassifier>
                 </configuration>

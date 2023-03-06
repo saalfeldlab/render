@@ -149,7 +149,8 @@
         <swagger-version>1.6.2</swagger-version>
 
         <!-- should be kept in sync with render-ws/src/main/scripts/jetty/configure_web_server.sh -->
-        <logback.version>1.2.11</logback.version>
+        <slf4j.version>2.0.5</slf4j.version>
+        <logback.version>1.3.5</logback.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <license.licenseName>gpl_v2</license.licenseName>
