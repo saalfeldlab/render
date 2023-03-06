@@ -160,13 +160,6 @@
         <scijava.jvm.version>11</scijava.jvm.version>
         <scijava.jvm.build.version>[11,]</scijava.jvm.build.version>
 
-        <!--
-             Work-around duplicate class enforcer errors introduced by having to explicitly include JAXB
-             stuff from Jakarta and Sun after JAXB was removed from JDK 11.
-             TODO: revisit JAXB duplicates hack when migrating to new jakarta.xml.bind namespace ( see https://stackoverflow.com/questions/52502189/java-11-package-javax-xml-bind-does-not-exist )
-        -->
-        <allowedDuplicateClasses>${scijava.allowedDuplicateClasses},javax.activation.*,javax.xml.*,com.sun.activation.*</allowedDuplicateClasses>
-
         <!--        <deploy.path>/Users/trautmane/projects/git/maven</deploy.path>-->
     </properties>
 
