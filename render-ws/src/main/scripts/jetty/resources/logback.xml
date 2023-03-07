@@ -60,7 +60,7 @@
                  for Jetty >= 10 we have to use Jetty's built-in requestlog module instead of logback-access
                  and then just use this logback config to handle rolling files and compression.
             -->
-            <pattern>%msg</pattern>
+            <pattern>%msg%n</pattern>
         </encoder>
     </appender>
 

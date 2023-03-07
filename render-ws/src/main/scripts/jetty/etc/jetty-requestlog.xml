@@ -20,7 +20,7 @@
       <Arg>
         <Property name="jetty.requestlog.formatString">
           <Default>
-            <Get class="org.eclipse.jetty.server.CustomRequestLog" name="EXTENDED_NCSA_FORMAT"/>
+            %{client}a - %u %{dd/MMM/yyyy:HH:mm:ss ZZZ}t "%r" %s %{CLF}O "%{Referer}i" "%{User-Agent}i" [%D ms]
           </Default>
         </Property>
       </Arg>
