@@ -23,9 +23,29 @@
         </encoder>
     </appender>
 
+    <logger name="org.janelia" level="DEBUG"/>
+
+    <!--
+         Hide mongodb driver cluster log spam until
+         https://jira.mongodb.org/browse/JAVA-2136
+         gets fixed.
+    -->
+    <logger name="org.mongodb.driver.cluster" level="WARN"/>
+
+    <!--
+         Here are some other contexts that can be useful when debugging (uncomment as needed).
+    -->
+    <!-- <logger name="org.jboss" level="DEBUG"/> -->
+    <!-- <logger name="org.eclipse.jetty.servlets" level="DEBUG"/> -->
+    <!-- <logger name="org.eclipse.jetty.server" level="DEBUG"/> -->
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+
     <appender name="ACCESS_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <!-- 
+            <!--
                  The first %d token is marked as auxiliary, so the second %d token is then assumed to be primary.
                  Rollover will occur daily (default for %d) and the folder name will depend on the year and month.
                  For example, during the month of November 2014, archived files will all placed
@@ -45,19 +65,13 @@
     </appender>
 
     <!--
-         Here are some other contexts that can be useful when debugging (uncomment as needed).
+         Use ACCESS_FILE appender for Jetty's request log messages
+         (see https://github.com/eclipse/jetty.project/issues/5996).
+         Note that the logger name is taken from the default name specified in
+         the org.eclipse.jetty.server.Slf4jRequestLogWriter no-arg constructor.
     -->
-    <!-- <logger name="org.jboss" level="DEBUG"/> -->
-    <!-- <logger name="org.eclipse.jetty.servlets" level="DEBUG"/> -->
-    <!-- <logger name="org.eclipse.jetty.server" level="DEBUG"/> -->
-
-    <root level="INFO">
-        <appender-ref ref="FILE" />
-    </root>
-
-    <!-- Use ACCESS_FILE appender for Jetty's request log messages (see https://github.com/eclipse/jetty.project/issues/5996). -->
     <logger name="org.eclipse.jetty.server.RequestLog" level="INFO">
-      <appender-ref ref="ACCESS_FILE" />
+        <appender-ref ref="ACCESS_FILE" />
     </logger>
 
 </configuration>

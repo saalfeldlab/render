@@ -94,26 +94,26 @@ fi
 # --------------------------------------------------------------
 # Logging config
 
-if [ "${LOG_JETTY_ROOT_APPENDER}" = "NONE" ]; then
-  # turn off jetty server logging
-  LOG_JETTY_ROOT_LEVEL="OFF"
-  LOG_JETTY_JANELIA_LEVEL="OFF"
-  LOG_JETTY_ACCESS_LEVEL="OFF"
-
-  # set appender to valid value just in case logback cares
-  LOG_JETTY_ROOT_APPENDER="STDOUT"
-
+# default access log is to a file, see if config has changed this ...
+if [ "${LOG_ACCESS_ROOT_APPENDER}" = "NONE" ]; then
+  rm "${JETTY_BASE}/start.d/requestlog.ini" # disable access logging
 else
-  LOG_JETTY_ACCESS_LEVEL="INFO"
+    if [ "${LOG_ACCESS_ROOT_APPENDER}" = "STDOUT" ]; then
+        sed -i "s@appender-ref ref=\"ACCESS_FILE\"@appender-ref ref=\"STDOUT\"@" "${JETTY_BASE}/resources/logback.xml"
+    fi
+fi
+
+if [ "${LOG_JETTY_ROOT_APPENDER}" = "NONE" ]; then
+    # turn off jetty server logging
+    LOG_JETTY_ROOT_LEVEL="OFF"
+    LOG_JETTY_JANELIA_LEVEL="OFF"
+    LOG_JETTY_ROOT_APPENDER="STDOUT"
 fi
 
 sed -i """
   s@logger name=\"org.janelia\" level=\".*\"@logger name=\"org.janelia\" level=\"${LOG_JETTY_JANELIA_LEVEL}\"@
   s@root level=\".*\"@root level=\"${LOG_JETTY_ROOT_LEVEL}\"@
   s@appender-ref ref=\"FILE\"@appender-ref ref=\"${LOG_JETTY_ROOT_APPENDER}\"@
-  s@appender-ref ref=\"ACCESS_FILE\"@appender-ref ref=\"${LOG_JETTY_ROOT_APPENDER}\"@
-  s@RequestLog\" level=\"INFO@RequestLog\" level=\"${LOG_JETTY_ACCESS_LEVEL}@
-
 """ "${JETTY_BASE}/resources/logback.xml"
 
 # --------------------------------------------------------------
