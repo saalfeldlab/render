@@ -92,17 +92,6 @@ ARG EXTRA_JETTY_PACKAGES
 USER root
 RUN apt-get update && apt-get install -y curl coreutils $EXTRA_JETTY_PACKAGES
 
-# need to remove jetty-slf4j-impl-*.jar since we are using logback-classic and there should only be one binding
-# see https://www.slf4j.org/codes.html#multiple_bindings
-WORKDIR $JETTY_HOME/lib/logging
-
-RUN echo && echo "before jetty-slf4j removal, $PWD :" && \
-    ls -alh && \
-    rm jetty-slf4j*.jar && \
-    echo && echo "after jetty-slf4j removal, $PWD :" && \
-    ls -alh && \
-    echo
-
 WORKDIR $JETTY_BASE
 
 COPY render-ws/src/main/scripts/jetty/ .

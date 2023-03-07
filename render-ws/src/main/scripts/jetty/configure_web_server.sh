@@ -27,17 +27,17 @@ SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
 # -------------------------------------------------------------------------------------------
 # setup logging components
 
-JETTY_LIB_EXT="${JETTY_BASE_DIR}/lib/ext"
-mkdir -p "${JETTY_BASE_DIR}/logs" "${JETTY_LIB_EXT}"
+JETTY_LIB_LOGGING="${JETTY_BASE_DIR}/lib/logging"
+mkdir -p "${JETTY_BASE_DIR}/logs" "${JETTY_LIB_LOGGING}"
 
 for MODULE in classic core; do
   MODULE_JAR="logback-${MODULE}-${LOGBACK_VERSION}.jar"
-  curl -o "${JETTY_LIB_EXT}/${MODULE_JAR}" "${LOGBACK_URL}/logback-${MODULE}/${LOGBACK_VERSION}/${MODULE_JAR}"
+  curl -o "${JETTY_LIB_LOGGING}/${MODULE_JAR}" "${LOGBACK_URL}/logback-${MODULE}/${LOGBACK_VERSION}/${MODULE_JAR}"
 done
 
 for MODULE in jcl-over-slf4j jul-to-slf4j log4j-over-slf4j; do
   MODULE_JAR="${MODULE}-${SLF4J_VERSION}.jar"
-  curl -o "${JETTY_LIB_EXT}/${MODULE_JAR}" "${SLF4J_URL}/${MODULE}/${SLF4J_VERSION}/${MODULE_JAR}"
+  curl -o "${JETTY_LIB_LOGGING}/${MODULE_JAR}" "${SLF4J_URL}/${MODULE}/${SLF4J_VERSION}/${MODULE_JAR}"
 done
 
 # -------------------------------------------------------------------------------------------
