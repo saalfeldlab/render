@@ -9,7 +9,10 @@
       <!-- Writer -->
       <Arg>
         <New class="org.eclipse.jetty.server.Slf4jRequestLogWriter">
-          <Arg>accesslog</Arg>
+          <!--
+               Slf4jRequestLogWriter constructor no longer takes a log name argument.
+               The default name from source code is 'org.eclipse.jetty.server.RequestLog'.
+          -->
         </New>
       </Arg>
 
