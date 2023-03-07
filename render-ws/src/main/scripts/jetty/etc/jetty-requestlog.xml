@@ -1,13 +1,15 @@
 <?xml version="1.0"?>
 <!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "https://www.eclipse.org/jetty/configure_10_0.dtd">
 
+<!-- see https://github.com/eclipse/jetty.project/issues/5996#issuecomment-784508724 -->
 <Configure id="Server" class="org.eclipse.jetty.server.Server">
 
   <Set name="RequestLog">
     <New id="RequestLog" class="org.eclipse.jetty.server.CustomRequestLog">
-      <!-- Use Slf4jRequestLogWriter to support  -->
+      <!-- Writer -->
       <Arg>
         <New class="org.eclipse.jetty.server.Slf4jRequestLogWriter">
+          <Arg>accesslog</Arg>
         </New>
       </Arg>
 
