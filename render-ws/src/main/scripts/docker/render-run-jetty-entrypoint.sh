@@ -4,7 +4,7 @@ set -e
 ABSOLUTE_SCRIPT=$(readlink -m $0)
 SCRIPTS_DIR=$(dirname ${ABSOLUTE_SCRIPT})
 
-CONFIG_RUNTIME_FILE="${SCRIPTS_DIR}/render-config-runtime.txt"
+CONFIG_RUNTIME_FILE="${JETTY_BASE}/configure-runtime.txt"
 
 if [ ! -f "${CONFIG_RUNTIME_FILE}" ]; then
 
