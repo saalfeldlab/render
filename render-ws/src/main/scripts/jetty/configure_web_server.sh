@@ -67,3 +67,12 @@ rm -rf "${SWAGGER_UI_SOURCE_DIR}"
 # -------------------------------------------------------------------------------------------
 # ensure jetty base and tmp directories are owned by jetty run-as user
 chown -R "${JETTY_RUN_AS_USER_AND_GROUP_IDS}" "${JETTY_BASE_DIR}" "${TMPDIR}"
+
+JETTY_RUN_AS_USER_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS%%:*}
+if id "${JETTY_RUN_AS_USER_ID}" &>/dev/null; then
+    echo "user ${JETTY_RUN_AS_USER_ID} already exists in image"
+else
+    echo "need to create user id ${JETTY_RUN_AS_USER_ID} with name ${JETTY_RUN_AS_USER_NAME} in image ..."
+    JETTY_RUN_AS_GROUP_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS%%*:}
+    useradd --uid "${JETTY_RUN_AS_USER_ID}" --gid "${JETTY_RUN_AS_GROUP_ID}" --shell /bin/bash "${JETTY_RUN_AS_USER_NAME}"
+fi

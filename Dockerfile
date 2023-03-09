@@ -91,7 +91,9 @@ ARG EXTRA_JETTY_PACKAGES
 
 # allow jetty run-as user:group ids to be changed (e.g. to access externally mounted filesystems)
 ARG JETTY_RUN_AS_USER_AND_GROUP_IDS=999:999
-ENV JETTY_RUN_AS_USER_AND_GROUP_IDS="$JETTY_RUN_AS_USER_AND_GROUP_IDS"
+ARG JETTY_RUN_AS_USER_NAME=jetty
+ENV JETTY_RUN_AS_USER_AND_GROUP_IDS="$JETTY_RUN_AS_USER_AND_GROUP_IDS" \
+    JETTY_RUN_AS_USER_NAME="$JETTY_RUN_AS_USER_NAME"
 
 USER root
 RUN apt-get update && apt-get install -y curl coreutils $EXTRA_JETTY_PACKAGES
@@ -111,8 +113,6 @@ COPY render-ws/src/main/scripts/docker /render-docker
 EXPOSE 8080
 
 ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true" \
-    JETTY_USER_ID="jetty" \
-    JETTY_GROUP_ID="jetty" \
     JETTY_THREADPOOL_MIN_THREADS="10" \
     JETTY_THREADPOOL_MAX_THREADS="200" \
     LOG_ACCESS_ROOT_APPENDER="STDOUT" \
