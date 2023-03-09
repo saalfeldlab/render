@@ -89,11 +89,10 @@ FROM jetty:10.0.13-jre11 as render-ws
 #   other packages can be added from build command (e.g. docker build ... --build-arg EXTRA_JETTY_PACKAGES=vim )
 ARG EXTRA_JETTY_PACKAGES
 
-# allow jetty run-as user:group ids to be changed (e.g. to access externally mounted filesystems)
-ARG JETTY_RUN_AS_USER_AND_GROUP_IDS=999:999
-ARG JETTY_RUN_AS_USER_NAME=jetty
-ENV JETTY_RUN_AS_USER_AND_GROUP_IDS="$JETTY_RUN_AS_USER_AND_GROUP_IDS" \
-    JETTY_RUN_AS_USER_NAME="$JETTY_RUN_AS_USER_NAME"
+# allow jetty run-as user to be changed (e.g. to access externally mounted filesystems)
+#   format is user-id,user-name:group-id,group-name
+ARG JETTY_RUN_AS_INFO=999,jetty:999,jetty
+ENV JETTY_RUN_AS_INFO="$JETTY_RUN_AS_INFO"
 
 USER root
 RUN apt-get update && apt-get install -y curl coreutils $EXTRA_JETTY_PACKAGES

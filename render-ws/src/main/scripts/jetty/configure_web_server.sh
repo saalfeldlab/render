@@ -20,12 +20,9 @@ LOGBACK_URL="${MAVEN_CENTRAL_URL}/maven2/ch/qos/logback"
 SLF4J_URL="${MAVEN_CENTRAL_URL}/maven2/org/slf4j"
 SWAGGER_UI_URL="https://github.com/swagger-api/swagger-ui/archive/v${SWAGGER_UI_VERSION}.tar.gz"
 
-curl -L "${SWAGGER_UI_URL}" | tar xz
-
-SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
-
 # -------------------------------------------------------------------------------------------
 # setup logging components
+echo "configure_web_server: setup logging"
 
 JETTY_LIB_LOGGING="${JETTY_BASE_DIR}/lib/logging"
 mkdir -p "${JETTY_BASE_DIR}/logs" "${JETTY_LIB_LOGGING}"
@@ -42,6 +39,11 @@ done
 
 # -------------------------------------------------------------------------------------------
 # setup swagger components
+echo "configure_web_server: setup swagger"
+
+curl -L "${SWAGGER_UI_URL}" | tar xz
+
+SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
 
 SWAGGER_UI_DEPLOY_DIR="${JETTY_BASE_DIR}/webapps/swagger-ui"
 cp -r ${SWAGGER_UI_SOURCE_DIR}/dist "${SWAGGER_UI_DEPLOY_DIR}"
@@ -65,14 +67,26 @@ sed -i '
 rm -rf "${SWAGGER_UI_SOURCE_DIR}"
 
 # -------------------------------------------------------------------------------------------
-# ensure jetty base and tmp directories are owned by jetty run-as user
-chown -R "${JETTY_RUN_AS_USER_AND_GROUP_IDS}" "${JETTY_BASE_DIR}" "${TMPDIR}"
+# ensure jetty run-as user exists and that the run-as user owns the jetty base and tmp directories
 
-JETTY_RUN_AS_USER_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS%%:*}
+#   JETTY_RUN_AS_INFO format is user-id,user-name:group-id,group-name
+JETTY_RUN_AS_USER_INFO=${JETTY_RUN_AS_INFO%%:*}
+JETTY_RUN_AS_GROUP_INFO=${JETTY_RUN_AS_INFO##*:}
+
+JETTY_RUN_AS_USER_ID=${JETTY_RUN_AS_USER_INFO%%,*}
+JETTY_RUN_AS_USER_NAME=${JETTY_RUN_AS_USER_INFO##*,}
+
+JETTY_RUN_AS_GROUP_ID=${JETTY_RUN_AS_GROUP_INFO%%,*}
+JETTY_RUN_AS_GROUP_NAME=${JETTY_RUN_AS_GROUP_INFO##*,}
+
 if id "${JETTY_RUN_AS_USER_ID}" &>/dev/null; then
-    echo "user ${JETTY_RUN_AS_USER_ID} already exists in image"
+    echo "configure_web_server: user ${JETTY_RUN_AS_USER_ID} already exists in image"
 else
-    echo "need to create user id ${JETTY_RUN_AS_USER_ID} with name ${JETTY_RUN_AS_USER_NAME} in image ..."
-    JETTY_RUN_AS_GROUP_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS%%*:}
+    echo "configure_web_server: need to create group id ${JETTY_RUN_AS_GROUP_ID} with name ${JETTY_RUN_AS_GROUP_NAME} in image"
+    groupadd -g "${JETTY_RUN_AS_GROUP_ID}" "${JETTY_RUN_AS_GROUP_NAME}"
+
+    echo "configure_web_server: need to create user id ${JETTY_RUN_AS_USER_ID} with name ${JETTY_RUN_AS_USER_NAME} in image ..."
     useradd --uid "${JETTY_RUN_AS_USER_ID}" --gid "${JETTY_RUN_AS_GROUP_ID}" --shell /bin/bash "${JETTY_RUN_AS_USER_NAME}"
 fi
+
+chown -R "${JETTY_RUN_AS_USER_ID}:${JETTY_RUN_AS_GROUP_ID}" "${JETTY_BASE_DIR}" "${TMPDIR}"
