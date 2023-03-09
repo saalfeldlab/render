@@ -108,11 +108,6 @@ RUN ls -al $JETTY_BASE/* && \
 COPY --from=archive /root/render-lib/render-ws-*.war webapps/render-ws.war
 COPY render-ws/src/main/scripts/docker /render-docker
 
-
-RUN chown -R $JETTY_USER_ID:$JETTY_GROUP_ID $JETTY_BASE /tmp/jetty && \
-    groupadd -g $JETTY_GROUP_ID $JETTY_GROUP_NAME && \
-    useradd --uid $JETTY_USER_ID --gid $JETTY_GROUP_ID --shell /bin/bash $JETTY_USER_NAME
-
 EXPOSE 8080
 
 ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true" \
