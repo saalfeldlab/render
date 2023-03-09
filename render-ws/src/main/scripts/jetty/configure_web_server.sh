@@ -69,15 +69,13 @@ rm -rf "${SWAGGER_UI_SOURCE_DIR}"
 # -------------------------------------------------------------------------------------------
 # ensure jetty run-as user exists and that the run-as user owns the jetty base and tmp directories
 
-#   JETTY_RUN_AS_INFO format is user-id,user-name:group-id,group-name
-JETTY_RUN_AS_USER_INFO=${JETTY_RUN_AS_INFO%%:*}
-JETTY_RUN_AS_GROUP_INFO=${JETTY_RUN_AS_INFO##*:}
+# JETTY_RUN_AS_USER_AND_GROUP_IDS format is user-id:group-id
+JETTY_RUN_AS_USER_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS%%:*}
+JETTY_RUN_AS_GROUP_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS##*:}
 
-JETTY_RUN_AS_USER_ID=${JETTY_RUN_AS_USER_INFO%%,*}
-JETTY_RUN_AS_USER_NAME=${JETTY_RUN_AS_USER_INFO##*,}
-
-JETTY_RUN_AS_GROUP_ID=${JETTY_RUN_AS_GROUP_INFO%%,*}
-JETTY_RUN_AS_GROUP_NAME=${JETTY_RUN_AS_GROUP_INFO##*,}
+# JETTY_RUN_AS_USER_AND_GROUP_NAMES format is user-name:group-name
+JETTY_RUN_AS_USER_NAME=${JETTY_RUN_AS_USER_AND_GROUP_NAMES%%:*}
+JETTY_RUN_AS_GROUP_NAME=${JETTY_RUN_AS_USER_AND_GROUP_NAMES##*:}
 
 if id "${JETTY_RUN_AS_USER_ID}" &>/dev/null; then
     echo "configure_web_server: user ${JETTY_RUN_AS_USER_ID} already exists in image"
@@ -89,4 +87,4 @@ else
     useradd --uid "${JETTY_RUN_AS_USER_ID}" --gid "${JETTY_RUN_AS_GROUP_ID}" --shell /bin/bash "${JETTY_RUN_AS_USER_NAME}"
 fi
 
-chown -R "${JETTY_RUN_AS_USER_ID}:${JETTY_RUN_AS_GROUP_ID}" "${JETTY_BASE_DIR}" "${TMPDIR}"
+chown -R "${JETTY_RUN_AS_USER_AND_GROUP_IDS}" "${JETTY_BASE_DIR}" "${TMPDIR}"
