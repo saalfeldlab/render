@@ -65,5 +65,5 @@ sed -i '
 rm -rf "${SWAGGER_UI_SOURCE_DIR}"
 
 # -------------------------------------------------------------------------------------------
-# setup jetty run-as user if it is not "jetty" (e.g. to access externally mounted filesystems)
-chown -R "$JETTY_RUN_AS_USER_AND_GROUP_IDS" "$JETTY_BASE_DIR" /tmp/jetty
+# ensure jetty base and tmp directories are owned by jetty run-as user
+chown -R "${JETTY_RUN_AS_USER_AND_GROUP_IDS}" "${JETTY_BASE_DIR}" "${TMPDIR}"
