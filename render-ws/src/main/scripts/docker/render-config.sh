@@ -82,16 +82,6 @@ if [ -n "${MONGO_CONNECTION_STRING}" ]; then
 fi
 
 # --------------------------------------------------------------
-# Jetty setuid config
-
-JETTY_SETUID_INI="${JETTY_BASE}/start.d/setuid.ini"
-
-sed -i "
-s/# jetty.setuid.userName.*/jetty.setuid.userName=${JETTY_USER_ID}/
-s/# jetty.setuid.groupName.*/jetty.setuid.groupName=${JETTY_GROUP_ID}/
-" ${JETTY_SETUID_INI}
-
-# --------------------------------------------------------------
 # Jetty thread pool config
 
 JETTY_THREADPOOL_INI="${JETTY_BASE}/start.d/threadpool.ini"
@@ -154,8 +144,3 @@ sed -i """
   s@webService.maxTileSpecsToRender=.*@webService.maxTileSpecsToRender=${WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER}@
   s@webService.maxImageProcessorCacheGb=.*@webService.maxImageProcessorCacheGb=${WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB}@
 """ "${JETTY_BASE}/resources/render-server.properties"
-
-# --------------------------------------------------------------
-# Set ACLs for the id and group the server will be run as
-
-chown -R ${JETTY_USER_ID}:${JETTY_GROUP_ID} ${JETTY_BASE}

@@ -89,6 +89,10 @@ FROM jetty:10.0.13-jre11 as render-ws
 #   other packages can be added from build command (e.g. docker build ... --build-arg EXTRA_JETTY_PACKAGES=vim )
 ARG EXTRA_JETTY_PACKAGES
 
+# allow jetty run-as user:group ids to be changed (e.g. to access externally mounted filesystems)
+ARG JETTY_RUN_AS_USER_AND_GROUP_IDS=999:999
+ENV JETTY_RUN_AS_USER_AND_GROUP_IDS="$JETTY_RUN_AS_USER_AND_GROUP_IDS"
+
 USER root
 RUN apt-get update && apt-get install -y curl coreutils $EXTRA_JETTY_PACKAGES
 
@@ -103,7 +107,11 @@ RUN ls -al $JETTY_BASE/* && \
 
 COPY --from=archive /root/render-lib/render-ws-*.war webapps/render-ws.war
 COPY render-ws/src/main/scripts/docker /render-docker
-# RUN chown -R jetty:jetty $JETTY_BASE
+
+
+RUN chown -R $JETTY_USER_ID:$JETTY_GROUP_ID $JETTY_BASE /tmp/jetty && \
+    groupadd -g $JETTY_GROUP_ID $JETTY_GROUP_NAME && \
+    useradd --uid $JETTY_USER_ID --gid $JETTY_GROUP_ID --shell /bin/bash $JETTY_USER_NAME
 
 EXPOSE 8080
 
@@ -136,5 +144,5 @@ ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true" \
     WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER="20" \
     WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB=""
 
-USER jetty
+USER $JETTY_RUN_AS_USER_AND_GROUP_IDS
 ENTRYPOINT ["/render-docker/render-run-jetty-entrypoint.sh"]
