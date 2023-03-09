@@ -103,11 +103,13 @@ RUN ls -al $JETTY_BASE/* && \
 
 COPY --from=archive /root/render-lib/render-ws-*.war webapps/render-ws.war
 COPY render-ws/src/main/scripts/docker /render-docker
-RUN chown -R jetty:jetty $JETTY_BASE 
+# RUN chown -R jetty:jetty $JETTY_BASE
 
 EXPOSE 8080
 
 ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true" \
+    JETTY_USER_ID="jetty" \
+    JETTY_GROUP_ID="jetty" \
     JETTY_THREADPOOL_MIN_THREADS="10" \
     JETTY_THREADPOOL_MAX_THREADS="200" \
     LOG_ACCESS_ROOT_APPENDER="STDOUT" \

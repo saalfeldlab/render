@@ -20,6 +20,9 @@ MONGO_AUTH_DB=$(stripQuotes ${MONGO_AUTH_DB})
 MONGO_CONNECTION_STRING=$(stripQuotes ${MONGO_CONNECTION_STRING})
 MONGO_CONNECTION_STRING_USES_AUTH=$(stripQuotes ${MONGO_CONNECTION_STRING_USES_AUTH})
 
+JETTY_USER_NAME=$(stripQuotes ${JETTY_USER_NAME})
+JETTY_GROUP_NAME=$(stripQuotes ${JETTY_GROUP_NAME})
+
 JETTY_THREADPOOL_MIN_THREADS=$(stripQuotes ${JETTY_THREADPOOL_MIN_THREADS})
 JETTY_THREADPOOL_MAX_THREADS=$(stripQuotes ${JETTY_THREADPOOL_MAX_THREADS})
 
@@ -77,6 +80,16 @@ if [ -n "${MONGO_CONNECTION_STRING}" ]; then
     sed -i "s/#authenticationDatabase=/authenticationDatabase=/" ${RENDER_DB_PROPERTIES}
   fi
 fi
+
+# --------------------------------------------------------------
+# Jetty setuid config
+
+JETTY_SETUID_INI="${JETTY_BASE}/start.d/setuid.ini"
+
+sed -i "
+s/# jetty.setuid.userName.*/jetty.setuid.userName=${JETTY_USER_ID}/
+s/# jetty.setuid.groupName.*/jetty.setuid.groupName=${JETTY_GROUP_ID}/
+" ${JETTY_SETUID_INI}
 
 # --------------------------------------------------------------
 # Jetty thread pool config
@@ -141,3 +154,8 @@ sed -i """
   s@webService.maxTileSpecsToRender=.*@webService.maxTileSpecsToRender=${WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER}@
   s@webService.maxImageProcessorCacheGb=.*@webService.maxImageProcessorCacheGb=${WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB}@
 """ "${JETTY_BASE}/resources/render-server.properties"
+
+# --------------------------------------------------------------
+# Set ACLs for the id and group the server will be run as
+
+chown -R ${JETTY_USER_ID}:${JETTY_GROUP_ID} ${JETTY_BASE}
