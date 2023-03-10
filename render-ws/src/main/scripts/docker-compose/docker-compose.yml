@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  render-ws:
+    image: ${RENDER_WS_IMAGE}
+    user: ${JETTY_RUN_AS_USER_AND_GROUP_IDS}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${LOCAL_RENDER_WS_LOGS_DIR}:/var/lib/jetty/logs
+      - /groups:/groups:ro,shared
+      - /nrs:/nrs:ro,shared
+    env_file:
+      - ${LOCAL_RENDER_WS_ENV_FILE}
+    restart: unless-stopped

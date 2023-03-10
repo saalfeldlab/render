@@ -147,11 +147,20 @@
         <jackson-version>2.11.0</jackson-version>
 
         <swagger-version>1.6.2</swagger-version>
+
+        <!-- should be kept in sync with render-ws/src/main/scripts/jetty/configure_web_server.sh -->
+        <slf4j.version>2.0.5</slf4j.version>
+        <logback.version>1.3.5</logback.version>
+
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
 
-<!--        <deploy.path>/Users/trautmane/projects/git/maven</deploy.path>-->
+        <!-- Override JDK 8 settings in pom-scijava-base now that Jetty 10 has forced us to JDK 11  -->
+        <scijava.jvm.version>11</scijava.jvm.version>
+        <scijava.jvm.build.version>[11,]</scijava.jvm.build.version>
+
+        <!--        <deploy.path>/Users/trautmane/projects/git/maven</deploy.path>-->
     </properties>
 
     <build>
@@ -159,10 +168,9 @@
             <plugins>
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.6.1</version>
+                    <version>3.8.1</version>
                     <configuration>
-                        <source>1.8</source>
-                        <target>1.8</target>
+                        <release>11</release>
                     </configuration>
                 </plugin>
                 <!--

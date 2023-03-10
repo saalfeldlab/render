@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # -------------------------------------------------------------------------------------------
 # This script downloads logback and swagger-ui components (via curl) to the current directory and
@@ -11,8 +11,8 @@ else
   JETTY_BASE_DIR="${JETTY_BASE}"
 fi
 
-LOGBACK_VERSION="1.1.5"
-SLF4J_VERSION="1.7.16"
+SLF4J_VERSION="2.0.5" # should be kept in sync with root pom.xml slf4j.version and root Dockerfile SLF4J_VERSION (for jetty)
+LOGBACK_VERSION="1.3.5" # should be kept in sync with root pom.xml logback.version
 SWAGGER_UI_VERSION="2.1.4"
 
 MAVEN_CENTRAL_URL="https://repo1.maven.org"
@@ -20,28 +20,30 @@ LOGBACK_URL="${MAVEN_CENTRAL_URL}/maven2/ch/qos/logback"
 SLF4J_URL="${MAVEN_CENTRAL_URL}/maven2/org/slf4j"
 SWAGGER_UI_URL="https://github.com/swagger-api/swagger-ui/archive/v${SWAGGER_UI_VERSION}.tar.gz"
 
-curl -L "${SWAGGER_UI_URL}" | tar xz
-
-SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
-
 # -------------------------------------------------------------------------------------------
 # setup logging components
+echo "configure_web_server: setup logging"
 
-JETTY_LIB_EXT="${JETTY_BASE_DIR}/lib/ext"
-mkdir -p "${JETTY_BASE_DIR}/logs" "${JETTY_LIB_EXT}"
+JETTY_LIB_LOGGING="${JETTY_BASE_DIR}/lib/logging"
+mkdir -p "${JETTY_BASE_DIR}/logs" "${JETTY_LIB_LOGGING}"
 
-for MODULE in access classic core; do
+for MODULE in classic core; do
   MODULE_JAR="logback-${MODULE}-${LOGBACK_VERSION}.jar"
-  curl -o "${JETTY_LIB_EXT}/${MODULE_JAR}" "${LOGBACK_URL}/logback-${MODULE}/${LOGBACK_VERSION}/${MODULE_JAR}"
+  curl -o "${JETTY_LIB_LOGGING}/${MODULE_JAR}" "${LOGBACK_URL}/logback-${MODULE}/${LOGBACK_VERSION}/${MODULE_JAR}"
 done
 
-for MODULE in jcl-over-slf4j jul-to-slf4j log4j-over-slf4j slf4j-api; do
+for MODULE in jcl-over-slf4j jul-to-slf4j log4j-over-slf4j; do
   MODULE_JAR="${MODULE}-${SLF4J_VERSION}.jar"
-  curl -o "${JETTY_LIB_EXT}/${MODULE_JAR}" "${SLF4J_URL}/${MODULE}/${SLF4J_VERSION}/${MODULE_JAR}"
+  curl -o "${JETTY_LIB_LOGGING}/${MODULE_JAR}" "${SLF4J_URL}/${MODULE}/${SLF4J_VERSION}/${MODULE_JAR}"
 done
 
 # -------------------------------------------------------------------------------------------
 # setup swagger components
+echo "configure_web_server: setup swagger"
+
+curl -L "${SWAGGER_UI_URL}" | tar xz
+
+SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
 
 SWAGGER_UI_DEPLOY_DIR="${JETTY_BASE_DIR}/webapps/swagger-ui"
 cp -r ${SWAGGER_UI_SOURCE_DIR}/dist "${SWAGGER_UI_DEPLOY_DIR}"
@@ -63,3 +65,26 @@ sed -i '
 
 # clean-up unused downloaded stuff
 rm -rf "${SWAGGER_UI_SOURCE_DIR}"
+
+# -------------------------------------------------------------------------------------------
+# ensure jetty run-as user exists and that the run-as user owns the jetty base and tmp directories
+
+# JETTY_RUN_AS_USER_AND_GROUP_IDS format is user-id:group-id
+JETTY_RUN_AS_USER_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS%%:*}
+JETTY_RUN_AS_GROUP_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS##*:}
+
+# JETTY_RUN_AS_USER_AND_GROUP_NAMES format is user-name:group-name
+JETTY_RUN_AS_USER_NAME=${JETTY_RUN_AS_USER_AND_GROUP_NAMES%%:*}
+JETTY_RUN_AS_GROUP_NAME=${JETTY_RUN_AS_USER_AND_GROUP_NAMES##*:}
+
+if id "${JETTY_RUN_AS_USER_ID}" &>/dev/null; then
+    echo "configure_web_server: user ${JETTY_RUN_AS_USER_ID} already exists in image"
+else
+    echo "configure_web_server: need to create group id ${JETTY_RUN_AS_GROUP_ID} with name ${JETTY_RUN_AS_GROUP_NAME} in image"
+    groupadd -g "${JETTY_RUN_AS_GROUP_ID}" "${JETTY_RUN_AS_GROUP_NAME}"
+
+    echo "configure_web_server: need to create user id ${JETTY_RUN_AS_USER_ID} with name ${JETTY_RUN_AS_USER_NAME} in image ..."
+    useradd --uid "${JETTY_RUN_AS_USER_ID}" --gid "${JETTY_RUN_AS_GROUP_ID}" --shell /bin/bash "${JETTY_RUN_AS_USER_NAME}"
+fi
+
+chown -R "${JETTY_RUN_AS_USER_AND_GROUP_IDS}" "${JETTY_BASE_DIR}" "${TMPDIR}"

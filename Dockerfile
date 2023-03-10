@@ -19,6 +19,16 @@
 # To build a slimmed down image with just a Jetty server hosting compiled render web services:
 #   docker build -t janelia-render:latest-ws --target render-ws .
 #
+# To help debug image build issues, you can use the EXTRA_JETTY_PACKAGES arg
+# to add packages to the image.
+#   --build-arg EXTRA_JETTY_PACKAGES=vim
+#
+# To build an image that runs jetty as another user (e.g. to access mounted filesystems)
+# you can use the JETTY_RUN_AS_USER_AND_GROUP_IDS and JETTY_RUN_AS_USER_AND_GROUP_NAMES args
+# which should both be specified and formatted as <user>:<group>.
+#   --build-arg JETTY_RUN_AS_USER_AND_GROUP_IDS=999:999
+#   --build-arg JETTY_RUN_AS_USER_AND_GROUP_NAMES=jetty:jetty
+#
 # To run a container with the Jetty server hosting compiled render web services:
 #   docker run -it --rm janelia-render:latest-ws
 
@@ -28,7 +38,7 @@
 # Install library dependencies before actually building source.
 # This caches libraries into an image layer that can be reused when only source code has changed.
 
-FROM azul/zulu-openjdk-debian:8 as build_environment
+FROM azul/zulu-openjdk-debian:11 as build_environment
 LABEL maintainer="Forrest Collman <forrestc@alleninstitute.org>, Eric Trautman <trautmane@janelia.hhmi.org>"
 
 RUN apt-get update && apt-get install -y maven
@@ -81,12 +91,21 @@ RUN mkdir -p /root/render-lib && \
 # Once web service application is built, set up jetty server and deploy application to it.
 
 # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/render-ws/src/main/scripts/install.sh
-FROM jetty:9.4.43-jdk8-slim as render-ws
+FROM jetty:10.0.13-jre11 as render-ws
 
-# add packages not included in slim base image:
-#   curl and coreutils for gnu readlink
+# add packages not included in base image:
+#   curl and coreutils are always needed for gnu readlink
+#   other packages can be added from build command (e.g. docker build ... --build-arg EXTRA_JETTY_PACKAGES=vim )
+ARG EXTRA_JETTY_PACKAGES
+
+# allow jetty run-as user to be changed (e.g. to access externally mounted filesystems)
+ARG JETTY_RUN_AS_USER_AND_GROUP_IDS=999:999
+ARG JETTY_RUN_AS_USER_AND_GROUP_NAMES=jetty:jetty
+ENV JETTY_RUN_AS_USER_AND_GROUP_IDS="$JETTY_RUN_AS_USER_AND_GROUP_IDS" \
+    JETTY_RUN_AS_USER_AND_GROUP_NAMES="$JETTY_RUN_AS_USER_AND_GROUP_NAMES"
+
 USER root
-RUN apt-get update && apt-get install -y curl coreutils
+RUN apt-get update && apt-get install -y curl coreutils $EXTRA_JETTY_PACKAGES
 
 WORKDIR $JETTY_BASE
 
@@ -99,7 +118,6 @@ RUN ls -al $JETTY_BASE/* && \
 
 COPY --from=archive /root/render-lib/render-ws-*.war webapps/render-ws.war
 COPY render-ws/src/main/scripts/docker /render-docker
-RUN chown -R jetty:jetty $JETTY_BASE 
 
 EXPOSE 8080
 
@@ -130,5 +148,5 @@ ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true" \
     WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER="20" \
     WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB=""
 
-USER jetty
+USER $JETTY_RUN_AS_USER_AND_GROUP_IDS
 ENTRYPOINT ["/render-docker/render-run-jetty-entrypoint.sh"]

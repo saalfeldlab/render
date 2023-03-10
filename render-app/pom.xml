@@ -16,7 +16,7 @@
         <plugins>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>3.5.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -31,9 +31,14 @@
                             <mainClass>org.janelia.alignment.ArgbRenderer</mainClass>
                         </manifest>
                     </archive>
+                    <!--
                     <descriptorRefs>
                         <descriptorRef>jar-with-dependencies</descriptorRef>
                     </descriptorRefs>
+                    -->
+                    <descriptors>
+                        <descriptor>src/assembly/jar-with-dependencies-and-log-config.xml</descriptor>
+                    </descriptors>
                 </configuration>
             </plugin>
             <plugin>
@@ -53,6 +58,16 @@
     </build>
 
     <dependencies>
+
+        <!--
+             JAXB dependencies now needed for JDK 11
+             TODO: see if JAXB is only needed for Swagger and remove dependencies if newer Swagger doesn't need them
+        -->
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+            <version>2.3.3</version>
+        </dependency>
 
         <!-- SciJava Dependencies -->
         <dependency>

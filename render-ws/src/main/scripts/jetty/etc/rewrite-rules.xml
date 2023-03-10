@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "https://www.eclipse.org/jetty/configure_10_0.dtd">
+
+<!-- =============================================================== -->
+<!-- Configure the demos                                             -->
+<!-- =============================================================== -->
+<Configure id="Server" class="org.eclipse.jetty.server.Server">
+
+    <!-- ============================================================= -->
+    <!-- Add rewrite rules                                             -->
+    <!-- ============================================================= -->
+    <Ref refid="Rewrite">
+            <Call name="addRule">
+                <Arg>
+                    <New class="org.eclipse.jetty.rewrite.handler.RedirectRegexRule">
+                        <Set name="regex">^(.*?)/render-ws/view/$</Set>
+                        <Set name="location">$1/render-ws/view/index.html</Set>
+                        <Set name="terminating">true</Set>
+                    </New>
+                </Arg>
+            </Call>
+
+            <Call name="addRule">
+                <Arg>
+                    <New class="org.eclipse.jetty.rewrite.handler.HeaderPatternRule">
+                        <Set name="pattern">/favicon.ico</Set>
+                        <Set name="name">Cache-Control</Set>
+                        <Set name="value">Max-Age=3600,public</Set>
+                        <Set name="terminating">true</Set>
+                    </New>
+                </Arg>
+            </Call>
+
+            <!-- Add Vary: Origin to let ndviz cache data from render, per jbms -->
+            <Call name="addRule">
+                <Arg>
+                    <New class="org.eclipse.jetty.rewrite.handler.HeaderPatternRule">
+                        <Set name="pattern">/*</Set>
+                        <Set name="name">Vary</Set>
+                        <Set name="value">Origin</Set>
+                        <Set name="terminating">false</Set>
+                    </New>
+                </Arg>
+            </Call>
+    </Ref>
+</Configure>

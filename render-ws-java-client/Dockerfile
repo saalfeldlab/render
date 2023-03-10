@@ -14,7 +14,7 @@
 #       so I switched to use the same zulu image used for the final image
 #       rather than try to debug alpine issues.
 
-FROM azul/zulu-openjdk-debian:8 as builder
+FROM azul/zulu-openjdk-debian:11 as builder
 
 RUN apt-get update && apt-get install -y git maven
 
@@ -34,7 +34,7 @@ RUN git clone --branch $GIT_TAG https://github.com/saalfeldlab/render.git . \
 # ---------------------------------------------------------------------
 # Stage 2: Create slimmed down final image that only contains client jar and scripts.
 
-FROM azul/zulu-openjdk-debian:8
+FROM azul/zulu-openjdk-debian:11
 
 # ARGs need to be re-declared for each stage in multi-stage builds - who knew?
 ARG GIT_COMMIT

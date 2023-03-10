@@ -18,7 +18,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.RenderQueryParameters;
 import org.janelia.test.EmbeddedMongoDb;
-import org.jboss.resteasy.spi.ResteasyUriInfo;
+import org.jboss.resteasy.specimpl.ResteasyUriInfo;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;

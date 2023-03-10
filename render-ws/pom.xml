@@ -19,7 +19,9 @@
                 <artifactId>maven-war-plugin</artifactId>
                 <version>2.6</version>
                 <configuration>
-                    <packagingExcludes>WEB-INF/lib/log4j*.jar</packagingExcludes>
+                    <packagingExcludes>
+                        WEB-INF/lib/log4j*.jar
+                    </packagingExcludes>
                     <attachClasses>true</attachClasses>
                     <classesClassifier>classes</classesClassifier>
                 </configuration>
@@ -72,6 +74,19 @@
         </plugins>
     </build>
 
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <!-- see https://docs.jboss.org/resteasy/docs/4.7.0.Final/userguide/html/Maven_and_RESTEasy.html -->
+                <groupId>org.jboss.resteasy</groupId>
+                <artifactId>resteasy-bom</artifactId>
+                <version>${resteasy.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    
     <dependencies>
 
         <dependency>
@@ -89,6 +104,17 @@
 
         <!-- SciJava Dependencies -->
 
+        <!--
+             To avoid java.lang.ClassNotFoundException: org.slf4j.LoggerFactory errors at Jetty startup,
+             do NOT override logback dependency with provided scope.
+             With Jetty >= 10 and JDK >= 11, logging library jars need to be inside war -
+             it doesn't matter what is on the Jetty startup classpath!
+        -->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -103,13 +129,6 @@
             <version>${n5-version}</version>
         </dependency>
 
-        <!-- override logback dependency with provided scope since it should be installed into jetty directly -->
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <scope>provided</scope>
-        </dependency>
-
         <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -118,29 +137,27 @@
         </dependency>
 
         <!-- Dependencies not defined in SciJava -->
+        <dependency>
+            <groupId>org.jboss.resteasy</groupId>
+            <artifactId>resteasy-core-spi</artifactId>
+            <exclusions>
+                <!-- covered by jakarta.xml.bind in jackson -->
+                <exclusion>
+                    <groupId>org.jboss.spec.javax.xml.bind</groupId>
+                    <artifactId>jboss-jaxb-api_2.3_spec</artifactId>
+                </exclusion>
+                <!-- covered by javax.validation in swagger and spark -->
+                <exclusion>
+                    <groupId>jakarta.validation</groupId>
+                    <artifactId>jakarta.validation-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
 
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
-            <artifactId>resteasy-jaxrs</artifactId>
-            <version>${resteasy.version}</version>
-            <!-- filter out unwanted jars -->
+            <artifactId>resteasy-core</artifactId>
             <exclusions>
-                <exclusion>
-                    <groupId>org.apache.httpcomponents</groupId>
-                    <artifactId>httpclient</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>commons-httpclient</groupId>
-                    <artifactId>commons-httpclient</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>tjws</groupId>
-                    <artifactId>webserver</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>javax.servlet</groupId>
-                    <artifactId>servlet-api</artifactId>
-                </exclusion>
                 <!-- covered by jakarta.xml.bind in jackson -->
                 <exclusion>
                     <groupId>org.jboss.spec.javax.xml.bind</groupId>
@@ -157,32 +174,7 @@
         <dependency>
             <groupId>org.jboss.resteasy</groupId>
             <artifactId>resteasy-servlet-initializer</artifactId>
-            <version>${resteasy.version}</version>
         </dependency>
-
-        <!--<dependency>-->
-            <!--<groupId>org.jboss.resteasy</groupId>-->
-            <!--<artifactId>resteasy-jaxb-provider</artifactId>-->
-            <!--<version>${resteasy.version}</version>-->
-        <!--</dependency>-->
-
-        <!--<dependency>-->
-            <!--<groupId>org.jboss.resteasy</groupId>-->
-            <!--<artifactId>resteasy-jettison-provider</artifactId>-->
-            <!--<version>${resteasy.version}</version>-->
-        <!--</dependency>-->
-
-        <!--<dependency>-->
-            <!--<groupId>org.jboss.resteasy</groupId>-->
-            <!--<artifactId>resteasy-jackson2-provider</artifactId>-->
-            <!--<version>${resteasy.version}</version>-->
-        <!--</dependency>-->
-
-        <!--<dependency>-->
-            <!--<groupId>org.jboss.resteasy</groupId>-->
-            <!--<artifactId>resteasy-servlet-initializer</artifactId>-->
-            <!--<version>${resteasy.version}</version>-->
-        <!--</dependency>-->
 
         <dependency>
             <groupId>com.fasterxml.jackson.jaxrs</groupId>
@@ -269,8 +261,8 @@
     </dependencies>
 
     <properties>
-        <resteasy.version>3.13.2.Final</resteasy.version>
-        <jetty.version>9.4.43.v20210629</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
+        <resteasy.version>4.7.9.Final</resteasy.version>
+        <jetty.version>10.0.13</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
         <mongodb.driver.version>4.4.1</mongodb.driver.version>
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>

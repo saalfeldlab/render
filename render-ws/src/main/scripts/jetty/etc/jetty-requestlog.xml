@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-//Jetty//Configure//EN" "https://www.eclipse.org/jetty/configure_10_0.dtd">
+
+<!-- see https://github.com/eclipse/jetty.project/issues/5996#issuecomment-784508724 -->
+<Configure id="Server" class="org.eclipse.jetty.server.Server">
+
+  <Set name="RequestLog">
+    <New id="RequestLog" class="org.eclipse.jetty.server.CustomRequestLog">
+      <!-- Writer -->
+      <Arg>
+        <New class="org.eclipse.jetty.server.Slf4jRequestLogWriter">
+          <!--
+               Slf4jRequestLogWriter constructor no longer takes a log name argument.
+               The default name from source code is 'org.eclipse.jetty.server.RequestLog'.
+          -->
+        </New>
+      </Arg>
+
+      <!-- Format String (see org.eclipse.jetty.server.CustomRequestLog for format specification) -->
+      <Arg>
+        <Property name="jetty.requestlog.formatString">
+          <Default>
+            %{client}a - %u %{dd/MMM/yyyy:HH:mm:ss ZZZ}t "%r" %s %{CLF}O "%{Referer}i" "%{User-Agent}i" [%{ms}T ms]
+          </Default>
+        </Property>
+      </Arg>
+    </New>
+  </Set>
+</Configure>
