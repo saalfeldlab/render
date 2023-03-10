@@ -22,6 +22,12 @@ if [ ! -f "${DOCKER_COMPOSE_YML}" ]; then
 fi
 
 export LOCAL_RENDER_WS_LOGS_DIR="${LOCAL_RENDER_WS_BASE_DIR}/logs"
+
+if [ ! -d "${LOCAL_RENDER_WS_LOGS_DIR}" ]; then
+  echo "ERROR: ${LOCAL_RENDER_WS_LOGS_DIR} not found!"
+  exit 1
+fi
+
 export LOCAL_RENDER_WS_ENV_FILE="${LOCAL_RENDER_WS_BASE_DIR}/render-ws.env"
 
 if [ ! -f "${LOCAL_RENDER_WS_ENV_FILE}" ]; then
@@ -29,6 +35,4 @@ if [ ! -f "${LOCAL_RENDER_WS_ENV_FILE}" ]; then
   exit 1
 fi
 
-mkdir -p "${LOCAL_RENDER_WS_LOGS_DIR}"
-
-docker compose -f "${DOCKER_COMPOSE_YML}" up
+docker compose -f "${DOCKER_COMPOSE_YML}" "$@"
