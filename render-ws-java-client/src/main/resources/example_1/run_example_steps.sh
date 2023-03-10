@@ -1,15 +1,23 @@
 #!/bin/bash
 
-set -e
-
 # ------------------------------------------------------------------------------------------------------
 # From https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws.md
 
-# 7. Start MongoDB
-service mongodb start
+echo """
+  Install 7. Start MongoDB
+"""
+sudo -u mongodb /usr/bin/mongod -f /etc/mongod.conf &
 
-# 8. Start Jetty
+echo """
+  Install 8. Start Jetty
+"""
 deploy/jetty_base/jetty_wrapper.sh start
+
+# reset terminal that gets messed up by jetty start failure
+reset
+
+# hack that waits for web service to start up successfully by retrying GET request ...
+wget --tries=20 "http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_acquire"
 
 # ------------------------------------------------------------------------------------------------------
 # From https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws-example.md

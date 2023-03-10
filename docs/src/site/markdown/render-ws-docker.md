@@ -5,26 +5,33 @@ You'll need to first [install Docker](https://docs.docker.com/#run-docker-anywhe
 
 # Building Images
 
-To build the full render-ws image: 
+To build the full janelia-render:latest-ws image: 
 
 ```bash
 # cd to root directory of render repo (where Dockerfile is located) 
-docker build -t render-ws:latest --target render-ws .
+docker build -t janelia-render:latest-ws --target render-ws .
 ```
 
 You can speed up future builds by building and tagging the build environment:
 
 ```bash
 # cd to root directory of render repo (where Dockerfile is located) 
-docker build -t render-ws-build-environment:latest --target build_environment .
+docker build -t janelia-render:latest-build-environment --target build_environment .
 ```
 
-To build just the web service JARs without deploying into a Jetty container:
+all compiled artifacts and dependencies:
+
+```bash
+# cd to root directory of render repo (where Dockerfile is located) 
+docker build -t janelia-render:latest-builder --target builder .
+```
+
+or a slimmed down image of just the Jetty server and the compiled render web services:
 
 ```bash
 # cd to root directory of render repo (where Dockerfile is located) 
 # saves JAR and WAR files in /root/render-lib 
-docker build -t render-ws:latest-build --target builder .
+docker build -t janelia-render:latest-archive --target archive .
 ```
 
 # Running Images
@@ -33,10 +40,10 @@ To run the full render-ws image:
 
 ```bash
 # with database running on same host at default port and no authentication
-docker run -p 8080:8080 -e "MONGO_HOST=localhost" --rm render-ws:latest
+docker run -p 8080:8080 -e "MONGO_HOST=localhost" --rm janelia-render:latest-ws
 
 # with customized environment variables in a file (named dev.env)
-docker run -p 8080:8080 --env-file dev.env --rm render-ws:latest
+docker run -p 8080:8080 --env-file dev.env --rm janelia-render:latest-ws
 ```
 
 You must explicitly specify either the MONGO_HOST or MONGO_CONNECTION_STRING environment variables
@@ -143,7 +150,7 @@ docker run -it --mount type=bind,source="$(pwd)",target=/render-export \
                --env-file ./env.janelia.prod \
                --entrypoint /render-docker/render-export-jetty-entrypoint.sh \
                --rm \
-               render-ws:latest
+               janelia-render:latest-ws
 ```
 
 # Other Useful Docker Commands
@@ -157,7 +164,7 @@ docker exec -it $(docker ps --latest --quiet) /bin/sh
 To open a Bourne shell on a new render-ws container without running jetty (and remove the container on exit): 
 
 ```bash
-docker run -it --entrypoint /bin/sh --rm render-ws:latest
+docker run -it --entrypoint /bin/sh --rm janelia-render:latest-ws
 ```
 
 To remove all stopped containers: 

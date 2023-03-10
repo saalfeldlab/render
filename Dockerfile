@@ -1,4 +1,28 @@
 # ======================================================================================
+# Multi-stage build with final 'render-ws' stage that builds an image with a Jetty
+# web server hosting render web services built from this directory.
+# The different stages can be built/targeted independently and then reused to speed up
+# other Docker builds that rely upon the same render code base.
+#
+# To build (and optionally view) a image with just the basic build environment:
+#   docker build -t janelia-render:latest-build-environment --target build_environment .
+#   docker run -it --entrypoint /bin/bash --rm janelia-render:latest-build-environment
+#
+# To build (and optionally view) a image with render source files, dependencies, and compiled artifcats:
+#   docker build -t janelia-render:latest-builder --target builder .
+#   docker run -it --entrypoint /bin/bash --rm janelia-render:latest-builder
+#
+# To build (and optionally view) a slimmed down image with just compiled artifcats in /root/render-lib:
+#   docker build -t janelia-render:latest-archive --target archive .
+#   docker run -it --entrypoint /bin/bash --rm janelia-render:latest-archive
+#
+# To build a slimmed down image with just a Jetty server hosting compiled render web services:
+#   docker build -t janelia-render:latest-ws --target render-ws .
+#
+# To run a container with the Jetty server hosting compiled render web services:
+#   docker run -it --rm janelia-render:latest-ws
+
+# ======================================================================================
 # Stage 0: build_environment
 #
 # Install library dependencies before actually building source.
@@ -25,7 +49,7 @@ RUN mvn -T 1C verify clean --fail-never
 # ======================================================================================
 # Stage 1: builder
 #
-# Build the source code, save resulting jar and war files, and remove everything else
+# Build the source code.
 
 FROM build_environment as builder
 
@@ -33,8 +57,16 @@ COPY . /var/www/render/
 RUN mvn clean
 
 # use -T 1C option to multi-thread maven, using 1 thread per available core
-RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
-    mkdir -p /root/render-lib && \
+RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package
+
+# ======================================================================================
+# Stage 2: archive
+#
+# Save resulting jar and war files and remove everything else.
+
+FROM builder as archive
+
+RUN mkdir -p /root/render-lib && \
     mv */target/*.*ar /root/render-lib && \
     printf "\nsaved the following build artifacts:\n\n" && \
     ls -alh /root/render-lib/* && \
@@ -44,7 +76,7 @@ RUN mvn -T 1C -Dproject.build.sourceEncoding=UTF-8 package && \
     rm -rf /root/.embedmongo
 
 # ======================================================================================
-# Stage 2: render-ws
+# Stage 3: render-ws
 #
 # Once web service application is built, set up jetty server and deploy application to it.
 
@@ -65,7 +97,7 @@ RUN ls -al $JETTY_BASE/* && \
     sync && \
     ./configure_web_server.sh
 
-COPY --from=builder /root/render-lib/render-ws-*.war webapps/render-ws.war
+COPY --from=archive /root/render-lib/render-ws-*.war webapps/render-ws.war
 COPY render-ws/src/main/scripts/docker /render-docker
 RUN chown -R jetty:jetty $JETTY_BASE 
 

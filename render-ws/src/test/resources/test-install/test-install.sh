@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 # ======================================================================================
 # Runs basic installation instructions documented at:
@@ -7,19 +7,19 @@
 set -e
 
 
-echo """
+if [ "${SKIP_RENDER_BUILD}" != "y" ]; then
+  echo """
 # --------------------------------------------------------------------
 # 1. Install Git and Maven
 """
+  sudo apt-get install -y git maven
 
-sudo apt-get install -y git maven
-
-echo """
-# --------------------------------------------------------------------
-# 2. Clone the Repository
+  echo """
+  # --------------------------------------------------------------------
+  # 2. Clone the Repository
 """
-
-git clone https://github.com/saalfeldlab/render.git
+  git clone https://github.com/saalfeldlab/render.git
+fi
 
 echo """
 # --------------------------------------------------------------------
@@ -30,14 +30,18 @@ echo """
 cd ./render
 ./render-ws/src/main/scripts/install.sh
 
-echo """
+# assumes current directory is still the cloned render repository root (./render)
+JAVA_HOME=$(readlink -m ./deploy/*jdk*)
+export JAVA_HOME
+echo "JAVA_HOME is ${JAVA_HOME}"
+
+if [ "${SKIP_RENDER_BUILD}" != "y" ]; then
+  echo """
 # --------------------------------------------------------------------
 # 4. Build the Render Modules
 """
-
-# assumes current directory is still the cloned render repository root (./render)
-export JAVA_HOME=`readlink -m ./deploy/jdk*`
-mvn package
+  mvn package
+fi
 
 echo """
 # --------------------------------------------------------------------
@@ -49,59 +53,43 @@ cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
 
 echo """
 # --------------------------------------------------------------------
-# 6. Install MongoDB 3.2
+# 6. Install MongoDB 6.0.4
 """
 
-#    These instructions were taken from https://docs.mongodb.com/v3.2/tutorial/install-mongodb-on-ubuntu/
+# These instructions were taken from https://www.mongodb.com/docs/v6.0/tutorial/install-mongodb-on-ubuntu/#install-mongodb-community-edition
 
-# import MongoDB public GPG key
-sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927
+# needed for access to https mongodb resources
+sudo apt-get install -y apt-transport-https gnupg wget
 
-# create a list file for MongoDB
-echo "deb http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-3.2.list
-
-# reload local package database
+# steps from https://www.mongodb.com/docs/v6.0/tutorial/install-mongodb-on-ubuntu/#install-mongodb-community-edition
+wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add -
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list
 sudo apt-get update
 
-# install default MongoDB (2.6) packages
-# NOTE: This step is not documented on the MongoDB web site, but for some reason is required to avoid "mongod: unrecognized service" errors later
-#       See https://github.com/Microsoft/WSL/issues/1822 for details
-sudo apt-get install -y mongodb
+# this line is not in the MongoDB steps, but is needed to skip interactive tzdata prompt ( see https://stackoverflow.com/a/44333806 )
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
+# this line is not in the MongoDB steps, but is needed to workaround 'mongodb-org-server.postinst: systemctl: not found' error
+sudo ln -s /bin/true /bin/systemctl
 
-# install MongoDB packages (this should also start the mongod process)
-sudo apt-get install -y mongodb-org=3.2.18 mongodb-org-server=3.2.18 mongodb-org-shell=3.2.18 mongodb-org-mongos=3.2.18 mongodb-org-tools=3.2.18
+sudo apt-get install -y mongodb-org=6.0.4 mongodb-org-database=6.0.4 mongodb-org-server=6.0.4 mongodb-org-mongos=6.0.4 mongodb-org-tools=6.0.4
 
-# Pin specific version of MongoDB
 echo "mongodb-org hold" | sudo dpkg --set-selections
+echo "mongodb-org-database hold" | sudo dpkg --set-selections
 echo "mongodb-org-server hold" | sudo dpkg --set-selections
-echo "mongodb-org-shell hold" | sudo dpkg --set-selections
+echo "mongodb-mongosh hold" | sudo dpkg --set-selections
 echo "mongodb-org-mongos hold" | sudo dpkg --set-selections
 echo "mongodb-org-tools hold" | sudo dpkg --set-selections
 
-# Create systemd service file
-# NOTE: This file has to be named mongodb.service (instead of mongod.service) for some reason
-sudo echo """
-[Unit]
-Description=High-performance, schema-free document-oriented database
-After=network.target
-Documentation=https://docs.mongodb.org/manual
-
-[Service]
-User=mongodb
-Group=mongodb
-ExecStart=/usr/bin/mongod --quiet --config /etc/mongod.conf
-
-[Install]
-WantedBy=multi-user.target
-""" > /lib/systemd/system/mongodb.service
+# this line is not in the MongoDB steps, but is needed to workaround 'mongodb-org-server.postinst: systemctl: not found' error
+sudo rm /bin/systemctl
 
 echo """
 # --------------------------------------------------------------------
 # 7. Start MongoDB
 """
 
-# NOTE: The service has to be mongodb (instead of mongod) for some reason.
-sudo service mongodb start
+# launch mongodb in background (can't run service in Docker container)
+sudo -u mongodb /usr/bin/mongod -f /etc/mongod.conf &
 
 echo """
 # --------------------------------------------------------------------
