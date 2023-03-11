@@ -19,6 +19,9 @@ reset
 # hack that waits for web service to start up successfully by retrying GET request ...
 wget --tries=20 "http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_acquire"
 
+# exit immediately after any client script call failure
+set -e
+
 # ------------------------------------------------------------------------------------------------------
 # From https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws-example.md
 
