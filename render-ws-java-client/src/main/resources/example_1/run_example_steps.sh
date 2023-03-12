@@ -21,9 +21,10 @@ echo """
 deploy/jetty_base/jetty_wrapper.sh run &
 
 echo """
-  sleeping 10 to give jetty a chance to start up
+  sleeping 10 to give jetty a chance to start up, resetting terminal to make output easier to read
 """
 sleep 10
+reset
 
 # exit immediately after any client script call failure
 set -e
