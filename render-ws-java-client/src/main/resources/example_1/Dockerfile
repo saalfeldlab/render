@@ -14,14 +14,15 @@
 #   https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws-example.md
 #
 # To build the example:
-#   copy this file to your local directory (save it as Dockerfile)
-#   docker build --no-cache -t render_example_1:latest .
+#   cd ${RENDER_REPO_ROOT_DIR}
+#   docker build -f render-ws-java-client/src/main/resources/example_1/Dockerfile \
+#          --no-cache -t janelia-render:latest-example .
 #
 # To run an example container:
-#   docker run -it --rm render_example_1:latest
+#   docker run -it --rm janelia-render:latest-example
 #
 # To launch interactive bash shell within an example container:
-#   docker run -it --entrypoint /bin/bash --rm render_example_1:latest
+#   docker run -it --entrypoint /bin/bash --rm janelia-render:latest-example
 # ======================================================================================
 
 FROM ubuntu:22.04
@@ -32,10 +33,8 @@ RUN apt-get -y upgrade
 
 # From
 
-# 1: Install Git and Maven
-RUN apt-get install -y git \
-  maven \
-  curl
+# 1: Install Git and Maven (curl and vim also added here for convenience)
+RUN apt-get install -y git maven curl vim
 
 # 2. Clone the Repository
 WORKDIR /var/www/

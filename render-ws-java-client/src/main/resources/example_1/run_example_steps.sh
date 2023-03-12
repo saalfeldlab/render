@@ -11,13 +11,23 @@ sudo -u mongodb /usr/bin/mongod -f /etc/mongod.conf &
 echo """
   Install 8. Start Jetty
 """
-deploy/jetty_base/jetty_wrapper.sh start
 
-# reset terminal that gets messed up by jetty start failure
+echo """
+  Hack: Passing run instead of start to jetty.sh (and forcing to background)
+        to work-around startup failure.
+        See https://github.com/eclipse/jetty.project/issues/7008 and
+        https://github.com/eclipse/jetty.project/issues/7095
+"""
+deploy/jetty_base/jetty_wrapper.sh run &
+
+echo """
+  sleeping 10 to give jetty a chance to start up, resetting terminal to make output easier to read
+"""
+sleep 10
 reset
 
-# hack that waits for web service to start up successfully by retrying GET request ...
-wget --tries=20 "http://localhost:8080/render-ws/v1/owner/demo/project/example_1/stack/v1_acquire"
+# exit immediately after any client script call failure
+set -e
 
 # ------------------------------------------------------------------------------------------------------
 # From https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws-example.md
