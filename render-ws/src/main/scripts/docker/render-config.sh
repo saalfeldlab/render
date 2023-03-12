@@ -117,7 +117,7 @@ fi
 sed -i """
   s@logger name=\"org.janelia\" level=\".*\"@logger name=\"org.janelia\" level=\"${LOG_JETTY_JANELIA_LEVEL}\"@
   s@root level=\".*\"@root level=\"${LOG_JETTY_ROOT_LEVEL}\"@
-  s@appender-ref ref=\"STDOUT\"@appender-ref ref=\"${LOG_JETTY_ROOT_APPENDER}\"@
+  s@appender-ref ref=\"FILE\"@appender-ref ref=\"${LOG_JETTY_ROOT_APPENDER}\"@
 """ "${JETTY_BASE}/resources/logback.xml"
 
 # --------------------------------------------------------------
