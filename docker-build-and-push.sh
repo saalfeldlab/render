@@ -50,7 +50,16 @@ LATEST_BRANCH_TAG="${CURR_BRANCH}-latest"
 REGISTRY_AND_NAMESPACE="${REGISTRY_AND_NAMESPACE:-https://registry.int.janelia.org/janelia-render/render-ws}"
 TAGS="-t ${REGISTRY_AND_NAMESPACE}:${BRANCH_COMMIT_TAG} -t ${REGISTRY_AND_NAMESPACE}:${LATEST_BRANCH_TAG}"
 
+if (( $# > 0 )); then
+  echo "
 docker build ${TAGS} --target render-ws .
 
 docker image push ${REGISTRY_AND_NAMESPACE}:${BRANCH_COMMIT_TAG}
 docker image push ${REGISTRY_AND_NAMESPACE}:${LATEST_BRANCH_TAG}
+"
+else
+  docker build ${TAGS} --target render-ws .
+
+  docker image push ${REGISTRY_AND_NAMESPACE}:${BRANCH_COMMIT_TAG}
+  docker image push ${REGISTRY_AND_NAMESPACE}:${LATEST_BRANCH_TAG}
+fi
