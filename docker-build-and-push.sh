@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 # checks stolen from https://github.com/JaneliaSciComp/workstation/blob/master/release.sh
 STATUS=$(git status --porcelain)
 if [[ "${STATUS}" ]]; then
