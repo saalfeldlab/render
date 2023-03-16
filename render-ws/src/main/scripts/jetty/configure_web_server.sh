@@ -67,24 +67,6 @@ sed -i '
 rm -rf "${SWAGGER_UI_SOURCE_DIR}"
 
 # -------------------------------------------------------------------------------------------
-# ensure jetty run-as user exists and that the run-as user owns the jetty base and tmp directories
+# make jetty base and tmp directories accessible to all so that containers can be run as different external users
 
-# JETTY_RUN_AS_USER_AND_GROUP_IDS format is user-id:group-id
-JETTY_RUN_AS_USER_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS%%:*}
-JETTY_RUN_AS_GROUP_ID=${JETTY_RUN_AS_USER_AND_GROUP_IDS##*:}
-
-# JETTY_RUN_AS_USER_AND_GROUP_NAMES format is user-name:group-name
-JETTY_RUN_AS_USER_NAME=${JETTY_RUN_AS_USER_AND_GROUP_NAMES%%:*}
-JETTY_RUN_AS_GROUP_NAME=${JETTY_RUN_AS_USER_AND_GROUP_NAMES##*:}
-
-if id "${JETTY_RUN_AS_USER_ID}" &>/dev/null; then
-    echo "configure_web_server: user ${JETTY_RUN_AS_USER_ID} already exists in image"
-else
-    echo "configure_web_server: need to create group id ${JETTY_RUN_AS_GROUP_ID} with name ${JETTY_RUN_AS_GROUP_NAME} in image"
-    groupadd -g "${JETTY_RUN_AS_GROUP_ID}" "${JETTY_RUN_AS_GROUP_NAME}"
-
-    echo "configure_web_server: need to create user id ${JETTY_RUN_AS_USER_ID} with name ${JETTY_RUN_AS_USER_NAME} in image ..."
-    useradd --uid "${JETTY_RUN_AS_USER_ID}" --gid "${JETTY_RUN_AS_GROUP_ID}" --shell /bin/bash "${JETTY_RUN_AS_USER_NAME}"
-fi
-
-chown -R "${JETTY_RUN_AS_USER_AND_GROUP_IDS}" "${JETTY_BASE_DIR}" "${TMPDIR}"
+chmod -R 777 "${JETTY_BASE_DIR}" "${TMPDIR}"

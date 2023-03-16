@@ -23,12 +23,6 @@
 # to add packages to the image.
 #   --build-arg EXTRA_JETTY_PACKAGES=vim
 #
-# To build an image that runs jetty as another user (e.g. to access mounted filesystems)
-# you can use the JETTY_RUN_AS_USER_AND_GROUP_IDS and JETTY_RUN_AS_USER_AND_GROUP_NAMES args
-# which should both be specified and formatted as <user>:<group>.
-#   --build-arg JETTY_RUN_AS_USER_AND_GROUP_IDS=999:999
-#   --build-arg JETTY_RUN_AS_USER_AND_GROUP_NAMES=jetty:jetty
-#
 # To run a container with the Jetty server hosting compiled render web services:
 #   docker run -it --rm janelia-render:latest-ws
 
@@ -98,12 +92,6 @@ FROM jetty:10.0.13-jre11 as render-ws
 #   other packages can be added from build command (e.g. docker build ... --build-arg EXTRA_JETTY_PACKAGES=vim )
 ARG EXTRA_JETTY_PACKAGES
 
-# allow jetty run-as user to be changed (e.g. to access externally mounted filesystems)
-ARG JETTY_RUN_AS_USER_AND_GROUP_IDS=999:999
-ARG JETTY_RUN_AS_USER_AND_GROUP_NAMES=jetty:jetty
-ENV JETTY_RUN_AS_USER_AND_GROUP_IDS="$JETTY_RUN_AS_USER_AND_GROUP_IDS" \
-    JETTY_RUN_AS_USER_AND_GROUP_NAMES="$JETTY_RUN_AS_USER_AND_GROUP_NAMES"
-
 USER root
 RUN apt-get update && apt-get install -y curl coreutils $EXTRA_JETTY_PACKAGES
 
@@ -148,5 +136,5 @@ ENV JAVA_OPTIONS="-Xms3g -Xmx3g -server -Djava.awt.headless=true" \
     WEB_SERVICE_MAX_TILE_SPECS_TO_RENDER="20" \
     WEB_SERVICE_MAX_IMAGE_PROCESSOR_GB=""
 
-USER $JETTY_RUN_AS_USER_AND_GROUP_IDS
+USER jetty
 ENTRYPOINT ["/render-docker/render-run-jetty-entrypoint.sh"]
