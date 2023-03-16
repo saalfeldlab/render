@@ -14,12 +14,6 @@ docker build -t janelia-render:latest-ws --target render-ws .
 # To help debug image build issues, you can use the EXTRA_JETTY_PACKAGES arg 
 # to add packages to the image.
 --build-arg EXTRA_JETTY_PACKAGES=vim
-
-# To build an image that runs jetty as another user (e.g. to access mounted filesystems)
-# you can use the JETTY_RUN_AS_USER_AND_GROUP_IDS and JETTY_RUN_AS_USER_AND_GROUP_NAMES args
-# which should both be specified and formatted as <user>:<group>.  
---build-arg JETTY_RUN_AS_USER_AND_GROUP_IDS=999:999
---build-arg JETTY_RUN_AS_USER_AND_GROUP_NAMES=jetty:jetty
 ```
 
 You can speed up future builds by building and tagging the build environment:
