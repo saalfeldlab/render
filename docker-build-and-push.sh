@@ -45,19 +45,34 @@ LAST_COMMIT_ABBREV="${LAST_LOG%% *}"    # 62b496e9
 BRANCH_COMMIT_TAG="${CURR_BRANCH}-${BUILD_TIMESTAMP}-${LAST_COMMIT_ABBREV}"
 LATEST_BRANCH_TAG="${CURR_BRANCH}-latest"
 
-REGISTRY_AND_NAMESPACE="${REGISTRY_AND_NAMESPACE:-registry.int.janelia.org/janelia-render/render-ws}"
-TAGS="-t ${REGISTRY_AND_NAMESPACE}:${BRANCH_COMMIT_TAG} -t ${REGISTRY_AND_NAMESPACE}:${LATEST_BRANCH_TAG}"
+RENDER_ARCHIVE_NAMESPACE="${RENDER_ARCHIVE_NAMESPACE:-registry.int.janelia.org/janelia-render/archive}"
+RENDER_ARCHIVE_TAGS="-t ${RENDER_ARCHIVE_NAMESPACE}:${BRANCH_COMMIT_TAG} -t ${RENDER_ARCHIVE_NAMESPACE}:${LATEST_BRANCH_TAG}"
+
+RENDER_WS_NAMESPACE="${RENDER_WS_NAMESPACE:-registry.int.janelia.org/janelia-render/render-ws}"
+RENDER_WS_TAGS="-t ${RENDER_WS_NAMESPACE}:${BRANCH_COMMIT_TAG} -t ${RENDER_WS_NAMESPACE}:${LATEST_BRANCH_TAG}"
 
 if (( $# > 0 )); then
+
   echo "
-docker build ${TAGS} --target render-ws .
+docker build ${RENDER_ARCHIVE_TAGS} --target archive .
+docker build ${RENDER_WS_TAGS} --target render-ws .
 
-docker image push ${REGISTRY_AND_NAMESPACE}:${BRANCH_COMMIT_TAG}
-docker image push ${REGISTRY_AND_NAMESPACE}:${LATEST_BRANCH_TAG}
+docker image push ${RENDER_ARCHIVE_NAMESPACE}:${BRANCH_COMMIT_TAG}
+docker image push ${RENDER_ARCHIVE_NAMESPACE}:${LATEST_BRANCH_TAG}
+
+docker image push ${RENDER_WS_NAMESPACE}:${BRANCH_COMMIT_TAG}
+docker image push ${RENDER_WS_NAMESPACE}:${LATEST_BRANCH_TAG}
 "
-else
-  docker build ${TAGS} --target render-ws .
 
-  docker image push ${REGISTRY_AND_NAMESPACE}:${BRANCH_COMMIT_TAG}
-  docker image push ${REGISTRY_AND_NAMESPACE}:${LATEST_BRANCH_TAG}
+else
+
+  docker build ${RENDER_ARCHIVE_TAGS} --target archive .
+  docker build ${RENDER_WS_TAGS} --target render-ws .
+
+  docker image push ${RENDER_ARCHIVE_NAMESPACE}:${BRANCH_COMMIT_TAG}
+  docker image push ${RENDER_ARCHIVE_NAMESPACE}:${LATEST_BRANCH_TAG}
+
+  docker image push ${RENDER_WS_NAMESPACE}:${BRANCH_COMMIT_TAG}
+  docker image push ${RENDER_WS_NAMESPACE}:${LATEST_BRANCH_TAG}
+
 fi
