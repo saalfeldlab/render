@@ -42,6 +42,15 @@ if [ ! -f "${LOCAL_RENDER_WS_ENV_FILE}" ]; then
 fi
 
 COMPOSE_OUT_FILE="${LOCAL_RENDER_WS_LOGS_DIR}/docker-compose.out"
+if [ ! -w "${COMPOSE_OUT_FILE}" ]; then
+  echo "ERROR: missing writable output file
+
+May need to run:
+  sudo touch ${COMPOSE_OUT_FILE}
+  sudo chmod 666 ${COMPOSE_OUT_FILE}
+"
+  exit 1
+fi
 
 LAUNCH_INFO="
 ------------------------------------------------------------------
@@ -49,11 +58,13 @@ $(date) running:
   docker compose -f ${DOCKER_COMPOSE_YML} $*
 "
 
+echo "${LAUNCH_INFO}  with launch info logged to ${COMPOSE_OUT_FILE}
+"
+
 echo "${LAUNCH_INFO}" >> "${COMPOSE_OUT_FILE}"
 
 nohup docker compose -f "${DOCKER_COMPOSE_YML}" "$@" >> "${COMPOSE_OUT_FILE}" 2>&1 &
 
-echo "${LAUNCH_INFO}"
-echo "launch info logged to ${COMPOSE_OUT_FILE}
-"
-tail -f "${COMPOSE_OUT_FILE}"
+sleep 5
+
+docker ps -a | tee -a "${COMPOSE_OUT_FILE}"
