@@ -14,6 +14,12 @@ export JETTY_RUN_AS_USER_AND_GROUP_IDS="999:999"
 # ---------------------------------------------
 # everything below here should be left as is
 
+if (( $# == 0 )); then
+  BASENAME=$(basename "$0")
+  echo "USAGE: ${BASENAME} <up|down>"
+  exit 1
+fi
+
 DOCKER_COMPOSE_YML="${LOCAL_RENDER_WS_BASE_DIR}/docker-compose.yml"
 
 if [ ! -f "${DOCKER_COMPOSE_YML}" ]; then
@@ -35,4 +41,19 @@ if [ ! -f "${LOCAL_RENDER_WS_ENV_FILE}" ]; then
   exit 1
 fi
 
-docker compose -f "${DOCKER_COMPOSE_YML}" "$@"
+COMPOSE_OUT_FILE="${LOCAL_RENDER_WS_LOGS_DIR}/docker-compose.out"
+
+LAUNCH_INFO="
+------------------------------------------------------------------
+$(date) running:
+  docker compose -f ${DOCKER_COMPOSE_YML} $*
+"
+
+echo "${LAUNCH_INFO}" >> "${COMPOSE_OUT_FILE}"
+
+nohup docker compose -f "${DOCKER_COMPOSE_YML}" "$@" >> "${COMPOSE_OUT_FILE}" 2>&1 &
+
+echo "${LAUNCH_INFO}"
+echo "launch info logged to ${COMPOSE_OUT_FILE}
+"
+tail -f "${COMPOSE_OUT_FILE}"
