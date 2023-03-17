@@ -16,8 +16,14 @@ export JETTY_RUN_AS_USER_AND_GROUP_IDS="999:999"
 
 if (( $# == 0 )); then
   BASENAME=$(basename "$0")
-  echo "USAGE: ${BASENAME} <up|down>"
+  echo "USAGE: ${BASENAME} <up|up-clean|down>"
   exit 1
+fi
+
+COMPOSE_CMD="$1"
+if [ "${COMPOSE_CMD}" == "up-clean" ]; then
+  docker rmi "${RENDER_WS_IMAGE}"
+  COMPOSE_CMD="up"
 fi
 
 DOCKER_COMPOSE_YML="${LOCAL_RENDER_WS_BASE_DIR}/docker-compose.yml"
@@ -63,7 +69,7 @@ echo "${LAUNCH_INFO}  with launch info logged to ${COMPOSE_OUT_FILE}
 
 echo "${LAUNCH_INFO}" >> "${COMPOSE_OUT_FILE}"
 
-nohup docker compose -f "${DOCKER_COMPOSE_YML}" "$@" >> "${COMPOSE_OUT_FILE}" 2>&1 &
+nohup docker compose -f "${DOCKER_COMPOSE_YML}" ${COMPOSE_CMD} >> "${COMPOSE_OUT_FILE}" 2>&1 &
 
 sleep 5
 
