@@ -269,6 +269,10 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         return toJson();
     }
 
+    public String toKeyString() {
+        return "p-" + pId + "-q-" + qId;
+    }
+
     @SuppressWarnings("UnusedDeclaration")
     public String toTabSeparatedFormat() {
         final double[][] ps = matches.getPs();

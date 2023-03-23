@@ -89,7 +89,7 @@ public class MatchAggregator {
                 final int aggregatedMatchCount = remainingIndexes.size() + radiusSearchResultList.size();
                 if (aggregatedMatchCount > maxMatchesPerPair) {
                     LOG.warn("aggregateMatches: aggregatedMatchCount {} still exceeds max {} for pair {}, maybe radius {} is too small",
-                             aggregatedMatchCount, maxMatchesPerPair, pair, matchAggregationRadius);
+                             aggregatedMatchCount, maxMatchesPerPair, pair.toKeyString(), matchAggregationRadius);
                 }
 
                 // raw values for original
