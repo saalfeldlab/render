@@ -102,18 +102,18 @@ public class MatchAggregator {
                 final double[][] aggregatedQs = new double[2][aggregatedMatchCount];
                 final double[] aggregatedWs = new double[aggregatedMatchCount];
 
-                // first copy any remaining (unfiltered) matches directly from source
-                int filteredMatchIndex = 0;
+                // first copy any remaining (not aggregated) matches directly from source
+                int aggregatedMatchIndex = 0;
                 for (final Integer remainingIndex : remainingIndexes) {
                     for (int d = 0; d < 2; d++) {
-                        aggregatedPs[d][filteredMatchIndex] = originalPs[d][remainingIndex];
-                        aggregatedQs[d][filteredMatchIndex] = originalQs[d][remainingIndex];
+                        aggregatedPs[d][aggregatedMatchIndex] = originalPs[d][remainingIndex];
+                        aggregatedQs[d][aggregatedMatchIndex] = originalQs[d][remainingIndex];
                     }
-                    aggregatedWs[filteredMatchIndex] = originalWs[remainingIndex];
-                    filteredMatchIndex++;
+                    aggregatedWs[aggregatedMatchIndex] = originalWs[remainingIndex];
+                    aggregatedMatchIndex++;
                 }
 
-                // then aggregate radius point groups into single points
+                // then aggregate radius search point groups into single points
                 final List<RealPoint> originalQList = originalMatches.getQList();
                 for (final RadiusNeighborSearchOnKDTree<IntType> radius : radiusSearchResultList) {
 
@@ -131,19 +131,19 @@ public class MatchAggregator {
                             aggregatedQPoint = qPoint;
                             aggregatedWeight = originalWs[matchIndex];
                         } else {
-                            break;
+                            break; // TODO: remove this hack
                         }
                     }
 
                     for (int d = 0; d < 2; d++) {
-                        aggregatedPs[d][filteredMatchIndex] = aggregatedPPoint.getDoublePosition(d);
-                        aggregatedQs[d][filteredMatchIndex] = aggregatedQPoint.getDoublePosition(d);
+                        aggregatedPs[d][aggregatedMatchIndex] = aggregatedPPoint.getDoublePosition(d);
+                        aggregatedQs[d][aggregatedMatchIndex] = aggregatedQPoint.getDoublePosition(d);
                     }
-                    aggregatedWs[filteredMatchIndex] = aggregatedWeight;
-                    filteredMatchIndex++;
+                    aggregatedWs[aggregatedMatchIndex] = aggregatedWeight;
+                    aggregatedMatchIndex++;
                 }
 
-                // replace pair's original matches with filtered ones
+                // replace pair's original matches with aggregated ones
                 pair.setMatches(new Matches(aggregatedPs, aggregatedQs, aggregatedWs));
             }
 
