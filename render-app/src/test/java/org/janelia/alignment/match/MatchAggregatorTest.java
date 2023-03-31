@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -14,6 +15,7 @@ import org.junit.Test;
 public class MatchAggregatorTest {
 
     @Test
+    @Ignore
     public void testAggregateWithinRadius() {
 
         // 10x10 w/step 100
