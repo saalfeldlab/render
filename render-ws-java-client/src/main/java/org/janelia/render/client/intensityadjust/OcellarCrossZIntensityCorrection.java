@@ -277,8 +277,7 @@ public class OcellarCrossZIntensityCorrection {
         for (; z < stackMaxZ; z += tilesPerBatch) {
             final double maxZ = z + tilesPerBatch - 1;
             final ResolvedTileSpecCollection resolvedTilesForBatch =
-                    dataClient.getResolvedTiles(alignedIntensityCorrectedStack, z, maxZ,
-                                                null, null, null, null, null);
+                    dataClient.getResolvedTilesForZRange(alignedIntensityCorrectedStack, z, maxZ);
             for (final TileSpec tileSpec : resolvedTilesForBatch.getTileSpecs()) {
                 tileSpec.setFilterSpec(filterSpec);
             }

@@ -111,6 +111,12 @@ public class CopyStackClient {
         )
         public String includedTileIdsJson;
 
+        @Parameter(
+                names = "--includeTileIdsWithPattern",
+                description = "JSON file containing array of tileIds to be included (.json, .gz, or .zip)"
+        )
+        public String includeTileIdsWithPattern;
+
         @ParametersDelegate
         ExcludedCellParameters excludedCells = new ExcludedCellParameters();
 
@@ -324,7 +330,7 @@ public class CopyStackClient {
     private void copyLayer(final Double z) throws Exception {
 
         final ResolvedTileSpecCollection sourceCollection =
-                fromDataClient.getResolvedTiles(parameters.fromStack, z);
+                fromDataClient.getResolvedTiles(parameters.fromStack, z, parameters.includeTileIdsWithPattern);
 
         if (parameters.layerBounds.minX != null) {
             final Set<String> tileIdsToKeep = getIdsForTilesInBox(z);

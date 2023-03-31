@@ -90,14 +90,9 @@ public class RenderTilesTest {
                                                                  parameters.renderWeb.owner,
                                                                  parameters.renderWeb.project);
 
-        final ResolvedTileSpecCollection resolvedTileSpecs = dataClient.getResolvedTiles(parameters.stack,
-                                                                                         minZ,
-                                                                                         maxZ,
-                                                                                         null,
-                                                                                         null,
-                                                                                         null,
-                                                                                         null,
-                                                                                         null);
+        final ResolvedTileSpecCollection resolvedTileSpecs = dataClient.getResolvedTilesForZRange(parameters.stack,
+                                                                                                  minZ,
+                                                                                                  maxZ);
         resolvedTileSpecs.resolveTileSpecs();
 
         final RenderTileWithTransformsClient client = new RenderTileWithTransformsClient(parameters);

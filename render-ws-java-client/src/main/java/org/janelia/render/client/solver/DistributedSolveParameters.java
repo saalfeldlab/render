@@ -483,6 +483,7 @@ public class DistributedSolveParameters extends CommandLineParameters
 																	null,
 																	null,
 																	null,
+																	null,
 																	null);
 				groupTileSpecs.getTileSpecs().forEach(tileSpec -> runParams.zToGroupIdMap.put(tileSpec.getZ().intValue(), groupId));
 			} catch (final IOException t) {

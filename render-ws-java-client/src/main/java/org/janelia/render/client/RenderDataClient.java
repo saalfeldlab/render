@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -50,13 +52,12 @@ import org.janelia.render.client.response.TextResponseHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-
 /**
  * HTTP client "wrapper" for retrieving and storing render data via the render web service.
  *
  * @author Eric Trautman
  */
+@SuppressWarnings("JavadocLinkAsPlainText")
 public class RenderDataClient {
 
     private final String project;
@@ -66,7 +67,7 @@ public class RenderDataClient {
     /**
      * Creates a new client for the specified owner and project.
      *
-     * @param  baseDataUrl  the base URL string for all requests (e.g. 'http://tem-services:8080/render-ws/v1')
+     * @param  baseDataUrl  the base URL string for all requests (e.g. 'http://em-services-1:8080/render-ws/v1')
      * @param  owner        the owner name for all requests.
      * @param  project      the project name for all requests.
      */
@@ -110,7 +111,7 @@ public class RenderDataClient {
     /**
      * @param  stack  name of stack.
      *
-     * @return meta data for the specified stack.
+     * @return metadata for the specified stack.
      *
      * @throws IOException
      *   if the request fails for any reason.
@@ -129,10 +130,6 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
-    public List<StackId> getOwnerStacks() throws IOException {
-        return getStackIds(null);
-    }
-
     public List<StackId> getProjectStacks() throws IOException {
         return getStackIds(project);
     }
@@ -141,7 +138,7 @@ public class RenderDataClient {
         final URI uri = getUri(urls.getStackIdsUrlString(project));
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final TypeReference<List<StackId>> stackIdsTypeReference = new TypeReference<List<StackId>>(){};
+        final TypeReference<List<StackId>> stackIdsTypeReference = new TypeReference<>(){};
 
         final JsonUtils.GenericHelper<List<StackId>> helper = new JsonUtils.GenericHelper<>(stackIdsTypeReference);
         final JsonResponseHandler<List<StackId>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
@@ -155,8 +152,7 @@ public class RenderDataClient {
         final URI uri = getUri(urls.getOwnerMatchCollectionsUrlString());
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final TypeReference<List<MatchCollectionMetaData>> collectionsTypeReference =
-                new TypeReference<List<MatchCollectionMetaData>>(){};
+        final TypeReference<List<MatchCollectionMetaData>> collectionsTypeReference = new TypeReference<>() {};
 
         final JsonUtils.GenericHelper<List<MatchCollectionMetaData>> helper =
                 new JsonUtils.GenericHelper<>(collectionsTypeReference);
@@ -224,24 +220,12 @@ public class RenderDataClient {
             throws IOException {
 
         final URIBuilder builder = new URIBuilder(getUri(urls.getStackUrlString(stack) + "/zValues"));
-
-        if (minZ != null) {
-            builder.addParameter("minZ", minZ.toString());
-        }
-        if (maxZ != null) {
-            builder.addParameter("maxZ", maxZ.toString());
-        }
-
-        final URI uri;
-        try {
-            uri = builder.build();
-        } catch (final URISyntaxException e) {
-            throw new IOException(e.getMessage(), e);
-        }
+        final URI uri = getUriWithZRangeParameters(minZ, maxZ, builder);
 
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final TypeReference<List<Double>> typeReference = new TypeReference<List<Double>>() {};
+        final TypeReference<List<Double>> typeReference = new TypeReference<>() {
+        };
         final JsonUtils.GenericHelper<List<Double>> helper = new JsonUtils.GenericHelper<>(typeReference);
         final JsonResponseHandler<List<Double>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
@@ -305,24 +289,12 @@ public class RenderDataClient {
             throws IOException {
 
         final URIBuilder builder = new URIBuilder(getUri(urls.getStackUrlString(stack) + "/sectionData"));
-
-        if (minZ != null) {
-            builder.addParameter("minZ", minZ.toString());
-        }
-        if (maxZ != null) {
-            builder.addParameter("maxZ", maxZ.toString());
-        }
-
-        final URI uri;
-        try {
-            uri = builder.build();
-        } catch (final URISyntaxException e) {
-            throw new IOException(e.getMessage(), e);
-        }
+        final URI uri = getUriWithZRangeParameters(minZ, maxZ, builder);
 
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final TypeReference<List<SectionData>> typeReference = new TypeReference<List<SectionData>>() {};
+        final TypeReference<List<SectionData>> typeReference = new TypeReference<>() {
+        };
         final JsonUtils.GenericHelper<List<SectionData>> helper = new JsonUtils.GenericHelper<>(typeReference);
         final JsonResponseHandler<List<SectionData>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
@@ -405,15 +377,15 @@ public class RenderDataClient {
     }
 
     /**
-     * A derived stack should retain a common set of meta data from its source stack
+     * A derived stack should retain a common set of metadata from its source stack
      * (e.g. resolution and mipmap path builder values).  This method ensures that
-     * the derived stack exists, that it shares the common meta data from its source stack,
+     * the derived stack exists, that it shares the common metadata from its source stack,
      * and that it is in the LOADING state.
      *
      * @param  sourceStackMetaData  source stack meta data.
      * @param  derivedStack         name of derived stack.
      *
-     * @return meta data for the derived stack.
+     * @return metadata for the derived stack.
      *
      * @throws IOException
      *   if the request fails for any reason.
@@ -619,7 +591,7 @@ public class RenderDataClient {
      * Sets the state of the specified stack to LOADING if necessary.
      *
      * @param  stack          stack to change.
-     * @param  stackMetaData  current meta data for stack (or null if it needs to be retrieved).
+     * @param  stackMetaData  current metadata for stack (or null if it needs to be retrieved).
      *
      * @throws IOException
      *   if the request fails for any reason.
@@ -897,7 +869,8 @@ public class RenderDataClient {
         final URI uri = getUri(urls.getTileBoundsUrlString(stack, z));
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final TypeReference<List<TileBounds>> typeReference = new TypeReference<List<TileBounds>>() {};
+        final TypeReference<List<TileBounds>> typeReference = new TypeReference<>() {
+        };
         final JsonUtils.GenericHelper<List<TileBounds>> helper = new JsonUtils.GenericHelper<>(typeReference);
         final JsonResponseHandler<List<TileBounds>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
 
@@ -938,30 +911,6 @@ public class RenderDataClient {
 
     /**
      * @param  stack  name of stack.
-     * @param  tileId tile identifier.
-     *
-     * @return render parameters (with flattened tile specs) for the specified tile.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public RenderParameters getRenderParametersForTile(final String stack,
-                                                       final String tileId)
-            throws IOException {
-
-        final URI uri = getUri(urls.getTileUrlString(stack, tileId) + "/render-parameters");
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final JsonUtils.Helper<RenderParameters> helper = new JsonUtils.Helper<>(RenderParameters.class);
-        final JsonResponseHandler<RenderParameters> responseHandler = new JsonResponseHandler<>(requestContext, helper);
-
-        LOG.info("getRenderParametersForTile: submitting {}", requestContext);
-
-        return httpClient.execute(httpGet, responseHandler);
-    }
-
-    /**
-     * @param  stack  name of stack.
      * @param  z      z value for layer.
      *
      * @return render parameters (with flattened tile specs) for the specified layer.
@@ -996,18 +945,50 @@ public class RenderDataClient {
     public ResolvedTileSpecCollection getResolvedTiles(final String stack,
                                                        final Double z)
             throws IOException {
+        return getResolvedTiles(stack, z, null);
+    }
 
-        final URI uri = getResolvedTilesUri(stack, z);
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final JsonUtils.Helper<ResolvedTileSpecCollection> helper =
-                new JsonUtils.Helper<>(ResolvedTileSpecCollection.class);
-        final JsonResponseHandler<ResolvedTileSpecCollection> responseHandler =
-                new JsonResponseHandler<>(requestContext, helper);
+    /**
+     * @param  stack         name of stack.
+     * @param  z             z value for layer.
+     * @param  matchPattern  (optional) if specified, only return tiles with ids that match this pattern.
+     *
+     * @return the set of resolved tiles and transforms for the specified layer.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public ResolvedTileSpecCollection getResolvedTiles(final String stack,
+                                                       final Double z,
+                                                       final String matchPattern)
+            throws IOException {
 
-        LOG.info("getResolvedTiles: submitting {}", requestContext);
+        final URIBuilder uriBuilder = new URIBuilder(getResolvedTilesUri(stack, z));
+        addParameterIfDefined("matchPattern", matchPattern, uriBuilder);
+        final URI uri = getUri(uriBuilder);
+        return getResolvedTileSpecCollection(uri);
+    }
 
-        return httpClient.execute(httpGet, responseHandler);
+    /**
+     * @param  stack    name of stack.
+     * @param  minZ     minimum z value for all tiles (or null for no minimum).
+     * @param  maxZ     maximum z value for all tiles (or null for no maximum).
+     *
+     * @return the set of resolved tiles and transforms that match the specified criteria.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public ResolvedTileSpecCollection getResolvedTilesForZRange(final String stack,
+                                                                final Double minZ,
+                                                                final Double maxZ)
+            throws IOException {
+
+        final URIBuilder uriBuilder = new URIBuilder(getResolvedTilesUri(stack, null));
+        addParameterIfDefined("minZ", minZ, uriBuilder);
+        addParameterIfDefined("maxZ", maxZ, uriBuilder);
+        final URI uri = getUri(uriBuilder);
+        return getResolvedTileSpecCollection(uri);
     }
 
     /**
@@ -1019,6 +1000,7 @@ public class RenderDataClient {
      * @param  maxX     maximum x value for all tiles (or null for no maximum).
      * @param  minY     minimum y value for all tiles (or null for no minimum).
      * @param  maxY     maximum y value for all tiles (or null for no maximum).
+     * @param  matchPattern  only return tiles with ids that match this pattern (null for all tiles).
      *
      * @return the set of resolved tiles and transforms that match the specified criteria.
      *
@@ -1032,7 +1014,8 @@ public class RenderDataClient {
                                                        final Double minX,
                                                        final Double maxX,
                                                        final Double minY,
-                                                       final Double maxY)
+                                                       final Double maxY,
+                                                       final String matchPattern)
             throws IOException {
 
         final URIBuilder uriBuilder = new URIBuilder(getResolvedTilesUri(stack, null));
@@ -1043,18 +1026,9 @@ public class RenderDataClient {
         addParameterIfDefined("maxX", maxX, uriBuilder);
         addParameterIfDefined("minY", minY, uriBuilder);
         addParameterIfDefined("maxY", maxY, uriBuilder);
-
+        addParameterIfDefined("matchPattern", matchPattern, uriBuilder);
         final URI uri = getUri(uriBuilder);
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final JsonUtils.Helper<ResolvedTileSpecCollection> helper =
-                new JsonUtils.Helper<>(ResolvedTileSpecCollection.class);
-        final JsonResponseHandler<ResolvedTileSpecCollection> responseHandler =
-                new JsonResponseHandler<>(requestContext, helper);
-
-        LOG.info("getResolvedTiles: submitting {}", requestContext);
-
-        return httpClient.execute(httpGet, responseHandler);
+        return getResolvedTileSpecCollection(uri);
     }
 
     /**
@@ -1088,35 +1062,6 @@ public class RenderDataClient {
     }
 
     /**
-     * Updates the z value for the specified stack section.
-     *
-     * @param  stack          name of stack.
-     * @param  sectionId      identifier for section.
-     * @param  z              z value for section.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public void updateZForSection(final String stack,
-                                  final String sectionId,
-                                  final Double z)
-            throws IOException {
-
-        final String json = z.toString();
-        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-        final URI uri = getUri(urls.getSectionZUrlString(stack, sectionId));
-        final String requestContext = "PUT " + uri;
-        final ResourceCreatedResponseHandler responseHandler = new ResourceCreatedResponseHandler(requestContext);
-
-        final HttpPut httpPut = new HttpPut(uri);
-        httpPut.setEntity(stringEntity);
-
-        LOG.info("updateZForSection: submitting {}", requestContext);
-
-        httpClient.execute(httpPut, responseHandler);
-    }
-
-    /**
      * @return list of pGroup identifiers for this collection.
      *
      * @throws IOException
@@ -1124,17 +1069,8 @@ public class RenderDataClient {
      */
     public List<String> getMatchPGroupIds()
             throws IOException {
-
         final URI uri = getUri(urls.getMatchCollectionUrlString() + "/pGroupIds");
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final TypeReference<List<String>> typeReference = new TypeReference<List<String>>() {};
-        final JsonUtils.GenericHelper<List<String>> helper = new JsonUtils.GenericHelper<>(typeReference);
-        final JsonResponseHandler<List<String>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
-
-        LOG.info("getMatchPGroupIds: submitting {}", requestContext);
-
-        return httpClient.execute(httpGet, responseHandler);
+        return submitGetForStringArray("getMatchPGroupIds", uri);
     }
 
     /**
@@ -1160,27 +1096,6 @@ public class RenderDataClient {
     }
 
     /**
-     * @return list of p and q group identifiers with multiple consensus set match pairs.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public List<String> getMatchMultiConsensusGroupIds()
-            throws IOException {
-
-        final URI uri = getUri(urls.getMatchMultiConsensusGroupIdsUrlString());
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final TypeReference<List<String>> typeReference = new TypeReference<List<String>>() {};
-        final JsonUtils.GenericHelper<List<String>> helper = new JsonUtils.GenericHelper<>(typeReference);
-        final JsonResponseHandler<List<String>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
-
-        LOG.info("getMatchMultiConsensusGroupIds: submitting {}", requestContext);
-
-        return httpClient.execute(httpGet, responseHandler);
-    }
-
-    /**
      * @return list of pGroup identifiers with multiple consensus set match pairs.
      *
      * @throws IOException
@@ -1188,17 +1103,8 @@ public class RenderDataClient {
      */
     public List<String> getMatchMultiConsensusPGroupIds()
             throws IOException {
-
         final URI uri = getUri(urls.getMatchMultiConsensusPGroupIdsUrlString());
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final TypeReference<List<String>> typeReference = new TypeReference<List<String>>() {};
-        final JsonUtils.GenericHelper<List<String>> helper = new JsonUtils.GenericHelper<>(typeReference);
-        final JsonResponseHandler<List<String>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
-
-        LOG.info("getMatchMultiConsensusPGroupIds: submitting {}", requestContext);
-
-        return httpClient.execute(httpGet, responseHandler);
+        return submitGetForStringArray("getMatchMultiConsensusPGroupIds", uri);
     }
 
     /**
@@ -1221,17 +1127,9 @@ public class RenderDataClient {
 
         final String urlString = String.format("%s/group/%s/id/%s/matchesWith/%s/id/%s",
                                                urls.getMatchCollectionUrlString(), pGroupId, pId, qGroupId, qId);
-        final URI uri = getUri(urlString);
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<List<CanvasMatches>>() {};
-        final JsonUtils.GenericHelper<List<CanvasMatches>> helper = new JsonUtils.GenericHelper<>(typeReference);
-        final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
-
-        LOG.info("getMatchesBetweenTiles: submitting {}", requestContext);
-
-        final List<CanvasMatches> responseList = httpClient.execute(httpGet, responseHandler);
-
+        final List<CanvasMatches> responseList = getMatches("getMatchesBetweenTiles",
+                                                            urlString,
+                                                            false);
         CanvasMatches canvasMatches = null;
         if (responseList.size() == 1) {
             canvasMatches = responseList.get(0);
@@ -1443,7 +1341,8 @@ public class RenderDataClient {
         httpPut.setEntity(stringEntity);
 
         final TypeReference<List<TileSpec>> typeReference =
-                new TypeReference<List<TileSpec>>() {};
+                new TypeReference<>() {
+                };
         final JsonUtils.GenericHelper<List<TileSpec>> helper =
                 new JsonUtils.GenericHelper<>(typeReference);
         final JsonResponseHandler<List<TileSpec>> responseHandler =
@@ -1458,7 +1357,7 @@ public class RenderDataClient {
      * Sends the specified world coordinates to the server to be mapped to tiles.
      * Because tiles overlap, each coordinate can potentially be mapped to multiple tiles.
      * The result is a list of coordinate lists for all mapped tiles.
-     *
+     * <br/>
      * For example,
      * <pre>
      *     Given:                 Result could be:
@@ -1491,7 +1390,8 @@ public class RenderDataClient {
         httpPut.setEntity(stringEntity);
 
         final TypeReference<List<List<TileCoordinates>>> typeReference =
-                new TypeReference<List<List<TileCoordinates>>>() {};
+                new TypeReference<>() {
+                };
         final JsonUtils.GenericHelper<List<List<TileCoordinates>>> helper =
                 new JsonUtils.GenericHelper<>(typeReference);
         final JsonResponseHandler<List<List<TileCoordinates>>> responseHandler =
@@ -1528,7 +1428,7 @@ public class RenderDataClient {
     }
 
     /**
-     * @return a render parameters URL string composed from the specified values.
+     * @return a render parameters URL string composed of the specified values.
      */
     public String getRenderParametersUrlString(final String stack,
                                                final double x,
@@ -1558,7 +1458,7 @@ public class RenderDataClient {
         return getUri(baseUrlString + "/resolvedTiles");
     }
 
-    private URI getUri(final String forString)
+    private static URI getUri(final String forString)
             throws IOException {
         final URI uri;
         try {
@@ -1569,13 +1469,33 @@ public class RenderDataClient {
         return uri;
     }
 
-    private URI getUri(final URIBuilder uriBuilder)
+    private static URI getUri(final URIBuilder uriBuilder)
             throws IOException {
         final URI uri;
         try {
             uri = uriBuilder.build();
         } catch (final URISyntaxException e) {
             throw new IOException("failed to create URI for '" + uriBuilder + "'", e);
+        }
+        return uri;
+    }
+
+    private static URI getUriWithZRangeParameters(final Double minZ,
+                                                  final Double maxZ,
+                                                  final URIBuilder builder)
+            throws IOException {
+        if (minZ != null) {
+            builder.addParameter("minZ", minZ.toString());
+        }
+        if (maxZ != null) {
+            builder.addParameter("maxZ", maxZ.toString());
+        }
+
+        final URI uri;
+        try {
+            uri = builder.build();
+        } catch (final URISyntaxException e) {
+            throw new IOException(e.getMessage(), e);
         }
         return uri;
     }
@@ -1588,6 +1508,20 @@ public class RenderDataClient {
         }
     }
 
+    private ResolvedTileSpecCollection getResolvedTileSpecCollection(final URI uri)
+            throws IOException {
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<ResolvedTileSpecCollection> helper =
+                new JsonUtils.Helper<>(ResolvedTileSpecCollection.class);
+        final JsonResponseHandler<ResolvedTileSpecCollection> responseHandler =
+                new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getResolvedTileSpecCollection: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
     private List<CanvasMatches> getMatches(final String context,
                                            final String urlString,
                                            final boolean excludeMatchDetails)
@@ -1596,7 +1530,7 @@ public class RenderDataClient {
         try {
             final URIBuilder builder = new URIBuilder(urlString);
             if (excludeMatchDetails) {
-                builder.addParameter("excludeMatchDetails", String.valueOf(excludeMatchDetails));
+                builder.addParameter("excludeMatchDetails", "true");
             }
             uri = builder.build();
         } catch (final URISyntaxException e) {
@@ -1605,12 +1539,27 @@ public class RenderDataClient {
 
         final HttpGet httpGet = new HttpGet(uri);
         final String requestContext = "GET " + uri;
-        final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<List<CanvasMatches>>() {};
+        final TypeReference<List<CanvasMatches>> typeReference = new TypeReference<>() {};
         final JsonUtils.GenericHelper<List<CanvasMatches>> helper = new JsonUtils.GenericHelper<>(typeReference);
         final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext,
                                                                                                    helper);
 
         LOG.info(context + ": submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    private List<String> submitGetForStringArray(final String logContext,
+                                                 final URI uri)
+            throws IOException {
+
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final TypeReference<List<String>> typeReference = new TypeReference<>() {};
+        final JsonUtils.GenericHelper<List<String>> helper = new JsonUtils.GenericHelper<>(typeReference);
+        final JsonResponseHandler<List<String>> responseHandler = new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("{}: submitting {}", logContext, requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
     }

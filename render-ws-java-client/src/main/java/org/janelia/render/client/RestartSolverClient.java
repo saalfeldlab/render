@@ -245,7 +245,7 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
         final ResolvedTileSpecCollection restartTileSpecCollection =
                 renderDataClient.getResolvedTiles(parameters.stack, null, null,
                                                   restartGroupId,
-                                                  null, null, null, null);
+                                                  null, null, null, null, null);
 
         final Map<Double, TileBoundsRTree> zToTileBounds = new HashMap<>();
         final Set<Double> patchedLayerZValues = new HashSet<>();
@@ -631,9 +631,7 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
             Double minZ = rangeMinZ;
             for (final Double maxZ : batchMaxZValues) {
                 final ResolvedTileSpecCollection rangeTileSpecCollection =
-                        renderDataClient.getResolvedTiles(parameters.stack, minZ, maxZ,
-                                                          null,
-                                                          null, null, null, null);
+                        renderDataClient.getResolvedTilesForZRange(parameters.stack, minZ, maxZ);
 
                 for (final TileSpec tileSpec : rangeTileSpecCollection.getTileSpecs()) {
                     final String rowAndColumnKey = getRowAndColumnKey(tileSpec);

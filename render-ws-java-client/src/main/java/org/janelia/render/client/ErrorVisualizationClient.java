@@ -193,7 +193,9 @@ public class ErrorVisualizationClient {
 	        final List<CanvasMatches> cmatches = getMatchedPairsForLayer(currentZ);
 
 	        // maps tileId to TileSpec and has transformations
-	        final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles( parameters.stack, currentZ, currentZ+6, null, null, null, null, null );
+			final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTilesForZRange(parameters.stack,
+																										currentZ,
+																										currentZ+6);
 	
 	        // map tileId to CanvasMatches
 	        final Map< String, List< CanvasMatches> > matchMap = new HashMap<>();
