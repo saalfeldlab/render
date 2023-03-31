@@ -505,15 +505,16 @@ public class RenderDataService {
     public ResolvedTileSpecCollection getResolvedTiles(@PathParam("owner") final String owner,
                                                        @PathParam("project") final String project,
                                                        @PathParam("stack") final String stack,
-                                                       @PathParam("z") final Double z) {
+                                                       @PathParam("z") final Double z,
+                                                       @QueryParam("matchPattern") final String matchPattern) {
 
-        LOG.info("getResolvedTiles: entry, owner={}, project={}, stack={}, z={}",
-                 owner, project, stack, z);
+        LOG.info("getResolvedTiles: entry, owner={}, project={}, stack={}, z={}, matchPattern={}",
+                 owner, project, stack, z, matchPattern);
 
         ResolvedTileSpecCollection resolvedTiles = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            resolvedTiles = renderDao.getResolvedTiles(stackId, z);
+            resolvedTiles = renderDao.getResolvedTiles(stackId, z, matchPattern);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }
@@ -539,15 +540,16 @@ public class RenderDataService {
                                                        @QueryParam("minX") final Double minX,
                                                        @QueryParam("maxX") final Double maxX,
                                                        @QueryParam("minY") final Double minY,
-                                                       @QueryParam("maxY") final Double maxY) {
+                                                       @QueryParam("maxY") final Double maxY,
+                                                       @QueryParam("matchPattern") final String matchPattern) {
 
-        LOG.info("getResolvedTiles: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}, groupId={}, minX={}, maxX={}, minY={}, maxY={}",
-                 owner, project, stack, minZ, maxZ, groupId, minX, maxX, minY, maxY);
+        LOG.info("getResolvedTiles: entry, owner={}, project={}, stack={}, minZ={}, maxZ={}, groupId={}, minX={}, maxX={}, minY={}, maxY={}, matchPattern={}",
+                 owner, project, stack, minZ, maxZ, groupId, minX, maxX, minY, maxY, matchPattern);
 
         ResolvedTileSpecCollection resolvedTiles = null;
         try {
             final StackId stackId = new StackId(owner, project, stack);
-            resolvedTiles = renderDao.getResolvedTiles(stackId, minZ, maxZ, groupId, minX, maxX, minY, maxY);
+            resolvedTiles = renderDao.getResolvedTiles(stackId, minZ, maxZ, groupId, minX, maxX, minY, maxY, matchPattern);
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }

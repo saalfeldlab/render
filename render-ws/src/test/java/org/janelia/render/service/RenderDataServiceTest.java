@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
+import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
 import org.janelia.alignment.RenderParameters;
@@ -92,7 +93,8 @@ public class RenderDataServiceTest {
         final ResolvedTileSpecCollection resolvedTiles = service.getResolvedTiles(alignStackId.getOwner(),
                                                                                   alignStackId.getProject(),
                                                                                   alignStackId.getStack(),
-                                                                                  Z);
+                                                                                  Z,
+                                                                                  null);
 
         validateResolvedTiles("before save", resolvedTiles, 1, 1);
 
@@ -109,18 +111,21 @@ public class RenderDataServiceTest {
         final UriInfo uriInfo = new ResteasyUriInfo(new URI("http://test/resolvedTiles"),
                                                     new URI("http://test"));
 
-        service.saveResolvedTilesForZ(testStackId.getOwner(),
-                                      testStackId.getProject(),
-                                      testStackId.getStack(),
-                                      Z,
-                                      null,
-                                      uriInfo,
-                                      resolvedTiles);
+        //noinspection EmptyTryBlock,unused
+        try (final Response response = service.saveResolvedTilesForZ(testStackId.getOwner(),
+                                                                     testStackId.getProject(),
+                                                                     testStackId.getStack(),
+                                                                     Z,
+                                                                     null,
+                                                                     uriInfo,
+                                                                     resolvedTiles)) {}
+
 
         final ResolvedTileSpecCollection resolvedTestTiles = service.getResolvedTiles(testStackId.getOwner(),
                                                                                       testStackId.getProject(),
                                                                                       testStackId.getStack(),
-                                                                                      Z);
+                                                                                      Z,
+                                                                                      null);
 
         validateResolvedTiles("after save", resolvedTestTiles, 1, 2);
 
@@ -138,18 +143,20 @@ public class RenderDataServiceTest {
 
         resolvedTestTiles.addTileSpecToCollection(tileSpecB);
 
-        service.saveResolvedTilesForZ(testStackId.getOwner(),
-                                      testStackId.getProject(),
-                                      testStackId.getStack(),
-                                      Z,
-                                      null,
-                                      uriInfo,
-                                      resolvedTestTiles);
+        //noinspection EmptyTryBlock,unused
+        try (final Response response = service.saveResolvedTilesForZ(testStackId.getOwner(),
+                                                                     testStackId.getProject(),
+                                                                     testStackId.getStack(),
+                                                                     Z,
+                                                                     null,
+                                                                     uriInfo,
+                                                                     resolvedTestTiles)) {}
 
         final ResolvedTileSpecCollection resolvedTest2Tiles = service.getResolvedTiles(testStackId.getOwner(),
                                                                                        testStackId.getProject(),
                                                                                        testStackId.getStack(),
-                                                                                       Z);
+                                                                                       Z,
+                                                                                       null);
 
         validateResolvedTiles("after second save", resolvedTest2Tiles, 2, 2);
     }

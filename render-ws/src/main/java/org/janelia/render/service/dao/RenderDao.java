@@ -499,13 +499,18 @@ public class RenderDao {
      *   if no tile can be found for the specified z.
      */
     public ResolvedTileSpecCollection getResolvedTiles(final StackId stackId,
-                                                       final Double z)
+                                                       final Double z,
+                                                       final String matchPattern)
             throws IllegalArgumentException, ObjectNotFoundException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
         MongoUtil.validateRequiredParameter("z", z);
 
         final Document tileQuery = new Document("z", z);
+        if (matchPattern != null) {
+            tileQuery.append(TILE_ID_KEY, new Document("$regex", matchPattern));
+        }
+
         final RenderParameters renderParameters = new RenderParameters();
         final Map<String, TransformSpec> resolvedIdToSpecMap = addResolvedTileSpecs(stackId,
                                                                                     tileQuery,
@@ -536,12 +541,17 @@ public class RenderDao {
                                                        final Double minX,
                                                        final Double maxX,
                                                        final Double minY,
-                                                       final Double maxY)
+                                                       final Double maxY,
+                                                       final String matchPattern)
             throws IllegalArgumentException, ObjectNotFoundException {
 
         MongoUtil.validateRequiredParameter("stackId", stackId);
 
         final Document query = getGroupQuery(minZ, maxZ, groupId, minX, maxX, minY, maxY);
+        if (matchPattern != null) {
+            query.append(TILE_ID_KEY, new Document("$regex", matchPattern));
+        }
+
         final RenderParameters renderParameters = new RenderParameters();
         final Map<String, TransformSpec> resolvedIdToSpecMap = addResolvedTileSpecs(stackId,
                                                                                     query,

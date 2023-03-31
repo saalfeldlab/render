@@ -341,28 +341,28 @@ public class RenderDaoReadOnlyTest {
     public void testGetResolvedTiles() {
         final Double z = 3903.0;
 
-        ResolvedTileSpecCollection resolvedTiles = dao.getResolvedTiles(stackId, z);
+        ResolvedTileSpecCollection resolvedTiles = dao.getResolvedTiles(stackId, z, null);
         Assert.assertNotNull("null collection retrieved for z query", resolvedTiles);
         Assert.assertEquals("invalid number of tiles found for z query", 12, resolvedTiles.getTileCount());
 
-        resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, null, null, null, null);
+        resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, null, null, null, null, null);
         Assert.assertNotNull("null collection retrieved for groupId query", resolvedTiles);
         Assert.assertEquals("invalid number of tiles found for groupId query", 3, resolvedTiles.getTileCount());
 
 
-        resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, 3950.0, null, null, null);
+        resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, 3950.0, null, null, null, null);
         Assert.assertNotNull("null collection retrieved for groupId with minX query", resolvedTiles);
         Assert.assertEquals("invalid number of tiles found for groupId with minX query", 1, resolvedTiles.getTileCount());
 
-        resolvedTiles = dao.getResolvedTiles(stackId, 3903.0, null, null, null, null, null, null);
+        resolvedTiles = dao.getResolvedTiles(stackId, 3903.0, null, null, null, null, null, null, null);
         Assert.assertNotNull("null collection retrieved for min z query", resolvedTiles);
         Assert.assertEquals("invalid number of tiles found for min z query", 14, resolvedTiles.getTileCount());
 
-        resolvedTiles = dao.getResolvedTiles(stackId, null, 3903.0, null, null, null, null, null);
+        resolvedTiles = dao.getResolvedTiles(stackId, null, 3903.0, null, null, null, null, null, null);
         Assert.assertNotNull("null collection retrieved for max z query", resolvedTiles);
         Assert.assertEquals("invalid number of tiles found for max z query", 12, resolvedTiles.getTileCount());
 
-        resolvedTiles = dao.getResolvedTiles(stackId, 3903.1, 3905.0, null, null, null, null, null);
+        resolvedTiles = dao.getResolvedTiles(stackId, 3903.1, 3905.0, null, null, null, null, null, null);
         Assert.assertNotNull("null collection retrieved for min/max z query", resolvedTiles);
         Assert.assertEquals("invalid number of tiles found for min/max z query", 2, resolvedTiles.getTileCount());
 
