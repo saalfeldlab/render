@@ -122,18 +122,32 @@ public class MatchAggregator {
                     RealPoint aggregatedQPoint = null;
                     double aggregatedWeight = 0.0;
 
+                    double[] avgPosP = new double[ 2 ];
+                    double sumWeightsP = 0;
+
                     for (int i = 0; i < radius.numNeighbors(); i++) {
                         matchIndex = radius.getSampler(i).get().get();
                         final RealPoint pPoint = originalPList.get(matchIndex);
                         final RealPoint qPoint = originalQList.get(matchIndex);
+                        
+                        avgPosP[ 0 ] += pPoint.getDoublePosition( 0 ) * originalWs[ matchIndex ];
+                        avgPosP[ 1 ] += pPoint.getDoublePosition( 1 ) * originalWs[ matchIndex ];
+                        sumWeightsP += originalWs[ matchIndex ];
+
+                        /*
                         if (i == 0) {
                             aggregatedPPoint = pPoint;
                             aggregatedQPoint = qPoint;
                             aggregatedWeight = originalWs[matchIndex];
+                            
                         } else {
                             break; // TODO: remove this hack
-                        }
+                        }*/
                     }
+
+                    avgPosP[ 0 ] /= sumWeightsP;
+                    avgPosP[ 1 ] /= sumWeightsP;
+                    double newWeightP = sumWeightsP / radius.numNeighbors();
 
                     for (int d = 0; d < 2; d++) {
                         aggregatedPs[d][aggregatedMatchIndex] = aggregatedPPoint.getDoublePosition(d);
