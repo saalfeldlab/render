@@ -6,7 +6,7 @@ JETTY_DIST="jetty-home-${JETTY_VERSION}"
 
 # URL for JDK
 # You can find latest Linux x64 download links at:
-# https://www.azul.com/downloads/?version=java-8-lts&os=linux&architecture=x86-64-bit&package=jdk&show-old-builds=true
+# https://www.azul.com/downloads/?version=java-11-lts&os=linux&architecture=x86-64-bit&package=jdk&show-old-builds=true#zulu
 JDK_URL="https://cdn.azul.com/zulu/bin/${JDK_VERSION}.tar.gz"
 
 # URLs for Jetty 10, SLF4J 1.7, Logback 1.1, and Swagger 2.1
