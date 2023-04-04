@@ -5,17 +5,20 @@
 
 set -e
 
-ABSOLUTE_SCRIPT=$(readlink -m "${0}")
-SCRIPT_DIR=$(dirname "${ABSOLUTE_SCRIPT}")
-
-if (( $# < 1 )); then
-  echo "USAGE: ${0} <env file> (e.g. /data/janelia-render-ws/render-ws-003g.env )"
+if (( $# < 2 )); then
+  echo "USAGE: ${0} <export parent dir> <env file> (e.g. /data/janelia-render-ws/export /data/janelia-render-ws/render-ws-003g.env )"
   exit 1
 fi
-DEPLOY_ENV_FILE="${1}"
+EXPORT_PARENT_DIR="${1}"
+DEPLOY_ENV_FILE="${2}"
+
+if [ ! -d "${EXPORT_PARENT_DIR}" ]; then
+  echo "ERROR: export parent directory ${EXPORT_PARENT_DIR} not found!"
+  exit 1
+fi
 
 if [ ! -f "${DEPLOY_ENV_FILE}" ]; then
-  echo "ERROR: ${DEPLOY_ENV_FILE} not found!"
+  echo "ERROR: env file ${DEPLOY_ENV_FILE} not found!"
   exit 1
 fi
 
@@ -57,6 +60,6 @@ REPOSITORY=$(echo "${DOCKER_IMAGE_INFO}" | awk '{print $1}')
 TAG=$(echo "${DOCKER_IMAGE_INFO}" | awk '{print $2}')
 DOCKER_IMAGE="${REPOSITORY}:${TAG}"
 
-EXPORT_DIR="${SCRIPT_DIR}/export-${TAG}"
+EXPORT_DIR="${EXPORT_PARENT_DIR}/export-${TAG}"
 
-docker run --user "${USER_ID}:${GROUP_ID}" -it --mount type=bind,source="${SCRIPT_DIR}",target=/render-export --env-file "${DEPLOY_ENV_FILE}" --entrypoint /render-docker/render-export-jetty-entrypoint.sh --rm "${DOCKER_IMAGE}" "${EXPORT_DIR}"
+docker run --user "${USER_ID}:${GROUP_ID}" -it --mount type=bind,source="${EXPORT_PARENT_DIR}",target=/render-export --env-file "${DEPLOY_ENV_FILE}" --entrypoint /render-docker/render-export-jetty-entrypoint.sh --rm "${DOCKER_IMAGE}" "${EXPORT_DIR}"
