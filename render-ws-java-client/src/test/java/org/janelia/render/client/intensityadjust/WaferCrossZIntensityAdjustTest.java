@@ -28,6 +28,20 @@ public class WaferCrossZIntensityAdjustTest {
         // final Double minZ = 1260.0;
         // final Double maxZ = 1285.0;
 
+        /*
+        pseudo code
+        for ( each z layer )
+        {
+        	load all patches
+        	
+        	final ArrayList<OnTheFlyIntensity> corrected =
+            AdjustBlock.correctIntensitiesForSliceTiles(alignedOverlapBoxes,
+                                                        imageProcessorCache,
+                                                        numCoefficients);
+        }
+        done.
+        */
+        
         if (! new File("/nrs/hess/render/raw").isDirectory()) {
             throw new IllegalStateException("need to map or mount /nrs/hess before running this test");
         }

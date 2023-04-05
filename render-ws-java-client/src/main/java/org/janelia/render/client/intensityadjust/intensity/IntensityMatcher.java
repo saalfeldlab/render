@@ -223,8 +223,10 @@ public class IntensityMatcher
 		final HashSet< MinimalTileSpecWrapper > completedPatches = new HashSet<>();
 
 		/* collect patch pairs */
-		System.out.println( "Collecting patch pairs ... " );
+		// find the images that actually overlap (only for those we can extract intensity PointMatches)
 		final ArrayList< ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > > patchPairs = new ArrayList<>();
+
+		System.out.println( "Collecting patch pairs ... " );
 
 		for ( final MinimalTileSpecWrapper p1 : patches )
 		{
@@ -239,7 +241,10 @@ public class IntensityMatcher
 				final FinalRealInterval i = Intervals.intersect( r1, getBoundingBox(p2) );
 
 				if ( i.realMax( 0 ) - i.realMin( 0 ) > 0 && i.realMax( 1 ) - i.realMin( 1 ) > 0 )
+				{
+					// TODO: test in z, only if they are close enough in z connect them
 					p2s.add( p2 );
+				}
 			}
 
 			for ( final MinimalTileSpecWrapper p2 : p2s )
@@ -261,6 +266,8 @@ public class IntensityMatcher
 
 		System.out.println( "Matching intensities using " + numThreads + " threads ... " );
 
+		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
+		// TODO: parallelize on SPARK
 		final ExecutorService exec = Executors.newFixedThreadPool( numThreads );
 		final ArrayList< Future< ? > > futures = new ArrayList<>();
 		for ( final ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > patchPair : patchPairs )
