@@ -33,9 +33,15 @@ public class IntensityAdjustedScapeClientTest {
                 "--intensityCorrectedFilterStack", intensityCorrectedStackName,
                 "--completeCorrectedStack",
                 "--correctionMethod", "GLOBAL_PER_SLICE",
-                "--zDistance", "3",
-                "--minZ", "1260", // 1260
-                "--maxZ", "1263", // 1285
+
+                // for entire stack minZ is 1260 and maxZ is 1285
+
+                // "--zDistance", "1", "--minZ", "1260", "--maxZ", "1261" // processing time:  1 minute
+                // "--zDistance", "2", "--minZ", "1260", "--maxZ", "1262" // processing time:  2 minutes  6 seconds
+                // "--zDistance", "3", "--minZ", "1260", "--maxZ", "1263" // processing time:  4 minutes 14 seconds
+                // "--zDistance", "4", "--minZ", "1260", "--maxZ", "1264" // processing time:  6 minutes 54 seconds
+                // "--zDistance", "5", "--minZ", "1260", "--maxZ", "1265" // processing time: 10 minutes 17 seconds
+                "--zDistance", "6", "--minZ", "1260", "--maxZ", "1266" // processing time: 14 minutes 30 seconds
         };
 
         IntensityAdjustedScapeClient.main(effectiveArgs);
