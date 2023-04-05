@@ -1,6 +1,7 @@
 package org.janelia.render.client.intensityadjust;
 
 import java.io.Serializable;
+import java.util.List;
 
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -32,8 +33,15 @@ public class IntensityAdjustedScapeClient
 
                 final IntensityCorrectionWorker worker = new IntensityCorrectionWorker(parameters, dataClient);
 
-                for (final Double z : worker.getzValues()) {
-                    worker.correctZ(dataClient, z);
+                // TODO: revisit this loop once we decide how to partition cross layer runs
+                final List<Double> zValues = worker.getzValues();
+                final int indexDelta = parameters.zDistance + 1;
+                for (int minIndex = 0; minIndex < zValues.size(); minIndex += indexDelta) {
+                    final double minZ = zValues.get(minIndex);
+                    final int maxIndex = Math.min((minIndex + parameters.zDistance),
+                                                  (zValues.size() - 1));
+                    final double maxZ = zValues.get(maxIndex);
+                    worker.correctZRange(dataClient, minZ, maxZ);
                 }
 
                 worker.completeCorrectedStackAsNeeded(dataClient);

@@ -9,9 +9,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
-import mpicbg.models.AffineModel1D;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
-import net.imglib2.realtransform.AffineTransform;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
@@ -90,30 +88,35 @@ public class IntensityCorrectionWorker implements Serializable {
         return zValues;
     }
 
-    public void correctZ(final RenderDataClient dataClient,
-                         final Double z)
+    public void correctZRange(final RenderDataClient dataClient,
+                              final Double minZ,
+                              final Double maxZ)
             throws ExecutionException, InterruptedException, IOException {
 
-        final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTiles(parameters.stack, z);
-        resolvedTiles.resolveTileSpecs();
+        final ResolvedTileSpecCollection resolvedTiles;
+        if (minZ.equals(maxZ)) {
+            resolvedTiles = dataClient.getResolvedTiles(parameters.stack, minZ);
+        } else {
+            resolvedTiles = dataClient.getResolvedTilesForZRange(parameters.stack, minZ, maxZ);
+        }
 
         if (parameters.deriveFilterData()) {
             deriveAndStoreIntensityFilterData(dataClient,
-                                              resolvedTiles,
-                                              z.intValue());
+                                              resolvedTiles);
         } else {
-            renderIntensityAdjustedScape(dataClient,
-                                         resolvedTiles,
-                                         z.intValue());
+            for (int z = minZ.intValue(); z <= maxZ.intValue(); z += 1) {
+                renderIntensityAdjustedScape(dataClient,
+                                             resolvedTiles,
+                                             z);
+            }
         }
     }
 
     public void deriveAndStoreIntensityFilterData(final RenderDataClient dataClient,
-                                                  final ResolvedTileSpecCollection resolvedTiles,
-                                                  final int integralZ)
+                                                  final ResolvedTileSpecCollection resolvedTiles)
             throws ExecutionException, InterruptedException, IOException {
 
-        LOG.info("deriveAndStoreIntensityFilterData: entry, integralZ={}", integralZ);
+        LOG.info("deriveAndStoreIntensityFilterData: entry");
 
         if (resolvedTiles.getTileCount() > 1) {
             // make cache large enough to hold shared mask processors
@@ -124,9 +127,9 @@ public class IntensityCorrectionWorker implements Serializable {
 
             final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
 
-            final List<MinimalTileSpecWrapper> tilesForZ = AdjustBlock.getTilesForZ(resolvedTiles);
+            final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
             final ArrayList<OnTheFlyIntensity> corrected =
-                    AdjustBlock.correctIntensitiesForSliceTiles(tilesForZ,
+                    AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 imageProcessorCache,
                                                                 numCoefficients);
 
@@ -145,13 +148,13 @@ public class IntensityCorrectionWorker implements Serializable {
             }
         } else {
             final String tileCountMsg = resolvedTiles.getTileCount() == 1 ? "1 tile" : "0 tiles";
-            LOG.info("deriveAndStoreIntensityFilterData: skipping correction because z {} contains {}",
-                     integralZ, tileCountMsg);
+            LOG.info("deriveAndStoreIntensityFilterData: skipping correction because collection contains {}",
+                     tileCountMsg);
         }
 
         dataClient.saveResolvedTiles(resolvedTiles,
                                      parameters.intensityCorrectedFilterStack,
-                                     (double) integralZ);
+                                     null);
     }
 
     public void renderIntensityAdjustedScape(final RenderDataClient dataClient,

@@ -1,5 +1,8 @@
 package org.janelia.render.client.intensityadjust;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
 import org.junit.Test;
@@ -18,27 +21,21 @@ public class IntensityAdjustedScapeClientTest {
 
     public static void main(final String[] args) {
 
+        final String alignedStackName = "slab_045_all_align_t2_mfov_4_center_19";
+        final String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        final String intensityCorrectedStackName = alignedStackName + "_ic_" + timestamp;
+
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[] {
-                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--owner", "Z0720_07m_VNC",
-
-                // Sec06 has one transform per tile
-//                "--project", "Sec06",
-//                "--stack", "v5_acquire_trimmed_align",
-
-                // Sec07 has two transforms per tile
-//                "--project", "Sec07",
-//                "--stack", "v4_acquire_trimmed_align",
-
-                // Sec19 has three transforms for tiles in column 0 and two transforms for all other tiles
-                // z 7547 of Sec19 has obvious seam between column 0 and 1 tiles with original ic code
-                "--project", "Sec19",
-                "--stack", "v7_acquire_trimmed_align_straightened",
-
-                "--format", "png",
-                "--rootDirectory", "/nrs/flyem/render/ic_test",
+                "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+                "--owner", "hess",
+                "--project", "wafer_52_cut_00030_to_00039",
+                "--stack", alignedStackName,
+                "--intensityCorrectedFilterStack", intensityCorrectedStackName,
+                "--completeCorrectedStack",
                 "--correctionMethod", "GLOBAL_PER_SLICE",
-                "--z", "7547",
+                "--zDistance", "3",
+                "--minZ", "1260", // 1260
+                "--maxZ", "1263", // 1285
         };
 
         IntensityAdjustedScapeClient.main(effectiveArgs);

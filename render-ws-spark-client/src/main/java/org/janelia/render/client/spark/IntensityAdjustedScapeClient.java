@@ -31,6 +31,10 @@ public class IntensityAdjustedScapeClient
                 parameters.parse(args);
                 parameters.validateAndSetDefaults();
 
+                if (parameters.correctIn3D()) {
+                    throw new UnsupportedOperationException("3D correction is not yet supported for spark runs because we have yet to decide how to partition the work");
+                }
+
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final SparkConf conf = new SparkConf().setAppName("IntensityAdjustedScapeClient");
@@ -53,7 +57,7 @@ public class IntensityAdjustedScapeClient
                                 LogUtilities.setupExecutorLog4j("z " + integralZ);
 
                                 final RenderDataClient localDataClient = parameters.renderWeb.getDataClient();
-                                worker.correctZ(localDataClient, z);
+                                worker.correctZRange(localDataClient, z, z);
 
                                 return 1;
                             };

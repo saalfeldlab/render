@@ -63,7 +63,7 @@ import net.imglib2.view.Views;
 
 public class AdjustBlock {
 
-	public static List< MinimalTileSpecWrapper > getTilesForZ(final ResolvedTileSpecCollection resolvedTiles)
+	public static List< MinimalTileSpecWrapper > wrapTileSpecs(final ResolvedTileSpecCollection resolvedTiles)
 	{
 		final List< MinimalTileSpecWrapper > data = new ArrayList<>(resolvedTiles.getTileCount());
 		for ( final TileSpec tileSpec : resolvedTiles.getTileSpecs() )
@@ -535,7 +535,7 @@ public class AdjustBlock {
 			final int z,
 			final int numCoefficients) throws InterruptedException, ExecutionException
 	{
-		final List<MinimalTileSpecWrapper> tilesForZ = getTilesForZ(resolvedTiles);
+		final List<MinimalTileSpecWrapper> tilesForZ = wrapTileSpecs(resolvedTiles);
 		//final HashMap< Integer, double[] > adjustments = new HashMap<>();
 
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
