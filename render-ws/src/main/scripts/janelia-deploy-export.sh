@@ -6,22 +6,20 @@ set -e
 
 ABSOLUTE_SCRIPT=$(readlink -m "${0}")
 SCRIPTS_DIR=$(dirname "${ABSOLUTE_SCRIPT}")
+DEFAULT_EXPORT_DIR=$(dirname "${SCRIPTS_DIR}")
 
-if (( $# < 1 )); then
-  echo "
-USAGE: ${0} <export dir> [install dir] [jetty memory]
+USAGE="
+USAGE: ${0} [export dir] [install dir] [jetty memory]
             e.g. /opt/local/docker_exports/export-ibeam_msem-20230404_1322-8c5d66be /opt/local 15g
 "
-  exit 1
-fi
 
-FULL_EXPORT_DIR="${1}" # /opt/local/docker_exports/export-ibeam_msem-20230404_1322-8c5d66be
+FULL_EXPORT_DIR="${1:-${DEFAULT_EXPORT_DIR}}" # /opt/local/docker_exports/export-ibeam_msem-20230404_1322-8c5d66be
 INSTALL_PARENT_DIR="${2:-/opt/local}"
 JETTY_MEMORY="${3:15g}"
 
 RENDER_WS_WAR_FILE="${FULL_EXPORT_DIR}/jetty_base/webapps/render-ws.war"
 if [ ! -f "${RENDER_WS_WAR_FILE}" ]; then
-  echo "ERROR: ${RENDER_WS_WAR_FILE} not found"
+  echo "ERROR: ${RENDER_WS_WAR_FILE} not found ${USAGE}"
 fi
 
 JDK_VARS="${SCRIPTS_DIR}/jdk-vars.sh"
