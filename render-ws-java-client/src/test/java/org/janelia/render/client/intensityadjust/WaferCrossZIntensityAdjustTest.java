@@ -22,12 +22,16 @@ public class WaferCrossZIntensityAdjustTest {
         final String project = "wafer_52_cut_00030_to_00039";
         final String alignedStack = "slab_045_all_align_t2_mfov_4_center_19";
         final Double minZ = 1260.0;
-        final Double maxZ = 1261.0;
+        final Double maxZ = 1263.0;
 
-        final double visualizeRenderScale = 0.2;
+        final boolean onlyShowOriginal = true;
+
+        final double visualizeRenderScale = 0.1;
         final String[] tileIdsToVisualize = {
-                "045_000004_001_20220401_183940.1260.0", "045_000004_002_20220401_183940.1260.0",
-                "045_000004_001_20220401_221256.1261.0", "045_000004_002_20220401_221256.1261.0"
+                "045_000004_014_20220401_183940.1260.0",// "045_000004_002_20220401_183940.1260.0",
+                "045_000004_001_20220401_221256.1261.0",// "045_000004_002_20220401_221256.1261.0"
+                "045_000004_014_20220402_160252.1262.0",
+                "045_000004_014_20220402_211657.1263.0"
         };
 
         if (! new File("/nrs/hess/render/raw").isDirectory()) {
@@ -47,32 +51,45 @@ public class WaferCrossZIntensityAdjustTest {
 
 
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
-            final ArrayList<OnTheFlyIntensity> corrected =
+            final ArrayList<OnTheFlyIntensity> corrected = onlyShowOriginal ? null :
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 imageProcessorCache,
                                                                 AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
 
             for (final String tileId : tileIdsToVisualize) {
-                final OnTheFlyIntensity correctedTile =
-                        corrected.stream()
-                                .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
-                                .findFirst()
-                                .orElseThrow();
-                final TileSpec tileSpec = correctedTile.getMinimalTileSpecWrapper().getTileSpec();
-                final double[][] coefficients = correctedTile.getCoefficients();
 
-                final TileSpec correctedTileSpec = deriveTileSpecWithFilter(tileSpec,
-                                                                            AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
-                                                                            coefficients);
+            	if (onlyShowOriginal)
+            	{
+            		final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
 
-                showTileSpec("original " + tileId,
-                             tileSpec,
-                             visualizeRenderScale,
-                             imageProcessorCache);
-                showTileSpec("corrected " + tileId,
-                             correctedTileSpec,
-                             visualizeRenderScale,
-                             imageProcessorCache);
+	                showTileSpec("original " + tileId,
+                            tileSpec,
+                            visualizeRenderScale,
+                            imageProcessorCache);
+            	}
+            	else
+            	{
+	                final OnTheFlyIntensity correctedTile =
+	                        corrected.stream()
+	                                .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
+	                                .findFirst()
+	                                .orElseThrow();
+	                final TileSpec tileSpec = correctedTile.getMinimalTileSpecWrapper().getTileSpec();
+	                final double[][] coefficients = correctedTile.getCoefficients();
+	
+	                final TileSpec correctedTileSpec = deriveTileSpecWithFilter(tileSpec,
+	                                                                            AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+	                                                                            coefficients);
+	
+	                showTileSpec("original " + tileId,
+	                             tileSpec,
+	                             visualizeRenderScale,
+	                             imageProcessorCache);
+	                showTileSpec("corrected " + tileId,
+	                             correctedTileSpec,
+	                             visualizeRenderScale,
+	                             imageProcessorCache);
+            	}
             }
         } catch (final Throwable t) {
             throw new RuntimeException("caught exception", t);
