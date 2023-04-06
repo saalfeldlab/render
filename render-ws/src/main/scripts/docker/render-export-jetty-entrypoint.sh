@@ -30,6 +30,7 @@ fi
 
 JETTY_BASE_EXPORT_DIR="${CONTAINER_EXPORT_DIR}/jetty_base"
 JETTY_HOME_EXPORT_DIR="${CONTAINER_EXPORT_DIR}/jetty_home"
+JANELIA_SCRIPTS_EXPORT_DIR="${CONTAINER_EXPORT_DIR}/render-scripts"
 
 if [ -d "${JETTY_BASE_EXPORT_DIR}" ]; then
     echo """
@@ -41,7 +42,7 @@ ERROR: jetty base export directory ${JETTY_BASE_EXPORT_DIR} already exists
     exit 1
 fi
 
-mkdir -p "${JETTY_BASE_EXPORT_DIR}" "${JETTY_HOME_EXPORT_DIR}"
+mkdir -p "${JETTY_BASE_EXPORT_DIR}" "${JETTY_HOME_EXPORT_DIR}" "${JANELIA_SCRIPTS_EXPORT_DIR}"
 
 echo "
 exporting $(du -sh "${JETTY_BASE}" | awk '{ print $1 " in " $2 }') to ${JETTY_BASE_EXPORT_DIR}
@@ -53,5 +54,8 @@ cp -r "${JETTY_BASE}"/* "${JETTY_BASE_EXPORT_DIR}"
 echo "exporting $(du -sh "${JETTY_HOME}" | awk '{ print $1 " in " $2 }') to ${JETTY_HOME_EXPORT_DIR}
 "
 
-# copy jetty base to export directory
+# copy jetty home to export directory
 cp -r "${JETTY_HOME}"/* "${JETTY_HOME_EXPORT_DIR}"
+
+# copy scripts to export directory
+cp /render-scripts/* "${JANELIA_SCRIPTS_EXPORT_DIR}"

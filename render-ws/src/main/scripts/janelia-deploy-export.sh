@@ -36,8 +36,13 @@ fi
 # install JDK
 
 cd "${INSTALL_PARENT_DIR}" || exit 1
+JAVA="${INSTALL_PARENT_DIR}/${JDK_VERSION}/bin/java"
 
-sudo curl "${JETTY_URL}" | sudo tar xz
+if [ -f "${JAVA}" ]; then
+  echo "found ${JAVA}, skipping JDK install"
+else
+  sudo curl "${JETTY_URL}" | sudo tar xz
+fi
 
 # ----------------------------
 # install Jetty stuff

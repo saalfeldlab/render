@@ -106,6 +106,7 @@ RUN ls -al $JETTY_BASE/* && \
 
 COPY --from=archive /root/render-lib/render-ws-*.war webapps/render-ws.war
 COPY render-ws/src/main/scripts/docker /render-docker
+COPY render-ws/src/main/scripts/*.sh /render-scripts/
 
 EXPOSE 8080
 
