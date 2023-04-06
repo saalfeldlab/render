@@ -6,7 +6,7 @@
 set -e
 
 if (( $# < 2 )); then
-  echo "USAGE: ${0} <export parent dir> <env file> [env name] (e.g. /data/janelia-render-ws/export /data/janelia-render-ws/render-ws-003g.env 003g)"
+  echo "USAGE: ${0} <export parent dir> <env file> (e.g. /data/janelia-render-ws/export /data/janelia-render-ws/render-ws-015g.env)"
   exit 1
 fi
 EXPORT_PARENT_DIR="${1}"
@@ -21,9 +21,6 @@ if [ ! -f "${DEPLOY_ENV_FILE}" ]; then
   echo "ERROR: env file ${DEPLOY_ENV_FILE} not found!"
   exit 1
 fi
-
-DEFAULT_ENV_NAME=$(basename "${DEPLOY_ENV_FILE}" | sed 's/.env$//')
-ENV_NAME="${3:-${DEFAULT_ENV_NAME}}"
 
 USER_ID=$(id -u)
 GROUP_ID=$(id -g)
@@ -63,6 +60,6 @@ REPOSITORY=$(echo "${DOCKER_IMAGE_INFO}" | awk '{print $1}')
 TAG=$(echo "${DOCKER_IMAGE_INFO}" | awk '{print $2}')
 DOCKER_IMAGE="${REPOSITORY}:${TAG}"
 
-EXPORT_DIR="export-${TAG}-${ENV_NAME}"
+EXPORT_DIR="export-${TAG}"
 
 docker run --user "${USER_ID}:${GROUP_ID}" -it --mount type=bind,source="${EXPORT_PARENT_DIR}",target=/render-export --env-file "${DEPLOY_ENV_FILE}" --entrypoint /render-docker/render-export-jetty-entrypoint.sh --rm "${DOCKER_IMAGE}" "${EXPORT_DIR}"
