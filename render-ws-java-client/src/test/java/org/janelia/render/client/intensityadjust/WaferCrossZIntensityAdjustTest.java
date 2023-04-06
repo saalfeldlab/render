@@ -10,6 +10,8 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 
+import ij.ImageJ;
+
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.showTileSpec;
 
@@ -29,7 +31,7 @@ public class WaferCrossZIntensityAdjustTest {
         final double visualizeRenderScale = 0.1;
         final String[] tileIdsToVisualize = {
                 "045_000004_014_20220401_183940.1260.0",// "045_000004_002_20220401_183940.1260.0",
-                "045_000004_001_20220401_221256.1261.0",// "045_000004_002_20220401_221256.1261.0"
+                "045_000004_014_20220401_221256.1261.0",// "045_000004_002_20220401_221256.1261.0"
                 "045_000004_014_20220402_160252.1262.0",
                 "045_000004_014_20220402_211657.1263.0"
         };
@@ -55,6 +57,8 @@ public class WaferCrossZIntensityAdjustTest {
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 imageProcessorCache,
                                                                 AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+
+            new ImageJ();
 
             for (final String tileId : tileIdsToVisualize) {
 
