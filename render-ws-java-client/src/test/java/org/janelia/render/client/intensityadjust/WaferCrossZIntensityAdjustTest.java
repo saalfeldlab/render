@@ -4,6 +4,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -11,6 +14,9 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 
 import ij.ImageJ;
+import ij.ImagePlus;
+
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.showTileSpec;
@@ -60,40 +66,54 @@ public class WaferCrossZIntensityAdjustTest {
 
             new ImageJ();
 
+            Bounds previewBounds = null;
+            for (final String tileId : tileIdsToVisualize) {
+                final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
+                previewBounds = previewBounds == null ?
+                                tileSpec.toTileBounds() : previewBounds.union(tileSpec.toTileBounds());
+            }
+
             for (final String tileId : tileIdsToVisualize) {
 
-            	if (onlyShowOriginal)
-            	{
-            		final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
+                if (onlyShowOriginal) {
+                    
+                    final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
+                    final RenderParameters tileRenderParameters =
+                            new RenderParameters(null,
+                                                 previewBounds.getX(),
+                                                 previewBounds.getY(),
+                                                 previewBounds.getWidth(),
+                                                 previewBounds.getHeight(),
+                                                 visualizeRenderScale);
+                    tileRenderParameters.addTileSpec(tileSpec);
+                    tileRenderParameters.initializeDerivedValues();
 
-	                showTileSpec("original " + tileId,
-                            tileSpec,
-                            visualizeRenderScale,
-                            imageProcessorCache);
-            	}
-            	else
-            	{
-	                final OnTheFlyIntensity correctedTile =
-	                        corrected.stream()
-	                                .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
-	                                .findFirst()
-	                                .orElseThrow();
-	                final TileSpec tileSpec = correctedTile.getMinimalTileSpecWrapper().getTileSpec();
-	                final double[][] coefficients = correctedTile.getCoefficients();
-	
-	                final TileSpec correctedTileSpec = deriveTileSpecWithFilter(tileSpec,
-	                                                                            AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
-	                                                                            coefficients);
-	
-	                showTileSpec("original " + tileId,
-	                             tileSpec,
-	                             visualizeRenderScale,
-	                             imageProcessorCache);
-	                showTileSpec("corrected " + tileId,
-	                             correctedTileSpec,
-	                             visualizeRenderScale,
-	                             imageProcessorCache);
-            	}
+                    final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+                            Renderer.renderImageProcessorWithMasks(tileRenderParameters, imageProcessorCache);
+                    new ImagePlus("original " + tileId, ipwm.ip.convertToByteProcessor()).show();
+
+                } else {
+                    final OnTheFlyIntensity correctedTile =
+                            corrected.stream()
+                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
+                                    .findFirst()
+                                    .orElseThrow();
+                    final TileSpec tileSpec = correctedTile.getMinimalTileSpecWrapper().getTileSpec();
+                    final double[][] coefficients = correctedTile.getCoefficients();
+
+                    final TileSpec correctedTileSpec = deriveTileSpecWithFilter(tileSpec,
+                                                                                AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+                                                                                coefficients);
+
+                    showTileSpec("original " + tileId,
+                                 tileSpec,
+                                 visualizeRenderScale,
+                                 imageProcessorCache);
+                    showTileSpec("corrected " + tileId,
+                                 correctedTileSpec,
+                                 visualizeRenderScale,
+                                 imageProcessorCache);
+                }
             }
         } catch (final Throwable t) {
             throw new RuntimeException("caught exception", t);
