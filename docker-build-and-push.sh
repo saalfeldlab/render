@@ -1,5 +1,11 @@
 #!/bin/bash
 
+ABSOLUTE_SCRIPT=$(readlink -m "${0}")
+SCRIPT_DIR=$(dirname "${ABSOLUTE_SCRIPT}")
+
+# run from script directory which should be the top of the render repo
+cd "${SCRIPT_DIR}" || exit 1
+
 # checks stolen from https://github.com/JaneliaSciComp/workstation/blob/master/release.sh
 STATUS=$(git status --porcelain)
 if [[ "${STATUS}" ]]; then
