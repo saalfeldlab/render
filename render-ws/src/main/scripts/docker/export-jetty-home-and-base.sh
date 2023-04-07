@@ -63,3 +63,11 @@ DOCKER_IMAGE="${REPOSITORY}:${TAG}"
 EXPORT_DIR="export-${TAG}"
 
 docker run --user "${USER_ID}:${GROUP_ID}" -it --mount type=bind,source="${EXPORT_PARENT_DIR}",target=/render-export --env-file "${DEPLOY_ENV_FILE}" --entrypoint /render-docker/render-export-jetty-entrypoint.sh --rm "${DOCKER_IMAGE}" "${EXPORT_DIR}"
+
+echo "
+To copy to other hosts:
+
+  for HOST in renderer renderer-data4 renderer-dev; do
+    scp -r ${EXPORT_PARENT_DIR}/${EXPORT_DIR} \${HOST}.int.janelia.org:/opt/local/docker_exports
+  done
+"
