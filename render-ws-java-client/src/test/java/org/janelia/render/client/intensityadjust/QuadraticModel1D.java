@@ -5,8 +5,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Random;
 
-import fit.PointFunctionMatch;
-import fit.polynomial.NewtonRaphson;
 import fit.util.MatrixFunctions;
 import mpicbg.models.AbstractModel;
 import mpicbg.models.IllDefinedDataPointsException;
@@ -14,7 +12,6 @@ import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import net.imglib2.img.array.ArrayImgs;
 
 /**
  * @author Michael Innerberger and Stephan Preibisch
@@ -52,12 +49,13 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 		candidates.add(new PointMatch(new Point(new double[]{ 8.0 }), new Point(new double[]{ 64.0 }), 1.0));
 		candidates.add(new PointMatch(new Point(new double[]{ 9.0 }), new Point(new double[]{ 81.0 }), 1.0));
 		candidates.add(new PointMatch(new Point(new double[]{10.0 }), new Point(new double[]{999.0 }), 1.0)); // outlier
+		candidates.add(new PointMatch(new Point(new double[]{ 5.5 }), new Point(new double[]{ 30.0 }), 0.0)); // weight 0.0
 
 		// Using the polynomial model to do the fitting
 		final long startTime = System.nanoTime();
 		final QuadraticModel1D regression = new QuadraticModel1D();
 
-		regression.ransac(candidates, inliers, 100, 0.1, 0.5);
+		regression.ransac(candidates, inliers, 100, 0.5, 0.5);
 
 		System.out.println("inliers: " + inliers.size());
 		System.out.println(regression);
