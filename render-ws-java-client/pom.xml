@@ -166,7 +166,7 @@
         <dependency>
             <groupId>org.mock-server</groupId>
             <artifactId>mockserver-netty</artifactId>
-            <version>3.10.4</version>
+            <version>5.15.0</version>
             <scope>test</scope>
             <exclusions>
                 <!-- filter out slf4j jar so that it does not conflict with jetty version -->
