@@ -160,10 +160,6 @@
         <scijava.jvm.version>11</scijava.jvm.version>
         <scijava.jvm.build.version>[11,]</scijava.jvm.build.version>
 
-        <!-- TODO: remove bio-formats.version override if/when pom-scijava-base gets updated -->
-        <!-- Override bio-formats.version to bring in newer xercesImpl required for JDK 11  -->
-        <bio-formats.version>6.12.0</bio-formats.version>
-
         <!--        <deploy.path>/Users/trautmane/projects/git/maven</deploy.path>-->
     </properties>
 
