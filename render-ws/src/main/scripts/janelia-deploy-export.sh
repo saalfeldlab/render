@@ -14,7 +14,7 @@ USAGE="USAGE: ${0} [jetty gigibyte memory] [install dir] [export dir]
        $0 3 /opt/local
        $0 3 /opt/local /opt/local/docker_exports/export-ibeam_msem-20230404_1322-8c5d66be"
 
-JETTY_GIGI_MEMORY="${1:-15}"
+JETTY_GIGI_MEMORY="${1:-14}"
 INSTALL_PARENT_DIR="${2:-/opt/local}"
 FULL_EXPORT_DIR="${3:-${DEFAULT_EXPORT_DIR}}"
 
