@@ -14,7 +14,7 @@ USAGE="USAGE: ${0} [jetty gigibyte memory] [install dir] [export dir]
        $0 3 /opt/local
        $0 3 /opt/local /opt/local/docker_exports/export-ibeam_msem-20230404_1322-8c5d66be"
 
-JETTY_GIGI_MEMORY="${1:-14}"
+JETTY_GIGI_MEMORY="${1:-13}"
 INSTALL_PARENT_DIR="${2:-/opt/local}"
 FULL_EXPORT_DIR="${3:-${DEFAULT_EXPORT_DIR}}"
 
@@ -54,8 +54,8 @@ JAVA="${INSTALL_PARENT_DIR}/${JDK_VERSION}/bin/java"
 if [ -f "${JAVA}" ]; then
   echo "found ${JAVA}, skipping JDK install"
 else
-  echo "installing JDK from ${JETTY_URL} ..."
-  sudo curl "${JETTY_URL}" | sudo tar xz
+  echo "installing JDK from ${JDK_URL} ..."
+  sudo curl "${JDK_URL}" | sudo tar xz
 fi
 
 # ----------------------------
