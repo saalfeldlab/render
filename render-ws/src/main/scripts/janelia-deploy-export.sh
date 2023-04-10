@@ -27,7 +27,7 @@ ${USAGE}
 "
 fi
 
-AVAILABLE_MEMORY=$(free --gibi | awk '/^Mem/{print $3 + $4}')
+AVAILABLE_MEMORY=$(free --gibi | awk '/^Mem/{print $3 + $7}')
 if (( AVAILABLE_MEMORY < JETTY_GIGI_MEMORY )); then
   echo "
 ERROR: requested ${JETTY_GIGI_MEMORY}g for jetty but this machine only has ${AVAILABLE_MEMORY}g ( see free -g )
