@@ -114,21 +114,21 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 		}
 
 		// invert (symmetric) matrix
-		final double[] Ainv = new double[]{
+		final double[] aInv = new double[]{
 				delta[0], delta[1], delta[2],
 				delta[1], delta[2], delta[3],
 				delta[2], delta[3], delta[4]};
 		try {
-			MatrixFunctions.invert3x3(Ainv);
+			MatrixFunctions.invert3x3(aInv);
 		}
 		catch (final NoninvertibleModelException e) {
 			this.a = this.b = this.c = 0;
 			throw new IllDefinedDataPointsException("Cannot not invert Delta-Matrix, failed to fit function");
 		}
 
-		this.a = Ainv[0] * theta[0] + Ainv[1] * theta[1] + Ainv[2] * theta[2];
-		this.b = Ainv[3] * theta[0] + Ainv[4] * theta[1] + Ainv[5] * theta[2];
-		this.c = Ainv[6] * theta[0] + Ainv[7] * theta[1] + Ainv[8] * theta[2];
+		this.a = aInv[0] * theta[0] + aInv[1] * theta[1] + aInv[2] * theta[2];
+		this.b = aInv[3] * theta[0] + aInv[4] * theta[1] + aInv[5] * theta[2];
+		this.c = aInv[6] * theta[0] + aInv[7] * theta[1] + aInv[8] * theta[2];
 	}
 
 	@Override
