@@ -87,8 +87,7 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 
 		if (numMatches < getMinNumMatches())
 			throw new NotEnoughDataPointsException("Not enough points, at least " + getMinNumMatches() + " are necessary and available are: " + numMatches);
-
-		// compute matrices
+		
 		final double[] delta = new double[5];
 		final double[] theta = new double[3];
 
@@ -97,38 +96,75 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 			final double y = match.getP2().getW()[0];
 			final double w = match.getWeight();
 
-			// delta[k] = w * x^k
+			// delta = [w*x^4, w*x^3, w*x^2, w*x^1, w]
 			double tmp = w;
-			for (int k = 0; k < 5; k++) {
-				delta[4-k] += tmp;
-				tmp *= x;
-			}
+			delta[4] += tmp;
+			tmp *= x;
+			delta[3] += tmp;
+			tmp *= x;
+			delta[2] += tmp;
+			tmp *= x;
+			delta[1] += tmp;
+			tmp *= x;
+			delta[0] += tmp;
 
-			// theta[k] = w * y * x^k
+			// theta = [w*y*x^2, w*y*x, w*y]
 			tmp = w * y;
-			for (int k = 0; k < 3; k++) {
-				theta[2-k] += tmp;
-				tmp *= x;
-			}
+			theta[2] += tmp;
+			tmp *= x;
+			theta[1] += tmp;
+			tmp *= x;
+			theta[0] += tmp;
 		}
 
-		// invert (symmetric) matrix
-		final double[] aInv = new double[]{
-				delta[0], delta[1], delta[2],
-				delta[1], delta[2], delta[3],
-				delta[2], delta[3], delta[4]};
 		try {
-			MatrixFunctions.invert3x3(aInv);
+			solve3x3LinearSystem(delta, theta);
 		}
 		catch (final NoninvertibleModelException e) {
 			this.a = this.b = this.c = 0;
 			throw new IllDefinedDataPointsException("Cannot not invert Delta-Matrix, failed to fit function");
 		}
 
-		this.a = aInv[0] * theta[0] + aInv[1] * theta[1] + aInv[2] * theta[2];
-		this.b = aInv[3] * theta[0] + aInv[4] * theta[1] + aInv[5] * theta[2];
-		this.c = aInv[6] * theta[0] + aInv[7] * theta[1] + aInv[8] * theta[2];
+		this.a = theta[0];
+		this.b = theta[1];
+		this.c = theta[2];
 	}
+
+	/* compute the solution of the linear system 'delta * x = theta' taking into account the structure:
+							  | 0 1 2 |         | 0 1 2 |
+	   matrix layout: delta = | . 2 3 |, chol = | . 3 4 |
+							  | . . 4 |         | . . 5 |
+	   the input theta is overwritten by the solution vector x
+ 	*/
+	private static void solve3x3LinearSystem(double[] delta, double[] theta) throws NoninvertibleModelException {
+		// compute row-wise upper triangle of Cholesky factorization U^T*U
+		final double[] chol = new double[6];
+		chol[0] = Math.sqrt(delta[0]);
+		chol[1] = delta[1] / chol[0];
+		chol[2] = delta[2] / chol[0];
+		chol[3] = Math.sqrt(delta[2] - chol[1]*chol[1]);
+		chol[4] = (delta[3] - chol[1]*chol[2]) / chol[3];
+		chol[5] = Math.sqrt(delta[4] - chol[2]*chol[2] - chol[4]*chol[4]);
+
+		// determinant = product of diagonal entries of U
+		if (chol[0] == 0.0 || chol[3] == 0.0 || chol[5] == 0.0)
+			throw new NoninvertibleModelException();
+
+		// forward substitution U^T * y = b, where b is stored in theta
+		theta[0] /= chol[0];
+		theta[1] -= chol[1]*theta[0];
+		theta[1] /= chol[3];
+		theta[2] -= (chol[2]*theta[0] + chol[4]*theta[1]);
+		theta[2] /= chol[5];
+
+		// backward substitution U * x = y, where y is stored in theta
+		theta[2] /= chol[5];
+		theta[1] -= chol[4]*theta[2];
+		theta[1] /= chol[3];
+		theta[0] -= (chol[1]*theta[1] + chol[2]*theta[2]);
+		theta[0] /= chol[0];
+	}
+
 
 	@Override
 	public int getMinNumMatches() {
