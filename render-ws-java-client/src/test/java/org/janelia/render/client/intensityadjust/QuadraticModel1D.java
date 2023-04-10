@@ -3,7 +3,6 @@ package org.janelia.render.client.intensityadjust;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Random;
 
 import fit.util.MatrixFunctions;
 import mpicbg.models.AbstractModel;
@@ -18,9 +17,6 @@ import mpicbg.models.PointMatch;
  */
 public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 	private static final long serialVersionUID = 3144894252699485124L;
-
-	// For initial guesses for Newton Raphson
-	protected final Random rndx = new Random( 43583458 );
 
 	protected final int minNumMatches = 3;
 	protected double a, b, c; // a*x*x + b*x + c
@@ -99,7 +95,7 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 
 		for (final PointMatch match : matches) {
 			final double x = match.getP1().getL()[0];
-			final double y = match.getP2().getL()[0];
+			final double y = match.getP2().getW()[0];
 			final double w = match.getWeight();
 
 			// delta[k] = w * x^k
