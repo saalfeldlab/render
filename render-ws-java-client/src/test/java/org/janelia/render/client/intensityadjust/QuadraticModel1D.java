@@ -1,7 +1,6 @@
 package org.janelia.render.client.intensityadjust;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 
 import fit.util.MatrixFunctions;
@@ -156,21 +155,19 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 
 
 	@Override
-	public double[] apply(double[] doubles) {
-		final double[] copy = Arrays.copyOf(doubles, doubles.length);
+	public double[] apply(final double[] doubles) {
+		final double[] copy = doubles.clone();
 		applyInPlace(copy);
 		return copy;
 	}
 
 	@Override
-	public void applyInPlace(double[] doubles) {
+	public void applyInPlace(final double[] doubles) {
 		// apply Horner's method
-		for (int k = 0; k < doubles.length; k++) {
-			final double original = doubles[k];
-			doubles[k] *= getA();
-			doubles[k] += getB();
-			doubles[k] *= original;
-			doubles[k] += getC();
-		}
+		final double original = doubles[0];
+		doubles[0] *= getA();
+		doubles[0] += getB();
+		doubles[0] *= original;
+		doubles[0] += getC();
 	}
 }
