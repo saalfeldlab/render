@@ -19,9 +19,10 @@ import ij.ImagePlus;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
-import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.showTileSpec;
 
 public class WaferCrossZIntensityAdjustTest {
+
+    protected static final double visualizeRenderScale = 0.1;
 
     public static void main(final String[] args) {
 
@@ -30,16 +31,15 @@ public class WaferCrossZIntensityAdjustTest {
         final String project = "wafer_52_cut_00030_to_00039";
         final String alignedStack = "slab_045_all_align_t2_mfov_4_center_19";
         final Double minZ = 1260.0;
-        final Double maxZ = 1263.0;
+        final Double maxZ = 1261.0;
 
-        final boolean onlyShowOriginal = true;
+        final boolean onlyShowOriginal = false;
 
-        final double visualizeRenderScale = 0.1;
         final String[] tileIdsToVisualize = {
-                "045_000004_014_20220401_183940.1260.0",// "045_000004_002_20220401_183940.1260.0",
-                "045_000004_014_20220401_221256.1261.0",// "045_000004_002_20220401_221256.1261.0"
-                "045_000004_014_20220402_160252.1262.0",
-                "045_000004_014_20220402_211657.1263.0"
+                "045_000004_014_20220401_183940.1260.0",
+                "045_000004_014_20220401_221256.1261.0"
+//                "045_000004_014_20220402_160252.1262.0",
+//                "045_000004_014_20220402_211657.1263.0"
         };
 
         if (! new File("/nrs/hess/render/raw").isDirectory()) {
@@ -66,59 +66,48 @@ public class WaferCrossZIntensityAdjustTest {
 
             new ImageJ();
 
-            Bounds previewBounds = null;
+            Bounds canvas = null;
             for (final String tileId : tileIdsToVisualize) {
                 final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
-                previewBounds = previewBounds == null ?
-                                tileSpec.toTileBounds() : previewBounds.union(tileSpec.toTileBounds());
+                canvas = (canvas == null) ? tileSpec.toTileBounds() : canvas.union(tileSpec.toTileBounds());
             }
 
             for (final String tileId : tileIdsToVisualize) {
 
                 if (onlyShowOriginal) {
-                    
                     final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
-                    final RenderParameters tileRenderParameters =
-                            new RenderParameters(null,
-                                                 previewBounds.getX(),
-                                                 previewBounds.getY(),
-                                                 previewBounds.getWidth(),
-                                                 previewBounds.getHeight(),
-                                                 visualizeRenderScale);
-                    tileRenderParameters.addTileSpec(tileSpec);
-                    tileRenderParameters.initializeDerivedValues();
-
-                    final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
-                            Renderer.renderImageProcessorWithMasks(tileRenderParameters, imageProcessorCache);
-                    new ImagePlus("original " + tileId, ipwm.ip.convertToByteProcessor()).show();
-
+                    showTileSpecOnCanvas("original " + tileId, tileSpec, imageProcessorCache, canvas);
                 } else {
                     final OnTheFlyIntensity correctedTile =
                             corrected.stream()
                                     .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
                                     .findFirst()
                                     .orElseThrow();
-                    final TileSpec tileSpec = correctedTile.getMinimalTileSpecWrapper().getTileSpec();
-                    final double[][] coefficients = correctedTile.getCoefficients();
 
+                    final TileSpec tileSpec = correctedTile.getMinimalTileSpecWrapper().getTileSpec();
+                    showTileSpecOnCanvas("original " + tileId, tileSpec, imageProcessorCache, canvas);
+
+                    final double[][] coefficients = correctedTile.getCoefficients();
                     final TileSpec correctedTileSpec = deriveTileSpecWithFilter(tileSpec,
                                                                                 AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
                                                                                 coefficients);
-
-                    showTileSpec("original " + tileId,
-                                 tileSpec,
-                                 visualizeRenderScale,
-                                 imageProcessorCache);
-                    showTileSpec("corrected " + tileId,
-                                 correctedTileSpec,
-                                 visualizeRenderScale,
-                                 imageProcessorCache);
+                    showTileSpecOnCanvas("corrected " + tileId, correctedTileSpec, imageProcessorCache, canvas);
                 }
             }
         } catch (final Throwable t) {
             throw new RuntimeException("caught exception", t);
         }
 
+    }
+
+    protected static void showTileSpecOnCanvas(String title, TileSpec tileSpec, ImageProcessorCache ipc, Bounds canvas) {
+        final RenderParameters parameters = new RenderParameters(
+                null,canvas.getX(), canvas.getY(), canvas.getWidth(), canvas.getHeight(), visualizeRenderScale);
+        parameters.addTileSpec(tileSpec);
+        parameters.initializeDerivedValues();
+
+        final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm = Renderer.renderImageProcessorWithMasks(parameters, ipc);
+        new ImagePlus(title, ipwm.ip.convertToByteProcessor()).show();
     }
 
 }
