@@ -20,7 +20,9 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
+import org.janelia.render.client.intensityadjust.intensity.QuadraticIntensityMatcher;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
+import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensityQuadratic;
 import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.slf4j.Logger;
@@ -518,6 +520,30 @@ public class AdjustBlock {
 
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
 		return new IntensityMatcher().match(
+				sliceTiles,
+				scale,
+				numCoefficients,
+				lambda1,
+				lambda2,
+				neighborWeight,
+				iterations,
+				imageProcessorCache);
+	}
+
+	public static ArrayList<OnTheFlyIntensityQuadratic> correctIntensitiesForSliceTilesQuadratic(
+			final List<MinimalTileSpecWrapper> sliceTiles,
+			final ImageProcessorCache imageProcessorCache,
+			final int numCoefficients)
+			throws InterruptedException, ExecutionException {
+
+		final double scale = 0.1;
+		final double lambda1 = 0.01;
+		final double lambda2 = 0.01;
+		final double neighborWeight = 0.1;
+		final int iterations = 2000;
+
+		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
+		return new QuadraticIntensityMatcher().match(
 				sliceTiles,
 				scale,
 				numCoefficients,

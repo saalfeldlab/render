@@ -1,6 +1,7 @@
 package org.janelia.render.client.intensityadjust;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 
 import fit.util.MatrixFunctions;
@@ -93,9 +94,10 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 
 		for (final PointMatch match : matches) {
 			final double x = match.getP1().getL()[0];
-			final double y = match.getP2().getW()[0];
+			final double y = match.getP2().getL()[0];
 			final double w = match.getWeight();
 
+//			System.out.println(" *************** x, y, w: " + Arrays.toString(new double[]{y}));
 			// delta = [w*x^4, w*x^3, w*x^2, w*x^1, w]
 			double tmp = w;
 			delta[4] += tmp;
@@ -205,5 +207,11 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 		doubles[0] += getB();
 		doubles[0] *= original;
 		doubles[0] += getC();
+	}
+
+	public void toArray(final double[] target) {
+		target[0] = a;
+		target[1] = b;
+		target[2] = c;
 	}
 }

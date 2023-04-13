@@ -6,6 +6,9 @@ import java.util.List;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.filter.FilterSpec;
+import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
+import org.janelia.alignment.filter.QuadraticIntensityMap8BitFilter;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -17,6 +20,7 @@ import ij.ImageJ;
 import ij.ImagePlus;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensityQuadratic;
 
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
 
@@ -59,8 +63,8 @@ public class WaferCrossZIntensityAdjustTest {
 
 
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
-            final ArrayList<OnTheFlyIntensity> corrected = onlyShowOriginal ? null :
-                    AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+            final ArrayList<OnTheFlyIntensityQuadratic> corrected = onlyShowOriginal ? null :
+                    AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles,
                                                                 imageProcessorCache,
                                                                 AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
 
@@ -78,7 +82,7 @@ public class WaferCrossZIntensityAdjustTest {
                     final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
                     showTileSpecOnCanvas("original " + tileId, tileSpec, imageProcessorCache, canvas);
                 } else {
-                    final OnTheFlyIntensity correctedTile =
+                    final OnTheFlyIntensityQuadratic correctedTile =
                             corrected.stream()
                                     .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
                                     .findFirst()
@@ -88,9 +92,9 @@ public class WaferCrossZIntensityAdjustTest {
                     showTileSpecOnCanvas("original " + tileId, tileSpec, imageProcessorCache, canvas);
 
                     final double[][] coefficients = correctedTile.getCoefficients();
-                    final TileSpec correctedTileSpec = deriveTileSpecWithFilter(tileSpec,
-                                                                                AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
-                                                                                coefficients);
+                    final TileSpec correctedTileSpec = deriveTileSpecWithFilterQuadratic(tileSpec,
+                                                                                         AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+                                                                                         coefficients);
                     showTileSpecOnCanvas("corrected " + tileId, correctedTileSpec, imageProcessorCache, canvas);
                 }
             }
@@ -100,7 +104,8 @@ public class WaferCrossZIntensityAdjustTest {
 
     }
 
-    protected static void showTileSpecOnCanvas(String title, TileSpec tileSpec, ImageProcessorCache ipc, Bounds canvas) {
+    protected static void showTileSpecOnCanvas(final String title, final TileSpec tileSpec, final ImageProcessorCache ipc, final Bounds canvas) {
+
         final RenderParameters parameters = new RenderParameters(
                 null,canvas.getX(), canvas.getY(), canvas.getWidth(), canvas.getHeight(), visualizeRenderScale);
         parameters.addTileSpec(tileSpec);
@@ -110,4 +115,16 @@ public class WaferCrossZIntensityAdjustTest {
         new ImagePlus(title, ipwm.ip.convertToByteProcessor()).show();
     }
 
+    public static TileSpec deriveTileSpecWithFilterQuadratic(final TileSpec tileSpec,
+                                                             final int numCoefficients,
+                                                             final double[][] coefficients) {
+        final TileSpec derivedTileSpec = tileSpec.slowClone();
+        final QuadraticIntensityMap8BitFilter filter =
+                new QuadraticIntensityMap8BitFilter(numCoefficients, numCoefficients, 3, coefficients);
+        final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(),
+                                                     filter.toParametersMap());
+        derivedTileSpec.setFilterSpec(filterSpec);
+        derivedTileSpec.convertSingleChannelSpecToLegacyForm();
+        return derivedTileSpec;
+    }
 }

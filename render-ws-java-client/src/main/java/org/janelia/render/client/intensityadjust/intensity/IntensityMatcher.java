@@ -261,7 +261,7 @@ public class IntensityMatcher
 			}
 		}
 
-		final int numThreads = 1;
+		final int numThreads = 12;
 		final int meshResolution = 64; //?
 
 		System.out.println( "Matching intensities using " + numThreads + " threads ... " );
