@@ -66,7 +66,7 @@ public class QuadraticIntensityMap<T extends RealType<T>> {
 
 		final double[] s = new double[dimensions.numDimensions()];
 		for (int d = 0; d < s.length; ++d)
-			s[d] = (double) image.dimension(d) / (double) dimensions.dimension(d);
+			s[d] = image.dimension(d) / dimensions.dimension(d);
 		final Scale scale = new Scale(s);
 
 		final RandomAccessibleInterval<RealComposite<T>> stretchedCoefficients =

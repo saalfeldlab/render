@@ -94,10 +94,9 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 
 		for (final PointMatch match : matches) {
 			final double x = match.getP1().getL()[0];
-			final double y = match.getP2().getL()[0];
+			final double y = match.getP2().getW()[0];
 			final double w = match.getWeight();
 
-//			System.out.println(" *************** x, y, w: " + Arrays.toString(new double[]{y}));
 			// delta = [w*x^4, w*x^3, w*x^2, w*x^1, w]
 			double tmp = w;
 			delta[4] += tmp;

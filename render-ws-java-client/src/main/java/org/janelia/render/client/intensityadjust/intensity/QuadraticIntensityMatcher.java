@@ -129,7 +129,7 @@ public class QuadraticIntensityMatcher
 
 				final double p = pixels1.getf(i);
 				final double q = pixels2.getf(i);
-				final PointMatch pq = new PointMatch(new Point(new double[] { p }), new Point(new double[] { q }), w1 * w2);
+				final PointMatch pq = new PointMatch(new Point(new double[]{p}), new Point(new double[]{q}), w1 * w2);
 
 				/* first label is 1 */
 				ra.setPosition(c1 - 1, 0);
@@ -143,8 +143,7 @@ public class QuadraticIntensityMatcher
 			{
 				inliers.clear();
 				filter.filter(candidates, inliers);
-				candidates.clear();
-				candidates.addAll(inliers);
+				candidates.retainAll(inliers);
 			}
 
 			/* get the coefficient tiles of p2 */
@@ -309,8 +308,8 @@ public class QuadraticIntensityMatcher
 
 	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2, final double weight) {
 		final ArrayList<PointMatch> matches = new ArrayList<>();
-		matches.add(new PointMatch(new Point(new double[] { 0 }), new Point(new double[] { 0 })));
-		matches.add(new PointMatch(new Point(new double[] { 1 }), new Point(new double[] { 1 })));
+		matches.add(new PointMatch(new Point(new double[]{0}), new Point(new double[]{0})));
+		matches.add(new PointMatch(new Point(new double[]{1}), new Point(new double[]{1})));
 		t1.connect(t2, matches);
 	}
 
@@ -321,7 +320,7 @@ public class QuadraticIntensityMatcher
 		return new FinalRealInterval(p1min, p1max);
 	}
 
-	final static protected <T extends Model<T>> HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> generateCoefficientsTiles(
+	static protected <T extends Model<T>> HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> generateCoefficientsTiles(
 			final Collection<MinimalTileSpecWrapper> patches,
 			final T template,
 			final int nCoefficients) {
