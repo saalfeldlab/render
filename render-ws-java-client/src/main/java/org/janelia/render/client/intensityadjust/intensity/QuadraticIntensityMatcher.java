@@ -143,7 +143,8 @@ public class QuadraticIntensityMatcher
 			{
 				inliers.clear();
 				filter.filter(candidates, inliers);
-				candidates.retainAll(inliers);
+				candidates.clear();
+				candidates.addAll(inliers);
 			}
 
 			/* get the coefficient tiles of p2 */
