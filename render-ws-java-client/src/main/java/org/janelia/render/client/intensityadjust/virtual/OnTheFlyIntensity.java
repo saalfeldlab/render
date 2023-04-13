@@ -92,6 +92,7 @@ public class OnTheFlyIntensity
 			/* coefficients mapping into existing [min, max] */
 			as.setf( i, ( float ) ab[ 0 ] );
 			bs.setf( i, ( float ) ( ( max - min ) * ab[ 1 ] + min - ab[ 0 ] * min ) );
+			// TODO: what to do if it's a quadratic function?
 		}
 		final ImageStack coefficientsStack = new ImageStack( numCoefficients, numCoefficients );
 		coefficientsStack.addSlice( as );
