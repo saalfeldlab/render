@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import mpicbg.models.NoninvertibleModelException;
@@ -122,6 +123,16 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--exclude_mask", description = "exclude mask when rendering")
     public boolean excludeMask;
 
+    @Parameter(
+            names = "--maskMinX",
+            description = "Override mask minX parameter (for dynamic masks)")
+    public Integer maskMinX;
+
+    @Parameter(
+            names = "--maskMinY",
+            description = "Override mask minX parameter (for dynamic masks)")
+    public Integer maskMinY;
+
     @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)")
     public String parametersUrl;
 
@@ -190,11 +201,7 @@ public class RenderParameters implements Serializable {
         this.width = width;
         this.height = height;
 
-        if (scale == null) {
-            this.scale = 1.0;
-        } else {
-            this.scale = scale;
-        }
+        this.scale = Objects.requireNonNullElse(scale, 1.0);
 
         this.help = false;
         this.meshCellSize = DEFAULT_MESH_CELL_SIZE;
@@ -207,6 +214,8 @@ public class RenderParameters implements Serializable {
         this.skipInterpolation = false;
         this.binaryMask = false;
         this.excludeMask = false;
+        this.maskMinX = null;
+        this.maskMinY = null;
         this.doFilter = false;
         this.backgroundRGBColor = null;
         this.fillWithNoise = false;
@@ -541,6 +550,22 @@ public class RenderParameters implements Serializable {
 
     public void setExcludeMask(final Boolean excludeMask) {
         this.excludeMask = (excludeMask != null) && excludeMask;
+    }
+
+    public Integer getMaskMinX() {
+        return maskMinX;
+    }
+
+    public void setMaskMinX(final Integer maskMinX) {
+        this.maskMinX = maskMinX;
+    }
+
+    public Integer getMaskMinY() {
+        return maskMinY;
+    }
+
+    public void setMaskMinY(final Integer maskMinY) {
+        this.maskMinY = maskMinY;
     }
 
     public void setDoFilter(final Boolean filter) {
@@ -971,6 +996,8 @@ public class RenderParameters implements Serializable {
             skipInterpolation = mergedValue(skipInterpolation, baseParameters.skipInterpolation, false);
             binaryMask = mergedValue(binaryMask, baseParameters.binaryMask, false);
             excludeMask = mergedValue(excludeMask, baseParameters.excludeMask, false);
+            maskMinX = mergedValue(maskMinX, baseParameters.maskMinX, null);
+            maskMinY = mergedValue(maskMinY, baseParameters.maskMinY, null);
             quality = mergedValue(quality, baseParameters.quality, DEFAULT_QUALITY);
             doFilter = mergedValue(doFilter, baseParameters.doFilter, false);
             addWarpFieldDebugOverlay = mergedValue(addWarpFieldDebugOverlay, baseParameters.addWarpFieldDebugOverlay, false);

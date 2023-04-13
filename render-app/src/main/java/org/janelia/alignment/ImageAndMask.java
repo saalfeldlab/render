@@ -6,6 +6,7 @@ import java.net.URI;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.janelia.alignment.loader.DynamicMaskLoader;
 import org.janelia.alignment.loader.ImageLoader.LoaderType;
 
 /**
@@ -133,6 +134,15 @@ public class ImageAndMask implements Serializable {
             validatedMaskUrl = getUrlString(getUri(maskUrl));
         }
         return validatedMaskUrl;
+    }
+
+    public String getMaskUrl(final Integer maskMinX,
+                             final Integer maskMinY) throws IllegalArgumentException {
+        String maskUrl = getMaskUrl();
+        if (((maskMinX != null) || (maskMinY != null)) && LoaderType.DYNAMIC_MASK.equals(maskLoaderType)) {
+            maskUrl = DynamicMaskLoader.parseUrl(maskUrl).withMinXAndY(maskMinX, maskMinY).toString();
+        }
+        return maskUrl;
     }
 
     public String getMaskFilePath() {

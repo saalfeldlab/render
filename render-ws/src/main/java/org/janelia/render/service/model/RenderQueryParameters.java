@@ -28,6 +28,12 @@ public class RenderQueryParameters
     @QueryParam("excludeMask")
     private final Boolean excludeMask;
 
+    @QueryParam("maskMinX")
+    private final Integer maskMinX;
+
+    @QueryParam("maskMinY")
+    private final Integer maskMinY;
+
     @QueryParam("fillWithNoise")
     private final Boolean fillWithNoise;
 
@@ -60,6 +66,8 @@ public class RenderQueryParameters
              null,
              null,
              null,
+             null,
+             null,
              scale);
     }
 
@@ -67,6 +75,8 @@ public class RenderQueryParameters
                                   final String channels,
                                   final Boolean convertToGray,
                                   final Boolean excludeMask,
+                                  final Integer maskMinX,
+                                  final Integer maskMinY,
                                   final Boolean fillWithNoise,
                                   final Boolean filter,
                                   final String filterListName,
@@ -77,6 +87,8 @@ public class RenderQueryParameters
         this.channels = channels;
         this.convertToGray = convertToGray;
         this.excludeMask = excludeMask;
+        this.maskMinX = maskMinX;
+        this.maskMinY = maskMinY;
         this.fillWithNoise = fillWithNoise;
         this.filter = filter;
         this.filterListName = filterListName;
@@ -150,6 +162,8 @@ public class RenderQueryParameters
         renderParameters.setChannels(channels);
         renderParameters.setConvertToGray(convertToGray);
         renderParameters.setExcludeMask(excludeMask);
+        renderParameters.setMaskMinX(maskMinX);
+        renderParameters.setMaskMinY(maskMinY);
         renderParameters.setFillWithNoise(fillWithNoise);
         renderParameters.setDoFilter(filter);
         renderParameters.setMinIntensity(minIntensity);

@@ -249,6 +249,8 @@ public class RenderedCanvasMipmapSource
                                          renderParameters.getMinIntensity(),
                                          renderParameters.getMaxIntensity(),
                                          renderParameters.excludeMask(),
+                                         renderParameters.getMaskMinX(),
+                                         renderParameters.getMaskMinY(),
                                          renderParameters.getScale(),
                                          imageProcessorCache);
 

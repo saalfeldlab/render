@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -45,6 +46,16 @@ public class FeatureRenderParameters
     public boolean renderWithoutMask = true;
 
     @Parameter(
+            names = "--maskMinX",
+            description = "Override mask minX parameter (for dynamic masks)")
+    public Integer maskMinX;
+
+    @Parameter(
+            names = "--maskMinY",
+            description = "Override mask minX parameter (for dynamic masks)")
+    public Integer maskMinY;
+
+    @Parameter(
             names = "--renderFullScaleWidth",
             description = "Full scale width for all rendered tiles"
     )
@@ -73,6 +84,8 @@ public class FeatureRenderParameters
         copiedParameters.renderWithFilter = renderWithFilterForCopy;
         copiedParameters.renderFilterListName = renderFilterListNameForCopy;
         copiedParameters.renderWithoutMask = this.renderWithoutMask;
+        copiedParameters.maskMinX = this.maskMinX;
+        copiedParameters.maskMinY = this.maskMinY;
         copiedParameters.renderFullScaleWidth = this.renderFullScaleWidth;
         copiedParameters.renderFullScaleHeight = this.renderFullScaleHeight;
         copiedParameters.deprecatedFillWithNoise = this.deprecatedFillWithNoise;
@@ -83,6 +96,8 @@ public class FeatureRenderParameters
         return this.renderWithFilter == that.renderWithFilter &&
                Objects.equals(this.renderFilterListName, that.renderFilterListName) &&
                this.renderWithoutMask == that.renderWithoutMask &&
+               Objects.equals(this.maskMinX, that.maskMinX) &&
+               Objects.equals(this.maskMinY, that.maskMinY) &&
                Objects.equals(this.renderFullScaleWidth, that.renderFullScaleWidth) &&
                Objects.equals(this.renderFullScaleHeight, that.renderFullScaleHeight) &&
                Objects.equals(this.deprecatedFillWithNoise, that.deprecatedFillWithNoise);
@@ -99,7 +114,7 @@ public class FeatureRenderParameters
         }
 
         final Map<String, String> queryParameters = new HashMap<>();
-        URLEncodedUtils.parse(uri, "UTF-8")
+        URLEncodedUtils.parse(uri, StandardCharsets.UTF_8)
                 .forEach(pair -> queryParameters.put(pair.getName(), pair.getValue()));
 
         final FeatureRenderParameters p = new FeatureRenderParameters();
@@ -108,6 +123,14 @@ public class FeatureRenderParameters
         p.renderWithFilter = Boolean.parseBoolean(queryParameters.getOrDefault("filter", "true"));
         p.renderFilterListName = queryParameters.get("filterListName");
         p.renderWithoutMask = Boolean.parseBoolean(queryParameters.getOrDefault("excludeMask", "true"));
+
+        if (queryParameters.containsKey("maskMinX")) {
+            p.maskMinX = Integer.parseInt(queryParameters.get("maskMinX"));
+        }
+
+        if (queryParameters.containsKey("maskMinY")) {
+            p.maskMinY = Integer.parseInt(queryParameters.get("maskMinY"));
+        }
 
         if (queryParameters.containsKey("width")) {
             p.renderFullScaleWidth = Integer.parseInt(queryParameters.get("width"));

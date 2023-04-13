@@ -93,6 +93,18 @@ public class DynamicMaskLoader
                                               Math.min(maxX, changedWidth), Math.min(maxY, changedHeight),
                                               changedWidth, changedHeight);
         }
+
+        public DynamicMaskDescription withMinXAndY(final Integer changedMinX,
+                                                   final Integer changedMinY) {
+            final int updatedMinX = changedMinX == null ? this.minX : changedMinX;
+            final int updatedMinY = changedMinY == null ? this.minY : changedMinY;
+            return new DynamicMaskDescription(updatedMinX,
+                                              updatedMinY,
+                                              maxX,
+                                              maxY,
+                                              width,
+                                              height);
+        }
     }
 
     public static DynamicMaskDescription parseUrl(final String urlString) throws IllegalArgumentException {

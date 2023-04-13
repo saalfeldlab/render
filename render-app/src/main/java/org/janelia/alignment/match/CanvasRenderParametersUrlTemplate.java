@@ -162,6 +162,14 @@ public class CanvasRenderParametersUrlTemplate
             uriBuilder.addParameter("excludeMask", "true");
         }
 
+        if (featureRenderParameters.maskMinX != null) {
+            uriBuilder.addParameter("maskMinX", featureRenderParameters.maskMinX.toString());
+        }
+
+        if (featureRenderParameters.maskMinY != null) {
+            uriBuilder.addParameter("maskMinY", featureRenderParameters.maskMinY.toString());
+        }
+
         // assume all canvases should be normalized for matching
         uriBuilder.addParameter("normalizeForMatching", "true");
 

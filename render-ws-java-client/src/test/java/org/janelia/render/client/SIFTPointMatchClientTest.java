@@ -114,6 +114,8 @@ public class SIFTPointMatchClientTest {
             clientParameters.featureRender.renderScale = pRenderParameters.getScale();
             clientParameters.featureRender.renderWithFilter = pRenderParameters.doFilter;
             clientParameters.featureRender.renderWithoutMask = pRenderParameters.excludeMask;
+            clientParameters.featureRender.maskMinX = pRenderParameters.maskMinX;
+            clientParameters.featureRender.maskMinY = pRenderParameters.maskMinY;
 
             final FeatureAndMatchParameters featureAndMatchParameters =
                     matchTrialParameters.getFeatureAndMatchParameters();

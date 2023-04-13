@@ -4,6 +4,7 @@ import ij.process.ImageProcessor;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
@@ -31,6 +32,8 @@ public class UrlMipmapSource
     private final Double renderMinIntensity;
     private final Double renderMaxIntensity;
     private final boolean excludeMask;
+    private final Integer maskMinX;
+    private final Integer maskMinY;
     private final double renderScale;
     private final ImageProcessorCache imageProcessorCache;
 
@@ -54,6 +57,8 @@ public class UrlMipmapSource
                            final Double renderMinIntensity,
                            final Double renderMaxIntensity,
                            final boolean excludeMask,
+                           final Integer maskMinX,
+                           final Integer maskMinY,
                            final double renderScale,
                            final ImageProcessorCache imageProcessorCache) {
         this.sourceName = sourceName;
@@ -63,12 +68,10 @@ public class UrlMipmapSource
         this.renderMinIntensity = renderMinIntensity;
         this.renderMaxIntensity = renderMaxIntensity;
         this.excludeMask = excludeMask;
+        this.maskMinX = maskMinX;
+        this.maskMinY = maskMinY;
         this.renderScale = renderScale;
-        if (imageProcessorCache == null) {
-            this.imageProcessorCache = ImageProcessorCache.DISABLED_CACHE;
-        } else {
-            this.imageProcessorCache = imageProcessorCache;
-        }
+        this.imageProcessorCache = Objects.requireNonNullElse(imageProcessorCache, ImageProcessorCache.DISABLED_CACHE);
     }
 
     @Override
@@ -143,7 +146,7 @@ public class UrlMipmapSource
 
                 // open mask
                 final ImageProcessor maskProcessor;
-                final String maskUrl = imageAndMask.getMaskUrl();
+                final String maskUrl = imageAndMask.getMaskUrl(maskMinX, maskMinY);
                 if ((maskUrl != null) && (! excludeMask)) {
                     maskProcessor = imageProcessorCache.get(maskUrl,
                                                             downSampleLevels,
