@@ -15,7 +15,7 @@ import mpicbg.models.PointMatch;
 /**
  * @author Michael Innerberger and Stephan Preibisch
  */
-public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
+public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> implements Quadratic1D<QuadraticModel1D> {
 	private static final long serialVersionUID = 3144894252699485124L;
 
 	protected final int minNumMatches = 3;

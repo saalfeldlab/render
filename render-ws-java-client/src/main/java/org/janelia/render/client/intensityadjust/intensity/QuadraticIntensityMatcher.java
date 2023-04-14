@@ -3,12 +3,14 @@ package org.janelia.render.client.intensityadjust.intensity;
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import mpicbg.models.ErrorStatistic;
+import mpicbg.models.IdentityModel;
 import mpicbg.models.Model;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
+import mpicbg.models.TranslationModel1D;
 import net.imglib2.FinalRealInterval;
 import net.imglib2.Interval;
 import net.imglib2.RealInterval;
@@ -17,7 +19,9 @@ import net.imglib2.img.list.ListRandomAccess;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.ValuePair;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.render.client.intensityadjust.InterpolatedQuadraticAffineModel1D;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
+import org.janelia.render.client.intensityadjust.Quadratic1D;
 import org.janelia.render.client.intensityadjust.QuadraticModel1D;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensityQuadratic;
 import spim.Threads;
@@ -170,7 +174,7 @@ public class QuadraticIntensityMatcher
 		}
 	}
 
-	public <M extends Model<M>> ArrayList<OnTheFlyIntensityQuadratic> match(
+	public <M extends Model<M> & Quadratic1D<M>> ArrayList<OnTheFlyIntensityQuadratic> match(
 			final List<MinimalTileSpecWrapper> patches,
 			final double scale,
 			final int numCoefficients,
@@ -184,8 +188,16 @@ public class QuadraticIntensityMatcher
 
 		/* generate coefficient tiles for all patches
 		 * TODO interpolate quadratic models */
-		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Model<?>>>> coefficientsTiles =
-				(HashMap) generateCoefficientsTiles(patches, new QuadraticModel1D(), numCoefficients * numCoefficients);
+		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends M>>> coefficientsTiles =
+				(HashMap) generateCoefficientsTiles(patches,
+										   new InterpolatedQuadraticAffineModel1D<>(
+												  new InterpolatedQuadraticAffineModel1D<>(
+														  new QuadraticModel1D(),
+														  new TranslationModel1D(),
+														  lambda1 ),
+												  new IdentityModel(),
+												  lambda2 ),
+										  numCoefficients * numCoefficients);
 
 		/* completed patches */
 		final HashSet<MinimalTileSpecWrapper> completedPatches = new HashSet<>();
@@ -237,7 +249,7 @@ public class QuadraticIntensityMatcher
 		for (final ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper> patchPair : patchPairs) {
 			futures.add(exec.submit(new Matcher(
 									patchPair,
-									coefficientsTiles,
+									(HashMap)coefficientsTiles,
 									filter,
 									scale,
 									numCoefficients,
@@ -253,7 +265,7 @@ public class QuadraticIntensityMatcher
 
 		for (final MinimalTileSpecWrapper p1 : completedPatches) {
 			/* get the coefficient tiles */
-			final ArrayList<Tile<? extends Model<?>>> p1CoefficientsTiles = coefficientsTiles.get(p1);
+			final ArrayList<Tile<? extends M>> p1CoefficientsTiles = coefficientsTiles.get(p1);
 
 			for (int y = 1; y < numCoefficients; ++y) {
 				final int yr = numCoefficients * y;
@@ -274,7 +286,7 @@ public class QuadraticIntensityMatcher
 		/* optimize */
 		System.out.println("Optimizing ... ");
 		final TileConfiguration tc = new TileConfiguration();
-		for (final ArrayList<Tile<? extends Model<?>>> coefficients : coefficientsTiles.values()) {
+		for (final ArrayList<Tile<? extends M>> coefficients : coefficientsTiles.values()) {
 			tc.addTiles(coefficients);
 		}
 
@@ -294,10 +306,10 @@ public class QuadraticIntensityMatcher
 			/* save coefficients */
 			final double[][] abc_coefficients = new double[numCoefficients * numCoefficients][3];
 
-			final ArrayList<Tile<? extends Model<?>>> tiles = coefficientsTiles.get(p);
+			final ArrayList<Tile<? extends M>> tiles = coefficientsTiles.get(p);
 
 			for (int i = 0; i < numCoefficients * numCoefficients; ++i) {
-				final QuadraticModel1D model = (QuadraticModel1D) tiles.get(i).getModel();
+				final Quadratic1D<?> model = tiles.get(i).getModel();
 				model.toArray(abc_coefficients[i]);
 			}
 
@@ -321,7 +333,7 @@ public class QuadraticIntensityMatcher
 		return new FinalRealInterval(p1min, p1max);
 	}
 
-	static protected <T extends Model<T>> HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> generateCoefficientsTiles(
+	protected <T extends Model<T> & Quadratic1D<T>> HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> generateCoefficientsTiles(
 			final Collection<MinimalTileSpecWrapper> patches,
 			final T template,
 			final int nCoefficients) {
@@ -336,5 +348,4 @@ public class QuadraticIntensityMatcher
 		}
 		return map;
 	}
-
 }
