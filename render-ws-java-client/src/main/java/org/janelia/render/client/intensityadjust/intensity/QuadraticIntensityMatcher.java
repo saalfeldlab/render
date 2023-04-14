@@ -180,7 +180,7 @@ public class QuadraticIntensityMatcher
 			final int iterations,
 			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException
 	{
-		final PointMatchFilter filter = new RansacRegressionReduceFilter();
+		final PointMatchFilter filter = new RansacRegressionReduceFilter(new QuadraticModel1D());
 
 		/* generate coefficient tiles for all patches
 		 * TODO interpolate quadratic models */
@@ -280,7 +280,7 @@ public class QuadraticIntensityMatcher
 
 		try {
 			TileUtil.optimizeConcurrently(new ErrorStatistic(iterations + 1), 0.01f, iterations, iterations, 0.75f,
-					tc, tc.getTiles(), tc.getFixedTiles(), 1);
+					tc, tc.getTiles(), tc.getFixedTiles(), numThreads);
 		}
 		catch (final Exception e) {
 			// TODO Auto-generated catch block

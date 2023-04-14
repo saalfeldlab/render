@@ -32,6 +32,7 @@ import mpicbg.models.AffineModel1D;
 import mpicbg.models.Model;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
+import org.janelia.render.client.intensityadjust.QuadraticModel1D;
 
 /**
  * @author Stephan Saalfeld saalfelds@janelia.hhmi.org
@@ -39,12 +40,20 @@ import mpicbg.models.PointMatch;
  */
 public class RansacRegressionReduceFilter implements PointMatchFilter
 {
-	final protected Model< ? > model = new AffineModel1D();
+	protected Model<?> model;
 	final protected int iterations = 1000;
 	final protected double  maxEpsilon = 0.1;
 	final protected double minInlierRatio = 0.1;
 	final protected int minNumInliers = 10;
 	final protected double maxTrust = 3.0;
+
+	RansacRegressionReduceFilter() {
+		model = new AffineModel1D();
+	}
+
+	RansacRegressionReduceFilter(Model<?> model) {
+		this.model = model;
+	}
 
 	final static protected double[] minMax( final Iterable< PointMatch > matches )
 	{

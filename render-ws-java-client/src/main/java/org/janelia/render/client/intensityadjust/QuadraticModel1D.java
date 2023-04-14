@@ -22,7 +22,7 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 	protected double a, b, c; // a*x*x + b*x + c
 
 	public QuadraticModel1D() {
-		this(0, 0, 0);
+		this(0.0, 1.0, 0.0);
 	}
 
 	public QuadraticModel1D(final double a, final double b, final double c) {

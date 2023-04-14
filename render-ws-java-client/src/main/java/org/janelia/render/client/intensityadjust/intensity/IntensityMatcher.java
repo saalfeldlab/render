@@ -206,7 +206,7 @@ public class IntensityMatcher
 			final int iterations,
 			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException
 	{
-		final PointMatchFilter filter = new RansacRegressionReduceFilter();
+		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
 
 		/* generate coefficient tiles for all patches
 		 * TODO consider offering alternative models */
