@@ -77,8 +77,6 @@ public class OnTheFlyIntensityQuadratic
 			// to coefficients of polynomial of the same shape on [min, max] x [min, max]
 			final double anew = abc[0] / delta;
 			as.setf(i, (float) anew);
-
-			as.setf(i, (float) abc[0]);
 			bs.setf(i, (float) (min * anew * (min / delta - 2) + abc[1]));
 			cs.setf(i, (float) (min * (min * anew - abc[1]) + delta * abc[2] + min));
 		}

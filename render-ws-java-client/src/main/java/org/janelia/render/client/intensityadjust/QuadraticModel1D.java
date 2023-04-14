@@ -148,7 +148,8 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 		chol[5] = Math.sqrt(delta[4] - chol[2]*chol[2] - chol[4]*chol[4]);
 
 		// determinant = product of diagonal entries of U
-		if (chol[0] == 0.0 || chol[3] == 0.0 || chol[5] == 0.0)
+		if (Double.isNaN(chol[0]) || Double.isNaN(chol[3]) || Double.isNaN(chol[5])
+				|| chol[0] == 0.0 || chol[3] == 0.0 || chol[5] == 0.0)
 			throw new NoninvertibleModelException();
 
 		// forward substitution U^T * y = b, where b is stored in theta
@@ -164,6 +165,7 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> {
 		theta[1] /= chol[3];
 		theta[0] -= (chol[1]*theta[1] + chol[2]*theta[2]);
 		theta[0] /= chol[0];
+
 	}
 
 

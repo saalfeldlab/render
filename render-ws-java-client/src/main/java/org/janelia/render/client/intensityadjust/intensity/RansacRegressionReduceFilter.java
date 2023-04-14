@@ -51,7 +51,7 @@ public class RansacRegressionReduceFilter implements PointMatchFilter
 		model = new AffineModel1D();
 	}
 
-	RansacRegressionReduceFilter(Model<?> model) {
+	RansacRegressionReduceFilter(final Model<?> model) {
 		this.model = model;
 	}
 

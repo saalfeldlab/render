@@ -101,7 +101,6 @@ public class QuadraticIntensityMap<T extends RealType<T>> {
 			final RealComposite<T> t = ct.next();
 			final double sx = s.getRealDouble();
 			s.setReal(sx * sx * t.get(0).getRealDouble() + sx * t.get(1).getRealDouble() + t.get(2).getRealDouble());
-			System.out.println("Transform: " + sx + " -> " + s.getRealDouble());
 		}
 	}
 
@@ -113,7 +112,6 @@ public class QuadraticIntensityMap<T extends RealType<T>> {
 		final S firstValue = cs.next();
 		final double minS = firstValue.getMinValue();
 		final double maxS = firstValue.getMaxValue();
-
 		while (cs.hasNext()) {
 			final S s = cs.next();
 			final RealComposite<T> t = ct.next();
