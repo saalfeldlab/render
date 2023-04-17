@@ -537,7 +537,7 @@ public class AdjustBlock {
 			throws InterruptedException, ExecutionException {
 
 		final double scale = 0.1;
-		final double lambda1 = 0.01;
+		final double lambda1 = 0.00; // set to 0, at least for connecting z=0 to z=1
 		final double lambda2 = 0.01;
 		final double neighborWeight = 0.1;
 		final int iterations = 2000;
