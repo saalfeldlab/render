@@ -56,6 +56,8 @@ public class WaferCrossZIntensityAdjustTest {
                                         false,
                                         false);
 
+        //final boolean quadratic = true;
+
         try {
             final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTilesForZRange(alignedStack,
                                                                                                   minZ,
@@ -63,10 +65,12 @@ public class WaferCrossZIntensityAdjustTest {
 
 
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
-            final ArrayList<OnTheFlyIntensityQuadratic> corrected = onlyShowOriginal ? null :
-                    AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles,
-                                                                imageProcessorCache,
-                                                                AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+
+            // quadratic
+            //final ArrayList<OnTheFlyIntensityQuadratic> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+
+            // affine
+            final ArrayList<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS );
 
             new ImageJ();
 
@@ -82,26 +86,46 @@ public class WaferCrossZIntensityAdjustTest {
                     final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
                     showTileSpecOnCanvas("original " + tileId, tileSpec, imageProcessorCache, canvas);
                 } else {
+
+                	// quadratic
+                	/*
                     final OnTheFlyIntensityQuadratic correctedTile =
                             corrected.stream()
                                     .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
                                     .findFirst()
                                     .orElseThrow();
-
+					*/
+                	// affine
+                	
+                    final OnTheFlyIntensity correctedTile =
+                            corrected.stream()
+                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
+                                    .findFirst()
+                                    .orElseThrow();
+					
                     final TileSpec tileSpec = correctedTile.getMinimalTileSpecWrapper().getTileSpec();
                     showTileSpecOnCanvas("original " + tileId, tileSpec, imageProcessorCache, canvas);
 
                     final double[][] coefficients = correctedTile.getCoefficients();
+
+                    // quadratic
+                    /*
                     final TileSpec correctedTileSpec = deriveTileSpecWithFilterQuadratic(tileSpec,
                                                                                          AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
                                                                                          coefficients);
+					*/
+                    
+                    // affine
+                    final TileSpec correctedTileSpec = deriveTileSpecWithFilter(tileSpec,
+                            AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+                            coefficients);
+					
                     showTileSpecOnCanvas("corrected " + tileId, correctedTileSpec, imageProcessorCache, canvas);
                 }
             }
         } catch (final Throwable t) {
             throw new RuntimeException("caught exception", t);
         }
-
     }
 
     protected static void showTileSpecOnCanvas(final String title, final TileSpec tileSpec, final ImageProcessorCache ipc, final Bounds canvas) {
