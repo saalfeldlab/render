@@ -22,7 +22,6 @@ import ij.ImageJ;
 import ij.ImagePlus;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
-import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensityQuadratic;
 
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.buildLocalOverlapTileSpec;
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
@@ -59,7 +58,7 @@ public class WaferCrossZIntensityAdjustTest {
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
             // quadratic
-            //final ArrayList<OnTheFlyIntensityQuadratic> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+            //final ArrayList<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
 
             // affine
             final ArrayList<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS );

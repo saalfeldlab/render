@@ -16,42 +16,18 @@ import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 
-public class OnTheFlyIntensityQuadratic
-{
-	final MinimalTileSpecWrapper p;
+public class QuadraticOnTheFlyIntensity extends OnTheFlyIntensity {
 
-	// all coefficients needed for a single image (depends how its broken up initially), each tile is a 1D quadratic model, i.e. 3 numbers
-	final double[][] abc_coefficients;
 
-	// e.g. if numCoefficients==4, then we have 16 tiles per image
-	final int numCoefficients;
-
-	public OnTheFlyIntensityQuadratic(
+	public QuadraticOnTheFlyIntensity(
 			final MinimalTileSpecWrapper p,
 			final double[][] abc_coefficients,
 			final int numCoefficients) {
-		this.p = p;
-		this.abc_coefficients = abc_coefficients;
-		this.numCoefficients = numCoefficients;
+		super(p, abc_coefficients, numCoefficients);
 	}
 
-	public MinimalTileSpecWrapper getMinimalTileSpecWrapper() { return p; }
-	public double[][] getCoefficients() { return abc_coefficients; }
-	public int getNumCoefficients() { return numCoefficients; }
-
-	public FloatProcessor computeIntensityCorrectionOnTheFly(final ImageProcessorCache imageProcessorCache) {
-		return computeIntensityCorrectionOnTheFly(p, abc_coefficients, numCoefficients, imageProcessorCache);
-	}
-
-	public ByteProcessor computeIntensityCorrection8BitOnTheFly(final ImageProcessorCache imageProcessorCache) {
-		final FloatProcessor correctedSource = computeIntensityCorrectionOnTheFly(imageProcessorCache);
-		
-		// Need to reset intensity range back to full 8-bit before converting to byte processor!
-		correctedSource.setMinAndMax(0, 255);
-		return correctedSource.convertToByteProcessor();
-	}
-
-	public static FloatProcessor computeIntensityCorrectionOnTheFly(
+	@Override
+	public FloatProcessor computeIntensityCorrectionOnTheFly(
 			final MinimalTileSpecWrapper p,
 			final double[][] abc_coefficients,
 			final int numCoefficients,

@@ -23,7 +23,8 @@ import org.janelia.render.client.intensityadjust.InterpolatedQuadraticAffineMode
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.intensityadjust.Quadratic1D;
 import org.janelia.render.client.intensityadjust.QuadraticModel1D;
-import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensityQuadratic;
+import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
+import org.janelia.render.client.intensityadjust.virtual.QuadraticOnTheFlyIntensity;
 import spim.Threads;
 
 import java.awt.*;
@@ -174,7 +175,7 @@ public class QuadraticIntensityMatcher
 		}
 	}
 
-	public <M extends Model<M> & Quadratic1D<M>> ArrayList<OnTheFlyIntensityQuadratic> match(
+	public <M extends Model<M> & Quadratic1D<M>> ArrayList<OnTheFlyIntensity> match(
 			final List<MinimalTileSpecWrapper> patches,
 			final double scale,
 			final int numCoefficients,
@@ -300,7 +301,7 @@ public class QuadraticIntensityMatcher
 		}
 
 		// TODO: this code should be computed on-the-fly as a function of the coefficients
-		final ArrayList<OnTheFlyIntensityQuadratic> correctedOnTheFly = new ArrayList<>();
+		final ArrayList<OnTheFlyIntensity> correctedOnTheFly = new ArrayList<>();
 
 		for (final MinimalTileSpecWrapper p : patches) {
 			/* save coefficients */
@@ -313,7 +314,7 @@ public class QuadraticIntensityMatcher
 				model.toArray(abc_coefficients[i]);
 			}
 
-			correctedOnTheFly.add(new OnTheFlyIntensityQuadratic(p, abc_coefficients, numCoefficients));
+			correctedOnTheFly.add(new QuadraticOnTheFlyIntensity(p, abc_coefficients, numCoefficients));
 		}
 
 		return correctedOnTheFly;

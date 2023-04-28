@@ -10,16 +10,12 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.function.Supplier;
 
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
+import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
-import org.janelia.render.client.solver.visualize.VisualizeTools;
 
-import ij.ImagePlus;
-import ij.ImageStack;
-import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import mpicbg.models.Affine1D;
@@ -34,19 +30,12 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel1D;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 import net.imglib2.FinalRealInterval;
 import net.imglib2.Interval;
 import net.imglib2.RealInterval;
-import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.imageplus.FloatImagePlus;
-import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.img.list.ListImg;
 import net.imglib2.img.list.ListRandomAccess;
-import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
-import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
 public class IntensityMatcher
@@ -359,7 +348,7 @@ public class IntensityMatcher
 				affine.toArray( ab_coefficients[ i ] );
 			}
 
-			correctedOnTheFly.add( new OnTheFlyIntensity( p, ab_coefficients, numCoefficients ) );
+			correctedOnTheFly.add( new LinearOnTheFlyIntensity(p, ab_coefficients, numCoefficients ) );
 		}
 
 		return correctedOnTheFly;
