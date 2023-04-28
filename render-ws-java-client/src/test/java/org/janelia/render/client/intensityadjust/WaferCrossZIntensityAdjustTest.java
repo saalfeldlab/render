@@ -11,8 +11,10 @@ import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
 import org.janelia.alignment.filter.QuadraticIntensityMap8BitFilter;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 
@@ -22,11 +24,13 @@ import ij.ImagePlus;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensityQuadratic;
 
+import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.buildLocalOverlapTileSpec;
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
+import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.showTileSpec;
 
 public class WaferCrossZIntensityAdjustTest {
 
-    protected static final double visualizeRenderScale = 0.1;
+    protected static final double visualizeRenderScale = 0.2;
 
     public static void main(final String[] args) {
 
@@ -39,31 +43,19 @@ public class WaferCrossZIntensityAdjustTest {
 
         final boolean onlyShowOriginal = false;
 
-        final String[] tileIdsToVisualize = {
-                "045_000004_014_20220401_183940.1260.0",
-                "045_000004_014_20220401_221256.1261.0"
-//                "045_000004_014_20220402_160252.1262.0",
-//                "045_000004_014_20220402_211657.1263.0"
-        };
+//        final String tileNumber = "_014_";
+        final String tileNumber = "_001_";
 
         if (! new File("/nrs/hess/render/raw").isDirectory()) {
             throw new IllegalStateException("need to map or mount /nrs/hess before running this test");
         }
 
         final RenderDataClient dataClient = new RenderDataClient(baseDataUrl, owner, project);
-        final ImageProcessorCache imageProcessorCache =
-                new ImageProcessorCache(15_000L * 15_000L,
-                                        false,
-                                        false);
-
-        //final boolean quadratic = true;
+        final PreloadedImageProcessorCache imageProcessorCache =
+                new PreloadedImageProcessorCache(15_000L * 15_000L, false, false);
 
         try {
-            final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTilesForZRange(alignedStack,
-                                                                                                  minZ,
-                                                                                                  maxZ);
-
-
+            final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTilesForZRange(alignedStack, minZ, maxZ);
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
             // quadratic
@@ -74,37 +66,32 @@ public class WaferCrossZIntensityAdjustTest {
 
             new ImageJ();
 
-            Bounds canvas = null;
-            for (final String tileId : tileIdsToVisualize) {
-                final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
-                canvas = (canvas == null) ? tileSpec.toTileBounds() : canvas.union(tileSpec.toTileBounds());
-            }
+            final TileBounds xyBounds = dataClient.getTileBounds(alignedStack, minZ).stream().filter(tile -> tile.getTileId().contains(tileNumber)).findFirst().orElseThrow();
+            final String stackUrl = dataClient.getUrls().getStackUrlString(alignedStack);
 
-            for (final String tileId : tileIdsToVisualize) {
+            for (int z = minZ.intValue(); z <= maxZ.intValue(); ++z) {
 
-                if (onlyShowOriginal) {
-                    final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
-                    showTileSpecOnCanvas("original " + tileId, tileSpec, imageProcessorCache, canvas);
-                } else {
+                final TileSpec tileSpec = buildLocalOverlapTileSpec(xyBounds.toRectangle(), z, stackUrl, imageProcessorCache);
+                final String tileId = tileSpec.getTileId();
+                showTileSpec("original " + tileId, tileSpec, visualizeRenderScale, imageProcessorCache);
+
+                if(!onlyShowOriginal) {
 
                 	// quadratic
                 	/*
                     final OnTheFlyIntensityQuadratic correctedTile =
                             corrected.stream()
-                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
+                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().contains(tileNumber))
                                     .findFirst()
                                     .orElseThrow();
 					*/
+
                 	// affine
-                	
                     final OnTheFlyIntensity correctedTile =
                             corrected.stream()
-                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().equals(tileId))
+                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().contains(tileNumber))
                                     .findFirst()
                                     .orElseThrow();
-					
-                    final TileSpec tileSpec = correctedTile.getMinimalTileSpecWrapper().getTileSpec();
-                    showTileSpecOnCanvas("original " + tileId, tileSpec, imageProcessorCache, canvas);
 
                     final double[][] coefficients = correctedTile.getCoefficients();
 
@@ -114,13 +101,13 @@ public class WaferCrossZIntensityAdjustTest {
                                                                                          AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
                                                                                          coefficients);
 					*/
-                    
+
                     // affine
                     final TileSpec correctedTileSpec = deriveTileSpecWithFilter(tileSpec,
                             AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
                             coefficients);
-					
-                    showTileSpecOnCanvas("corrected " + tileId, correctedTileSpec, imageProcessorCache, canvas);
+
+                    showTileSpec("corrected " + tileId, correctedTileSpec, visualizeRenderScale, imageProcessorCache);
                 }
             }
         } catch (final Throwable t) {
