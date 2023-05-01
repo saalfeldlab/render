@@ -60,7 +60,7 @@ public class WaferCrossZIntensityAdjustTest {
             //final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS );
 
             // quadratic
-            final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+            final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS, minZ);
 
             new ImageJ();
 

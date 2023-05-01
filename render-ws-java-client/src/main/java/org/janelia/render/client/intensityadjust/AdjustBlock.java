@@ -530,12 +530,12 @@ public class AdjustBlock {
 	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForSliceTilesQuadratic(
 			final List<MinimalTileSpecWrapper> sliceTiles,
 			final ImageProcessorCache imageProcessorCache,
-			final int numCoefficients)
+			final int numCoefficients,
+			final Double firstLayerZ)
 			throws InterruptedException, ExecutionException {
 
 		final double scale = 0.1;
-		final double lambda1 = 0.00; // set to 0, at least for connecting z=0 to z=1
-		final double lambda2 = 0.01;
+		final double lambda = 0.01;
 		final double neighborWeight = 0.1;
 		final int iterations = 2000;
 
@@ -544,7 +544,7 @@ public class AdjustBlock {
 				sliceTiles,
 				scale,
 				numCoefficients,
-				new FirstLayerQuadraticIntensityCorrectionStrategy(lambda1, lambda2),
+				new FirstLayerQuadraticIntensityCorrectionStrategy(lambda, firstLayerZ),
 				neighborWeight,
 				iterations,
 				imageProcessorCache);

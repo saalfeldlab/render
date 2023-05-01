@@ -11,7 +11,7 @@ import mpicbg.models.PointMatch;
 import java.util.Collection;
 
 /**
- * Class that interpolates between a quadratic and an affine model.
+ * Class that interpolates between a quadratic (A) and an affine model (B): (1-lambda)*A + lambda*B
  *
  * @param <A> Quadratic model
  * @param <B> Affine model

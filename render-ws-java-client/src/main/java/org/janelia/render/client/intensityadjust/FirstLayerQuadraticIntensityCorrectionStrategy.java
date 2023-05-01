@@ -3,7 +3,6 @@ package org.janelia.render.client.intensityadjust;
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
 import mpicbg.models.IdentityModel;
-import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import mpicbg.models.TranslationModel1D;
@@ -18,19 +17,29 @@ import java.util.Map;
 
 public class FirstLayerQuadraticIntensityCorrectionStrategy implements IntensityCorrectionStrategy {
 
-	static InterpolatedQuadraticAffineModel1D<InterpolatedQuadraticAffineModel1D<QuadraticModel1D, TranslationModel1D>, IdentityModel> modelTemplate;
+	static InterpolatedQuadraticAffineModel1D<?,?> firstLayerModelTemplate;
+	static InterpolatedQuadraticAffineModel1D<?,?> genericModelTemplate;
+	private final Double firstLayerZ;
 
-	public FirstLayerQuadraticIntensityCorrectionStrategy(final double lambda1, final double lambda2) {
-		modelTemplate = new InterpolatedQuadraticAffineModel1D<>(
+	public FirstLayerQuadraticIntensityCorrectionStrategy(final double lambda, final Double firstLayerZ) {
+		this.firstLayerZ = firstLayerZ;
+		firstLayerModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
+						new QuadraticModel1D(), new IdentityModel(), lambda); // mainly qudratic, regularized with identity
+		genericModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
 				new InterpolatedQuadraticAffineModel1D<>(
-						new QuadraticModel1D(), new TranslationModel1D(), lambda1),
-				new IdentityModel(), lambda2);
+						new InterpolatedQuadraticAffineModel1D<>(
+								new QuadraticModel1D(), new AffineModel1D(), 1.0), // purely affine ...
+						new TranslationModel1D(), lambda), // ... with a bit of translation ...
+				new IdentityModel(), lambda); // ... and a bit of identity
 	}
 
 	@Override
 	@SuppressWarnings("unchecked") // modelTemplate is always of the type given above
 	public <M extends Model<M>> M getModelFor(MinimalTileSpecWrapper p) {
-		return (M) modelTemplate.copy();
+		if (p.getZ() == firstLayerZ)
+			return (M) firstLayerModelTemplate.copy();
+		else
+			return (M) genericModelTemplate.copy();
 	}
 
 	@Override
