@@ -13,23 +13,19 @@ import java.util.concurrent.Future;
 
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
-import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity;
+import org.janelia.render.client.intensityadjust.IntensityCorrectionStrategy;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import mpicbg.models.Affine1D;
-import mpicbg.models.AffineModel1D;
 import mpicbg.models.ErrorStatistic;
-import mpicbg.models.IdentityModel;
-import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.Model;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
-import mpicbg.models.TranslationModel1D;
 import net.imglib2.FinalRealInterval;
 import net.imglib2.Interval;
 import net.imglib2.RealInterval;
@@ -40,6 +36,7 @@ import net.imglib2.util.ValuePair;
 
 public class IntensityMatcher
 {
+
 	final private class Matcher implements Runnable
 	{
 		//final private Rectangle roi;
@@ -185,28 +182,21 @@ public class IntensityMatcher
 		}
 	}
 
-	public < M extends Model< M > & Affine1D< M > > ArrayList < OnTheFlyIntensity > match(
+	public <M extends Model<M> & Affine1D<M>> ArrayList<OnTheFlyIntensity> match(
 			final List<MinimalTileSpecWrapper> patches,
 			final double scale,
 			final int numCoefficients,
-			final double lambda1,
-			final double lambda2,
+			final IntensityCorrectionStrategy strategy,
 			final double neighborWeight,
 			final int iterations,
 			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException
 	{
-		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
+		final PointMatchFilter filter = strategy.provideOutlierRemoval();
 
 		/* generate coefficient tiles for all patches
 		 * TODO consider offering alternative models */
-		final HashMap< MinimalTileSpecWrapper, ArrayList< Tile< ? extends M > > > coefficientsTiles =
-				( HashMap ) generateCoefficientsTiles(
-						patches,
-						new InterpolatedAffineModel1D< InterpolatedAffineModel1D< AffineModel1D, TranslationModel1D >, IdentityModel >(
-								new InterpolatedAffineModel1D< AffineModel1D, TranslationModel1D >(
-										new AffineModel1D(), new TranslationModel1D(), lambda1 ),
-								new IdentityModel(), lambda2 ),
-						numCoefficients * numCoefficients );
+		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles =
+				(HashMap) generateCoefficientsTiles(patches, strategy, numCoefficients * numCoefficients );
 
 		/* completed patches */
 		final HashSet< MinimalTileSpecWrapper > completedPatches = new HashSet<>();
@@ -282,7 +272,7 @@ public class IntensityMatcher
 		for ( final MinimalTileSpecWrapper p1 : completedPatches )
 		{
 			/* get the coefficient tiles */
-			final ArrayList< Tile< ? extends M > > p1CoefficientsTiles = coefficientsTiles.get( p1 );
+			final ArrayList<? extends Tile<?>> p1CoefficientsTiles = coefficientsTiles.get( p1 );
 
 			for ( int y = 1; y < numCoefficients; ++y )
 			{
@@ -307,7 +297,7 @@ public class IntensityMatcher
 		/* optimize */
 		System.out.println( "Optimizing ... " );
 		final TileConfiguration tc = new TileConfiguration();
-		for ( final ArrayList< Tile< ? extends M > > coefficients : coefficientsTiles.values() )
+		for ( final ArrayList<? extends Tile<?>> coefficients : coefficientsTiles.values() )
 		{
 			// for ( final Tile< ? > t : coefficients )
 			// if ( t.getMatches().size() == 0 )
@@ -331,27 +321,8 @@ public class IntensityMatcher
 			e.printStackTrace();
 		}
 
-		// TODO: this code should be computed on-the-fly as a function of the coefficients
-		final ArrayList < OnTheFlyIntensity > correctedOnTheFly = new ArrayList<>();
 
-		for ( final MinimalTileSpecWrapper p : patches )
-		{
-			/* save coefficients */
-			final double[][] ab_coefficients = new double[ numCoefficients * numCoefficients ][ 2 ];
-
-			final ArrayList< Tile< ? extends M > > tiles = coefficientsTiles.get( p );
-
-			for ( int i = 0; i < numCoefficients * numCoefficients; ++i )
-			{
-				final Tile< ? extends M > t = tiles.get( i );
-				final Affine1D< ? > affine = t.getModel();
-				affine.toArray( ab_coefficients[ i ] );
-			}
-
-			correctedOnTheFly.add( new LinearOnTheFlyIntensity(p, ab_coefficients, numCoefficients ) );
-		}
-
-		return correctedOnTheFly;
+		return strategy.getOnTheFlyIntensities(patches, numCoefficients, coefficientsTiles);
 
 		/*
 		final double[] ab = new double[ 2 ];
@@ -446,7 +417,7 @@ public class IntensityMatcher
 
 	final static protected < T extends Model< T > & Affine1D< T > > HashMap< MinimalTileSpecWrapper, ArrayList< Tile< T > > > generateCoefficientsTiles(
 			final Collection< MinimalTileSpecWrapper > patches,
-			final T template,
+			final IntensityCorrectionStrategy provider,
 			final int nCoefficients )
 	{
 		final HashMap< MinimalTileSpecWrapper, ArrayList< Tile< T > > > map = new HashMap<>();
@@ -454,7 +425,7 @@ public class IntensityMatcher
 		{
 			final ArrayList< Tile< T > > coefficientModels = new ArrayList< Tile< T > >();
 			for ( int i = 0; i < nCoefficients; ++i )
-				coefficientModels.add( new Tile< T >( template.copy() ) );
+				coefficientModels.add(new Tile<T>(provider.getModelFor(p)));
 
 			map.put( p, coefficientModels );
 		}

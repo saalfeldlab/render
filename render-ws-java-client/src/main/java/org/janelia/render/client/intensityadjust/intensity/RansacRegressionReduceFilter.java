@@ -47,11 +47,11 @@ public class RansacRegressionReduceFilter implements PointMatchFilter
 	final protected int minNumInliers = 10;
 	final protected double maxTrust = 3.0;
 
-	RansacRegressionReduceFilter() {
+	public RansacRegressionReduceFilter() {
 		model = new AffineModel1D();
 	}
 
-	RansacRegressionReduceFilter(final Model<?> model) {
+	public RansacRegressionReduceFilter(final Model<?> model) {
 		this.model = model;
 	}
 

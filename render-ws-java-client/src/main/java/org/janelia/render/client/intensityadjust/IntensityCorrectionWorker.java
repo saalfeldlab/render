@@ -128,7 +128,7 @@ public class IntensityCorrectionWorker implements Serializable {
             final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
 
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
-            final ArrayList<OnTheFlyIntensity> corrected =
+            final List<OnTheFlyIntensity> corrected =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 imageProcessorCache,
                                                                 numCoefficients);

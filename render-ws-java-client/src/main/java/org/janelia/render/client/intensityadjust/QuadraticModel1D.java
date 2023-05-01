@@ -6,6 +6,7 @@ import java.util.Collection;
 
 import fit.util.MatrixFunctions;
 import mpicbg.models.AbstractModel;
+import mpicbg.models.Affine1D;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
@@ -15,7 +16,8 @@ import mpicbg.models.PointMatch;
 /**
  * @author Michael Innerberger and Stephan Preibisch
  */
-public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> implements Quadratic1D<QuadraticModel1D> {
+public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> implements Affine1D<QuadraticModel1D>, Quadratic1D<QuadraticModel1D> {
+	// TODO: right now, this implements Affine1D to have a common interface with AffineModel1D; this should be changed when an alternative is available!
 	private static final long serialVersionUID = 3144894252699485124L;
 
 	protected final int minNumMatches = 3;
@@ -210,9 +212,39 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> implements
 		doubles[0] += getC();
 	}
 
+	@Override
+	public void preConcatenate(final QuadraticModel1D quadraticModel1D) {
+		throw new UnsupportedOperationException("'preConcatenate' not implemented for QuadraticModel1D.");
+	}
+
+	@Override
+	public void concatenate(final QuadraticModel1D quadraticModel1D) {
+		throw new UnsupportedOperationException("'concatenate' not implemented for QuadraticModel1D.");
+	}
+
 	public void toArray(final double[] target) {
 		target[0] = a;
 		target[1] = b;
 		target[2] = c;
+	}
+
+	@Override
+	public void toMatrix(final double[][] doubles) {
+		throw new UnsupportedOperationException("'toMatrix' not implemented for QuadraticModel1D.");
+	}
+
+	@Override
+	public QuadraticModel1D createInverse() {
+		throw new UnsupportedOperationException("'createInverse' not implemented for QuadraticModel1D.");
+	}
+
+	@Override
+	public double[] applyInverse(final double[] doubles) throws NoninvertibleModelException {
+		throw new UnsupportedOperationException("'applyInverse' not implemented for QuadraticModel1D.");
+	}
+
+	@Override
+	public void applyInverseInPlace(final double[] doubles) throws NoninvertibleModelException {
+		throw new UnsupportedOperationException("'applyInverseInPlace' not implemented for QuadraticModel1D.");
 	}
 }

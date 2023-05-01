@@ -7,7 +7,6 @@ import java.util.List;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.filter.FilterSpec;
-import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
 import org.janelia.alignment.filter.QuadraticIntensityMap8BitFilter;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -58,10 +57,10 @@ public class WaferCrossZIntensityAdjustTest {
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
             // quadratic
-            //final ArrayList<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+            //final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
 
             // affine
-            final ArrayList<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS );
+            final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS );
 
             new ImageJ();
 

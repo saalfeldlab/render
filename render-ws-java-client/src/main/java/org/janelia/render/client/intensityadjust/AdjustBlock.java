@@ -522,8 +522,7 @@ public class AdjustBlock {
 				sliceTiles,
 				scale,
 				numCoefficients,
-				lambda1,
-				lambda2,
+				new AffineIntensityCorrectionStrategy(lambda1, lambda2),
 				neighborWeight,
 				iterations,
 				imageProcessorCache);
