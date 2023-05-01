@@ -182,7 +182,7 @@ public class IntensityMatcher
 		}
 	}
 
-	public <M extends Model<M> & Affine1D<M>> ArrayList<OnTheFlyIntensity> match(
+	public ArrayList<OnTheFlyIntensity> match(
 			final List<MinimalTileSpecWrapper> patches,
 			final double scale,
 			final int numCoefficients,

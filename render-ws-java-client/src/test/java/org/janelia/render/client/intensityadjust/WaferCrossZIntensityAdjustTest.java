@@ -1,12 +1,13 @@
 package org.janelia.render.client.intensityadjust;
 
 import java.io.File;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterSpec;
+import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
 import org.janelia.alignment.filter.QuadraticIntensityMap8BitFilter;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -23,7 +24,6 @@ import ij.ImagePlus;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.buildLocalOverlapTileSpec;
-import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.showTileSpec;
 
 public class WaferCrossZIntensityAdjustTest {
@@ -56,11 +56,11 @@ public class WaferCrossZIntensityAdjustTest {
             final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTilesForZRange(alignedStack, minZ, maxZ);
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
-            // quadratic
-            //final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
-
             // affine
-            final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS );
+            //final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS );
+
+            // quadratic
+            final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
 
             new ImageJ();
 
@@ -74,17 +74,6 @@ public class WaferCrossZIntensityAdjustTest {
                 showTileSpec("original " + tileId, tileSpec, visualizeRenderScale, imageProcessorCache);
 
                 if(!onlyShowOriginal) {
-
-                	// quadratic
-                	/*
-                    final OnTheFlyIntensityQuadratic correctedTile =
-                            corrected.stream()
-                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().contains(tileNumber))
-                                    .findFirst()
-                                    .orElseThrow();
-					*/
-
-                	// affine
                     final OnTheFlyIntensity correctedTile =
                             corrected.stream()
                                     .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().contains(tileNumber))
@@ -93,17 +82,9 @@ public class WaferCrossZIntensityAdjustTest {
 
                     final double[][] coefficients = correctedTile.getCoefficients();
 
-                    // quadratic
-                    /*
-                    final TileSpec correctedTileSpec = deriveTileSpecWithFilterQuadratic(tileSpec,
-                                                                                         AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
-                                                                                         coefficients);
-					*/
-
-                    // affine
                     final TileSpec correctedTileSpec = deriveTileSpecWithFilter(tileSpec,
-                            AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
-                            coefficients);
+                                                                                AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+                                                                                coefficients);
 
                     showTileSpec("corrected " + tileId, correctedTileSpec, visualizeRenderScale, imageProcessorCache);
                 }
@@ -124,14 +105,27 @@ public class WaferCrossZIntensityAdjustTest {
         new ImagePlus(title, ipwm.ip.convertToByteProcessor()).show();
     }
 
-    public static TileSpec deriveTileSpecWithFilterQuadratic(final TileSpec tileSpec,
-                                                             final int numCoefficients,
-                                                             final double[][] coefficients) {
+    public static TileSpec deriveTileSpecWithFilter(final TileSpec tileSpec,
+            final int numCoefficients,
+            final double[][] coefficients) {
         final TileSpec derivedTileSpec = tileSpec.slowClone();
-        final QuadraticIntensityMap8BitFilter filter =
-                new QuadraticIntensityMap8BitFilter(numCoefficients, numCoefficients, 3, coefficients);
-        final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(),
-                                                     filter.toParametersMap());
+        final int numPolynomialCoefficients = (coefficients == null) ? 0 : coefficients[0].length;
+        final Filter filter;
+
+        switch (numPolynomialCoefficients) {
+            case 2:
+                filter = new LinearIntensityMap8BitFilter(numCoefficients, numCoefficients, 2, coefficients);
+                break;
+
+            case 3:
+                filter = new QuadraticIntensityMap8BitFilter(numCoefficients, numCoefficients, 3, coefficients);
+                break;
+
+            default:
+                throw new IllegalArgumentException("Cannot instantiate 8bit intensity filter for " + numPolynomialCoefficients + " coefficients.");
+        }
+
+        final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
         derivedTileSpec.setFilterSpec(filterSpec);
         derivedTileSpec.convertSingleChannelSpecToLegacyForm();
         return derivedTileSpec;

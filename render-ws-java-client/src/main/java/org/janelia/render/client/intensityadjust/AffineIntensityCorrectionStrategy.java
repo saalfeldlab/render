@@ -21,12 +21,13 @@ public class AffineIntensityCorrectionStrategy implements IntensityCorrectionStr
 	static InterpolatedAffineModel1D<InterpolatedAffineModel1D<AffineModel1D, TranslationModel1D>, IdentityModel> modelTemplate;
 
 	public AffineIntensityCorrectionStrategy(final double lambda1, final double lambda2) {
-		 modelTemplate = new InterpolatedAffineModel1D<InterpolatedAffineModel1D<AffineModel1D, TranslationModel1D>, IdentityModel>(
-				new InterpolatedAffineModel1D<AffineModel1D, TranslationModel1D>(
+		 modelTemplate = new InterpolatedAffineModel1D<>(
+				new InterpolatedAffineModel1D<>(
 						new AffineModel1D(), new TranslationModel1D(), lambda1),
 				new IdentityModel(), lambda2);
 	}
 
+	@Override
 	// TODO: this code should be computed on-the-fly as a function of the coefficients
 	public ArrayList<OnTheFlyIntensity> getOnTheFlyIntensities(
 			final List<MinimalTileSpecWrapper> patches,
@@ -53,6 +54,7 @@ public class AffineIntensityCorrectionStrategy implements IntensityCorrectionStr
 	}
 
 	@Override
+	@SuppressWarnings("unchecked") // modelTemplate is always of the type given above
 	public <M extends Model<M>> M getModelFor(MinimalTileSpecWrapper p) {
 		return (M) modelTemplate.copy();
 	}

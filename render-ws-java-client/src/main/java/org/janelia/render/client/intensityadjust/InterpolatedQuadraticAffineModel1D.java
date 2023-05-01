@@ -4,6 +4,7 @@ import mpicbg.models.Affine1D;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedModel;
 import mpicbg.models.Model;
+import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
 
@@ -17,7 +18,8 @@ import java.util.Collection;
  */
 public class InterpolatedQuadraticAffineModel1D<A extends Model<A> & Quadratic1D<A>, B extends Model<B> & Affine1D<B>>
 		extends InterpolatedModel<A, B, InterpolatedQuadraticAffineModel1D<A, B>>
-		implements Model<InterpolatedQuadraticAffineModel1D<A, B>>, Quadratic1D<InterpolatedQuadraticAffineModel1D<A, B>> {
+		implements Model<InterpolatedQuadraticAffineModel1D<A, B>>, Quadratic1D<InterpolatedQuadraticAffineModel1D<A, B>>, Affine1D<InterpolatedQuadraticAffineModel1D<A, B>> {
+	// TODO: right now, this implements Affine1D to have a common interface with AffineModel1D; this should be changed when an alternative is available!
 
 	private static final long serialVersionUID = 7416951399166453006L;
 	protected QuadraticModel1D quadratic = null;
@@ -54,8 +56,28 @@ public class InterpolatedQuadraticAffineModel1D<A extends Model<A> & Quadratic1D
 	}
 
 	@Override
+	public void preConcatenate(final InterpolatedQuadraticAffineModel1D<A, B> model) {
+		throw new UnsupportedOperationException("'preConcatenate' not implemented for InterpolatedQuadraticAffineModel1D.");
+	}
+
+	@Override
+	public void concatenate(final InterpolatedQuadraticAffineModel1D<A, B> model) {
+		throw new UnsupportedOperationException("'preConcatenate' not implemented for InterpolatedQuadraticAffineModel1D.");
+	}
+
+	@Override
 	public void toArray(final double[] data) {
 		this.quadratic.toArray(data);
+	}
+
+	@Override
+	public void toMatrix(final double[][] doubles) {
+		throw new UnsupportedOperationException("'preConcatenate' not implemented for InterpolatedQuadraticAffineModel1D.");
+	}
+
+	@Override
+	public InterpolatedQuadraticAffineModel1D<A, B> createInverse() {
+		return null;
 	}
 
 	@Override
@@ -63,5 +85,15 @@ public class InterpolatedQuadraticAffineModel1D<A extends Model<A> & Quadratic1D
 		final InterpolatedQuadraticAffineModel1D<A, B> copy = new InterpolatedQuadraticAffineModel1D<>(a.copy(), b.copy(), lambda);
 		copy.cost = this.cost;
 		return copy;
+	}
+
+	@Override
+	public double[] applyInverse(final double[] doubles) throws NoninvertibleModelException {
+		throw new UnsupportedOperationException("'preConcatenate' not implemented for InterpolatedQuadraticAffineModel1D.");
+	}
+
+	@Override
+	public void applyInverseInPlace(final double[] doubles) throws NoninvertibleModelException {
+		throw new UnsupportedOperationException("'applyInverseInPlace' not implemented for InterpolatedQuadraticAffineModel1D.");
 	}
 }

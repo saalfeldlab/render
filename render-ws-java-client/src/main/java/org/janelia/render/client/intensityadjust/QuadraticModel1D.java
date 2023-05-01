@@ -213,12 +213,12 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> implements
 	}
 
 	@Override
-	public void preConcatenate(final QuadraticModel1D quadraticModel1D) {
+	public void preConcatenate(final QuadraticModel1D model) {
 		throw new UnsupportedOperationException("'preConcatenate' not implemented for QuadraticModel1D.");
 	}
 
 	@Override
-	public void concatenate(final QuadraticModel1D quadraticModel1D) {
+	public void concatenate(final QuadraticModel1D model) {
 		throw new UnsupportedOperationException("'concatenate' not implemented for QuadraticModel1D.");
 	}
 
