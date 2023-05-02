@@ -1,7 +1,8 @@
 package org.janelia.render.service;
 
 import java.net.UnknownHostException;
-import java.util.Collections;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -331,10 +332,13 @@ public class TileDataService {
 
         } else if (useLegacyNormalization) {
 
-            if (tileSpec.hasTransformWithLabel(TransformSpecMetaData.LENS_CORRECTION_LABEL)) {
+            if (tileSpec.hasTransformWithLabel(TransformSpecMetaData.LENS_CORRECTION_LABEL) ||
+                tileSpec.hasTransformWithLabel(TransformSpecMetaData.INCLUDE_LABEL)) {
 
                 // Handle a legacy client request for a stack that has labelled transforms ...
-                tileSpec.flattenAndFilterTransforms(null, EXCLUDE_AFTER_LENS, null);
+                tileSpec.flattenAndFilterTransforms(null,
+                                                    EXCLUDE_AFTER_LENS_OR_INCLUDE,
+                                                    null);
 
             } else {
 
@@ -457,6 +461,7 @@ public class TileDataService {
 
     private static final Logger LOG = LoggerFactory.getLogger(TileDataService.class);
 
-    private static final Set<String> EXCLUDE_AFTER_LENS =
-            Collections.singleton(TransformSpecMetaData.LENS_CORRECTION_LABEL);
+    private static final Set<String> EXCLUDE_AFTER_LENS_OR_INCLUDE =
+            new HashSet<>(Arrays.asList(TransformSpecMetaData.LENS_CORRECTION_LABEL,
+                                        TransformSpecMetaData.INCLUDE_LABEL));
 }
