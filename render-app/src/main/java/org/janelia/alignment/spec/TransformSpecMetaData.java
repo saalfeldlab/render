@@ -15,6 +15,9 @@ public class TransformSpecMetaData implements Serializable {
     /** The default label for a lens correction transform. */
     public static final String LENS_CORRECTION_LABEL = "lens";
 
+    /** Indicates that the transform should be included when rendering tiles for point match derivation. */
+    public static final String INCLUDE_LABEL = "include";
+
     private Set<String> labels;
 
     public TransformSpecMetaData() {

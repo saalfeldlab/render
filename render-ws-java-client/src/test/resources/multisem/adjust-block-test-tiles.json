@@ -1,0 +1,80 @@
+[
+  {
+    "tileId": "045_000004_016_20220401_183940.1260.0",
+    "layout": {
+      "sectionId": "1260.0",
+      "imageRow": 18,
+      "imageCol": 24,
+      "stageX": 1037520,
+      "stageY": -746714
+    },
+    "z": 1260,
+    "minX": 23510,
+    "minY": 28648,
+    "maxX": 25518,
+    "maxY": 30419,
+    "width": 2000,
+    "height": 1748,
+    "minIntensity": 0,
+    "maxIntensity": 255,
+    "mipmapLevels": {
+      "0": {
+        "imageUrl": "src/test/resources/multisem/045_000004_016_2022-04-01T1839402624272.png"
+      }
+    },
+    "transforms": {
+      "type": "list",
+      "specList": [
+        {
+          "className": "org.janelia.alignment.transform.ExponentialFunctionOffsetTransform",
+          "dataString": "3.6098132127557734,0.007574199877819367,-0.003004026925545074,0"
+        },
+        {
+          "className": "mpicbg.trakem2.transform.AffineModel2D",
+          "dataString": "1.0019858823041552 0.010459056537363724 -2.205291006182435E-4 1.0007295769528535 23514.862609022664 28648.179638341582"
+        }
+      ]
+    },
+    "meshCellSize": 64
+  },
+  {
+    "tileId": "045_000004_016_20220403_125446.1266.0",
+    "layout": {
+      "sectionId": "1266.0",
+      "imageRow": 18,
+      "imageCol": 24,
+      "stageX": 1037311,
+      "stageY": -746585
+    },
+    "z": 1266,
+    "minX": 23611,
+    "minY": 28446,
+    "maxX": 25620,
+    "maxY": 30216,
+    "width": 2000,
+    "height": 1748,
+    "minIntensity": 0,
+    "maxIntensity": 255,
+    "mipmapLevels": {
+      "0": {
+        "imageUrl": "src/test/resources/multisem/045_000004_016_2022-04-03T1254469228468.png"
+      }
+    },
+    "transforms": {
+      "type": "list",
+      "specList": [
+        {
+          "type": "leaf",
+          "className": "org.janelia.alignment.transform.ExponentialFunctionOffsetTransform",
+          "dataString": "3.451247733782417,0.008085485657723056,-0.0019297179432375888,0"
+        },
+        {
+          "type": "leaf",
+          "className": "mpicbg.trakem2.transform.AffineModel2D",
+          "dataString": "1.0020574770327664 0.009823017616939857 -4.813099052380553E-4 1.0010937939714293 23616.12462053671 28446.10820518722"
+        }
+      ]
+    },
+    "meshCellSize": 64
+  }
+]
