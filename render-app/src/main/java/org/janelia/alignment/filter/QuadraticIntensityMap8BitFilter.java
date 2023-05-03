@@ -4,25 +4,15 @@ import ij.ImagePlus;
 import ij.ImageStack;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
-import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.imageplus.FloatImagePlus;
-import net.imglib2.img.imageplus.ImagePlusImgs;
-import net.imglib2.type.numeric.real.FloatType;
-import org.janelia.alignment.intensity.LinearIntensityMap;
+
 import org.janelia.alignment.intensity.QuadraticIntensityMap;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.imageplus.ImagePlusImgs;
+import net.imglib2.type.numeric.real.FloatType;
 
-public class QuadraticIntensityMap8BitFilter implements Filter {
-
-    private int numberOfRegionRows;
-    private int numberOfRegionColumns;
-    private int coefficientsPerRegion;
-    private double[][] coefficients;
+public class QuadraticIntensityMap8BitFilter extends IntensityMap8BitFilter {
 
     // empty constructor required to create instances from specifications
     @SuppressWarnings("unused")
@@ -31,75 +21,10 @@ public class QuadraticIntensityMap8BitFilter implements Filter {
     }
 
     public QuadraticIntensityMap8BitFilter(final int numberOfRegionRows,
-            final int numberOfRegionColumns,
-            final int coefficientsPerRegion,
-            final double[][] coefficients) {
-        this.numberOfRegionRows = numberOfRegionRows;
-        this.numberOfRegionColumns = numberOfRegionColumns;
-        this.coefficientsPerRegion = coefficientsPerRegion;
-        this.coefficients = coefficients;
-    }
-
-    public int getNumberOfRegionRows() {
-        return numberOfRegionRows;
-    }
-
-    public double[][] getCoefficients() {
-        return coefficients;
-    }
-
-    @Override
-    public void init(final Map<String, String> params) {
-        final String[] values = Filter.getCommaSeparatedStringParameter(DATA_STRING_NAME, params);
-        if (values.length < 4) {
-            throw new IllegalArgumentException(DATA_STRING_NAME +
-                                               " must have pattern <numberOfRegionRows>,<numberOfRegionColumns>,<coefficientsPerRegion>,[coefficient]...");
-        }
-        this.numberOfRegionRows = Integer.parseInt(values[0]);
-        this.numberOfRegionColumns = Integer.parseInt(values[1]);
-        this.coefficientsPerRegion = Integer.parseInt(values[2]);
-        final int numberOfRegions = this.numberOfRegionRows * this.numberOfRegionColumns;
-
-        final int expectedNumberOfCoefficients = numberOfRegions * this.coefficientsPerRegion;
-        final int actualNumberOfCoefficients = values.length - 3;
-        if (actualNumberOfCoefficients != expectedNumberOfCoefficients) {
-            throw new IllegalArgumentException(DATA_STRING_NAME + " contains " + actualNumberOfCoefficients +
-                                               " coefficient values instead of " + expectedNumberOfCoefficients);
-        }
-
-        this.coefficients = new double[numberOfRegions][this.coefficientsPerRegion];
-        int region = 0;
-        for (int i = 3; i < values.length; i+=this.coefficientsPerRegion) {
-            this.coefficients[region][0] = Double.parseDouble(values[i]);
-            this.coefficients[region][1] = Double.parseDouble(values[i+1]);
-            this.coefficients[region][2] = Double.parseDouble(values[i+2]);
-            region++;
-        }
-    }
-
-    public String toDataString() {
-        final StringBuilder sb = new StringBuilder();
-        sb.append(numberOfRegionRows).append(',');
-        sb.append(numberOfRegionColumns).append(',');
-        sb.append(coefficientsPerRegion);
-        for (final double[] regionCoefficients : coefficients) {
-            for (final double coefficient : regionCoefficients) {
-                sb.append(',').append(coefficient);
-            }
-        }
-        return sb.toString();
-    }
-
-    @Override
-    public String toString() {
-        return this.toDataString();
-    }
-
-    @Override
-    public Map<String, String> toParametersMap() {
-        final Map<String, String> map = new HashMap<>();
-        map.put(DATA_STRING_NAME, this.toDataString());
-        return map;
+                                           final int numberOfRegionColumns,
+                                           final int coefficientsPerRegion,
+                                           final double[][] coefficients) {
+        super(numberOfRegionRows, numberOfRegionColumns, coefficientsPerRegion, coefficients);
     }
 
     /**
@@ -121,7 +46,6 @@ public class QuadraticIntensityMap8BitFilter implements Filter {
         fp.resetMinAndMax();
         final double min = 0;
         final double max = 255;
-        System.out.println(min + ", " + max);
         final double delta = max - min;
 
         for (int i = 0; i < coefficients.length; ++i) {
