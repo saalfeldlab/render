@@ -23,6 +23,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
+import org.janelia.render.client.parameter.IntensityAdjustParameters.StrategyName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,6 +36,7 @@ public class IntensityCorrectionWorker implements Serializable {
     private final List<Double> zValues;
     private final StackMetaData stackMetaData;
     private final String slicePathFormatSpec;
+    private final IntensityCorrectionStrategy strategy;
 
     public IntensityCorrectionWorker(final IntensityAdjustParameters parameters,
                                      final RenderDataClient dataClient) throws IOException {
@@ -46,6 +48,20 @@ public class IntensityCorrectionWorker implements Serializable {
                                                   parameters.zValues);
         if (this.zValues.size() == 0) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
+        }
+
+        if (StrategyName.AFFINE.equals(parameters.strategyName)) {
+
+            this.strategy = new AffineIntensityCorrectionStrategy(parameters.lambda1,
+                                                                  parameters.lambda2);
+
+        } else if (StrategyName.FIRST_LAYER_QUADRATIC.equals(parameters.strategyName)) {
+
+            this.strategy = new FirstLayerQuadraticIntensityCorrectionStrategy(parameters.lambda1,
+                                                                               this.zValues.get(0));
+
+        } else {
+            throw new IllegalArgumentException(parameters.strategyName + " strategy is not supported");
         }
 
         this.stackMetaData = dataClient.getStackMetaData(parameters.stack);
@@ -111,7 +127,7 @@ public class IntensityCorrectionWorker implements Serializable {
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 imageProcessorCache,
                                                                 numCoefficients,
-                                                                new AffineIntensityCorrectionStrategy(), // TODO: pull from parameters instead of hard code
+                                                                strategy,
                                                                 1);
 
             for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
@@ -183,7 +199,7 @@ public class IntensityCorrectionWorker implements Serializable {
                                                                        imageProcessorCache,
                                                                        integralZ,
                                                                        AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
-                                                                       new AffineIntensityCorrectionStrategy(), // TODO: pull from parameters instead of hard code
+                                                                       strategy,
                                                                        1);
 //                break;
 //            default:

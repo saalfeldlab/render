@@ -1,5 +1,9 @@
 package org.janelia.render.client.parameter;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -10,10 +14,7 @@ import java.util.List;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.Parameters;
-import com.beust.jcommander.ParametersDelegate;
+import org.janelia.render.client.intensityadjust.AffineIntensityCorrectionStrategy;
 
 /**
  * Parameters for rendering intensity adjusted montage scapes for layers within a stack.
@@ -26,6 +27,10 @@ public class IntensityAdjustParameters
 
     public enum CorrectionMethod {
         DEFAULT, GAUSS, GAUSS_WEIGHTED, GLOBAL_PER_SLICE
+    }
+
+    public enum StrategyName {
+        AFFINE, FIRST_LAYER_QUADRATIC
     }
 
     @ParametersDelegate
@@ -74,6 +79,22 @@ public class IntensityAdjustParameters
             names = "--correctionMethod",
             description = "Correction method to use")
     public CorrectionMethod correctionMethod;
+
+    @Parameter(
+            names = "--strategy",
+            description = "Strategy to use")
+    public StrategyName strategyName = StrategyName.AFFINE;
+
+
+    @Parameter(
+            names = "--lambda1",
+            description = "First lambda for strategy model")
+    public Double lambda1 = AffineIntensityCorrectionStrategy.DEFAULT_LAMBDA;
+
+    @Parameter(
+            names = "--lambda2",
+            description = "Second lambda for strategy model")
+    public Double lambda2 = AffineIntensityCorrectionStrategy.DEFAULT_LAMBDA;
 
     @Parameter(
             names = "--completeCorrectedStack",
