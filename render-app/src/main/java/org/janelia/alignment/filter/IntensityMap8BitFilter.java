@@ -11,12 +11,6 @@ public abstract class IntensityMap8BitFilter
     protected int coefficientsPerRegion;
     protected double[][] coefficients;
 
-    // empty constructor required to create instances from specifications
-    @SuppressWarnings("unused")
-    public IntensityMap8BitFilter() {
-        this(0, 0, 0, new double[0][0]);
-    }
-
     public IntensityMap8BitFilter(final int numberOfRegionRows,
                                   final int numberOfRegionColumns,
                                   final int coefficientsPerRegion,
