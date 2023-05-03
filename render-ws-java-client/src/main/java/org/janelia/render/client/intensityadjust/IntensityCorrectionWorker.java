@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 
@@ -57,8 +58,13 @@ public class IntensityCorrectionWorker implements Serializable {
 
         } else if (StrategyName.FIRST_LAYER_QUADRATIC.equals(parameters.strategyName)) {
 
-            this.strategy = new FirstLayerQuadraticIntensityCorrectionStrategy(parameters.lambda1,
-                                                                               this.zValues.get(0));
+            this.strategy = new QuadraticIntensityCorrectionStrategy(parameters.lambda1,
+                                                                     this.zValues.get(0));
+
+        } else if (StrategyName.ALL_LAYERS_QUADRATIC.equals(parameters.strategyName)) {
+
+            this.strategy = new QuadraticIntensityCorrectionStrategy(parameters.lambda1,
+                                                                     new HashSet<>(this.zValues));
 
         } else {
             throw new IllegalArgumentException(parameters.strategyName + " strategy is not supported");

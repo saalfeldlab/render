@@ -30,7 +30,7 @@ public class IntensityAdjustParameters
     }
 
     public enum StrategyName {
-        AFFINE, FIRST_LAYER_QUADRATIC
+        AFFINE, FIRST_LAYER_QUADRATIC, ALL_LAYERS_QUADRATIC
     }
 
     @ParametersDelegate

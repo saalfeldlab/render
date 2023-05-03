@@ -12,19 +12,30 @@ import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.intensityadjust.virtual.QuadraticOnTheFlyIntensity;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-public class FirstLayerQuadraticIntensityCorrectionStrategy implements IntensityCorrectionStrategy {
+public class QuadraticIntensityCorrectionStrategy
+		implements IntensityCorrectionStrategy {
 
-	static InterpolatedQuadraticAffineModel1D<?,?> firstLayerModelTemplate;
+	static InterpolatedQuadraticAffineModel1D<?,?> quadraticModelTemplate;
 	static InterpolatedQuadraticAffineModel1D<?,?> genericModelTemplate;
-	private final Double firstLayerZ;
+	private final Set<Double> quadraticZValues;
 
-	public FirstLayerQuadraticIntensityCorrectionStrategy(final double lambda, final Double firstLayerZ) {
-		this.firstLayerZ = firstLayerZ;
-		firstLayerModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
-						new QuadraticModel1D(), new IdentityModel(), lambda); // mainly qudratic, regularized with identity
+	public QuadraticIntensityCorrectionStrategy(final double lambda,
+												final Double firstLayerZ) {
+		this(lambda, new HashSet<>(Collections.singletonList(firstLayerZ)));
+	}
+
+	public QuadraticIntensityCorrectionStrategy(final double lambda,
+												final Set<Double> quadraticZValues) {
+		this.quadraticZValues = quadraticZValues;
+		quadraticModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
+						new QuadraticModel1D(), new IdentityModel(), lambda); // mainly quadratic, regularized with identity
+		// TODO: should translation model be added to quadraticModelTemplate?
 		genericModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
 				new InterpolatedQuadraticAffineModel1D<>(
 						new InterpolatedQuadraticAffineModel1D<>(
@@ -35,11 +46,12 @@ public class FirstLayerQuadraticIntensityCorrectionStrategy implements Intensity
 
 	@Override
 	@SuppressWarnings("unchecked") // modelTemplate is always of the type given above
-	public <M extends Model<M>> M getModelFor(MinimalTileSpecWrapper p) {
-		if (p.getZ() == firstLayerZ)
-			return (M) firstLayerModelTemplate.copy();
-		else
+	public <M extends Model<M>> M getModelFor(final MinimalTileSpecWrapper p) {
+		if (quadraticZValues.contains(p.getZ())) {
+			return (M) quadraticModelTemplate.copy();
+		} else {
 			return (M) genericModelTemplate.copy();
+		}
 	}
 
 	@Override
