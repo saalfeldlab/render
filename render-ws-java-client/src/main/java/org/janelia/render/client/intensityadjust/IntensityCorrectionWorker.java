@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -29,28 +28,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Core logic for distributed intensity correction processing that can be used for either LSF Array or Spark jobs.
- *
- * @author Eric Trautman
  */
 public class IntensityCorrectionWorker implements Serializable {
-
-	public static void updateCoefficients()
-	{
-		/*
-		coeff_a = load coeffiecients for upper plane
-		coeff_b = load coeffiecients for lower plane
-
-		transforms_a = convertToAffine1D( coeff_a ) // new AffineTransform( 1 ).set( mul, add );
-		transforms_b = convertToAffine1D( coeff_b ) // new AffineTransform( 1 ).set( mul, add );
-
-		for each transform do:
-			transform_b = transform_b.preConcatenate( transform_a.inverse() );
-
-		coeff_b = createCoeffiecients( transform_b ) // Those need to be preconcatenated to the existing ones, but they are all identity transforms, so we can simply replace them directly
-		save( coeff_b)
-		discard( coeff_a)
-		*/
-	}
 
     private final IntensityAdjustParameters parameters;
     private final List<Double> zValues;
@@ -131,7 +110,9 @@ public class IntensityCorrectionWorker implements Serializable {
             final List<OnTheFlyIntensity> corrected =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 imageProcessorCache,
-                                                                numCoefficients);
+                                                                numCoefficients,
+                                                                new AffineIntensityCorrectionStrategy(), // TODO: pull from parameters instead of hard code
+                                                                1);
 
             for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
                 final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
@@ -201,7 +182,9 @@ public class IntensityCorrectionWorker implements Serializable {
                                                                        sliceRenderParameters,
                                                                        imageProcessorCache,
                                                                        integralZ,
-                                                                       AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+                                                                       AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+                                                                       new AffineIntensityCorrectionStrategy(), // TODO: pull from parameters instead of hard code
+                                                                       1);
 //                break;
 //            default:
 //                throw new UnsupportedOperationException("only support GLOBAL_PER_SLICE for hack");

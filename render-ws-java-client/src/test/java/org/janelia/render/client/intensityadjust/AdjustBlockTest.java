@@ -26,6 +26,9 @@ import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCo
  */
 public class AdjustBlockTest {
 
+    private static final IntensityCorrectionStrategy AFFINE_STRATEGY = new AffineIntensityCorrectionStrategy();
+    private static final int NUM_THREADS = 1;
+
     @Test
     public void testCorrectIntensitiesForSliceTiles() throws Exception {
 
@@ -42,7 +45,9 @@ public class AdjustBlockTest {
         final ArrayList<OnTheFlyIntensity> correctedList =
                 AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                             ImageProcessorCache.DISABLED_CACHE,
-                                                            AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+                                                            AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+                                                            AFFINE_STRATEGY,
+                                                            NUM_THREADS);
 
         validateCorrections("default order tile list",
                             correctedList,
@@ -51,6 +56,7 @@ public class AdjustBlockTest {
 
     public static void main(final String[] args) {
         try {
+
             final List<TileSpec> tileSpecs =
                     TileSpec.fromJsonArray(new FileReader("src/test/resources/multisem/adjust-block-test-tiles.json"));
 
@@ -62,7 +68,9 @@ public class AdjustBlockTest {
             final ArrayList<OnTheFlyIntensity> correctedList =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 ImageProcessorCache.DISABLED_CACHE,
-                                                                AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+                                                                AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+                                                                AFFINE_STRATEGY,
+                                                                NUM_THREADS);
 
             new ImageJ();
             showCorrections("default", correctedList);
@@ -72,7 +80,9 @@ public class AdjustBlockTest {
             final ArrayList<OnTheFlyIntensity> correctedListForReverseOrderTiles =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 ImageProcessorCache.DISABLED_CACHE,
-                                                                AdjustBlock.DEFAULT_NUM_COEFFICIENTS);
+                                                                AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+                                                                AFFINE_STRATEGY,
+                                                                NUM_THREADS);
 
             showCorrections("reverse", correctedListForReverseOrderTiles);
         } catch (final Throwable t) {

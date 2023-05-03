@@ -56,11 +56,20 @@ public class WaferCrossZIntensityAdjustTest {
             final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTilesForZRange(alignedStack, minZ, maxZ);
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
-            // affine
-            //final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS );
+            List<OnTheFlyIntensity> corrected = null;
+            if (! onlyShowOriginal) {
+                final int numThreads = 12;
 
-            // quadratic
-            final List<OnTheFlyIntensity> corrected = onlyShowOriginal ? null : AdjustBlock.correctIntensitiesForSliceTilesQuadratic(wrappedTiles, imageProcessorCache, AdjustBlock.DEFAULT_NUM_COEFFICIENTS, minZ);
+//                final IntensityCorrectionStrategy strategy = new AffineIntensityCorrectionStrategy();
+                final IntensityCorrectionStrategy strategy = new FirstLayerQuadraticIntensityCorrectionStrategy(0.01,
+                                                                                                                minZ);
+
+                corrected = AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                                        imageProcessorCache,
+                                                                        AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
+                                                                        strategy,
+                                                                        numThreads);
+            }
 
             new ImageJ();
 

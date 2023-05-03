@@ -51,6 +51,7 @@ public class OcellarCrossZIntensityCorrection {
                 new ImageJ();
             }
 
+            @SuppressWarnings("unused")
             final FilterSpec filterSpec = deriveCrossLayerFilterSpec(dataClient,
                                                                      alignedIntensityCorrectedStack,
                                                                      lastFourTileZ,
@@ -124,7 +125,9 @@ public class OcellarCrossZIntensityCorrection {
             final List<OnTheFlyIntensity> corrected =
                     AdjustBlock.correctIntensitiesForSliceTiles(alignedOverlapBoxes,
                                                                 imageProcessorCache,
-                                                                numCoefficients);
+                                                                numCoefficients,
+                                                                new AffineIntensityCorrectionStrategy(),
+                                                                1);
 
             final double[][] pCoefficients = corrected.get(0).getCoefficients();
             final double[][] qCoefficients = corrected.get(1).getCoefficients();
@@ -261,6 +264,7 @@ public class OcellarCrossZIntensityCorrection {
         new ImagePlus(title, ipwm.ip.convertToByteProcessor()).show();
     }
 
+    @SuppressWarnings("unused")
     public static void addAndSaveRelativeFilter(final RenderDataClient dataClient,
                                                 final String alignedIntensityCorrectedStack,
                                                 final double firstSingleTileZ,

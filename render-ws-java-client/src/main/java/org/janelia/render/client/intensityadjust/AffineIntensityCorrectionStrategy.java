@@ -18,7 +18,13 @@ import java.util.Map;
 
 public class AffineIntensityCorrectionStrategy implements IntensityCorrectionStrategy {
 
+	public static double DEFAULT_LAMBDA = 0.01;
+
 	static InterpolatedAffineModel1D<InterpolatedAffineModel1D<AffineModel1D, TranslationModel1D>, IdentityModel> modelTemplate;
+
+	public AffineIntensityCorrectionStrategy() {
+		this(DEFAULT_LAMBDA, DEFAULT_LAMBDA);
+	}
 
 	public AffineIntensityCorrectionStrategy(final double lambda1, final double lambda2) {
 		 modelTemplate = new InterpolatedAffineModel1D<>(
@@ -55,7 +61,7 @@ public class AffineIntensityCorrectionStrategy implements IntensityCorrectionStr
 
 	@Override
 	@SuppressWarnings("unchecked") // modelTemplate is always of the type given above
-	public <M extends Model<M>> M getModelFor(MinimalTileSpecWrapper p) {
+	public <M extends Model<M>> M getModelFor(final MinimalTileSpecWrapper p) {
 		return (M) modelTemplate.copy();
 	}
 

@@ -514,35 +514,12 @@ public class AdjustBlock {
 	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForSliceTiles(
 			final List<MinimalTileSpecWrapper> sliceTiles,
 			final ImageProcessorCache imageProcessorCache,
-			final int numCoefficients)
-			throws InterruptedException, ExecutionException {
-
-		final double scale = 0.1;
-		final double lambda1 = 0.01;
-		final double lambda2 = 0.01;
-		final double neighborWeight = 0.1;
-		final int iterations = 2000;
-
-		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
-		return new IntensityMatcher().match(
-				sliceTiles,
-				scale,
-				numCoefficients,
-				new AffineIntensityCorrectionStrategy(lambda1, lambda2),
-				neighborWeight,
-				iterations,
-				imageProcessorCache);
-	}
-
-	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForSliceTilesQuadratic(
-			final List<MinimalTileSpecWrapper> sliceTiles,
-			final ImageProcessorCache imageProcessorCache,
 			final int numCoefficients,
-			final Double firstLayerZ)
+			final IntensityCorrectionStrategy strategy,
+			final int numThreads)
 			throws InterruptedException, ExecutionException {
 
 		final double scale = 0.1;
-		final double lambda = 0.01;
 		final double neighborWeight = 0.1;
 		final int iterations = 2000;
 
@@ -551,10 +528,11 @@ public class AdjustBlock {
 				sliceTiles,
 				scale,
 				numCoefficients,
-				new FirstLayerQuadraticIntensityCorrectionStrategy(lambda, firstLayerZ),
+				strategy,
 				neighborWeight,
 				iterations,
-				imageProcessorCache);
+				imageProcessorCache,
+				numThreads);
 	}
 
 	public static ImageProcessorWithMasks renderIntensityAdjustedSliceGlobalPerSlice(
@@ -562,7 +540,9 @@ public class AdjustBlock {
 			final RenderParameters sliceRenderParameters,
 			final ImageProcessorCache imageProcessorCache,
 			final int z,
-			final int numCoefficients) throws InterruptedException, ExecutionException
+			final int numCoefficients,
+			final IntensityCorrectionStrategy strategy,
+			final int numThreads) throws InterruptedException, ExecutionException
 	{
 		final List<MinimalTileSpecWrapper> tilesForZ = wrapTileSpecs(resolvedTiles);
 		//final HashMap< Integer, double[] > adjustments = new HashMap<>();
@@ -570,7 +550,9 @@ public class AdjustBlock {
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
 		final ArrayList < OnTheFlyIntensity > corrected = correctIntensitiesForSliceTiles(tilesForZ,
 																						  imageProcessorCache,
-																						  numCoefficients);
+																						  numCoefficients,
+																						  strategy,
+																						  numThreads);
 
 		// TODO: why is fuseFinal limited to 2^31, how was the same thing done in TrakEM2?
 		return fuseFinal(sliceRenderParameters, tilesForZ, corrected, imageProcessorCache);
@@ -794,7 +776,9 @@ public class AdjustBlock {
 															   sliceRenderParameters,
 															   imageProcessorCache,
 															   z,
-															   DEFAULT_NUM_COEFFICIENTS);
+															   DEFAULT_NUM_COEFFICIENTS,
+															   new AffineIntensityCorrectionStrategy(),
+															   1);
 			stack3d.addSlice( slice.ip );
 		}
 

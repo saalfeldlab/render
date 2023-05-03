@@ -189,7 +189,8 @@ public class IntensityMatcher
 			final IntensityCorrectionStrategy strategy,
 			final double neighborWeight,
 			final int iterations,
-			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException
+			final ImageProcessorCache imageProcessorCache,
+			final int numThreads) throws InterruptedException, ExecutionException
 	{
 		final PointMatchFilter filter = strategy.provideOutlierRemoval();
 
@@ -240,7 +241,6 @@ public class IntensityMatcher
 			}
 		}
 
-		final int numThreads = 12;
 		final int meshResolution = 64; //?
 
 		System.out.println( "Matching intensities using " + numThreads + " threads ... " );
