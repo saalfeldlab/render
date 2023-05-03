@@ -5,10 +5,12 @@ import static org.janelia.alignment.util.ImageProcessorCache.DEFAULT_MAX_CACHED_
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -66,7 +68,12 @@ public class AdjustBlock {
 	public static List< MinimalTileSpecWrapper > wrapTileSpecs(final ResolvedTileSpecCollection resolvedTiles)
 	{
 		final List< MinimalTileSpecWrapper > data = new ArrayList<>(resolvedTiles.getTileCount());
-		for ( final TileSpec tileSpec : resolvedTiles.getTileSpecs() )
+		// tile order changes adjustment results, so sort tiles by id to ensure (somewhat) consistent results
+		final List<TileSpec> sortedTileSpecs = resolvedTiles.getTileSpecs()
+				.stream()
+				.sorted(Comparator.comparing(TileSpec::getTileId))
+				.collect(Collectors.toList());
+		for ( final TileSpec tileSpec : sortedTileSpecs )
 		{
 			//final AffineModel2D lastTransform = SolveTools.loadLastTransformFromSpec( tileSpec );
 			//data.add( new ValuePair<>( lastTransform, new MinimalTileSpec( tileSpec ) ) );
