@@ -2,6 +2,8 @@ package org.janelia.render.client.intensityadjust.virtual;
 
 import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
+
+import org.janelia.alignment.filter.IntensityMap8BitFilter;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 
@@ -43,9 +45,7 @@ public abstract class OnTheFlyIntensity {
 
 		// Need to reset intensity range back to full 8-bit before converting to byte processor!
 		correctedSource.setMinAndMax(0, 255);
-		final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
-
-		return correctedSource8Bit;
+		return correctedSource.convertToByteProcessor();
 	}
 
 	public abstract FloatProcessor computeIntensityCorrectionOnTheFly(
@@ -53,4 +53,6 @@ public abstract class OnTheFlyIntensity {
 			final double[][] coefficients, // all coefficients needed for a single image (depends how its broken up initially), e.g., if each tile is a 1D affine, 2 numbers
 			final int numCoefficients, // e.g. if numCoefficients==4, then we have 16 tiles per image
 			final ImageProcessorCache imageProcessorCache);
+
+	public abstract IntensityMap8BitFilter toFilter();
 }

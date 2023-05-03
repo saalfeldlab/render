@@ -14,7 +14,7 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.filter.FilterSpec;
-import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
+import org.janelia.alignment.filter.IntensityMap8BitFilter;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -139,11 +139,7 @@ public class IntensityCorrectionWorker implements Serializable {
             for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
                 final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
                 final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
-                final LinearIntensityMap8BitFilter filter =
-                        new LinearIntensityMap8BitFilter(numCoefficients,
-                                                         numCoefficients,
-                                                         2,
-                                                         onTheFlyIntensity.getCoefficients());
+                final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
                 final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(),
                                                              filter.toParametersMap());
                 tileSpec.setFilterSpec(filterSpec);

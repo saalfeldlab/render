@@ -2,18 +2,22 @@ package org.janelia.render.client.intensityadjust.virtual;
 
 import ij.ImagePlus;
 import ij.ImageStack;
-import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
+
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+
+import org.janelia.alignment.filter.IntensityMap8BitFilter;
+import org.janelia.alignment.filter.QuadraticIntensityMap8BitFilter;
+import org.janelia.alignment.intensity.QuadraticIntensityMap;
+import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
+
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.imageplus.FloatImagePlus;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.type.numeric.real.FloatType;
-import org.janelia.alignment.intensity.QuadraticIntensityMap;
-import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
-import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 
 public class QuadraticOnTheFlyIntensity extends OnTheFlyIntensity {
@@ -72,5 +76,14 @@ public class QuadraticOnTheFlyIntensity extends OnTheFlyIntensity {
 
 		return fp;
 	}
+
+	@Override
+	public IntensityMap8BitFilter toFilter() {
+		return new QuadraticIntensityMap8BitFilter(numCoefficients,
+												   numCoefficients,
+												   3,
+												   coefficients);
+	}
+
 }
 

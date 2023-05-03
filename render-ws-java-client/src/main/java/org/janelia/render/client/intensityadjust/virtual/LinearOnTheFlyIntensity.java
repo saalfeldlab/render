@@ -1,17 +1,20 @@
 package org.janelia.render.client.intensityadjust.virtual;
 
-import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
-import org.janelia.alignment.intensity.LinearIntensityMap;
-import org.janelia.render.client.solver.visualize.VisualizeTools;
-
 import ij.ImagePlus;
 import ij.ImageStack;
 import ij.process.FloatProcessor;
+
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+
+import org.janelia.alignment.filter.IntensityMap8BitFilter;
+import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
+import org.janelia.alignment.intensity.LinearIntensityMap;
+import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
+
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.imageplus.FloatImagePlus;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.type.numeric.real.FloatType;
 
@@ -40,7 +43,7 @@ public class LinearOnTheFlyIntensity extends OnTheFlyIntensity
 		final ImageProcessorWithMasks imp = VisualizeTools.getUntransformedProcessorWithMasks(p.getTileSpec(),
 																							  imageProcessorCache);
 
-		FloatProcessor fp = imp.ip.convertToFloatProcessor();
+		final FloatProcessor fp = imp.ip.convertToFloatProcessor();
 		fp.resetMinAndMax();
 		final double min = 0;//fp.getMin();//patch.getMin();
 		final double max = 255;//fp.getMax();//patch.getMax();
@@ -72,10 +75,9 @@ public class LinearOnTheFlyIntensity extends OnTheFlyIntensity
 		//new File( itsPath ).getParentFile().mkdirs();
 		//IJ.saveAs( new ImagePlus( "", coefficientsStack ), "tif", itsPath );
 
-		@SuppressWarnings({"rawtypes", "unchecked"})
 		final LinearIntensityMap<FloatType> map =
 				new LinearIntensityMap<FloatType>(
-						(FloatImagePlus)ImagePlusImgs.from( new ImagePlus( "", coefficientsStack ) ));
+						ImagePlusImgs.from( new ImagePlus( "", coefficientsStack ) ));
 
 		final long[] dims = new long[]{imp.getWidth(), imp.getHeight()};
 		final Img< FloatType > img = ArrayImgs.floats((float[])fp.getPixels(), dims);
@@ -89,4 +91,11 @@ public class LinearOnTheFlyIntensity extends OnTheFlyIntensity
 		return fp;
 	}
 
+	@Override
+	public IntensityMap8BitFilter toFilter() {
+		return new LinearIntensityMap8BitFilter(numCoefficients,
+												numCoefficients,
+												2,
+												coefficients);
+	}
 }
