@@ -1,10 +1,8 @@
 package org.janelia.render.client.intensityadjust;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
+import org.janelia.render.client.parameter.IntensityAdjustParameters.StrategyName;
 import org.junit.Test;
 
 /**
@@ -22,8 +20,10 @@ public class IntensityAdjustedScapeClientTest {
     public static void main(final String[] args) {
 
         final String alignedStackName = "slab_045_all_align_t2_mfov_4_center_19";
-        final String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        final String intensityCorrectedStackName = alignedStackName + "_ic_" + timestamp;
+//        final StrategyName strategyName = StrategyName.AFFINE;
+        final StrategyName strategyName = StrategyName.FIRST_LAYER_QUADRATIC;
+//        final StrategyName strategyName = StrategyName.ALL_LAYERS_QUADRATIC;
+        final String intensityCorrectedStackName = alignedStackName + "_ic_" + strategyName;
 
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[] {
                 "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
@@ -33,6 +33,7 @@ public class IntensityAdjustedScapeClientTest {
                 "--intensityCorrectedFilterStack", intensityCorrectedStackName,
                 "--completeCorrectedStack",
                 "--correctionMethod", "GLOBAL_PER_SLICE",
+                "--strategy", String.valueOf(strategyName),
 
                 // for entire stack minZ is 1260 and maxZ is 1285
 
