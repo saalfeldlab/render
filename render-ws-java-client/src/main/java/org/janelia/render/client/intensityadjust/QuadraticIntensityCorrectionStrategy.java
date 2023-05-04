@@ -22,7 +22,7 @@ public class QuadraticIntensityCorrectionStrategy
 		implements IntensityCorrectionStrategy {
 
 	static InterpolatedQuadraticAffineModel1D<?,?> quadraticModelTemplate;
-	static InterpolatedQuadraticAffineModel1D<?,?> genericModelTemplate;
+	static InterpolatedQuadraticAffineModel1D<?,?> affineModelTemplate;
 	private final Set<Double> quadraticZValues;
 
 	public QuadraticIntensityCorrectionStrategy(final double lambda,
@@ -33,10 +33,15 @@ public class QuadraticIntensityCorrectionStrategy
 	public QuadraticIntensityCorrectionStrategy(final double lambda,
 												final Set<Double> quadraticZValues) {
 		this.quadraticZValues = quadraticZValues;
+
 		quadraticModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
-						new QuadraticModel1D(), new IdentityModel(), lambda); // mainly quadratic, regularized with identity
-		// TODO: should translation model be added to quadraticModelTemplate?
-		genericModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
+				new InterpolatedQuadraticAffineModel1D<>(
+						new InterpolatedQuadraticAffineModel1D<>(
+								new QuadraticModel1D(), new AffineModel1D(), 1.0), // purely affine ...
+						new TranslationModel1D(), lambda), // ... with a bit of translation ...
+				new IdentityModel(), lambda); // ... and a bit of identity
+
+		affineModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
 				new InterpolatedQuadraticAffineModel1D<>(
 						new InterpolatedQuadraticAffineModel1D<>(
 								new QuadraticModel1D(), new AffineModel1D(), 1.0), // purely affine ...
@@ -50,7 +55,7 @@ public class QuadraticIntensityCorrectionStrategy
 		if (quadraticZValues.contains(p.getZ())) {
 			return (M) quadraticModelTemplate.copy();
 		} else {
-			return (M) genericModelTemplate.copy();
+			return (M) affineModelTemplate.copy();
 		}
 	}
 
