@@ -21,6 +21,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.alignment.util.NeuroglancerUtil;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
@@ -227,6 +228,11 @@ public class IntensityCorrectionWorker implements Serializable {
         if (parameters.deriveFilterData() && parameters.completeCorrectedStack) {
             dataClient.setStackState(parameters.intensityCorrectedFilterStack,
                                      StackMetaData.StackState.COMPLETE);
+
+            final StackMetaData stackMetaData = dataClient.getStackMetaData(parameters.intensityCorrectedFilterStack);
+            final String ngUrl = NeuroglancerUtil.buildRenderStackUrlString("http://renderer.int.janelia.org:8080",
+                                                                            stackMetaData);
+            LOG.info("Neuroglancer URL for intensity corrected stack is: {}", ngUrl);
         }
     }
 
