@@ -1,11 +1,20 @@
 package org.janelia.alignment.spec.stack;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.io.Serializable;
+import java.net.URI;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
+import org.janelia.alignment.Utils;
 import org.janelia.alignment.json.JsonUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
 
@@ -310,6 +319,10 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         return JSON_HELPER.fromJson(json);
     }
 
+    public static StackMetaData fromJson(final Reader json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
     public static StackMetaData buildDerivedMetaData(final StackId stackId,
                                                      final StackMetaData fromStackMetaData) {
         final StackMetaData derivedMetaData = new StackMetaData(stackId, fromStackMetaData.getCurrentVersion());
@@ -318,6 +331,43 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         derivedMetaData.stats = fromStackMetaData.stats;
         return derivedMetaData;
     }
+
+    public static StackMetaData loadFromUrl(final String url) throws IllegalArgumentException {
+
+        final URI uri = Utils.convertPathOrUriStringToUri(url);
+
+        final URL urlObject;
+        try {
+            LOG.info("loadFromUrl: loading {}", uri);
+            urlObject = uri.toURL();
+        } catch (final Throwable t) {
+            throw new IllegalArgumentException("failed to convert URI '" + uri + "'", t);
+        }
+
+        StackMetaData stackMetaData = null;
+        InputStream urlStream = null;
+        try {
+            urlStream = urlObject.openStream();
+            if (urlStream != null) {
+                stackMetaData = StackMetaData.fromJson(new InputStreamReader(urlStream));
+            }
+
+        } catch (final Throwable t) {
+            throw new IllegalArgumentException("failed to load render parameters from " + urlObject, t);
+        } finally {
+            if (urlStream != null) {
+                try {
+                    urlStream.close();
+                } catch (final IOException e) {
+                    LOG.warn("failed to close " + uri + ", ignoring error", e);
+                }
+            }
+        }
+
+        return stackMetaData;
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(StackMetaData.class);
 
     private static final JsonUtils.Helper<StackMetaData> JSON_HELPER =
             new JsonUtils.Helper<>(StackMetaData.class);
