@@ -134,7 +134,7 @@ public class IntensityCorrectionWorker implements Serializable {
                                                                 imageProcessorCache,
                                                                 numCoefficients,
                                                                 strategy,
-                                                                1);
+                                                                parameters.numThreads);
 
             for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
                 final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
@@ -202,7 +202,7 @@ public class IntensityCorrectionWorker implements Serializable {
                                                                        integralZ,
                                                                        AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
                                                                        strategy,
-                                                                       1);
+                                                                       parameters.numThreads);
 //                break;
 //            default:
 //                throw new UnsupportedOperationException("only support GLOBAL_PER_SLICE for hack");

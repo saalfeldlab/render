@@ -21,8 +21,8 @@ public class IntensityAdjustedScapeClientTest {
 
         final String alignedStackName = "slab_045_all_align_t2_mfov_4_center_19";
 //        final StrategyName strategyName = StrategyName.AFFINE;
-        final StrategyName strategyName = StrategyName.FIRST_LAYER_QUADRATIC;
-//        final StrategyName strategyName = StrategyName.ALL_LAYERS_QUADRATIC;
+//        final StrategyName strategyName = StrategyName.FIRST_LAYER_QUADRATIC;
+        final StrategyName strategyName = StrategyName.ALL_LAYERS_QUADRATIC;
         final String intensityCorrectedStackName = alignedStackName + "_ic_" + strategyName;
 
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[] {
@@ -34,6 +34,7 @@ public class IntensityAdjustedScapeClientTest {
                 "--completeCorrectedStack",
                 "--correctionMethod", "GLOBAL_PER_SLICE",
                 "--strategy", String.valueOf(strategyName),
+                "--numThreads", "12",
 
                 // for entire stack minZ is 1260 and maxZ is 1285
 

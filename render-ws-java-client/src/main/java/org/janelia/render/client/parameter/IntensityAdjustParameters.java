@@ -85,6 +85,10 @@ public class IntensityAdjustParameters
             description = "Strategy to use")
     public StrategyName strategyName = StrategyName.AFFINE;
 
+    @Parameter(
+            names = "--numThreads",
+            description = "Number of threads to use")
+    public Integer numThreads = 1;
 
     @Parameter(
             names = "--lambda1",
