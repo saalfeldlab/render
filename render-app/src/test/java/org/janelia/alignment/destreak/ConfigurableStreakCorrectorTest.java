@@ -43,6 +43,19 @@ public class ConfigurableStreakCorrectorTest {
                                                 6,
                                                 Z0422_17_VNC_1_REGIONS_TO_CLEAR);
 
+    public static final int[][] LEAF_3R_REGIONS_TO_CLEAR = {
+            //{164, 3951, 4877, 24}
+            {200, 3950, 4840, 24}
+    };
+
+    public static final ConfigurableMaskStreakCorrector LEAF_3R_CORRECTOR =
+            new ConfigurableMaskStreakCorrector(8,
+                                                5041,
+                                                7920,
+                                                0,
+                                                6,
+                                                LEAF_3R_REGIONS_TO_CLEAR);
+
     @Test
     public void testParameterSerializationAndParsing() {
 
@@ -69,7 +82,8 @@ public class ConfigurableStreakCorrectorTest {
         new ImageJ();
 
         final ImagePlus imp =
-                new ImagePlus("/Users/trautmane/Desktop/stern/streak_fix/rendered_images/22-08-23_114401_0-0-2.28132.0.tif" );
+                new ImagePlus("/nrs/stern/em_data/jrc_22ak351-leaf-3r/streaks/leaf-3r-streak-tile.tif" );
+        imp.setProcessor(imp.getProcessor().convertToByteProcessor());
 
         final boolean displayCorrectionData = true;
         if (displayCorrectionData) {
@@ -77,12 +91,12 @@ public class ConfigurableStreakCorrectorTest {
             // original code from Preibisch that displays correction data
             final Img<UnsignedByteType> img = ImageJFunctions.wrapByte(imp );
 
-            //ImageJFunctions.show( img ).setTitle( "input" );
+            ImageJFunctions.show( img ).setTitle( "input" );
             final double avg = StreakCorrector.avgIntensity(img);
             System.out.println( avg );
 
-            final Img<UnsignedByteType> imgCorr = Z0422_17_VNC_1_CORRECTOR.fftBandpassCorrection( img );
-            final Img<FloatType> patternCorr = Z0422_17_VNC_1_CORRECTOR.createPattern(imgCorr.dimensionsAsLongArray(), avg);
+            final Img<UnsignedByteType> imgCorr = LEAF_3R_CORRECTOR.fftBandpassCorrection( img );
+            final Img<FloatType> patternCorr = LEAF_3R_CORRECTOR.createPattern(imgCorr.dimensionsAsLongArray(), avg);
             final RandomAccessibleInterval<UnsignedByteType> fixed =
                     Converters.convertRAI(imgCorr,
                                           patternCorr,
@@ -98,7 +112,7 @@ public class ConfigurableStreakCorrectorTest {
         } else {
 
             // simply display fixed result (using same logic copied into process method without correction display)
-            Z0422_17_VNC_1_CORRECTOR.process(imp.getProcessor(), 1.0);
+            LEAF_3R_CORRECTOR.process(imp.getProcessor(), 1.0);
             imp.show();
 
         }
