@@ -151,7 +151,7 @@ public class ConfigurableMaskStreakCorrector
         final double avg = StreakCorrector.avgIntensity(img);
         LOG.debug("process: average intensity is {}", avg);
 
-        final Img<UnsignedByteType> imgCorr = fftBandpassCorrection( img );
+        final Img<UnsignedByteType> imgCorr = fftBandpassCorrection(img, false);
         final Img<FloatType> patternCorr = createPattern(imgCorr.dimensionsAsLongArray(), avg);
         final RandomAccessibleInterval<UnsignedByteType> fixed =
                 Converters.convertRAI(imgCorr,

@@ -97,12 +97,16 @@ public class ConfigurableStreakCorrectorTest {
             final double avg = StreakCorrector.avgIntensity(img);
             System.out.println( avg );
 
+            // show FFT and bandpass images to manually find clear region rectangles for filtering
+            // (choose Macro > Record to see the numbers)
+            final boolean showFFTAndBandpass = true;
+
             // remove streaking (but it'll introduce a wave pattern)
-            ConfigurableMaskStreakCorrector.showFFTImg = true;
-            final Img<UnsignedByteType> imgCorr = LEAF_3R_CORRECTOR.fftBandpassCorrection( img );
+            final Img<UnsignedByteType> imgCorr =
+                    LEAF_3R_CORRECTOR.fftBandpassCorrection(img,
+                                                            showFFTAndBandpass);
 
             // create the wave pattern introduced by the filtering above
-            ConfigurableMaskStreakCorrector.showFFTImg = false;
             final Img<FloatType> patternCorr = LEAF_3R_CORRECTOR.createPattern(imgCorr.dimensionsAsLongArray(), avg);
 
             // removes the wave pattern from the corrected image
