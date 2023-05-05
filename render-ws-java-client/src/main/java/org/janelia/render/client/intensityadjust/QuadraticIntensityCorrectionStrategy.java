@@ -25,28 +25,31 @@ public class QuadraticIntensityCorrectionStrategy
 	static InterpolatedQuadraticAffineModel1D<?,?> affineModelTemplate;
 	private final Set<Double> quadraticZValues;
 
-	public QuadraticIntensityCorrectionStrategy(final double lambda,
-												final Double firstLayerZ) {
-		this(lambda, new HashSet<>(Collections.singletonList(firstLayerZ)));
+	public QuadraticIntensityCorrectionStrategy(final double lambda1,
+			final double lambda2,
+			final Double firstLayerZ) {
+		this(lambda1, lambda2, new HashSet<>(Collections.singletonList(firstLayerZ)));
 	}
 
-	public QuadraticIntensityCorrectionStrategy(final double lambda,
-												final Set<Double> quadraticZValues) {
+	public QuadraticIntensityCorrectionStrategy(final double lambda1,
+			final double lambda2,
+			final Set<Double> quadraticZValues) {
+
 		this.quadraticZValues = quadraticZValues;
 
 		quadraticModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
 				new InterpolatedQuadraticAffineModel1D<>(
 						new InterpolatedQuadraticAffineModel1D<>(
 								new QuadraticModel1D(), new AffineModel1D(), 1.0), // purely affine ...
-						new TranslationModel1D(), lambda), // ... with a bit of translation ...
-				new IdentityModel(), lambda); // ... and a bit of identity
+						new TranslationModel1D(), lambda1), // ... with a bit of translation ...
+				new IdentityModel(), lambda2); // ... and a bit of identity
 
 		affineModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
 				new InterpolatedQuadraticAffineModel1D<>(
 						new InterpolatedQuadraticAffineModel1D<>(
 								new QuadraticModel1D(), new AffineModel1D(), 1.0), // purely affine ...
-						new TranslationModel1D(), lambda), // ... with a bit of translation ...
-				new IdentityModel(), lambda); // ... and a bit of identity
+						new TranslationModel1D(), lambda1), // ... with a bit of translation ...
+				new IdentityModel(), lambda2); // ... and a bit of identity
 	}
 
 	@Override
