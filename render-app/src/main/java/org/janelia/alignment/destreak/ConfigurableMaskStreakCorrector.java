@@ -64,7 +64,9 @@ public class ConfigurableMaskStreakCorrector
     public Img<FloatType> createMask(final Dimensions dim) {
 
         if (dim.dimension(0) != fftWidth || dim.dimension( 1) != fftHeight) {
-            throw new IllegalArgumentException("mask is hard-coded for an FFT size of " + fftWidth + "x" + fftHeight);
+            throw new IllegalArgumentException(
+                    "mask is hard-coded for an FFT size of " + fftWidth + " x " + fftHeight +
+                    " but requested FFT size is " + dim.dimension(0) + " x " + dim.dimension(1));
         }
 
         final ArrayImg<FloatType, FloatArray> mask = ArrayImgs.floats(dim.dimensionsAsLongArray());
