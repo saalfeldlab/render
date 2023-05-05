@@ -12,6 +12,8 @@ import net.imglib2.algorithm.fft.InverseFourierTransform;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.complex.ComplexFloatType;
@@ -37,6 +39,8 @@ public abstract class StreakCorrector {
 
     public abstract Img<FloatType> createMask(final Dimensions dim );
 
+    public static boolean showFFTImg = false;
+ 
     @SuppressWarnings("deprecation")
     public <T extends RealType<T> & NativeType<T>> Img< T > fftBandpassCorrection(final RandomAccessibleInterval<T> input)
     {
@@ -49,11 +53,17 @@ public abstract class StreakCorrector {
         final Img<ComplexFloatType> fftImg = fft.getResult();
 
         LOG.info("fftBandpassCorrection: {}", Util.printInterval(fftImg ) );
-        //ImageJFunctions.show( fftImg ).setTitle( "fft" );
+
+        // TODO: uncomment the next two lines to set the rectangle filter manually (choose Macro > Record to see the numbers)
+        if ( showFFTImg )
+        	ImageJFunctions.show( fftImg ).setTitle( "fft" );
+
+        //SimpleMultiThreading.threadHaltUnClean();
 
         applyMask( fftImg, createMask( fftImg ) );
 
-        //ImageJFunctions.show( fftImg ).setTitle( "fft bandpass" );
+        if ( showFFTImg )
+        	ImageJFunctions.show( fftImg ).setTitle( "fft bandpass" );
 
         final InverseFourierTransform< T, ComplexFloatType > ifft = new InverseFourierTransform<>(fftImg, fft );
         ifft.process();

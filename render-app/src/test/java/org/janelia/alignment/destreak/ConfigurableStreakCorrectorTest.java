@@ -44,8 +44,10 @@ public class ConfigurableStreakCorrectorTest {
                                                 Z0422_17_VNC_1_REGIONS_TO_CLEAR);
 
     public static final int[][] LEAF_3R_REGIONS_TO_CLEAR = {
-            //{164, 3951, 4877, 24}
-            {200, 3950, 4840, 24}
+
+    		//{0, 3945, 4971, 28},
+    		{0, 3945, 4503, 28},
+    		{4503, 3953, 452, 15}
     };
 
     public static final ConfigurableMaskStreakCorrector LEAF_3R_CORRECTOR =
@@ -53,7 +55,7 @@ public class ConfigurableStreakCorrectorTest {
                                                 5041,
                                                 7920,
                                                 0,
-                                                6,
+                                                0,
                                                 LEAF_3R_REGIONS_TO_CLEAR);
 
     @Test
@@ -95,8 +97,15 @@ public class ConfigurableStreakCorrectorTest {
             final double avg = StreakCorrector.avgIntensity(img);
             System.out.println( avg );
 
+            // remove streaking (but it'll introduce a wave pattern)
+            ConfigurableMaskStreakCorrector.showFFTImg = true;
             final Img<UnsignedByteType> imgCorr = LEAF_3R_CORRECTOR.fftBandpassCorrection( img );
+
+            // create the wave pattern introduced by the filtering above
+            ConfigurableMaskStreakCorrector.showFFTImg = false;
             final Img<FloatType> patternCorr = LEAF_3R_CORRECTOR.createPattern(imgCorr.dimensionsAsLongArray(), avg);
+
+            // removes the wave pattern from the corrected image
             final RandomAccessibleInterval<UnsignedByteType> fixed =
                     Converters.convertRAI(imgCorr,
                                           patternCorr,
