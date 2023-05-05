@@ -14,7 +14,17 @@
         "className" : "org.janelia.alignment.destreak.ConfigurableMaskStreakCorrector",
         "parameters" : {
           "dataString" : "6161,10920,0,6,6043,5459,113,3,5960,5458,83,5,5798,5456,162,9,5573,5453,225,15,0,5448,5573,25,0,5360,4569,5,0,5556,4569,5"
-        }      }
+        }
+      }
+    ],
+
+    "22ak351_leaf_3r" : [
+      {
+        "className" : "org.janelia.alignment.destreak.ConfigurableMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "5041,7920,0,6,0,3945,4503,28,4503,3953,452,15"
+        }
+      }
     ],
 
     "simpleTest" : [
