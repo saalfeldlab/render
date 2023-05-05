@@ -78,6 +78,8 @@ public class ConfigurableStreakCorrectorTest {
         System.out.println(filterSpec.toJson());
     }
 
+    // TODO: to simplify clear region derivation, loop through correction process with different extraX|Y values and create scrollable stack from results
+
     @SuppressWarnings({"ConstantConditions", "deprecation"})
     public static void main(final String[] args) {
 
