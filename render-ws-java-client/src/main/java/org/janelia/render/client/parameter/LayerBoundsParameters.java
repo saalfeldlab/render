@@ -1,5 +1,6 @@
 package org.janelia.render.client.parameter;
 
+import java.awt.Rectangle;
 import java.io.Serializable;
 
 import org.janelia.alignment.spec.Bounds;
@@ -66,4 +67,12 @@ public class LayerBoundsParameters implements Serializable {
                           maxY == null ? defaultBounds.getMaxY() : maxY,
                           defaultBounds.getMaxZ());
     }
+
+    public Rectangle toRectangle() {
+        return new Rectangle(minX.intValue(),
+                             minY.intValue(),
+                             (int) Math.ceil(maxX - minX),
+                             (int) Math.ceil(maxY - minY));
+    }
+
 }
