@@ -25,6 +25,7 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TranslationModel2D;
 
 import org.janelia.alignment.ArgbRenderer;
+import org.janelia.alignment.ByteRenderer;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -98,6 +99,11 @@ public class RenderTilesClient {
                 description = "Use ad hoc filter to support alignment",
                 arity = 0)
         public boolean doFilter = false;
+
+        @Parameter(
+                names = "--render8Bit",
+                description = "Render the tiles as 8-bit grayscale images")
+        public boolean render8Bit = true;
 
         @Parameter(
                 names = "--filterListName",
@@ -398,11 +404,13 @@ public class RenderTilesClient {
             // skip conversion step if we don't need to worry about mask
             bufferedImage = imageProcessorWithMasks.ip.getBufferedImage();
         } else {
-            // if we need to include mask, convert as was done before
-            // TODO: revisit legacy usage of ARGB which is very wasteful
-            bufferedImage = renderParameters.openTargetImage();
-            ArgbRenderer.CONVERTER.convertProcessorWithMasksToImage(renderParameters,
-                                                                    imageProcessorWithMasks);
+            if (clientParameters.render8Bit) {
+                bufferedImage = ByteRenderer.CONVERTER.convertProcessorWithMasksToImage(renderParameters,
+                                                                                        imageProcessorWithMasks);
+            } else {
+                bufferedImage = ArgbRenderer.CONVERTER.convertProcessorWithMasksToImage(renderParameters,
+                                                                                        imageProcessorWithMasks);
+            }
         }
 
         Utils.saveImage(bufferedImage,
