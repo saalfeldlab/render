@@ -39,8 +39,7 @@ public class QuadraticIntensityCorrectionStrategy
 
 		quadraticModelTemplate = new InterpolatedQuadraticAffineModel1D<>(
 				new InterpolatedQuadraticAffineModel1D<>(
-						new InterpolatedQuadraticAffineModel1D<>(
-								new QuadraticModel1D(), new AffineModel1D(), 1.0), // purely affine ...
+						new QuadraticModel1D(), // purely quadratic ...
 						new TranslationModel1D(), lambda1), // ... with a bit of translation ...
 				new IdentityModel(), lambda2); // ... and a bit of identity
 

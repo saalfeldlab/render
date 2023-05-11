@@ -2,13 +2,22 @@ package org.janelia.render.client.intensityadjust;
 
 import ij.ImageJ;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
+import org.janelia.alignment.filter.Filter;
+import org.janelia.alignment.filter.FilterSpec;
+import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
+import org.janelia.alignment.filter.QuadraticIntensityMap8BitFilter;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -18,6 +27,7 @@ import org.junit.Test;
 
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.showTileSpec;
+import static org.junit.Assert.assertArrayEquals;
 
 /**
  * Tests the {@link AdjustBlock} class.
@@ -28,17 +38,16 @@ public class AdjustBlockTest {
 
     private static final IntensityCorrectionStrategy AFFINE_STRATEGY = new AffineIntensityCorrectionStrategy();
     private static final int NUM_THREADS = 1;
+    private static final String fileName = "src/test/resources/multisem/adjust-block-test-tiles.json";
 
     @Test
     public void testCorrectIntensitiesForSliceTiles() throws Exception {
 
         final Map<String, double[][]> tileIdToExpectedCoefficients = buildTileIdToExpectedCoefficientsMap();
 
-        final List<TileSpec> tileSpecs =
-                TileSpec.fromJsonArray(new FileReader("src/test/resources/multisem/adjust-block-test-tiles.json"));
+        final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
 
-        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(),
-                                                                                        tileSpecs);
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
 
         final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
@@ -49,16 +58,66 @@ public class AdjustBlockTest {
                                                             AFFINE_STRATEGY,
                                                             NUM_THREADS);
 
-        validateCorrections("default order tile list",
-                            correctedList,
-                            tileIdToExpectedCoefficients);
+        validateCorrections("default order tile list", correctedList, tileIdToExpectedCoefficients);
+    }
+
+    @Test
+    public void filtersYieldSameResults() throws FileNotFoundException, ExecutionException, InterruptedException {
+
+        final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
+        final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
+        final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
+
+        final ArrayList<OnTheFlyIntensity> correctedList =
+                AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                            ImageProcessorCache.DISABLED_CACHE,
+                                                            numCoefficients,
+                                                            AFFINE_STRATEGY,
+                                                            NUM_THREADS);
+
+
+        final OnTheFlyIntensity tile = correctedList.get(0);
+        final Filter affineFilter = new LinearIntensityMap8BitFilter(numCoefficients, numCoefficients, 2, tile.getCoefficients());
+        final Filter quadraticFilter = new QuadraticIntensityMap8BitFilter(numCoefficients, numCoefficients, 3, padCoefficients(tile.getCoefficients()));
+
+        final byte[] quadraticPixels = getProcessedPixels(tile, quadraticFilter);
+        final byte[] affinePixels = getProcessedPixels(tile, affineFilter);
+
+        assertArrayEquals(affinePixels, quadraticPixels);
+    }
+
+    private static byte[] getProcessedPixels(final OnTheFlyIntensity tile, final Filter filter) {
+
+        final TileSpec derivedTileSpec = tile.getMinimalTileSpecWrapper().getTileSpec().slowClone();
+        final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
+        derivedTileSpec.setFilterSpec(filterSpec);
+        derivedTileSpec.convertSingleChannelSpecToLegacyForm();
+
+        final RenderParameters secondSpecRenderParameters = RenderParameters.fromTileSpec(derivedTileSpec);
+        secondSpecRenderParameters.setScale(1.0);
+
+        final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+                Renderer.renderImageProcessorWithMasks(secondSpecRenderParameters, ImageProcessorCache.DISABLED_CACHE);
+        return (byte[]) ipwm.ip.getPixels();
+    }
+
+    private static double[][] padCoefficients(final double[][] coefficients) {
+        final double[][] paddedCoefficients = new double[coefficients.length][3];
+
+        for (int i = 0; i < coefficients.length; i++) {
+            paddedCoefficients[i][1] = coefficients[i][0];
+            paddedCoefficients[i][2] = coefficients[i][1];
+        }
+
+        return paddedCoefficients;
     }
 
     public static void main(final String[] args) {
         try {
 
             final List<TileSpec> tileSpecs =
-                    TileSpec.fromJsonArray(new FileReader("src/test/resources/multisem/adjust-block-test-tiles.json"));
+                    TileSpec.fromJsonArray(new FileReader(fileName));
 
             final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(),
                                                                                             tileSpecs);
@@ -167,4 +226,5 @@ public class AdjustBlockTest {
 
         return tileIdToExpectedCoefficients;
     }
+
 }

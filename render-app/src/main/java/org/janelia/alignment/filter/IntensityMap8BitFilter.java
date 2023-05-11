@@ -51,8 +51,9 @@ public abstract class IntensityMap8BitFilter
         this.coefficients = new double[numberOfRegions][this.coefficientsPerRegion];
         int region = 0;
         for (int i = 3; i < values.length; i+=this.coefficientsPerRegion) {
-            this.coefficients[region][0] = Double.parseDouble(values[i]);
-            this.coefficients[region][1] = Double.parseDouble(values[i+1]);
+            for (int k = 0; k < coefficientsPerRegion; k++) {
+                this.coefficients[region][k] = Double.parseDouble(values[i+k]);
+            }
             region++;
         }
     }
