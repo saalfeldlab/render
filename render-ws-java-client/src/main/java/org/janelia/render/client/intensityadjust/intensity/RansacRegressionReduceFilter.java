@@ -24,15 +24,17 @@
  */
 package org.janelia.render.client.intensityadjust.intensity;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
 import mpicbg.models.AffineModel1D;
+import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;
+import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import org.janelia.render.client.intensityadjust.QuadraticModel1D;
 
 /**
  * @author Stephan Saalfeld saalfelds@janelia.hhmi.org
@@ -55,11 +57,12 @@ public class RansacRegressionReduceFilter implements PointMatchFilter
 		this.model = model;
 	}
 
-	final static protected double[] minMax( final Iterable< PointMatch > matches )
+	static protected double[] minMax( final Iterable< PointMatch > matches )
 	{
 		final Iterator< PointMatch > iter = matches.iterator();
 		PointMatch m = iter.next();
-		double min = m.getP1().getL()[ 0 ], max = min;
+		double min = m.getP1().getL()[ 0 ];
+		double max = min;
 		while ( iter.hasNext() )
 		{
 			m = iter.next();
@@ -75,39 +78,43 @@ public class RansacRegressionReduceFilter implements PointMatchFilter
 	@Override
 	public void filter( final List< PointMatch > candidates, final Collection< PointMatch > inliers )
 	{
-		try
-		{
-			if (
-					model.filterRansac(
-							candidates,
-							inliers,
-							iterations,
-							maxEpsilon,
-							minInlierRatio,
-							minNumInliers,
-							maxTrust ) )
-			{
-				model.fit( inliers );
-
-
-				final double[] minMax = minMax( inliers );
-
-				inliers.clear();
-
-				final Point p1 = new Point( new double[]{ minMax[ 0 ] } );
-				final Point p2 = new Point( new double[]{ minMax[ 1 ] } );
-				p1.apply( model );
-				p2.apply( model );
-				inliers.add( new PointMatch( p1, new Point( p1.getW().clone() ) ) );
-				inliers.add( new PointMatch( p2, new Point( p2.getW().clone() ) ) );
-			}
-			else
-					inliers.clear();
+		boolean inliersAreValid;
+		try {
+			inliersAreValid = model.filterRansac(candidates, inliers, iterations, maxEpsilon, minInlierRatio, minNumInliers, maxTrust);
+			if (inliersAreValid)
+				model.fit(inliers);
 		}
-		catch ( final Exception e )
-		{
+		catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+			inliersAreValid = false;
+		}
+
+		if (!inliersAreValid) {
 			inliers.clear();
+			return;
+		}
+
+		final double[] minMax = minMax(inliers);
+		final List<Point> points = evenlySpacedPoints(minMax, model.getMinNumMatches());
+		inliers.clear();
+
+		for (final Point point : points) {
+			point.apply(model);
+			inliers.add(new PointMatch(point, new Point(point.getW().clone())));
 		}
 	}
 
+	protected List<Point> evenlySpacedPoints(final double[] interval, final int n) {
+		if (n == 1)
+			return List.of(new Point(new double[]{ (interval[0] + interval[1]) / 2 }));
+
+		final double min = interval[0];
+		final double delta = (interval[1] - interval[0]) / (n-1);
+		final List<Point> points = new ArrayList<>();
+
+		for (int k = 0; k < n; k++) {
+			points.add(new Point(new double[]{ min + k*delta }));
+		}
+
+		return points;
+	}
 }
