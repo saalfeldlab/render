@@ -28,6 +28,7 @@ import org.junit.Test;
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.showTileSpec;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
 
 /**
  * Tests the {@link AdjustBlock} class.
@@ -66,10 +67,6 @@ public class AdjustBlockTest {
 
         final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
         final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
-        for (final TileSpec spec : tileSpecs) {
-            spec.removeLastTransformSpec();
-            spec.deriveBoundingBox(spec.getMeshCellSize(), true);
-        }
         final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
         final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
@@ -94,6 +91,10 @@ public class AdjustBlockTest {
     private static byte[] getProcessedPixels(final TileSpec tileSpec, final Filter filter) {
 
         final TileSpec derivedTileSpec = tileSpec.slowClone();
+        while (derivedTileSpec.hasTransforms())
+            derivedTileSpec.removeLastTransformSpec();
+        derivedTileSpec.deriveBoundingBox(derivedTileSpec.getMeshCellSize(), true);
+
         final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
         derivedTileSpec.setFilterSpec(filterSpec);
         derivedTileSpec.convertSingleChannelSpecToLegacyForm();
@@ -117,7 +118,30 @@ public class AdjustBlockTest {
         return paddedCoefficients;
     }
 
-    public static void main(final String[] args) {
+    @Test
+    public void constantFilterMakesPixelsConstant() throws FileNotFoundException, ExecutionException, InterruptedException {
+
+        final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
+        final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
+        final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
+
+        final MinimalTileSpecWrapper wrapper = wrappedTiles.get(0);
+        final double[][] coefficients = new double[numCoefficients*numCoefficients][2];
+        for (final double[] coeff : coefficients)
+            coeff[1] = Math.PI / 255; // take scaling of coefficients into account
+
+        final Filter constantPiFilter = new LinearIntensityMap8BitFilter(numCoefficients, numCoefficients, 2, coefficients);
+        final byte[] pixels = getProcessedPixels(wrapper.getTileSpec(), constantPiFilter);
+
+        final byte bytePi = (byte) Math.PI;
+        for (int i = 0; i < pixels.length; i++) {
+            assertEquals("Pixel at location " + i + " differs", bytePi, pixels[i]);
+        }
+    }
+
+
+        public static void main(final String[] args) {
         try {
 
             final List<TileSpec> tileSpecs =
