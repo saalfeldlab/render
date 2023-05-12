@@ -66,6 +66,10 @@ public class AdjustBlockTest {
 
         final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
         final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
+        for (final TileSpec spec : tileSpecs) {
+            spec.removeLastTransformSpec();
+            spec.deriveBoundingBox(spec.getMeshCellSize(), true);
+        }
         final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
         final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
@@ -81,15 +85,15 @@ public class AdjustBlockTest {
         final Filter affineFilter = new LinearIntensityMap8BitFilter(numCoefficients, numCoefficients, 2, tile.getCoefficients());
         final Filter quadraticFilter = new QuadraticIntensityMap8BitFilter(numCoefficients, numCoefficients, 3, padCoefficients(tile.getCoefficients()));
 
-        final byte[] quadraticPixels = getProcessedPixels(tile, quadraticFilter);
-        final byte[] affinePixels = getProcessedPixels(tile, affineFilter);
+        final byte[] affinePixels = getProcessedPixels(tile.getMinimalTileSpecWrapper().getTileSpec(), affineFilter);
+        final byte[] quadraticPixels = getProcessedPixels(tile.getMinimalTileSpecWrapper().getTileSpec(), quadraticFilter);
 
         assertArrayEquals(affinePixels, quadraticPixels);
     }
 
-    private static byte[] getProcessedPixels(final OnTheFlyIntensity tile, final Filter filter) {
+    private static byte[] getProcessedPixels(final TileSpec tileSpec, final Filter filter) {
 
-        final TileSpec derivedTileSpec = tile.getMinimalTileSpecWrapper().getTileSpec().slowClone();
+        final TileSpec derivedTileSpec = tileSpec.slowClone();
         final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
         derivedTileSpec.setFilterSpec(filterSpec);
         derivedTileSpec.convertSingleChannelSpecToLegacyForm();
