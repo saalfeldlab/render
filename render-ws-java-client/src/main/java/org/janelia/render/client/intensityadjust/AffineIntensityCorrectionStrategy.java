@@ -20,7 +20,7 @@ public class AffineIntensityCorrectionStrategy implements IntensityCorrectionStr
 
 	public static double DEFAULT_LAMBDA = 0.01;
 
-	static InterpolatedAffineModel1D<InterpolatedAffineModel1D<AffineModel1D, TranslationModel1D>, IdentityModel> modelTemplate;
+	private final InterpolatedAffineModel1D<InterpolatedAffineModel1D<AffineModel1D, TranslationModel1D>, IdentityModel> modelTemplate;
 
 	public AffineIntensityCorrectionStrategy() {
 		this(DEFAULT_LAMBDA, DEFAULT_LAMBDA);

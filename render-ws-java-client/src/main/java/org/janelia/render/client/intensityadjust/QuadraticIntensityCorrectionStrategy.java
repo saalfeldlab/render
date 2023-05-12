@@ -21,8 +21,8 @@ import java.util.Set;
 public class QuadraticIntensityCorrectionStrategy
 		implements IntensityCorrectionStrategy {
 
-	static InterpolatedQuadraticAffineModel1D<?,?> quadraticModelTemplate;
-	static InterpolatedQuadraticAffineModel1D<?,?> affineModelTemplate;
+	private final InterpolatedQuadraticAffineModel1D<?,?> quadraticModelTemplate;
+	private final InterpolatedQuadraticAffineModel1D<?,?> affineModelTemplate;
 	private final Set<Double> quadraticZValues;
 
 	public QuadraticIntensityCorrectionStrategy(final double lambda1,
