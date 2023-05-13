@@ -94,12 +94,13 @@ public class RansacRegressionReduceFilter implements PointMatchFilter
 		}
 
 		final double[] minMax = minMax(inliers);
+		final double weight = 2.0 / model.getMinNumMatches();
 		final List<Point> points = evenlySpacedPoints(minMax, model.getMinNumMatches());
 		inliers.clear();
 
 		for (final Point point : points) {
 			point.apply(model);
-			inliers.add(new PointMatch(point, new Point(point.getW().clone())));
+			inliers.add(new PointMatch(point, new Point(point.getW().clone()), weight));
 		}
 	}
 
