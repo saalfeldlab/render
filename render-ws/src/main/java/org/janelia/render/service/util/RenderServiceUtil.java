@@ -8,6 +8,7 @@ import javax.ws.rs.core.Response;
 
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.BoundingBoxRenderer;
+import org.janelia.alignment.ByteRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.ShortRenderer;
 import org.janelia.alignment.Utils;
@@ -95,13 +96,6 @@ public class RenderServiceUtil {
                                  maxTileSpecsToRender,
                                  responseHelper,
                                  render16bit);
-    }
-
-    public static Response renderRawImage(final RenderParameters renderParameters,
-                                          final Integer maxTileSpecsToRender,
-                                          final ResponseHelper responseHelper) {
-        return renderRawImage(renderParameters, maxTileSpecsToRender, responseHelper, false);
-
     }
 
     public static Response renderRawImage(final RenderParameters renderParameters,
@@ -247,9 +241,15 @@ public class RenderServiceUtil {
                                      SharedImageProcessorCache.getInstance());
             } else {
                 targetImage = renderParameters.openTargetImage();
-                ArgbRenderer.render(renderParameters,
-                                    targetImage,
-                                    SharedImageProcessorCache.getInstance());
+                if (renderParameters.isConvertToGray()) {
+                    ByteRenderer.render(renderParameters,
+                                        targetImage,
+                                        SharedImageProcessorCache.getInstance());
+                } else {
+                    ArgbRenderer.render(renderParameters,
+                                        targetImage,
+                                        SharedImageProcessorCache.getInstance());
+                }
             }
 
         }

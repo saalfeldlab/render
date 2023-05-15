@@ -772,7 +772,11 @@ public class RenderParameters implements Serializable {
         return hasMasks;
     }
     public BufferedImage openTargetImage() {
-        return openTargetImage(BufferedImage.TYPE_INT_ARGB);
+        if (convertToGray) {
+            return openTargetImage(BufferedImage.TYPE_BYTE_GRAY);
+        } else {
+            return openTargetImage(BufferedImage.TYPE_INT_ARGB);
+        }
     }
     /**
      * Opens the target/input image specified by these parameters or
