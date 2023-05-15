@@ -188,13 +188,15 @@ public class LinearIntensityMap< T extends RealType< T > >
 			final IterableInterval< S > image,
 			final IterableInterval< RealComposite< T > > coefficients )
 	{
-		final Cursor< S > cs = image.cursor();
-		final Cursor< RealComposite< T > > ct = coefficients.cursor();
+		final Cursor<S> cs = image.cursor();
 		final S firstValue = cs.next();
 		final double minS = firstValue.getMinValue();
 		final double maxS = firstValue.getMaxValue();
 
-		while ( cs.hasNext() )
+		cs.reset();
+		final Cursor<RealComposite<T>> ct = coefficients.cursor();
+
+		while (cs.hasNext())
 		{
 			final S s = cs.next();
 			final RealComposite< T > t = ct.next();

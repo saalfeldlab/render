@@ -82,9 +82,11 @@ public class WaferCrossZIntensityAdjustTest {
                 showTileSpec("original " + tileId, tileSpec, visualizeRenderScale, imageProcessorCache);
 
                 if(!onlyShowOriginal) {
+                    final double currentZ = z;
                     final OnTheFlyIntensity correctedTile =
                             corrected.stream()
                                     .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().contains(tileNumber))
+                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getZ() == currentZ)
                                     .findFirst()
                                     .orElseThrow();
 

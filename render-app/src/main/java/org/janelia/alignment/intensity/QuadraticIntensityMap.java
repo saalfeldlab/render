@@ -107,11 +107,15 @@ public class QuadraticIntensityMap<T extends RealType<T>> {
 	static protected <S extends RealType<S>, T extends RealType<T>> void mapCrop(
 			final IterableInterval<S> image,
 			final IterableInterval<RealComposite<T>> coefficients) {
+
 		final Cursor<S> cs = image.cursor();
 		final Cursor<RealComposite<T>> ct = coefficients.cursor();
+
 		final S firstValue = cs.next();
 		final double minS = firstValue.getMinValue();
 		final double maxS = firstValue.getMaxValue();
+
+		cs.reset();
 		while (cs.hasNext()) {
 			final S s = cs.next();
 			final RealComposite<T> t = ct.next();
