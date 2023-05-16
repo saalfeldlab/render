@@ -51,7 +51,7 @@ public class ZPositionCorrectionClientTest {
         final int maxZ = 30;
         final int comparisonRange = 2;
         final List<Double> fullSortedZList =
-                IntStream.rangeClosed(minZ, maxZ).boxed().map(Double::new).collect(Collectors.toList());
+                IntStream.rangeClosed(minZ, maxZ).boxed().map(Double::valueOf).collect(Collectors.toList());
 
         final int totalBatchCount = 4;
         final List<List<Double>> batchedLists = new ArrayList<>();
@@ -89,16 +89,17 @@ public class ZPositionCorrectionClientTest {
         final String userHome = System.getProperty("user.home");
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[]{
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--owner", "Z0720_07m_BR",
-                "--project", "Sec39",
-                "--stack", "v1_acquire_trimmed_sp1",
-                "--scale", "0.0625",
-                "--minZ", "19950",
-                "--maxZ", "19999",
-                "--runName", "testFullBatch",
+                "--owner", "cellmap",
+                "--project", "jrc_mus_cerebellum_1",
+                "--stack", "v1_acquire_trimmed_align",
+                "--scale", "0.22",
+                "--minZ", "7032",
+                "--maxZ", "7037",
+                "--runName", "testPoorCorrelationC",
 //                "--runName", "testBatch",
-//                "--correlationBatch", "1:3",
+                "--correlationBatch", "1:1",
 //                "--solveExisting",
+                "--poorCorrelationThreshold", "0.975",
 
 //                "--minX", "2500",
 //                "--maxX", "5500",

@@ -1,5 +1,8 @@
 package org.janelia.render.client.zspacing;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -8,10 +11,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
@@ -32,11 +37,9 @@ import org.janelia.thickness.inference.Options;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.real.DoubleType;
+import net.imglib2.util.StopWatch;
 
 /**
  * Java client for estimating z thickness of a range of layers in an aligned render stack.
@@ -127,6 +130,34 @@ public class ZPositionCorrectionClient {
                 description = "Specify to load existing correlation data and solve.",
                 arity = 0)
         public boolean solveExisting;
+
+        @Parameter(
+                names = "--poorCorrelationThreshold",
+                description = "Generate region correlation data for layers that have correlation " +
+                              "below this value.  Omit to skip poor region correlation derivation.")
+        public Double poorCorrelationThreshold;
+
+        @Parameter(
+                names = "--poorCorrelationRegionRows",
+                description = "Number of rows ")
+        public int correlationRegionRows = 8;
+
+        @Parameter(
+                names = "--poorCorrelationRegionColumns",
+                description = "Specify to load existing correlation data and solve.")
+        public int correlationRegionColumns = 8;
+
+        @Parameter(
+                names = "--poorCorrelationCacheGB",
+                description = "Number cache gigabytes to allocate for poor correlation region rendering")
+        public Long poorCorrelationCacheGB = 2L;
+
+        @Parameter(
+                names = "--poorCorrelationLoadExisting",
+                description = "Specify to load existing layer correlation data " +
+                              "and then generate regional detailed correlation data",
+                arity = 0)
+        public boolean poorCorrelationLoadExisting;
 
         @ParametersDelegate
         public ZRangeParameters layerRange = new ZRangeParameters();
@@ -223,9 +254,21 @@ public class ZPositionCorrectionClient {
                     final CrossCorrelationData ccData = client.loadCrossCorrelationDataSets();
                     client.estimateAndSaveZCoordinates(ccData);
 
+                } else if (parameters.poorCorrelationLoadExisting) {
+
+                    if (parameters.poorCorrelationThreshold == null) {
+                        throw new IllegalArgumentException(
+                                "--poorCorrelationThreshold must be specified with --generateRegionalDataForExisting");
+                    }
+                    final CrossCorrelationData ccData = client.loadCrossCorrelationDataSets();
+                    client.savePoorCrossCorrelationData(ccData);
+
                 } else {
 
                     final CrossCorrelationData ccData = client.deriveCrossCorrelationData();
+                    if (parameters.poorCorrelationThreshold != null) {
+                        client.savePoorCrossCorrelationData(ccData);
+                    }
                     if (parameters.hasBatchInfo()) {
                         client.saveCrossCorrelationData(ccData);
                     } else {
@@ -245,7 +288,7 @@ public class ZPositionCorrectionClient {
     private final File baseRunDirectory;
     private final File runDirectory;
     private final RenderDataClient renderDataClient;
-    private final List<SectionData> sectionDataList;
+    private final Bounds totalBounds;
     private final List<Double> sortedZList;
     private final int firstLayerOffset;
     private final List<Double> stackResolutionValues;
@@ -262,9 +305,9 @@ public class ZPositionCorrectionClient {
 
         this.inferenceOptions = parameters.getInferenceOptions();
 
-        this.sectionDataList = renderDataClient.getStackSectionData(parameters.stack,
-                                                                    parameters.layerRange.minZ,
-                                                                    parameters.layerRange.maxZ);
+        final List<SectionData> sectionDataList = renderDataClient.getStackSectionData(parameters.stack,
+                                                                                       parameters.layerRange.minZ,
+                                                                                       parameters.layerRange.maxZ);
 
         if (sectionDataList.size() == 0) {
             throw new IllegalArgumentException(
@@ -276,6 +319,8 @@ public class ZPositionCorrectionClient {
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
+
+        this.totalBounds = SectionData.getTotalBounds(sectionDataList);
 
         if (parameters.hasBatchInfo()) {
             this.sortedZList = getSortedZListForBatch(allSortedZList,
@@ -306,19 +351,32 @@ public class ZPositionCorrectionClient {
         FileUtil.ensureWritableDirectory(this.runDirectory);
     }
 
-    String getLayerUrlPattern() {
+    String getLayerUrlPattern(final int regionRowIndex,
+                              final int regionColumnIndex,
+                              final int numberOfRegionRows,
+                              final int numberOfRegionColumns) {
 
         final RenderWebServiceUrls urls = renderDataClient.getUrls();
         final String stackUrlString = urls.getStackUrlString(parameters.stack);
 
-        final Bounds totalBounds = SectionData.getTotalBounds(sectionDataList);
-
-        final Bounds layerBounds;
+        Bounds layerBounds;
         if (parameters.bounds.isDefined()) {
             layerBounds = new Bounds(parameters.bounds.minX, parameters.bounds.minY, totalBounds.getMinZ(),
                                      parameters.bounds.maxX, parameters.bounds.maxY, totalBounds.getMaxZ());
         } else {
             layerBounds = totalBounds;
+        }
+
+        final int totalNumberOfRegions = numberOfRegionRows * numberOfRegionColumns;
+        if (totalNumberOfRegions > 1) {
+            final double regionWidth = layerBounds.getWidth() / (double) numberOfRegionColumns;
+            final double regionMinX = layerBounds.getMinX() + (regionColumnIndex * regionWidth);
+            final double regionHeight = layerBounds.getHeight() / (double) numberOfRegionRows;
+            final double regionMinY = layerBounds.getMinY() + (regionRowIndex * regionHeight);
+            layerBounds = new Bounds(regionMinX,
+                                     regionMinY,
+                                     regionMinX + regionWidth,
+                                     regionMinY + regionHeight);
         }
 
         return String.format("%s/z/%s/box/%d,%d,%d,%d,%s/render-parameters",
@@ -333,7 +391,12 @@ public class ZPositionCorrectionClient {
 
         LOG.info("deriveCrossCorrelationData: using comparison range: {}", inferenceOptions.comparisonRange);
 
-        final String layerUrlPattern = getLayerUrlPattern();
+        final StopWatch stopWatch = StopWatch.createAndStart();
+
+        final String layerUrlPattern = getLayerUrlPattern(0,
+                                                          0,
+                                                          1,
+                                                          1);
         final long pixelsInLargeMask = 20000 * 10000;
         final ImageProcessorCache maskCache = new ImageProcessorCache(pixelsInLargeMask,
                                                                       false,
@@ -360,9 +423,106 @@ public class ZPositionCorrectionClient {
             layerLoader.setDebugFilePattern(debugFilePattern);
         }
 
-        return HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(layerLoader,
-                                                                                   inferenceOptions.comparisonRange,
-                                                                                   firstLayerOffset);
+        final CrossCorrelationData ccData =
+                HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(layerLoader,
+                                                                                    inferenceOptions.comparisonRange,
+                                                                                    firstLayerOffset);
+        stopWatch.stop();
+
+        LOG.info("deriveCrossCorrelationData: exit, process took {}",
+                 StopWatch.secondsToString(stopWatch.seconds()));
+
+        return ccData;
+    }
+
+    CrossCorrelationWithNextRegionalData deriveRegionalCrossCorrelationData(final Double pZ,
+                                                                            final Double qZ,
+                                                                            final double layerCorrelation,
+                                                                            final int numberOfRegionRows,
+                                                                            final int numberOfRegionColumns)
+            throws IllegalArgumentException {
+
+        LOG.info("deriveRegionalCrossCorrelationData: entry, pZ={}, qZ={}", pZ, qZ);
+
+        final StopWatch stopWatch = StopWatch.createAndStart();
+
+        final List<Double> zList = Stream.of(pZ, qZ).sorted().collect(Collectors.toList());
+        final String layerUrlPattern = getLayerUrlPattern(0,
+                                                          0,
+                                                          1,
+                                                          1);
+        final CrossCorrelationWithNextRegionalData ccRegionalData =
+                new CrossCorrelationWithNextRegionalData(pZ,
+                                                         qZ,
+                                                         layerUrlPattern,
+                                                         layerCorrelation,
+                                                         numberOfRegionRows,
+                                                         numberOfRegionColumns);
+
+        final long maxCachedPixels = parameters.poorCorrelationCacheGB * 1_000_000_000L;
+        final ImageProcessorCache imageProcessorCache = new ImageProcessorCache(maxCachedPixels,
+                                                                                false,
+                                                                                false);
+        for (int row = 0; row < numberOfRegionRows; row++) {
+            for (int column = 0; column < numberOfRegionColumns; column++) {
+                final String regionUrlPattern = getLayerUrlPattern(row,
+                                                                   column,
+                                                                   numberOfRegionRows,
+                                                                   numberOfRegionColumns);
+                final RenderLayerLoader layerLoader;
+                if (parameters.resinMaskingEnabled) {
+                    layerLoader = new MaskedResinLayerLoader(regionUrlPattern,
+                                                             zList,
+                                                             imageProcessorCache,
+                                                             parameters.resinSigma,
+                                                             parameters.scale,
+                                                             parameters.resinContentThreshold,
+                                                             parameters.resinMaskIntensity);
+                } else {
+                    layerLoader = new RenderLayerLoader(regionUrlPattern,
+                                                        zList,
+                                                        imageProcessorCache);
+                }
+                
+                final CrossCorrelationData crossCorrelationData =
+                        HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(layerLoader,
+                                                                                            1,
+                                                                                            firstLayerOffset);
+                ccRegionalData.setValue(row,
+                                        column,
+                                        crossCorrelationData.getCrossCorrelationValue(0, 0));
+            }
+        }
+
+        stopWatch.stop();
+
+        LOG.info("deriveRegionalCrossCorrelationData: exit,  pZ={}, qZ={}, process took {}",
+                 pZ, qZ, StopWatch.secondsToString(stopWatch.seconds()));
+
+        return ccRegionalData;
+    }
+
+    void savePoorCrossCorrelationData(final CrossCorrelationData ccData)
+            throws IOException {
+        final List<Integer> poorCorrelationIndexList =
+                ccData.getPoorCorrelationWithNextIndexes(parameters.poorCorrelationThreshold);
+        final List<CrossCorrelationWithNextRegionalData> ccRegionalDataList =
+                new ArrayList<>(poorCorrelationIndexList.size());
+        for (final Integer zIndex : poorCorrelationIndexList) {
+            final double pZ = sortedZList.get(zIndex);
+            if (zIndex + 1 < sortedZList.size()) {
+                final double qZ = sortedZList.get(zIndex + 1);
+                ccRegionalDataList.add(
+                        deriveRegionalCrossCorrelationData(pZ,
+                                                           qZ,
+                                                           ccData.getCrossCorrelationValue(zIndex, 0),
+                                                           parameters.correlationRegionRows,
+                                                           parameters.correlationRegionColumns));
+            }
+        }
+        final String ccDataPath = new File(runDirectory,
+                                           CrossCorrelationWithNextRegionalData.DEFAULT_DATA_FILE_NAME).getAbsolutePath();
+        FileUtil.saveJsonFile(ccDataPath, ccRegionalDataList);
     }
 
     void saveRunFiles()
@@ -414,6 +574,8 @@ public class ZPositionCorrectionClient {
 
         LOG.info("estimateAndSaveZCoordinates: using inference options: {}", inferenceOptions);
 
+        final StopWatch stopWatch = StopWatch.createAndStart();
+
         final RandomAccessibleInterval<DoubleType> crossCorrelationMatrix = ccData.toMatrix();
 
         double[] transforms = HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
@@ -427,6 +589,11 @@ public class ZPositionCorrectionClient {
         
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
         HeadlessZPositionCorrection.writeEstimations(transforms, outputFilePath, sortedZList.get(0));
+
+        stopWatch.stop();
+
+        LOG.info("estimateAndSaveZCoordinates: exit, process took {}",
+                 StopWatch.secondsToString(stopWatch.seconds()));
     }
 
     protected static List<Double> getSortedZListForBatch(final List<Double> sortedZList,

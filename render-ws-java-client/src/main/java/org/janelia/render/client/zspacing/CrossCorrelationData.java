@@ -160,6 +160,26 @@ public class CrossCorrelationData
         return Views.interval(randomAccessible, interval);
     }
 
+    public List<Integer> getPoorCorrelationWithNextIndexes(final double poorCorrelationThreshold) {
+        final List<Integer> poorCorrelationIndexList = new ArrayList<>();
+        for (int zIndex = 0; zIndex < data.length - 1; zIndex++) {
+            final double correlationWithNextLayer = data[zIndex][0];
+            if (correlationWithNextLayer <= poorCorrelationThreshold) {
+                poorCorrelationIndexList.add(zIndex);
+            }
+        }
+
+        LOG.info("getPoorCorrelationWithNextIndexes: returning {} indexes for layers with correlation <= {}",
+                 poorCorrelationIndexList.size(), poorCorrelationThreshold);
+
+        return poorCorrelationIndexList;
+    }
+
+    public double getCrossCorrelationValue(final int pIndex,
+                                           final int qIndex) {
+        return data[pIndex][qIndex];
+    }
+
     @Override
     public String toString() {
         return "{\"firstLayerOffset\": " + firstLayerOffset +
