@@ -27,10 +27,10 @@ public class ZRangeParameters
     public Bounds overrideBounds(final Bounds defaultBounds) {
         return new Bounds(defaultBounds.getMinX(),
                           defaultBounds.getMinY(),
-                          minZ == null ? defaultBounds.getMinZ() : minZ,
+                          minZ == null ? defaultBounds.getMinZ() : Math.max(minZ, defaultBounds.getMinZ()),
                           defaultBounds.getMaxX(),
                           defaultBounds.getMaxY(),
-                          maxZ == null ? defaultBounds.getMaxZ() : maxZ);
+                          maxZ == null ? defaultBounds.getMaxZ() : Math.min(maxZ, defaultBounds.getMaxZ()));
     }
 
 }
