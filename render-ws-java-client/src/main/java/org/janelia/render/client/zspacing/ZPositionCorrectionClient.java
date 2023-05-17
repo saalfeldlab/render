@@ -508,7 +508,9 @@ public class ZPositionCorrectionClient {
                 ccData.getPoorCorrelationWithNextIndexes(parameters.poorCorrelationThreshold);
         final List<CrossCorrelationWithNextRegionalData> ccRegionalDataList =
                 new ArrayList<>(poorCorrelationIndexList.size());
-        for (final Integer zIndex : poorCorrelationIndexList) {
+
+        for (int i = 0; i < poorCorrelationIndexList.size(); i++) {
+            final Integer zIndex = poorCorrelationIndexList.get(i);
             final double pZ = sortedZList.get(zIndex);
             if (zIndex + 1 < sortedZList.size()) {
                 final double qZ = sortedZList.get(zIndex + 1);
@@ -519,6 +521,8 @@ public class ZPositionCorrectionClient {
                                                            parameters.correlationRegionRows,
                                                            parameters.correlationRegionColumns));
             }
+            LOG.info("savePoorCrossCorrelationData: derived {} out of {} z layers",
+                     i+1, poorCorrelationIndexList.size());
         }
         final String ccDataPath = new File(runDirectory,
                                            CrossCorrelationWithNextRegionalData.DEFAULT_DATA_FILE_NAME).getAbsolutePath();
