@@ -247,7 +247,10 @@ public class ZPositionCorrectionClient {
 
                 final ZPositionCorrectionClient client = new ZPositionCorrectionClient(parameters);
 
-                client.saveRunFiles();
+                if (! parameters.poorCorrelationLoadExisting) {
+                    // save run context if we are not simply generating poor regional data
+                    client.saveRunFiles();
+                }
 
                 if (parameters.solveExisting) {
 

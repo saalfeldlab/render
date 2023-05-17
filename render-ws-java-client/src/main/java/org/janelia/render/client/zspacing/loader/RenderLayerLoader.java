@@ -1,14 +1,18 @@
 package org.janelia.render.client.zspacing.loader;
 
+import ij.process.ByteProcessor;
+
 import java.io.File;
 import java.io.Serializable;
 import java.util.List;
 
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.util.ImageProcessorCache;
-
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Loads layer image data from render web service.
@@ -60,10 +64,19 @@ public class RenderLayerLoader implements LayerLoader, Serializable {
 
         final File debugFile = debugFilePattern == null ? null : new File(String.format(debugFilePattern, z));
 
-        final ImageProcessorWithMasks imageProcessorWithMasks =
+        ImageProcessorWithMasks imageProcessorWithMasks =
                 Renderer.renderImageProcessorWithMasks(renderParameters,
                                                        imageProcessorCache,
                                                        debugFile);
+
+        if (imageProcessorWithMasks == null) {
+            LOG.info("getProcessors: render parameters do not contain any tile specs, providing empty source");
+            imageProcessorWithMasks = new ImageProcessorWithMasks(new ByteProcessor(renderParameters.getWidth(),
+                                                                                    renderParameters.getHeight()),
+                                                                  null,
+                                                                  null);
+
+        }
 
         return new FloatProcessors(imageProcessorWithMasks.ip, imageProcessorWithMasks.mask, renderParameters);
     }
@@ -95,4 +108,6 @@ public class RenderLayerLoader implements LayerLoader, Serializable {
                                                "' must contain one and only one '%' token for the layer z value");
         }
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(RenderLayerLoader.class);
 }
