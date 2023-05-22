@@ -491,9 +491,14 @@ public class ZPositionCorrectionClient {
                         HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(layerLoader,
                                                                                             1,
                                                                                             firstLayerOffset);
+                final double ccValue = crossCorrelationData.getCrossCorrelationValue(0, 0);
+                if (ccValue < 0.5) {
+                    LOG.info("deriveRegionalCrossCorrelationData: very poor correlation {} derived for {} with zList {}",
+                             ccValue, regionUrlPattern, zList);
+                }
                 ccRegionalData.setValue(row,
                                         column,
-                                        crossCorrelationData.getCrossCorrelationValue(0, 0));
+                                        ccValue);
             }
         }
 
