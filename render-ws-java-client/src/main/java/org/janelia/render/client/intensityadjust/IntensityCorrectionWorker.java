@@ -97,6 +97,8 @@ public class IntensityCorrectionWorker implements Serializable {
                               final Double maxZ)
             throws ExecutionException, InterruptedException, IOException {
 
+        LOG.info("correctZRange: entry, minZ={}, maxZ={}", minZ, maxZ);
+        
         final ResolvedTileSpecCollection resolvedTiles;
         if (minZ.equals(maxZ)) {
             resolvedTiles = dataClient.getResolvedTiles(parameters.stack, minZ);
@@ -114,6 +116,8 @@ public class IntensityCorrectionWorker implements Serializable {
                                              z);
             }
         }
+
+        LOG.info("correctZRange: exit, minZ={}, maxZ={}", minZ, maxZ);
     }
 
     public void deriveAndStoreIntensityFilterData(final RenderDataClient dataClient,
