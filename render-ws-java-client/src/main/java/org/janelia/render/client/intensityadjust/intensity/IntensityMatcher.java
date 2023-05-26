@@ -80,7 +80,7 @@ public class IntensityMatcher
 
 			final StopWatch stopWatch = StopWatch.createAndStart();
 
-			LOG.info("run: entry, p1 {}, p2 {}", p1.getTileId(), p2.getTileId());
+			LOG.info("run: entry, pair {} <-> {}", p1.getTileId(), p2.getTileId());
 
 			final Interval i1 = Intervals.smallestContainingInterval( getBoundingBox( p1 ) );
 			final Rectangle box1 = new Rectangle( (int)i1.min( 0 ), (int)i1.min( 1 ), (int)i1.dimension( 0 ), (int)i1.dimension( 1 ));// p1.getBoundingBox().intersection( roi );
@@ -113,7 +113,7 @@ public class IntensityMatcher
 			//new ImagePlus( "weights2", weights2 ).show();
 			//SimpleMultiThreading.threadHaltUnClean();
 
-			LOG.info("run: generate matrix for p1 {} with p2 {} and filter", p1.getTileId(), p2.getTileId());
+			LOG.info("run: generate matrix for pair {} <-> {} and filter", p1.getTileId(), p2.getTileId());
 
 			/*
 			 * generate a matrix of all coefficients in p1 to all
@@ -189,7 +189,7 @@ public class IntensityMatcher
 						//synchronized ( MatchIntensities.this )
 						{
 							t1.connect( t2, ra.get() );
-							LOG.info("run: connected {} [{}] and {} [{}] with {} samples",
+							LOG.info("run: connected pair {} [{}] <-> {} [{}] with {} samples",
 									 p1.getTileId(), i, p2.getTileId(), j, matches.size());
 						}
 					}
@@ -198,7 +198,7 @@ public class IntensityMatcher
 
 			stopWatch.stop();
 
-			LOG.info("run: exit, matching p1 {} with p2 {} took {}",
+			LOG.info("run: exit, matching pair {} <-> {} took {}",
 					 p1.getTileId(), p2.getTileId(), stopWatch);
 		}
 	}
@@ -271,7 +271,7 @@ public class IntensityMatcher
 		final int meshResolution = patches.size() > 0 ? (int) patches.get(0).getTileSpec().getMeshCellSize() : 64;
 
 		LOG.info("match: matching intensities for {} pairs using {} threads",
-				 numThreads, patchPairs.size());
+				 patchPairs.size(), numThreads);
 
 		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
 		// TODO: parallelize on SPARK
