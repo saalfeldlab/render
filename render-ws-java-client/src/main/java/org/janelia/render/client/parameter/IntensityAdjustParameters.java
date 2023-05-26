@@ -101,6 +101,12 @@ public class IntensityAdjustParameters
     public Double lambda2 = AffineIntensityCorrectionStrategy.DEFAULT_LAMBDA;
 
     @Parameter(
+            names = { "--maxPixelCacheGb" },
+            description = "Maximum number of gigabytes of pixels to cache"
+    )
+    public Integer maxPixelCacheGb = 1;
+
+    @Parameter(
             names = "--completeCorrectedStack",
             description = "Complete the intensity corrected stack after processing",
             arity = 0)
@@ -138,6 +144,10 @@ public class IntensityAdjustParameters
             maxZCharacters++;
         }
         return sectionRootDirectory.getAbsolutePath() + "/z.%0" + maxZCharacters + "d." + format;
+    }
+
+    public long getMaxNumberOfCachedPixels() {
+        return maxPixelCacheGb * 1_000_000_000L;
     }
 
     public void validateAndSetDefaults() throws IllegalArgumentException {

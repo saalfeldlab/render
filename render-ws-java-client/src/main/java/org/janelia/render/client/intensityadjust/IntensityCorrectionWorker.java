@@ -185,10 +185,9 @@ public class IntensityCorrectionWorker implements Serializable {
 
         final RenderParameters sliceRenderParameters = RenderParameters.loadFromUrl(parametersUrl);
 
-        // make cache large enough to hold shared mask processors
         final ImageProcessorCache imageProcessorCache =
-                new ImageProcessorCache(15_000L * 15_000L,
-                                        false,
+                new ImageProcessorCache(parameters.getMaxNumberOfCachedPixels(),
+                                        true,
                                         false);
 
         final TransformMeshMappingWithMasks.ImageProcessorWithMasks slice;
