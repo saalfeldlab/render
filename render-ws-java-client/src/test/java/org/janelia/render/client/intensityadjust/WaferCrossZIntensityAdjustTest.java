@@ -64,6 +64,7 @@ public class WaferCrossZIntensityAdjustTest {
                 final IntensityCorrectionStrategy strategy = new QuadraticIntensityCorrectionStrategy(0.01, 0.01, minZ);
 
                 corrected = AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                                        null,
                                                                         imageProcessorCache,
                                                                         AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
                                                                         strategy,

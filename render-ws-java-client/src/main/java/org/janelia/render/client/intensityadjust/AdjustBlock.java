@@ -513,6 +513,7 @@ public class AdjustBlock {
 
 	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForSliceTiles(
 			final List<MinimalTileSpecWrapper> sliceTiles,
+			final Integer zDistance,
 			final ImageProcessorCache imageProcessorCache,
 			final int numCoefficients,
 			final IntensityCorrectionStrategy strategy,
@@ -529,6 +530,7 @@ public class AdjustBlock {
 				scale,
 				numCoefficients,
 				strategy,
+				zDistance,
 				neighborWeight,
 				iterations,
 				imageProcessorCache,
@@ -538,6 +540,7 @@ public class AdjustBlock {
 	public static ImageProcessorWithMasks renderIntensityAdjustedSliceGlobalPerSlice(
 			final ResolvedTileSpecCollection resolvedTiles,
 			final RenderParameters sliceRenderParameters,
+			final Integer zDistance,
 			final ImageProcessorCache imageProcessorCache,
 			final int z,
 			final int numCoefficients,
@@ -549,6 +552,7 @@ public class AdjustBlock {
 
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
 		final ArrayList < OnTheFlyIntensity > corrected = correctIntensitiesForSliceTiles(tilesForZ,
+																						  zDistance,
 																						  imageProcessorCache,
 																						  numCoefficients,
 																						  strategy,
@@ -774,6 +778,7 @@ public class AdjustBlock {
 					//renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, false, cacheOnDisk, z);
 					renderIntensityAdjustedSliceGlobalPerSlice(resolvedTiles,
 															   sliceRenderParameters,
+															   null,
 															   imageProcessorCache,
 															   z,
 															   DEFAULT_NUM_COEFFICIENTS,

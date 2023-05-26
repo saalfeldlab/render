@@ -110,7 +110,7 @@ public class IntensityAdjustParameters
             names = "--zDistance",
             description = "If specified, apply correction across this many z-layers from the current z-layer " +
                           "(omit to only correct in 2D)")
-    public Integer zDistance = 0;
+    public Integer zDistance;
 
     public File getSectionRootDirectory(final Date forRunTime) {
 
@@ -158,6 +158,6 @@ public class IntensityAdjustParameters
     }
 
     public boolean correctIn3D() {
-        return (zDistance > 0);
+        return (zDistance != null) && (zDistance > 0);
     }
 }

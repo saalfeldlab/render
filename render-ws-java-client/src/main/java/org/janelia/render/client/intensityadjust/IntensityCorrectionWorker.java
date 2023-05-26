@@ -138,6 +138,7 @@ public class IntensityCorrectionWorker implements Serializable {
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
             final List<OnTheFlyIntensity> corrected =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                                parameters.zDistance,
                                                                 imageProcessorCache,
                                                                 numCoefficients,
                                                                 strategy,
@@ -205,6 +206,7 @@ public class IntensityCorrectionWorker implements Serializable {
 //            case GLOBAL_PER_SLICE:
         slice = AdjustBlock.renderIntensityAdjustedSliceGlobalPerSlice(resolvedTiles,
                                                                        sliceRenderParameters,
+                                                                       parameters.zDistance,
                                                                        imageProcessorCache,
                                                                        integralZ,
                                                                        AdjustBlock.DEFAULT_NUM_COEFFICIENTS,

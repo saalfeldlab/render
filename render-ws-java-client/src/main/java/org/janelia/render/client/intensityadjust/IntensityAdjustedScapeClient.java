@@ -33,16 +33,11 @@ public class IntensityAdjustedScapeClient
 
                 final IntensityCorrectionWorker worker = new IntensityCorrectionWorker(parameters, dataClient);
 
-                // TODO: revisit this loop once we decide how to partition cross layer runs
+                // TODO: revisit this once we decide how to partition cross layer runs
                 final List<Double> zValues = worker.getzValues();
-                final int indexDelta = parameters.zDistance + 1;
-                for (int minIndex = 0; minIndex < zValues.size(); minIndex += indexDelta) {
-                    final double minZ = zValues.get(minIndex);
-                    final int maxIndex = Math.min((minIndex + parameters.zDistance),
-                                                  (zValues.size() - 1));
-                    final double maxZ = zValues.get(maxIndex);
-                    worker.correctZRange(dataClient, minZ, maxZ);
-                }
+                worker.correctZRange(dataClient,
+                                     zValues.get(0),
+                                     zValues.get(zValues.size()-1));
 
                 worker.completeCorrectedStackAsNeeded(dataClient);
 

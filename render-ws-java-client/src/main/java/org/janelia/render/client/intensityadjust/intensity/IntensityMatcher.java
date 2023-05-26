@@ -1,5 +1,8 @@
 package org.janelia.render.client.intensityadjust.intensity;
 
+import ij.process.ColorProcessor;
+import ij.process.FloatProcessor;
+
 import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -11,13 +14,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
-import org.janelia.render.client.intensityadjust.IntensityCorrectionStrategy;
-import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
-
-import ij.process.ColorProcessor;
-import ij.process.FloatProcessor;
 import mpicbg.models.Affine1D;
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.Model;
@@ -26,18 +22,27 @@ import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
+
+import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.render.client.intensityadjust.IntensityCorrectionStrategy;
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
+import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.imglib2.FinalRealInterval;
 import net.imglib2.Interval;
 import net.imglib2.RealInterval;
 import net.imglib2.img.list.ListImg;
 import net.imglib2.img.list.ListRandomAccess;
 import net.imglib2.util.Intervals;
+import net.imglib2.util.StopWatch;
 import net.imglib2.util.ValuePair;
 
 public class IntensityMatcher
 {
 
-	final private class Matcher implements Runnable
+	static final private class Matcher implements Runnable
 	{
 		//final private Rectangle roi;
 		final private ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > patchPair;
@@ -73,6 +78,10 @@ public class IntensityMatcher
 			final MinimalTileSpecWrapper p1 = patchPair.getA();
 			final MinimalTileSpecWrapper p2 = patchPair.getB();
 
+			final StopWatch stopWatch = StopWatch.createAndStart();
+
+			LOG.info("run: entry, p1 {}, p2 {}", p1.getTileId(), p2.getTileId());
+
 			final Interval i1 = Intervals.smallestContainingInterval( getBoundingBox( p1 ) );
 			final Rectangle box1 = new Rectangle( (int)i1.min( 0 ), (int)i1.min( 1 ), (int)i1.dimension( 0 ), (int)i1.dimension( 1 ));// p1.getBoundingBox().intersection( roi );
 
@@ -104,14 +113,20 @@ public class IntensityMatcher
 			//new ImagePlus( "weights2", weights2 ).show();
 			//SimpleMultiThreading.threadHaltUnClean();
 
+			LOG.info("run: generate matrix for p1 {} with p2 {} and filter", p1.getTileId(), p2.getTileId());
+
 			/*
 			 * generate a matrix of all coefficients in p1 to all
 			 * coefficients in p2 to store matches
 			 */
 			final ArrayList< ArrayList< PointMatch > > list = new ArrayList< ArrayList< PointMatch > >();
-			for ( int i = 0; i < numCoefficients * numCoefficients * numCoefficients * numCoefficients; ++i )
-				list.add( new ArrayList< PointMatch >() );
-			final ListImg< ArrayList< PointMatch > > matrix = new ListImg< ArrayList< PointMatch > >( list, numCoefficients * numCoefficients, numCoefficients * numCoefficients );
+			final int dimSize = numCoefficients * numCoefficients;
+			final int matrixSize = dimSize * dimSize;
+			for (int i = 0; i < matrixSize; ++i) {
+				list.add(new ArrayList<>());
+			}
+
+			final ListImg< ArrayList< PointMatch > > matrix = new ListImg< ArrayList< PointMatch > >( list, dimSize, dimSize );
 			final ListRandomAccess< ArrayList< PointMatch > > ra = matrix.randomAccess();
 
 			/*
@@ -160,11 +175,11 @@ public class IntensityMatcher
 			final ArrayList< Tile< ? > > p2CoefficientsTiles = coefficientsTiles.get( p2 );
 
 			/* connect tiles across patches */
-			for ( int i = 0; i < numCoefficients * numCoefficients; ++i )
+			for ( int i = 0; i < dimSize; ++i )
 			{
 				final Tile< ? > t1 = p1CoefficientsTiles.get( i );
 				ra.setPosition( i, 0 );
-				for ( int j = 0; j < numCoefficients * numCoefficients; ++j )
+				for ( int j = 0; j < dimSize; ++j )
 				{
 					ra.setPosition( j, 1 );
 					final ArrayList< PointMatch > matches = ra.get();
@@ -174,11 +189,17 @@ public class IntensityMatcher
 						//synchronized ( MatchIntensities.this )
 						{
 							t1.connect( t2, ra.get() );
-							System.out.println( "Connected patch " + p1.getImageCol() + ", coefficient " + i + "  +  patch " + p2.getImageCol() + ", coefficient " + j + " by " + matches.size() + " samples." );
+							LOG.info("run: connected {} [{}] and {} [{}] with {} samples",
+									 p1.getTileId(), i, p2.getTileId(), j, matches.size());
 						}
 					}
 				}
 			}
+
+			stopWatch.stop();
+
+			LOG.info("run: exit, matching p1 {} with p2 {} took {}",
+					 p1.getTileId(), p2.getTileId(), stopWatch);
 		}
 	}
 
@@ -187,15 +208,18 @@ public class IntensityMatcher
 			final double scale,
 			final int numCoefficients,
 			final IntensityCorrectionStrategy strategy,
+			final Integer zDistance,
 			final double neighborWeight,
 			final int iterations,
 			final ImageProcessorCache imageProcessorCache,
 			final int numThreads) throws InterruptedException, ExecutionException
 	{
+		LOG.info("match: entry, collecting pairs for {} patches with zDistance {}",
+				 patches.size(), zDistance);
+
 		final PointMatchFilter filter = strategy.provideOutlierRemoval();
 
-		/* generate coefficient tiles for all patches
-		 * TODO consider offering alternative models */
+		// generate coefficient tiles for all patches
 		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles =
 				(HashMap) generateCoefficientsTiles(patches, strategy, numCoefficients * numCoefficients );
 
@@ -206,7 +230,7 @@ public class IntensityMatcher
 		// find the images that actually overlap (only for those we can extract intensity PointMatches)
 		final ArrayList< ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > > patchPairs = new ArrayList<>();
 
-		System.out.println( "Collecting patch pairs ... " );
+		final double maxDeltaZ = zDistance == null ? Double.MAX_VALUE : zDistance;
 
 		for ( final MinimalTileSpecWrapper p1 : patches )
 		{
@@ -220,7 +244,10 @@ public class IntensityMatcher
 			{
 				final FinalRealInterval i = Intervals.intersect( r1, getBoundingBox(p2) );
 
-				if ( i.realMax( 0 ) - i.realMin( 0 ) > 0 && i.realMax( 1 ) - i.realMin( 1 ) > 0 )
+				final double deltaZ = Math.abs(p1.getZ() - p2.getZ());
+				if ( i.realMax( 0 ) - i.realMin( 0 ) > 0 &&
+					 i.realMax( 1 ) - i.realMin( 1 ) > 0 &&
+					 deltaZ < maxDeltaZ)
 				{
 					// TODO: test in z, only if they are close enough in z connect them
 					p2s.add( p2 );
@@ -237,13 +264,14 @@ public class IntensityMatcher
 					continue;
 
 				patchPairs.add( new ValuePair<>( p1, p2 ) );
-				System.out.println( p1.getImageCol() + " <> " + p2.getImageCol() );
+//				System.out.println( p1.getImageCol() + " <> " + p2.getImageCol() );
 			}
 		}
 
-		final int meshResolution = 64; //?
+		final int meshResolution = patches.size() > 0 ? (int) patches.get(0).getTileSpec().getMeshCellSize() : 64;
 
-		System.out.println( "Matching intensities using " + numThreads + " threads ... " );
+		LOG.info("match: matching intensities for {} pairs using {} threads",
+				 numThreads, patchPairs.size());
 
 		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
 		// TODO: parallelize on SPARK
@@ -255,19 +283,19 @@ public class IntensityMatcher
 					exec.submit(
 							new Matcher(
 									patchPair,
-									( HashMap )coefficientsTiles,
+									(HashMap) coefficientsTiles,
 									filter,
 									scale,
 									numCoefficients,
 									meshResolution,
-									imageProcessorCache ) ) );
+									imageProcessorCache)) );
 		}
 
 		for ( final Future< ? > future : futures )
 			future.get();
 
 		/* connect tiles within patches */
-		System.out.println( "Connecting coefficient tiles in the same patch  ... " );
+		LOG.info("match: connecting coefficient tiles in the same patch");
 
 		for ( final MinimalTileSpecWrapper p1 : completedPatches )
 		{
@@ -295,7 +323,6 @@ public class IntensityMatcher
 		}
 
 		/* optimize */
-		System.out.println( "Optimizing ... " );
 		final TileConfiguration tc = new TileConfiguration();
 		for ( final ArrayList<? extends Tile<?>> coefficients : coefficientsTiles.values() )
 		{
@@ -304,6 +331,8 @@ public class IntensityMatcher
 			// IJ.log( "bang" );
 			tc.addTiles( coefficients );
 		}
+
+		LOG.info("match: optimizing {} tiles", tc.getTiles().size());
 
 		try
 		{
@@ -321,8 +350,13 @@ public class IntensityMatcher
 			e.printStackTrace();
 		}
 
+		final ArrayList<OnTheFlyIntensity> onTheFlyIntensities = strategy.getOnTheFlyIntensities(patches,
+																								 numCoefficients,
+																								 coefficientsTiles);
 
-		return strategy.getOnTheFlyIntensities(patches, numCoefficients, coefficientsTiles);
+		LOG.info("match: exit, returning intensity coefficients for {} tiles", onTheFlyIntensities.size());
+
+		return onTheFlyIntensities;
 
 		/*
 		final double[] ab = new double[ 2 ];
@@ -432,4 +466,5 @@ public class IntensityMatcher
 		return map;
 	}
 
+	private static final Logger LOG = LoggerFactory.getLogger(IntensityMatcher.class);
 }

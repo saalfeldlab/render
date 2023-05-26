@@ -124,6 +124,7 @@ public class OcellarCrossZIntensityCorrection {
 
             final List<OnTheFlyIntensity> corrected =
                     AdjustBlock.correctIntensitiesForSliceTiles(alignedOverlapBoxes,
+                                                                null,
                                                                 imageProcessorCache,
                                                                 numCoefficients,
                                                                 new AffineIntensityCorrectionStrategy(),
