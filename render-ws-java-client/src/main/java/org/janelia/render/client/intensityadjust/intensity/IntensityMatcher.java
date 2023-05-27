@@ -175,6 +175,7 @@ public class IntensityMatcher
 			final ArrayList< Tile< ? > > p2CoefficientsTiles = coefficientsTiles.get( p2 );
 
 			/* connect tiles across patches */
+			int connectionCount = 0;
 			for ( int i = 0; i < dimSize; ++i )
 			{
 				final Tile< ? > t1 = p1CoefficientsTiles.get( i );
@@ -189,8 +190,9 @@ public class IntensityMatcher
 						//synchronized ( MatchIntensities.this )
 						{
 							t1.connect( t2, ra.get() );
-							LOG.info("run: connected pair {} [{}] <-> {} [{}] with {} samples",
-									 p1.getTileId(), i, p2.getTileId(), j, matches.size());
+//							LOG.info("run: connected pair {} [{}] <-> {} [{}] with {} samples",
+//									 p1.getTileId(), i, p2.getTileId(), j, matches.size());
+							connectionCount++;
 						}
 					}
 				}
@@ -198,8 +200,10 @@ public class IntensityMatcher
 
 			stopWatch.stop();
 
-			LOG.info("run: exit, matching pair {} <-> {} took {}",
-					 p1.getTileId(), p2.getTileId(), stopWatch);
+//			LOG.info("run: exit, pair {} <-> {} has {} connections, matching took {}, cacheStats are {}",
+//					 p1.getTileId(), p2.getTileId(), connectionCount, stopWatch, imageProcessorCache.getStats());
+			LOG.info("run: exit, pair {} <-> {} has {} connections, matching took {}",
+					 p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
 		}
 	}
 
@@ -294,9 +298,9 @@ public class IntensityMatcher
 		for ( final Future< ? > future : futures )
 			future.get();
 
-		/* connect tiles within patches */
-		LOG.info("match: connecting coefficient tiles in the same patch");
+		LOG.info("match: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());
 
+		/* connect tiles within patches */
 		for ( final MinimalTileSpecWrapper p1 : completedPatches )
 		{
 			/* get the coefficient tiles */
