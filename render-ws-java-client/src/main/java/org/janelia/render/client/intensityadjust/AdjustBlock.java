@@ -537,6 +537,29 @@ public class AdjustBlock {
 				numThreads);
 	}
 
+	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForPatchPairs(
+			final List<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs,
+			final ImageProcessorCache imageProcessorCache,
+			final int numCoefficients,
+			final IntensityCorrectionStrategy strategy,
+			final int numThreads)
+			throws InterruptedException, ExecutionException {
+
+		final double scale = 0.1;
+		final double neighborWeight = 0.1;
+		final int iterations = 2000;
+
+		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
+		return new IntensityMatcher().matchPairs(patchPairs,
+												 scale,
+												 numCoefficients,
+												 strategy,
+												 neighborWeight,
+												 iterations,
+												 imageProcessorCache,
+												 numThreads);
+	}
+
 	public static ImageProcessorWithMasks renderIntensityAdjustedSliceGlobalPerSlice(
 			final ResolvedTileSpecCollection resolvedTiles,
 			final RenderParameters sliceRenderParameters,

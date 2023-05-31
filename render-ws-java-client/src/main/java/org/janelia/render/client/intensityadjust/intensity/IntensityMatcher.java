@@ -272,95 +272,21 @@ public class IntensityMatcher
 			}
 		}
 
-		final int meshResolution = patches.size() > 0 ? (int) patches.get(0).getTileSpec().getMeshCellSize() : 64;
+		LOG.info("match: found {} pairs for {} patches with zDistance {}",
+				 patchPairs.size(), patches.size(), zDistance);
 
-		LOG.info("match: matching intensities for {} pairs using {} threads",
-				 patchPairs.size(), numThreads);
-
-		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
-		// TODO: parallelize on SPARK
-		final ExecutorService exec = Executors.newFixedThreadPool( numThreads );
-		final ArrayList< Future< ? > > futures = new ArrayList<>();
-		for ( final ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > patchPair : patchPairs )
-		{
-			futures.add(
-					exec.submit(
-							new Matcher(
-									patchPair,
-									(HashMap) coefficientsTiles,
-									filter,
-									scale,
-									numCoefficients,
-									meshResolution,
-									imageProcessorCache)) );
-		}
-
-		for ( final Future< ? > future : futures )
-			future.get();
-
-		LOG.info("match: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());
-
-		/* connect tiles within patches */
-		for ( final MinimalTileSpecWrapper p1 : completedPatches )
-		{
-			/* get the coefficient tiles */
-			final ArrayList<? extends Tile<?>> p1CoefficientsTiles = coefficientsTiles.get( p1 );
-
-			for ( int y = 1; y < numCoefficients; ++y )
-			{
-				final int yr = numCoefficients * y;
-				final int yr1 = yr - numCoefficients;
-				for ( int x = 0; x < numCoefficients; ++x )
-				{
-					identityConnect( p1CoefficientsTiles.get( yr1 + x ), p1CoefficientsTiles.get( yr + x ), neighborWeight );
-				}
-			}
-			for ( int y = 0; y < numCoefficients; ++y )
-			{
-				final int yr = numCoefficients * y;
-				for ( int x = 1; x < numCoefficients; ++x )
-				{
-					final int yrx = yr + x;
-					identityConnect( p1CoefficientsTiles.get( yrx ), p1CoefficientsTiles.get( yrx - 1 ), neighborWeight );
-				}
-			}
-		}
-
-		/* optimize */
-		final TileConfiguration tc = new TileConfiguration();
-		for ( final ArrayList<? extends Tile<?>> coefficients : coefficientsTiles.values() )
-		{
-			// for ( final Tile< ? > t : coefficients )
-			// if ( t.getMatches().size() == 0 )
-			// IJ.log( "bang" );
-			tc.addTiles( coefficients );
-		}
-
-		LOG.info("match: optimizing {} tiles", tc.getTiles().size());
-
-		try
-		{
-			//final ErrorStatistic observer = new ErrorStatistic( iterations + 1 );
-			//tc.optimizeSilentlyConcurrent( observer, 0.01f, iterations, iterations, 0.75f );
-			
-			TileUtil.optimizeConcurrently(new ErrorStatistic( iterations + 1 ), 0.01f, iterations, iterations, 0.75f,
-					tc, tc.getTiles(), tc.getFixedTiles(), 1 );
-			
-			//tc.optimize( 0.01f, iterations, iterations, 0.75f );
-		}
-		catch ( final Exception e )
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-		final ArrayList<OnTheFlyIntensity> onTheFlyIntensities = strategy.getOnTheFlyIntensities(patches,
-																								 numCoefficients,
-																								 coefficientsTiles);
-
-		LOG.info("match: exit, returning intensity coefficients for {} tiles", onTheFlyIntensities.size());
-
-		return onTheFlyIntensities;
+		return getOnTheFlyIntensities(patches,
+									  scale,
+									  numCoefficients,
+									  strategy,
+									  neighborWeight,
+									  iterations,
+									  imageProcessorCache,
+									  numThreads,
+									  filter,
+									  coefficientsTiles,
+									  completedPatches,
+									  patchPairs);
 
 		/*
 		final double[] ab = new double[ 2 ];
@@ -429,6 +355,157 @@ public class IntensityMatcher
 
 		return corrected;
 		*/
+	}
+
+	public ArrayList<OnTheFlyIntensity> matchPairs(
+			final List<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs,
+			final double scale,
+			final int numCoefficients,
+			final IntensityCorrectionStrategy strategy,
+			final double neighborWeight,
+			final int iterations,
+			final ImageProcessorCache imageProcessorCache,
+			final int numThreads) throws InterruptedException, ExecutionException
+	{
+		LOG.info("matchPairs: entry, processing {} pairs", patchPairs.size());
+
+		final List<MinimalTileSpecWrapper> patches = new ArrayList<>();
+		final HashSet< MinimalTileSpecWrapper > completedPatches = new HashSet<>();
+		patchPairs.forEach(pp -> {
+			if (! completedPatches.contains(pp.a)) {
+				patches.add(pp.a);
+				completedPatches.add(pp.a);
+			}
+			if (! completedPatches.contains(pp.b)) {
+				patches.add(pp.b);
+				completedPatches.add(pp.b);
+			}
+		});
+
+		LOG.info("matchPairs: found {} distinct tiles", patches.size());
+
+		final PointMatchFilter filter = strategy.provideOutlierRemoval();
+
+		// generate coefficient tiles for all patches
+		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles =
+				(HashMap) generateCoefficientsTiles(patches, strategy, numCoefficients * numCoefficients );
+
+		return getOnTheFlyIntensities(patches,
+									  scale,
+									  numCoefficients,
+									  strategy,
+									  neighborWeight,
+									  iterations,
+									  imageProcessorCache,
+									  numThreads,
+									  filter,
+									  coefficientsTiles,
+									  completedPatches,
+									  patchPairs);
+	}
+
+	private static ArrayList<OnTheFlyIntensity> getOnTheFlyIntensities(final List<MinimalTileSpecWrapper> patches,
+																	   final double scale,
+																	   final int numCoefficients,
+																	   final IntensityCorrectionStrategy strategy,
+																	   final double neighborWeight,
+																	   final int iterations,
+																	   final ImageProcessorCache imageProcessorCache,
+																	   final int numThreads,
+																	   final PointMatchFilter filter,
+																	   final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles,
+																	   final HashSet<MinimalTileSpecWrapper> completedPatches,
+																	   final List<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs)
+			throws InterruptedException, ExecutionException {
+		final int meshResolution = patches.size() > 0 ? (int) patches.get(0).getTileSpec().getMeshCellSize() : 64;
+
+		LOG.info("getOnTheFlyIntensities: entry, matching intensities for {} pairs using {} threads",
+				 patchPairs.size(), numThreads);
+
+		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
+		// TODO: parallelize on SPARK
+		final ExecutorService exec = Executors.newFixedThreadPool(numThreads);
+		final ArrayList< Future< ? > > futures = new ArrayList<>();
+		for ( final ValuePair< MinimalTileSpecWrapper, MinimalTileSpecWrapper > patchPair : patchPairs)
+		{
+			futures.add(
+					exec.submit(
+							new Matcher(
+									patchPair,
+									(HashMap) coefficientsTiles,
+									filter,
+									scale,
+									numCoefficients,
+									meshResolution,
+									imageProcessorCache)) );
+		}
+
+		for ( final Future< ? > future : futures )
+			future.get();
+
+		LOG.info("getOnTheFlyIntensities: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());
+
+		/* connect tiles within patches */
+		for ( final MinimalTileSpecWrapper p1 : completedPatches)
+		{
+			/* get the coefficient tiles */
+			final ArrayList<? extends Tile<?>> p1CoefficientsTiles = coefficientsTiles.get(p1 );
+
+			for (int y = 1; y < numCoefficients; ++y )
+			{
+				final int yr = numCoefficients * y;
+				final int yr1 = yr - numCoefficients;
+				for (int x = 0; x < numCoefficients; ++x )
+				{
+					identityConnect(p1CoefficientsTiles.get( yr1 + x ), p1CoefficientsTiles.get( yr + x ), neighborWeight);
+				}
+			}
+			for (int y = 0; y < numCoefficients; ++y )
+			{
+				final int yr = numCoefficients * y;
+				for (int x = 1; x < numCoefficients; ++x )
+				{
+					final int yrx = yr + x;
+					identityConnect(p1CoefficientsTiles.get( yrx ), p1CoefficientsTiles.get( yrx - 1 ), neighborWeight);
+				}
+			}
+		}
+
+		/* optimize */
+		final TileConfiguration tc = new TileConfiguration();
+		for ( final ArrayList<? extends Tile<?>> coefficients : coefficientsTiles.values() )
+		{
+			// for ( final Tile< ? > t : coefficients )
+			// if ( t.getMatches().size() == 0 )
+			// IJ.log( "bang" );
+			tc.addTiles( coefficients );
+		}
+
+		LOG.info("getOnTheFlyIntensities: optimizing {} tiles", tc.getTiles().size());
+
+		try
+		{
+			//final ErrorStatistic observer = new ErrorStatistic( iterations + 1 );
+			//tc.optimizeSilentlyConcurrent( observer, 0.01f, iterations, iterations, 0.75f );
+
+			TileUtil.optimizeConcurrently(new ErrorStatistic(iterations + 1 ), 0.01f, iterations, iterations, 0.75f,
+										  tc, tc.getTiles(), tc.getFixedTiles(), 1 );
+
+			//tc.optimize( 0.01f, iterations, iterations, 0.75f );
+		}
+		catch ( final Exception e )
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		final ArrayList<OnTheFlyIntensity> onTheFlyIntensities = strategy.getOnTheFlyIntensities(patches,
+																								 numCoefficients,
+																								 coefficientsTiles);
+
+		LOG.info("getOnTheFlyIntensities: exit, returning intensity coefficients for {} tiles", onTheFlyIntensities.size());
+
+		return onTheFlyIntensities;
 	}
 
 	final static protected void identityConnect( final Tile< ? > t1, final Tile< ? > t2, final double weight )

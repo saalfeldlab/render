@@ -43,6 +43,11 @@ public class IntensityAdjustParameters
     public String stack;
 
     @Parameter(
+            names = "--matchCollection",
+            description = "Match collection to identify connected tiles (omit to use tile bounds and zDistance)")
+    public String matchCollection;
+
+    @Parameter(
             names = "--intensityCorrectedFilterStack",
             description = "Name of stack to store tile specs with intensity corrected filter data.  " +
                           "Omit to render intensity corrected scape-images to disk.")
