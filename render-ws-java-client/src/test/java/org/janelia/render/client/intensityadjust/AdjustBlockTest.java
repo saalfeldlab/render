@@ -38,6 +38,7 @@ import static org.junit.Assert.assertEquals;
 public class AdjustBlockTest {
 
     private static final IntensityCorrectionStrategy AFFINE_STRATEGY = new AffineIntensityCorrectionStrategy();
+    private static final Double RENDER_SCALE = 0.1;
     private static final Integer Z_DISTANCE = null;
     private static final int NUM_THREADS = 1;
     private static final String fileName = "src/test/resources/multisem/adjust-block-test-tiles.json";
@@ -55,6 +56,7 @@ public class AdjustBlockTest {
 
         final ArrayList<OnTheFlyIntensity> correctedList =
                 AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                            RENDER_SCALE,
                                                             Z_DISTANCE,
                                                             ImageProcessorCache.DISABLED_CACHE,
                                                             AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
@@ -74,6 +76,7 @@ public class AdjustBlockTest {
 
         final ArrayList<OnTheFlyIntensity> correctedList =
                 AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                            RENDER_SCALE,
                                                             Z_DISTANCE,
                                                             ImageProcessorCache.DISABLED_CACHE,
                                                             numCoefficients,
@@ -159,6 +162,7 @@ public class AdjustBlockTest {
 
             final ArrayList<OnTheFlyIntensity> correctedList =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                                RENDER_SCALE,
                                                                 Z_DISTANCE,
                                                                 ImageProcessorCache.DISABLED_CACHE,
                                                                 AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
@@ -172,6 +176,7 @@ public class AdjustBlockTest {
 
             final ArrayList<OnTheFlyIntensity> correctedListForReverseOrderTiles =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                                RENDER_SCALE,
                                                                 Z_DISTANCE,
                                                                 ImageProcessorCache.DISABLED_CACHE,
                                                                 AdjustBlock.DEFAULT_NUM_COEFFICIENTS,

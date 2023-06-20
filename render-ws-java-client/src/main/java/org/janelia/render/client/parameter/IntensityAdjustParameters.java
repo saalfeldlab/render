@@ -118,6 +118,11 @@ public class IntensityAdjustParameters
     public boolean completeCorrectedStack = false;
 
     @Parameter(
+            names = "--renderScale",
+            description = "Scale for rendered tiles used during intensity comparison")
+    public double renderScale = 0.1;
+
+    @Parameter(
             names = "--zDistance",
             description = "If specified, apply correction across this many z-layers from the current z-layer " +
                           "(omit to only correct in 2D)")

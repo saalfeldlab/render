@@ -183,6 +183,7 @@ public class IntensityCorrectionWorker implements Serializable {
                                 .collect(Collectors.toList());
 
                 corrected = AdjustBlock.correctIntensitiesForPatchPairs(patchPairs,
+                                                                        parameters.renderScale,
                                                                         imageProcessorCache,
                                                                         numCoefficients,
                                                                         strategy,
@@ -190,6 +191,7 @@ public class IntensityCorrectionWorker implements Serializable {
             } else {
 
                 corrected = AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                                        parameters.renderScale,
                                                                         parameters.zDistance,
                                                                         imageProcessorCache,
                                                                         numCoefficients,
@@ -259,6 +261,7 @@ public class IntensityCorrectionWorker implements Serializable {
 //            case GLOBAL_PER_SLICE:
         slice = AdjustBlock.renderIntensityAdjustedSliceGlobalPerSlice(resolvedTiles,
                                                                        sliceRenderParameters,
+                                                                       parameters.renderScale,
                                                                        parameters.zDistance,
                                                                        imageProcessorCache,
                                                                        integralZ,

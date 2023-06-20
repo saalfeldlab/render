@@ -513,6 +513,7 @@ public class AdjustBlock {
 
 	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForSliceTiles(
 			final List<MinimalTileSpecWrapper> sliceTiles,
+			final double renderScale,
 			final Integer zDistance,
 			final ImageProcessorCache imageProcessorCache,
 			final int numCoefficients,
@@ -520,14 +521,13 @@ public class AdjustBlock {
 			final int numThreads)
 			throws InterruptedException, ExecutionException {
 
-		final double scale = 0.1;
 		final double neighborWeight = 0.1;
 		final int iterations = 2000;
 
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
 		return new IntensityMatcher().match(
 				sliceTiles,
-				scale,
+				renderScale,
 				numCoefficients,
 				strategy,
 				zDistance,
@@ -539,19 +539,19 @@ public class AdjustBlock {
 
 	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForPatchPairs(
 			final List<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs,
+			final double renderScale,
 			final ImageProcessorCache imageProcessorCache,
 			final int numCoefficients,
 			final IntensityCorrectionStrategy strategy,
 			final int numThreads)
 			throws InterruptedException, ExecutionException {
 
-		final double scale = 0.1;
 		final double neighborWeight = 0.1;
 		final int iterations = 2000;
 
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
 		return new IntensityMatcher().matchPairs(patchPairs,
-												 scale,
+												 renderScale,
 												 numCoefficients,
 												 strategy,
 												 neighborWeight,
@@ -563,6 +563,7 @@ public class AdjustBlock {
 	public static ImageProcessorWithMasks renderIntensityAdjustedSliceGlobalPerSlice(
 			final ResolvedTileSpecCollection resolvedTiles,
 			final RenderParameters sliceRenderParameters,
+			final double renderScale,
 			final Integer zDistance,
 			final ImageProcessorCache imageProcessorCache,
 			final int z,
@@ -575,6 +576,7 @@ public class AdjustBlock {
 
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
 		final ArrayList < OnTheFlyIntensity > corrected = correctIntensitiesForSliceTiles(tilesForZ,
+																						  renderScale,
 																						  zDistance,
 																						  imageProcessorCache,
 																						  numCoefficients,
@@ -766,7 +768,7 @@ public class AdjustBlock {
 
 		final int minZ = 23850;//27759;//20000;
 		final int maxZ = 23850;//27759;//20000;
-		final double scale = 1.0; // only full res supported right now
+		final double stackScale = 1.0; // only full res supported right now
 		final boolean cacheOnDisk = true;
 
 		new ImageJ();
@@ -801,6 +803,7 @@ public class AdjustBlock {
 					//renderIntensityAdjustedSliceGauss(stack, renderDataClient, interval, false, cacheOnDisk, z);
 					renderIntensityAdjustedSliceGlobalPerSlice(resolvedTiles,
 															   sliceRenderParameters,
+															   0.1,
 															   null,
 															   imageProcessorCache,
 															   z,
@@ -816,8 +819,8 @@ public class AdjustBlock {
 		cal.xOrigin = -(int)interval.min(0);
 		cal.yOrigin = -(int)interval.min(1);
 		cal.zOrigin = -minZ;
-		cal.pixelWidth = 1.0/scale;
-		cal.pixelHeight = 1.0/scale;
+		cal.pixelWidth = 1.0/stackScale;
+		cal.pixelHeight = 1.0/stackScale;
 		cal.pixelDepth = 1.0;
 		imp1.setCalibration( cal );
 
