@@ -25,7 +25,7 @@ TimeoutStartSec=5min
 # when using JETTY_USER variable from /etc/default/jetty in jetty.sh script.
 # Fix is to leave JETTY_USER undefined and explicitly identify user and group here:
 User=jboss
-Group=jboss
+Group=JBossAdmin-g
 
 [Install]
 WantedBy=multi-user.target

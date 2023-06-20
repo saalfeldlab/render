@@ -94,7 +94,8 @@ sudo chmod 600 "${JETTY_BASE}"/resources/render-db.properties
 # change setuid config to start-up server as jboss user
 sudo sed -i '
   s/^# jetty.setuid/jetty.setuid/
-  s/Name=jetty/Name=jboss/
+  s/userName=jetty/userName=jboss/
+  s/groupName=jetty/groupName=JBossAdmin-g/
 ' "${JETTY_BASE}"/start.d/setuid.ini
 
 # make render-ws.war writable to all to simplify future updates (obviously, don't do this if you are worried about security)
