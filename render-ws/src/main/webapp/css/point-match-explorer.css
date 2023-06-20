@@ -18,7 +18,7 @@ a {
     vertical-align: top;
     text-align: left;
     padding: 5px 5px 5px 5px;
-    width: 400px;
+    width: 500px;
     height: 100%;
 }
 
@@ -29,9 +29,9 @@ a {
     z-index: 0;
     border-right: solid 2px black;
     height: 100%;
-    width: -webkit-calc(100% - 400px);
-    width:    -moz-calc(100% - 400px);
-    width:         calc(100% - 400px);
+    width: -webkit-calc(100% - 500px);
+    width:    -moz-calc(100% - 500px);
+    width:         calc(100% - 500px);
 }
 
 button {
@@ -65,7 +65,7 @@ button:disabled {
 
     .formGrid {
         display: grid;
-        grid-template-columns: 0.5fr 1em 4em 1em 2.0fr; /* 5 columns (6 tracks) */
+        grid-template-columns: 1.3fr 1em 4em 1em 2.0fr; /* 5 columns (6 tracks) */
         grid-gap: 0.3em 0.6em; /* row gap, column gap */
         grid-auto-flow: dense;
         align-items: center;
@@ -84,7 +84,7 @@ button:disabled {
 
     select {
         grid-column: 2 / 6;
-        width: available;
+        width: auto;
         margin: 0;
     }
 
