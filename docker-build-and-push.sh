@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Note: script assumes user access to docker without sudo, may need to first run:
+#   sudo usermod -aG docker <userid>
+
 ABSOLUTE_SCRIPT=$(readlink -m "${0}")
 SCRIPT_DIR=$(dirname "${ABSOLUTE_SCRIPT}")
 
