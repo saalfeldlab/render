@@ -171,14 +171,30 @@ JaneliaTile2.prototype.drawMatches = function(canvasMatches) {
 
         if ((typeof pTile.matchInfoSelector !== 'undefined')) {
             const matchesUrl = pTile.getMatchesUrl(qTile);
+            const isCrossLayerPair = Math.floor(pTile.tileSpec.z) !== Math.floor(qTile.tileSpec.z);
+            let deltaX = qTile.tileSpec.minX - pTile.tileSpec.minX;
+            let deltaY = qTile.tileSpec.minY - pTile.tileSpec.minY;
+            let pClipPosition = "TOP";
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                pClipPosition = deltaX > 0 ? "LEFT" : "RIGHT";
+            } else if (deltaY < 0) {
+                pClipPosition = "BOTTOM";
+            }
+
             let matchInfoHtml = matchCount + ' total matches ' +
-                                "<input type='button' value='Delete Matches' onclick='tilePair.deleteMatches(\"" +
-                                matchesUrl + "\")' />";
+                                "<input type='button' style='margin-left: 3em' value='Create Trial' " +
+                                "onclick='tilePair.createTrial(" +
+                                "\"" + pTile.renderUrl + "\"," +
+                                "\"" + qTile.renderUrl + "\"," +
+                                "\"" + pClipPosition + "\"," +
+                                isCrossLayerPair + ")' />" +
+                                "<input type='button' style='margin-left: 3em' value='Delete Matches' " +
+                                "onclick='tilePair.deleteMatches(\"" + matchesUrl + "\")' />";
             if (typeof pTile.saveToCollectionName !== 'undefined') {
-                // hack to distance save button from delete button
-                matchInfoHtml += "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" +
-                                 "<input type='button' value='Save to " + pTile.saveToCollectionName +
-                                 "' onclick='tilePair.savePairToCollection()' />";
+                // distance save button from delete button
+                matchInfoHtml += "<input type='button' style='margin-left: 3em' " +
+                                 "value='Save to " + pTile.saveToCollectionName + "' " +
+                                 "onclick='tilePair.savePairToCollection()' />";
             }
             $(pTile.matchInfoSelector).html(matchInfoHtml);
         }
@@ -804,6 +820,39 @@ JaneliaTileWithNeighbors.prototype.viewTilePair = function(tileA, tileB, renderS
     };
 
     var tilePairUrl = "tile-pair.html?" + $.param(parameters);
+
+    var win = window.open(tilePairUrl);
+    if (win) {
+        win.focus();
+    } else {
+        alert('Please allow popups for this website');
+    }
+
+};
+
+JaneliaTileWithNeighbors.prototype.createTrial = function(pRenderParametersUrl,
+                                                          qRenderParametersUrl,
+                                                          pClipPosition,
+                                                          isCrossLayerPair) {
+    const renderScaleParameter = isCrossLayerPair ? "&scale=0.05" : "&scale=0.4";
+    const parameters = {
+        "pRenderParametersUrl": pRenderParametersUrl + renderScaleParameter,
+        "qRenderParametersUrl": qRenderParametersUrl + renderScaleParameter,
+        "steps": 5,
+        "matchFilter": "CONSENSUS_SETS",
+        "matchMaxTrust": 4.0
+    };
+    if (isCrossLayerPair) {
+        parameters["minScale"] = 0.125;
+        parameters["matchModelType"] = "RIGID";
+    } else {
+        parameters["minScale"] = 0.25;
+        parameters["matchModelType"] = "TRANSLATION";
+        parameters["pClipPosition"] = pClipPosition;
+        parameters["clipPixels"] = 300;
+    }
+
+    var tilePairUrl = "match-trial.html?" + $.param(parameters);
 
     var win = window.open(tilePairUrl);
     if (win) {
