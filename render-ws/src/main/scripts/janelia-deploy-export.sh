@@ -118,8 +118,17 @@ sudo cp "${JETTY_BASE}"/jetty.service /etc/systemd/system/jetty.service
 sudo systemctl enable jetty
 
 echo "
-enabled jetty service to be restarted after reboots
+Enabled jetty service to be restarted after reboots.
 
-to start service, run:
+To start service, run:
+
   sudo systemctl start jetty
+
+If server has additional deployed webapps directories (e.g. n5, n5_sources, z_corr_plots, ...),
+those directories need to be sudo mv to new jetty_base.
+
+Here are the current webapps directory listings for all exports:
+
 "
+
+ls -al /opt/local/docker_exports/*/jetty_base/webapps
