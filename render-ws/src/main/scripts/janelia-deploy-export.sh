@@ -85,9 +85,9 @@ sudo mkdir -p "${JETTY_WORK}"
 
 echo "setting up Jetty to run as service with jboss user ..."
 
-# change ownership to legacy jbossadmin/jboss setup to ensure access to network mounted images
-sudo chown -R jbossadmin:jboss "${FULL_EXPORT_DIR}"
-sudo chown -R jboss:jboss "${JETTY_LOGS}" "${JETTY_WORK}"
+# change ownership to legacy jbossadmin/JBossAdmin-g setup to ensure access to network mounted images
+sudo chown -R jbossadmin:JBossAdmin-g "${FULL_EXPORT_DIR}"
+sudo chown -R jboss:JBossAdmin-g "${JETTY_LOGS}" "${JETTY_WORK}"
 sudo chown jboss "${JETTY_BASE}"/resources/render-db.properties
 sudo chmod 600 "${JETTY_BASE}"/resources/render-db.properties
 
