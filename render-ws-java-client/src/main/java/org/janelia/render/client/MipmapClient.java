@@ -47,9 +47,7 @@ public class MipmapClient {
         @ParametersDelegate
         public MipmapParameters mipmap = new MipmapParameters();
 
-        @Parameter(
-                description = "Z values for layers to render",
-                required = true)
+        @Parameter(description = "Z values for layers to render (omit to process all z layers in stack)")
         public List<Double> zValues;
 
     }
@@ -68,10 +66,9 @@ public class MipmapClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final MipmapClient client = new MipmapClient(parameters.renderWeb,
-                                                             parameters.mipmap);
-                for (final Double z : parameters.zValues) {
-                    client.processMipmapsForZ(z);
-                }
+                                                             parameters.mipmap,
+                                                             parameters.zValues);
+                client.processMipmaps();
                 client.updateMipmapPathBuilderForStack();
             }
         };
@@ -81,11 +78,13 @@ public class MipmapClient {
     private final MipmapParameters parameters;
 
     private final String stack;
+    private final List<Double> zValues;
     private final MipmapPathBuilder mipmapPathBuilder;
     private final RenderDataClient renderDataClient;
 
     public MipmapClient(final RenderWebServiceParameters renderWebParameters,
-                        final MipmapParameters parameters)
+                        final MipmapParameters parameters,
+                        final List<Double> zValues)
             throws IOException {
 
         this.parameters = parameters;
@@ -116,6 +115,12 @@ public class MipmapClient {
         }
 
         this.renderDataClient = renderWebParameters.getDataClient();
+
+        if (zValues == null) {
+            this.zValues = this.renderDataClient.getStackZValues(this.stack);
+        } else {
+            this.zValues = zValues;
+        }
     }
 
     MipmapPathBuilder getMipmapPathBuilder() {
@@ -159,6 +164,13 @@ public class MipmapClient {
             throw new IOException("Version is missing for stack " + parameters.stack + ".");
         }
 
+    }
+
+    public void processMipmaps()
+            throws Exception {
+        for (final Double z : zValues) {
+            processMipmapsForZ(z);
+        }
     }
 
     public int processMipmapsForZ(final Double z)

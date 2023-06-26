@@ -3,6 +3,7 @@ package org.janelia.render.client;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;
 
@@ -50,7 +51,7 @@ public class MipmapClientTest {
         parameters.mipmap.rootDirectory = mipmapRootDirectory.getAbsolutePath();
         parameters.mipmap.maxLevel = 2;
 
-        MipmapClient mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap);
+        MipmapClient mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap, new ArrayList<>());
 
         final ImageAndMask sourceImageAndMask = new ImageAndMask("src/test/resources/col0060_row0140_cam0.tif",
                                                                  "src/test/resources/mask.tif");
@@ -106,7 +107,7 @@ public class MipmapClientTest {
 
         parameters.mipmap.rootDirectory = mipmapRootDirectory.getAbsolutePath();
         parameters.mipmap.maxLevel = level;
-        mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap);
+        mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap, new ArrayList<>());
         tileSpec.setMipmapPathBuilder(mipmapClient.getMipmapPathBuilder());
 
         mipmapClient.generateMissingMipmapFiles(tileSpec);
