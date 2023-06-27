@@ -18,7 +18,7 @@ import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 public class MipmapParameters implements Serializable {
 
     @ParametersDelegate
-    public StackIdWithZParameters stackId = new StackIdWithZParameters();
+    public StackIdWithZParameters stackIdWithZ = new StackIdWithZParameters();
 
     @Parameter(
             names = "--rootDirectory",

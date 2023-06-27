@@ -25,11 +25,11 @@ import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.janelia.render.client.parameter.StackIdWithZParameters.StackIdWithZ;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -155,16 +155,16 @@ public class MipmapClient {
 
     public void processMipmaps()
             throws Exception {
-        StackIdWithZ previousStackIdWithZ = null;
-        for (final StackIdWithZ stackIdWithZ : parameters.stackId.getStackIdWithZList(renderDataClient)) {
-            if ((previousStackIdWithZ != null) && (! previousStackIdWithZ.stackId.equals(stackIdWithZ.stackId))) {
-                updateMipmapPathBuilderForStack(previousStackIdWithZ.stackId);
+        StackWithZValues previousStackWithZ = null;
+        for (final StackWithZValues stackWithZ : parameters.stackIdWithZ.getStackWithZList(renderDataClient)) {
+            if ((previousStackWithZ != null) && ! stackWithZ.hasSameStack(previousStackWithZ)) {
+                updateMipmapPathBuilderForStack(previousStackWithZ.getStackId());
             }
-            processMipmapsForZ(stackIdWithZ.stackId, stackIdWithZ.z);
-            previousStackIdWithZ = stackIdWithZ;
+            processMipmapsForZ(stackWithZ.getStackId(), stackWithZ.getFirstZ());
+            previousStackWithZ = stackWithZ;
         }
-        if (previousStackIdWithZ != null) {
-            updateMipmapPathBuilderForStack(previousStackIdWithZ.stackId);
+        if (previousStackWithZ != null) {
+            updateMipmapPathBuilderForStack(previousStackWithZ.getStackId());
         }
     }
 

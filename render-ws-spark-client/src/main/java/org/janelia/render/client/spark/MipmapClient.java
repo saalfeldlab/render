@@ -12,12 +12,12 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.janelia.render.client.parameter.StackIdWithZParameters.StackIdWithZ;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,22 +76,22 @@ public class MipmapClient
 
             final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
-            final List<StackIdWithZ> stackIdWithZValues =
-                    parameters.mipmap.stackId.getStackIdWithZList(sourceDataClient);
+            final List<StackWithZValues> stackIdWithZValues =
+                    parameters.mipmap.stackIdWithZ.getStackWithZList(sourceDataClient);
 
             if (stackIdWithZValues.size() == 0) {
                 throw new IllegalArgumentException("no stack z-layers match parameters");
             }
 
-            final JavaRDD<StackIdWithZ> rddStackIdWithZValues = sparkContext.parallelize(stackIdWithZValues);
+            final JavaRDD<StackWithZValues> rddStackIdWithZValues = sparkContext.parallelize(stackIdWithZValues);
 
-            final Function<StackIdWithZ, Integer> mipmapFunction = stackIdWithZ -> {
-                LogUtilities.setupExecutorLog4j(stackIdWithZ.stackId.getStack() + " z " + stackIdWithZ.z);
+            final Function<StackWithZValues, Integer> mipmapFunction = stackIdWithZ -> {
+                LogUtilities.setupExecutorLog4j(stackIdWithZ.toString());
                 final org.janelia.render.client.MipmapClient mc =
                         new org.janelia.render.client.MipmapClient(parameters.renderWeb,
                                                                    parameters.mipmap);
-                return mc.processMipmapsForZ(stackIdWithZ.stackId,
-                                             stackIdWithZ.z);
+                return mc.processMipmapsForZ(stackIdWithZ.getStackId(),
+                                             stackIdWithZ.getFirstZ());
             };
 
             final JavaRDD<Integer> rddTileCounts = rddStackIdWithZValues.map(mipmapFunction);
@@ -109,7 +109,7 @@ public class MipmapClient
                     new org.janelia.render.client.MipmapClient(parameters.renderWeb,
                                                                parameters.mipmap);
             final List<StackId> distinctStackIds = stackIdWithZValues.stream()
-                    .map(stackIdWithZ -> stackIdWithZ.stackId)
+                    .map(StackWithZValues::getStackId)
                     .distinct()
                     .collect(Collectors.toList());
             for (final StackId stackId : distinctStackIds) {

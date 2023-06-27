@@ -65,6 +65,10 @@ public class StackId implements Comparable<StackId>, Serializable {
         return "stack with owner '" + owner + "', project '" + project + "', and name '" + stack + "'";
     }
 
+    public String toDevString() {
+        return owner + "::" + project + "::" + stack;
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }
@@ -87,8 +91,7 @@ public class StackId implements Comparable<StackId>, Serializable {
     public int hashCode() {
         return Objects.hashCode(stack, project, owner);
     }
-
-    @SuppressWarnings("NullableProblems")
+    
     @Override
     public int compareTo(final StackId that) {
         int v = this.owner.compareTo(that.owner);

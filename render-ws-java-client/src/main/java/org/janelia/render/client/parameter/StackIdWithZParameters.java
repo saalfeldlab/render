@@ -10,11 +10,12 @@ import java.util.Collections;
 import java.util.List;
 
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.RenderDataClient;
 
 /**
- * Parameters for identifying a stack or group of stacks.
+ * Parameters for identifying z-layers within a stack or group of stacks.
  *
  * @author Eric Trautman
  */
@@ -60,9 +61,12 @@ public class StackIdWithZParameters
         return stackIdList;
     }
 
-    public List<StackIdWithZ> getStackIdWithZList(final RenderDataClient renderDataClient)
+    /**
+     * @return list of stack identifiers coupled with single z values ordered by stack and then z.
+     */
+    public List<StackWithZValues> getStackWithZList(final RenderDataClient renderDataClient)
             throws IOException {
-        final List<StackIdWithZ> stackIdWithZList = new ArrayList<>();
+        final List<StackWithZValues> stackWithZList = new ArrayList<>();
         final List<StackId> stackIdList = getStackIdList(renderDataClient);
         for (final StackId stackId : stackIdList) {
             final RenderDataClient projectClient = renderDataClient.buildClientForProject(stackId.getProject());
@@ -70,21 +74,10 @@ public class StackIdWithZParameters
                                                                 layerRange.minZ,
                                                                 layerRange.maxZ,
                                                                 zValues)) {
-                stackIdWithZList.add(new StackIdWithZ(stackId, z));
+                stackWithZList.add(new StackWithZValues(stackId, z));
             }
         }
-        return stackIdWithZList;
-    }
-
-    public static class StackIdWithZ implements Serializable {
-        public final StackId stackId;
-        public final Double z;
-
-        public StackIdWithZ(final StackId stackId,
-                            final Double z) {
-            this.stackId = stackId;
-            this.z = z;
-        }
+        return stackWithZList;
     }
 
 }
