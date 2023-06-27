@@ -34,6 +34,10 @@ public class RenderWebServiceUrls implements Serializable {
         this.matchCollection = matchCollection;
     }
 
+    public String getOwner() {
+        return owner;
+    }
+
     public String getLikelyUniqueIdUrlString() {
         return baseDataUrl + "/likelyUniqueId";
     }
@@ -63,6 +67,7 @@ public class RenderWebServiceUrls implements Serializable {
         return getMatchCollectionUrlString() + "/matches";
     }
 
+    @SuppressWarnings("unused")
     public String getMatchMultiConsensusGroupIdsUrlString() {
         return getMatchCollectionUrlString() + "/multiConsensusGroupIds";
     }
@@ -107,6 +112,7 @@ public class RenderWebServiceUrls implements Serializable {
         return getStackUrlString(stack) + "/section/" + sectionId;
     }
 
+    @SuppressWarnings("unused")
     public String getSectionZUrlString(final String stack,
                                        final String sectionId) {
         return getSectionUrlString(stack, sectionId) + "/z";

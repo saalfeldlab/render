@@ -1,9 +1,10 @@
 package org.janelia.render.client;
 
+import ij.process.ImageProcessor;
+
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.Map;
 
@@ -17,8 +18,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-import ij.process.ImageProcessor;
 
 /**
  * Tests the {@link MipmapClient} class.
@@ -51,7 +50,7 @@ public class MipmapClientTest {
         parameters.mipmap.rootDirectory = mipmapRootDirectory.getAbsolutePath();
         parameters.mipmap.maxLevel = 2;
 
-        MipmapClient mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap, new ArrayList<>());
+        MipmapClient mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap);
 
         final ImageAndMask sourceImageAndMask = new ImageAndMask("src/test/resources/col0060_row0140_cam0.tif",
                                                                  "src/test/resources/mask.tif");
@@ -107,7 +106,7 @@ public class MipmapClientTest {
 
         parameters.mipmap.rootDirectory = mipmapRootDirectory.getAbsolutePath();
         parameters.mipmap.maxLevel = level;
-        mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap, new ArrayList<>());
+        mipmapClient = new MipmapClient(parameters.renderWeb, parameters.mipmap);
         tileSpec.setMipmapPathBuilder(mipmapClient.getMipmapPathBuilder());
 
         mipmapClient.generateMissingMipmapFiles(tileSpec);

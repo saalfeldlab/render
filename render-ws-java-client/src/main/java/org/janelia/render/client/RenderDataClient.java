@@ -74,9 +74,21 @@ public class RenderDataClient {
     public RenderDataClient(final String baseDataUrl,
                             final String owner,
                             final String project) {
+        this(project,
+             new RenderWebServiceUrls(baseDataUrl, owner, project),
+             HttpClientBuilder.create().setRetryHandler(new WaitingRetryHandler()).build());
+    }
+
+    public RenderDataClient(final String project,
+                            final RenderWebServiceUrls urls,
+                            final CloseableHttpClient httpClient) {
         this.project = project;
-        this.urls = new RenderWebServiceUrls(baseDataUrl, owner, project);
-        this.httpClient = HttpClientBuilder.create().setRetryHandler(new WaitingRetryHandler()).build();
+        this.urls = urls;
+        this.httpClient = httpClient;
+    }
+
+    public String getProject() {
+        return project;
     }
 
     public RenderWebServiceUrls getUrls() {
@@ -128,6 +140,10 @@ public class RenderDataClient {
         LOG.info("getStackMetaData: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
+    }
+
+    public List<StackId> getOwnerStacks() throws IOException {
+        return getStackIds(null);
     }
 
     public List<StackId> getProjectStacks() throws IOException {
@@ -1439,6 +1455,10 @@ public class RenderDataClient {
                                                final double scale,
                                                final String filterListName) {
         return urls.getRenderParametersUrlString(stack, x, y, z, width, height, scale, filterListName);
+    }
+
+    public RenderDataClient buildClientForProject(final String project) {
+        return project.equals(this.project) ? this : new RenderDataClient(project, urls, httpClient);
     }
 
     private URI getStackUri(final String stack)

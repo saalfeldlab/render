@@ -1,5 +1,9 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.ParametersDelegate;
+
+import ij.process.ImageProcessor;
+
 import java.awt.image.BufferedImage;
 import java.awt.image.WritableRaster;
 import java.io.File;
@@ -10,26 +14,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import mpicbg.trakem2.util.Downsampler;
+
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.StackIdWithZParameters.StackIdWithZ;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import ij.process.ImageProcessor;
-import mpicbg.trakem2.util.Downsampler;
 
 /**
  * Java client for generating mipmap files into a {@link org.janelia.alignment.spec.stack.MipmapPathBuilder}
@@ -46,10 +48,6 @@ public class MipmapClient {
 
         @ParametersDelegate
         public MipmapParameters mipmap = new MipmapParameters();
-
-        @Parameter(description = "Z values for layers to render (omit to process all z layers in stack)")
-        public List<Double> zValues;
-
     }
 
     /**
@@ -66,29 +64,22 @@ public class MipmapClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final MipmapClient client = new MipmapClient(parameters.renderWeb,
-                                                             parameters.mipmap,
-                                                             parameters.zValues);
+                                                             parameters.mipmap);
                 client.processMipmaps();
-                client.updateMipmapPathBuilderForStack();
             }
         };
         clientRunner.run();
     }
 
     private final MipmapParameters parameters;
-
-    private final String stack;
-    private final List<Double> zValues;
     private final MipmapPathBuilder mipmapPathBuilder;
     private final RenderDataClient renderDataClient;
 
     public MipmapClient(final RenderWebServiceParameters renderWebParameters,
-                        final MipmapParameters parameters,
-                        final List<Double> zValues)
+                        final MipmapParameters mipmapParameters)
             throws IOException {
 
-        this.parameters = parameters;
-        this.stack = parameters.stack;
+        this.parameters = mipmapParameters;
 
         this.mipmapPathBuilder = parameters.getMipmapPathBuilder();
 
@@ -116,21 +107,17 @@ public class MipmapClient {
 
         this.renderDataClient = renderWebParameters.getDataClient();
 
-        if (zValues == null) {
-            this.zValues = this.renderDataClient.getStackZValues(this.stack);
-        } else {
-            this.zValues = zValues;
-        }
     }
 
     MipmapPathBuilder getMipmapPathBuilder() {
         return mipmapPathBuilder;
     }
 
-    public void updateMipmapPathBuilderForStack()
+    public void updateMipmapPathBuilderForStack(final StackId stackId)
             throws IOException {
 
-        final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
+        final RenderDataClient projectClient = renderDataClient.buildClientForProject(stackId.getProject());
+        final StackMetaData stackMetaData = projectClient.getStackMetaData(stackId.getStack());
         final StackVersion stackVersion = stackMetaData.getCurrentVersion();
 
         if (stackVersion != null) {
@@ -144,9 +131,9 @@ public class MipmapClient {
                         updatedBuilder = null; // no need to update
                     }
                 } else {
-                    LOG.error("updateMipmapPathBuilderForStack: skipping update because " +
+                    LOG.error("updateMipmapPathBuilderForStack: skipping update for {} because " +
                               "old and new mipmap path builders have different root path or extension " +
-                              "( old={}, new={} ).", currentBuilder, mipmapPathBuilder);
+                              "( old={}, new={} ).", stackId, currentBuilder, mipmapPathBuilder);
                     updatedBuilder = null; // skip update
                 }
 
@@ -155,30 +142,40 @@ public class MipmapClient {
             }
 
             if (updatedBuilder != null) {
-                renderDataClient.setMipmapPathBuilder(parameters.stack, updatedBuilder);
+                projectClient.setMipmapPathBuilder(stackId.getStack(), updatedBuilder);
             } else {
-                LOG.info("updateMipmapPathBuilderForStack: builder is already up-to-date");
+                LOG.info("updateMipmapPathBuilderForStack: builder for {} is already up-to-date", stackId);
             }
 
         } else {
-            throw new IOException("Version is missing for stack " + parameters.stack + ".");
+            throw new IOException("Version is missing for " + stackId + ".");
         }
 
     }
 
     public void processMipmaps()
             throws Exception {
-        for (final Double z : zValues) {
-            processMipmapsForZ(z);
+        StackIdWithZ previousStackIdWithZ = null;
+        for (final StackIdWithZ stackIdWithZ : parameters.stackId.getStackIdWithZList(renderDataClient)) {
+            if ((previousStackIdWithZ != null) && (! previousStackIdWithZ.stackId.equals(stackIdWithZ.stackId))) {
+                updateMipmapPathBuilderForStack(previousStackIdWithZ.stackId);
+            }
+            processMipmapsForZ(stackIdWithZ.stackId, stackIdWithZ.z);
+            previousStackIdWithZ = stackIdWithZ;
+        }
+        if (previousStackIdWithZ != null) {
+            updateMipmapPathBuilderForStack(previousStackIdWithZ.stackId);
         }
     }
 
-    public int processMipmapsForZ(final Double z)
+    public int processMipmapsForZ(final StackId stackId,
+                                  final Double z)
             throws Exception {
 
-        LOG.info("processMipmapsForZ: entry, z={}", z);
+        LOG.info("processMipmapsForZ: entry, stackId={}, z={}", stackId, z);
 
-        final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(stack, z);
+        final RenderDataClient projectClient = renderDataClient.buildClientForProject(stackId.getProject());
+        final ResolvedTileSpecCollection tiles = projectClient.getResolvedTiles(stackId.getStack(), z);
         final int tileCount = tiles.getTileCount();
         final int tilesPerGroup = (int) Math.ceil((double) tileCount / parameters.numberOfRenderGroups);
         final int startTile = (parameters.renderGroup - 1) * tilesPerGroup;
@@ -198,11 +195,11 @@ public class MipmapClient {
         final int renderedTileCount = tileSpecsToRender.size();
 
         if (parameters.removeAll) {
-            LOG.info("processMipmapsForZ: exit, removed {} mipmaps for {} tiles with z {} in group {} ({} to {} of {})",
-                     removedFileCount, renderedTileCount, z, parameters.renderGroup, startTile, stopTile - 1, tileCount);
+            LOG.info("processMipmapsForZ: exit, for {} removed {} mipmaps for {} tiles with z {} in group {} ({} to {} of {})",
+                     stackId, removedFileCount, renderedTileCount, z, parameters.renderGroup, startTile, stopTile - 1, tileCount);
         } else {
-            LOG.info("processMipmapsForZ: exit, generated mipmaps for {} tiles with z {} in group {} ({} to {} of {})",
-                     renderedTileCount, z, parameters.renderGroup, startTile, stopTile - 1, tileCount);
+            LOG.info("processMipmapsForZ: exit, for {} generated mipmaps for {} tiles with z {} in group {} ({} to {} of {})",
+                     stackId, renderedTileCount, z, parameters.renderGroup, startTile, stopTile - 1, tileCount);
         }
 
         return renderedTileCount;

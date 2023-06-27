@@ -4,19 +4,20 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.janelia.render.client.parameter.ZRangeParameters;
+import org.janelia.render.client.parameter.StackIdWithZParameters.StackIdWithZ;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,10 +37,6 @@ public class MipmapClient
 
         @ParametersDelegate
         MipmapParameters mipmap = new MipmapParameters();
-
-        @ParametersDelegate
-        public ZRangeParameters layerRange = new ZRangeParameters();
-
     }
 
     public static void main(final String[] args) {
@@ -77,29 +74,27 @@ public class MipmapClient
 
             LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
-
             final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
-            final List<Double> zValues = sourceDataClient.getStackZValues(parameters.mipmap.stack,
-                                                                          parameters.layerRange.minZ,
-                                                                          parameters.layerRange.maxZ);
+            final List<StackIdWithZ> stackIdWithZValues =
+                    parameters.mipmap.stackId.getStackIdWithZList(sourceDataClient);
 
-            if (zValues.size() == 0) {
-                throw new IllegalArgumentException("source stack does not contain any matching z values");
+            if (stackIdWithZValues.size() == 0) {
+                throw new IllegalArgumentException("no stack z-layers match parameters");
             }
 
-            final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
+            final JavaRDD<StackIdWithZ> rddStackIdWithZValues = sparkContext.parallelize(stackIdWithZValues);
 
-            final Function<Double, Integer> mipmapFunction = z -> {
-                LogUtilities.setupExecutorLog4j("z " + z);
+            final Function<StackIdWithZ, Integer> mipmapFunction = stackIdWithZ -> {
+                LogUtilities.setupExecutorLog4j(stackIdWithZ.stackId.getStack() + " z " + stackIdWithZ.z);
                 final org.janelia.render.client.MipmapClient mc =
                         new org.janelia.render.client.MipmapClient(parameters.renderWeb,
-                                                                   parameters.mipmap,
-                                                                   new ArrayList<>());
-                return mc.processMipmapsForZ(z);
+                                                                   parameters.mipmap);
+                return mc.processMipmapsForZ(stackIdWithZ.stackId,
+                                             stackIdWithZ.z);
             };
 
-            final JavaRDD<Integer> rddTileCounts = rddZValues.map(mipmapFunction);
+            final JavaRDD<Integer> rddTileCounts = rddStackIdWithZValues.map(mipmapFunction);
 
             final List<Integer> tileCountList = rddTileCounts.collect();
             long total = 0;
@@ -112,9 +107,14 @@ public class MipmapClient
 
             final org.janelia.render.client.MipmapClient mc =
                     new org.janelia.render.client.MipmapClient(parameters.renderWeb,
-                                                               parameters.mipmap,
-                                                               new ArrayList<>());
-            mc.updateMipmapPathBuilderForStack();
+                                                               parameters.mipmap);
+            final List<StackId> distinctStackIds = stackIdWithZValues.stream()
+                    .map(stackIdWithZ -> stackIdWithZ.stackId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            for (final StackId stackId : distinctStackIds) {
+                mc.updateMipmapPathBuilderForStack(stackId);
+            }
         }
         
     }

@@ -1,13 +1,14 @@
 package org.janelia.render.client.parameter;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
-
-import com.beust.jcommander.Parameter;
 
 /**
  * Parameters for mipmap generation.
@@ -16,11 +17,8 @@ import com.beust.jcommander.Parameter;
  */
 public class MipmapParameters implements Serializable {
 
-    @Parameter(
-            names = "--stack",
-            description = "Stack name",
-            required = true)
-    public String stack;
+    @ParametersDelegate
+    public StackIdWithZParameters stackId = new StackIdWithZParameters();
 
     @Parameter(
             names = "--rootDirectory",
