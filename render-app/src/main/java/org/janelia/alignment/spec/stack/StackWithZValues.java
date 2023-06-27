@@ -2,6 +2,7 @@ package org.janelia.alignment.spec.stack;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
 
@@ -12,7 +13,7 @@ import io.swagger.annotations.ApiModelProperty;
  *
  * @author Eric Trautman
  */
-public class StackWithZValues {
+public class StackWithZValues implements Serializable {
 
     private final StackId stackId;
     private final List<Double> zValues;
