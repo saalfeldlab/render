@@ -42,6 +42,7 @@ public class StackIdWithZParameters
     public ZRangeParameters layerRange = new ZRangeParameters();
 
     @Parameter(
+            names = "--z",
             description = "Z values for layers to process (omit to process all z layers)")
     public List<Double> zValues;
 
