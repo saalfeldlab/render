@@ -23,7 +23,8 @@ public class StackIdWithZParameters
 
     @Parameter(
             names = "--stack",
-            description = "Process these stacks")
+            description = "Process these stacks",
+            variableArity = true)
     public List<String> stackNames;
 
     @Parameter(
@@ -43,7 +44,8 @@ public class StackIdWithZParameters
 
     @Parameter(
             names = "--z",
-            description = "Z values for layers to process (omit to process all z layers)")
+            description = "Z values for layers to process (omit to process all z layers)",
+            variableArity = true)
     public List<Double> zValues;
 
     public List<StackId> getStackIdList(final RenderDataClient renderDataClient)
