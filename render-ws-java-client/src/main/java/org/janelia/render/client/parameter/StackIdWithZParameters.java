@@ -6,12 +6,11 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
-import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.RenderDataClient;
 
 /**
@@ -24,8 +23,8 @@ public class StackIdWithZParameters
 
     @Parameter(
             names = "--stack",
-            description = "Process this stack")
-    public String stack;
+            description = "Process these stacks")
+    public List<String> stackNames;
 
     @Parameter(
             names = "--allStacksInProject",
@@ -42,7 +41,8 @@ public class StackIdWithZParameters
     @ParametersDelegate
     public ZRangeParameters layerRange = new ZRangeParameters();
 
-    @Parameter(description = "Z values for layers to process (omit to process all z layers in stack)")
+    @Parameter(
+            description = "Z values for layers to process (omit to process all z layers)")
     public List<Double> zValues;
 
     public List<StackId> getStackIdList(final RenderDataClient renderDataClient)
@@ -52,9 +52,10 @@ public class StackIdWithZParameters
             stackIdList = renderDataClient.getOwnerStacks();
         } else if (allStacksInProject) {
             stackIdList = renderDataClient.getProjectStacks();
-        } else if (stack != null) {
-            final RenderWebServiceUrls urls = renderDataClient.getUrls();
-            stackIdList = Collections.singletonList(new StackId(urls.getOwner(), renderDataClient.getProject(), stack));
+        } else if (stackNames != null) {
+            stackIdList = renderDataClient.getProjectStacks().stream()
+                    .filter(stackId -> stackNames.contains(stackId.getStack()))
+                    .collect(Collectors.toList());
         } else {
             throw new IOException("must specify either --stack, --allStacksInProject, or --allStacksInAllProjects");
         }
