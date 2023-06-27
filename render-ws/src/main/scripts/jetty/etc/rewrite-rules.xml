@@ -13,6 +13,16 @@
             <Call name="addRule">
                 <Arg>
                     <New class="org.eclipse.jetty.rewrite.handler.RedirectRegexRule">
+                        <Set name="regex">^/$</Set>
+                        <Set name="location">/render-ws/view/index.html</Set>
+                        <Set name="terminating">true</Set>
+                    </New>
+                </Arg>
+            </Call>
+        
+            <Call name="addRule">
+                <Arg>
+                    <New class="org.eclipse.jetty.rewrite.handler.RedirectRegexRule">
                         <Set name="regex">^(.*?)/render-ws/view/$</Set>
                         <Set name="location">$1/render-ws/view/index.html</Set>
                         <Set name="terminating">true</Set>
