@@ -1,6 +1,5 @@
 package org.janelia.render.client;
 
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +16,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.beust.jcommander.Parameter;
+
+import static org.janelia.render.client.TilePairClient.validateFileIsWritable;
 
 /**
  * Java client for redistributing (batching) neighbor tile pair information from one set of files to another.
@@ -55,18 +56,9 @@ public class RedistributeTilePairsClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-
-                File toFile = new File(parameters.toJson).getAbsoluteFile();
-                if (! toFile.exists()) {
-                    toFile = toFile.getParentFile();
-                }
-
-                if (! toFile.canWrite()) {
-                    throw new IllegalArgumentException("cannot write to " + toFile.getAbsolutePath());
-                }
+                validateFileIsWritable(parameters.toJson);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
-
 
                 final RedistributeTilePairsClient client = new RedistributeTilePairsClient(parameters);
                 client.redistributePairs();

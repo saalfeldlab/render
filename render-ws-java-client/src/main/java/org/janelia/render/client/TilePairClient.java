@@ -26,6 +26,7 @@ import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
+import org.janelia.alignment.match.parameters.TilePairDerivationParameters;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
@@ -87,86 +88,8 @@ public class TilePairClient {
                 variableArity = true) // e.g. --z 20.0 --z 21.0 --z 22.0
         public List<Double> zValues;
 
-        @Parameter(
-                names = "--xyNeighborFactor",
-                description = "Multiply this by max(width, height) of each tile to determine radius for locating neighbor tiles"
-        )
-        public Double xyNeighborFactor = 0.9;
-
-        @Parameter(
-                names = "--explicitRadius",
-                description = "Explicit radius in full scale pixels for locating neighbor tiles (if set, will override --xyNeighborFactor)"
-        )
-        public Double explicitRadius;
-
-        @Parameter(
-                names = "--useRowColPositions",
-                description = "For montage pairs (zNeighborDistance == 0) use layout imageRow and imageCol values instead of tile bounds to identify neighbor tiles",
-                arity = 0)
-        public boolean useRowColPositions = false;
-
-        @Parameter(
-                names = "--zNeighborDistance",
-                description = "Look for neighbor tiles with z values less than or equal to this distance from the current tile's z value"
-        )
-        public Integer zNeighborDistance = 2;
-
-        @Parameter(
-                names = "--excludeCornerNeighbors",
-                description = "Exclude neighbor tiles whose center x and y is outside the source tile's x and y range respectively",
-                arity = 1)
-        public boolean excludeCornerNeighbors = true;
-
-        @Parameter(
-                names = "--excludeCompletelyObscuredTiles",
-                description = "Exclude tiles that are completely obscured by reacquired tiles",
-                arity = 1)
-        public boolean excludeCompletelyObscuredTiles = true;
-
-        @Parameter(
-                names = "--excludeSameLayerNeighbors",
-                description = "Exclude neighbor tiles in the same layer (z) as the source tile",
-                arity = 1)
-        public boolean excludeSameLayerNeighbors = false;
-
-        @Parameter(
-                names = "--excludeSameSectionNeighbors",
-                description = "Exclude neighbor tiles with the same sectionId as the source tile",
-                arity = 1)
-        public boolean excludeSameSectionNeighbors = false;
-
-        @Parameter(
-                names = "--excludePairsInMatchCollection",
-                description = "Name of match collection whose existing pairs should be excluded from the generated list (default is to include all pairs)"
-        )
-        public String excludePairsInMatchCollection;
-
-        @Parameter(
-                names = "--excludeSameLayerPairsWithPosition",
-                description = "Exclude same layer pairs that have one tile with the specified position"
-        )
-        public MontageRelativePosition excludeSameLayerPairsWithPosition;
-
-        @Parameter(
-                names = "--existingMatchOwner",
-                description = "Owner of match collection whose existing pairs should be excluded from the generated list (default is owner)"
-        )
-        public String existingMatchOwner;
-
-        @Parameter(names = "--minExistingMatchCount", description = "Minimum number of existing matches to trigger pair exclusion")
-        public Integer minExistingMatchCount = 0;
-
-        @Parameter(
-                names = "--onlyIncludeTilesFromStack",
-                description = "Name of stack containing tile ids to include (uses --owner and --project values, default is to include all tiles)"
-        )
-        public String onlyIncludeTilesFromStack;
-
-        @Parameter(
-                names = "--onlyIncludeTilesNearTileIdsJson",
-                description = "Path of JSON file containing array of source tile ids.  Only pairs for tiles near these tiles will be included (default is to include all nearby tiles)."
-        )
-        public String onlyIncludeTilesNearTileIdsJson;
+        @ParametersDelegate
+        public TilePairDerivationParameters tpdp = new TilePairDerivationParameters();
 
         @Parameter(
                 names = "--toJson",
@@ -227,14 +150,7 @@ public class TilePairClient {
                     parameters.maxPairsPerFile = 1;
                 }
 
-                File toFile = new File(parameters.toJson).getAbsoluteFile();
-                if (! toFile.exists()) {
-                    toFile = toFile.getParentFile();
-                }
-
-                if (! toFile.canWrite()) {
-                    throw new IllegalArgumentException("cannot write to " + toFile.getAbsolutePath());
-                }
+                validateFileIsWritable(parameters.toJson);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -261,20 +177,22 @@ public class TilePairClient {
             throws IllegalArgumentException, IOException {
 
         this.parameters = parameters;
+        final TilePairDerivationParameters tpdp = parameters.tpdp;
+
         this.filterTilesWithBox = (parameters.bounds.minX != null);
 
         this.renderDataClient = parameters.renderWeb.getDataClient();
 
-        if ((parameters.zValues != null) && (parameters.zValues.size() > 0) && (parameters.zNeighborDistance != 0)) {
+        if ((parameters.zValues != null) && (parameters.zValues.size() > 0) && (tpdp.zNeighborDistance != 0)) {
             throw new IllegalArgumentException(
                     "Explicit --z values can only be specified when --zNeighborDistance is zero (for montages).");
         }
 
-        if (parameters.onlyIncludeTilesFromStack == null) {
+        if (tpdp.onlyIncludeTilesFromStack == null) {
             includeClient = null;
             includeStack = null;
         } else {
-            includeStack = StackId.fromNameString(parameters.onlyIncludeTilesFromStack,
+            includeStack = StackId.fromNameString(tpdp.onlyIncludeTilesFromStack,
                                                   parameters.renderWeb.owner,
                                                   parameters.renderWeb.project);
             includeClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
@@ -282,12 +200,12 @@ public class TilePairClient {
                                                  includeStack.getProject());
         }
 
-        if (parameters.onlyIncludeTilesNearTileIdsJson != null) {
+        if (tpdp.onlyIncludeTilesNearTileIdsJson != null) {
             final JsonUtils.Helper<String> jsonHelper = new JsonUtils.Helper<>(String.class);
-            try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(parameters.onlyIncludeTilesNearTileIdsJson)) {
+            try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(tpdp.onlyIncludeTilesNearTileIdsJson)) {
                 this.sourceTileIds = new HashSet<>(jsonHelper.fromJsonArray(reader));
             }
-            LOG.info("loadTileIds: loaded {} tile ids from {}", this.sourceTileIds.size(), parameters.onlyIncludeTilesNearTileIdsJson);
+            LOG.info("loadTileIds: loaded {} tile ids from {}", this.sourceTileIds.size(), tpdp.onlyIncludeTilesNearTileIdsJson);
         } else {
             this.sourceTileIds = null;
         }
@@ -333,6 +251,7 @@ public class TilePairClient {
 
         LOG.info("deriveAndSaveSortedNeighborPairs: entry");
 
+        final TilePairDerivationParameters tpdp = parameters.tpdp;
         final String renderParametersUrlTemplate = getRenderParametersUrlTemplate();
 
         final List<Double> zValues = getZValues();
@@ -347,12 +266,12 @@ public class TilePairClient {
         final double maxZ = zValues.get(zValues.size() - 1);
 
         ExistingMatchHelper existingMatchHelper = null;
-        if (parameters.excludePairsInMatchCollection != null) {
+        if (tpdp.excludePairsInMatchCollection != null) {
 
-            final String collectionName = parameters.excludePairsInMatchCollection;
+            final String collectionName = tpdp.excludePairsInMatchCollection;
             final RenderDataClient matchDataClient =
                     new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                         parameters.getMatchOwner(parameters.existingMatchOwner),
+                                         parameters.getMatchOwner(tpdp.existingMatchOwner),
                                          collectionName);
 
             final List<MatchCollectionMetaData> matchCollections = matchDataClient.getOwnerMatchCollections();
@@ -368,7 +287,7 @@ public class TilePairClient {
 
         // load the first zNeighborDistance trees
         double z;
-        for (int zIndex = 0; (zIndex < zValues.size()) && (zIndex < parameters.zNeighborDistance); zIndex++) {
+        for (int zIndex = 0; (zIndex < zValues.size()) && (zIndex < tpdp.zNeighborDistance); zIndex++) {
             z = zValues.get(zIndex);
             zToTreeMap.put(z, buildRTree(z));
             if (existingMatchHelper != null) {
@@ -377,7 +296,7 @@ public class TilePairClient {
         }
 
         // edge case: add existing montage pairs (distance == 0)
-        if ((parameters.zNeighborDistance == 0) && (existingMatchHelper != null)) {
+        if ((tpdp.zNeighborDistance == 0) && (existingMatchHelper != null)) {
             existingMatchHelper.addExistingPairs(zValues.get(0));
         }
 
@@ -392,13 +311,13 @@ public class TilePairClient {
 
             z = zValues.get(zIndex);
 
-            if ((parameters.zNeighborDistance == 0) || (! zToTreeMap.containsKey(z))) {
+            if ((tpdp.zNeighborDistance == 0) || (! zToTreeMap.containsKey(z))) {
                 zToTreeMap.put(z, buildRTree(z));
             }
 
             neighborTreeList = new ArrayList<>();
 
-            final double idealMaxNeighborZ = Math.min(maxZ, z + parameters.zNeighborDistance);
+            final double idealMaxNeighborZ = Math.min(maxZ, z + tpdp.zNeighborDistance);
             for (int neighborZIndex = zIndex + 1; neighborZIndex < zValues.size(); neighborZIndex++) {
 
                 neighborZ = zValues.get(neighborZIndex);
@@ -434,14 +353,14 @@ public class TilePairClient {
 
             currentNeighborPairs = currentZTree.getCircleNeighbors(sourceTileBoundsList,
                                                                    neighborTreeList,
-                                                                   parameters.xyNeighborFactor,
-                                                                   parameters.explicitRadius,
-                                                                   parameters.excludeCornerNeighbors,
-                                                                   parameters.excludeSameLayerNeighbors,
-                                                                   parameters.excludeSameSectionNeighbors);
+                                                                   tpdp.xyNeighborFactor,
+                                                                   tpdp.explicitRadius,
+                                                                   tpdp.excludeCornerNeighbors,
+                                                                   tpdp.excludeSameLayerNeighbors,
+                                                                   tpdp.excludeSameSectionNeighbors);
 
-            if (parameters.excludeSameLayerPairsWithPosition != null) {
-                final MontageRelativePosition excludedPosition = parameters.excludeSameLayerPairsWithPosition;
+            if (tpdp.excludeSameLayerPairsWithPosition != null) {
+                final MontageRelativePosition excludedPosition = tpdp.excludeSameLayerPairsWithPosition;
                 currentNeighborPairs.removeIf(pair -> excludedPosition.equals(pair.getP().getRelativePosition()) ||
                                                       excludedPosition.equals(pair.getQ().getRelativePosition()));
             }
@@ -451,7 +370,7 @@ public class TilePairClient {
 
                 // edge case: add existing montage pairs (distance == 0) for next z
                 final int nextIndex = zIndex + 1;
-                if ((parameters.zNeighborDistance == 0) && (nextIndex < zValues.size())) {
+                if ((tpdp.zNeighborDistance == 0) && (nextIndex < zValues.size())) {
                     existingMatchHelper.addExistingPairs(zValues.get(nextIndex));
                 }
 
@@ -495,11 +414,13 @@ public class TilePairClient {
     public TileBoundsRTree buildRTree(final double z)
             throws IOException {
 
+        final TilePairDerivationParameters tpdp = parameters.tpdp;
+
         TileBoundsRTree tree;
         List<TileBounds> tileBoundsList;
         final int totalTileCount;
 
-        if ((parameters.zNeighborDistance == 0) && (parameters.useRowColPositions)) {
+        if ((tpdp.zNeighborDistance == 0) && (tpdp.useRowColPositions)) {
 
             final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
             final Collection<TileSpec> tileSpecs = resolvedTiles.getTileSpecs();
@@ -567,7 +488,7 @@ public class TilePairClient {
                 }
             }
 
-            if (parameters.excludeCompletelyObscuredTiles) {
+            if (tpdp.excludeCompletelyObscuredTiles) {
 
                 final int unfilteredCount = tileBoundsList.size();
 
@@ -637,6 +558,8 @@ public class TilePairClient {
         void addExistingPairs(final double z)
                 throws IOException {
 
+            final TilePairDerivationParameters tpdp = parameters.tpdp;
+
             final List<String> groupIds = zToSectionIdMap.get(z);
             Integer matchCount;
             if (groupIds != null) {
@@ -650,13 +573,13 @@ public class TilePairClient {
 
                         matchCount = canvasMatches.getMatchCount();
 
-                        if (parameters.minExistingMatchCount == 0) {
+                        if (tpdp.minExistingMatchCount == 0) {
                             existingPairs.add(pair);
                         } else if (matchCount == null) {
-                            throw new IOException("match collection " + parameters.excludePairsInMatchCollection +
+                            throw new IOException("match collection " + tpdp.excludePairsInMatchCollection +
                                                   " is missing newer matchCount field which is required " +
                                                   "for the --minExistingMatchCount option");
-                        } else if (matchCount > parameters.minExistingMatchCount) {
+                        } else if (matchCount > tpdp.minExistingMatchCount) {
                             existingPairs.add(pair);
                         }
 
@@ -709,6 +632,16 @@ public class TilePairClient {
                          beforeSize - existingPairs.size(), groupIdsToRemove);
             }
 
+        }
+    }
+
+    public static void validateFileIsWritable(final String filePath) {
+        File toFile = new File(filePath).getAbsoluteFile();
+        if (! toFile.exists()) {
+            toFile = toFile.getParentFile();
+        }
+        if (! toFile.canWrite()) {
+            throw new IllegalArgumentException("cannot write to " + toFile.getAbsolutePath());
         }
     }
 
