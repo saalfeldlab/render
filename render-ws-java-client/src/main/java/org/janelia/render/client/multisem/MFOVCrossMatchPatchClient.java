@@ -271,7 +271,7 @@ public class MFOVCrossMatchPatchClient {
                         "/stack/" + mFOVMontageStack + "/z/" + TEMPLATE_GROUP_ID_TOKEN +
                         "/render-parameters?tileIdPattern=" +
                         // note: prepend ^ to tileIdPattern to ensure only beginning of each tileId is matched for MFOV
-                        URLEncoder.encode("^", StandardCharsets.UTF_8.toString()) + mFOVName;
+                        URLEncoder.encode("^", StandardCharsets.UTF_8) + mFOVName;
 
                 final OrderedCanvasIdPair mFOVCanvasPair =
                         new OrderedCanvasIdPair(new CanvasId(pGroupId, "mFOV_" + mFOVName + "." + pGroupId),
