@@ -34,6 +34,7 @@ import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -108,6 +109,20 @@ public class TilePairClient {
         public Parameters() {
         }
 
+        public Parameters(final String baseDataUrl,
+                          final StackWithZValues stackWithZValues,
+                          final TilePairDerivationParameters tpdp,
+                          final String toJson) {
+            final StackId stackId = stackWithZValues.getStackId();
+            this.renderWeb.baseDataUrl = baseDataUrl;
+            this.renderWeb.owner = stackId.getOwner();
+            this.renderWeb.project = stackId.getProject();
+            this.stack = stackId.getStack();
+            this.zValues = stackWithZValues.getzValues();
+            this.tpdp = tpdp;
+            this.toJson = toJson;
+        }
+
         String getBaseOwner() {
             if (baseOwner == null) {
                 baseOwner = renderWeb.owner;
@@ -173,7 +188,7 @@ public class TilePairClient {
     private String outputFileNameSuffix;
     private int numberOfOutputFiles;
 
-    TilePairClient(final Parameters parameters)
+    public TilePairClient(final Parameters parameters)
             throws IllegalArgumentException, IOException {
 
         this.parameters = parameters;
@@ -246,7 +261,7 @@ public class TilePairClient {
                                                 parameters.zValues);
     }
 
-    void deriveAndSaveSortedNeighborPairs()
+    public void deriveAndSaveSortedNeighborPairs()
             throws IllegalArgumentException, IOException {
 
         LOG.info("deriveAndSaveSortedNeighborPairs: entry");
@@ -514,7 +529,7 @@ public class TilePairClient {
         return String.format("%s_p%03d%s", outputFileNamePrefix, numberOfOutputFiles, outputFileNameSuffix);
     }
 
-    private void savePairs(final List<OrderedCanvasIdPair> neighborPairs,
+    public void savePairs(final List<OrderedCanvasIdPair> neighborPairs,
                            final String renderParametersUrlTemplate,
                            final String outputFileName)
             throws IOException {
