@@ -48,6 +48,11 @@ public class StackIdWithZParameters
             variableArity = true)
     public List<Double> zValues;
 
+    @Parameter(
+            names = "--zValuesPerBatch",
+            description = "Number of stack z values to batch together when distributing work")
+    public int zValuesPerBatch = 1;
+
     public List<StackId> getStackIdList(final RenderDataClient renderDataClient)
             throws IOException {
         final List<StackId> stackIdList;
@@ -66,19 +71,30 @@ public class StackIdWithZParameters
     }
 
     /**
-     * @return list of stack identifiers coupled with single z values ordered by stack and then z.
+     * @return list of stack identifiers coupled with --zValuesPerBatch z values
+     *         that is ordered by stack and then z.
      */
     public List<StackWithZValues> getStackWithZList(final RenderDataClient renderDataClient)
             throws IOException {
+        if (zValuesPerBatch < 1) {
+            throw new IllegalArgumentException("--zValuesPerBatch must be greater than zero");
+        }
         final List<StackWithZValues> stackWithZList = new ArrayList<>();
         final List<StackId> stackIdList = getStackIdList(renderDataClient);
         for (final StackId stackId : stackIdList) {
             final RenderDataClient projectClient = renderDataClient.buildClientForProject(stackId.getProject());
-            for (final Double z : projectClient.getStackZValues(stackId.getStack(),
-                                                                layerRange.minZ,
-                                                                layerRange.maxZ,
-                                                                zValues)) {
-                stackWithZList.add(new StackWithZValues(stackId, z));
+            final List<Double> stackZValues = projectClient.getStackZValues(stackId.getStack(),
+                                                                            layerRange.minZ,
+                                                                            layerRange.maxZ,
+                                                                            zValues);
+            if (zValuesPerBatch >= stackZValues.size()) {
+                stackWithZList.add(new StackWithZValues(stackId, stackZValues));
+            } else {
+                for (int fromIndex = 0; fromIndex < stackZValues.size(); fromIndex += zValuesPerBatch) {
+                    final int toIndex = Math.min(stackZValues.size(), fromIndex + zValuesPerBatch);
+                    final List<Double> batchedZValues = new ArrayList<>(stackZValues.subList(fromIndex, toIndex));
+                    stackWithZList.add(new StackWithZValues(stackId, batchedZValues));
+                }
             }
         }
         return stackWithZList;
