@@ -299,6 +299,7 @@ public class TileDataService {
         return parameters;
     }
 
+    @SuppressWarnings("ReplaceNullCheck")
     static RenderParameters getCoreTileRenderParameters(final Integer xOffset,
                                                         final Integer yOffset,
                                                         final Integer fullScaleWidth,
@@ -366,14 +367,6 @@ public class TileDataService {
 
         double tileRenderX = tileSpec.getMinX();
         double tileRenderY = tileSpec.getMinY();
-
-        // The legacy approach assumed the tile would be at (0,0) when only lens correction transforms were applied.
-        // If we're using the legacy approach, override the upper left of the derived box just in case it moves
-        // the tile slightly off the origin.
-        if (useLegacyNormalization) {
-            tileRenderX = 0.0;
-            tileRenderY = 0.0;
-        }
 
         if (xOffset != null) {
             tileRenderX += xOffset;
