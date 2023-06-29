@@ -1458,7 +1458,18 @@ public class RenderDataClient {
     }
 
     public RenderDataClient buildClientForProject(final String project) {
-        return project.equals(this.project) ? this : new RenderDataClient(project, urls, httpClient);
+        return buildClient(this.urls.getOwner(), project);
+    }
+
+    public RenderDataClient buildClient(final String owner,
+                                        final String project) {
+        RenderDataClient clonedClient = this;
+        if ((! this.project.equals(project)) || (! this.urls.getOwner().equals(owner))) {
+            clonedClient = new RenderDataClient(project,
+                                                new RenderWebServiceUrls(this.urls.getBaseDataUrl(), owner, project),
+                                                httpClient);
+        }
+        return clonedClient;
     }
 
     private URI getStackUri(final String stack)
