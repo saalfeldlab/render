@@ -34,6 +34,10 @@ public class RenderWebServiceUrls implements Serializable {
         this.matchCollection = matchCollection;
     }
 
+    public String getBaseDataUrl() {
+        return baseDataUrl;
+    }
+
     public String getOwner() {
         return owner;
     }
