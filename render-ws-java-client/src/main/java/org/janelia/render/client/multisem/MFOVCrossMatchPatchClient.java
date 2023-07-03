@@ -282,7 +282,8 @@ public class MFOVCrossMatchPatchClient {
                         new RenderableCanvasIdPairs(urlTemplateString,
                                                     Collections.singletonList(mFOVCanvasPair));
                 final List<CanvasMatches> mFOVMatchesList =
-                        multiStagePointMatchClient.generateMatchesForPairs(renderableCanvasIdPairs);
+                        multiStagePointMatchClient.generateMatchesForPairs(renderableCanvasIdPairs,
+                                                                           parameters.baseDataUrl);
 
                 storeMatchesForLayer(pZ, qZ, mFOVName, mFOVMatchesList);
             }

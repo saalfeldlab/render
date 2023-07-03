@@ -4,6 +4,9 @@ import java.io.Serializable;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
+import org.janelia.render.client.RenderDataClient;
 
 /**
  * Parameters for match web service clients.
@@ -30,5 +33,34 @@ public class MatchWebServiceParameters implements Serializable {
             description = "Match collection name",
             required = true)
     public String collection;
+
+    public MatchWebServiceParameters() {
+        this(null, null, null);
+    }
+
+    public MatchWebServiceParameters(final String baseDataUrl,
+                                     final String owner,
+                                     final String collection) {
+        this.baseDataUrl = baseDataUrl;
+        this.owner = owner;
+        this.collection = collection;
+    }
+
+    /** Local data client instance that is lazy loaded since client cannot be serialized. */
+    private transient RenderDataClient dataClient;
+
+    @JsonIgnore
+    public RenderDataClient getDataClient() {
+        if (dataClient == null) {
+            buildDataClient();
+        }
+        return dataClient;
+    }
+
+    private synchronized void buildDataClient() {
+        if (dataClient == null) {
+            dataClient = new RenderDataClient(baseDataUrl, owner, collection);
+        }
+    }
 
 }

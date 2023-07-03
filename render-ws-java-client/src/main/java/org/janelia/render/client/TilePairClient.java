@@ -264,21 +264,32 @@ public class TilePairClient {
     public void deriveAndSaveSortedNeighborPairs()
             throws IllegalArgumentException, IOException {
 
-        LOG.info("deriveAndSaveSortedNeighborPairs: entry");
-
-        final TilePairDerivationParameters tpdp = parameters.tpdp;
-        final String renderParametersUrlTemplate = getRenderParametersUrlTemplate();
-
         final List<Double> zValues = getZValues();
-
         if (zValues.size() == 0) {
             throw new IllegalArgumentException(
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
-
         Collections.sort(zValues);
-        final double minZ = zValues.get(0);
-        final double maxZ = zValues.get(zValues.size() - 1);
+
+        deriveAndSaveSortedNeighborPairsForZValues(zValues);
+    }
+
+    public void deriveAndSaveSortedNeighborPairsForZValues(final List<Double> sortedZValues)
+            throws IllegalArgumentException, IOException {
+
+        if ((sortedZValues == null) || (sortedZValues.size() == 0)) {
+            throw new IllegalArgumentException(
+                    "stack " + parameters.stack + " does not contain any layers with the specified z values");
+        }
+
+        final double minZ = sortedZValues.get(0);
+        final double maxZ = sortedZValues.get(sortedZValues.size() - 1);
+
+        LOG.info("deriveAndSaveSortedNeighborPairsForZValues: entry, processing {} zValues with minZ {}",
+                 sortedZValues.size(), minZ);
+
+        final TilePairDerivationParameters tpdp = parameters.tpdp;
+        final String renderParametersUrlTemplate = getRenderParametersUrlTemplate();
 
         ExistingMatchHelper existingMatchHelper = null;
         if (tpdp.excludePairsInMatchCollection != null) {
@@ -298,12 +309,12 @@ public class TilePairClient {
             }
         }
 
-        final Map<Double, TileBoundsRTree> zToTreeMap = new LinkedHashMap<>(zValues.size());
+        final Map<Double, TileBoundsRTree> zToTreeMap = new LinkedHashMap<>(sortedZValues.size());
 
         // load the first zNeighborDistance trees
         double z;
-        for (int zIndex = 0; (zIndex < zValues.size()) && (zIndex < tpdp.zNeighborDistance); zIndex++) {
-            z = zValues.get(zIndex);
+        for (int zIndex = 0; (zIndex < sortedZValues.size()) && (zIndex < tpdp.zNeighborDistance); zIndex++) {
+            z = sortedZValues.get(zIndex);
             zToTreeMap.put(z, buildRTree(z));
             if (existingMatchHelper != null) {
                 existingMatchHelper.addExistingPairs(z);
@@ -312,7 +323,7 @@ public class TilePairClient {
 
         // edge case: add existing montage pairs (distance == 0)
         if ((tpdp.zNeighborDistance == 0) && (existingMatchHelper != null)) {
-            existingMatchHelper.addExistingPairs(zValues.get(0));
+            existingMatchHelper.addExistingPairs(sortedZValues.get(0));
         }
 
         final Set<OrderedCanvasIdPair> neighborPairs = new TreeSet<>();
@@ -322,9 +333,9 @@ public class TilePairClient {
         TileBoundsRTree currentZTree;
         List<TileBoundsRTree> neighborTreeList;
         Set<OrderedCanvasIdPair> currentNeighborPairs;
-        for (int zIndex = 0; zIndex < zValues.size(); zIndex++) {
+        for (int zIndex = 0; zIndex < sortedZValues.size(); zIndex++) {
 
-            z = zValues.get(zIndex);
+            z = sortedZValues.get(zIndex);
 
             if ((tpdp.zNeighborDistance == 0) || (! zToTreeMap.containsKey(z))) {
                 zToTreeMap.put(z, buildRTree(z));
@@ -333,9 +344,9 @@ public class TilePairClient {
             neighborTreeList = new ArrayList<>();
 
             final double idealMaxNeighborZ = Math.min(maxZ, z + tpdp.zNeighborDistance);
-            for (int neighborZIndex = zIndex + 1; neighborZIndex < zValues.size(); neighborZIndex++) {
+            for (int neighborZIndex = zIndex + 1; neighborZIndex < sortedZValues.size(); neighborZIndex++) {
 
-                neighborZ = zValues.get(neighborZIndex);
+                neighborZ = sortedZValues.get(neighborZIndex);
 
                 if (neighborZ > idealMaxNeighborZ) {
                     break;
@@ -343,7 +354,7 @@ public class TilePairClient {
 
                 if (! zToTreeMap.containsKey(neighborZ)) {
                     if (zIndex > 0) {
-                        final double completedZ = zValues.get(zIndex - 1);
+                        final double completedZ = sortedZValues.get(zIndex - 1);
                         zToTreeMap.remove(completedZ);
                     }
                     zToTreeMap.put(neighborZ, buildRTree(neighborZ));
@@ -385,8 +396,8 @@ public class TilePairClient {
 
                 // edge case: add existing montage pairs (distance == 0) for next z
                 final int nextIndex = zIndex + 1;
-                if ((tpdp.zNeighborDistance == 0) && (nextIndex < zValues.size())) {
-                    existingMatchHelper.addExistingPairs(zValues.get(nextIndex));
+                if ((tpdp.zNeighborDistance == 0) && (nextIndex < sortedZValues.size())) {
+                    existingMatchHelper.addExistingPairs(sortedZValues.get(nextIndex));
                 }
 
             }
@@ -423,7 +434,7 @@ public class TilePairClient {
             totalSavedPairCount += neighborPairs.size();
         }
 
-        LOG.info("deriveAndSaveSortedNeighborPairs: exit, saved {} total pairs", totalSavedPairCount);
+        LOG.info("deriveAndSaveSortedNeighborPairsForZValues: exit, saved {} total pairs", totalSavedPairCount);
     }
 
     public TileBoundsRTree buildRTree(final double z)

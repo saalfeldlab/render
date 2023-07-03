@@ -1,18 +1,20 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
+
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.match.CanvasCorrelationMatcher;
-import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
@@ -29,11 +31,6 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 /**
  * Java client for generating and storing cross correlation point matches
@@ -140,38 +137,10 @@ public class CrossCorrelationPointMatchClient
         // if failed pairs directory is defined, write any failed pairs to a JSON file
         if ((parameters.failedPairsDir != null) &&
             (nonEmptyMatchesList.size() < renderableCanvasIdPairs.size())) {
-
-            final Set<OrderedCanvasIdPair> nonEmptyMatchesSet = new HashSet<>(nonEmptyMatchesList.size());
-            for (final CanvasMatches canvasMatches : nonEmptyMatchesList) {
-                nonEmptyMatchesSet.add(new OrderedCanvasIdPair(new CanvasId(canvasMatches.getpGroupId(),
-                                                                            canvasMatches.getpId()),
-                                                               new CanvasId(canvasMatches.getqGroupId(),
-                                                                            canvasMatches.getqId()),
-                                                               null));
-            }
-
-            final List<OrderedCanvasIdPair>  failedPairsList = new ArrayList<>(renderableCanvasIdPairs.size());
-
-            for (final OrderedCanvasIdPair pair : renderableCanvasIdPairs.getNeighborPairs()) {
-                final CanvasId p = pair.getP();
-                final CanvasId q = pair.getQ();
-                final OrderedCanvasIdPair pairWithoutPosition = new OrderedCanvasIdPair(new CanvasId(p.getGroupId(),
-                                                                                                     p.getId()),
-                                                                                        new CanvasId(q.getGroupId(),
-                                                                                                     q.getId()),
-                                                                                        null);
-                if (! nonEmptyMatchesSet.contains(pairWithoutPosition)) {
-                    failedPairsList.add(pair);
-                }
-            }
-
-            final File sourceJsonFile = new File(pairJsonFileName);
-            final File failedPairsFile = new File(parameters.failedPairsDir, sourceJsonFile.getName());
-            final RenderableCanvasIdPairs failedPairs =
-                    new RenderableCanvasIdPairs(renderableCanvasIdPairs.getRenderParametersUrlTemplate(),
-                                                failedPairsList);
-
-            FileUtil.saveJsonFile(failedPairsFile.getAbsolutePath(), failedPairs);
+            SIFTPointMatchClient.writeFailedPairs(parameters.failedPairsDir,
+                                                  pairJsonFileName,
+                                                  renderableCanvasIdPairs,
+                                                  nonEmptyMatchesList);
         }
     }
 

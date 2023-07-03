@@ -1,15 +1,15 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
@@ -29,9 +29,6 @@ import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
 /**
  * Java client for generating and storing SIFT point matches for a specified set of canvas (e.g. tile) pairs.
  *
@@ -43,7 +40,7 @@ public class MultiStagePointMatchClient
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
+        public MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
         @ParametersDelegate
         FeatureStorageParameters featureStorage = new FeatureStorageParameters();
@@ -82,7 +79,22 @@ public class MultiStagePointMatchClient
                 order = 5)
         public List<String> pairJson;
 
+        private List<MatchStageParameters> stageParametersList;
+        private transient ImageProcessorCache sourceImageProcessorCache;
+
         public Parameters() {
+        }
+
+        /**
+         * Creates a minimal parameter set with pre-populated stage parameters for "library-like" 
+         * usages of the client's generateMatchesForPairs and storeMatches methods.
+         */
+        public Parameters(final FeatureStorageParameters featureStorage,
+                          final Integer maxPeakCacheGb,
+                          final List<MatchStageParameters> stageParametersList) {
+            this(null, featureStorage, maxPeakCacheGb, false,
+                 null, null, null);
+            this.stageParametersList = stageParametersList;
         }
 
         public Parameters(final MatchWebServiceParameters matchClient,
@@ -99,6 +111,62 @@ public class MultiStagePointMatchClient
             this.failedPairsDir = failedPairsDir;
             this.stageJson = stageJson;
             this.pairJson = pairJson;
+        }
+
+        public List<MatchStageParameters> getStageParametersList()
+                throws IOException {
+            if (stageParametersList == null) {
+                this.buildStageParametersList();
+            }
+            return stageParametersList;
+        }
+
+        private synchronized void buildStageParametersList()
+                throws IOException {
+            if (stageParametersList == null) {
+                final File stageParametersFile = new File(stageJson);
+                if (! stageParametersFile.exists()) {
+                    throw new IllegalArgumentException(
+                            "The --stageJson file " + stageParametersFile.getAbsolutePath() + " does not exist.");
+                }
+                if (! stageParametersFile.canRead()) {
+                    throw new IllegalArgumentException(
+                            "The --stageJson file " + stageParametersFile.getAbsolutePath() + " cannot be read.");
+                }
+
+                stageParametersList = MatchStageParameters.fromJsonArrayFile(stageJson);
+
+                if ((stageParametersList.size() > 1) && (featureStorage.rootFeatureDirectory != null)) {
+                    // CanvasFeatureList writeToStorage and readToStorage methods only support one storage location
+                    // for each CanvasId, so different renderings of the same canvas (for different match stages)
+                    // are not currently supported.
+                    throw new IllegalArgumentException(
+                            "Stored features are not supported for runs with multiple stages.  " +
+                            "Remove the --rootFeatureDirectory parameter or choose a --stageJson list with only one stage.");
+                }
+
+                for (final MatchStageParameters stageParameters : stageParametersList) {
+                    stageParameters.validateAndSetDefaults();
+                    LOG.info("buildStageParametersList: loaded stage parameters with slug {}", stageParameters.toSlug());
+                }
+            }
+        }
+
+        public ImageProcessorCache getSourceImageProcessorCache() {
+            if (sourceImageProcessorCache == null) {
+                buildSourceImageProcessorCache();
+            }
+            return sourceImageProcessorCache;
+        }
+
+        private synchronized void buildSourceImageProcessorCache() {
+            if (sourceImageProcessorCache == null) {
+                final long maximumNumberOfCachedSourcePixels = featureStorage.maxFeatureSourceCacheGb * 1_000_000_000L;
+                sourceImageProcessorCache = new ImageProcessorCache(maximumNumberOfCachedSourcePixels,
+                                                                    true,
+                                                                    cacheFullScaleSourcePixels);
+                LOG.info("buildSourceImageProcessorCache: created {}", sourceImageProcessorCache);
+            }
         }
     }
 
@@ -125,48 +193,9 @@ public class MultiStagePointMatchClient
     }
 
     private final Parameters parameters;
-    private final RenderDataClient matchStorageClient;
-    private final ImageProcessorCache sourceImageProcessorCache;
-    private final List<MatchStageParameters> stageParametersList;
 
-    public MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException, IOException {
+    public MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException {
         this.parameters = parameters;
-        this.matchStorageClient = new RenderDataClient(parameters.matchClient.baseDataUrl,
-                                                       parameters.matchClient.owner,
-                                                       parameters.matchClient.collection);
-
-        final long maximumNumberOfCachedSourcePixels =
-                parameters.featureStorage.maxFeatureSourceCacheGb * 1_000_000_000;
-        sourceImageProcessorCache = new ImageProcessorCache(maximumNumberOfCachedSourcePixels,
-                                                            true,
-                                                            parameters.cacheFullScaleSourcePixels);
-
-        final File stageParametersFile = new File(parameters.stageJson);
-        if (! stageParametersFile.exists()) {
-            throw new IllegalArgumentException(
-                    "The --stageJson file " + stageParametersFile.getAbsolutePath() + " does not exist.");
-        }
-        if (! stageParametersFile.canRead()) {
-            throw new IllegalArgumentException(
-                    "The --stageJson file " + stageParametersFile.getAbsolutePath() + " cannot be read.");
-        }
-
-        stageParametersList = MatchStageParameters.fromJsonArrayFile(parameters.stageJson);
-
-        if ((stageParametersList.size() > 1) && (parameters.featureStorage.rootFeatureDirectory != null)) {
-            // CanvasFeatureList writeToStorage and readToStorage methods only support one storage location
-            // for each CanvasId, so different renderings of the same canvas (for different match stages)
-            // are not currently supported.
-            throw new IllegalArgumentException(
-                    "Stored features are not supported for runs with multiple stages.  " +
-                    "Remove the --rootFeatureDirectory parameter or choose a --stageJson list with only one stage.");
-        }
-
-        for (final MatchStageParameters stageParameters : stageParametersList) {
-            stageParameters.validateAndSetDefaults();
-            LOG.info("constructor: loaded stage parameters with slug {}", stageParameters.toSlug());
-        }
-
         // make sure the failed pairs directory exists before we get started
         if (parameters.failedPairsDir != null) {
             FileUtil.ensureWritableDirectory(new File(parameters.failedPairsDir));
@@ -180,19 +209,27 @@ public class MultiStagePointMatchClient
 
         final RenderableCanvasIdPairs renderableCanvasIdPairs = RenderableCanvasIdPairs.load(pairJsonFileName);
 
-        final List<CanvasMatches> matchList = generateMatchesForPairs(renderableCanvasIdPairs);
-        final List<CanvasMatches> nonEmptyMatchesList = storeMatches(matchList);
+        final List<CanvasMatches> matchList = generateMatchesForPairs(renderableCanvasIdPairs,
+                                                                      parameters.matchClient.baseDataUrl);
+        final List<CanvasMatches> nonEmptyMatchesList = storeMatches(matchList,
+                                                                     parameters.matchClient.getDataClient());
 
         if ((parameters.failedPairsDir != null) &&
             (nonEmptyMatchesList.size() < renderableCanvasIdPairs.size())) {
-
-            writeFailedPairs(pairJsonFileName, renderableCanvasIdPairs, nonEmptyMatchesList);
+            SIFTPointMatchClient.writeFailedPairs(parameters.failedPairsDir,
+                                                  pairJsonFileName,
+                                                  renderableCanvasIdPairs,
+                                                  nonEmptyMatchesList);
         }
     }
 
-    public List<CanvasMatches> generateMatchesForPairs(final RenderableCanvasIdPairs renderableCanvasIdPairs) {
-        final String urlTemplateString =
-                renderableCanvasIdPairs.getRenderParametersUrlTemplate(parameters.matchClient.baseDataUrl);
+    public List<CanvasMatches> generateMatchesForPairs(final RenderableCanvasIdPairs renderableCanvasIdPairs,
+                                                       final String baseDataUrl)
+            throws IOException {
+
+        final String urlTemplateString = renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl);
+        final ImageProcessorCache sourceImageProcessorCache = parameters.getSourceImageProcessorCache();
+        final List<MatchStageParameters> stageParametersList = parameters.getStageParametersList();
 
         final List<StageMatchingResources> stageResourcesList =
                 StageMatchingResources.buildList(urlTemplateString,
@@ -238,67 +275,26 @@ public class MultiStagePointMatchClient
         }
 
         final int pairCount = renderableCanvasIdPairs.size();
-
-        LOG.info("generateMatchesForPairs: derived matches for {} out of {} pairs", matchList.size(), pairCount);
-        LOG.info("generateMatchesForPairs: source cache stats are {}", sourceImageProcessorCache.getStats());
-        LOG.info("generateMatchesForPairs: feature cache stats are {}", featureDataCache.stats());
-        if (peakDataCache != null) {
-            LOG.info("generateMatchesForPairs: peak cache stats are {}", peakDataCache.stats());
-        }
-
+        SIFTPointMatchClient.logMatchStats(featureDataCache,
+                                           sourceImageProcessorCache,
+                                           peakDataCache,
+                                           matchList,
+                                           pairCount);
         multiStageMatcher.logPairCountStats();
 
         return matchList;
     }
 
-    private List<CanvasMatches> storeMatches(final List<CanvasMatches> allMatchesList)
+    public static List<CanvasMatches> storeMatches(final List<CanvasMatches> allMatchesList,
+                                                   final RenderDataClient matchDataClient)
             throws IOException {
 
         final List<CanvasMatches> nonEmptyMatchesList =
                 allMatchesList.stream().filter(m -> m.size() > 0).collect(Collectors.toList());
 
-        matchStorageClient.saveMatches(nonEmptyMatchesList);
+        matchDataClient.saveMatches(nonEmptyMatchesList);
 
         return nonEmptyMatchesList;
-    }
-
-    private void writeFailedPairs(final String pairJsonFileName,
-                                  final RenderableCanvasIdPairs renderableCanvasIdPairs,
-                                  final List<CanvasMatches> nonEmptyMatchesList)
-            throws IOException {
-
-        final Set<OrderedCanvasIdPair> nonEmptyMatchesSet = new HashSet<>(nonEmptyMatchesList.size());
-
-        for (final CanvasMatches canvasMatches : nonEmptyMatchesList) {
-            nonEmptyMatchesSet.add(new OrderedCanvasIdPair(new CanvasId(canvasMatches.getpGroupId(),
-                                                                        canvasMatches.getpId()),
-                                                           new CanvasId(canvasMatches.getqGroupId(),
-                                                                        canvasMatches.getqId()),
-                                                           null));
-        }
-
-        final List<OrderedCanvasIdPair>  failedPairsList = new ArrayList<>(renderableCanvasIdPairs.size());
-
-        for (final OrderedCanvasIdPair pair : renderableCanvasIdPairs.getNeighborPairs()) {
-            final CanvasId p = pair.getP();
-            final CanvasId q = pair.getQ();
-            final OrderedCanvasIdPair pairWithoutPosition = new OrderedCanvasIdPair(new CanvasId(p.getGroupId(),
-                                                                                                 p.getId()),
-                                                                                    new CanvasId(q.getGroupId(),
-                                                                                                 q.getId()),
-                                                                                    null);
-            if (! nonEmptyMatchesSet.contains(pairWithoutPosition)) {
-                failedPairsList.add(pair);
-            }
-        }
-
-        final File sourceJsonFile = new File(pairJsonFileName);
-        final File failedPairsFile = new File(parameters.failedPairsDir, sourceJsonFile.getName());
-        final RenderableCanvasIdPairs failedPairs =
-                new RenderableCanvasIdPairs(renderableCanvasIdPairs.getRenderParametersUrlTemplate(),
-                                            failedPairsList);
-
-        FileUtil.saveJsonFile(failedPairsFile.getAbsolutePath(), failedPairs);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiStagePointMatchClient.class);

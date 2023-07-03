@@ -169,38 +169,7 @@ public class SIFTPointMatchClient
         // if failed pairs directory is defined, write any failed pairs to a JSON file
         if ((parameters.failedPairsDir != null) &&
             (nonEmptyMatchesList.size() < renderableCanvasIdPairs.size())) {
-
-            final Set<OrderedCanvasIdPair> nonEmptyMatchesSet = new HashSet<>(nonEmptyMatchesList.size());
-            for (final CanvasMatches canvasMatches : nonEmptyMatchesList) {
-                nonEmptyMatchesSet.add(new OrderedCanvasIdPair(new CanvasId(canvasMatches.getpGroupId(),
-                                                                            canvasMatches.getpId()),
-                                                               new CanvasId(canvasMatches.getqGroupId(),
-                                                                            canvasMatches.getqId()),
-                                                               null));
-            }
-
-            final List<OrderedCanvasIdPair>  failedPairsList = new ArrayList<>(renderableCanvasIdPairs.size());
-
-            for (final OrderedCanvasIdPair pair : renderableCanvasIdPairs.getNeighborPairs()) {
-                final CanvasId p = pair.getP();
-                final CanvasId q = pair.getQ();
-                final OrderedCanvasIdPair pairWithoutPosition = new OrderedCanvasIdPair(new CanvasId(p.getGroupId(),
-                                                                                                     p.getId()),
-                                                                                        new CanvasId(q.getGroupId(),
-                                                                                                     q.getId()),
-                                                                                        null);
-                if (! nonEmptyMatchesSet.contains(pairWithoutPosition)) {
-                    failedPairsList.add(pair);
-                }
-            }
-
-            final File sourceJsonFile = new File(pairJsonFileName);
-            final File failedPairsFile = new File(parameters.failedPairsDir, sourceJsonFile.getName());
-            final RenderableCanvasIdPairs failedPairs =
-                    new RenderableCanvasIdPairs(renderableCanvasIdPairs.getRenderParametersUrlTemplate(),
-                                                failedPairsList);
-
-            FileUtil.saveJsonFile(failedPairsFile.getAbsolutePath(), failedPairs);
+            writeFailedPairs(parameters.failedPairsDir, pairJsonFileName, renderableCanvasIdPairs, nonEmptyMatchesList);
         }
     }
 
@@ -228,6 +197,9 @@ public class SIFTPointMatchClient
         final long featureCacheMaxKilobytes = featureStorageParameters.maxFeatureCacheGb * 1_000_000;
         final CanvasDataCache featureDataCache = CanvasDataCache.getSharedCache(featureCacheMaxKilobytes, featureLoader);
 
+        // Cache feature source data (images and masks) in addition to features.
+        // This speeds up SIFT+GD cases (by seconds for large tiles) and
+        // allows mask information to be used for combined quality analysis.
         final long maximumNumberOfCachedSourcePixels =
                 featureStorageParameters.maxFeatureSourceCacheGb * 1_000_000_000;
         final ImageProcessorCache sourceImageProcessorCache =
@@ -351,18 +323,64 @@ public class SIFTPointMatchClient
 
         final int pairCount = renderableCanvasIdPairs.size();
 
-        LOG.info("generateMatchesForPairs: derived matches for {} out of {} pairs", matchList.size(), pairCount);
-        LOG.info("generateMatchesForPairs: source cache stats are {}", sourceImageProcessorCache.getStats());
-        LOG.info("generateMatchesForPairs: feature cache stats are {}", featureDataCache.stats());
-        if (peakDataCache != null) {
-            LOG.info("generateMatchesForPairs: peak cache stats are {}", peakDataCache.stats());
-        }
+        logMatchStats(featureDataCache, sourceImageProcessorCache, peakDataCache, matchList, pairCount);
 
         final List<CanvasMatches> nonEmptyMatchesList = storeMatches(matchList);
         this.pairCounts.totalSaved += nonEmptyMatchesList.size();
         this.pairCounts.totalProcessed += pairCount;
 
         return nonEmptyMatchesList;
+    }
+
+    public static void logMatchStats(final CanvasDataCache featureDataCache,
+                                     final ImageProcessorCache sourceImageProcessorCache,
+                                     final CanvasDataCache peakDataCache,
+                                     final List<CanvasMatches> matchList,
+                                     final int pairCount) {
+        LOG.info("generateMatchesForPairs: derived matches for {} out of {} pairs", matchList.size(), pairCount);
+        LOG.info("generateMatchesForPairs: source cache stats are {}", sourceImageProcessorCache.getStats());
+        LOG.info("generateMatchesForPairs: feature cache stats are {}", featureDataCache.stats());
+        if (peakDataCache != null) {
+            LOG.info("generateMatchesForPairs: peak cache stats are {}", peakDataCache.stats());
+        }
+    }
+
+    public static void writeFailedPairs(final String failedPairsDir,
+                                        final String pairJsonFileName,
+                                        final RenderableCanvasIdPairs renderableCanvasIdPairs,
+                                        final List<CanvasMatches> nonEmptyMatchesList)
+            throws IOException {
+        final Set<OrderedCanvasIdPair> nonEmptyMatchesSet = new HashSet<>(nonEmptyMatchesList.size());
+        for (final CanvasMatches canvasMatches : nonEmptyMatchesList) {
+            nonEmptyMatchesSet.add(new OrderedCanvasIdPair(new CanvasId(canvasMatches.getpGroupId(),
+                                                                        canvasMatches.getpId()),
+                                                           new CanvasId(canvasMatches.getqGroupId(),
+                                                                        canvasMatches.getqId()),
+                                                           null));
+        }
+
+        final List<OrderedCanvasIdPair>  failedPairsList = new ArrayList<>(renderableCanvasIdPairs.size());
+
+        for (final OrderedCanvasIdPair pair : renderableCanvasIdPairs.getNeighborPairs()) {
+            final CanvasId p = pair.getP();
+            final CanvasId q = pair.getQ();
+            final OrderedCanvasIdPair pairWithoutPosition = new OrderedCanvasIdPair(new CanvasId(p.getGroupId(),
+                                                                                                 p.getId()),
+                                                                                    new CanvasId(q.getGroupId(),
+                                                                                                 q.getId()),
+                                                                                    null);
+            if (! nonEmptyMatchesSet.contains(pairWithoutPosition)) {
+                failedPairsList.add(pair);
+            }
+        }
+
+        final File sourceJsonFile = new File(pairJsonFileName);
+        final File failedPairsFile = new File(failedPairsDir, sourceJsonFile.getName());
+        final RenderableCanvasIdPairs failedPairs =
+                new RenderableCanvasIdPairs(renderableCanvasIdPairs.getRenderParametersUrlTemplate(),
+                                            failedPairsList);
+
+        FileUtil.saveJsonFile(failedPairsFile.getAbsolutePath(), failedPairs);
     }
 
     private void appendGeometricMatchesIfNecessary(final CachedCanvasFeatures pCanvasFeatures,

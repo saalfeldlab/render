@@ -34,8 +34,20 @@ public class RenderWebServiceParameters implements Serializable {
             required = true)
     public String project;
 
+    /** Local data client instance that is lazy loaded since client cannot be serialized. */
+    private transient RenderDataClient dataClient;
+
     @JsonIgnore
     public RenderDataClient getDataClient() {
-        return new RenderDataClient(baseDataUrl, owner, project);
+        if (dataClient == null) {
+            buildDataClient();
+        }
+        return dataClient;
+    }
+
+    private synchronized void buildDataClient() {
+        if (dataClient == null) {
+            dataClient = new RenderDataClient(baseDataUrl, owner, project);
+        }
     }
 }

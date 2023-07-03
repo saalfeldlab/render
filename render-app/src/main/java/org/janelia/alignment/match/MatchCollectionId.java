@@ -60,6 +60,10 @@ public class MatchCollectionId
         return "match collection with owner '" + owner + "', and name '" + name + "'";
     }
 
+    public String toDevString() {
+        return owner + "::" + name;
+    }
+
     @Override
     public boolean equals(final Object o) {
         final boolean result;
@@ -80,7 +84,6 @@ public class MatchCollectionId
         return Objects.hashCode(owner, name);
     }
 
-    @SuppressWarnings("NullableProblems")
     @Override
     public int compareTo(final MatchCollectionId that) {
         int v = this.owner.compareTo(that.owner);
