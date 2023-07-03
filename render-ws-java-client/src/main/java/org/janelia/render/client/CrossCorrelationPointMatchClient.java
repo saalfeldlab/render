@@ -158,7 +158,7 @@ public class CrossCorrelationPointMatchClient
                         featureRenderParameters,
                         featureRenderClipParameters);
 
-        final long maximumNumberOfCachedSourcePixels = parameters.maxFeatureSourceCacheGb * 1_000_000_000;
+        final long maximumNumberOfCachedSourcePixels = parameters.maxFeatureSourceCacheGb * 1_000_000_000L;
         final ImageProcessorCache sourceImageProcessorCache =
                 new ImageProcessorCache(maximumNumberOfCachedSourcePixels,
                                         true,

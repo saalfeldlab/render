@@ -46,7 +46,7 @@ public class UnscaleSec19 {
 		// Minimally, must mount dm11 flyem at /groups/...
 		// To make things faster (but not required), also mount nrs flyem to get access to mipmaps.
 
-		final long maximumNumberOfCachedSourcePixels = 1_000_000_000; // 1GB
+		final long maximumNumberOfCachedSourcePixels = 1_000_000_000L; // 1GB
 		final ImageProcessorCache sourceImageProcessorCache =
 				new ImageProcessorCache(maximumNumberOfCachedSourcePixels,
 										true,

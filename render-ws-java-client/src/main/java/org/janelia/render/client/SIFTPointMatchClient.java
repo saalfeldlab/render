@@ -201,7 +201,7 @@ public class SIFTPointMatchClient
         // This speeds up SIFT+GD cases (by seconds for large tiles) and
         // allows mask information to be used for combined quality analysis.
         final long maximumNumberOfCachedSourcePixels =
-                featureStorageParameters.maxFeatureSourceCacheGb * 1_000_000_000;
+                featureStorageParameters.maxFeatureSourceCacheGb * 1_000_000_000L;
         final ImageProcessorCache sourceImageProcessorCache =
                 new ImageProcessorCache(maximumNumberOfCachedSourcePixels,
                                         true,

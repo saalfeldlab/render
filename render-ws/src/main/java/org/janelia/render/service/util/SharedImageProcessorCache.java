@@ -33,7 +33,7 @@ public class SharedImageProcessorCache {
                     maxCachedPixels = maxMemory / 2;
                 }
             } else {
-                maxCachedPixels = maxGb * 1_000_000_000;
+                maxCachedPixels = maxGb * 1_000_000_000L;
             }
 
             sharedCache = new ImageProcessorCache(maxCachedPixels, true, false);
