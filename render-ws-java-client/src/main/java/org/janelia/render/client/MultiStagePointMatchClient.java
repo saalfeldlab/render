@@ -7,15 +7,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
-import org.janelia.alignment.match.cache.CachedCanvasFeatures;
-import org.janelia.alignment.match.cache.CachedCanvasPeaks;
 import org.janelia.alignment.match.cache.CanvasDataCache;
+import org.janelia.alignment.match.cache.CanvasDataLoader;
 import org.janelia.alignment.match.cache.MultiStageCanvasDataLoader;
 import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.MatchStageParameters;
@@ -237,26 +238,28 @@ public class MultiStagePointMatchClient
                                                  sourceImageProcessorCache,
                                                  stageParametersList);
 
-        final MultiStageCanvasDataLoader multiStageFeatureLoader =
-                new MultiStageCanvasDataLoader(CachedCanvasFeatures.class);
-        final MultiStageCanvasDataLoader multiStagePeakLoader =
-                new MultiStageCanvasDataLoader(CachedCanvasPeaks.class);
+        final Map<String, CanvasDataLoader> featureLoaderMap = new HashMap<>();
+        final Map<String, CanvasDataLoader> peakLoaderMap = new HashMap<>();
         for (final StageMatchingResources stageResources : stageResourcesList) {
-            multiStageFeatureLoader.addLoader(stageResources.featureLoaderName, stageResources.getFeatureLoader());
+            featureLoaderMap.put(stageResources.featureLoaderName, stageResources.getFeatureLoader());
             if (stageResources.hasGeometricDescriptorData()) {
-                multiStagePeakLoader.addLoader(stageResources.peakLoaderName, stageResources.getPeakLoader());
+                peakLoaderMap.put(stageResources.peakLoaderName, stageResources.getPeakLoader());
             }
         }
 
-        final long featureCacheMaxKilobytes = parameters.featureStorage.maxFeatureCacheGb * 1_000_000;
+        final MultiStageCanvasDataLoader featureLoader = new MultiStageCanvasDataLoader(featureLoaderMap);
+        LOG.info("generateMatchesForPairs: created featureLoader {}", featureLoader.getDataLoaderId());
+        final MultiStageCanvasDataLoader peakLoader = new MultiStageCanvasDataLoader(peakLoaderMap);
+        LOG.info("generateMatchesForPairs: created peakLoader {}", featureLoader.getDataLoaderId());
+
+        final long featureCacheMaxKilobytes = parameters.featureStorage.maxFeatureCacheGb * 1_000_000L;
         final CanvasDataCache featureDataCache = CanvasDataCache.getSharedCache(featureCacheMaxKilobytes,
-                                                                                multiStageFeatureLoader);
+                                                                                featureLoader);
 
         final CanvasDataCache peakDataCache;
-        if (multiStagePeakLoader.getNumberOfStages() > 0) {
+        if (peakLoader.getNumberOfStages() > 0) {
             final long peakCacheMaxKilobytes = parameters.maxPeakCacheGb * 1000000;
-            peakDataCache = CanvasDataCache.getSharedCache(peakCacheMaxKilobytes,
-                                                           multiStagePeakLoader);
+            peakDataCache = CanvasDataCache.getSharedCache(peakCacheMaxKilobytes, peakLoader);
         }  else {
             peakDataCache = null;
         }

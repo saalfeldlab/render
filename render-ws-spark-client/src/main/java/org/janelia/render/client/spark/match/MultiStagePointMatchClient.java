@@ -6,8 +6,11 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -17,6 +20,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.match.RenderableCanvasIdPairsForCollection;
+import org.janelia.alignment.match.cache.CanvasDataCache;
 import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.match.parameters.TilePairDerivationParameters;
@@ -71,7 +75,7 @@ public class MultiStagePointMatchClient
 
         @Parameter(
                 names = "--matchRunJson",
-                description = "JSON file where match run parameters are defined",
+                description = "JSON file where array of match run parameters are defined",
                 required = true)
         public String matchRunJson;
 
@@ -154,17 +158,32 @@ public class MultiStagePointMatchClient
                                                                        parameters.owner,
                                                                        parameters.project);
 
-        final List<StackWithZValues> stackIdWithZValues = parameters.stackIdWithZ.getStackWithZList(renderDataClient);
-        if (stackIdWithZValues.size() == 0) {
+        final List<StackWithZValues> stackWithZValuesList = parameters.stackIdWithZ.getStackWithZList(renderDataClient);
+        if (stackWithZValuesList.size() == 0) {
             throw new IllegalArgumentException("no stack z-layers match parameters");
         }
 
-        final MatchRunParameters matchRunParameters = MatchRunParameters.fromJsonFile(parameters.matchRunJson);
+        for (final MatchRunParameters matchRunParameters : MatchRunParameters.fromJsonArrayFile(parameters.matchRunJson)) {
+            generatePairsAndMatchesForRun(sparkContext,
+                                          stackWithZValuesList,
+                                          matchRunParameters);
+            clearDataLoaders(sparkContext);
+        }
+
+        LOG.info("generatePairsAndMatches: exit");
+    }
+
+    public void generatePairsAndMatchesForRun(final JavaSparkContext sparkContext,
+                                              final List<StackWithZValues> stackWithZValuesList,
+                                              final MatchRunParameters matchRunParameters) {
+
+        LOG.info("generatePairsAndMatchesForRun: entry, {} stackWithZValuesList items, matchRunParameters={}",
+                 stackWithZValuesList.size(), matchRunParameters.toJson());
 
         final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairsWithDrift =
                 generateRenderableCanvasIdPairs(sparkContext,
                                                 parameters.baseDataUrl,
-                                                stackIdWithZValues,
+                                                stackWithZValuesList,
                                                 parameters.getMatchCollectionId(),
                                                 matchRunParameters.getTilePairDerivationParameters(),
                                                 parameters.maxPairsPerStackBatch);
@@ -185,36 +204,37 @@ public class MultiStagePointMatchClient
         
         final List<Integer> matchPairCountList = rddSavedMatchPairCounts.collect();
 
-        LOG.info("generatePairsAndMatches: collected stats");
+        LOG.info("generatePairsAndMatchesForRun: collected stats for {}", matchRunParameters.getRunName());
 
         long totalSaved = 0;
         for (final Integer matchCount : matchPairCountList) {
             totalSaved += matchCount;
         }
 
-        LOG.info("generatePairsAndMatches: saved matches for {} pairs on {} partitions",
-                 totalSaved, matchPairCountList.size());
+        LOG.info("generatePairsAndMatchesForRun: exit, saved matches for {} pairs on {} partitions for {}",
+                 totalSaved, matchPairCountList.size(), matchRunParameters.getRunName());
     }
 
     public JavaRDD<RenderableCanvasIdPairsForCollection> generateRenderableCanvasIdPairs(final JavaSparkContext sparkContext,
                                                                                          final String baseDataUrl,
-                                                                                         final List<StackWithZValues> stackIdWithZValues,
+                                                                                         final List<StackWithZValues> stackWithZValuesList,
                                                                                          final MatchCollectionId explicitMatchCollectionId,
                                                                                          final TilePairDerivationParameters tilePairDerivationParameters,
                                                                                          final int maxPairsPerStackBatch) {
 
 
 
-        final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackIdWithZValues);
+        final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
 
         LOG.info("generateRenderableCanvasIdPairs: process {} StackWithZValues objects across {} partitions",
-                 stackIdWithZValues.size(), rddStackWithZValues.getNumPartitions());
+                 stackWithZValuesList.size(), rddStackWithZValues.getNumPartitions());
 
         return rddStackWithZValues.mapPartitionsWithIndex(
                 (Function2<Integer, Iterator<StackWithZValues>, Iterator<RenderableCanvasIdPairsForCollection>>) (partitionIndex, stackWithZValuesIterator) -> {
 
                     LogUtilities.setupExecutorLog4j("partition " + partitionIndex);
                     final Logger log = LoggerFactory.getLogger(MultiStagePointMatchClient.class);
+                    log.info("generateRenderableCanvasIdPairs: entry");
 
                     final List<RenderableCanvasIdPairsForCollection> pairsList = new ArrayList<>();
 
@@ -231,18 +251,20 @@ public class MultiStagePointMatchClient
                                                               "/tmp/tile_pairs.json"); // ignored by in-memory client
                         final InMemoryTilePairClient tilePairClient = new InMemoryTilePairClient(tilePairParameters);
 
+                        // derive match collection id from stack owner and project if it is not explicitly specified
+                        if (explicitMatchCollectionId == null) {
+                            final StackId stackId = stackWithZValues.getStackId();
+                            matchCollectionId = new MatchCollectionId(stackId.getOwner(),
+                                                                      stackId.getProject() + "_v1");
+                            tilePairClient.overrideExcludePairsInMatchCollectionIfDefined(matchCollectionId);
+                        }
+
                         tilePairClient.deriveAndSaveSortedNeighborPairs();
 
                         final RenderableCanvasIdPairs renderableCanvasIdPairs =
                                 new RenderableCanvasIdPairs(tilePairClient.getRenderParametersUrlTemplate(),
                                                             tilePairClient.getNeighborPairs());
 
-                        // derive match collection id from stack owner and project if it is not explicitly specified
-                        if (explicitMatchCollectionId == null) {
-                            final StackId stackId = stackWithZValues.getStackId();
-                            matchCollectionId = new MatchCollectionId(stackId.getOwner(),
-                                                                      stackId.getProject() + "_v1");
-                        }
 
                         final RenderableCanvasIdPairsForCollection pairsForCollection =
                                 new RenderableCanvasIdPairsForCollection(stackWithZValues.getStackId(),
@@ -255,6 +277,8 @@ public class MultiStagePointMatchClient
                             pairsList.add(batchPairs);
                         }
                     }
+
+                    log.info("generateRenderableCanvasIdPairs: exit");
 
                     return pairsList.iterator();
 
@@ -283,6 +307,7 @@ public class MultiStagePointMatchClient
 
                     LogUtilities.setupExecutorLog4j("partition " + partitionIndex);
                     final Logger log = LoggerFactory.getLogger(MultiStagePointMatchClient.class);
+                    log.info("generateAndStoreCanvasMatches: entry");
 
                     final org.janelia.render.client.MultiStagePointMatchClient localClient =
                             new org.janelia.render.client.MultiStagePointMatchClient(multiStageParameters);
@@ -323,10 +348,33 @@ public class MultiStagePointMatchClient
                         savedMatchPairCountList.add(nonEmptyMatchesList.size());
                     }
 
+                    log.info("generateAndStoreCanvasMatches: exit");
+
                     return savedMatchPairCountList.iterator();
                 },
                 true
         );
+    }
+
+    public static void clearDataLoaders(final JavaSparkContext sparkContext) {
+
+        final List<Integer> partitionRange = IntStream.rangeClosed(0, sparkContext.defaultParallelism())
+                .boxed().collect(Collectors.toList());
+        final JavaRDD<Integer> rddPartitionRange = sparkContext.parallelize(partitionRange);
+
+        LOG.info("clearDataLoaders: entry, clear loaders across {} partitions", rddPartitionRange.getNumPartitions());
+
+        final JavaRDD<Integer> rddClearedCacheCounts = rddPartitionRange.mapPartitionsWithIndex(
+                (Function2<Integer, Iterator<Integer>, Iterator<Integer>>) (partitionIndex, pairIterator) -> {
+                    LogUtilities.setupExecutorLog4j("partition " + partitionIndex);
+                    CanvasDataCache.clearAllSharedDataCaches();
+                    return Collections.singletonList(1).iterator();
+                },
+                true
+        );
+        final int totalCleared = rddClearedCacheCounts.collect().stream().reduce(0, Integer::sum);
+
+        LOG.info("clearDataLoaders: exit, cleared {} data caches", totalCleared);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiStagePointMatchClient.class);

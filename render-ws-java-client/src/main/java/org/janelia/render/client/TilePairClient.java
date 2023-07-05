@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
@@ -210,9 +211,8 @@ public class TilePairClient {
             includeStack = StackId.fromNameString(tpdp.onlyIncludeTilesFromStack,
                                                   parameters.renderWeb.owner,
                                                   parameters.renderWeb.project);
-            includeClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                 includeStack.getOwner(),
-                                                 includeStack.getProject());
+            includeClient = renderDataClient.buildClient(includeStack.getOwner(),
+                                                         includeStack.getProject());
         }
 
         if (tpdp.onlyIncludeTilesNearTileIdsJson != null) {
@@ -261,6 +261,10 @@ public class TilePairClient {
                                                 parameters.zValues);
     }
 
+    public void overrideExcludePairsInMatchCollectionIfDefined(final MatchCollectionId matchCollectionId) {
+        parameters.tpdp.overrideExcludePairsInMatchCollectionIfDefined(matchCollectionId);
+    }
+
     public void deriveAndSaveSortedNeighborPairs()
             throws IllegalArgumentException, IOException {
 
@@ -296,9 +300,8 @@ public class TilePairClient {
 
             final String collectionName = tpdp.excludePairsInMatchCollection;
             final RenderDataClient matchDataClient =
-                    new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                         parameters.getMatchOwner(tpdp.existingMatchOwner),
-                                         collectionName);
+                    renderDataClient.buildClient(parameters.getMatchOwner(tpdp.existingMatchOwner),
+                                                 collectionName);
 
             final List<MatchCollectionMetaData> matchCollections = matchDataClient.getOwnerMatchCollections();
             final boolean foundCollection = matchCollections.stream()

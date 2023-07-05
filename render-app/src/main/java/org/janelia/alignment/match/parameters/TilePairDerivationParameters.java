@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MontageRelativePosition;
 
 /**
@@ -95,6 +96,13 @@ public class TilePairDerivationParameters implements Serializable {
     public String onlyIncludeTilesNearTileIdsJson;
 
     public TilePairDerivationParameters() {
+    }
+
+    public void overrideExcludePairsInMatchCollectionIfDefined(final MatchCollectionId matchCollectionId) {
+        if (excludePairsInMatchCollection != null) {
+            existingMatchOwner = matchCollectionId.getOwner();
+            excludePairsInMatchCollection = matchCollectionId.getName();
+        }
     }
 
 }
