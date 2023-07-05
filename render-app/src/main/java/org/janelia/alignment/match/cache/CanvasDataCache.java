@@ -28,8 +28,7 @@ import org.slf4j.LoggerFactory;
 public class CanvasDataCache
         implements CanvasFeatureProvider, CanvasPeakProvider {
 
-    private static final Map<Class<? extends CachedCanvasData>, CanvasDataCache> SHARED_DATA_CLASS_TO_CACHE_MAP =
-            new HashMap<>();
+    private static final Map<String, CanvasDataCache> SHARED_ID_TO_CACHE_MAP = new HashMap<>();
 
     /**
      * @param  kilobyteCapacity  expected capacity of the shared cache.
@@ -44,8 +43,7 @@ public class CanvasDataCache
                                                  final CanvasDataLoader canvasDataLoader)
             throws IllegalArgumentException {
 
-        final Class<? extends CachedCanvasData> dataClass = canvasDataLoader.getDataClass();
-        CanvasDataCache sharedCache = SHARED_DATA_CLASS_TO_CACHE_MAP.get(dataClass);
+        CanvasDataCache sharedCache = SHARED_ID_TO_CACHE_MAP.get(canvasDataLoader.getDataLoaderId());
 
         if (sharedCache == null) {
             sharedCache = setSharedCache(kilobyteCapacity, canvasDataLoader);
@@ -60,16 +58,20 @@ public class CanvasDataCache
         return sharedCache;
     }
 
+    public static void clearAllSharedDataCaches() {
+        LOG.info("clearAllSharedDataCaches: entry");
+        SHARED_ID_TO_CACHE_MAP.clear();
+    }
+
     private static synchronized CanvasDataCache setSharedCache(final long kilobyteCapacity,
                                                                final CanvasDataLoader canvasDataLoader) {
 
-        final Class<? extends CachedCanvasData> dataClass = canvasDataLoader.getDataClass();
-        CanvasDataCache sharedCache = SHARED_DATA_CLASS_TO_CACHE_MAP.get(dataClass);
+        CanvasDataCache sharedCache = SHARED_ID_TO_CACHE_MAP.get(canvasDataLoader.getDataLoaderId());
 
         if (sharedCache == null) {
             // creates "the" shared cache with statistics recording enabled
             sharedCache = new CanvasDataCache(kilobyteCapacity, canvasDataLoader, true);
-            SHARED_DATA_CLASS_TO_CACHE_MAP.put(dataClass, sharedCache);
+            SHARED_ID_TO_CACHE_MAP.put(canvasDataLoader.getDataLoaderId(), sharedCache);
         }
 
         return sharedCache;
@@ -139,7 +141,7 @@ public class CanvasDataCache
         this.buildCache(recordStats);
 
         LOG.info("<init>: exit, created {} kilobyte cache for {} data",
-                 kilobyteCapacity, canvasDataLoader.getDataClass());
+                 kilobyteCapacity, canvasDataLoader.getDataLoaderId());
     }
 
     /**

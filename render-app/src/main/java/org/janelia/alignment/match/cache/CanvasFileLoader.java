@@ -26,15 +26,23 @@ public class CanvasFileLoader
     private final File rootDirectory;
 
     /**
-     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
      * @param  canvasFormat                 image format for all rendered canvas files.
      * @param  parentDirectory              parent directory for all rendered canvas files.
      */
     public CanvasFileLoader(final String canvasFormat,
                             final File parentDirectory) {
-        super(CachedCanvasFile.class);
+        super(buildDataLoaderId(canvasFormat, parentDirectory));
         this.canvasFormat = canvasFormat;
         this.rootDirectory = new File(parentDirectory, FILE_CACHE_DIRECTORY_NAME);
+    }
+
+    /**
+     * @return an identifier for loader with these parameters to distinguish it from other loaders.
+     */
+    public static String buildDataLoaderId(final String canvasFormat,
+                                           final File parentDirectory) {
+        final String dirHash = parentDirectory == null ? "null" : String.valueOf(parentDirectory.hashCode());
+        return CachedCanvasFile.class.getName() + "::" + canvasFormat + "::" + dirHash;
     }
 
     @Override

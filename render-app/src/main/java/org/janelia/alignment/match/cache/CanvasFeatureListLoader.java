@@ -30,7 +30,6 @@ public class CanvasFeatureListLoader
     private transient boolean isSourceDataCachingEnabled;
 
     /**
-     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
      * @param  featureExtractor             configured feature extractor.
      */
     public CanvasFeatureListLoader(final CanvasFeatureExtractor featureExtractor) {
@@ -38,8 +37,6 @@ public class CanvasFeatureListLoader
     }
 
     /**
-     * @param  urlTemplate                  template for deriving render parameters URL for each canvas.
-     *
      * @param  featureExtractor             configured feature extractor.
      *
      * @param  rootFeatureStorageDirectory  root directory for persisted feature list data
@@ -54,11 +51,23 @@ public class CanvasFeatureListLoader
     public CanvasFeatureListLoader(final CanvasFeatureExtractor featureExtractor,
                                    final File rootFeatureStorageDirectory,
                                    final boolean requireStoredFeatures) {
-        super(CachedCanvasFeatures.class);
+        super(buildDataLoaderId(featureExtractor, rootFeatureStorageDirectory, requireStoredFeatures));
         this.featureExtractor = featureExtractor;
-        this.rootFeatureStorageDirectory =rootFeatureStorageDirectory;
+        this.rootFeatureStorageDirectory = rootFeatureStorageDirectory;
         this.requireStoredFeatures = requireStoredFeatures;
         this.isSourceDataCachingEnabled = false;
+    }
+
+    /**
+     * @return an identifier for loader with these parameters to distinguish it from other loaders.
+     */
+    public static String buildDataLoaderId(final CanvasFeatureExtractor featureExtractor,
+                                           final File rootFeatureStorageDirectory,
+                                           final boolean requireStoredFeatures) {
+        final String dirHash = rootFeatureStorageDirectory == null ?
+                               "null" : String.valueOf(rootFeatureStorageDirectory.hashCode());
+        return CachedCanvasFeatures.class.getName() + "::" +
+               featureExtractor.hashCode() + "::" + dirHash + "::" + requireStoredFeatures;
     }
 
     public void enableSourceDataCaching(final ImageProcessorCache imageProcessorCache) {

@@ -25,8 +25,15 @@ public class CanvasPeakListLoader
      * @param  peakExtractor             configured peak extractor.
      */
     public CanvasPeakListLoader(final CanvasPeakExtractor peakExtractor) {
-        super(CachedCanvasPeaks.class);
+        super(buildDataLoaderId(peakExtractor));
         this.peakExtractor = peakExtractor;
+    }
+
+    /**
+     * @return an identifier for loader with these parameters to distinguish it from other loaders.
+     */
+    public static String buildDataLoaderId(final CanvasPeakExtractor peakExtractor) {
+        return CachedCanvasPeaks.class.getName() + "::" + peakExtractor.hashCode();
     }
 
     @Override

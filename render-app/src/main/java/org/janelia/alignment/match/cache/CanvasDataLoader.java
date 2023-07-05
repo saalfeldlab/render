@@ -14,16 +14,16 @@ import org.janelia.alignment.match.CanvasIdWithRenderContext;
 public abstract class CanvasDataLoader
         extends CacheLoader<CanvasIdWithRenderContext, CachedCanvasData> implements Serializable {
 
-    private final Class<? extends CachedCanvasData> dataClass;
+    private final String dataLoaderId;
 
     /**
-     * @param  dataClass    class of specific data loader implementation.
+     * @param  dataLoaderId    unique identifier for data loader implementation.
      */
-    CanvasDataLoader(final Class<? extends CachedCanvasData> dataClass) {
-        this.dataClass = dataClass;
+    CanvasDataLoader(final String dataLoaderId) {
+        this.dataLoaderId = dataLoaderId;
     }
 
-    Class<? extends CachedCanvasData> getDataClass() {
-        return dataClass;
+    public String getDataLoaderId() {
+        return dataLoaderId;
     }
 }

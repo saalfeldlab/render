@@ -1,7 +1,7 @@
 package org.janelia.alignment.match.cache;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasIdWithRenderContext;
 
@@ -16,16 +16,25 @@ public class MultiStageCanvasDataLoader
     private final Map<String, CanvasDataLoader> nameToLoaderMap;
 
     /**
-     * @param  dataClass    class of data loader used for all stages (each stage will have a different instance).
+     * @param  nameToLoaderMap  map of loaders to use for each stage.
      */
-    public MultiStageCanvasDataLoader(final Class<? extends CachedCanvasData> dataClass) {
-        super(dataClass);
-        this.nameToLoaderMap = new HashMap<>();
+    public MultiStageCanvasDataLoader(final Map<String, CanvasDataLoader> nameToLoaderMap) {
+        super(buildDataLoaderId(nameToLoaderMap));
+        this.nameToLoaderMap = nameToLoaderMap;
     }
 
-    public void addLoader(final String name,
-                          final CanvasDataLoader dataLoader) {
-        nameToLoaderMap.put(name, dataLoader);
+    /**
+     * @return an identifier for loader with these parameters to distinguish it from other loaders.
+     */
+    public static String buildDataLoaderId(final Map<String, CanvasDataLoader> nameToLoaderMap) {
+        final StringBuilder sb = new StringBuilder();
+        for (final String name : nameToLoaderMap.keySet().stream().sorted().collect(Collectors.toList())) {
+            sb.append(name);
+            sb.append("::");
+            sb.append(nameToLoaderMap.get(name).getDataLoaderId().hashCode());
+            sb.append("|");
+        }
+        return sb.toString();
     }
 
     public int getNumberOfStages() {
