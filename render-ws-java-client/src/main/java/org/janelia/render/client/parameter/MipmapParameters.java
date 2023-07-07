@@ -89,4 +89,10 @@ public class MipmapParameters implements Serializable {
         return new MipmapPathBuilder(dir.getPath(), maxLevel, extension, null);
     }
 
+    public void setStackIdWithZIfUndefined(final StackIdWithZParameters defaultParameters) {
+        if ((stackIdWithZ == null) || (! stackIdWithZ.hasDefinedStacks())) {
+            stackIdWithZ = defaultParameters;
+        }
+    }
+
 }

@@ -53,6 +53,10 @@ public class StackIdWithZParameters
             description = "Number of stack z values to batch together when distributing work")
     public int zValuesPerBatch = 1;
 
+    public boolean hasDefinedStacks() {
+        return (stackNames != null) && (stackNames.size() > 0);
+    }
+
     public List<StackId> getStackIdList(final RenderDataClient renderDataClient)
             throws IOException {
         final List<StackId> stackIdList;

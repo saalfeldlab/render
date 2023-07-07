@@ -21,7 +21,6 @@ import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.match.RenderableCanvasIdPairsForCollection;
 import org.janelia.alignment.match.cache.CanvasDataCache;
-import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.match.parameters.TilePairDerivationParameters;
 import org.janelia.alignment.spec.stack.StackId;
@@ -30,14 +29,16 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.TilePairClient;
 import org.janelia.render.client.match.InMemoryTilePairClient;
+import org.janelia.render.client.parameter.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.StackIdWithZParameters;
+import org.janelia.render.client.parameter.MatchCommonParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Spark client for generating and storing SIFT point matches for a specified set of canvas (e.g. tile) pairs.
+ * Spark client for generating and storing SIFT point matches.
  *
  * @author Eric Trautman
  */
@@ -45,70 +46,26 @@ public class MultiStagePointMatchClient
         implements Serializable {
 
     public static class Parameters extends CommandLineParameters {
-
-        // NOTE: did not use RenderWebServiceParameters delegate because wanted to have slightly different descriptions
-        @Parameter(
-                names = "--baseDataUrl",
-                description = "Base web service URL for data (e.g. http://host[:port]/render-ws/v1)",
-                required = true)
-        public String baseDataUrl;
-
-        @Parameter(
-                names = "--owner",
-                description = "Owner for all stacks and match collections",
-                required = true)
-        public String owner;
-
-        @Parameter(
-                names = "--project",
-                description = "Project for all tiles (or first project if processing a multi-project run)",
-                required = true)
-        public String project;
-
-        @Parameter(
-                names = "--matchCollection",
-                description = "Explicit collection in which to store matches (omit to use stack project derived names)")
-        public String matchCollection;
-
         @ParametersDelegate
-        public StackIdWithZParameters stackIdWithZ = new StackIdWithZParameters();
-
+        public MultiProjectParameters multiProject = new MultiProjectParameters();
+        @ParametersDelegate
+        public MatchCommonParameters matchCommon = new MatchCommonParameters();
         @Parameter(
                 names = "--matchRunJson",
                 description = "JSON file where array of match run parameters are defined",
                 required = true)
         public String matchRunJson;
 
-        @Parameter(
-                names = "--maxPairsPerStackBatch",
-                description = "Maximum number of pairs to include in stack-based batches")
-        public int maxPairsPerStackBatch = 100;
-
-        @Parameter(
-                names = { "--maxFeatureSourceCacheGb" },
-                description = "Maximum number of gigabytes of source image and mask data to cache " +
-                              "(note: 15000x15000 Fly EM mask is 500MB while 6250x4000 mask is 25MB)"
-        )
-        public Integer maxFeatureSourceCacheGb = 2;
-
-        @Parameter(
-                names = { "--gdMaxPeakCacheGb" },
-                description = "Maximum number of gigabytes of peaks to cache")
-        public Integer maxPeakCacheGb = 2;
-
-        public FeatureStorageParameters getFeatureStorageParameters() {
-            final FeatureStorageParameters p = new FeatureStorageParameters();
-            p.maxFeatureSourceCacheGb = this.maxFeatureSourceCacheGb;
-            return p;
+        /** @return client specific parameters populated from specified alignment pipeline parameters. */
+        public static Parameters fromPipeline(final AlignmentPipelineParameters alignmentPipelineParameters) {
+            final Parameters derivedParameters = new Parameters();
+            derivedParameters.multiProject = alignmentPipelineParameters.getMultiProject();
+            derivedParameters.matchCommon = alignmentPipelineParameters.getMatchCommon();
+            // NOTE: matchRunParameters should/will be loaded from alignmentPipelineParameters directly
+            //       instead of from matchRunJson file
+            return derivedParameters;
         }
 
-        public MatchCollectionId getMatchCollectionId() {
-            MatchCollectionId matchCollectionId = null;
-            if (matchCollection != null) {
-                matchCollectionId = new MatchCollectionId(owner, matchCollection);
-            }
-            return matchCollectionId;
-        }
     }
 
 
@@ -121,8 +78,6 @@ public class MultiStagePointMatchClient
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
 
-                LOG.info("runClient: entry, parameters={}", parameters);
-
                 final MultiStagePointMatchClient client = new MultiStagePointMatchClient(parameters);
                 client.run();
 
@@ -134,7 +89,8 @@ public class MultiStagePointMatchClient
 
     private final Parameters parameters;
 
-    private MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException {
+    public MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException {
+        LOG.info("init: parameters={}", parameters);
         this.parameters = parameters;
     }
 
@@ -145,32 +101,40 @@ public class MultiStagePointMatchClient
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
             final String sparkAppId = sparkContext.getConf().getAppId();
             LOG.info("run: appId is {}", sparkAppId);
-            generatePairsAndMatches(sparkContext);
+            runWithContext(sparkContext);
         }
     }
 
-    public void generatePairsAndMatches(final JavaSparkContext sparkContext)
+    public void runWithContext(final JavaSparkContext sparkContext)
             throws IOException {
 
-        LOG.info("generatePairsAndMatches: entry");
+        LOG.info("runWithContext: entry");
 
-        final RenderDataClient renderDataClient = new RenderDataClient(parameters.baseDataUrl,
-                                                                       parameters.owner,
-                                                                       parameters.project);
+        final RenderDataClient renderDataClient = new RenderDataClient(parameters.multiProject.baseDataUrl,
+                                                                       parameters.multiProject.owner,
+                                                                       parameters.multiProject.project);
 
-        final List<StackWithZValues> stackWithZValuesList = parameters.stackIdWithZ.getStackWithZList(renderDataClient);
+        final List<StackWithZValues> stackWithZValuesList = parameters.multiProject.stackIdWithZ.getStackWithZList(renderDataClient);
         if (stackWithZValuesList.size() == 0) {
             throw new IllegalArgumentException("no stack z-layers match parameters");
         }
 
-        for (final MatchRunParameters matchRunParameters : MatchRunParameters.fromJsonArrayFile(parameters.matchRunJson)) {
+        generatePairsAndMatchesForRunList(sparkContext,
+                                          stackWithZValuesList,
+                                          MatchRunParameters.fromJsonArrayFile(parameters.matchRunJson));
+
+        LOG.info("runWithContext: exit");
+    }
+
+    public void generatePairsAndMatchesForRunList(final JavaSparkContext sparkContext,
+                                                  final List<StackWithZValues> stackWithZValuesList,
+                                                  final List<MatchRunParameters> matchRunList) {
+        for (final MatchRunParameters matchRunParameters : matchRunList) {
             generatePairsAndMatchesForRun(sparkContext,
                                           stackWithZValuesList,
                                           matchRunParameters);
             clearDataLoaders(sparkContext);
         }
-
-        LOG.info("generatePairsAndMatches: exit");
     }
 
     public void generatePairsAndMatchesForRun(final JavaSparkContext sparkContext,
@@ -182,24 +146,24 @@ public class MultiStagePointMatchClient
 
         final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairsWithDrift =
                 generateRenderableCanvasIdPairs(sparkContext,
-                                                parameters.baseDataUrl,
+                                                parameters.multiProject.baseDataUrl,
                                                 stackWithZValuesList,
-                                                parameters.getMatchCollectionId(),
+                                                parameters.multiProject.getMatchCollectionId(),
                                                 matchRunParameters.getTilePairDerivationParameters(),
-                                                parameters.maxPairsPerStackBatch);
+                                                parameters.matchCommon.maxPairsPerStackBatch);
 
         final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairs =
                 repartitionPairsForBalancedProcessing(sparkContext, rddCanvasIdPairsWithDrift);
 
         final org.janelia.render.client.MultiStagePointMatchClient.Parameters multiStageParameters =
                 new org.janelia.render.client.MultiStagePointMatchClient.Parameters(
-                        parameters.getFeatureStorageParameters(),
-                        parameters.maxPeakCacheGb,
+                        parameters.matchCommon.featureStorage,
+                        parameters.matchCommon.maxPeakCacheGb,
                         matchRunParameters.getMatchStageParametersList());
 
         final JavaRDD<Integer> rddSavedMatchPairCounts =
                 generateAndStoreCanvasMatches(multiStageParameters,
-                                              parameters.baseDataUrl,
+                                              parameters.multiProject.baseDataUrl,
                                               rddCanvasIdPairs);
         
         final List<Integer> matchPairCountList = rddSavedMatchPairCounts.collect();
