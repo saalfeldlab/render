@@ -10,6 +10,7 @@ import java.io.Serializable;
 import java.util.List;
 
 import org.janelia.alignment.match.MatchCollectionId;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.RenderDataClient;
 
@@ -42,8 +43,15 @@ public class MultiProjectParameters
 
     @Parameter(
             names = "--matchCollection",
-            description = "Explicit collection in which to store matches (omit to use stack project derived names)")
+            description = "Explicit collection in which to store matches (omit to use stack derived names)")
     public String matchCollection;
+
+    @Parameter(
+            names = "--deriveMatchCollectionNamesFromProject",
+            description = "Indicates that match collection names should be derived from the stack's project " +
+                          "instead of using the default approach which derives collection names from the stack's name",
+            arity = 0)
+    public boolean deriveMatchCollectionNamesFromProject;
 
     @ParametersDelegate
     public StackIdWithZParameters stackIdWithZ = new StackIdWithZParameters();
@@ -62,13 +70,16 @@ public class MultiProjectParameters
     public MultiProjectParameters() {
     }
 
-    @JsonIgnore
-    public MatchCollectionId getMatchCollectionId() {
-        MatchCollectionId matchCollectionId = null;
-        if (matchCollection != null) {
-            matchCollectionId = new MatchCollectionId(owner, matchCollection);
+    public MatchCollectionId getMatchCollectionIdForStack(final StackId stackId) {
+        final MatchCollectionId stackMatchCollectionId;
+        if (matchCollection == null) {
+            final String baseName = deriveMatchCollectionNamesFromProject ? stackId.getProject() : stackId.getStack();
+            stackMatchCollectionId = new MatchCollectionId(stackId.getOwner(),
+                                                           baseName + "_v1");
+        } else {
+            stackMatchCollectionId = new MatchCollectionId(owner, matchCollection);
         }
-        return matchCollectionId;
+        return stackMatchCollectionId;
     }
 
     public List<StackWithZValues> buildStackWithZValuesList()

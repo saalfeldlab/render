@@ -146,9 +146,8 @@ public class MultiStagePointMatchClient
 
         final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairsWithDrift =
                 generateRenderableCanvasIdPairs(sparkContext,
-                                                parameters.multiProject.baseDataUrl,
+                                                parameters.multiProject,
                                                 stackWithZValuesList,
-                                                parameters.multiProject.getMatchCollectionId(),
                                                 matchRunParameters.getTilePairDerivationParameters(),
                                                 parameters.matchCommon.maxPairsPerStackBatch);
 
@@ -180,9 +179,8 @@ public class MultiStagePointMatchClient
     }
 
     public JavaRDD<RenderableCanvasIdPairsForCollection> generateRenderableCanvasIdPairs(final JavaSparkContext sparkContext,
-                                                                                         final String baseDataUrl,
+                                                                                         final MultiProjectParameters multiProjectParameters,
                                                                                          final List<StackWithZValues> stackWithZValuesList,
-                                                                                         final MatchCollectionId explicitMatchCollectionId,
                                                                                          final TilePairDerivationParameters tilePairDerivationParameters,
                                                                                          final int maxPairsPerStackBatch) {
 
@@ -203,25 +201,21 @@ public class MultiStagePointMatchClient
                     final List<RenderableCanvasIdPairsForCollection> pairsList = new ArrayList<>();
 
                     StackWithZValues stackWithZValues;
-                    MatchCollectionId matchCollectionId = explicitMatchCollectionId;
+                    MatchCollectionId matchCollectionId;
                     while (stackWithZValuesIterator.hasNext()) {
 
                         stackWithZValues = stackWithZValuesIterator.next();
+                        final StackId stackId = stackWithZValues.getStackId();
 
                         final TilePairClient.Parameters tilePairParameters =
-                                new TilePairClient.Parameters(baseDataUrl,
+                                new TilePairClient.Parameters(multiProjectParameters.baseDataUrl,
                                                               stackWithZValues,
                                                               tilePairDerivationParameters,
                                                               "/tmp/tile_pairs.json"); // ignored by in-memory client
                         final InMemoryTilePairClient tilePairClient = new InMemoryTilePairClient(tilePairParameters);
 
-                        // derive match collection id from stack owner and project if it is not explicitly specified
-                        if (explicitMatchCollectionId == null) {
-                            final StackId stackId = stackWithZValues.getStackId();
-                            matchCollectionId = new MatchCollectionId(stackId.getOwner(),
-                                                                      stackId.getProject() + "_v1");
-                            tilePairClient.overrideExcludePairsInMatchCollectionIfDefined(matchCollectionId);
-                        }
+                        matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
+                        tilePairClient.overrideExcludePairsInMatchCollectionIfDefined(matchCollectionId);
 
                         tilePairClient.deriveAndSaveSortedNeighborPairs();
 
@@ -231,7 +225,7 @@ public class MultiStagePointMatchClient
 
 
                         final RenderableCanvasIdPairsForCollection pairsForCollection =
-                                new RenderableCanvasIdPairsForCollection(stackWithZValues.getStackId(),
+                                new RenderableCanvasIdPairsForCollection(stackId,
                                                                          renderableCanvasIdPairs,
                                                                          matchCollectionId);
 
