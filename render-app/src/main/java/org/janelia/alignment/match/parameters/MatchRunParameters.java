@@ -21,24 +21,31 @@ public class MatchRunParameters
         implements Serializable {
 
     private final String runName;
+    private final MatchCommonParameters matchCommon;
     private final TilePairDerivationParameters tilePairDerivationParameters;
     private final List<MatchStageParameters> matchStageParametersList;
 
     @SuppressWarnings("unused")
     public MatchRunParameters() {
-        this(null, new TilePairDerivationParameters(), new ArrayList<>());
+        this(null, new MatchCommonParameters(), new TilePairDerivationParameters(), new ArrayList<>());
     }
 
     public MatchRunParameters(final String runName,
+                              final MatchCommonParameters matchCommon,
                               final TilePairDerivationParameters tilePairDerivationParameters,
                               final List<MatchStageParameters> matchStageParametersList) {
         this.runName = runName;
+        this.matchCommon = matchCommon;
         this.tilePairDerivationParameters = tilePairDerivationParameters;
         this.matchStageParametersList = matchStageParametersList;
     }
 
     public String getRunName() {
         return runName;
+    }
+
+    public MatchCommonParameters getMatchCommon() {
+        return matchCommon;
     }
 
     public TilePairDerivationParameters getTilePairDerivationParameters() {

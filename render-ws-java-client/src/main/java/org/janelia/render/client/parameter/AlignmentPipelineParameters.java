@@ -21,21 +21,18 @@ public class AlignmentPipelineParameters
 
     private final MultiProjectParameters multiProject;
     private final MipmapParameters mipmap;
-    private final MatchCommonParameters matchCommon;
     private final List<MatchRunParameters> matchRunList;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
-        this(null, null, null, null);
+        this(null, null, null);
     }
 
     public AlignmentPipelineParameters(final MultiProjectParameters multiProject,
                                        final MipmapParameters mipmap,
-                                       final MatchCommonParameters matchCommon,
                                        final List<MatchRunParameters> matchRunList) {
         this.multiProject = multiProject;
         this.mipmap = mipmap;
-        this.matchCommon = matchCommon;
         this.matchRunList = matchRunList;
     }
 
@@ -52,11 +49,7 @@ public class AlignmentPipelineParameters
     }
 
     public boolean hasMatchParameters() {
-        return (matchCommon != null) && (matchRunList != null) && (matchRunList.size() > 0);
-    }
-
-    public MatchCommonParameters getMatchCommon() {
-        return matchCommon;
+        return (matchRunList != null) && (matchRunList.size() > 0);
     }
 
     public List<MatchRunParameters> getMatchRunList() {

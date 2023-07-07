@@ -21,6 +21,7 @@ import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.match.RenderableCanvasIdPairsForCollection;
 import org.janelia.alignment.match.cache.CanvasDataCache;
+import org.janelia.alignment.match.parameters.MatchCommonParameters;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.match.parameters.TilePairDerivationParameters;
 import org.janelia.alignment.spec.stack.StackId;
@@ -31,7 +32,6 @@ import org.janelia.render.client.TilePairClient;
 import org.janelia.render.client.match.InMemoryTilePairClient;
 import org.janelia.render.client.parameter.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MatchCommonParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.slf4j.Logger;
@@ -48,8 +48,6 @@ public class MultiStagePointMatchClient
     public static class Parameters extends CommandLineParameters {
         @ParametersDelegate
         public MultiProjectParameters multiProject = new MultiProjectParameters();
-        @ParametersDelegate
-        public MatchCommonParameters matchCommon = new MatchCommonParameters();
         @Parameter(
                 names = "--matchRunJson",
                 description = "JSON file where array of match run parameters are defined",
@@ -60,7 +58,6 @@ public class MultiStagePointMatchClient
         public static Parameters fromPipeline(final AlignmentPipelineParameters alignmentPipelineParameters) {
             final Parameters derivedParameters = new Parameters();
             derivedParameters.multiProject = alignmentPipelineParameters.getMultiProject();
-            derivedParameters.matchCommon = alignmentPipelineParameters.getMatchCommon();
             // NOTE: matchRunParameters should/will be loaded from alignmentPipelineParameters directly
             //       instead of from matchRunJson file
             return derivedParameters;
@@ -144,20 +141,35 @@ public class MultiStagePointMatchClient
         LOG.info("generatePairsAndMatchesForRun: entry, {} stackWithZValuesList items, matchRunParameters={}",
                  stackWithZValuesList.size(), matchRunParameters.toJson());
 
+        final MatchCommonParameters matchCommon = matchRunParameters.getMatchCommon();
+        final TilePairDerivationParameters tilePairDerivation = matchRunParameters.getTilePairDerivationParameters();
+
+        List<StackWithZValues> effectiveStackWithZValuesList = stackWithZValuesList;
+        if (tilePairDerivation.zNeighborDistance > 0) {
+            // for cross-match pair derivation, need to ensure stacks do not have specific z layers so reduce list here
+            effectiveStackWithZValuesList = stackWithZValuesList.stream()
+                    .map(StackWithZValues::getStackId)
+                    .distinct()
+                    .map(stackId -> new StackWithZValues(stackId, new ArrayList<>()))
+                    .collect(Collectors.toList());
+            LOG.info("generatePairsAndMatchesForRun: reduced stackWithZValuesList from {} to {} items for cross pair derivation",
+                     stackWithZValuesList.size(), effectiveStackWithZValuesList.size());
+        }
+
         final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairsWithDrift =
                 generateRenderableCanvasIdPairs(sparkContext,
                                                 parameters.multiProject,
-                                                stackWithZValuesList,
-                                                matchRunParameters.getTilePairDerivationParameters(),
-                                                parameters.matchCommon.maxPairsPerStackBatch);
+                                                effectiveStackWithZValuesList,
+                                                tilePairDerivation,
+                                                matchCommon.maxPairsPerStackBatch);
 
         final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairs =
                 repartitionPairsForBalancedProcessing(sparkContext, rddCanvasIdPairsWithDrift);
 
         final org.janelia.render.client.MultiStagePointMatchClient.Parameters multiStageParameters =
                 new org.janelia.render.client.MultiStagePointMatchClient.Parameters(
-                        parameters.matchCommon.featureStorage,
-                        parameters.matchCommon.maxPeakCacheGb,
+                        matchCommon.featureStorage,
+                        matchCommon.maxPeakCacheGb,
                         matchRunParameters.getMatchStageParametersList());
 
         final JavaRDD<Integer> rddSavedMatchPairCounts =
@@ -279,6 +291,11 @@ public class MultiStagePointMatchClient
                         final MatchCollectionId collectionId = pairsForCollection.getMatchCollectionId();
 
                         log.info("generateAndStoreCanvasMatches: processing {}", pairsForCollection);
+
+                        if (pairsForCollection.size() < 1) {
+                            log.info("generateAndStoreCanvasMatches: no pairs to process, moving on");
+                            continue;
+                        }
 
                         if (matchDataClient == null) {
                             matchDataClient = new RenderDataClient(baseDataUrl,

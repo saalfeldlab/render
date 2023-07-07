@@ -34,8 +34,8 @@ public class InMemoryTilePairClient extends TilePairClient {
 
     @Override
     public void savePairs(final List<OrderedCanvasIdPair> neighborPairs,
-                           final String renderParametersUrlTemplate,
-                           final String outputFileName) {
+                          final String renderParametersUrlTemplate,
+                          final String outputFileName) {
 
         this.renderParametersUrlTemplate = renderParametersUrlTemplate;
         this.neighborPairs.addAll(neighborPairs);

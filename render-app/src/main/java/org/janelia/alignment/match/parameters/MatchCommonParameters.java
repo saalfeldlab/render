@@ -1,12 +1,10 @@
-package org.janelia.render.client.parameter;
+package org.janelia.alignment.match.parameters;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.Serializable;
-
-import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 
 /**
  * Common parameters for match derivation that don't have a better home.

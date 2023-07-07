@@ -5,7 +5,8 @@
     "project" : "cut_000_to_009",
     "stackIdWithZ" : {
       "allStacksInProject": true,
-      "allStacksInAllProjects": false
+      "allStacksInAllProjects": false,
+      "zValuesPerBatch": 1
     }
   },
   "mipmap" : {
@@ -15,14 +16,16 @@
     "format" : "tiff",
     "forceGeneration" : false
   },
-  "matchCommon": {
-    "maxPairsPerStackBatch" : 30,
-    "maxFeatureSourceCacheGb" : 6,
-    "maxPeakCacheGb" : 2
-  },
   "matchRunList": [
     {
       "runName": "montageBorderRun",
+      "matchCommon": {
+        "maxPairsPerStackBatch" : 30,
+        "featureStorage": {
+          "maxFeatureSourceCacheGb": 6
+        },
+        "maxPeakCacheGb" : 2
+      },
       "tilePairDerivationParameters": {
         "xyNeighborFactor": 0.3,
         "useRowColPositions": false,
@@ -31,6 +34,7 @@
         "excludeCompletelyObscuredTiles": false,
         "excludeSameLayerNeighbors": false,
         "excludeSameSectionNeighbors": false,
+        "excludePairsInMatchCollection": "pairsFromPriorMontageBorderRuns",
         "minExistingMatchCount": 0
       },
       "matchStageParametersList": [
@@ -137,6 +141,13 @@
     },
     {
       "runName": "montageRun",
+      "matchCommon": {
+        "maxPairsPerStackBatch" : 30,
+        "featureStorage": {
+          "maxFeatureSourceCacheGb": 6
+        },
+        "maxPeakCacheGb" : 2
+      },
       "tilePairDerivationParameters": {
         "xyNeighborFactor": 0.6,
         "useRowColPositions": false,
@@ -145,11 +156,12 @@
         "excludeCompletelyObscuredTiles": false,
         "excludeSameLayerNeighbors": false,
         "excludeSameSectionNeighbors": false,
-        "excludePairsInMatchCollection": "pairsFromMontageBorderRun",
+        "excludePairsInMatchCollection": "pairsFromPriorRuns",
         "minExistingMatchCount": 0
       },
       "matchStageParametersList": [
         {
+          "stageName": "montagePass1",
           "featureExtraction": {
             "fdSize": 4,
             "maxScale": 1.0,
@@ -179,8 +191,60 @@
           },
           "geometricDescriptorAndMatch": {
             "gdEnabled": false
+          }
+        }
+      ]
+    },
+    {
+      "runName": "crossRun",
+      "matchCommon": {
+        "maxPairsPerStackBatch" : 100,
+        "featureStorage": {
+          "maxFeatureSourceCacheGb": 6
+        },
+        "maxPeakCacheGb" : 2
+      },
+      "tilePairDerivationParameters": {
+        "xyNeighborFactor" : 0.1,
+        "useRowColPositions" : false,
+        "zNeighborDistance" : 3,
+        "excludeCornerNeighbors" : false,
+        "excludeCompletelyObscuredTiles" : true,
+        "excludeSameLayerNeighbors" : true,
+        "excludeSameSectionNeighbors" : false,
+        "excludePairsInMatchCollection": "pairsFromPriorRuns",
+        "minExistingMatchCount": 0
+      },
+      "matchStageParametersList": [
+        {
+          "stageName": "crossPass1",
+          "featureExtraction": {
+            "fdSize": 4,
+            "maxScale": 1.0,
+            "minScale": 0.125,
+            "steps": 5
           },
-          "stageName": "montagePass1"
+          "featureMatchDerivation": {
+            "matchFilter": "AGGREGATED_CONSENSUS_SETS",
+            "matchFullScaleCoverageRadius": 300.0,
+            "matchIterations": 1000,
+            "matchMaxEpsilonFullScale": 10.0,
+            "matchMaxTrust": 4.0,
+            "matchMinCoveragePercentage": 50.0,
+            "matchMinInlierRatio": 0.0,
+            "matchMinNumInliers": 20,
+            "matchModelType": "RIGID",
+            "matchRod": 0.92
+          },
+          "featureRender": {
+            "renderScale": 0.4,
+            "renderWithFilter": true,
+            "renderWithoutMask": false
+          },
+          "geometricDescriptorAndMatch": {
+            "gdEnabled": false
+          },
+          "maxNeighborDistance": 3
         }
       ]
     }
