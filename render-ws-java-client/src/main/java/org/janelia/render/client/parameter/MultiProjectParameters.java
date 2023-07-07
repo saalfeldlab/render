@@ -75,7 +75,7 @@ public class MultiProjectParameters
         if (matchCollection == null) {
             final String baseName = deriveMatchCollectionNamesFromProject ? stackId.getProject() : stackId.getStack();
             stackMatchCollectionId = new MatchCollectionId(stackId.getOwner(),
-                                                           baseName + "_v1");
+                                                           baseName + "_match");
         } else {
             stackMatchCollectionId = new MatchCollectionId(owner, matchCollection);
         }
