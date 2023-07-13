@@ -198,7 +198,7 @@
     {
       "runName": "crossRun",
       "matchCommon": {
-        "maxPairsPerStackBatch" : 100,
+        "maxPairsPerStackBatch" : 50,
         "featureStorage": {
           "maxFeatureSourceCacheGb": 6
         },
@@ -225,12 +225,42 @@
             "steps": 5
           },
           "featureMatchDerivation": {
+            "matchFilter": "SINGLE_SET",
+            "matchFullScaleCoverageRadius": 150.0,
+            "matchIterations": 1000,
+            "matchMaxEpsilonFullScale": 5.0,
+            "matchMaxTrust": 4.0,
+            "matchMinCoveragePercentage": 50.0,
+            "matchMinInlierRatio": 0.0,
+            "matchMinNumInliers": 20,
+            "matchModelType": "RIGID",
+            "matchRod": 0.92
+          },
+          "featureRender": {
+            "renderScale": 0.22,
+            "renderWithFilter": true,
+            "renderWithoutMask": false
+          },
+          "geometricDescriptorAndMatch": {
+            "gdEnabled": false
+          },
+          "maxNeighborDistance": 3
+        },
+        {
+          "stageName": "crossPass2",
+          "featureExtraction": {
+            "fdSize": 4,
+            "maxScale": 1.0,
+            "minScale": 0.125,
+            "steps": 5
+          },
+          "featureMatchDerivation": {
             "matchFilter": "AGGREGATED_CONSENSUS_SETS",
             "matchFullScaleCoverageRadius": 300.0,
             "matchIterations": 1000,
-            "matchMaxEpsilonFullScale": 10.0,
+            "matchMaxEpsilonFullScale": 5.0,
             "matchMaxTrust": 4.0,
-            "matchMinCoveragePercentage": 50.0,
+            "matchMinCoveragePercentage": 0.0,
             "matchMinInlierRatio": 0.0,
             "matchMinNumInliers": 20,
             "matchModelType": "RIGID",
@@ -244,7 +274,37 @@
           "geometricDescriptorAndMatch": {
             "gdEnabled": false
           },
-          "maxNeighborDistance": 3
+          "maxNeighborDistance": 1
+        },
+        {
+          "stageName": "crossPass3",
+          "featureExtraction": {
+            "fdSize": 4,
+            "maxScale": 1.0,
+            "minScale": 0.125,
+            "steps": 5
+          },
+          "featureMatchDerivation": {
+            "matchFilter": "AGGREGATED_CONSENSUS_SETS",
+            "matchFullScaleCoverageRadius": 300.0,
+            "matchIterations": 1000,
+            "matchMaxEpsilonFullScale": 10.0,
+            "matchMaxTrust": 4.0,
+            "matchMinCoveragePercentage": 0.0,
+            "matchMinInlierRatio": 0.0,
+            "matchMinNumInliers": 10,
+            "matchModelType": "RIGID",
+            "matchRod": 0.92
+          },
+          "featureRender": {
+            "renderScale": 0.4,
+            "renderWithFilter": true,
+            "renderWithoutMask": false
+          },
+          "geometricDescriptorAndMatch": {
+            "gdEnabled": false
+          },
+          "maxNeighborDistance": 1
         }
       ]
     }
