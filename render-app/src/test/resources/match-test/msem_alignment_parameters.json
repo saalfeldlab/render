@@ -308,5 +308,9 @@
         }
       ]
     }
-  ]
+  ],
+  "mfovMontagePatch": {
+    "storedMatchWeight" : 0.1,
+    "xyNeighborFactor" : 0.6
+  }
 }

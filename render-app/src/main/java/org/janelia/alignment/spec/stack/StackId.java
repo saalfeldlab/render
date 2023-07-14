@@ -6,6 +6,7 @@ import com.google.common.base.Objects;
 import java.io.Serializable;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.util.CollectionNameUtil;
 
 /**
@@ -102,6 +103,13 @@ public class StackId implements Comparable<StackId>, Serializable {
             }
         }
         return v;
+    }
+
+    @JsonIgnore
+    public MatchCollectionId getDefaultMatchCollectionId(final boolean forProject) {
+        return forProject ?
+               new MatchCollectionId(owner, project + "_match") :
+               new MatchCollectionId(owner, stack + "_match");
     }
 
     @JsonIgnore

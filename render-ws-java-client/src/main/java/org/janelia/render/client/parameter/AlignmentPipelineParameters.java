@@ -22,18 +22,21 @@ public class AlignmentPipelineParameters
     private final MultiProjectParameters multiProject;
     private final MipmapParameters mipmap;
     private final List<MatchRunParameters> matchRunList;
+    private final MFOVMontageMatchPatchParameters mfovMontagePatch;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
-        this(null, null, null);
+        this(null, null, null, null);
     }
 
     public AlignmentPipelineParameters(final MultiProjectParameters multiProject,
                                        final MipmapParameters mipmap,
-                                       final List<MatchRunParameters> matchRunList) {
+                                       final List<MatchRunParameters> matchRunList,
+                                       final MFOVMontageMatchPatchParameters mfovMontagePatch) {
         this.multiProject = multiProject;
         this.mipmap = mipmap;
         this.matchRunList = matchRunList;
+        this.mfovMontagePatch = mfovMontagePatch;
     }
 
     public MultiProjectParameters getMultiProject() {
@@ -54,6 +57,14 @@ public class AlignmentPipelineParameters
 
     public List<MatchRunParameters> getMatchRunList() {
         return matchRunList;
+    }
+
+    public boolean hasMfovMontagePatchParameters() {
+        return (mfovMontagePatch != null);
+    }
+
+    public MFOVMontageMatchPatchParameters getMfovMontagePatch() {
+        return mfovMontagePatch;
     }
 
     @SuppressWarnings("unused")

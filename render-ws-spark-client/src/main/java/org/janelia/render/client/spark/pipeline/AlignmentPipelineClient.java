@@ -15,6 +15,7 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.MipmapClient;
 import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
+import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,6 +97,13 @@ public class AlignmentPipelineClient
             matchClient.generatePairsAndMatchesForRunList(sparkContext,
                                                           stackWithZValuesList,
                                                           alignmentPipelineParameters.getMatchRunList());
+        }
+
+        if (alignmentPipelineParameters.hasMfovMontagePatchParameters()) {
+            final MFOVMontageMatchPatchClient.Parameters p =
+                    MFOVMontageMatchPatchClient.Parameters.fromPipeline(alignmentPipelineParameters);
+            final MFOVMontageMatchPatchClient matchPatchClient = new MFOVMontageMatchPatchClient(p);
+            matchPatchClient.patchPairs(sparkContext, alignmentPipelineParameters.getMfovMontagePatch());
         }
 
         LOG.info("runWithContext: exit");

@@ -71,15 +71,9 @@ public class MultiProjectParameters
     }
 
     public MatchCollectionId getMatchCollectionIdForStack(final StackId stackId) {
-        final MatchCollectionId stackMatchCollectionId;
-        if (matchCollection == null) {
-            final String baseName = deriveMatchCollectionNamesFromProject ? stackId.getProject() : stackId.getStack();
-            stackMatchCollectionId = new MatchCollectionId(stackId.getOwner(),
-                                                           baseName + "_match");
-        } else {
-            stackMatchCollectionId = new MatchCollectionId(owner, matchCollection);
-        }
-        return stackMatchCollectionId;
+        return matchCollection == null ?
+               stackId.getDefaultMatchCollectionId(deriveMatchCollectionNamesFromProject) :
+               new MatchCollectionId(owner, matchCollection);
     }
 
     public List<StackWithZValues> buildStackWithZValuesList()

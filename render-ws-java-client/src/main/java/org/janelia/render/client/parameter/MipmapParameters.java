@@ -90,7 +90,7 @@ public class MipmapParameters implements Serializable {
     }
 
     public void setStackIdWithZIfUndefined(final StackIdWithZParameters defaultParameters) {
-        if ((stackIdWithZ == null) || (! stackIdWithZ.hasDefinedStacks())) {
+        if ((stackIdWithZ == null) || stackIdWithZ.hasNoDefinedStacks()) {
             stackIdWithZ = defaultParameters;
         }
     }
