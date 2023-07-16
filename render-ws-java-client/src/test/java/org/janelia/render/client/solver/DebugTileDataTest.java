@@ -97,7 +97,7 @@ public class DebugTileDataTest {
         final ByteProcessor renderedTileAreaMask = renderTiledAreaMask(renderDataClient,
                                                                        stack,
                                                                        firstZ,
-                                                                       true,
+                                                                       useStackBounds,
                                                                        renderScale,
                                                                        ipCache);
         
