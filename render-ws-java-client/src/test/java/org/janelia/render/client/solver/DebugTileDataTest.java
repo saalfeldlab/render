@@ -36,32 +36,32 @@ public class DebugTileDataTest {
                                                                        owner,
                                                                        project);
 
-        final TileBounds firstTileBounds = demoTileData(renderDataClient, stack);
+        final TileBounds firstTileBounds = fetchTileData(renderDataClient, stack);
 
         // Shows how to use render parameters built from web service query to find tiles at location.
         // This is good for a small number of locations and provides immediate access to full tile specs.
-        demoFindTilesWithinBoxUsingRenderParameters(renderDataClient,
-                                                    stack,
-                                                    firstTileBounds.getMaxX() - 50,
-                                                    firstTileBounds.getMaxY() - 50,
-                                                    100,
-                                                    100,
-                                                    firstTileBounds.getZ());
+        findTilesWithinBoxUsingRenderParameters(renderDataClient,
+                                                stack,
+                                                firstTileBounds.getMaxX() - 50,
+                                                firstTileBounds.getMaxY() - 50,
+                                                100,
+                                                100,
+                                                firstTileBounds.getZ());
 
         // Shows how to use tile bounds from web service with local in-memory RTree to find tiles at location.
         // This is good for querying many locations because search is done client-side.
         // If you want full tile spec data, you need to pull it separately and then map from tileId in bounds object.
-        demoFindTilesWithinBoxUsingRTree(renderDataClient,
-                                         stack,
-                                         firstTileBounds.getMaxX() - 50,
-                                         firstTileBounds.getMaxY() - 50,
-                                         100,
-                                         100,
-                                         firstTileBounds.getZ());
+        findTilesWithinBoxUsingRTree(renderDataClient,
+                                     stack,
+                                     firstTileBounds.getMaxX() - 50,
+                                     firstTileBounds.getMaxY() - 50,
+                                     100,
+                                     100,
+                                     firstTileBounds.getZ());
     }
 
-    private static TileBounds demoTileData(final RenderDataClient renderDataClient,
-                                           final String stack)
+    private static TileBounds fetchTileData(final RenderDataClient renderDataClient,
+                                            final String stack)
             throws IOException {
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stack);
@@ -98,13 +98,13 @@ public class DebugTileDataTest {
         return firstTileBounds;
     }
 
-    private static void demoFindTilesWithinBoxUsingRenderParameters(final RenderDataClient renderDataClient,
-                                                                    final String stack,
-                                                                    final double x,
-                                                                    final double y,
-                                                                    final int width,
-                                                                    final int height,
-                                                                    final double z) {
+    private static void findTilesWithinBoxUsingRenderParameters(final RenderDataClient renderDataClient,
+                                                                final String stack,
+                                                                final double x,
+                                                                final double y,
+                                                                final int width,
+                                                                final int height,
+                                                                final double z) {
 
         final RenderWebServiceUrls urls = renderDataClient.getUrls();
         final String boxUrlString = urls.getRenderParametersUrlString(stack, x, y, z, width, height, 1.0, null);
@@ -117,13 +117,13 @@ public class DebugTileDataTest {
         }
     }
 
-    private static void demoFindTilesWithinBoxUsingRTree(final RenderDataClient renderDataClient,
-                                                         final String stack,
-                                                         final double x,
-                                                         final double y,
-                                                         final int width,
-                                                         final int height,
-                                                         final double z)
+    private static void findTilesWithinBoxUsingRTree(final RenderDataClient renderDataClient,
+                                                     final String stack,
+                                                     final double x,
+                                                     final double y,
+                                                     final int width,
+                                                     final int height,
+                                                     final double z)
             throws IOException {
 
         final List<TileBounds> tileBoundsForZ = renderDataClient.getTileBounds(stack, z);
