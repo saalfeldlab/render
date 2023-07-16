@@ -13,6 +13,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import org.janelia.alignment.ByteBoxRenderer;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackId;
@@ -39,6 +40,7 @@ import org.junit.Test;
  *
  * @author Eric Trautman
  */
+@SuppressWarnings("SameParameterValue")
 public class N5ClientTest {
 
     private StackMetaData stackMetaData;
@@ -268,17 +270,17 @@ public class N5ClientTest {
     }
 
     public static void testThicknessCorrectionIntensityBug() {
-        final N5Client.BoxRenderer boxRenderer =
-                new N5Client.BoxRenderer("http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                                         "cellmap",
-                                         "jrc_mus_pancreas_4",
-                                         "v4_acquire_align_ic",
-                                         1000,
-                                         1000,
-                                         1.0,
-                                         null,
-                                         null,
-                                         false);
+        final ByteBoxRenderer boxRenderer =
+                new ByteBoxRenderer("http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                                    "cellmap",
+                                    "jrc_mus_pancreas_4",
+                                    "v4_acquire_align_ic",
+                                    1000,
+                                    1000,
+                                    1.0,
+                                    null,
+                                    null,
+                                    false);
 
         final ThicknessCorrectionData thicknessCorrectionData = new ThicknessCorrectionData(
                 Arrays.asList("690 690",
@@ -318,7 +320,7 @@ public class N5ClientTest {
         new ImagePlus("corrected " + z, currentProcessor).show();
     }
 
-    private static ByteProcessor renderZ(final N5Client.BoxRenderer boxRenderer,
+    private static ByteProcessor renderZ(final ByteBoxRenderer boxRenderer,
                                          final long x,
                                          final long y,
                                          final long z,

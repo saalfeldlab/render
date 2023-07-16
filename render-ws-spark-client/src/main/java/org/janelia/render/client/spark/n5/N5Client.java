@@ -7,7 +7,6 @@ import ij.process.ByteProcessor;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -16,16 +15,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
-
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
-import org.janelia.alignment.RenderParameters;
-import org.janelia.alignment.Renderer;
+import org.janelia.alignment.ByteBoxRenderer;
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.Grid;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -275,9 +270,9 @@ public class N5Client {
                 boundsForRun.getMinZ().longValue()
         };
         long[] dimensions = {
-                new Double(boundsForRun.getDeltaX()).longValue(),
-                new Double(boundsForRun.getDeltaY()).longValue(),
-                new Double(boundsForRun.getDeltaZ()).longValue()
+                Double.valueOf(boundsForRun.getDeltaX()).longValue(),
+                Double.valueOf(boundsForRun.getDeltaY()).longValue(),
+                Double.valueOf(boundsForRun.getDeltaZ()).longValue()
         };
 
         String viewStackCommandOffsets = min[0] + "," + min[1] + "," + min[2];
@@ -301,16 +296,16 @@ public class N5Client {
             // save full scale first ...
             setupFullScaleExportN5(parameters, fullScaleDatasetName, stackMetaData, dimensions, blockSize);
 
-            final BoxRenderer boxRenderer = new BoxRenderer(parameters.renderWeb.baseDataUrl,
-                                                            parameters.renderWeb.owner,
-                                                            parameters.renderWeb.project,
-                                                            parameters.stack,
-                                                            parameters.tileWidth,
-                                                            parameters.tileHeight,
-                                                            1.0,
-                                                            parameters.minIntensity,
-                                                            parameters.maxIntensity,
-                                                            parameters.exportMask);
+            final ByteBoxRenderer boxRenderer = new ByteBoxRenderer(parameters.renderWeb.baseDataUrl,
+                                                                    parameters.renderWeb.owner,
+                                                                    parameters.renderWeb.project,
+                                                                    parameters.stack,
+                                                                    parameters.tileWidth,
+                                                                    parameters.tileHeight,
+                                                                    1.0,
+                                                                    parameters.minIntensity,
+                                                                    parameters.maxIntensity,
+                                                                    parameters.exportMask);
 
             // This "spec" is broadcast to Spark executors allowing each one to construct and share
             // an ImageProcessor cache across each task assigned to the executor.
@@ -452,68 +447,6 @@ public class N5Client {
                  Paths.get(parameters.n5Path, exportAttributesDatasetName, "attributes.json"));
     }
 
-    public static class BoxRenderer
-            implements Serializable {
-
-        private final String stackUrl;
-        private final String boxUrlSuffix;
-        private final Double minIntensity;
-        private final Double maxIntensity;
-        private final boolean exportMaskOnly;
-
-        public BoxRenderer(final String baseUrl,
-                           final String owner,
-                           final String project,
-                           final String stack,
-                           final long width,
-                           final long height,
-                           final double scale,
-                           final Double minIntensity,
-                           final Double maxIntensity,
-                           final boolean exportMaskOnly) {
-            this.stackUrl = String.format("%s/owner/%s/project/%s/stack/%s", baseUrl, owner, project, stack);
-            this.boxUrlSuffix = String.format("%d,%d,%f/render-parameters", width, height, scale);
-            this.minIntensity = minIntensity;
-            this.maxIntensity = maxIntensity;
-            this.exportMaskOnly = exportMaskOnly;
-        }
-
-        public ByteProcessor render(final long x,
-                                    final long y,
-                                    final long z,
-                                    final ImageProcessorCache ipCache) {
-            final String renderParametersUrlString = String.format("%s/z/%d/box/%d,%d,%s",
-                                                                   stackUrl, z, x, y, boxUrlSuffix);
-            final RenderParameters renderParameters = RenderParameters.loadFromUrl(renderParametersUrlString);
-            if (minIntensity != null) {
-                renderParameters.setMinIntensity(minIntensity);
-            }
-            if (maxIntensity != null) {
-                renderParameters.setMaxIntensity(maxIntensity);
-            }
-
-            final ByteProcessor renderedProcessor;
-            if (renderParameters.numberOfTileSpecs() > 0) {
-                if (exportMaskOnly) {
-                    for (final TileSpec tileSpec : renderParameters.getTileSpecs()) {
-                        tileSpec.replaceFirstChannelImageWithItsMask();
-                    }
-                }
-                final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
-                        Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
-                renderedProcessor = ipwm.ip.convertToByteProcessor();
-            } else {
-                LOG.info("BoxRenderer.render: no tiles found in {}", renderParametersUrlString);
-                final double derivedScale = renderParameters.getScale();
-                final int targetWidth = (int) (derivedScale * renderParameters.getWidth());
-                final int targetHeight = (int) (derivedScale * renderParameters.getHeight());
-                renderedProcessor = new ByteProcessor(targetWidth, targetHeight);
-            }
-
-            return renderedProcessor;
-        }
-    }
-
     // serializable downsample supplier for spark
     public static class N5PathSupplier implements N5WriterSupplier {
         private final String path;
@@ -528,7 +461,7 @@ public class N5Client {
     }
 
     private static void saveRenderStack(final JavaSparkContext sc,
-                                        final BoxRenderer boxRenderer,
+                                        final ByteBoxRenderer boxRenderer,
                                         final int tileWidth,
                                         final int tileHeight,
                                         final String n5Path,
@@ -650,7 +583,7 @@ public class N5Client {
     }
 
     private static void save2DRenderStack(final JavaSparkContext sc,
-                                          final BoxRenderer boxRenderer,
+                                          final ByteBoxRenderer boxRenderer,
                                           final int tileWidth,
                                           final int tileHeight,
                                           final String n5Path,
