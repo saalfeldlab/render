@@ -1891,7 +1891,7 @@ public class RenderDao {
             TileSpec tileSpec;
             int count = 0;
             while (cursor.hasNext()) {
-                if (count > 50000) {
+                if (count > 100000) {
                     throw new IllegalArgumentException("query too broad, over " + count + " tiles match " + tileQuery);
                 }
                 document = cursor.next();
