@@ -1,5 +1,8 @@
 package org.janelia.render.client.solver;
 
+import ij.ImagePlus;
+import ij.process.ByteProcessor;
+
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -7,12 +10,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
@@ -21,7 +29,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Prototype/test code for Preibisch ...
  */
-@SuppressWarnings("SameParameterValue")
+@SuppressWarnings({"SameParameterValue", "unused"})
 public class DebugTileDataTest {
 
     public static void main(final String[] args)
@@ -31,33 +39,69 @@ public class DebugTileDataTest {
         final String owner = "hess_wafer_53";
         final String project = "cut_000_to_009";
         final String stack = "c000_s095_v01";
+        final double firstZ = 1.0;
 
         final RenderDataClient renderDataClient = new RenderDataClient(baseDataUrl,
                                                                        owner,
                                                                        project);
 
-        final TileBounds firstTileBounds = fetchTileData(renderDataClient, stack);
+        // --------------------------------------------------------------------
+        // Shows how to fetch tile data for all layers in a stack and returns just the first tile
+        // for use in subsequent demos.
 
+//        final TileBounds firstTileBounds = fetchTileData(renderDataClient, stack);
+
+        // --------------------------------------------------------------------
         // Shows how to use render parameters built from web service query to find tiles at location.
         // This is good for a small number of locations and provides immediate access to full tile specs.
-        findTilesWithinBoxUsingRenderParameters(renderDataClient,
-                                                stack,
-                                                firstTileBounds.getMaxX() - 50,
-                                                firstTileBounds.getMaxY() - 50,
-                                                100,
-                                                100,
-                                                firstTileBounds.getZ());
 
+//        findTilesWithinBoxUsingRenderParameters(renderDataClient,
+//                                                stack,
+//                                                firstTileBounds.getMaxX() - 50,
+//                                                firstTileBounds.getMaxY() - 50,
+//                                                100,
+//                                                100,
+//                                                firstTileBounds.getZ());
+
+        // --------------------------------------------------------------------
         // Shows how to use tile bounds from web service with local in-memory RTree to find tiles at location.
         // This is good for querying many locations because search is done client-side.
         // If you want full tile spec data, you need to pull it separately and then map from tileId in bounds object.
-        findTilesWithinBoxUsingRTree(renderDataClient,
-                                     stack,
-                                     firstTileBounds.getMaxX() - 50,
-                                     firstTileBounds.getMaxY() - 50,
-                                     100,
-                                     100,
-                                     firstTileBounds.getZ());
+
+//        findTilesWithinBoxUsingRTree(renderDataClient,
+//                                     stack,
+//                                     firstTileBounds.getMaxX() - 50,
+//                                     firstTileBounds.getMaxY() - 50,
+//                                     100,
+//                                     100,
+//                                     firstTileBounds.getZ());
+
+        // --------------------------------------------------------------------
+        // Shows how to render a tiled area mask for one z layer.
+
+        // Cache size can be small (10MB) since we load the same mask for all tiles and multi-sem tiles are 2K by 2K.
+        final long pixelsToCache = 10_000_000L;
+        final ImageProcessorCache ipCache = new ImageProcessorCache(pixelsToCache,
+                                                                    false,
+                                                                    false);
+
+        // The renderScale needs to be fairly small so that the entire 19 MFOV area fits into one image.
+        final double renderScale = 0.01;
+
+        // You'll likely always want to use stack bounds instead of layer bounds for global solves.
+        // From what we've seen so far, the multi-sem stack bounds are very close to layer bounds.
+        // However, it is technically possible for layers to have significantly different stage bounds
+        // (e.g. after FIBSEM restarts).
+        final boolean useStackBounds = true;
+
+        final ByteProcessor renderedTileAreaMask = renderTiledAreaMask(renderDataClient,
+                                                                       stack,
+                                                                       firstZ,
+                                                                       true,
+                                                                       renderScale,
+                                                                       ipCache);
+        
+        new ImagePlus(stack + ": z " + firstZ, renderedTileAreaMask).show();
     }
 
     private static TileBounds fetchTileData(final RenderDataClient renderDataClient,
@@ -133,6 +177,60 @@ public class DebugTileDataTest {
         for (final TileBounds tileBounds : tilesInBox) {
             LOG.info("tile {} is within box", tileBounds.getTileId());
         }
+    }
+
+    private static RenderParameters buildRenderParametersForTiledAreaMask(final RenderDataClient renderDataClient,
+                                                                          final String stack,
+                                                                          final double z,
+                                                                          final boolean useStackBounds,
+                                                                          final double scale)
+            throws IOException {
+
+        // fetch either stack bounds or layer bounds
+        final Bounds areaBounds;
+        if (useStackBounds) {
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stack);
+            areaBounds = stackMetaData.getStats().getStackBounds();
+        } else {
+            areaBounds = renderDataClient.getLayerBounds(stack, z);
+        }
+
+        // fetch tile specs for layer and resolve any shared transforms
+        final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
+        resolvedTiles.resolveTileSpecs();
+
+        // sort tile specs and convert them into simple masks
+        final List<TileSpec> tileSpecsForZSortedByTileId =
+                resolvedTiles.getTileSpecs().stream()
+                        .sorted(Comparator.comparing(TileSpec::getTileId))
+                        .collect(Collectors.toList());
+        tileSpecsForZSortedByTileId.forEach(TileSpec::replaceFirstChannelImageWithItsMask);
+
+        final RenderParameters renderParameters = new RenderParameters();
+        renderParameters.setBounds(areaBounds);
+        renderParameters.setScale(scale);
+        renderParameters.addTileSpecs(tileSpecsForZSortedByTileId);
+        renderParameters.initializeDerivedValues();
+        
+        return renderParameters;
+    }
+
+    private static ByteProcessor renderTiledAreaMask(final RenderDataClient renderDataClient,
+                                                     final String stack,
+                                                     final double z,
+                                                     final boolean useStackBounds,
+                                                     final double scale,
+                                                     final ImageProcessorCache ipCache)
+            throws IOException {
+
+        final RenderParameters renderParameters = buildRenderParametersForTiledAreaMask(renderDataClient,
+                                                                                        stack,
+                                                                                        z,
+                                                                                        useStackBounds,
+                                                                                        scale);
+        final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+                Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
+        return ipwm.ip.convertToByteProcessor();
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(DebugTileDataTest.class);

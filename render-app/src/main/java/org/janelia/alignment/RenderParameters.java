@@ -48,6 +48,7 @@ import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterFactory;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ChannelNamesAndWeights;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
@@ -482,6 +483,13 @@ public class RenderParameters implements Serializable {
 
     public int getHeight() {
         return height;
+    }
+
+    public void setBounds(final Bounds bounds) {
+        this.x = bounds.getMinX();
+        this.y = bounds.getMinY();
+        this.width = bounds.getWidth();
+        this.height = bounds.getHeight();
     }
 
     public double getScale() {
