@@ -1,6 +1,7 @@
 package org.janelia.render.client.solver;
 
 import ij.ImagePlus;
+import ij.ImageStack;
 import ij.process.ByteProcessor;
 
 import java.io.IOException;
@@ -25,6 +26,8 @@ import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Level;
 
 /**
  * Prototype/test code for Preibisch ...
@@ -77,31 +80,10 @@ public class DebugTileDataTest {
 //                                     firstTileBounds.getZ());
 
         // --------------------------------------------------------------------
-        // Shows how to render a tiled area mask for one z layer.
+        // Shows how to render tiled area masks for all z layers in a stack.
 
-        // Cache size can be small (10MB) since we load the same mask for all tiles and multi-sem tiles are 2K by 2K.
-        final long pixelsToCache = 10_000_000L;
-        final ImageProcessorCache ipCache = new ImageProcessorCache(pixelsToCache,
-                                                                    false,
-                                                                    false);
-
-        // The renderScale needs to be fairly small so that the entire 19 MFOV area fits into one image.
-        final double renderScale = 0.01;
-
-        // You'll likely always want to use stack bounds instead of layer bounds for global solves.
-        // From what we've seen so far, the multi-sem stack bounds are very close to layer bounds.
-        // However, it is technically possible for layers to have significantly different stage bounds
-        // (e.g. after FIBSEM restarts).
-        final boolean useStackBounds = true;
-
-        final ByteProcessor renderedTileAreaMask = renderTiledAreaMask(renderDataClient,
-                                                                       stack,
-                                                                       firstZ,
-                                                                       useStackBounds,
-                                                                       renderScale,
-                                                                       ipCache);
-        
-        new ImagePlus(stack + ": z " + firstZ, renderedTileAreaMask).show();
+        final ImageStack imageStack = renderTiledAreaStack(renderDataClient, stack);
+        new ImagePlus(stack, imageStack).show();
     }
 
     private static TileBounds fetchTileData(final RenderDataClient renderDataClient,
@@ -182,18 +164,9 @@ public class DebugTileDataTest {
     private static RenderParameters buildRenderParametersForTiledAreaMask(final RenderDataClient renderDataClient,
                                                                           final String stack,
                                                                           final double z,
-                                                                          final boolean useStackBounds,
-                                                                          final double scale)
+                                                                          final Bounds stackOrLayerBounds,
+                                                                          final double renderScale)
             throws IOException {
-
-        // fetch either stack bounds or layer bounds
-        final Bounds areaBounds;
-        if (useStackBounds) {
-            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stack);
-            areaBounds = stackMetaData.getStats().getStackBounds();
-        } else {
-            areaBounds = renderDataClient.getLayerBounds(stack, z);
-        }
 
         // fetch tile specs for layer and resolve any shared transforms
         final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
@@ -207,8 +180,8 @@ public class DebugTileDataTest {
         tileSpecsForZSortedByTileId.forEach(TileSpec::replaceFirstChannelImageWithItsMask);
 
         final RenderParameters renderParameters = new RenderParameters();
-        renderParameters.setBounds(areaBounds);
-        renderParameters.setScale(scale);
+        renderParameters.setBounds(stackOrLayerBounds);
+        renderParameters.setScale(renderScale);
         renderParameters.addTileSpecs(tileSpecsForZSortedByTileId);
         renderParameters.initializeDerivedValues();
         
@@ -218,19 +191,67 @@ public class DebugTileDataTest {
     private static ByteProcessor renderTiledAreaMask(final RenderDataClient renderDataClient,
                                                      final String stack,
                                                      final double z,
-                                                     final boolean useStackBounds,
-                                                     final double scale,
+                                                     final Bounds stackOrLayerBounds,
+                                                     final double renderScale,
                                                      final ImageProcessorCache ipCache)
             throws IOException {
 
         final RenderParameters renderParameters = buildRenderParametersForTiledAreaMask(renderDataClient,
                                                                                         stack,
                                                                                         z,
-                                                                                        useStackBounds,
-                                                                                        scale);
+                                                                                        stackOrLayerBounds,
+                                                                                        renderScale);
         final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
                 Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
         return ipwm.ip.convertToByteProcessor();
+    }
+
+    private static ImageStack renderTiledAreaStack(final RenderDataClient renderDataClient,
+                                                   final String stack)
+            throws IOException {
+
+        // reduce logging level for demo
+        final ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger)
+                org.slf4j.LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
+        rootLogger.setLevel(Level.INFO);
+
+        LOG.info("renderTiledAreaStack: entry, stack={}", stack);
+
+        // Cache size can be small (10MB) since we load the same mask for all tiles and multi-sem tiles are 2K by 2K.
+        final long pixelsToCache = 10_000_000L;
+        final ImageProcessorCache ipCache = new ImageProcessorCache(pixelsToCache,
+                                                                    false,
+                                                                    false);
+
+        // The renderScale needs to be fairly small so that the entire 19 MFOV area fits into one image.
+        final double renderScale = 0.01;
+
+        // You'll likely always want to use stack bounds instead of layer bounds for global solves.
+        // From what we've seen so far, the multi-sem stack bounds are very close to layer bounds.
+        // However, it is technically possible for layers to have significantly different stage bounds
+        // (e.g. after FIBSEM restarts).
+        final Bounds stackBounds = renderDataClient.getStackMetaData(stack).getStats().getStackBounds();
+        // final Bounds layerBounds = renderDataClient.getLayerBounds(stack, z);
+
+        final List<Double> zValues = renderDataClient.getStackZValues(stack);
+
+        ImageStack imageStack = null;
+        for (final Double z : zValues) {
+            final ByteProcessor renderedTileAreaMask = renderTiledAreaMask(renderDataClient,
+                                                                           stack,
+                                                                           z,
+                                                                           stackBounds,
+                                                                           renderScale,
+                                                                           ipCache);
+            if (imageStack == null) {
+                imageStack = new ImageStack(renderedTileAreaMask.getWidth(), renderedTileAreaMask.getHeight());
+            }
+            imageStack.addSlice(renderedTileAreaMask);
+        }
+
+        LOG.info("renderTiledAreaStack: exit");
+
+        return imageStack;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(DebugTileDataTest.class);
