@@ -80,8 +80,20 @@ public class StackIdWithZParameters
      */
     public List<StackWithZValues> getStackWithZList(final RenderDataClient renderDataClient)
             throws IOException {
-        if (zValuesPerBatch < 1) {
-            throw new IllegalArgumentException("--zValuesPerBatch must be greater than zero");
+        return getStackWithZList(renderDataClient, this.zValuesPerBatch);
+    }
+
+    /**
+     * This implementation allows you to override the --zValuesPerBatch parameter used by default.
+     *
+     * @return list of stack identifiers coupled with explicitZValuesPerBatch z values
+     *         that is ordered by stack and then z.
+     */
+    public List<StackWithZValues> getStackWithZList(final RenderDataClient renderDataClient,
+                                                    final int explicitZValuesPerBatch)
+            throws IOException {
+        if (explicitZValuesPerBatch < 1) {
+            throw new IllegalArgumentException("zValuesPerBatch must be greater than zero");
         }
         final List<StackWithZValues> stackWithZList = new ArrayList<>();
         final List<StackId> stackIdList = getStackIdList(renderDataClient);
@@ -91,11 +103,11 @@ public class StackIdWithZParameters
                                                                             layerRange.minZ,
                                                                             layerRange.maxZ,
                                                                             zValues);
-            if (zValuesPerBatch >= stackZValues.size()) {
+            if (explicitZValuesPerBatch >= stackZValues.size()) {
                 stackWithZList.add(new StackWithZValues(stackId, stackZValues));
             } else {
-                for (int fromIndex = 0; fromIndex < stackZValues.size(); fromIndex += zValuesPerBatch) {
-                    final int toIndex = Math.min(stackZValues.size(), fromIndex + zValuesPerBatch);
+                for (int fromIndex = 0; fromIndex < stackZValues.size(); fromIndex += explicitZValuesPerBatch) {
+                    final int toIndex = Math.min(stackZValues.size(), fromIndex + explicitZValuesPerBatch);
                     final List<Double> batchedZValues = new ArrayList<>(stackZValues.subList(fromIndex, toIndex));
                     stackWithZList.add(new StackWithZValues(stackId, batchedZValues));
                 }
