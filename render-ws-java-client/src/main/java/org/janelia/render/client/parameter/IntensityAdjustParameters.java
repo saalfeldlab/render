@@ -14,6 +14,7 @@ import java.util.List;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.render.client.intensityadjust.AdjustBlock;
 import org.janelia.render.client.intensityadjust.AffineIntensityCorrectionStrategy;
 
 /**
@@ -127,6 +128,13 @@ public class IntensityAdjustParameters
             description = "If specified, apply correction across this many z-layers from the current z-layer " +
                           "(omit to only correct in 2D)")
     public Integer zDistance;
+
+    @Parameter(
+            names = { "--numCoefficients" },
+            description = "Number of correction coefficients to derive in each dimension " +
+                          "(e.g. value of 8 will divide each tile into 8x8 = 64 sub-regions)"
+    )
+    public int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
 
     public File getSectionRootDirectory(final Date forRunTime) {
 
