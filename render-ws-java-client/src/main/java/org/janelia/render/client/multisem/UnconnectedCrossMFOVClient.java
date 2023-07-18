@@ -1,5 +1,8 @@
 package org.janelia.render.client.multisem;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -18,16 +21,14 @@ import org.janelia.alignment.multisem.LayerMFOV;
 import org.janelia.alignment.multisem.OrderedMFOVPair;
 import org.janelia.alignment.multisem.UnconnectedMFOVPairsForStack;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Java client for finding MFOVs that are unconnected (or very poorly connected) across adjacent z layers.
@@ -40,26 +41,12 @@ public class UnconnectedCrossMFOVClient {
             extends CommandLineParameters {
 
         @ParametersDelegate
-        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
-
-        @Parameter(
-                names = "--stack",
-                description = "Stack to process",
-                variableArity = true,
-                required = true)
-        public List<String> stackNames;
+        public MultiProjectParameters multiProject = new MultiProjectParameters();
 
         @Parameter(
                 names = "--montageStackSuffix",
                 description = "Suffix to append to source stack names when creating mfov montage stack names")
         public String montageStackSuffix = "_mfov_montage";
-
-        @Parameter(
-                names = "--matchCollection",
-                description = "Match collection with unconnected MFOV tile pairs",
-                variableArity = true,
-                required = true)
-        public List<String> matchCollectionNames;
 
         @Parameter(
                 names = "--minPairsForConnection",
@@ -96,12 +83,10 @@ public class UnconnectedCrossMFOVClient {
     }
 
     private final Parameters parameters;
-    private final RenderDataClient renderDataClient;
 
 
     UnconnectedCrossMFOVClient(final Parameters parameters) {
         this.parameters = parameters;
-        this.renderDataClient = parameters.renderWeb.getDataClient();
     }
 
     public void findUnconnectedMFOVs()
@@ -109,18 +94,20 @@ public class UnconnectedCrossMFOVClient {
 
         LOG.info("findUnconnectedMFOVs: entry");
 
-        if (parameters.stackNames.size() != parameters.matchCollectionNames.size()) {
-            throw new IOException("must specify same number of --stack and --matchCollection parameters");
-        }
-
         final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks = new ArrayList<>();
 
-        for (int i = 0; i < parameters.stackNames.size(); i++) {
-            final StackId renderStackId = new StackId(parameters.renderWeb.owner,
-                                                      parameters.renderWeb.project,
-                                                      parameters.stackNames.get(i));
-            final MatchCollectionId matchCollectionId = new MatchCollectionId(parameters.renderWeb.owner,
-                                                                              parameters.matchCollectionNames.get(i));
+        final MultiProjectParameters multiProject = parameters.multiProject;
+        final RenderDataClient renderDataClient = multiProject.getDataClient();
+
+        // override --zValuesPerBatch with Integer.MAX_VALUE because all z layers in each stack are needed for patching
+        final List<StackWithZValues> stackWithZList = multiProject.stackIdWithZ.getStackWithZList(renderDataClient,
+                                                                                                  Integer.MAX_VALUE);
+
+        for (final StackWithZValues stackWithZ : stackWithZList) {
+
+            final StackId renderStackId = stackWithZ.getStackId();
+            final MatchCollectionId matchCollectionId =
+                    renderStackId.getDefaultMatchCollectionId(multiProject.deriveMatchCollectionNamesFromProject);
 
             final String mFOVMontageStackName = renderStackId.getStack() + parameters.montageStackSuffix;
             final UnconnectedMFOVPairsForStack
@@ -136,7 +123,7 @@ public class UnconnectedCrossMFOVClient {
             for (final Double pZ : zToSectionIdsMap.keySet().stream().sorted().collect(Collectors.toList())) {
                 final Double qZ = pZ + 1.0;
                 if (zToSectionIdsMap.containsKey(qZ)) {
-                    addUnconnectedMFOVPairsForLayer(pZ, qZ, unconnectedMFOVPairsForStack);
+                    addUnconnectedMFOVPairsForLayer(pZ, qZ, unconnectedMFOVPairsForStack, renderDataClient);
                 } else {
                     LOG.info("findUnconnectedMFOVs: skipping z {} to {} pair since z {} does not exist in {}",
                              pZ, qZ, qZ, renderStackId.getStack());
@@ -157,11 +144,12 @@ public class UnconnectedCrossMFOVClient {
                 System.out.println(JsonUtils.FAST_MAPPER.writeValueAsString(pairsForStack));
             }
         } else {
-            storeUnconnectedMFOVPairs(unconnectedMFOVsForAllStacks);
+            storeUnconnectedMFOVPairs(unconnectedMFOVsForAllStacks, renderDataClient);
         }
     }
 
-    private void storeUnconnectedMFOVPairs(final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks)
+    private void storeUnconnectedMFOVPairs(final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks,
+                                           final RenderDataClient renderDataClient)
             throws IOException {
 
         for (final UnconnectedMFOVPairsForStack pairsForStack : unconnectedMFOVsForAllStacks) {
@@ -181,7 +169,8 @@ public class UnconnectedCrossMFOVClient {
 
     public void addUnconnectedMFOVPairsForLayer(final Double pZ,
                                                 final Double qZ,
-                                                final UnconnectedMFOVPairsForStack unconnectedMFOVs)
+                                                final UnconnectedMFOVPairsForStack unconnectedMFOVs,
+                                                final RenderDataClient renderDataClient)
             throws IOException {
 
         final String stack = unconnectedMFOVs.getRenderStackId().getStack();
@@ -195,9 +184,8 @@ public class UnconnectedCrossMFOVClient {
         final Map<String, Integer> mFOVToSFOVPairCount = new HashMap<>();
         mFOVNames.forEach(name -> mFOVToSFOVPairCount.put(name, 0));
 
-        final RenderDataClient matchClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                                  matchCollectionId.getOwner(),
-                                                                  matchCollectionId.getName());
+        final RenderDataClient matchClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
+                                                                          matchCollectionId.getName());
 
         for (final CanvasMatches canvasMatches : matchClient.getMatchesBetweenGroups(pGroupId,
                                                                                      qGroupId,

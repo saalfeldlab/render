@@ -19,13 +19,13 @@ public class UnconnectedCrossMFOVClientTest {
 
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[] {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--owner", "hess",
-                "--project", "wafer_52c",
-                "--stack", "v1_acquire_slab_001",
-                "--matchCollection", "wafer_52_cut_00030_to_00039_v1",
+                "--owner", "hess_wafer_53",
+                "--project", "cut_000_to_009",
+//                "--stack", "c001_s145_v01",
+                "--allStacksInProject",
                 "--minPairsForConnection", "6",
                 "--unconnectedMFOVPairsDirectory", "/Users/trautmane/Desktop/mfov",
-                "--montageStackSuffix", "_mfov_montage_20221214_1217"
+                "--montageStackSuffix", "_mfov_montage"
         };
 
         UnconnectedCrossMFOVClient.main(effectiveArgs);
