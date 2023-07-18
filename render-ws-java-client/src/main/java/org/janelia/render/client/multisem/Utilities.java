@@ -55,6 +55,28 @@ public class Utilities {
         return tileId.substring(0, 14);
     }
 
+    /**
+     * @return 019 for 001_000006_019_20220407_115555.1247.0
+     */
+    public static String getSFOVIndexForTileId(final String tileId) throws IllegalArgumentException {
+        if (tileId.length() < 14) {
+            throw new IllegalArgumentException("SFOV index cannot be derived from tileId " + tileId);
+        }
+        return tileId.substring(11, 14);
+    }
+
+    /**
+     * @return 1247.0:019:020 for groupId 1247.0,
+     *                            pId 001_000006_019_20220407_115555.1247.0, and
+     *                            qId 001_000006_020_20220407_115555.1247.0
+     */
+    public static String getSFOVIndexPairName(final String groupId,
+                                              final String pId,
+                                              final String qId) throws IllegalArgumentException {
+        return groupId + ":" + getSFOVIndexForTileId(pId) + ":" + getSFOVIndexForTileId(qId);
+    }
+
+
     public static Map<String, TileSpec> mapMFOVTilesToSFOVIds(final Collection<TileSpec> tileSpecList,
                                                               final String mFOVId) {
         final Map<String, TileSpec> map = new HashMap<>(tileSpecList.size());
