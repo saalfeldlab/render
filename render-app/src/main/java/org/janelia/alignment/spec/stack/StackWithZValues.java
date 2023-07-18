@@ -44,12 +44,17 @@ public class StackWithZValues implements Serializable {
 
     @Override
     public String toString() {
-        return stackId.toDevString() + "::z" + getFirstZ();
+        return stackId.toDevString() + "::z" + getFirstZ() + "_to_" + getLastZ();
     }
 
     @JsonIgnore
     public Double getFirstZ() {
         return zValues.size() == 0 ? null : zValues.get(0);
+    }
+
+    @JsonIgnore
+    public Double getLastZ() {
+        return zValues.size() == 0 ? null : zValues.get(zValues.size() - 1);
     }
 
     public boolean hasSameStack(final StackWithZValues that) {
