@@ -310,7 +310,8 @@
     }
   ],
   "mfovMontagePatch": {
-    "storedMatchWeight" : 0.1,
+    "sameLayerDerivedMatchWeight" : 0.15,
+    "crossLayerDerivedMatchWeight" : 0.1,
     "xyNeighborFactor" : 0.6
   }
 }

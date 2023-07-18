@@ -32,10 +32,16 @@ public class MFOVMontageMatchPatchParameters
     public String multiFieldOfViewId;
 
     @Parameter(
-            names = "--storedMatchWeight",
-            description = "Weight for stored matches (e.g. 0.0001)",
+            names = "--sameLayerDerivedMatchWeight",
+            description = "Weight for matches derived from same z layer (e.g. 0.15).  " +
+                          "Omit to skip same layer derivation.")
+    public Double sameLayerDerivedMatchWeight;
+
+    @Parameter(
+            names = "--crossLayerDerivedMatchWeight",
+            description = "Weight for matches derived from other z layers (e.g. 0.1)",
             required = true)
-    public Double storedMatchWeight;
+    public Double crossLayerDerivedMatchWeight;
 
     @Parameter(
             names = "--xyNeighborFactor",
