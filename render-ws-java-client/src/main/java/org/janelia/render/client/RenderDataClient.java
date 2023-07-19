@@ -95,6 +95,10 @@ public class RenderDataClient {
         return urls;
     }
 
+    public String getBaseDataUrl() {
+        return urls.getBaseDataUrl();
+    }
+
     @Override
     public String toString() {
         return String.valueOf(urls);

@@ -8,6 +8,7 @@ import java.util.List;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.janelia.alignment.multisem.UnconnectedMFOVPairsForStack;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.AlignmentPipelineParameters;
@@ -16,6 +17,7 @@ import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.MipmapClient;
 import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
 import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
+import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +79,7 @@ public class AlignmentPipelineClient
 
     public void runWithContext(final JavaSparkContext sparkContext,
                                final AlignmentPipelineParameters alignmentPipelineParameters)
-            throws IOException {
+            throws IOException, IllegalStateException {
 
         LOG.info("runWithContext: entry, alignmentPipelineParameters={}", alignmentPipelineParameters.toJson());
 
@@ -104,6 +106,24 @@ public class AlignmentPipelineClient
                     MFOVMontageMatchPatchClient.Parameters.fromPipeline(alignmentPipelineParameters);
             final MFOVMontageMatchPatchClient matchPatchClient = new MFOVMontageMatchPatchClient(p);
             matchPatchClient.patchPairs(sparkContext, alignmentPipelineParameters.getMfovMontagePatch());
+        }
+
+        if (alignmentPipelineParameters.hasUnconnectedCrossMfovParameters()) {
+            final UnconnectedCrossMFOVClient.Parameters p =
+                    UnconnectedCrossMFOVClient.Parameters.fromPipeline(alignmentPipelineParameters);
+            final UnconnectedCrossMFOVClient unconnectedMfovClient = new UnconnectedCrossMFOVClient(p);
+
+            final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
+                    unconnectedMfovClient.findUnconnectedMFOVs(sparkContext);
+
+            if (unconnectedMFOVsForAllStacks.size() > 0) {
+                final String errorMessage =
+                        "found " + unconnectedMFOVsForAllStacks.size() + " stacks with unconnected MFOVs";
+                LOG.error("runWithContext: {}: {}", errorMessage, unconnectedMFOVsForAllStacks);
+                throw new IllegalStateException(errorMessage);
+            } else {
+                LOG.info("runWithContext: all MFOVs in all stacks are connected");
+            }
         }
 
         LOG.info("runWithContext: exit");

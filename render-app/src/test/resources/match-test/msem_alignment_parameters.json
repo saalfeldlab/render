@@ -313,5 +313,8 @@
     "sameLayerDerivedMatchWeight" : 0.15,
     "crossLayerDerivedMatchWeight" : 0.1,
     "xyNeighborFactor" : 0.6
+  },
+  "unconnectedCrossMfov": {
+    "minPairsForConnection": 6
   }
 }

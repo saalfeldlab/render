@@ -23,20 +23,23 @@ public class AlignmentPipelineParameters
     private final MipmapParameters mipmap;
     private final List<MatchRunParameters> matchRunList;
     private final MFOVMontageMatchPatchParameters mfovMontagePatch;
+    private final UnconnectedCrossMFOVParameters unconnectedCrossMfov;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
-        this(null, null, null, null);
+        this(null, null, null, null, null);
     }
 
     public AlignmentPipelineParameters(final MultiProjectParameters multiProject,
                                        final MipmapParameters mipmap,
                                        final List<MatchRunParameters> matchRunList,
-                                       final MFOVMontageMatchPatchParameters mfovMontagePatch) {
+                                       final MFOVMontageMatchPatchParameters mfovMontagePatch,
+                                       final UnconnectedCrossMFOVParameters unconnectedCrossMfov) {
         this.multiProject = multiProject;
         this.mipmap = mipmap;
         this.matchRunList = matchRunList;
         this.mfovMontagePatch = mfovMontagePatch;
+        this.unconnectedCrossMfov = unconnectedCrossMfov;
     }
 
     public MultiProjectParameters getMultiProject() {
@@ -65,6 +68,14 @@ public class AlignmentPipelineParameters
 
     public MFOVMontageMatchPatchParameters getMfovMontagePatch() {
         return mfovMontagePatch;
+    }
+
+    public boolean hasUnconnectedCrossMfovParameters() {
+        return (unconnectedCrossMfov != null);
+    }
+
+    public UnconnectedCrossMFOVParameters getUnconnectedCrossMfov() {
+        return unconnectedCrossMfov;
     }
 
     @SuppressWarnings("unused")
