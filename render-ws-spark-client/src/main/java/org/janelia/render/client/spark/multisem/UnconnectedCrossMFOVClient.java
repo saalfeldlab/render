@@ -107,13 +107,8 @@ public class UnconnectedCrossMFOVClient
         final RenderDataClient sourceDataClient = multiProject.getDataClient();
         final String baseDataUrl = sourceDataClient.getBaseDataUrl();
 
-        // override --zValuesPerBatch with Integer.MAX_VALUE because all z layers in each stack are needed for patching
         final List<StackWithZValues> stackWithZValuesList =
-                multiProject.stackIdWithZ.getStackWithZList(sourceDataClient,
-                                                            Integer.MAX_VALUE);
-        if (stackWithZValuesList.size() == 0) {
-            throw new IllegalArgumentException("no stack z-layers match parameters");
-        }
+                multiProject.stackIdWithZ.buildListOfStackWithAllZ(sourceDataClient);
 
         LOG.info("findUnconnectedMFOVs: distributing tasks for {} stacks", stackWithZValuesList.size());
 

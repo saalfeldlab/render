@@ -87,6 +87,10 @@ public class RenderDataClient {
         this.httpClient = httpClient;
     }
 
+    public String getOwner() {
+        return urls.getOwner();
+    }
+
     public String getProject() {
         return project;
     }

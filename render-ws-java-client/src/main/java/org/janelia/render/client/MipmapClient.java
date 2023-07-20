@@ -156,7 +156,9 @@ public class MipmapClient {
     public void processMipmaps()
             throws Exception {
         StackWithZValues previousStackWithZ = null;
-        for (final StackWithZValues stackWithZ : parameters.stackIdWithZ.getStackWithZList(renderDataClient)) {
+        final List<StackWithZValues> batchedList =
+                parameters.stackIdWithZ.buildListOfStackWithBatchedZ(renderDataClient);
+        for (final StackWithZValues stackWithZ : batchedList) {
             if ((previousStackWithZ != null) && ! stackWithZ.hasSameStack(previousStackWithZ)) {
                 updateMipmapPathBuilderForStack(previousStackWithZ.getStackId());
             }

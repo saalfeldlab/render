@@ -78,24 +78,31 @@ public class StackIdWithZParameters
      * @return list of stack identifiers coupled with --zValuesPerBatch z values
      *         that is ordered by stack and then z.
      */
-    public List<StackWithZValues> getStackWithZList(final RenderDataClient renderDataClient)
-            throws IOException {
-        return getStackWithZList(renderDataClient, this.zValuesPerBatch);
+    public List<StackWithZValues> buildListOfStackWithBatchedZ(final RenderDataClient renderDataClient)
+            throws IOException, IllegalArgumentException {
+        return buildListOfStackWithBatchedZ(renderDataClient, this.zValuesPerBatch);
     }
 
     /**
-     * This implementation allows you to override the --zValuesPerBatch parameter used by default.
-     *
+     * @return list of stack identifiers coupled with all z values for the stack
+     *         that is ordered by stack.
+     */
+    public List<StackWithZValues> buildListOfStackWithAllZ(final RenderDataClient renderDataClient)
+            throws IOException, IllegalArgumentException {
+        return buildListOfStackWithBatchedZ(renderDataClient, Integer.MAX_VALUE);
+    }
+
+    /**
      * @return list of stack identifiers coupled with explicitZValuesPerBatch z values
      *         that is ordered by stack and then z.
      */
-    public List<StackWithZValues> getStackWithZList(final RenderDataClient renderDataClient,
-                                                    final int explicitZValuesPerBatch)
-            throws IOException {
+    private List<StackWithZValues> buildListOfStackWithBatchedZ(final RenderDataClient renderDataClient,
+                                                                final int explicitZValuesPerBatch)
+            throws IOException, IllegalArgumentException {
         if (explicitZValuesPerBatch < 1) {
             throw new IllegalArgumentException("zValuesPerBatch must be greater than zero");
         }
-        final List<StackWithZValues> stackWithZList = new ArrayList<>();
+        final List<StackWithZValues> batchedList = new ArrayList<>();
         final List<StackId> stackIdList = getStackIdList(renderDataClient);
         for (final StackId stackId : stackIdList) {
             final RenderDataClient projectClient = renderDataClient.buildClientForProject(stackId.getProject());
@@ -104,16 +111,21 @@ public class StackIdWithZParameters
                                                                             layerRange.maxZ,
                                                                             zValues);
             if (explicitZValuesPerBatch >= stackZValues.size()) {
-                stackWithZList.add(new StackWithZValues(stackId, stackZValues));
+                batchedList.add(new StackWithZValues(stackId, stackZValues));
             } else {
                 for (int fromIndex = 0; fromIndex < stackZValues.size(); fromIndex += explicitZValuesPerBatch) {
                     final int toIndex = Math.min(stackZValues.size(), fromIndex + explicitZValuesPerBatch);
                     final List<Double> batchedZValues = new ArrayList<>(stackZValues.subList(fromIndex, toIndex));
-                    stackWithZList.add(new StackWithZValues(stackId, batchedZValues));
+                    batchedList.add(new StackWithZValues(stackId, batchedZValues));
                 }
             }
         }
-        return stackWithZList;
+
+        if (batchedList.size() == 0) {
+            throw new IllegalArgumentException("no stack z-layers match parameters");
+        }
+
+        return batchedList;
     }
 
 }

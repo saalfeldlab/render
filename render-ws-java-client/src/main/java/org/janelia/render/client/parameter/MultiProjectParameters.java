@@ -76,14 +76,10 @@ public class MultiProjectParameters
                new MatchCollectionId(owner, matchCollection);
     }
 
-    public List<StackWithZValues> buildStackWithZValuesList()
+    public List<StackWithZValues> buildBatchedListOfStackWithZ()
             throws IOException, IllegalArgumentException {
         final RenderDataClient renderDataClient = getDataClient();
-        final List<StackWithZValues> stackWithZValuesList = stackIdWithZ.getStackWithZList(renderDataClient);
-        if (stackWithZValuesList.size() == 0) {
-            throw new IllegalArgumentException("no stack z-layers match parameters");
-        }
-        return stackWithZValuesList;
+        return stackIdWithZ.buildListOfStackWithBatchedZ(renderDataClient);
     }
 
     private synchronized void buildDataClient() {

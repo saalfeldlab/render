@@ -79,10 +79,8 @@ public class UnconnectedCrossMFOVClient {
             throws IOException {
 
         final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
-        // override --zValuesPerBatch with Integer.MAX_VALUE because all z layers in each stack are needed for patching
         final List<StackWithZValues> stackWithZList =
-                parameters.multiProject.stackIdWithZ.getStackWithZList(renderDataClient,
-                                                                       Integer.MAX_VALUE);
+                parameters.multiProject.stackIdWithZ.buildListOfStackWithAllZ(renderDataClient);
         final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks = new ArrayList<>();
         for (final StackWithZValues stackWithZ : stackWithZList) {
             final UnconnectedMFOVPairsForStack unconnectedMFOVPairsForStack =

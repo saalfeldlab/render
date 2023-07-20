@@ -91,14 +91,9 @@ public class MipmapClient
 
         final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
-        final List<StackWithZValues> stackIdWithZValues =
-                parameters.mipmap.stackIdWithZ.getStackWithZList(sourceDataClient);
-
-        if (stackIdWithZValues.size() == 0) {
-            throw new IllegalArgumentException("no stack z-layers match parameters");
-        }
-
-        final JavaRDD<StackWithZValues> rddStackIdWithZValues = sparkContext.parallelize(stackIdWithZValues);
+        final List<StackWithZValues> batchedList =
+                parameters.mipmap.stackIdWithZ.buildListOfStackWithBatchedZ(sourceDataClient);
+        final JavaRDD<StackWithZValues> rddStackIdWithZValues = sparkContext.parallelize(batchedList);
 
         final Function<StackWithZValues, Integer> mipmapFunction = stackIdWithZ -> {
             LogUtilities.setupExecutorLog4j(stackIdWithZ.toString());
@@ -123,7 +118,7 @@ public class MipmapClient
         final org.janelia.render.client.MipmapClient mc =
                 new org.janelia.render.client.MipmapClient(parameters.renderWeb,
                                                            parameters.mipmap);
-        final List<StackId> distinctStackIds = stackIdWithZValues.stream()
+        final List<StackId> distinctStackIds = batchedList.stream()
                 .map(StackWithZValues::getStackId)
                 .distinct()
                 .collect(Collectors.toList());

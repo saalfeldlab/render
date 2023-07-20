@@ -95,9 +95,9 @@ public class AlignmentPipelineClient
                     MultiStagePointMatchClient.Parameters.fromPipeline(alignmentPipelineParameters);
             final MultiStagePointMatchClient matchClient = new MultiStagePointMatchClient(p);
             final MultiProjectParameters multiProject = alignmentPipelineParameters.getMultiProject();
-            final List<StackWithZValues> stackWithZValuesList = multiProject.buildStackWithZValuesList();
+            final List<StackWithZValues> batchedList = multiProject.buildBatchedListOfStackWithZ();
             matchClient.generatePairsAndMatchesForRunList(sparkContext,
-                                                          stackWithZValuesList,
+                                                          batchedList,
                                                           alignmentPipelineParameters.getMatchRunList());
         }
 

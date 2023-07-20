@@ -103,9 +103,8 @@ public class MFOVMontageMatchPatchClient {
         final MultiProjectParameters multiProject = parameters.multiProject;
         final RenderDataClient defaultDataClient = multiProject.getDataClient();
 
-        // override --zValuesPerBatch with Integer.MAX_VALUE because all z layers in each stack are needed for patching
-        final List<StackWithZValues> stackWithZList = multiProject.stackIdWithZ.getStackWithZList(defaultDataClient,
-                                                                                                  Integer.MAX_VALUE);
+        final List<StackWithZValues> stackWithZList =
+                multiProject.stackIdWithZ.buildListOfStackWithAllZ(defaultDataClient);
         for (final StackWithZValues stackWithZ : stackWithZList) {
             final StackMFOVWithZValues stackMFOVWithZValues =
                     new StackMFOVWithZValues(stackWithZ, parameters.patch.multiFieldOfViewId);

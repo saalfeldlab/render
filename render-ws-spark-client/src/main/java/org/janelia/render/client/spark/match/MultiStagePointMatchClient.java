@@ -111,13 +111,10 @@ public class MultiStagePointMatchClient
                                                                        parameters.multiProject.owner,
                                                                        parameters.multiProject.project);
 
-        final List<StackWithZValues> stackWithZValuesList = parameters.multiProject.stackIdWithZ.getStackWithZList(renderDataClient);
-        if (stackWithZValuesList.size() == 0) {
-            throw new IllegalArgumentException("no stack z-layers match parameters");
-        }
-
+        final List<StackWithZValues> batchedList =
+                parameters.multiProject.stackIdWithZ.buildListOfStackWithBatchedZ(renderDataClient);
         generatePairsAndMatchesForRunList(sparkContext,
-                                          stackWithZValuesList,
+                                          batchedList,
                                           MatchRunParameters.fromJsonArrayFile(parameters.matchRunJson));
 
         LOG.info("runWithContext: exit");
