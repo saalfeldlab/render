@@ -106,10 +106,8 @@ public class MFOVMontageMatchPatchClient
 
         final MultiProjectParameters multiProject = parameters.multiProject;
         final RenderDataClient sourceDataClient = multiProject.getDataClient();
-        final String baseDataUrl = sourceDataClient.getUrls().getBaseDataUrl();
-
-        final List<StackWithZValues> stackWithZValuesList =
-                multiProject.stackIdWithZ.buildListOfStackWithAllZ(sourceDataClient);
+        final String baseDataUrl = multiProject.getBaseDataUrl();
+        final List<StackWithZValues> stackWithZValuesList = multiProject.buildListOfStackWithAllZ();
 
         final List<StackMFOVWithZValues> stackMFOVWithZValuesList = new ArrayList<>();
         for (final StackWithZValues stackWithZValues : stackWithZValuesList) {

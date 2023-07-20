@@ -79,8 +79,8 @@ public class UnconnectedCrossMFOVClient {
             throws IOException {
 
         final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
-        final List<StackWithZValues> stackWithZList =
-                parameters.multiProject.stackIdWithZ.buildListOfStackWithAllZ(renderDataClient);
+        final List<StackWithZValues> stackWithZList = parameters.multiProject.buildListOfStackWithAllZ();
+
         final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks = new ArrayList<>();
         for (final StackWithZValues stackWithZ : stackWithZList) {
             final UnconnectedMFOVPairsForStack unconnectedMFOVPairsForStack =

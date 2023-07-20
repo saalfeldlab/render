@@ -70,16 +70,24 @@ public class MultiProjectParameters
     public MultiProjectParameters() {
     }
 
+    public String getBaseDataUrl() {
+        return baseDataUrl;
+    }
+
     public MatchCollectionId getMatchCollectionIdForStack(final StackId stackId) {
         return matchCollection == null ?
                stackId.getDefaultMatchCollectionId(deriveMatchCollectionNamesFromProject) :
                new MatchCollectionId(owner, matchCollection);
     }
 
-    public List<StackWithZValues> buildBatchedListOfStackWithZ()
+    public List<StackWithZValues> buildListOfStackWithBatchedZ()
             throws IOException, IllegalArgumentException {
-        final RenderDataClient renderDataClient = getDataClient();
-        return stackIdWithZ.buildListOfStackWithBatchedZ(renderDataClient);
+        return stackIdWithZ.buildListOfStackWithBatchedZ(this.getDataClient());
+    }
+
+    public List<StackWithZValues> buildListOfStackWithAllZ()
+            throws IOException, IllegalArgumentException {
+        return stackIdWithZ.buildListOfStackWithAllZ(this.getDataClient());
     }
 
     private synchronized void buildDataClient() {

@@ -102,9 +102,8 @@ public class MFOVMontageMatchPatchClient {
 
         final MultiProjectParameters multiProject = parameters.multiProject;
         final RenderDataClient defaultDataClient = multiProject.getDataClient();
+        final List<StackWithZValues> stackWithZList = multiProject.buildListOfStackWithAllZ();
 
-        final List<StackWithZValues> stackWithZList =
-                multiProject.stackIdWithZ.buildListOfStackWithAllZ(defaultDataClient);
         for (final StackWithZValues stackWithZ : stackWithZList) {
             final StackMFOVWithZValues stackMFOVWithZValues =
                     new StackMFOVWithZValues(stackWithZ, parameters.patch.multiFieldOfViewId);

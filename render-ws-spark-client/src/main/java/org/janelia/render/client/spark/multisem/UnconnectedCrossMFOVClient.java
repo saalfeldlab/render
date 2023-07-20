@@ -104,11 +104,8 @@ public class UnconnectedCrossMFOVClient
         LOG.info("findUnconnectedMFOVs: entry");
 
         final MultiProjectParameters multiProject = parameters.multiProject;
-        final RenderDataClient sourceDataClient = multiProject.getDataClient();
-        final String baseDataUrl = sourceDataClient.getBaseDataUrl();
-
-        final List<StackWithZValues> stackWithZValuesList =
-                multiProject.stackIdWithZ.buildListOfStackWithAllZ(sourceDataClient);
+        final String baseDataUrl = multiProject.getBaseDataUrl();
+        final List<StackWithZValues> stackWithZValuesList = multiProject.buildListOfStackWithAllZ();
 
         LOG.info("findUnconnectedMFOVs: distributing tasks for {} stacks", stackWithZValuesList.size());
 
