@@ -27,6 +27,7 @@ import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.warp.AbstractWarpTransformBuilder;
 import org.janelia.alignment.warp.RigidBuilder;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.TileSpecValidatorParameters;
@@ -45,7 +46,7 @@ import mpicbg.trakem2.transform.TranslationModel2D;
  * stack's tile's center points in another stack (an "align" stack).
  * This client is very similar to the {@link WarpTransformClient} but it uses a {@link mpicbg.models.RigidModel2D}
  * model for the transformation which will rotate and translate the montage stack but will not warp it.
- *
+ * <br/>
  * TODO: refactor this and the WarpTransformClient(s) into one generic client
  *
  * @author Eric Trautman
@@ -64,6 +65,9 @@ public class RigidTransformClient {
         WarpStackParameters warp = new WarpStackParameters();
 
         @ParametersDelegate
+        MatchCollectionParameters match = new MatchCollectionParameters();
+
+        @ParametersDelegate
         TileClusterParameters tileCluster = new TileClusterParameters();
 
         @Parameter(
@@ -80,6 +84,7 @@ public class RigidTransformClient {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
                 parameters.warp.initDefaultValues(parameters.renderWeb);
+                parameters.tileCluster.validateMatchCollection(parameters.match.matchCollection, false);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -88,7 +93,7 @@ public class RigidTransformClient {
                 client.setUpDerivedStack();
 
                 for (final String z : parameters.zValues) {
-                    client.generateStackDataForZ(new Double(z));
+                    client.generateStackDataForZ(Double.valueOf(z));
                 }
 
                 if (parameters.warp.completeTargetStack) {
@@ -114,8 +119,8 @@ public class RigidTransformClient {
         this.alignDataClient = parameters.warp.getAlignDataClient();
         this.targetDataClient = parameters.warp.getTargetDataClient();
         if (parameters.tileCluster.isDefined()) {
-            this.matchDataClient = parameters.tileCluster.getMatchDataClient(parameters.renderWeb.baseDataUrl,
-                                                                             parameters.renderWeb.owner);
+            this.matchDataClient = parameters.match.getMatchDataClient(parameters.renderWeb.baseDataUrl,
+                                                                       parameters.renderWeb.owner);
         } else {
             this.matchDataClient = null;
         }

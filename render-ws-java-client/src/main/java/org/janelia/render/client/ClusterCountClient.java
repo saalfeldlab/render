@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -9,17 +11,17 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.match.TileIdsWithMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Java client for identifying connected tile clusters in a stack.
@@ -31,40 +33,11 @@ public class ClusterCountClient {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
-
-        @Parameter(
-                names = "--stack",
-                description = "Stack name",
-                required = true)
-        public String stack;
+        public MultiProjectParameters multiProject = new MultiProjectParameters();
 
         @ParametersDelegate
-        TileClusterParameters tileCluster = new TileClusterParameters();
+        public TileClusterParameters tileCluster = new TileClusterParameters();
 
-        @Parameter(
-                names = "--minZ",
-                description = "Minimum Z value for layers to be processed")
-        public Double minZ;
-
-        @Parameter(
-                names = "--maxZ",
-                description = "Maximum Z value for layers to be processed")
-        public Double maxZ;
-
-        @Parameter(
-                names = "--maxLayersPerBatch",
-                description = "Maximum number of adjacent layers to connect at one time.  " +
-                              "Larger connected stacks will use too much memory and/or recurse too deeply.  " +
-                              "This option (in conjunction with --maxOverlapZ) allows processing to be divided " +
-                              "into smaller batches.")
-        public Integer maxLayersPerBatch = 1000;
-
-        @Parameter(
-                names = "--maxOverlapLayers",
-                description = "Maximum number of adjacent layers for matched tiles " +
-                              "(ensures connections can be tracked across batches for large runs)")
-        public Integer maxOverlapLayers = 10;
     }
 
     /**
@@ -78,8 +51,6 @@ public class ClusterCountClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-
-                parameters.tileCluster.validate(true);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -96,20 +67,41 @@ public class ClusterCountClient {
         this.parameters = parameters;
     }
 
-    private void findConnectedClusters()
+    public void findConnectedClusters()
             throws Exception {
 
-        final RenderDataClient renderDataClient = parameters.renderWeb.getDataClient();
+        final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
+        final List<StackWithZValues> stackWithZList = parameters.multiProject.buildListOfStackWithAllZ();
+        for (final StackWithZValues stackWithZ : stackWithZList) {
 
-        final RenderDataClient matchDataClient =
-                parameters.tileCluster.getMatchDataClient(parameters.renderWeb.baseDataUrl,
-                                                          parameters.renderWeb.owner);
+            final StackId stackId = stackWithZ.getStackId();
+            final MatchCollectionId defaultMatchCollectionId =
+                    parameters.multiProject.getMatchCollectionIdForStack(stackId);
+
+            findConnectedClustersForStack(stackWithZ,
+                                          defaultMatchCollectionId,
+                                          renderDataClient,
+                                          parameters.tileCluster);
+        }
+
+    }
+
+    public void findConnectedClustersForStack(final StackWithZValues stackWithZValues,
+                                              final MatchCollectionId matchCollectionId,
+                                              final RenderDataClient renderDataClient,
+                                              final TileClusterParameters tileClusterParameters)
+            throws Exception {
+
+
+        final StackId stackId = stackWithZValues.getStackId();
+        final RenderDataClient matchDataClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
+                                                                              matchCollectionId.getName());
 
         final Map<Double, Set<String>> zToSectionIdsMap =
-                renderDataClient.getStackZToSectionIdsMap(parameters.stack,
-                                                          parameters.minZ,
-                                                          parameters.maxZ,
-                                                          null);
+                renderDataClient.getStackZToSectionIdsMap(stackId.getStack(),
+                                                          null,
+                                                          null,
+                                                          stackWithZValues.getzValues());
 
         //TODO: For very large stacks (e.g. millions of tiles) we will not be able to keep all canvasIds
         //      (one per tile) in memory.
@@ -121,11 +113,12 @@ public class ClusterCountClient {
         final Set<String> allUnconnectedTileIds = new HashSet<>();
 
         final int layerCount = sortedZValues.size();
-        for (int i = 0; i < layerCount; i += parameters.maxLayersPerBatch) {
-            final int fromIndex = i > parameters.maxOverlapLayers ? i - parameters.maxOverlapLayers : i;
-            final int toIndex = Math.min(i + parameters.maxLayersPerBatch, layerCount);
+        for (int i = 0; i < layerCount; i += tileClusterParameters.maxLayersPerBatch) {
+            final int fromIndex = i > tileClusterParameters.maxOverlapLayers ? i - tileClusterParameters.maxOverlapLayers : i;
+            final int toIndex = Math.min(i + tileClusterParameters.maxLayersPerBatch, layerCount);
             final SortedConnectedCanvasIdClusters clusters =
                     findConnectedClustersForSlab(renderDataClient,
+                                                 stackId.getStack(),
                                                  matchDataClient,
                                                  zToSectionIdsMap,
                                                  sortedZValues.subList(fromIndex, toIndex),
@@ -163,6 +156,7 @@ public class ClusterCountClient {
     }
 
     private SortedConnectedCanvasIdClusters findConnectedClustersForSlab(final RenderDataClient renderDataClient,
+                                                                         final String stack,
                                                                          final RenderDataClient matchDataClient,
                                                                          final Map<Double, Set<String>> zToSectionIdsMap,
                                                                          final List<Double> sortedZValues,
@@ -174,7 +168,7 @@ public class ClusterCountClient {
 
         for (final Double z : sortedZValues) {
 
-            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+            final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
             allStackTileIds.addAll(resolvedTiles.getTileIds());
 
             for (final String sectionId : zToSectionIdsMap.get(z)) {

@@ -20,6 +20,7 @@ import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.slf4j.Logger;
@@ -65,6 +66,9 @@ public class TranslateClustersClient {
                 names = "--targetStack",
                 description = "Name of target stack (default is same as source stack)")
         public String targetStack;
+
+        @ParametersDelegate
+        MatchCollectionParameters match = new MatchCollectionParameters();
 
         @ParametersDelegate
         TileClusterParameters tileCluster = new TileClusterParameters();
@@ -124,7 +128,7 @@ public class TranslateClustersClient {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
 
-                parameters.tileCluster.validate(true);
+                parameters.tileCluster.validateMatchCollection(parameters.match.matchCollection, true);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -147,8 +151,8 @@ public class TranslateClustersClient {
         final RenderDataClient renderDataClient = parameters.renderWeb.getDataClient();
 
         final RenderDataClient matchDataClient =
-                parameters.tileCluster.getMatchDataClient(parameters.renderWeb.baseDataUrl,
-                                                          parameters.renderWeb.owner);
+                parameters.match.getMatchDataClient(parameters.renderWeb.baseDataUrl,
+                                                    parameters.renderWeb.owner);
         final RenderDataClient targetClient =
                 new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                      parameters.getTargetOwner(),

@@ -18,6 +18,7 @@ import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.alignment.warp.AbstractWarpTransformBuilder;
 import org.janelia.alignment.warp.ThinPlateSplineBuilder;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.TileSpecValidatorParameters;
@@ -49,6 +50,9 @@ public class WarpTransformClient {
         WarpStackParameters warp = new WarpStackParameters();
 
         @ParametersDelegate
+        MatchCollectionParameters match = new MatchCollectionParameters();
+
+        @ParametersDelegate
         TileClusterParameters tileCluster = new TileClusterParameters();
 
         @Parameter(
@@ -64,7 +68,7 @@ public class WarpTransformClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-                parameters.tileCluster.validate();
+                parameters.tileCluster.validateMatchCollection(parameters.match.matchCollection, false);
                 parameters.warp.initDefaultValues(parameters.renderWeb);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
@@ -74,7 +78,7 @@ public class WarpTransformClient {
                 client.setUpDerivedStack();
 
                 for (final String z : parameters.zValues) {
-                    client.generateStackDataForZ(new Double(z));
+                    client.generateStackDataForZ(Double.valueOf(z));
                 }
 
                 if (parameters.warp.completeTargetStack) {
@@ -100,8 +104,8 @@ public class WarpTransformClient {
         this.alignDataClient = parameters.warp.getAlignDataClient();
         this.targetDataClient = parameters.warp.getTargetDataClient();
         this.matchDataClient =
-                parameters.tileCluster.getMatchDataClient(parameters.renderWeb.baseDataUrl,
-                                                          parameters.renderWeb.owner);
+                parameters.match.getMatchDataClient(parameters.renderWeb.baseDataUrl,
+                                                    parameters.renderWeb.owner);
 
     }
 

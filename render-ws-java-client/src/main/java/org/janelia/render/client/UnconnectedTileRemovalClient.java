@@ -14,6 +14,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.slf4j.Logger;
@@ -40,6 +41,9 @@ public class UnconnectedTileRemovalClient {
                 description = "Stack name",
                 required = true)
         public String stack;
+
+        @ParametersDelegate
+        MatchCollectionParameters match = new MatchCollectionParameters();
 
         @ParametersDelegate
         TileClusterParameters tileCluster = new TileClusterParameters();
@@ -103,7 +107,7 @@ public class UnconnectedTileRemovalClient {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
 
-                parameters.tileCluster.validate(true);
+                parameters.tileCluster.validateMatchCollection(parameters.match.matchCollection, true);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -125,8 +129,8 @@ public class UnconnectedTileRemovalClient {
 
         final RenderDataClient renderDataClient = parameters.renderWeb.getDataClient();
         final RenderDataClient matchDataClient =
-                parameters.tileCluster.getMatchDataClient(parameters.renderWeb.baseDataUrl,
-                                                          parameters.renderWeb.owner);
+                parameters.match.getMatchDataClient(parameters.renderWeb.baseDataUrl,
+                                                    parameters.renderWeb.owner);
 
         final String removedTilesStackName = parameters.removedTilesStackName == null ?
                                              parameters.stack + "_removed_tiles" :

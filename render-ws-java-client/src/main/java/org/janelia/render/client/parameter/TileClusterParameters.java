@@ -1,10 +1,8 @@
 package org.janelia.render.client.parameter;
 
-import java.io.Serializable;
-
-import org.janelia.render.client.RenderDataClient;
-
 import com.beust.jcommander.Parameter;
+
+import java.io.Serializable;
 
 /**
  * Parameters and methods for determining clusters of connected tiles within a layer.
@@ -13,16 +11,6 @@ import com.beust.jcommander.Parameter;
  */
 public class TileClusterParameters
         implements Serializable {
-
-    @Parameter(
-            names = "--matchOwner",
-            description = "Match collection owner (default is to use stack owner)")
-    public String matchOwner;
-
-    @Parameter(
-            names = "--matchCollection",
-            description = "Match collection name")
-    public String matchCollection;
 
     @Parameter(
             names = "--maxSmallClusterSize",
@@ -44,12 +32,29 @@ public class TileClusterParameters
             arity = 0)
     public boolean includeMatchesOutsideGroup = false;
 
+    @Parameter(
+            names = "--maxLayersPerBatch",
+            description = "Maximum number of adjacent layers to connect at one time.  " +
+                          "Larger connected stacks will use too much memory and/or recurse too deeply.  " +
+                          "This option (in conjunction with --maxOverlapLayers) allows processing to be divided " +
+                          "into smaller batches.")
+    public Integer maxLayersPerBatch = 1000;
 
-    public void validate() {
-        validate(false);
-    }
+    @Parameter(
+            names = "--maxOverlapLayers",
+            description = "Maximum number of adjacent layers for matched tiles " +
+                          "(ensures connections can be tracked across batches for large runs)")
+    public Integer maxOverlapLayers = 10;
 
-    public void validate(final boolean isRequired)
+    /**
+     * Validate that --matchCollection has been defined if it is required
+     * or if --maxSmallClusterSize or --smallClusterFactor has been defined.
+     *
+     * @throws IllegalArgumentException
+     *   if parameters are inconsistently defined.
+     */
+    public void validateMatchCollection(final String matchCollection,
+                                        final boolean isRequired)
             throws IllegalArgumentException {
 
         if (isRequired || isDefined()) {
@@ -80,15 +85,6 @@ public class TileClusterParameters
                       maxSmallClusterSize;
         }
         return maxSize;
-    }
-
-    public RenderDataClient getMatchDataClient(final String baseDataUrl, final String defaultOwner) {
-        RenderDataClient client = null;
-        if (matchCollection != null) {
-            final String owner = matchOwner == null ? defaultOwner : matchOwner;
-            client = new RenderDataClient(baseDataUrl, owner, matchCollection);
-        }
-        return client;
     }
 
 }

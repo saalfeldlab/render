@@ -29,6 +29,7 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.slf4j.Logger;
@@ -71,6 +72,9 @@ public class SplitClusterClient {
                 names = "--targetStack",
                 description = "Name of target stack for split clusters (if unspecified, split clusters will not be saved)")
         public String targetStack;
+
+        @ParametersDelegate
+        MatchCollectionParameters match = new MatchCollectionParameters();
 
         @ParametersDelegate
         TileClusterParameters tileCluster = new TileClusterParameters();
@@ -137,7 +141,7 @@ public class SplitClusterClient {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
 
-                parameters.tileCluster.validate(true);
+                parameters.tileCluster.validateMatchCollection(parameters.match.matchCollection, true);
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -161,8 +165,8 @@ public class SplitClusterClient {
         final RenderWebServiceUrls renderWebServiceUrls = renderDataClient.getUrls();
 
         final RenderDataClient matchDataClient =
-                parameters.tileCluster.getMatchDataClient(parameters.renderWeb.baseDataUrl,
-                                                          parameters.renderWeb.owner);
+                parameters.match.getMatchDataClient(parameters.renderWeb.baseDataUrl,
+                                                    parameters.renderWeb.owner);
         final RenderDataClient targetClient =
                 new RenderDataClient(parameters.renderWeb.baseDataUrl,
                                      parameters.getTargetOwner(),
