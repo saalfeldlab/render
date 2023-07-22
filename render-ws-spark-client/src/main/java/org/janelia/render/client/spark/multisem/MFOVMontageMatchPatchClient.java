@@ -5,7 +5,6 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
@@ -15,10 +14,8 @@ import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.multisem.StackMFOVWithZValues;
 import org.janelia.alignment.spec.stack.StackId;
-import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.multisem.Utilities;
 import org.janelia.render.client.parameter.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
@@ -105,24 +102,9 @@ public class MFOVMontageMatchPatchClient
         LOG.info("patchPairs: entry");
 
         final MultiProjectParameters multiProject = parameters.multiProject;
-        final RenderDataClient sourceDataClient = multiProject.getDataClient();
         final String baseDataUrl = multiProject.getBaseDataUrl();
-        final List<StackWithZValues> stackWithZValuesList = multiProject.buildListOfStackWithAllZ();
-
-        final List<StackMFOVWithZValues> stackMFOVWithZValuesList = new ArrayList<>();
-        for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
-            final StackId stackId = stackWithZValues.getStackId();
-            final RenderDataClient dataClient = sourceDataClient.buildClient(stackId.getOwner(), stackId.getProject());
-
-            final List<String> mFOVIdList = Utilities.getMFOVNames(dataClient,
-                                                                   stackId.getStack(),
-                                                                   stackWithZValues.getFirstZ());
-            LOG.info("patchPairs: found {} MFOVs in {}", mFOVIdList.size(), stackWithZValues);
-
-            for (final String mFOVId : mFOVIdList) {
-                stackMFOVWithZValuesList.add(new StackMFOVWithZValues(stackWithZValues, mFOVId));
-            }
-        }
+        final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
+                multiProject.buildListOfStackMFOVWithAllZ(patchParameters.getMultiFieldOfViewId());
 
         LOG.info("patchPairs: distributing tasks for {} MFOVs", stackMFOVWithZValuesList.size());
 
@@ -135,8 +117,7 @@ public class MFOVMontageMatchPatchClient
             final org.janelia.render.client.multisem.MFOVMontageMatchPatchClient.Parameters javaPatchClientParameters =
                     new org.janelia.render.client.multisem.MFOVMontageMatchPatchClient.Parameters();
 
-            javaPatchClientParameters.patch = patchParameters;
-            javaPatchClientParameters.patch.setMultiFieldOfViewId(stackMOFVWithZ.getmFOVId());
+            javaPatchClientParameters.patch = patchParameters.withMultiFieldOfViewId(stackMOFVWithZ.getmFOVId());
 
             final StackId stackId = stackMOFVWithZ.getStackId();
             final RenderDataClient defaultDataClient = new RenderDataClient(baseDataUrl,

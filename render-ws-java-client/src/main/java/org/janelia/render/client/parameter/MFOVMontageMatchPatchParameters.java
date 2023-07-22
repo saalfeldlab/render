@@ -28,7 +28,8 @@ public class MFOVMontageMatchPatchParameters
 
     @Parameter(
             names = "--mfov",
-            description = "Multi-field-of-view identifier <slab number>_<mfov number> (e.g. 001_000006)")
+            description = "Multi-field-of-view identifier <slab number>_<mfov number> (e.g. 001_000006).  " +
+                          "Omit to process all MFOVs in stack.")
     public String multiFieldOfViewId;
 
     @Parameter(
@@ -73,6 +74,28 @@ public class MFOVMontageMatchPatchParameters
     public MFOVMontageMatchPatchParameters() {
     }
 
+    /**
+     * @return clone of these parameters with the specified multiFieldOfViewId.
+     *         Clone has derived values populated and validated.
+     *
+     * @throws IllegalArgumentException
+     *   if the specified multiFieldOfViewId is inconsistent with other parameters (e.g. tileIds).
+     */
+    public MFOVMontageMatchPatchParameters withMultiFieldOfViewId(final String multiFieldOfViewIdForClone)
+            throws IllegalArgumentException {
+        final MFOVMontageMatchPatchParameters clonedParameters = new MFOVMontageMatchPatchParameters();
+        clonedParameters.matchStorageCollection = this.matchStorageCollection;
+        clonedParameters.multiFieldOfViewId = multiFieldOfViewIdForClone;
+        clonedParameters.sameLayerDerivedMatchWeight = this.sameLayerDerivedMatchWeight;
+        clonedParameters.crossLayerDerivedMatchWeight = this.crossLayerDerivedMatchWeight;
+        clonedParameters.xyNeighborFactor = this.xyNeighborFactor;
+        clonedParameters.pTileId = this.pTileId;
+        clonedParameters.qTileId = this.qTileId;
+        clonedParameters.matchStorageFile = this.matchStorageFile;
+        clonedParameters.validateAndSetupDerivedValues(); // make sure values derived from multiFieldOfViewId are rebuilt
+        return clonedParameters;
+    }
+
     // 001_000006_019_20220407_115555.1247.0 => 001_000006_019
     public String getTileIdPrefixForRun(final String tileId) throws IllegalArgumentException {
         if (tileId.length() < 14) {
@@ -81,7 +104,44 @@ public class MFOVMontageMatchPatchParameters
         return tileId.substring(0, 14);
     }
 
-    public void validateAndSetupDerivedValues()
+    public String getMultiFieldOfViewId() {
+        String mFOVId = multiFieldOfViewId;
+        if (mFOVId == null) {
+            if (pTileId != null) {
+                mFOVId = Utilities.getMFOVForTileId(pTileId);
+            } else if (qTileId != null) {
+                mFOVId = Utilities.getMFOVForTileId(qTileId);
+            }
+        }
+        return mFOVId;
+    }
+
+    public String getMatchStorageCollectionName(final MatchCollectionId sourceCollectionId) {
+        return matchStorageCollection == null ? sourceCollectionId.getName() : matchStorageCollection;
+    }
+
+    /*
+     * @return JSON representation of these parameters.
+     */
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
+    public static MFOVMontageMatchPatchParameters fromJson(final Reader json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
+    public static MFOVMontageMatchPatchParameters fromJsonFile(final String dataFile)
+            throws IOException {
+        final MFOVMontageMatchPatchParameters parameters;
+        final Path path = FileSystems.getDefault().getPath(dataFile).toAbsolutePath();
+        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
+            parameters = fromJson(reader);
+        }
+        return parameters;
+    }
+
+    private void validateAndSetupDerivedValues()
             throws IllegalArgumentException {
 
         if (pTileId != null) {
@@ -109,36 +169,6 @@ public class MFOVMontageMatchPatchParameters
         if (matchStorageFile != null) {
             Utilities.validateMatchStorageLocation(matchStorageFile);
         }
-    }
-
-    public void setMultiFieldOfViewId(final String multiFieldOfViewId) {
-        this.multiFieldOfViewId = multiFieldOfViewId;
-        this.validateAndSetupDerivedValues(); // make sure values derived from multiFieldOfViewId are rebuilt
-    }
-
-    public String getMatchStorageCollectionName(final MatchCollectionId sourceCollectionId) {
-        return matchStorageCollection == null ? sourceCollectionId.getName() : matchStorageCollection;
-    }
-
-    /*
-     * @return JSON representation of these parameters.
-     */
-    public String toJson() {
-        return JSON_HELPER.toJson(this);
-    }
-
-    public static MFOVMontageMatchPatchParameters fromJson(final Reader json) {
-        return JSON_HELPER.fromJson(json);
-    }
-
-    public static MFOVMontageMatchPatchParameters fromJsonFile(final String dataFile)
-            throws IOException {
-        final MFOVMontageMatchPatchParameters parameters;
-        final Path path = FileSystems.getDefault().getPath(dataFile).toAbsolutePath();
-        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
-            parameters = fromJson(reader);
-        }
-        return parameters;
     }
 
     private static final JsonUtils.Helper<MFOVMontageMatchPatchParameters> JSON_HELPER =

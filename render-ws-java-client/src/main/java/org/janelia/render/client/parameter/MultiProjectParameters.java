@@ -7,12 +7,17 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.janelia.alignment.match.MatchCollectionId;
+import org.janelia.alignment.multisem.StackMFOVWithZValues;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.multisem.Utilities;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Parameters for identifying projects, stacks, and match collections.
@@ -90,10 +95,39 @@ public class MultiProjectParameters
         return stackIdWithZ.buildListOfStackWithAllZ(this.getDataClient());
     }
 
+    public List<StackMFOVWithZValues> buildListOfStackMFOVWithAllZ(final String multiFieldOfViewId)
+            throws IOException, IllegalArgumentException {
+
+        final List<StackMFOVWithZValues> stackMFOVWithZValuesList = new ArrayList<>();
+
+        final RenderDataClient defaultRenderClient = getDataClient();
+        final List<StackWithZValues> stackWithZValuesList = buildListOfStackWithAllZ();
+        for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
+            final StackId stackId = stackWithZValues.getStackId();
+            final RenderDataClient dataClient = defaultRenderClient.buildClient(stackId.getOwner(),
+                                                                                stackId.getProject());
+            final List<String> mFOVIdList = Utilities.getMFOVNames(dataClient,
+                                                                   stackId.getStack(),
+                                                                   stackWithZValues.getFirstZ());
+
+            LOG.info("buildListOfStackMFOVWithAllZ: found {} MFOVs in {}", mFOVIdList.size(), stackWithZValues);
+
+            for (final String mFOVId : mFOVIdList) {
+                if ((multiFieldOfViewId == null) || multiFieldOfViewId.equals(mFOVId)) {
+                    stackMFOVWithZValuesList.add(new StackMFOVWithZValues(stackWithZValues, mFOVId));
+                }
+            }
+        }
+
+        return stackMFOVWithZValuesList;
+    }
+
     private synchronized void buildDataClient() {
         if (dataClient == null) {
             dataClient = new RenderDataClient(baseDataUrl, owner, project);
         }
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(MultiProjectParameters.class);
 
 }

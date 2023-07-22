@@ -23,7 +23,6 @@ import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
-import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -80,7 +79,6 @@ public class MFOVMontageMatchPatchClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-                parameters.patch.validateAndSetupDerivedValues();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -91,25 +89,26 @@ public class MFOVMontageMatchPatchClient {
         clientRunner.run();
     }
 
-    private final Parameters parameters;
+    private final MultiProjectParameters multiProject;
+    private MFOVMontageMatchPatchParameters patch;
 
     public MFOVMontageMatchPatchClient(final Parameters parameters) {
-        this.parameters = parameters;
+        this.multiProject = parameters.multiProject;
+        this.patch = parameters.patch;
     }
 
     public void deriveAndSaveMatchesForAllUnconnectedPairs()
             throws Exception {
 
-        final MultiProjectParameters multiProject = parameters.multiProject;
         final RenderDataClient defaultDataClient = multiProject.getDataClient();
-        final List<StackWithZValues> stackWithZList = multiProject.buildListOfStackWithAllZ();
+        final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
+                multiProject.buildListOfStackMFOVWithAllZ(patch.multiFieldOfViewId);
 
-        for (final StackWithZValues stackWithZ : stackWithZList) {
-            final StackMFOVWithZValues stackMFOVWithZValues =
-                    new StackMFOVWithZValues(stackWithZ, parameters.patch.multiFieldOfViewId);
-            final StackId stackId = stackWithZ.getStackId();
+        for (final StackMFOVWithZValues stackMFOVWithZValues : stackMFOVWithZValuesList) {
+            final StackId stackId = stackMFOVWithZValues.getStackId();
+            this.patch = this.patch.withMultiFieldOfViewId(stackMFOVWithZValues.getmFOVId());
             final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackId);
-            final String matchStorageCollectionName = parameters.patch.getMatchStorageCollectionName(matchCollectionId);
+            final String matchStorageCollectionName = patch.getMatchStorageCollectionName(matchCollectionId);
             deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
                                                            stackMFOVWithZValues,
                                                            matchCollectionId,
@@ -125,10 +124,10 @@ public class MFOVMontageMatchPatchClient {
 
         LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: entry, stackMFOVWithZValues={}", stackMFOVWithZValues);
 
-        if (! stackMFOVWithZValues.getmFOVId().equals(parameters.patch.multiFieldOfViewId)) {
+        if (! stackMFOVWithZValues.getmFOVId().equals(patch.multiFieldOfViewId)) {
             throw new IllegalStateException("specified mFOVId " + stackMFOVWithZValues.getmFOVId() +
                                             " differs from --multiFieldOfViewId " +
-                                            parameters.patch.multiFieldOfViewId);
+                                            patch.multiFieldOfViewId);
         }
 
         final StackId stackId = stackMFOVWithZValues.getStackId();
@@ -174,8 +173,8 @@ public class MFOVMontageMatchPatchClient {
             final MFOVPositionPairMatchData positionPairMatchData = positionToPairs.get(positionPair);
             derivedMatchesForMFOV.addAll(
                     positionPairMatchData.deriveMatchesForUnconnectedPairs(matchClient,
-                                                                           parameters.patch.sameLayerDerivedMatchWeight,
-                                                                           parameters.patch.crossLayerDerivedMatchWeight));
+                                                                           patch.sameLayerDerivedMatchWeight,
+                                                                           patch.crossLayerDerivedMatchWeight));
         }
 
         if (derivedMatchesForMFOV.size() > 0) {
@@ -183,8 +182,8 @@ public class MFOVMontageMatchPatchClient {
             LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}",
                      derivedMatchesForMFOV.size(), stackMFOVWithZValues);
 
-            if (parameters.patch.matchStorageFile != null) {
-                final Path storagePath = Paths.get(parameters.patch.matchStorageFile).toAbsolutePath();
+            if (patch.matchStorageFile != null) {
+                final Path storagePath = Paths.get(patch.matchStorageFile).toAbsolutePath();
                 FileUtil.saveJsonFile(storagePath.toString(), derivedMatchesForMFOV);
             } else {
                 final RenderDataClient matchStorageClient = matchClient.buildClient(matchCollectionId.getOwner(),
@@ -218,7 +217,7 @@ public class MFOVMontageMatchPatchClient {
 
         final Set<OrderedCanvasIdPair> potentialPairsForZ = tree.getCircleNeighbors(tileBoundsList,
                                                                                     new ArrayList<>(),
-                                                                                    parameters.patch.xyNeighborFactor,
+                                                                                    patch.xyNeighborFactor,
                                                                                     null,
                                                                                     false,
                                                                                     false,
@@ -227,8 +226,8 @@ public class MFOVMontageMatchPatchClient {
         // add all MFOV tile pairs to unconnected set
         final Set<OrderedCanvasIdPair> unconnectedPairsForMFOV = new HashSet<>(potentialPairsForZ.size());
         for (final OrderedCanvasIdPair pair : potentialPairsForZ) {
-            if (pair.getP().getId().startsWith(parameters.patch.pTileIdPrefixForRun) &&
-                pair.getQ().getId().startsWith(parameters.patch.qTileIdPrefixForRun)) {
+            if (pair.getP().getId().startsWith(patch.pTileIdPrefixForRun) &&
+                pair.getQ().getId().startsWith(patch.qTileIdPrefixForRun)) {
                 // remove relative position info from tree search to simplify existence check later
                 final OrderedCanvasIdPair pairWithoutRelative =
                         new OrderedCanvasIdPair(pair.getP().withoutRelativePosition(),
@@ -246,7 +245,7 @@ public class MFOVMontageMatchPatchClient {
         }
 
         LOG.info("updatePositionPairDataForZ: found {} pairs within mFOV {} in z {}",
-                 unconnectedPairsForMFOV.size(), parameters.patch.multiFieldOfViewId, z);
+                 unconnectedPairsForMFOV.size(), patch.multiFieldOfViewId, z);
 
         // query web service to find connected tile pairs and remove them from unconnected set
         final Map<String, OrderedCanvasIdPair> sameLayerPairsFromOtherMFOVs = new HashMap<>();
@@ -261,8 +260,8 @@ public class MFOVMontageMatchPatchClient {
                    final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(new CanvasId(groupId, pId),
                                                                             new CanvasId(groupId, qId),
                                                                             0.0);
-                   if (pId.startsWith(parameters.patch.pTileIdPrefixForRun) &&
-                       qId.startsWith(parameters.patch.qTileIdPrefixForRun)) {
+                   if (pId.startsWith(patch.pTileIdPrefixForRun) &&
+                       qId.startsWith(patch.qTileIdPrefixForRun)) {
                        if (! unconnectedPairsForMFOV.remove(pair)) {
                            LOG.warn("updatePositionPairDataForZ: failed to locate existing pair {} in potential set",
                                     pair);
@@ -293,7 +292,7 @@ public class MFOVMontageMatchPatchClient {
         }
 
         LOG.info("updatePositionPairDataForZ: exit, found {} unconnected tile pairs within mFOV {} in z {}",
-                 unconnectedPairsForMFOV.size(), parameters.patch.multiFieldOfViewId, z);
+                 unconnectedPairsForMFOV.size(), patch.multiFieldOfViewId, z);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVMontageMatchPatchClient.class);

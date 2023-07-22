@@ -25,8 +25,8 @@ public class MFOVMontageMatchPatchClientTest {
                 "--xyNeighborFactor", "0.6", // for tiles completely within mFov
                 "--sameLayerDerivedMatchWeight", "0.15",
                 "--crossLayerDerivedMatchWeight", "0.1",
-                "--pTileId", "145_000010_001_20220618_040953.80.0",
-                "--qTileId", "145_000010_002_20220618_040953.80.0",
+//                "--pTileId", "145_000010_001_20220618_040953.80.0",
+//                "--qTileId", "145_000010_002_20220618_040953.80.0",
 
                 "--matchCollection", "c001_s145_v01_match",
                 "--matchStorageCollection", "c001_s145_v01_match_try3",
