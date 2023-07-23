@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.ConnectedTileClusterSummary;
+import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.match.TileIdsWithMatches;
@@ -86,10 +88,10 @@ public class ClusterCountClient {
 
     }
 
-    public void findConnectedClustersForStack(final StackWithZValues stackWithZValues,
-                                              final MatchCollectionId matchCollectionId,
-                                              final RenderDataClient renderDataClient,
-                                              final TileClusterParameters tileClusterParameters)
+    public ConnectedTileClusterSummaryForStack findConnectedClustersForStack(final StackWithZValues stackWithZValues,
+                                                                             final MatchCollectionId matchCollectionId,
+                                                                             final RenderDataClient renderDataClient,
+                                                                             final TileClusterParameters tileClusterParameters)
             throws Exception {
 
 
@@ -132,27 +134,30 @@ public class ClusterCountClient {
                  allClusters.size() == 1 ? "" : "s",
                  allClusters.getClusterSizes());
 
+        final ConnectedTileClusterSummaryForStack stackClusterSummary =
+                new ConnectedTileClusterSummaryForStack(stackId);
+
+        stackClusterSummary.setUnconnectedTileIdList(allUnconnectedTileIds);
+
         for (final Set<String> tileIdSet : allClusters.getSortedConnectedTileIdSets()) {
 
             final int tileCount = tileIdSet.size();
-            final String tileIdInfo;
+            final ConnectedTileClusterSummary tileSummary;
             if ((tileCount > 1) && (tileCount < 1_000_000)) {
                 final List<String> sortedTileIds = tileIdSet.stream().sorted().collect(Collectors.toList());
-                tileIdInfo = "with first tile " + sortedTileIds.get(0) +
-                             " and last tile " + sortedTileIds.get(tileCount - 1);
+                tileSummary = new ConnectedTileClusterSummary(tileCount,
+                                                              sortedTileIds.get(0),
+                                                              sortedTileIds.get(tileCount - 1));
             } else {
-                tileIdInfo = "including tile " + tileIdSet.stream().findAny().orElse(null);
+                tileSummary = new ConnectedTileClusterSummary(tileCount,
+                                                              tileIdSet.stream().findAny().orElse(null));
             }
-
-            LOG.info("findConnectedClusters: {} tile set {}", tileCount, tileIdInfo);
-
+            stackClusterSummary.addTileClusterSummary(tileSummary);
         }
 
-        LOG.info("findConnectedClusters: found {} completely unconnected tile{}: {}",
-                 allUnconnectedTileIds.size(),
-                 allUnconnectedTileIds.size() == 1 ? "" : "s",
-                 allUnconnectedTileIds.stream().sorted().collect(Collectors.toList()));
+        LOG.info("findConnectedClusters: {} ", stackClusterSummary.toDetailsString());
 
+        return stackClusterSummary;
     }
 
     private SortedConnectedCanvasIdClusters findConnectedClustersForSlab(final RenderDataClient renderDataClient,

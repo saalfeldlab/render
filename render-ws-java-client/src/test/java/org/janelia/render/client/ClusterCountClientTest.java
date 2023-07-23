@@ -21,7 +21,8 @@ public class ClusterCountClientTest {
                 "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
                 "--owner", "hess_wafer_53",
                 "--project", "cut_000_to_009",
-                "--stack", "c001_s145_v01",
+                "--stack", "c000_s095_v01",
+//                "c001_s145_v01",
 //                "--minZ", "1225", // 1226
 //                "--maxZ", "1241", // 1242
 //                "--matchCollection", "wafer_52_v2",
