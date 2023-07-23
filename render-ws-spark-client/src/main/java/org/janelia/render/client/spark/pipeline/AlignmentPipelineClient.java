@@ -146,7 +146,7 @@ public class AlignmentPipelineClient
 
             if (problemStackSummaryStrings.size() > 0) {
                 throw new IllegalStateException("The following " + problemStackSummaryStrings.size() +
-                                                " stacks have match connection issues: " +
+                                                " stacks have match connection issues:\n" +
                                                 String.join("\n", problemStackSummaryStrings));
             }
         }
