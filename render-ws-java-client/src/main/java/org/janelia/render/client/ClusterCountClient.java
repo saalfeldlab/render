@@ -65,7 +65,7 @@ public class ClusterCountClient {
 
     private final Parameters parameters;
 
-    private ClusterCountClient(final Parameters parameters) {
+    public ClusterCountClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 

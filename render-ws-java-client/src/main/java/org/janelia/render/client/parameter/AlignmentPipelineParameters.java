@@ -24,22 +24,30 @@ public class AlignmentPipelineParameters
     private final List<MatchRunParameters> matchRunList;
     private final MFOVMontageMatchPatchParameters mfovMontagePatch;
     private final UnconnectedCrossMFOVParameters unconnectedCrossMfov;
+    private final TileClusterParameters tileCluster;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
-        this(null, null, null, null, null);
+        this(null,
+             null,
+             null,
+             null,
+             null,
+             null);
     }
 
     public AlignmentPipelineParameters(final MultiProjectParameters multiProject,
                                        final MipmapParameters mipmap,
                                        final List<MatchRunParameters> matchRunList,
                                        final MFOVMontageMatchPatchParameters mfovMontagePatch,
-                                       final UnconnectedCrossMFOVParameters unconnectedCrossMfov) {
+                                       final UnconnectedCrossMFOVParameters unconnectedCrossMfov,
+                                       final TileClusterParameters tileCluster) {
         this.multiProject = multiProject;
         this.mipmap = mipmap;
         this.matchRunList = matchRunList;
         this.mfovMontagePatch = mfovMontagePatch;
         this.unconnectedCrossMfov = unconnectedCrossMfov;
+        this.tileCluster = tileCluster;
     }
 
     public MultiProjectParameters getMultiProject() {
@@ -76,6 +84,14 @@ public class AlignmentPipelineParameters
 
     public UnconnectedCrossMFOVParameters getUnconnectedCrossMfov() {
         return unconnectedCrossMfov;
+    }
+
+    public boolean hasTileClusterParameters() {
+        return (tileCluster != null);
+    }
+
+    public TileClusterParameters getTileCluster() {
+        return tileCluster;
     }
 
     @SuppressWarnings("unused")

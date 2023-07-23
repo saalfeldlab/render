@@ -50,4 +50,8 @@ public class ConnectedTileClusterSummaryForStack
         sb.append(unconnectedTileIdList);
         return sb.toString();
     }
+
+    public boolean hasMultipleClustersOrUnconnectedTiles() {
+        return (tileClusterSummaryList.size() > 1) || (unconnectedTileIdList.size() > 0);
+    }
 }

@@ -4,10 +4,12 @@ import com.beust.jcommander.Parameter;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
 import org.janelia.alignment.multisem.UnconnectedMFOVPairsForStack;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
@@ -15,6 +17,7 @@ import org.janelia.render.client.parameter.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.MipmapClient;
+import org.janelia.render.client.spark.match.ClusterCountClient;
 import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
 import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
 import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
@@ -123,6 +126,28 @@ public class AlignmentPipelineClient
                 throw new IllegalStateException(errorMessage);
             } else {
                 LOG.info("runWithContext: all MFOVs in all stacks are connected");
+            }
+        }
+
+        if (alignmentPipelineParameters.hasTileClusterParameters()) {
+            final ClusterCountClient.Parameters p =
+                    ClusterCountClient.Parameters.fromPipeline(alignmentPipelineParameters);
+            final ClusterCountClient clusterCountClient = new ClusterCountClient(p);
+
+            final List<ConnectedTileClusterSummaryForStack> summaryList =
+                    clusterCountClient.findConnectedClusters(sparkContext);
+
+            final List<String> problemStackSummaryStrings = new ArrayList<>();
+            for (final ConnectedTileClusterSummaryForStack stackSummary : summaryList) {
+                if (stackSummary.hasMultipleClustersOrUnconnectedTiles()) {
+                    problemStackSummaryStrings.add(stackSummary.toString());
+                }
+            }
+
+            if (problemStackSummaryStrings.size() > 0) {
+                throw new IllegalStateException("The following " + problemStackSummaryStrings.size() +
+                                                " stacks have match connection issues: " +
+                                                String.join("\n", problemStackSummaryStrings));
             }
         }
 

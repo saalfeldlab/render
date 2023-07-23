@@ -316,5 +316,11 @@
   },
   "unconnectedCrossMfov": {
     "minPairsForConnection": 6
+  },
+  "tileCluster": {
+    "maxSmallClusterSize" : 0,
+    "includeMatchesOutsideGroup" : true,
+    "maxLayersPerBatch" : 1000,
+    "maxOverlapLayers" : 6
   }
 }
