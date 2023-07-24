@@ -99,20 +99,36 @@ public class MFOVMontageMatchPatchClient
                            final MFOVMontageMatchPatchParameters patchParameters)
             throws IOException {
 
-        LOG.info("patchPairs: entry");
+        patchPairsForPass(sparkContext, patchParameters, 1);
+
+        if (patchParameters.secondPassDerivedMatchWeight != null) {
+            patchParameters.setWeightsForSecondPass();
+            patchPairsForPass(sparkContext, patchParameters, 2);
+        }
+
+    }
+
+    public void patchPairsForPass(final JavaSparkContext sparkContext,
+                                  final MFOVMontageMatchPatchParameters patchParameters,
+                                  final int passNumber)
+            throws IOException {
+
+        final String passName = "pass" + passNumber;
+
+        LOG.info("patchPairsForPass: entry, {}", passName);
 
         final MultiProjectParameters multiProject = parameters.multiProject;
         final String baseDataUrl = multiProject.getBaseDataUrl();
         final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
                 multiProject.buildListOfStackMFOVWithAllZ(patchParameters.getMultiFieldOfViewId());
 
-        LOG.info("patchPairs: distributing tasks for {} MFOVs", stackMFOVWithZValuesList.size());
+        LOG.info("patchPairsForPass: {}, distributing tasks for {} MFOVs", passName, stackMFOVWithZValuesList.size());
 
         final JavaRDD<StackMFOVWithZValues> rddStackMFOVWithZValues = sparkContext.parallelize(stackMFOVWithZValuesList);
 
         final Function<StackMFOVWithZValues, Void> patchFunction = stackMOFVWithZ -> {
 
-            LogUtilities.setupExecutorLog4j("MFOV:" + stackMOFVWithZ.getmFOVId());
+            LogUtilities.setupExecutorLog4j("MFOV:" + stackMOFVWithZ.getmFOVId() + ":" + passName);
 
             final org.janelia.render.client.multisem.MFOVMontageMatchPatchClient.Parameters javaPatchClientParameters =
                     new org.janelia.render.client.multisem.MFOVMontageMatchPatchClient.Parameters();
@@ -139,8 +155,8 @@ public class MFOVMontageMatchPatchClient
         final JavaRDD<Void> rddPatch = rddStackMFOVWithZValues.map(patchFunction);
         rddPatch.collect();
 
-        LOG.info("patchPairs: collected rddPatch");
-        LOG.info("patchPairs: exit");
+        LOG.info("patchPairsForPass: {}, collected rddPatch", passName);
+        LOG.info("patchPairsForPass: {}, exit", passName);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVMontageMatchPatchClient.class);

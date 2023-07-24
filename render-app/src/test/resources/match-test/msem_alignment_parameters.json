@@ -312,6 +312,7 @@
   "mfovMontagePatch": {
     "sameLayerDerivedMatchWeight" : 0.15,
     "crossLayerDerivedMatchWeight" : 0.1,
+    "secondPassDerivedMatchWeight" : 0.05,
     "xyNeighborFactor" : 0.6
   },
   "unconnectedCrossMfov": {

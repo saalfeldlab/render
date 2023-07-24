@@ -45,6 +45,13 @@ public class MFOVMontageMatchPatchParameters
     public Double crossLayerDerivedMatchWeight;
 
     @Parameter(
+            names = "--secondPassDerivedMatchWeight",
+            description = "Weight for all matches derived after first pass same and cross layer derivation.  " +
+                          "Omit to skip second pass derivation.  " +
+                          "Only valid for spark jobs (ignored for java client jobs).")
+    public Double secondPassDerivedMatchWeight;
+
+    @Parameter(
             names = "--xyNeighborFactor",
             description = "Multiply this by max(width, height) of each tile to determine radius for locating neighbor tiles",
             required = true
@@ -94,6 +101,11 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.matchStorageFile = this.matchStorageFile;
         clonedParameters.validateAndSetupDerivedValues(); // make sure values derived from multiFieldOfViewId are rebuilt
         return clonedParameters;
+    }
+
+    public void setWeightsForSecondPass() {
+        this.sameLayerDerivedMatchWeight = this.secondPassDerivedMatchWeight;
+        this.crossLayerDerivedMatchWeight = this.secondPassDerivedMatchWeight;
     }
 
     // 001_000006_019_20220407_115555.1247.0 => 001_000006_019
