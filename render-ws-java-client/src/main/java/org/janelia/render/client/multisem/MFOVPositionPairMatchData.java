@@ -134,10 +134,15 @@ public class MFOVPositionPairMatchData
 
             // then patch any remaining unconnected pairs with cross layer data
             if (unconnectedPairsForPosition.size() > unconnectedPairsWithSameLayerSubstitute.size()) {
-                deriveMatchesUsingDataFromOtherLayers(matchClient,
-                                                      crossLayerDerivedMatchWeight,
-                                                      derivedMatchesList,
-                                                      unconnectedPairsWithSameLayerSubstitute);
+                if (allPairsForPosition.size() <= unconnectedPairsForPosition.size()) {
+                    LOG.warn("because {} out of {} pairs for position {} are unconnected, cross layer derivation cannot be done",
+                             unconnectedPairsForPosition.size(), allPairsForPosition.size(), positionPair);
+                } else {
+                    deriveMatchesUsingDataFromOtherLayers(matchClient,
+                                                          crossLayerDerivedMatchWeight,
+                                                          derivedMatchesList,
+                                                          unconnectedPairsWithSameLayerSubstitute);
+                }
             }
         } else {
             LOG.info("all pairs for {} are connected, nothing to derive", this);
