@@ -119,29 +119,28 @@ public class MFOVPositionPairMatchData
 
         final List<CanvasMatches> derivedMatchesList = new ArrayList<>();
 
-        if ((unconnectedPairsForPosition.size() == 0) ||
-            (allPairsForPosition.size() <= unconnectedPairsForPosition.size())) {
-            LOG.warn("nothing to derive for " + this);
-            return derivedMatchesList;
-        }
+        if (unconnectedPairsForPosition.size() > 0) {
 
-        // if same layer matching is requested, first try to patch with same layer matches
-        final Set<OrderedCanvasIdPair> unconnectedPairsWithSameLayerSubstitute;
-        if (sameLayerDerivedMatchWeight != null) {
-            unconnectedPairsWithSameLayerSubstitute =
-                    deriveMatchesUsingDataFromSameLayer(matchClient,
-                                                        sameLayerDerivedMatchWeight,
-                                                        derivedMatchesList);
+            // if same layer matching is requested, first try to patch with same layer matches
+            final Set<OrderedCanvasIdPair> unconnectedPairsWithSameLayerSubstitute;
+            if (sameLayerDerivedMatchWeight != null) {
+                unconnectedPairsWithSameLayerSubstitute =
+                        deriveMatchesUsingDataFromSameLayer(matchClient,
+                                                            sameLayerDerivedMatchWeight,
+                                                            derivedMatchesList);
+            } else {
+                unconnectedPairsWithSameLayerSubstitute = new HashSet<>();
+            }
+
+            // then patch any remaining unconnected pairs with cross layer data
+            if (unconnectedPairsForPosition.size() > unconnectedPairsWithSameLayerSubstitute.size()) {
+                deriveMatchesUsingDataFromOtherLayers(matchClient,
+                                                      crossLayerDerivedMatchWeight,
+                                                      derivedMatchesList,
+                                                      unconnectedPairsWithSameLayerSubstitute);
+            }
         } else {
-            unconnectedPairsWithSameLayerSubstitute = new HashSet<>();
-        }
-
-        // then patch any remaining unconnected pairs with cross layer data
-        if (unconnectedPairsForPosition.size() > unconnectedPairsWithSameLayerSubstitute.size()) {
-            deriveMatchesUsingDataFromOtherLayers(matchClient,
-                                                  crossLayerDerivedMatchWeight,
-                                                  derivedMatchesList,
-                                                  unconnectedPairsWithSameLayerSubstitute);
+            LOG.info("all pairs for {} are connected, nothing to derive", this);
         }
 
         LOG.info("deriveMatchesForUnconnectedPairs: exit, returning matches for {}", this);

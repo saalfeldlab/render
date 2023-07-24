@@ -207,7 +207,8 @@ public class MFOVMontageMatchPatchClient {
                                            final RenderDataClient matchClient)
             throws IOException {
 
-        LOG.info("updatePositionPairDataForZ: entry, stack={}, z={}", stack, z);
+        LOG.info("updatePositionPairDataForZ: entry, stack={}, z={}, sectionIds={}, pTileIdPrefixForRun={}, qTileIdPrefixForRun={}",
+                 stack, z, sectionIds, patch.pTileIdPrefixForRun, patch.qTileIdPrefixForRun);
 
         final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
 
@@ -288,7 +289,15 @@ public class MFOVMontageMatchPatchClient {
             final String indexPairName = Utilities.getSFOVIndexPairName(p.getGroupId(),
                                                                         p.getId(),
                                                                         unconnectedPair.getQ().getId());
-            positionPairMatchData.addSameLayerPair(sameLayerPairsFromOtherMFOVs.get(indexPairName));
+            final OrderedCanvasIdPair sameLayerPair = sameLayerPairsFromOtherMFOVs.get(indexPairName);
+            if (sameLayerPair == null) {
+                LOG.info("updatePositionPairDataForZ: no same layer pair found for unconnected pair {}",
+                         unconnectedPair);
+            } else {
+                LOG.info("updatePositionPairDataForZ: using same layer pair {} for unconnected pair {}",
+                         sameLayerPair, unconnectedPair);
+                positionPairMatchData.addSameLayerPair(sameLayerPair);
+            }
         }
 
         LOG.info("updatePositionPairDataForZ: exit, found {} unconnected tile pairs within mFOV {} in z {}",
