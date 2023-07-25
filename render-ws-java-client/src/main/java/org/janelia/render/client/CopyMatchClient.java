@@ -1,6 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.util.ArrayList;
@@ -9,11 +8,12 @@ import java.util.List;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchAggregator;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.render.client.CopyMatchClient.Parameters.MatchAggregationScope.SAME_GROUP_ID_ONLY;
+import static org.janelia.render.client.parameter.MatchCopyParameters.MatchAggregationScope.SAME_GROUP_ID_ONLY;
 
 /**
  * Java client for copying matches from one collection to another.
@@ -24,73 +24,12 @@ public class CopyMatchClient {
 
     public static class Parameters extends CommandLineParameters {
 
-        public enum MatchAggregationScope {
-            ALL_GROUP_IDS, SAME_GROUP_ID_ONLY, DIFFERENT_GROUP_IDS_ONLY
-        }
 
         @ParametersDelegate
         MatchWebServiceParameters matchClient = new MatchWebServiceParameters();
 
-        @Parameter(
-                names = "--toOwner",
-                description = "Name of target collection owner (default is same as source stack owner)"
-        )
-        public String toOwner;
-
-        @Parameter(
-                names = "--toCollection",
-                description = "Name of target collection",
-                required = true)
-        public String toCollection;
-
-        @Parameter(
-                names = "--pGroupId",
-                description = "pGroupId to be copied (omit to copy all groups)",
-                variableArity = true)
-        public List<String> pGroupIds;
-
-        @Parameter(
-                names = "--removeExisting",
-                description = "Remove any existing target matches with the specified pGroupId (default is to keep them)",
-                arity = 0)
-        public boolean removeExisting = false;
-
-        @Parameter(
-                names = "--maxMatchesPerPair",
-                description = "If match count is greater than this number, " +
-                              "reduce them with filtering (omit to copy all matches)")
-        public Integer maxMatchesPerPair;
-
-        @Parameter(
-                names = "--matchAggregationRadius",
-                description = "Pixel radius for match filtering")
-        public Double matchAggregationRadius;
-
-        @Parameter(
-                names = "--matchAggregationScope",
-                description = "Identifies which match pairs to aggregate")
-        public MatchAggregationScope matchAggregationScope = MatchAggregationScope.ALL_GROUP_IDS;
-
-        String getToOwner() {
-            if (toOwner == null) {
-                toOwner = matchClient.owner;
-            }
-            return toOwner;
-        }
-
-        boolean isAggregationRequested() {
-            return (maxMatchesPerPair != null) && (matchAggregationRadius != null);
-        }
-
-        void validate() {
-            if (maxMatchesPerPair != null) {
-                if (matchAggregationRadius == null) {
-                    throw new IllegalArgumentException("--matchFilterRadius must be specified when --maxMatchesPerPair is specified");
-                }
-            } else if (matchAggregationRadius != null) {
-                throw new IllegalArgumentException("--maxMatchesPerPair must be specified when --matchFilterRadius is specified");
-            }
-        }
+        @ParametersDelegate
+        public MatchCopyParameters matchCopy = new MatchCopyParameters();
     }
 
     public static void main(final String[] args) {
@@ -100,83 +39,82 @@ public class CopyMatchClient {
 
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-                parameters.validate();
+                parameters.matchCopy.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final CopyMatchClient client = new CopyMatchClient(parameters);
-                client.copyMatches();
+                final CopyMatchClient client = new CopyMatchClient();
+                client.copyMatches(parameters);
             }
         };
         clientRunner.run();
     }
 
-    private final Parameters parameters;
-    private final RenderDataClient fromDataClient;
-    private final RenderDataClient toDataClient;
-    private final List<String> pGroupIds;
-
-    private CopyMatchClient(final Parameters parameters) throws Exception {
-
-        this.parameters = parameters;
-
-        this.fromDataClient = new RenderDataClient(parameters.matchClient.baseDataUrl,
-                                                   parameters.matchClient.owner,
-                                                   parameters.matchClient.collection);
-
-        this.toDataClient = new RenderDataClient(parameters.matchClient.baseDataUrl,
-                                                 parameters.getToOwner(),
-                                                 parameters.toCollection);
-
-        if ((parameters.pGroupIds == null) || (parameters.pGroupIds.size() == 0)) {
-            this.pGroupIds = fromDataClient.getMatchPGroupIds();
-        } else {
-            this.pGroupIds = parameters.pGroupIds;
-        }
-
+    public CopyMatchClient() {
     }
 
-    private void copyMatches()
+    private void copyMatches(final Parameters parameters)
             throws Exception {
+
+        final RenderDataClient sourceMatchClient = parameters.matchClient.getDataClient();
+        final RenderDataClient targetMatchClient = parameters.matchCopy.buildTargetMatchClient(sourceMatchClient);
+        final List<String> pGroupIds;
+        if ((parameters.matchCopy.pGroupIds == null) || (parameters.matchCopy.pGroupIds.size() == 0)) {
+            pGroupIds = sourceMatchClient.getMatchPGroupIds();
+        } else {
+            pGroupIds = parameters.matchCopy.pGroupIds;
+        }
+
         for (final String pGroupId : pGroupIds) {
-            copyMatches(pGroupId);
+            copyMatches(sourceMatchClient, targetMatchClient, pGroupId, parameters.matchCopy);
         }
     }
 
-    private void copyMatches(final String pGroupId) throws Exception {
+    public static void copyMatches(final RenderDataClient sourceMatchClient,
+                                   final RenderDataClient targetMatchClient,
+                                   final String pGroupId,
+                                   final MatchCopyParameters matchCopy) throws Exception {
 
-        List<CanvasMatches> sourceMatches =
-                fromDataClient.getMatchesWithPGroupId(pGroupId, false);
+        final List<CanvasMatches> groupMatches =
+                sourceMatchClient.getMatchesWithPGroupId(pGroupId, false);
 
-        if (sourceMatches.size() > 0) {
+        if (groupMatches.size() > 0) {
 
-            if (parameters.removeExisting) {
-                toDataClient.deleteMatchesWithPGroupId(pGroupId);
+            if (matchCopy.removeExisting) {
+                targetMatchClient.deleteMatchesWithPGroupId(pGroupId);
             }
 
-            if (parameters.isAggregationRequested()) {
-                sourceMatches = aggregateMatches(sourceMatches);
+            if (matchCopy.isAggregationRequested()) {
+                final long originalMatchCount = countMatches(groupMatches);
+                aggregateMatches(groupMatches, matchCopy);
+                final long postAggregationMatchCount = countMatches(groupMatches);
+
+                LOG.info("copyMatches: {} phase, {} match points were aggregated down to {} match points for group {}",
+                         matchCopy.matchCopyPhaseName, originalMatchCount, postAggregationMatchCount, pGroupId);
             }
 
-            toDataClient.saveMatches(sourceMatches);
+            targetMatchClient.saveMatches(groupMatches);
 
         } else {
-            LOG.info("no matches found for pGroupId {} in {}", pGroupId, parameters.matchClient.collection);
+            LOG.info("copyMatches: {} phase, no matches found for pGroupId {} in {}",
+                     matchCopy.matchCopyPhaseName, pGroupId, sourceMatchClient.getProject());
         }
     }
 
-    private List<CanvasMatches> aggregateMatches(List<CanvasMatches> sourceMatches) {
+    private static void aggregateMatches(List<CanvasMatches> groupMatches,
+                                         final MatchCopyParameters matchCopy) {
+
         final List<CanvasMatches> matchesToKeepAsIs;
         final List<CanvasMatches> matchesToAggregate;
 
-        switch (parameters.matchAggregationScope) {
+        switch (matchCopy.matchAggregationScope) {
             case SAME_GROUP_ID_ONLY:
             case DIFFERENT_GROUP_IDS_ONLY:
-                matchesToKeepAsIs = new ArrayList<>(sourceMatches.size());
-                matchesToAggregate = new ArrayList<>(sourceMatches.size());
-                final boolean aggregateSameGroups = parameters.matchAggregationScope.equals(SAME_GROUP_ID_ONLY);
+                matchesToKeepAsIs = new ArrayList<>(groupMatches.size());
+                matchesToAggregate = new ArrayList<>(groupMatches.size());
+                final boolean aggregateSameGroups = matchCopy.matchAggregationScope.equals(SAME_GROUP_ID_ONLY);
 
-                for (final CanvasMatches pair : sourceMatches) {
+                for (final CanvasMatches pair : groupMatches) {
                     if (pair.getpGroupId().equals(pair.getqGroupId())) { // pair has same group id
                         if (aggregateSameGroups) {
                             matchesToAggregate.add(pair);
@@ -195,18 +133,26 @@ public class CopyMatchClient {
 
             default:
                 matchesToKeepAsIs = new ArrayList<>();
-                matchesToAggregate = sourceMatches;
+                matchesToAggregate = groupMatches;
                 break;
         }
 
         MatchAggregator.aggregateWithinRadius(matchesToAggregate,
-                                              parameters.maxMatchesPerPair,
-                                              parameters.matchAggregationRadius);
+                                              matchCopy.maxMatchesPerPair,
+                                              matchCopy.matchAggregationRadius);
 
-        sourceMatches = matchesToAggregate;
-        sourceMatches.addAll(matchesToKeepAsIs);
+        groupMatches = matchesToAggregate;
 
-        return sourceMatches;
+        // add non-aggregated matches back into list if only a subset of pairs was aggregated
+        groupMatches.addAll(matchesToKeepAsIs);
+    }
+
+    public static long countMatches(final List<CanvasMatches> canvasMatchesList) {
+        long count = 0;
+        for (final CanvasMatches canvasMatches : canvasMatchesList) {
+            count = count + canvasMatches.getMatchCount();
+        }
+        return count;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CopyMatchClient.class);

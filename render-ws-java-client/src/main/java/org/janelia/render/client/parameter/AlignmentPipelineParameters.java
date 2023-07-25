@@ -25,10 +25,12 @@ public class AlignmentPipelineParameters
     private final MFOVMontageMatchPatchParameters mfovMontagePatch;
     private final UnconnectedCrossMFOVParameters unconnectedCrossMfov;
     private final TileClusterParameters tileCluster;
+    private final List<MatchCopyParameters> matchCopyList;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -41,13 +43,15 @@ public class AlignmentPipelineParameters
                                        final List<MatchRunParameters> matchRunList,
                                        final MFOVMontageMatchPatchParameters mfovMontagePatch,
                                        final UnconnectedCrossMFOVParameters unconnectedCrossMfov,
-                                       final TileClusterParameters tileCluster) {
+                                       final TileClusterParameters tileCluster,
+                                       final List<MatchCopyParameters> matchCopyList) {
         this.multiProject = multiProject;
         this.mipmap = mipmap;
         this.matchRunList = matchRunList;
         this.mfovMontagePatch = mfovMontagePatch;
         this.unconnectedCrossMfov = unconnectedCrossMfov;
         this.tileCluster = tileCluster;
+        this.matchCopyList = matchCopyList;
     }
 
     public MultiProjectParameters getMultiProject() {
@@ -92,6 +96,14 @@ public class AlignmentPipelineParameters
 
     public TileClusterParameters getTileCluster() {
         return tileCluster;
+    }
+
+    public boolean hasMatchCopyParameters() {
+        return (matchCopyList != null) && (matchCopyList.size() > 0);
+    }
+
+    public List<MatchCopyParameters> getMatchCopyList() {
+        return matchCopyList;
     }
 
     @SuppressWarnings("unused")

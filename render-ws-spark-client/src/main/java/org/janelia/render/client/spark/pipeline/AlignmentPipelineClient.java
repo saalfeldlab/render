@@ -15,9 +15,11 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.MipmapClient;
 import org.janelia.render.client.spark.match.ClusterCountClient;
+import org.janelia.render.client.spark.match.CopyMatchClient;
 import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
 import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
 import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
@@ -148,6 +150,16 @@ public class AlignmentPipelineClient
                 throw new IllegalStateException("The following " + problemStackSummaryStrings.size() +
                                                 " stacks have match connection issues:\n" +
                                                 String.join("\n", problemStackSummaryStrings));
+            }
+        }
+
+        if (alignmentPipelineParameters.hasMatchCopyParameters()) {
+            for (final MatchCopyParameters matchCopy : alignmentPipelineParameters.getMatchCopyList()) {
+                final CopyMatchClient.Parameters p =
+                        new CopyMatchClient.Parameters(alignmentPipelineParameters.getMultiProject(),
+                                                       matchCopy);
+                final CopyMatchClient copyMatchClient = new CopyMatchClient(p);
+                copyMatchClient.copyMatches(sparkContext);
             }
         }
 

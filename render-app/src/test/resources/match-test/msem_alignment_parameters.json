@@ -323,5 +323,23 @@
     "includeMatchesOutsideGroup" : true,
     "maxLayersPerBatch" : 1000,
     "maxOverlapLayers" : 6
-  }
+  },
+  "matchCopyList": [
+    {
+      "matchCopyPhaseName": "sameLayerAggregation",
+      "toCollectionSuffix": "_agg",
+      "removeExisting" : false,
+      "maxMatchesPerPair" : 49,
+      "matchAggregationRadius" : 100.0,
+      "matchAggregationScope" : "SAME_GROUP_ID_ONLY"
+    },
+    {
+      "matchCopyPhaseName": "crossLayerAggregation",
+      "toCollectionSuffix": "_agg",
+      "removeExisting" : false,
+      "maxMatchesPerPair" : 99,
+      "matchAggregationRadius" : 100.0,
+      "matchAggregationScope" : "DIFFERENT_GROUP_IDS_ONLY"
+    }
+  ]
 }
