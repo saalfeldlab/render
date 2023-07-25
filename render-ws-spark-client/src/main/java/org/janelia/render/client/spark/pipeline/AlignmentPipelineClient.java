@@ -15,7 +15,6 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.MipmapClient;
 import org.janelia.render.client.spark.match.ClusterCountClient;
@@ -154,13 +153,11 @@ public class AlignmentPipelineClient
         }
 
         if (alignmentPipelineParameters.hasMatchCopyParameters()) {
-            for (final MatchCopyParameters matchCopy : alignmentPipelineParameters.getMatchCopyList()) {
-                final CopyMatchClient.Parameters p =
-                        new CopyMatchClient.Parameters(alignmentPipelineParameters.getMultiProject(),
-                                                       matchCopy);
-                final CopyMatchClient copyMatchClient = new CopyMatchClient(p);
-                copyMatchClient.copyMatches(sparkContext);
-            }
+            final CopyMatchClient.Parameters p =
+                    new CopyMatchClient.Parameters(alignmentPipelineParameters.getMultiProject(),
+                                                   alignmentPipelineParameters.getMatchCopy());
+            final CopyMatchClient copyMatchClient = new CopyMatchClient(p);
+            copyMatchClient.copyMatches(sparkContext);
         }
 
         LOG.info("runWithContext: exit");

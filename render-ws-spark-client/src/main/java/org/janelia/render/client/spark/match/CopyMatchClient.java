@@ -90,7 +90,7 @@ public class CopyMatchClient
     public void copyMatches(final JavaSparkContext sparkContext)
             throws IOException {
 
-        LOG.info("copyMatches: phase {}, entry", parameters.matchCopy.matchCopyPhaseName);
+        LOG.info("copyMatches: entry");
 
         final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
         final String baseDataUrl = renderDataClient.getBaseDataUrl();
@@ -134,8 +134,8 @@ public class CopyMatchClient
         final JavaRDD<Void> rddCopyMatches = rddStackWithZValues.map(copyMatchFunction);
         rddCopyMatches.collect();
 
-        LOG.info("copyMatches: phase {}, collected rddPatch", parameters.matchCopy.matchCopyPhaseName);
-        LOG.info("copyMatches: phase {}, exit", parameters.matchCopy.matchCopyPhaseName);
+        LOG.info("copyMatches: collected rddPatch");
+        LOG.info("copyMatches: exit");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CopyMatchClient.class);

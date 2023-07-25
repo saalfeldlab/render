@@ -17,16 +17,6 @@ import org.janelia.render.client.RenderDataClient;
 public class MatchCopyParameters
         implements Serializable {
 
-    public enum MatchAggregationScope {
-        ALL_GROUP_IDS, SAME_GROUP_ID_ONLY, DIFFERENT_GROUP_IDS_ONLY
-    }
-
-    @Parameter(
-            names = "--matchCopyPhaseName",
-            description = "Name for this phase within a multi-phase copy process (use default name for simple copies)"
-    )
-    public String matchCopyPhaseName = "primary";
-
     @Parameter(
             names = "--toOwner",
             description = "Name of target collection owner (default is same as source collection owner)"
@@ -57,26 +47,40 @@ public class MatchCopyParameters
     public boolean removeExisting = false;
 
     @Parameter(
-            names = "--maxMatchesPerPair",
-            description = "If match count is greater than this number, " +
+            names = "--maxMatchesPerPairSame",
+            description = "If same layer match count is greater than this number, " +
                           "reduce them with filtering (omit to copy all matches)")
-    public Integer maxMatchesPerPair;
+    public Integer maxMatchesPerPairSame;
 
     @Parameter(
-            names = "--matchAggregationRadius",
-            description = "Pixel radius for match filtering")
-    public Double matchAggregationRadius;
+            names = "--matchAggregationRadiusSame",
+            description = "Pixel radius for same layer match filtering")
+    public Double matchAggregationRadiusSame;
 
     @Parameter(
-            names = "--matchAggregationScope",
-            description = "Identifies which match pairs to aggregate")
-    public MatchAggregationScope matchAggregationScope = MatchAggregationScope.ALL_GROUP_IDS;
+            names = "--maxMatchesPerPairCross",
+            description = "If cross layer match count is greater than this number, " +
+                          "reduce them with filtering (omit to copy all matches)")
+    public Integer maxMatchesPerPairCross;
+
+    @Parameter(
+            names = "--matchAggregationRadiusCross",
+            description = "Pixel radius for cross layer match filtering")
+    public Double matchAggregationRadiusCross;
 
     public MatchCopyParameters() {
     }
 
+    public boolean isSameLayerAggregationRequested() {
+        return (maxMatchesPerPairSame != null) && (matchAggregationRadiusSame != null);
+    }
+
+    public boolean isCrossLayerAggregationRequested() {
+        return (maxMatchesPerPairCross != null) && (matchAggregationRadiusCross != null);
+    }
+
     public boolean isAggregationRequested() {
-        return (maxMatchesPerPair != null) && (matchAggregationRadius != null);
+        return isSameLayerAggregationRequested() || isCrossLayerAggregationRequested();
     }
 
     public void validate()
@@ -86,12 +90,20 @@ public class MatchCopyParameters
             throw new IllegalArgumentException("specify --toCollection or --toCollectionSuffix but not both");
         }
 
-        if (maxMatchesPerPair != null) {
-            if (matchAggregationRadius == null) {
-                throw new IllegalArgumentException("--matchFilterRadius must be specified when --maxMatchesPerPair is specified");
+        if (maxMatchesPerPairSame != null) {
+            if (matchAggregationRadiusSame == null) {
+                throw new IllegalArgumentException("--matchAggregationRadiusSame must be specified when --maxMatchesPerPairSame is specified");
             }
-        } else if (matchAggregationRadius != null) {
-            throw new IllegalArgumentException("--maxMatchesPerPair must be specified when --matchFilterRadius is specified");
+        } else if (matchAggregationRadiusSame != null) {
+            throw new IllegalArgumentException("--maxMatchesPerPairSame must be specified when --matchAggregationRadiusSame is specified");
+        }
+
+        if (maxMatchesPerPairCross != null) {
+            if (matchAggregationRadiusCross == null) {
+                throw new IllegalArgumentException("--matchAggregationRadiusCross must be specified when --maxMatchesPerPairCross is specified");
+            }
+        } else if (matchAggregationRadiusCross != null) {
+            throw new IllegalArgumentException("--maxMatchesPerPairCross must be specified when --matchAggregationRadiusCross is specified");
         }
 
         if ((toCollection == null) && (toCollectionSuffix == null) && (! isAggregationRequested())) {

@@ -13,8 +13,6 @@ import org.janelia.render.client.parameter.MatchWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.render.client.parameter.MatchCopyParameters.MatchAggregationScope.SAME_GROUP_ID_ONLY;
-
 /**
  * Java client for copying matches from one collection to another.
  *
@@ -89,62 +87,43 @@ public class CopyMatchClient {
                 aggregateMatches(groupMatches, matchCopy);
                 final long postAggregationMatchCount = countMatches(groupMatches);
 
-                LOG.info("copyMatches: {} phase, {} match points were aggregated down to {} match points for group {}",
-                         matchCopy.matchCopyPhaseName, originalMatchCount, postAggregationMatchCount, pGroupId);
+                LOG.info("copyMatches: {} match points were aggregated down to {} match points for group {}",
+                         originalMatchCount, postAggregationMatchCount, pGroupId);
             }
 
             targetMatchClient.saveMatches(groupMatches);
 
         } else {
-            LOG.info("copyMatches: {} phase, no matches found for pGroupId {} in {}",
-                     matchCopy.matchCopyPhaseName, pGroupId, sourceMatchClient.getProject());
+            LOG.info("copyMatches: no matches found for pGroupId {} in {}",
+                     pGroupId, sourceMatchClient.getProject());
         }
     }
 
-    private static void aggregateMatches(List<CanvasMatches> groupMatches,
+    private static void aggregateMatches(final List<CanvasMatches> groupMatches,
                                          final MatchCopyParameters matchCopy) {
 
-        final List<CanvasMatches> matchesToKeepAsIs;
-        final List<CanvasMatches> matchesToAggregate;
-
-        switch (matchCopy.matchAggregationScope) {
-            case SAME_GROUP_ID_ONLY:
-            case DIFFERENT_GROUP_IDS_ONLY:
-                matchesToKeepAsIs = new ArrayList<>(groupMatches.size());
-                matchesToAggregate = new ArrayList<>(groupMatches.size());
-                final boolean aggregateSameGroups = matchCopy.matchAggregationScope.equals(SAME_GROUP_ID_ONLY);
-
-                for (final CanvasMatches pair : groupMatches) {
-                    if (pair.getpGroupId().equals(pair.getqGroupId())) { // pair has same group id
-                        if (aggregateSameGroups) {
-                            matchesToAggregate.add(pair);
-                        } else {
-                            matchesToKeepAsIs.add(pair);
-                        }
-                    } else { // pair has different group id
-                        if (aggregateSameGroups) {
-                            matchesToKeepAsIs.add(pair);
-                        } else {
-                            matchesToAggregate.add(pair);
-                        }
-                    }
-                }
-                break;
-
-            default:
-                matchesToKeepAsIs = new ArrayList<>();
-                matchesToAggregate = groupMatches;
-                break;
+        final List<CanvasMatches> sameLayerMatches = new ArrayList<>(groupMatches.size());
+        final List<CanvasMatches> crossLayerMatches = new ArrayList<>(groupMatches.size());
+        
+        for (final CanvasMatches pair : groupMatches) {
+            if (pair.getpGroupId().equals(pair.getqGroupId())) { // pair has same group id
+                sameLayerMatches.add(pair);
+            } else {
+                crossLayerMatches.add(pair);
+            }
         }
 
-        MatchAggregator.aggregateWithinRadius(matchesToAggregate,
-                                              matchCopy.maxMatchesPerPair,
-                                              matchCopy.matchAggregationRadius);
+        if (matchCopy.isSameLayerAggregationRequested()) {
+            MatchAggregator.aggregateWithinRadius(sameLayerMatches,
+                                                  matchCopy.maxMatchesPerPairSame,
+                                                  matchCopy.matchAggregationRadiusSame);
+        }
 
-        groupMatches = matchesToAggregate;
-
-        // add non-aggregated matches back into list if only a subset of pairs was aggregated
-        groupMatches.addAll(matchesToKeepAsIs);
+        if (matchCopy.isCrossLayerAggregationRequested()) {
+            MatchAggregator.aggregateWithinRadius(crossLayerMatches,
+                                                  matchCopy.maxMatchesPerPairCross,
+                                                  matchCopy.matchAggregationRadiusCross);
+        }
     }
 
     public static long countMatches(final List<CanvasMatches> canvasMatchesList) {
