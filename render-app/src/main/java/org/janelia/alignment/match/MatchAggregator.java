@@ -116,14 +116,9 @@ public class MatchAggregator {
                 // then aggregate radius search point groups into single points
                 final List<RealPoint> originalQList = originalMatches.getQList();
                 for (final RadiusNeighborSearchOnKDTree<IntType> radius : radiusSearchResultList) {
-
-                    // TODO: update this to properly aggregate values rather than just using first value
-                    RealPoint aggregatedPPoint = null;
-                    RealPoint aggregatedQPoint = null;
-                    double aggregatedWeight = 0.0;
-
-                    double[] avgPosP = new double[ 2 ];
-                    double sumWeightsP = 0;
+                    final double[] avgPosP = new double[ 2 ];
+                    final double[] avgPosQ = new double[ 2 ];
+                    double sumWeights = 0;
 
                     for (int i = 0; i < radius.numNeighbors(); i++) {
                         matchIndex = radius.getSampler(i).get().get();
@@ -132,26 +127,20 @@ public class MatchAggregator {
                         
                         avgPosP[ 0 ] += pPoint.getDoublePosition( 0 ) * originalWs[ matchIndex ];
                         avgPosP[ 1 ] += pPoint.getDoublePosition( 1 ) * originalWs[ matchIndex ];
-                        sumWeightsP += originalWs[ matchIndex ];
-
-                        /*
-                        if (i == 0) {
-                            aggregatedPPoint = pPoint;
-                            aggregatedQPoint = qPoint;
-                            aggregatedWeight = originalWs[matchIndex];
-                            
-                        } else {
-                            break; // TODO: remove this hack
-                        }*/
+                        avgPosQ[ 0 ] += qPoint.getDoublePosition( 0 ) * originalWs[ matchIndex ];
+                        avgPosQ[ 1 ] += qPoint.getDoublePosition( 1 ) * originalWs[ matchIndex ];
+                        sumWeights += originalWs[ matchIndex ];
                     }
 
-                    avgPosP[ 0 ] /= sumWeightsP;
-                    avgPosP[ 1 ] /= sumWeightsP;
-                    double newWeightP = sumWeightsP / radius.numNeighbors();
+                    avgPosP[ 0 ] /= sumWeights;
+                    avgPosP[ 1 ] /= sumWeights;
+                    avgPosQ[ 0 ] /= sumWeights;
+                    avgPosQ[ 1 ] /= sumWeights;
+                    final double aggregatedWeight = sumWeights / radius.numNeighbors();
 
                     for (int d = 0; d < 2; d++) {
-                        aggregatedPs[d][aggregatedMatchIndex] = aggregatedPPoint.getDoublePosition(d);
-                        aggregatedQs[d][aggregatedMatchIndex] = aggregatedQPoint.getDoublePosition(d);
+                        aggregatedPs[d][aggregatedMatchIndex] = avgPosP[d];
+                        aggregatedQs[d][aggregatedMatchIndex] = avgPosQ[d];
                     }
                     aggregatedWs[aggregatedMatchIndex] = aggregatedWeight;
                     aggregatedMatchIndex++;
