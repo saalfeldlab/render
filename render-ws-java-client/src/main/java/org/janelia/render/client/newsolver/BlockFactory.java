@@ -1,5 +1,6 @@
 package org.janelia.render.client.newsolver;
 
-public abstract class BlockFactory {
-
+public abstract class BlockFactory
+{
+	public abstract BlockData defineSolveSet();
 }
