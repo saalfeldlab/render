@@ -4,10 +4,8 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.function.Function;
 
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.blockfactories.ZBlock;
-import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMSolveParameters;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.solver.DistributedSolveParameters;
 import org.janelia.render.client.solver.RunParameters;
 
@@ -15,7 +13,7 @@ import mpicbg.models.Affine2D;
 
 public class DistributedSolver
 {
-	public static void main( String[] args ) throws IOException
+	public static void main( final String[] args ) throws IOException
 	{
         final DistributedSolveParameters parameters = new DistributedSolveParameters();
 
@@ -56,7 +54,7 @@ public class DistributedSolver
             parameters.parse(args);
         }
 
-		RunParameters runParameters = DistributedSolveParameters.setupSolve( parameters );
+		final RunParameters runParameters = DistributedSolveParameters.setupSolve(parameters);
 
 		//
 		// setup Z BlockFactory
@@ -73,7 +71,7 @@ public class DistributedSolver
 		//
 		final boolean rigidPreAlign = false;
 
-		FIBSEMSolveParameters solveParams = new FIBSEMSolveParameters(
+		FIBSEMAlignmentParameters solveParams = new FIBSEMAlignmentParameters(
 				parameters.blockModel(),
 				(Function< Integer, Affine2D<?> > & Serializable )(z) -> parameters.stitchingModel(),
 				(Function< Integer, Integer > & Serializable )(z) -> parameters.minStitchingInliers,

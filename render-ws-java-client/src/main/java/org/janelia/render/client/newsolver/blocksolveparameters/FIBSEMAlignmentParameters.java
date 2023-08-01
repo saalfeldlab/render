@@ -13,7 +13,7 @@ import mpicbg.models.Model;
  * @param <B> the final block solve type (the result)
  * @param <S> the stitching-first type
  */
-public class FIBSEMSolveParameters< B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends BlockDataSolveParameters< S >
+public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends BlockDataSolveParameters< S >
 {
 	private static final long serialVersionUID = 4247180309556813829L;
 
@@ -29,7 +29,7 @@ public class FIBSEMSolveParameters< B extends Model< B > & Affine2D< B >, S exte
 	final boolean rigidPreAlign;
 	final private double blockMaxAllowedError;
 
-	public FIBSEMSolveParameters(
+	public FIBSEMAlignmentParameters(
 			final B blockSolveModel,
 			final Function< Integer, S > stitchingModelSupplier,
 			final Function< Integer, Integer > minStitchingInliersSupplier,
