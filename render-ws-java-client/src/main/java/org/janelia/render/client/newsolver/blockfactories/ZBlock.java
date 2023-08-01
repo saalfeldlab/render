@@ -7,9 +7,14 @@ import java.util.stream.Stream;
 
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockFactory;
+import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
+
+import mpicbg.models.Model;
 
 public class ZBlock extends BlockFactory
 {
+	private static final long serialVersionUID = 4169473785487008894L;
+
 	final int minZ, maxZ, blockSize, minBlockSize;
 
 	/**
@@ -29,7 +34,7 @@ public class ZBlock extends BlockFactory
 	}
 
 	@Override
-	public BlockCollection defineSolveSet()
+	public <M extends Model<M>> BlockCollection< M > defineSolveSet( final BlockDataSolveParameters<M> blockSolveParameters )
 	{
 		List< ZBlockInit > initBlocks = defineSolveSetLayout( minZ, maxZ, blockSize, minBlockSize );
 
