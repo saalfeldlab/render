@@ -15,6 +15,11 @@ public class BlockData
 	public int getWeight( final double location, final int dim ) { return -1; }
 	public double getCenter( final int dim ) { return -1; }
 
+	public void setSolveTypeParameters( Object solveTypeParameters )
+	{
+		this.solveTypeParameters = solveTypeParameters;
+	}
+
 	public Worker createWorker()
 	{
 		// should maybe ask the solveTypeParamters to create the object I think
