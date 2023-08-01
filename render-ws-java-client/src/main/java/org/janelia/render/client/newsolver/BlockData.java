@@ -7,6 +7,7 @@ import java.util.HashSet;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.solver.MinimalTileSpec;
 
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 
 /**
@@ -26,7 +27,7 @@ public class BlockData< M extends Model< M > > implements Serializable
 	final BlockDataSolveParameters<M> solveTypeParameters;
 
 	// used for global solve outside
-	final private HashSet<String> zToTileId = new HashSet<>();
+	final private HashSet<String> allTileIds = new HashSet<>();
 
 	// used for saving and display
 	final private HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<>();
@@ -47,6 +48,9 @@ public class BlockData< M extends Model< M > > implements Serializable
 	public int getWeight( final double location, final int dim ) { return -1; }
 	public double getCenter( final int dim ) { return -1; }
 
+	public HashMap<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
+	public HashSet<String> allTileIds() { return allTileIds; }
+	public HashMap<String, M> idToNewModel() { return idToNewModel; }
 
 	public Worker createWorker()
 	{
