@@ -38,8 +38,14 @@ public class FIBSEMSolveParameters< B extends Model< B > & Affine2D< B >, S exte
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
-			final boolean rigidPreAlign )
+			final boolean rigidPreAlign,
+			final String baseDataUrl,
+			final String owner,
+			final String project,
+			final String stack)
 	{
+		super(baseDataUrl, owner, project, stack);
+
 		this.blockSolveModel = blockSolveModel.copy();
 		this.stitchingModelSupplier = stitchingModelSupplier;
 		this.minStitchingInliersSupplier = minStitchingInliersSupplier;
@@ -65,4 +71,5 @@ public class FIBSEMSolveParameters< B extends Model< B > & Affine2D< B >, S exte
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
 	public double blockMaxAllowedError() { return blockMaxAllowedError; }
 	public boolean rigidPreAlign() { return rigidPreAlign; }
+
 }

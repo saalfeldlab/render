@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.function.Function;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.blockfactories.ZBlock;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMSolveParameters;
 import org.janelia.render.client.solver.DistributedSolveParameters;
@@ -60,7 +62,7 @@ public class DistributedSolver
 		// setup Z BlockFactory
 		//
 		final int minZ = (int)Math.round( runParameters.minZ );
-		final int maxZ = (int)Math.round( runParameters.maxZ );
+		final int maxZ = 5000;//(int)Math.round( runParameters.maxZ );
 		final int blockSize = parameters.blockSize;
 		final int minBlockSize = parameters.minBlockSize;
 
@@ -72,7 +74,7 @@ public class DistributedSolver
 		final boolean rigidPreAlign = false;
 
 		FIBSEMSolveParameters solveParams = new FIBSEMSolveParameters(
-				null, //parameters.blockModel(),
+				parameters.blockModel(),
 				(Function< Integer, Affine2D<?> > & Serializable )(z) -> parameters.stitchingModel(),
 				(Function< Integer, Integer > & Serializable )(z) -> parameters.minStitchingInliers,
 				parameters.blockOptimizerLambdasRigid,
@@ -80,6 +82,15 @@ public class DistributedSolver
 				parameters.blockOptimizerIterations,
 				parameters.blockMaxPlateauWidth,
 				parameters.blockMaxAllowedError,
-				rigidPreAlign );
+				rigidPreAlign,
+				parameters.renderWeb.baseDataUrl,
+				parameters.renderWeb.owner,
+				parameters.renderWeb.project,
+				parameters.stack );
+
+		//
+		// create all blocks
+		//
+		BlockCollection col = blockFactory.defineBlockCollection( solveParams );
 	}
 }

@@ -1,17 +1,24 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
+import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
+import org.janelia.render.client.solver.MinimalTileSpec;
 
 import mpicbg.models.Model;
 
-public class ZBlock extends BlockFactory
+public class ZBlock extends BlockFactory implements Serializable
 {
 	private static final long serialVersionUID = 4169473785487008894L;
 
@@ -34,12 +41,57 @@ public class ZBlock extends BlockFactory
 	}
 
 	@Override
-	public <M extends Model<M>> BlockCollection< M > defineSolveSet( final BlockDataSolveParameters<M> blockSolveParameters )
+	public <M extends Model<M>> BlockCollection< M > defineBlockCollection( final BlockDataSolveParameters<M> blockSolveParameters )
 	{
-		List< ZBlockInit > initBlocks = defineSolveSetLayout( minZ, maxZ, blockSize, minBlockSize );
+		final List< ZBlockInit > initBlocks = defineBlockLayout( minZ, maxZ, blockSize, minBlockSize );
 
-		// TODO Auto-generated method stub
-		return null;
+		//
+		// fetch metadata from render
+		//
+		final RenderDataClient r = new RenderDataClient(
+				blockSolveParameters.baseDataUrl(),
+				blockSolveParameters.owner(),
+				blockSolveParameters.project() );
+
+		
+		final List< BlockData<M> > blockDataList = new ArrayList<>();
+
+		for ( final ZBlockInit initBlock : initBlocks )
+		{
+			System.out.println( initBlock.id + ": " + initBlock.minZ() + " >> " + initBlock.maxZ() + " [#"+(initBlock.maxZ()-initBlock.minZ()+1) + "]" );
+
+			try
+			{
+					final ResolvedTileSpecCollection tsc =
+							r.getResolvedTilesForZRange( blockSolveParameters.stack(), (double)initBlock.minZ(), (double)initBlock.maxZ() );
+
+					System.out.println( "Loaded " + tsc.getTileIds().size() + " tiles.");
+
+					final Set< String > allTileIds = tsc.getTileIds();
+					final HashMap< String, MinimalTileSpec > idToTileSpec = new HashMap<>();
+
+					for ( final String id :allTileIds )
+						idToTileSpec.put( id, new MinimalTileSpec( tsc.getTileSpec( id ) ) );
+
+					final BlockData< M > block = 
+							new BlockData<>(
+									this,
+									blockSolveParameters,
+									initBlock.getId(),
+									allTileIds,
+									idToTileSpec );
+
+					blockDataList.add( block );
+			}
+			catch (Exception e)
+			{
+				System.out.println( "Failed to fetch data from render. stopping.");
+				e.printStackTrace();
+				return null;
+			}
+		}
+
+		return new BlockCollection<>( blockDataList );
 	}
 
 	static class ZBlockInit
@@ -73,7 +125,7 @@ public class ZBlock extends BlockFactory
 	 * @param minBlockSize - minimal block size (can fail if this is too high to be accommodated)
 	 * @return overlapping blocks that are solved individually - or null if minBlockSize is too big
 	 */
-	public static List< ZBlockInit > defineSolveSetLayout( final int minZ, final int maxZ, final int blockSize, final int minBlockSize )
+	public static List< ZBlockInit > defineBlockLayout( final int minZ, final int maxZ, final int blockSize, final int minBlockSize )
 	{
 		final ArrayList< ZBlockInit > leftSets = new ArrayList<>();
 		final ArrayList< ZBlockInit > rightSets = new ArrayList<>();

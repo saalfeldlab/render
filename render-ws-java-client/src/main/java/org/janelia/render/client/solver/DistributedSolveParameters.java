@@ -324,7 +324,7 @@ public class DistributedSolveParameters extends CommandLineParameters
 			return this.modelTypeGlobal.getInterpolatedInstance( modelTypeGlobalRegularizer, lambdaGlobal );
 	}
 
-	public Affine2D< ? > blockModel()
+	public InterpolatedAffineModel2D blockModel()
 	{
 		if ( this.blockOptimizerIterations.size() != this.blockMaxPlateauWidth.size() || 
 				this.blockOptimizerIterations.size() != this.blockOptimizerLambdasRigid.size() ||

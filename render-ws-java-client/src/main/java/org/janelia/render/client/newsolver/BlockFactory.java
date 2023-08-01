@@ -10,5 +10,5 @@ public abstract class BlockFactory implements Serializable
 {
 	private static final long serialVersionUID = 5919345114414922447L;
 
-	public abstract <M extends Model<M>> BlockCollection< M > defineSolveSet( final BlockDataSolveParameters<M> blockSolveParameters);
+	public abstract <M extends Model<M>> BlockCollection< M > defineBlockCollection( final BlockDataSolveParameters<M> blockSolveParameters);
 }

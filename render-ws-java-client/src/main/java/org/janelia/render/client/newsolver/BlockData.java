@@ -1,8 +1,10 @@
 package org.janelia.render.client.newsolver;
 
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.solver.MinimalTileSpec;
@@ -29,29 +31,33 @@ public class BlockData< M extends Model< M > > implements Serializable
 	final BlockDataSolveParameters<M> solveTypeParameters;
 
 	// used for global solve outside
-	final private HashSet<String> allTileIds = new HashSet<>();
+	final private HashSet<String> allTileIds;
 
 	// used for saving and display
-	final private HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<>();
+	final private Map<String, MinimalTileSpec> idToTileSpec;
 
-		// contains the model as determined by the local solve
+	// contains the model as determined by the local solve
 	final private HashMap<String, M> idToNewModel = new HashMap<>();
 
 	public BlockData(
 			final BlockFactory factory, // knows how it was created for assembly later?
 			final BlockDataSolveParameters<M> solveTypeParameters,
-			final int id )
+			final int id,
+			final Collection<String> allTileIds,
+			final Map<String, MinimalTileSpec> idToTileSpec )
 	{
 		this.id = id;
 		this.factory = factory;
 		this.solveTypeParameters = solveTypeParameters;
+		this.allTileIds = new HashSet<>( allTileIds );
+		this.idToTileSpec = idToTileSpec;
 	}
 
 	public int getId() { return id; }
 	public int getWeight( final double location, final int dim ) { return -1; }
 	public double getCenter( final int dim ) { return -1; }
 
-	public HashMap<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
+	public Map<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashSet<String> allTileIds() { return allTileIds; }
 	public HashMap<String, M> idToNewModel() { return idToNewModel; }
 
