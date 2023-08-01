@@ -4,7 +4,9 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.solver.MinimalTileSpec;
@@ -23,6 +25,8 @@ public class BlockData< M extends Model< M > > implements Serializable
 	private static final long serialVersionUID = -6491517262420660476L;
 
 	private int id;
+	private double[] center;
+	private List< Function< Double, Double > > weightF;
 
 	// the BlockFactory that created this BlockData
 	final BlockFactory factory;
@@ -43,19 +47,23 @@ public class BlockData< M extends Model< M > > implements Serializable
 			final BlockFactory factory, // knows how it was created for assembly later?
 			final BlockDataSolveParameters<M> solveTypeParameters,
 			final int id,
+			final double[] center,
+			final List< Function< Double, Double > > weightF,
 			final Collection<String> allTileIds,
 			final Map<String, MinimalTileSpec> idToTileSpec )
 	{
 		this.id = id;
+		this.center = center.clone();
 		this.factory = factory;
 		this.solveTypeParameters = solveTypeParameters;
 		this.allTileIds = new HashSet<>( allTileIds );
 		this.idToTileSpec = idToTileSpec;
+		this.weightF = weightF;
 	}
 
 	public int getId() { return id; }
-	public int getWeight( final double location, final int dim ) { return -1; }
-	public double getCenter( final int dim ) { return -1; }
+	public double getWeight( final double location, final int dim ) { return weightF.get( dim ).apply( location ); }
+	public double getCenter( final int dim ) { return center[ dim ]; }
 
 	public Map<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashSet<String> allTileIds() { return allTileIds; }

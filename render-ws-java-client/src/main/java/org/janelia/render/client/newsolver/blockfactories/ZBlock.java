@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -16,6 +17,7 @@ import org.janelia.render.client.newsolver.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.solver.MinimalTileSpec;
 
+import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 
 public class ZBlock extends BlockFactory implements Serializable
@@ -73,11 +75,23 @@ public class ZBlock extends BlockFactory implements Serializable
 					for ( final String id :allTileIds )
 						idToTileSpec.put( id, new MinimalTileSpec( tsc.getTileSpec( id ) ) );
 
+					// compute center, this is different for every method
+					// here, xy doesn't matter, only z
+					final double[] center = new double[] { 0, 0, ( initBlock.maxZ() - initBlock.minZ() ) / 2 };
+
+					// we also define our own distance functions
+					final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
+					weightF.add( (Function< Double, Double > & Serializable )(x) -> 0.0 );
+					weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
+					weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - center[ 2 ] ) );
+
 					final BlockData< M > block = 
 							new BlockData<>(
 									this,
 									blockSolveParameters,
 									initBlock.getId(),
+									center,
+									weightF,
 									allTileIds,
 									idToTileSpec );
 
