@@ -75,22 +75,18 @@ public class ZBlock extends BlockFactory implements Serializable
 					for ( final String id :allTileIds )
 						idToTileSpec.put( id, new MinimalTileSpec( tsc.getTileSpec( id ) ) );
 
-					// compute center, this is different for every method
-					// here, xy doesn't matter, only z
-					final double[] center = new double[] { 0, 0, ( initBlock.maxZ() - initBlock.minZ() ) / 2 };
-
 					// we also define our own distance functions
+					// here, xy doesn't matter, only z
 					final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
 					weightF.add( (Function< Double, Double > & Serializable )(x) -> 0.0 );
 					weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
-					weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - center[ 2 ] ) );
+					weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - ( initBlock.maxZ() - initBlock.minZ() ) / 2 ) );
 
 					final BlockData< M > block = 
 							new BlockData<>(
 									this,
 									blockSolveParameters,
 									initBlock.getId(),
-									center,
 									weightF,
 									allTileIds,
 									idToTileSpec );
