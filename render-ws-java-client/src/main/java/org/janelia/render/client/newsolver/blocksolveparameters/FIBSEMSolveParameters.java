@@ -17,9 +17,6 @@ public class FIBSEMSolveParameters< B extends Model< B > & Affine2D< B >, S exte
 {
 	private static final long serialVersionUID = 4247180309556813829L;
 
-	final int minZ;
-	final int maxZ;
-
 	final private B blockSolveModel;
 	final private Function< Integer, S > stitchingModelSupplier;
 	final private Function< Integer, Integer > minStitchingInliersSupplier; // if it is less, it is not stitched first
@@ -41,9 +38,7 @@ public class FIBSEMSolveParameters< B extends Model< B > & Affine2D< B >, S exte
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
-			final boolean rigidPreAlign,
-			final int minZ,
-			final int maxZ )
+			final boolean rigidPreAlign )
 	{
 		this.blockSolveModel = blockSolveModel.copy();
 		this.stitchingModelSupplier = stitchingModelSupplier;
@@ -54,12 +49,7 @@ public class FIBSEMSolveParameters< B extends Model< B > & Affine2D< B >, S exte
 		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
 		this.blockMaxAllowedError = blockMaxAllowedError;
 		this.rigidPreAlign = rigidPreAlign;
-		this.minZ = minZ;
-		this.maxZ = maxZ;
 	}
-
-	public int minZ() { return minZ; }
-	public int maxZ() { return maxZ; }
 
 	public B blockSolveModelInstance() { return blockSolveModel.copy(); }
 

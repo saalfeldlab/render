@@ -7,7 +7,6 @@ import java.util.HashSet;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.solver.MinimalTileSpec;
 
-import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 
 /**
@@ -23,7 +22,10 @@ public class BlockData< M extends Model< M > > implements Serializable
 
 	private int id;
 
-	// contains solve-specific paramters and models
+	// the BlockFactory that created this BlockData
+	final BlockFactory factory;
+
+	// contains solve-specific parameters and models
 	final BlockDataSolveParameters<M> solveTypeParameters;
 
 	// used for global solve outside
@@ -41,6 +43,7 @@ public class BlockData< M extends Model< M > > implements Serializable
 			final int id )
 	{
 		this.id = id;
+		this.factory = factory;
 		this.solveTypeParameters = solveTypeParameters;
 	}
 
