@@ -16,6 +16,7 @@ import mpicbg.models.Model;
 public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends BlockDataSolveParameters< S >
 {
 	private static final long serialVersionUID = 4247180309556813829L;
+	public enum PreAlign { NONE, TRANSLATION, RIGID }
 
 	final private B blockSolveModel;
 	final private Function< Integer, S > stitchingModelSupplier;
@@ -26,7 +27,7 @@ public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S 
 	final private List<Integer> blockOptimizerIterations;
 	final private List<Integer> blockMaxPlateauWidth;
 
-	final boolean rigidPreAlign;
+	final int preAlignOrdinal; // storing the ordinal of the enum for serialization purposes
 	final private double blockMaxAllowedError;
 
 	public FIBSEMAlignmentParameters(
@@ -38,7 +39,7 @@ public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S 
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
-			final boolean rigidPreAlign,
+			final PreAlign preAlign,
 			final String baseDataUrl,
 			final String owner,
 			final String project,
@@ -54,7 +55,7 @@ public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S 
 		this.blockOptimizerIterations = blockOptimizerIterations;
 		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
 		this.blockMaxAllowedError = blockMaxAllowedError;
-		this.rigidPreAlign = rigidPreAlign;
+		this.preAlignOrdinal = preAlign.ordinal();
 	}
 
 	public B blockSolveModelInstance() { return blockSolveModel.copy(); }
@@ -70,6 +71,5 @@ public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S 
 	public List<Integer> blockOptimizerIterations() { return blockOptimizerIterations; }
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
 	public double blockMaxAllowedError() { return blockMaxAllowedError; }
-	public boolean rigidPreAlign() { return rigidPreAlign; }
-
+	public PreAlign preAlign() { return PreAlign.values()[ preAlignOrdinal ]; }
 }

@@ -6,6 +6,7 @@ import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.ZBlock;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.solver.DistributedSolveParameters;
 import org.janelia.render.client.solver.RunParameters;
 
@@ -69,7 +70,7 @@ public class DistributedSolver
 		//
 		// setup FIB-SEM solve parameters
 		//
-		final boolean rigidPreAlign = false;
+		final PreAlign preAlign = PreAlign.TRANSLATION;
 
 		FIBSEMAlignmentParameters solveParams = new FIBSEMAlignmentParameters(
 				parameters.blockModel(),
@@ -80,7 +81,7 @@ public class DistributedSolver
 				parameters.blockOptimizerIterations,
 				parameters.blockMaxPlateauWidth,
 				parameters.blockMaxAllowedError,
-				rigidPreAlign,
+				preAlign,
 				parameters.renderWeb.baseDataUrl,
 				parameters.renderWeb.owner,
 				parameters.renderWeb.project,
