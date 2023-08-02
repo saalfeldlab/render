@@ -13,12 +13,11 @@ import mpicbg.models.Model;
  * @param <B> the final block solve type (the result)
  * @param <S> the stitching-first type
  */
-public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > extends BlockDataSolveParameters< B >
+public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > extends BlockDataSolveParameters< M >
 {
 	private static final long serialVersionUID = 4247180309556813829L;
 	public enum PreAlign { NONE, TRANSLATION, RIGID }
 
-	final private B blockSolveModel;
 	final private Function< Integer, S > stitchingModelSupplier;
 	final private Function< Integer, Integer > minStitchingInliersSupplier; // if it is less, it is not stitched first
 
@@ -31,7 +30,7 @@ public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S 
 	final private double blockMaxAllowedError;
 
 	public FIBSEMAlignmentParameters(
-			final B blockSolveModel,
+			final M blockSolveModel,
 			final Function< Integer, S > stitchingModelSupplier,
 			final Function< Integer, Integer > minStitchingInliersSupplier,
 			final List<Double> blockOptimizerLambdasRigid,
@@ -45,9 +44,8 @@ public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S 
 			final String project,
 			final String stack)
 	{
-		super(baseDataUrl, owner, project, stack);
+		super(baseDataUrl, owner, project, stack, blockSolveModel.copy());
 
-		this.blockSolveModel = blockSolveModel.copy();
 		this.stitchingModelSupplier = stitchingModelSupplier;
 		this.minStitchingInliersSupplier = minStitchingInliersSupplier;
 		this.blockOptimizerLambdasRigid = blockOptimizerLambdasRigid;
@@ -58,8 +56,8 @@ public class FIBSEMAlignmentParameters< B extends Model< B > & Affine2D< B >, S 
 		this.preAlignOrdinal = preAlign.ordinal();
 	}
 
-	public B blockSolveModelInstance() { return blockSolveModel.copy(); }
-
+	@Override
+	public M blockSolveModel() { return blockSolveModel().copy(); }
 	public S stitchingSolveModelInstance( final int z ) { return stitchingModelSupplier.apply( z ); }
 	public Function< Integer, S > stitchingModelSupplier() { return stitchingModelSupplier; }
 

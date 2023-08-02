@@ -19,16 +19,20 @@ public class BlockDataSolveParameters< M extends CoordinateTransform > implement
 	final String project;
 	final String stack;
 
+	final private M blockSolveModel;
+
 	public BlockDataSolveParameters(
 			final String baseDataUrl,
 			final String owner,
 			final String project,
-			final String stack )
+			final String stack,
+			final M blockSolveModel)
 	{
 		this.baseDataUrl = baseDataUrl;
 		this.owner = owner;
 		this.project = project;
 		this.stack = stack;
+		this.blockSolveModel = blockSolveModel;
 	}
 
 	public String baseDataUrl() { return baseDataUrl; }
@@ -36,4 +40,5 @@ public class BlockDataSolveParameters< M extends CoordinateTransform > implement
 	public String project() { return project; }
 	public String stack() { return stack; }
 
+	public M blockSolveModel() { return blockSolveModel; }
 }
