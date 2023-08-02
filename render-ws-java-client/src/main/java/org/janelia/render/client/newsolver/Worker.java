@@ -2,7 +2,11 @@ package org.janelia.render.client.newsolver;
 
 import java.util.List;
 
-public interface Worker
+import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
+
+import mpicbg.models.CoordinateTransform;
+
+public interface Worker < M extends CoordinateTransform, P extends BlockDataSolveParameters< M >, F extends BlockFactory< F > > 
 {
 	/**
 	 * runs the Worker
@@ -12,5 +16,5 @@ public interface Worker
 	/**
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
-	public List< BlockData > getBlockDataList();
+	public List< BlockData< M, P, F > > getBlockDataList();
 }

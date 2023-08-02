@@ -11,7 +11,7 @@ import java.util.function.Function;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.solver.MinimalTileSpec;
 
-import mpicbg.models.Model;
+import mpicbg.models.CoordinateTransform;
 
 /**
  * Should contain only geometric data, nothing specific to the type of solve
@@ -20,7 +20,7 @@ import mpicbg.models.Model;
  * @author preibischs
  *
  */
-public class BlockData< M extends Model< M > > implements Serializable
+public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveParameters< M >, F extends BlockFactory< F > > implements Serializable
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 
@@ -28,10 +28,10 @@ public class BlockData< M extends Model< M > > implements Serializable
 	private List< Function< Double, Double > > weightF;
 
 	// the BlockFactory that created this BlockData
-	final BlockFactory factory;
+	final F blockFactory;
 
 	// contains solve-specific parameters and models
-	final BlockDataSolveParameters<M> solveTypeParameters;
+	final P solveTypeParameters;
 
 	// used for global solve outside
 	final private HashSet<String> allTileIds;
@@ -43,15 +43,15 @@ public class BlockData< M extends Model< M > > implements Serializable
 	final private HashMap<String, M> idToNewModel = new HashMap<>();
 
 	public BlockData(
-			final BlockFactory factory, // knows how it was created for assembly later?
-			final BlockDataSolveParameters<M> solveTypeParameters,
+			final F blockFactory, // knows how it was created for assembly later?
+			final P solveTypeParameters,
 			final int id,
 			final List< Function< Double, Double > > weightF,
 			final Collection<String> allTileIds,
 			final Map<String, MinimalTileSpec> idToTileSpec )
 	{
 		this.id = id;
-		this.factory = factory;
+		this.blockFactory = blockFactory;
 		this.solveTypeParameters = solveTypeParameters;
 		this.allTileIds = new HashSet<>( allTileIds );
 		this.idToTileSpec = idToTileSpec;
@@ -61,11 +61,14 @@ public class BlockData< M extends Model< M > > implements Serializable
 	public int getId() { return id; }
 	public double getWeight( final double location, final int dim ) { return weightF.get( dim ).apply( location ); }
 
+	public P solveTypeParameters() { return solveTypeParameters; }
+	public F blockFactory() { return blockFactory; }
+
 	public Map<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashSet<String> allTileIds() { return allTileIds; }
 	public HashMap<String, M> idToNewModel() { return idToNewModel; }
 
-	public Worker createWorker()
+	public Worker< M, P, F > createWorker()
 	{
 		// should maybe ask the solveTypeParamters to create the object I think
 		return null;

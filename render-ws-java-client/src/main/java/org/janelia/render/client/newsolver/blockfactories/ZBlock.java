@@ -17,10 +17,9 @@ import org.janelia.render.client.newsolver.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.solver.MinimalTileSpec;
 
-import mpicbg.models.Affine2D;
-import mpicbg.models.Model;
+import mpicbg.models.CoordinateTransform;
 
-public class ZBlock extends BlockFactory implements Serializable
+public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 {
 	private static final long serialVersionUID = 4169473785487008894L;
 
@@ -42,8 +41,9 @@ public class ZBlock extends BlockFactory implements Serializable
 		this.minBlockSize = minBlockSize;
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
-	public <M extends Model<M>> BlockCollection< M > defineBlockCollection( final BlockDataSolveParameters<M> blockSolveParameters )
+	public <M extends CoordinateTransform, P extends BlockDataSolveParameters<M>> BlockCollection<M, P, ZBlock> defineBlockCollection( final P blockSolveParameters)
 	{
 		final List< ZBlockInit > initBlocks = defineBlockLayout( minZ, maxZ, blockSize, minBlockSize );
 
@@ -56,7 +56,7 @@ public class ZBlock extends BlockFactory implements Serializable
 				blockSolveParameters.project() );
 
 		
-		final List< BlockData<M> > blockDataList = new ArrayList<>();
+		final List< BlockData<M, P, ZBlock> > blockDataList = new ArrayList<>();
 
 		for ( final ZBlockInit initBlock : initBlocks )
 		{
@@ -82,7 +82,7 @@ public class ZBlock extends BlockFactory implements Serializable
 					weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
 					weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - ( initBlock.maxZ() - initBlock.minZ() ) / 2 ) );
 
-					final BlockData< M > block = 
+					final BlockData< M, P, ZBlock > block = 
 							new BlockData<>(
 									this,
 									blockSolveParameters,
@@ -186,5 +186,4 @@ public class ZBlock extends BlockFactory implements Serializable
 		// we can return them in one list since each object knows if it is right or left
 		return Stream.concat( leftSets.stream(), rightSets.stream() ).collect( Collectors.toList() );
 	}
-
 }

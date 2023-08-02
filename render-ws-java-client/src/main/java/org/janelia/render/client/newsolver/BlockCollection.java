@@ -2,19 +2,21 @@ package org.janelia.render.client.newsolver;
 
 import java.util.List;
 
-import mpicbg.models.Model;
+import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
-public class BlockCollection< M extends Model< M > > 
+import mpicbg.models.CoordinateTransform;
+
+public class BlockCollection< M extends CoordinateTransform, P extends BlockDataSolveParameters< M >, F extends BlockFactory< F > > 
 {
-	final List< BlockData< M > > blockDataList;
+	final List< BlockData< M, P, F > > blockDataList;
 	final int minId, maxId;
 
-	public BlockCollection( final List< BlockData< M > > blockDataList )
+	public BlockCollection( final List< BlockData< M, P, F > > blockDataList )
 	{
 		int min = Integer.MAX_VALUE;
 		int max = Integer.MIN_VALUE;
 
-		for ( final BlockData< M > bd : blockDataList )
+		for ( final BlockData< M, P, F > bd : blockDataList )
 		{
 			min = Math.min( min, bd.getId() );
 			max = Math.max( max, bd.getId() );
@@ -27,5 +29,5 @@ public class BlockCollection< M extends Model< M > >
 
 	public int minId() { return minId; }
 	public int maxId() { return maxId; }
-	public List< BlockData< M > > allBlocks() { return blockDataList; }
+	public List< BlockData< M, P, F > > allBlocks() { return blockDataList; }
 }
