@@ -1,7 +1,9 @@
-package org.janelia.render.client.newsolver;
+package org.janelia.render.client.newsolver.solvers;
 
 import java.util.List;
 
+import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
 import mpicbg.models.CoordinateTransform;

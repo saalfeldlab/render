@@ -8,7 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
+import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.solver.MinimalTileSpec;
 
 import mpicbg.models.CoordinateTransform;

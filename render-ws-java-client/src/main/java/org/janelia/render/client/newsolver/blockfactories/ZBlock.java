@@ -13,7 +13,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.solver.MinimalTileSpec;
 

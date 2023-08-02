@@ -7,7 +7,7 @@ import java.util.List;
 
 import org.janelia.alignment.match.Matches;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.BlockFactory;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 
 import mpicbg.models.Affine2D;

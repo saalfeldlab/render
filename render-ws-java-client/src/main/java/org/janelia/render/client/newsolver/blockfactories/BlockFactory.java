@@ -1,7 +1,8 @@
-package org.janelia.render.client.newsolver;
+package org.janelia.render.client.newsolver.blockfactories;
 
 import java.io.Serializable;
 
+import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
 import mpicbg.models.CoordinateTransform;
