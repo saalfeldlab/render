@@ -16,11 +16,11 @@ import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import net.imglib2.util.Pair;
 
-public class AffineBlockDataWrapper< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S >, P extends FIBSEMAlignmentParameters< M, S >, F extends BlockFactory< F > >
+public class AffineBlockDataWrapper< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S >,F extends BlockFactory< F > >
 {
 	final public static int samplesPerDimension = 2;
 
-	final BlockData< M, P, F > blockData;
+	final BlockData< M, FIBSEMAlignmentParameters< M, S >, F > blockData;
 
 	//
 	// local only variables needed for the block solve below
@@ -47,12 +47,12 @@ public class AffineBlockDataWrapper< M extends Model< M > & Affine2D< M >, S ext
 	// matches for error computation
 	final List< Pair< Pair< String, String>, Matches > > matches = new ArrayList<>();
 
-	public AffineBlockDataWrapper( final BlockData< M, P, F > blockData )
+	public AffineBlockDataWrapper( final BlockData< M, FIBSEMAlignmentParameters< M, S >, F > blockData )
 	{
 		this.blockData = blockData;
 	}
 
-	public BlockData< M, P, F >  blockData() { return blockData; }
+	public BlockData< M, FIBSEMAlignmentParameters< M, S >, F >  blockData() { return blockData; }
 
 	public HashMap<String, Tile< M > > idToTileMap() { return idToTileMap; }
 	public List< Pair< Pair< String, String>, Matches > > matches() { return matches; }

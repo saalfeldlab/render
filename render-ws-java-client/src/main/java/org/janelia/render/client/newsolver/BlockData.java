@@ -22,7 +22,7 @@ import mpicbg.models.CoordinateTransform;
  * @author preibischs
  *
  */
-public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveParameters< M >, F extends BlockFactory< F > > implements Serializable
+public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > implements Serializable
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 

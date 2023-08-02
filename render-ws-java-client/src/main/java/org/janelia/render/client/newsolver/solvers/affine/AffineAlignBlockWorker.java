@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -50,7 +51,7 @@ import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S >, P extends FIBSEMAlignmentParameters< M, S >, F extends BlockFactory< F > > implements Worker< M, P, F >
+public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S >, F extends BlockFactory< F > > extends Worker< M, FIBSEMAlignmentParameters< M, S >, F >
 {
 	// attempts to stitch each section first (if the tiles are connected) and
 	// then treat them as one big, "grouped" tile in the global optimization
@@ -61,9 +62,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	final private static int zRadiusRestarts = 10;
 	final private static int stabilizationRadius = 25;
 
-	final RenderDataClient renderDataClient;
 	final RenderDataClient matchDataClient;
-	final String stack;
 
 	final List< Pair< String, Double > > pGroupList;
 	final Map<String, ArrayList<Double>> sectionIdToZMap;
@@ -76,9 +75,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	// filled in assembleMatchData()
 	final HashMap< Integer, List< Integer > > zToPairs;
 
-	final int numThreads;
-	final Set<Integer> excludeFromRegularization;
-	final boolean serializeMatches;
+	// only for dynamic lambda stuff that we never used
+	//final Set<Integer> excludeFromRegularization;
 
 	final double maxAllowedErrorStitching;
 	final int maxIterationsStitching, maxPlateauWidthStitching;
@@ -87,12 +85,9 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	final List<Integer> blockOptimizerIterations, blockMaxPlateauWidth;
 	final double blockMaxAllowedError;
 
-	final BlockData< M, P, F > inputSolveItem;
-	private List< AffineBlockDataWrapper< M, S, P, F > > solveItems;
-	private List< BlockData< M, P, F > > result;
-
-	// for assigning new id's when splitting solveItemData
-	final int startId;
+	final AffineBlockDataWrapper< M, S, F > inputSolveItem;
+	private List< AffineBlockDataWrapper< M, S, F > > solveItems;
+	private List< BlockData< M, FIBSEMAlignmentParameters< M, S >, F > > result;
 
 	// to filter matches
 	final MatchFilter matchFilter;
@@ -103,73 +98,55 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	// how many stitching inliers are needed to stitch first
 	// reason: if tiles are rarely connected and it is stitched first, a useful
 	// common alignment model after stitching cannot be found
-	final int minStitchingInliers;
+	final Function< Integer, Integer > minStitchingInliersSupplier;
 
-	// global switch to disable "stitch first"
-	final private boolean stitchFirst = true;
-
-	// limit the z-range of the solver (default: Double.NaN)
-	final double maxRange;
+	// limit the z-range of the solver for matches (default: '-1' - no limit)
+	final int maxZRangeMatches;
 
 	// created by SolveItemData.createWorker()
 	public AffineAlignBlockWorker(
-			final BlockData<M, P, B > solveItemData,
+			final BlockData< M, FIBSEMAlignmentParameters< M, S >, F > blockData,
 			final int startId,
 			final List< Pair< String, Double > > pGroupList,
 			final Map<String, ArrayList<Double>> sectionIdToZMap,
-			final String baseDataUrl,
-			final String owner,
-			final String project,
-			final String matchOwner,
-			final String matchCollection,
-			final String stack,
-			final int maxNumMatches,
-			final boolean serializeMatches,
-			final double maxAllowedErrorStitching,
-			final int maxIterationsStitching,
-			final int maxPlateauWidthStitching,
-			final double maxRange,
-			final Set<Integer> excludeFromRegularization,
 			final int numThreads )
 	{
-		this.renderDataClient = new RenderDataClient( baseDataUrl, owner, project );
-		this.matchDataClient = new RenderDataClient( baseDataUrl, matchOwner, matchCollection );
-		this.stack = stack;
-		this.inputSolveItem = new SolveItem<>( solveItemData );
-		this.startId = startId;
-		this.pGroupList = pGroupList;
-		this.sectionIdToZMap = sectionIdToZMap;
+		super( startId, blockData, numThreads );
 
-		this.blockOptimizerLambdasRigid = solveItemData.blockOptimizerLambdasRigid();
-		this.blockOptimizerLambdasTranslation = solveItemData.blockOptimizerLambdasTranslation();
-		this.blockOptimizerIterations = solveItemData.blockOptimizerIterations();
-		this.blockMaxPlateauWidth = solveItemData.blockMaxPlateauWidth();
+		this.matchDataClient =
+				new RenderDataClient(
+						blockData.solveTypeParameters().baseDataUrl(),
+						blockData.solveTypeParameters().matchOwner(),
+						blockData.solveTypeParameters().matchCollection() );
 
-		this.minStitchingInliers = solveItemData.minStitchingInliers();
-		this.maxAllowedErrorStitching = maxAllowedErrorStitching;
-		this.maxIterationsStitching = maxIterationsStitching;
-		this.maxPlateauWidthStitching = maxPlateauWidthStitching;
-		this.blockMaxAllowedError = solveItemData.blockMaxAllowedError();
+		this.inputSolveItem = new AffineBlockDataWrapper<>( blockData );
+		this.pGroupList = pGroupList; // list of pairs of pGroupId, z-layer
+		this.sectionIdToZMap = sectionIdToZMap; // 
 
-		this.numThreads = numThreads;
-		this.dynamicLambdaFactor = solveItemData.dynamicLambdaFactor();
-		this.rigidPreAlign = solveItemData.rigidPreAlign();
-		this.excludeFromRegularization = excludeFromRegularization;
-		this.serializeMatches = serializeMatches;
+		this.blockOptimizerLambdasRigid = blockData.solveTypeParameters().blockOptimizerLambdasRigid();
+		this.blockOptimizerLambdasTranslation = blockData.solveTypeParameters().blockOptimizerLambdasTranslation();
+		this.blockOptimizerIterations = blockData.solveTypeParameters().blockOptimizerIterations();
+		this.blockMaxPlateauWidth = blockData.solveTypeParameters().blockMaxPlateauWidth();
 
-		if ( maxNumMatches <= 0 )
+		this.minStitchingInliersSupplier = blockData.solveTypeParameters().minStitchingInliersSupplier();
+		this.maxAllowedErrorStitching = blockData.solveTypeParameters().maxAllowedErrorStitching();
+		this.maxIterationsStitching = blockData.solveTypeParameters().maxIterationsStitching();
+		this.maxPlateauWidthStitching = blockData.solveTypeParameters().maxPlateauWidthStitching();
+		this.blockMaxAllowedError = blockData.solveTypeParameters().blockMaxAllowedError();
+
+		if ( blockData.solveTypeParameters().maxNumMatches() <= 0 )
 			this.matchFilter = new NoMatchFilter();
 		else
-			this.matchFilter = new RandomMaxAmountFilter( maxNumMatches );
+			this.matchFilter = new RandomMaxAmountFilter( blockData.solveTypeParameters().maxNumMatches() );
 
-		this.maxRange = maxRange;
+		this.maxZRangeMatches = blockData.solveTypeParameters().maxZRangeMatches();
 
 		// used locally
 		this.pairs = new ArrayList<>();
 		this.zToPairs = new HashMap<>();
 	}
 
-	public List< SolveItemData< G, B, S > > getSolveItemDataList()
+	public List< BlockData< M, P, F > > getBlockDataList()
 	{
 		return result;
 	}

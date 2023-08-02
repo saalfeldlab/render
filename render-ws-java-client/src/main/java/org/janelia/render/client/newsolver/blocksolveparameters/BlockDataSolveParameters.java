@@ -10,7 +10,7 @@ import mpicbg.models.CoordinateTransform;
  *
  * @param <M> - the result model type
  */
-public class BlockDataSolveParameters< M extends CoordinateTransform > implements Serializable
+public abstract class BlockDataSolveParameters< M extends CoordinateTransform, B extends BlockDataSolveParameters< M, B > > implements Serializable
 {
 	private static final long serialVersionUID = -813404780882760053L;
 
@@ -41,4 +41,6 @@ public class BlockDataSolveParameters< M extends CoordinateTransform > implement
 	public String stack() { return stack; }
 
 	public M blockSolveModel() { return blockSolveModel; }
+
+	public abstract B createInstance( boolean hasIssue );
 }

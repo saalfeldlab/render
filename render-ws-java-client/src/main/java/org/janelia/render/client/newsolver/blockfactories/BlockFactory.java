@@ -11,5 +11,5 @@ public abstract class BlockFactory< F extends BlockFactory< F > > implements Ser
 {
 	private static final long serialVersionUID = 5919345114414922447L;
 
-	public abstract <M extends CoordinateTransform, P extends BlockDataSolveParameters< M >> BlockCollection< M, P, F > defineBlockCollection( final P blockSolveParameters);
+	public abstract <M extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >> BlockCollection< M, P, F > defineBlockCollection( final P blockSolveParameters);
 }

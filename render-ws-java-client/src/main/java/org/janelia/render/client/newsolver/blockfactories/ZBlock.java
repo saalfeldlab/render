@@ -42,7 +42,7 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <M extends CoordinateTransform, P extends BlockDataSolveParameters<M>> BlockCollection<M, P, ZBlock> defineBlockCollection( final P blockSolveParameters)
+	public <M extends CoordinateTransform, P extends BlockDataSolveParameters<M,P>> BlockCollection<M, P, ZBlock> defineBlockCollection( final P blockSolveParameters)
 	{
 		final List< ZBlockInit > initBlocks = defineBlockLayout( minZ, maxZ, blockSize, minBlockSize );
 
@@ -74,6 +74,9 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 					for ( final String id :allTileIds )
 						idToTileSpec.put( id, new MinimalTileSpec( tsc.getTileSpec( id ) ) );
 
+					// TODO: find out if yes
+					final boolean hasIssues = false;
+
 					// we also define our own distance functions
 					// here, xy doesn't matter, only z
 					final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
@@ -84,7 +87,7 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 					final BlockData< M, P, ZBlock > block = 
 							new BlockData<>(
 									this,
-									blockSolveParameters,
+									blockSolveParameters.createInstance( hasIssues ),
 									initBlock.getId(),
 									weightF,
 									allTileIds,

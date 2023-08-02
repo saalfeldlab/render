@@ -2,6 +2,10 @@ package org.janelia.render.client.newsolver;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
@@ -12,6 +16,7 @@ import org.janelia.render.client.solver.DistributedSolveParameters;
 import org.janelia.render.client.solver.RunParameters;
 
 import mpicbg.models.Affine2D;
+import net.imglib2.util.Pair;
 
 public class DistributedSolver
 {
@@ -58,6 +63,18 @@ public class DistributedSolver
 
 		final RunParameters runParameters = DistributedSolveParameters.setupSolve(parameters);
 
+		List<Pair<String, Double>> p = runParameters.pGroupList; // all z-layers as String and Double???
+		Map<String, ArrayList<Double>> s = runParameters.sectionIdToZMap; // all z-layers as String map to List that only contains the z-layer as double
+
+		//for ( final Pair<String, Double> pa : p )
+		//	System.out.println( pa.getA() + " > " + pa.getB() );
+
+		for ( Entry<String, ArrayList<Double>> e : s.entrySet() )
+		{
+			System.out.println( e.getKey() + ", " + e.getValue().size() + ", " + e.getValue().get(0));
+		}
+		
+		/*
 		//
 		// setup Z BlockFactory
 		//
@@ -91,6 +108,6 @@ public class DistributedSolver
 		//
 		// create all blocks
 		//
-		BlockCollection col = blockFactory.defineBlockCollection( solveParams );
+		BlockCollection col = blockFactory.defineBlockCollection( solveParams ); */
 	}
 }

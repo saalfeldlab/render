@@ -7,7 +7,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 
 import mpicbg.models.CoordinateTransform;
 
-public class BlockCollection< M extends CoordinateTransform, P extends BlockDataSolveParameters< M >, F extends BlockFactory< F > > 
+public class BlockCollection< M extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > 
 {
 	final List< BlockData< M, P, F > > blockDataList;
 	final int minId, maxId;
