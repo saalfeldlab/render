@@ -60,7 +60,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final String stack;
 
 	final List< Pair< String, Double > > pGroupList;
-	final Map<String, ArrayList<Double>> sectionIdToZMap1;
+	final Map<String, ArrayList<Double>> sectionIdToZMap;
 
 	// we store tile pairs and pointmatches here first, as we need to do stitching per section first if possible (if connected)
 	// filled in assembleMatchData()

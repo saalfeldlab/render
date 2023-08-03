@@ -271,7 +271,7 @@ public class SolveTools
 			final Collection< Tile< ? > > tiles,
 			final SolveItem< ?,?,? > solveItem,
 			final int zRadiusRestarts,
-			final Set<Integer> excludeFromReguslarization,
+			final Set<Integer> excludeFromRegularization,
 			final double dynamicFactor )
 	{
 		// a z-section can have more than one grouped tile if they are connected from above and below
