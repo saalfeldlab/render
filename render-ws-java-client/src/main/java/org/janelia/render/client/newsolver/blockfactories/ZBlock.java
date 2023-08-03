@@ -10,11 +10,11 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
-import org.janelia.render.client.solver.MinimalTileSpec;
 
 import mpicbg.models.CoordinateTransform;
 
@@ -69,10 +69,10 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 					System.out.println( "Loaded " + tsc.getTileIds().size() + " tiles.");
 
 					final Set< String > allTileIds = tsc.getTileIds();
-					final HashMap< String, MinimalTileSpec > idToTileSpec = new HashMap<>();
+					final HashMap< String, TileSpec > idToTileSpec = new HashMap<>();
 
 					for ( final String id :allTileIds )
-						idToTileSpec.put( id, new MinimalTileSpec( tsc.getTileSpec( id ) ) );
+						idToTileSpec.put( id, tsc.getTileSpec( id ) );
 
 					// TODO: find out if yes
 					final boolean hasIssues = false;
