@@ -22,6 +22,7 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
+import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.matchfilter.MatchFilter;
 import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
 import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
@@ -108,7 +109,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			final BlockData< M, FIBSEMAlignmentParameters< M, S >, F > blockData,
 			final int startId,
 			final List< Pair< String, Double > > pGroupList,
-			final Map<String, ArrayList<Double>> sectionIdToZMap,
+			final Map< String, ArrayList<Double> > sectionIdToZMap,
 			final int numThreads )
 	{
 		super( startId, blockData, numThreads );
@@ -120,8 +121,19 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 						blockData.solveTypeParameters().matchCollection() );
 
 		this.inputSolveItem = new AffineBlockDataWrapper<>( blockData );
-		this.pGroupList = pGroupList; // list of pairs of pGroupId, z-layer
-		this.sectionIdToZMap = sectionIdToZMap; // 
+
+		// TODO: can be easily re-created locally
+		this.pGroupList = pGroupList; // all z-layers as String and Double
+		this.sectionIdToZMap = sectionIdToZMap; // all z-layers as String map to List that only contains the z-layer as double
+
+		//final private HashSet<String> allTileIds;
+		//final private Map<String, MinimalTileSpec> idToTileSpec;
+
+		// tileId > String (this is the pId, qId)
+		// sectionId > String (this is the pGroupId, qGroupId)
+		
+		TileSpec ts = blockData.idToTileSpec().values().iterator().next();
+		String sectionId = ts.getLayout().getSectionId(); // 
 
 		this.blockOptimizerLambdasRigid = blockData.solveTypeParameters().blockOptimizerLambdasRigid();
 		this.blockOptimizerLambdasTranslation = blockData.solveTypeParameters().blockOptimizerLambdasTranslation();

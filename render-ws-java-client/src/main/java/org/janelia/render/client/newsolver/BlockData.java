@@ -8,10 +8,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.solver.MinimalTileSpec;
 
 import mpicbg.models.CoordinateTransform;
 
@@ -39,7 +39,7 @@ public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveP
 	final private HashSet<String> allTileIds;
 
 	// used for saving and display
-	final private Map<String, MinimalTileSpec> idToTileSpec;
+	final private Map<String, TileSpec> idToTileSpec;
 
 	// contains the model as determined by the local solve
 	final private HashMap<String, M> idToNewModel = new HashMap<>();
@@ -50,7 +50,7 @@ public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveP
 			final int id,
 			final List< Function< Double, Double > > weightF,
 			final Collection<String> allTileIds,
-			final Map<String, MinimalTileSpec> idToTileSpec )
+			final Map<String, TileSpec> idToTileSpec )
 	{
 		this.id = id;
 		this.blockFactory = blockFactory;
@@ -66,7 +66,7 @@ public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveP
 	public P solveTypeParameters() { return solveTypeParameters; }
 	public F blockFactory() { return blockFactory; }
 
-	public Map<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
+	public Map<String, TileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashSet<String> allTileIds() { return allTileIds; }
 	public HashMap<String, M> idToNewModel() { return idToNewModel; }
 
