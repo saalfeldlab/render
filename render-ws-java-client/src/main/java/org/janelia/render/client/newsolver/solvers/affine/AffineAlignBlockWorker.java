@@ -23,6 +23,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.solver.MinimalTileSpec;
+import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.matchfilter.MatchFilter;
 import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
 import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
@@ -65,7 +66,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 	final RenderDataClient matchDataClient;
 
-	final List< Pair< String, Double > > pGroupList;
+	//final List< Pair< String, Double > > pGroupList;
 	final Map<String, ArrayList<Double>> sectionIdToZMap;
 
 	// we store tile pairs and pointmatches here first, as we need to do stitching per section first if possible (if connected)
@@ -90,6 +91,9 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	private List< AffineBlockDataWrapper< M, S, F > > solveItems;
 	private List< BlockData< M, FIBSEMAlignmentParameters< M, S >, F > > result;
 
+	// what z-range this block is
+	private final int minZ, maxZ;
+
 	// to filter matches
 	final MatchFilter matchFilter;
 
@@ -108,8 +112,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	public AffineAlignBlockWorker(
 			final BlockData< M, FIBSEMAlignmentParameters< M, S >, F > blockData,
 			final int startId,
-			final List< Pair< String, Double > > pGroupList,
-			final Map< String, ArrayList<Double> > sectionIdToZMap,
 			final int numThreads )
 	{
 		super( startId, blockData, numThreads );
@@ -123,8 +125,35 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		this.inputSolveItem = new AffineBlockDataWrapper<>( blockData );
 
 		// TODO: can be easily re-created locally
-		this.pGroupList = pGroupList; // all z-layers as String and Double
-		this.sectionIdToZMap = sectionIdToZMap; // all z-layers as String map to List that only contains the z-layer as double
+		//this.pGroupList = pGroupList; // all z-layers as String and Double
+		this.sectionIdToZMap = new HashMap<>(); // all z-layers as String map to List that only contains the z-layer as double
+
+		int minZ = Integer.MAX_VALUE;
+		int maxZ = Integer.MIN_VALUE;
+
+		for ( final TileSpec t : blockData.idToTileSpec().values() )
+		{
+			if ( sectionIdToZMap.containsKey( t.getSectionId() ))
+			{
+				final ArrayList<Double> z = sectionIdToZMap.get( t.getSectionId() );
+				
+				if ( !z.contains( t.getZ() ) )
+					z.add( t.getZ() );
+			}
+			else
+			{
+				final ArrayList<Double> z = new ArrayList<>();
+				z.add( t.getZ() );
+				sectionIdToZMap.put( t.getSectionId(), z );
+			}
+
+			final int z = (int)Math.round( t.getZ() );
+			minZ = Math.min( z, minZ );
+			maxZ = Math.max( z, maxZ );
+		}
+
+		this.minZ = minZ;
+		this.maxZ = maxZ;
 
 		//final private HashSet<String> allTileIds;
 		//final private Map<String, MinimalTileSpec> idToTileSpec;
@@ -198,23 +227,25 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	protected void assembleMatchData(
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
 			final HashMap< Integer, List< Integer > > zToPairs,
-			final double maxRange ) throws IOException
+			final double maxZRange ) throws IOException
 	{
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
-		LOG.info( "block " + inputSolveItem.getId() + ": Loading transforms and matches from " + inputSolveItem.minZ() + " to layer " + inputSolveItem.maxZ() );
+		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().allTileIds().size() + "tiles, from " + this.minZ + " to layer " + this.maxZ );
 
-		if ( !Double.isNaN( maxRange ) )
-			LOG.info( "block " + inputSolveItem.getId() + ": WARNING! max z range for matching is " + maxRange );
+		if ( !Double.isNaN( maxZRange ) )
+			LOG.info( "block " + inputSolveItem.blockData().getId() + ": WARNING! max z range for matching is " + maxZRange );
 
-		for ( final Pair< String, Double > pGroupPair : pGroupList )
+		// Note: this is not sorted anymore
+		for ( final String sectionId : this.sectionIdToZMap.keySet() )
 		{
-			if ( pGroupPair.getB().doubleValue() < inputSolveItem.minZ() || pGroupPair.getB().doubleValue() > inputSolveItem.maxZ() )
-				continue;
+			// this can't happen since we build it from the TileSpecs that are part of the solve
+			//if ( pGroupPair.getB().doubleValue() < inputSolveItem.minZ() || pGroupPair.getB().doubleValue() > inputSolveItem.maxZ() )
+			//	continue;
 
-			final String pGroupId = pGroupPair.getA();
+			//final String pGroupId = pGroupPair.getA();
 
-			LOG.info("block " + inputSolveItem.getId() + ": run: connecting tiles with pGroupId {}", pGroupId);
+			LOG.info("block " + inputSolveItem.blockData().getId() + ": run: connecting tiles with pGroupId {}", sectionId );
 
 			List<CanvasMatches> matches = null;
 			final int maxTries = 10;
@@ -224,63 +255,51 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			{
 				try
 				{
-					matches = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
+					matches = matchDataClient.getMatchesWithPGroupId(sectionId, false);
 				}
 				catch (Exception e )
 				{
 					matches = null;
 					if ( ++run <= maxTries )
 					{
-						LOG.warn( "block " + inputSolveItem.getId() + ": Failed at: " + inputSolveItem.getId() + ": " + e );
+						LOG.warn( "block " + inputSolveItem.blockData().getId() + ": Failed at: " + inputSolveItem.blockData().getId() + ": " + e );
 						SimpleMultiThreading.threadWait( 1000 );
 					}
 					else
 					{
-						throw new RuntimeException( "failed to retrieve matches for pGroupId " + pGroupId + " after " + maxTries + " attempts (id=" + inputSolveItem.getId() + ")" );
+						throw new RuntimeException( "failed to retrieve matches for pGroupId " + sectionId + " after " + maxTries + " attempts (id=" + inputSolveItem.blockData().getId() + ")" );
 					}
 				}
 			} while( matches == null );
 
 			for (final CanvasMatches match : matches)
 			{
+				final String pGroupId = sectionId;
 				final String pId = match.getpId();
-				final TileSpec pTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, stack, pGroupId, pId);
+				final TileSpec pTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, this.renderStack, pGroupId, pId);
 
 				final String qGroupId = match.getqGroupId();
 				final String qId = match.getqId();
-				final TileSpec qTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, stack, qGroupId, qId);
+				final TileSpec qTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, this.renderStack, qGroupId, qId);
 
 				if ((pTileSpec == null) || (qTileSpec == null))
 				{
-					LOG.info("block " + inputSolveItem.getId() + ": run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, stack);
+					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, stack);
 					continue;
 				}
 
+				// TODO: TEST IF qId is part of the solve set
+
 				// if any of the matches is outside the range we ignore them
-				if ( pTileSpec.getZ() < inputSolveItem.minZ() || pTileSpec.getZ() > inputSolveItem.maxZ() || qTileSpec.getZ() < inputSolveItem.minZ() || qTileSpec.getZ() > inputSolveItem.maxZ() )
+				if ( pTileSpec.getZ() < this.minZ || pTileSpec.getZ() > this.maxZ || qTileSpec.getZ() < this.minZ || qTileSpec.getZ() > this.maxZ )
 				{
-					LOG.info("block " + inputSolveItem.getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, stack);
+					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, this.renderStack);
 					continue;
 				}
 
 				// max range
-				if ( !Double.isNaN( maxRange ) && Math.abs( pTileSpec.getZ() - qTileSpec.getZ() ) > maxRange )
+				if ( !Double.isNaN( maxZRange ) && Math.abs( pTileSpec.getZ() - qTileSpec.getZ() ) > maxZRange )
 					continue;
-
-				/*
-				// TODO: REMOVE Artificial split of the data
-				if ( pTileSpec.getZ().doubleValue() == qTileSpec.getZ().doubleValue() )
-				{
-					if ( pTileSpec.getZ().doubleValue() >= 10049 && pTileSpec.getZ().doubleValue() <= 10149 )
-					{
-						if ( ( pId.contains( "_0-0-1." ) && qId.contains( "_0-0-2." ) ) || ( qId.contains( "_0-0-1." ) && pId.contains( "_0-0-2." ) ) )
-						{
-							LOG.info("run: ignoring pair ({}, {}) to artificially split the data", pId, qId );
-							continue;
-						}
-					}
-				}
-				*/
 
 				final Tile< B > p, q;
 
