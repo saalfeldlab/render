@@ -284,17 +284,24 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 				if ((pTileSpec == null) || (qTileSpec == null))
 				{
-					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, stack);
+					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, this.renderStack );
 					continue;
 				}
 
 				// TODO: TEST IF qId is part of the solve set
-
-				// if any of the matches is outside the range we ignore them
-				if ( pTileSpec.getZ() < this.minZ || pTileSpec.getZ() > this.maxZ || qTileSpec.getZ() < this.minZ || qTileSpec.getZ() > this.maxZ )
+				
+				// if any of the matches is outside the set of tiles of this Block we ignore them
+				if ( !inputSolveItem.blockData().allTileIds().contains( qTileSpec.getTileId() ) )
 				{
 					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, this.renderStack);
 					continue;
+				}
+	
+				// if any of the matches is outside the range we ignore them
+				if ( pTileSpec.getZ() < this.minZ || pTileSpec.getZ() > this.maxZ || qTileSpec.getZ() < this.minZ || qTileSpec.getZ() > this.maxZ )
+				{
+					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range in z - THIS CANNOT HAPPEN. STOPPING. {}", pId, qId, this.renderStack);
+					System.exit( 0 );
 				}
 
 				// max range
