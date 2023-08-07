@@ -16,7 +16,7 @@ import mpicbg.models.Tile;
  * @author spreibi
  *
  */
-class Graph
+public class Graph
 {
 	private int v; // No. of vertices
 	private LinkedList< Integer > adj[]; // Adjacency List Represntation
@@ -91,7 +91,7 @@ class Graph
 	}
 
 	// Returns true if the graph contains a cycle, else false.
-	boolean isCyclic()
+	public boolean isCyclic()
 	{
 		// Mark all the vertices as not visited and not part of
 		// recursion stack

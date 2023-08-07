@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -370,6 +372,17 @@ public class VisualizeTools
 
 			return Views.translate( copy, min );
 		}
+	}
+
+	// TODO: rendering should take all models (including deformations, not only one affine)
+	public static ImagePlus renderTS( final HashMap<String, AffineModel2D> idToModels, final Map<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
+	{
+		final HashMap<String, MinimalTileSpec> idToTileSpecMinimal = new HashMap<>();
+
+		for ( final Entry<String, TileSpec> e : idToTileSpec.entrySet() )
+			idToTileSpecMinimal.put(e.getKey(), new MinimalTileSpec( e.getValue() ) );
+
+		return render(idToModels, idToTileSpecMinimal, scale, Integer.MIN_VALUE, Integer.MAX_VALUE );
 	}
 
 	// TODO: rendering should take all models (including deformations, not only one affine)

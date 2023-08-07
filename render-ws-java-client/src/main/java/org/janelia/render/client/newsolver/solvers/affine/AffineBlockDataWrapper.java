@@ -44,6 +44,9 @@ public class AffineBlockDataWrapper< M extends Model< M > & Affine2D< M >, S ext
 	// which z layers are restarts
 	final private HashSet< Integer > restarts = new HashSet<Integer>();
 
+	// contains the model as loaded from renderer (can go right now except for debugging)
+	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
+
 	// matches for error computation
 	final List< Pair< Pair< String, String>, Matches > > matches = new ArrayList<>();
 
@@ -61,5 +64,6 @@ public class AffineBlockDataWrapper< M extends Model< M > & Affine2D< M >, S ext
 	public HashMap< Tile< M >, Tile< M > > tileToGroupedTile() { return tileToGroupedTile; }
 	public HashMap< Tile< M >, List< Tile< M > > > groupedTileToTiles() { return groupedTileToTiles; }
 	public HashSet< Integer > restarts() { return restarts; }
+	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 
 }

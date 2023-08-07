@@ -711,7 +711,7 @@ public class SolveTools
 		return unAlignedTiles;
 	}
 
-	protected static AffineModel2D createAffine( final Affine2D< ? > model )
+	public static AffineModel2D createAffine( final Affine2D< ? > model )
 	{
 		final AffineModel2D m = new AffineModel2D();
 		m.set( model.createAffine() );
@@ -719,7 +719,7 @@ public class SolveTools
 		return m;
 	}
 
-	protected static List< PointMatch > duplicate( List< PointMatch > pms )
+	public static List< PointMatch > duplicate( List< PointMatch > pms )
 	{
 		final List< PointMatch > copy = new ArrayList<>();
 
