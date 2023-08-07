@@ -66,9 +66,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 	final RenderDataClient matchDataClient;
 
-	//final List< Pair< String, Double > > pGroupList;
-	final Map<String, ArrayList<Double>> sectionIdToZMap;
-
 	// we store tile pairs and pointmatches here first, as we need to do stitching per section first if possible (if connected)
 	// filled in assembleMatchData()
 	final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs;
@@ -90,9 +87,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	final AffineBlockDataWrapper< M, S, F > inputSolveItem;
 	private List< AffineBlockDataWrapper< M, S, F > > solveItems;
 	private List< BlockData< M, FIBSEMAlignmentParameters< M, S >, F > > result;
-
-	// what z-range this block is
-	private final int minZ, maxZ;
 
 	// to filter matches
 	final MatchFilter matchFilter;
@@ -124,46 +118,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 		this.inputSolveItem = new AffineBlockDataWrapper<>( blockData );
 
-		// TODO: can be easily re-created locally
-		//this.pGroupList = pGroupList; // all z-layers as String and Double
-		this.sectionIdToZMap = new HashMap<>(); // all z-layers as String map to List that only contains the z-layer as double
-
-		int minZ = Integer.MAX_VALUE;
-		int maxZ = Integer.MIN_VALUE;
-
-		for ( final TileSpec t : blockData.idToTileSpec().values() )
-		{
-			if ( sectionIdToZMap.containsKey( t.getSectionId() ))
-			{
-				final ArrayList<Double> z = sectionIdToZMap.get( t.getSectionId() );
-				
-				if ( !z.contains( t.getZ() ) )
-					z.add( t.getZ() );
-			}
-			else
-			{
-				final ArrayList<Double> z = new ArrayList<>();
-				z.add( t.getZ() );
-				sectionIdToZMap.put( t.getSectionId(), z );
-			}
-
-			final int z = (int)Math.round( t.getZ() );
-			minZ = Math.min( z, minZ );
-			maxZ = Math.max( z, maxZ );
-		}
-
-		this.minZ = minZ;
-		this.maxZ = maxZ;
-
-		//final private HashSet<String> allTileIds;
-		//final private Map<String, MinimalTileSpec> idToTileSpec;
-
-		// tileId > String (this is the pId, qId)
-		// sectionId > String (this is the pGroupId, qGroupId)
-		
-		TileSpec ts = blockData.idToTileSpec().values().iterator().next();
-		String sectionId = ts.getLayout().getSectionId(); // 
-
 		this.blockOptimizerLambdasRigid = blockData.solveTypeParameters().blockOptimizerLambdasRigid();
 		this.blockOptimizerLambdasTranslation = blockData.solveTypeParameters().blockOptimizerLambdasTranslation();
 		this.blockOptimizerIterations = blockData.solveTypeParameters().blockOptimizerIterations();
@@ -187,12 +141,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		this.zToPairs = new HashMap<>();
 	}
 
-	public List< BlockData< M, P, F > > getBlockDataList()
+	@Override
+	public List< BlockData< M, FIBSEMAlignmentParameters< M, S >, F > > getBlockDataList()
 	{
 		return result;
 	}
 
-	protected void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
+	@Override
+	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		assembleMatchData( pairs, zToPairs, maxRange );
 		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, numThreads );
