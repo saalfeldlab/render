@@ -29,10 +29,10 @@ public abstract class Worker < M extends CoordinateTransform, P extends BlockDat
 	final protected String renderStack;
 
 	// what z-range this block covers
-	private final int minZ, maxZ;
+	final protected int minZ, maxZ;
 
 	// all z-layers as String map to List that only contains the z-layer as double
-	final Map<String, ArrayList<Double>> sectionIdToZMap; 
+	final protected Map<String, ArrayList<Double>> sectionIdToZMap; 
 
 	final protected int numThreads;
 

@@ -154,7 +154,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
-		assembleMatchData( pairs, zToPairs, maxRange );
+		assembleMatchData( pairs, zToPairs, blockData.solveTypeParameters().maxZRangeMatches() );
 		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, numThreads );
 		connectGroupedTiles( pairs, inputSolveItem );
 		this.solveItems = splitSolveItem( inputSolveItem, startId );
@@ -187,14 +187,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	protected void assembleMatchData(
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
 			final HashMap< Integer, List< Integer > > zToPairs,
-			final double maxZRange ) throws IOException
+			final double maxZRangeMatches ) throws IOException
 	{
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
 		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().allTileIds().size() + "tiles, from " + this.minZ + " to layer " + this.maxZ );
 
-		if ( !Double.isNaN( maxZRange ) )
-			LOG.info( "block " + inputSolveItem.blockData().getId() + ": WARNING! max z range for matching is " + maxZRange );
+		if ( !Double.isNaN( maxZRangeMatches ) )
+			LOG.info( "block " + inputSolveItem.blockData().getId() + ": WARNING! max z range for matching is " + maxZRangeMatches );
 
 		// Note: this is not sorted anymore
 		for ( final String sectionId : this.sectionIdToZMap.keySet() )
@@ -237,7 +237,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				}
 
 				// max range
-				if ( !Double.isNaN( maxZRange ) && Math.abs( pTileSpec.getZ() - qTileSpec.getZ() ) > maxZRange )
+				if ( !Double.isNaN( maxZRangeMatches ) && Math.abs( pTileSpec.getZ() - qTileSpec.getZ() ) > maxZRangeMatches )
 					continue;
 
 				final Tile<M> p = getOrBuildTile(pId, pTileSpec);
@@ -249,11 +249,11 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				final int pZ = (int)Math.round( pTileSpec.getZ() );
 				final int qZ = (int)Math.round( qTileSpec.getZ() );
 
-				inputSolveItem.zToTileId().putIfAbsent( pZ, new HashSet<>() );
-				inputSolveItem.zToTileId().putIfAbsent( qZ, new HashSet<>() );
+				inputSolveItem.blockData().zToTileId().putIfAbsent( pZ, new HashSet<>() );
+				inputSolveItem.blockData().zToTileId().putIfAbsent( qZ, new HashSet<>() );
 
-				inputSolveItem.zToTileId().get( pZ ).add( pId );
-				inputSolveItem.zToTileId().get( qZ ).add( qId );
+				inputSolveItem.blockData().zToTileId().get( pZ ).add( pId );
+				inputSolveItem.blockData().zToTileId().get( qZ ).add( qId );
 
 				// if the pair is from the same layer we remember the current index in the pairs list for stitching
 				if ( pZ == qZ )

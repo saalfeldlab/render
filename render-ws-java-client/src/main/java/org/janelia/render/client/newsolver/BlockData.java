@@ -41,6 +41,9 @@ public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveP
 	// used for saving and display
 	final private Map<String, TileSpec> idToTileSpec;
 
+	// used for global solve outside
+	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
+
 	// contains the model as determined by the local solve
 	final private HashMap<String, M> idToNewModel = new HashMap<>();
 
@@ -69,6 +72,8 @@ public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveP
 	public Map<String, TileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashSet<String> allTileIds() { return allTileIds; }
 	public HashMap<String, M> idToNewModel() { return idToNewModel; }
+
+	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 
 	public Worker< M, P, F > createWorker()
 	{
