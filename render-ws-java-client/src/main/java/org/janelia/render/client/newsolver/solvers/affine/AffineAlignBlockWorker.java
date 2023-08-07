@@ -159,7 +159,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
 		assembleMatchData( pairs, zToPairs, blockData.solveTypeParameters().maxZRangeMatches() );
-		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, numThreads );
+		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, minStitchingInliersSupplier, stitchFirst, numThreads );
 		connectGroupedTiles( pairs, inputSolveItem );
 		this.solveItems = splitSolveItem( inputSolveItem, startId );
 
@@ -567,7 +567,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 	protected void connectGroupedTiles(
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
-			final SolveItem<G, M, S> solveItem )
+			final AffineBlockDataWrapper< M, S, F > solveItem )
 	{
 		// next, group the stitched tiles together
 		for ( final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair : pairs )
