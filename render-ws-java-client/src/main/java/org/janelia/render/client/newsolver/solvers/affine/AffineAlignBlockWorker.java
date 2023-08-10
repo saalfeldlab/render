@@ -140,25 +140,17 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
-		this.canvasMatches = assembleMatchData(
-				inputSolveItem, sectionIdToZMap, matchFilter, minZ, maxZ, matchDataClient, renderDataClient, renderStack,
-				pairs, zToPairs, blockData.solveTypeParameters().maxZRangeMatches() );
+		this.canvasMatches = assembleMatchData( inputSolveItem, matchFilter, matchDataClient, renderDataClient, renderStack, pairs, zToPairs );
 
 		// minStitchingInliersSupplier:
 		// how many stitching inliers are needed to stitch first
 		// reason: if tiles are rarely connected and it is stitched first, a useful
 		// common alignment model after stitching cannot be found
-		stitchSectionsAndCreateGroupedTiles(
-				inputSolveItem, pairs, zToPairs,
-				blockData.solveTypeParameters().maxPlateauWidthStitching(),
-				blockData.solveTypeParameters().maxAllowedErrorStitching(),
-				blockData.solveTypeParameters().maxIterationsStitching(),
-				blockData.solveTypeParameters().minStitchingInliersSupplier(),
-				stitchFirst, numThreads );
+		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, stitchFirst, numThreads );
 
 		connectGroupedTiles( pairs, inputSolveItem );
 
-		this.solveItems = splitSolveItem( inputSolveItem, startId, minZ, maxZ );
+		this.solveItems = splitSolveItem( inputSolveItem, startId );
 
 		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
 		{
@@ -187,23 +179,24 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 	protected ArrayList< CanvasMatches > assembleMatchData(
 			final AffineBlockDataWrapper< M, S, F > inputSolveItem,
-			final Map<String, ArrayList<Double>> sectionIdToZMap,
 			final MatchFilter matchFilter,
-			final int minZ,
-			final int maxZ,
 			final RenderDataClient matchDataClient,
 			final RenderDataClient renderDataClient,
 			final String renderStack,
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
-			final HashMap< Integer, List< Integer > > zToPairs,
-			final double maxZRangeMatches ) throws IOException
+			final HashMap< Integer, List< Integer > > zToPairs ) throws IOException
 	{
+		final Map<String, ArrayList<Double>> sectionIdToZMap = inputSolveItem.blockData().sectionIdToZMap();
+		final int minZ = inputSolveItem.blockData().minZ();
+		final int maxZ = inputSolveItem.blockData().maxZ();
+		final int maxZRangeMatches = inputSolveItem.blockData().solveTypeParameters().maxZRangeMatches();
+
 		final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
-		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().allTileIds().size() + "tiles, from " + this.minZ + " to layer " + this.maxZ );
+		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().allTileIds().size() + "tiles, from " + minZ + " to layer " + maxZ );
 
-		if ( !Double.isNaN( maxZRangeMatches ) )
+		if ( maxZRangeMatches >= 0 )
 			LOG.info( "block " + inputSolveItem.blockData().getId() + ": WARNING! max z range for matching is " + maxZRangeMatches );
 
 		// Note: this is not sorted anymore
@@ -247,7 +240,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				}
 
 				// max range
-				if ( !Double.isNaN( maxZRangeMatches ) && Math.abs( pTileSpec.getZ() - qTileSpec.getZ() ) > maxZRangeMatches )
+				if ( maxZRangeMatches >= 0 && Math.abs( pTileSpec.getZ() - qTileSpec.getZ() ) > maxZRangeMatches )
 					continue;
 
 				final Tile<M> p = getOrBuildTile(pId, pTileSpec);
@@ -600,13 +593,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			final AffineBlockDataWrapper< M, S, F > solveItem,
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
 			final HashMap< Integer, List< Integer > > zToPairs,
-			final int maxPlateauWidthStitching,
-			final double maxAllowedErrorStitching,
-			final int maxIterationsStitching,
-			final Function< Integer, Integer > minStitchingInliersSupplier,
 			final boolean stitchFirst,
 			final int numThreads )
 	{
+		final int maxPlateauWidthStitching = solveItem.blockData().solveTypeParameters().maxPlateauWidthStitching();
+		final double maxAllowedErrorStitching = solveItem.blockData().solveTypeParameters().maxAllowedErrorStitching();
+		final int maxIterationsStitching = solveItem.blockData().solveTypeParameters().maxIterationsStitching();
+		final Function< Integer, Integer > minStitchingInliersSupplier = solveItem.blockData().solveTypeParameters().minStitchingInliersSupplier();
+
 		//final S model = solveItem.stitchingSolveModelInstance();
 
 		// combine tiles per layer that are be stitched first, but iterate over all z's 
@@ -815,7 +809,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		}
 	}
 
-	protected List< AffineBlockDataWrapper< M, S, F > > splitSolveItem( final AffineBlockDataWrapper< M, S, F > inputSolveItem, final int startId, final int minZ, final int maxZ )
+	protected List< AffineBlockDataWrapper< M, S, F > > splitSolveItem( final AffineBlockDataWrapper< M, S, F > inputSolveItem, final int startId )
 	{
 		// assigning new id's to the solve items (they collide for now with other workers, fix upon merging)
 		int id = startId + 1;
