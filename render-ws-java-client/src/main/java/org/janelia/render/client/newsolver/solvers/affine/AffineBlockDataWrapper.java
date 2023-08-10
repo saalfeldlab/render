@@ -16,7 +16,7 @@ import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import net.imglib2.util.Pair;
 
-public class AffineBlockDataWrapper< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S >,F extends BlockFactory< F > >
+public class AffineBlockDataWrapper< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S >, F extends BlockFactory< F > >
 {
 	final public static int samplesPerDimension = 2;
 

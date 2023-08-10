@@ -158,7 +158,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 		connectGroupedTiles( pairs, inputSolveItem );
 
-		this.solveItems = splitSolveItem( inputSolveItem, startId );
+		this.solveItems = splitSolveItem( inputSolveItem, startId, minZ, maxZ );
 
 		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
 		{
@@ -815,17 +815,17 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		}
 	}
 
-	protected List< SolveItem< G, M, S > > splitSolveItem( final SolveItem<G, M, S> inputSolveItem, final int startId )
+	protected List< AffineBlockDataWrapper< M, S, F > > splitSolveItem( final AffineBlockDataWrapper< M, S, F > inputSolveItem, final int startId, final int minZ, final int maxZ )
 	{
 		// assigning new id's to the solve items (they collide for now with other workers, fix upon merging)
 		int id = startId + 1;
 
-		final ArrayList< SolveItem< G, M, S > > solveItems = new ArrayList<>();
+		final ArrayList< AffineBlockDataWrapper< M, S, F > > solveItems = new ArrayList<>();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
 		final ArrayList< Set< Tile< ? > > > graphs = safelyIdentifyConnectedGraphs( new HashSet<>( inputSolveItem.tileToGroupedTile().values() ) );
 
-		LOG.info( "block " + inputSolveItem.getId() + ": Graph of SolveItem " + inputSolveItem.getId() + " consists of " + graphs.size() + " subgraphs." );
+		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Graph of SolveItem " + inputSolveItem.blockData().getId() + " consists of " + graphs.size() + " subgraphs." );
 
 		if ( graphs.size() == 0 )
 		{
@@ -835,7 +835,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		{
 			solveItems.add( inputSolveItem );
 
-			LOG.info( "block " + inputSolveItem.getId() + ": Graph 0 has " + graphs.get( 0 ).size() + " tiles." );
+			LOG.info( "block " + inputSolveItem.blockData().getId() + ": Graph 0 has " + graphs.get( 0 ).size() + " tiles." );
 		}
 		else
 		{
@@ -843,43 +843,48 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 			for ( final Set< Tile< ? > > subgraph : graphs ) // TODO: type sets properly
 			{
-				LOG.info( "block " + inputSolveItem.getId() + ": new graph " + graphCount++ + " has " + subgraph.size() + " tiles." );
+				LOG.info( "block " + inputSolveItem.blockData().getId() + ": new graph " + graphCount++ + " has " + subgraph.size() + " tiles." );
 
-				int newMin = inputSolveItem.maxZ();
-				int newMax = inputSolveItem.minZ();
+				int newMin = maxZ;
+				int newMax = minZ;
 
 				// first figure out new minZ and maxZ
 				for ( final Tile< ? > groupedTile : subgraph )
 				{
 					for ( final Tile< ? > t : inputSolveItem.groupedTileToTiles().get( groupedTile ) )
 					{
-						final MinimalTileSpec tileSpec = inputSolveItem.idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
+						final TileSpec tileSpec = inputSolveItem.blockData().idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
 	
 						newMin = Math.min( newMin, (int)Math.round( tileSpec.getZ() ) );
 						newMax = Math.max( newMax, (int)Math.round( tileSpec.getZ() ) );
 					}
 				}
 
-				final SolveItem< G,M,S > solveItem = new SolveItem<>(
-						new SolveItemData< G, M, S >(
-							id,
-							inputSolveItem.globalSolveModelInstance(),
-							inputSolveItem.blockSolveModelInstance(),
-							inputSolveItem.solveItemData.stitchingModelSupplier(),
-							blockOptimizerLambdasRigid,
-							blockOptimizerLambdasTranslation,
-							blockOptimizerIterations,
-							blockMaxPlateauWidth,
-							minStitchingInliers,
-							blockMaxAllowedError,
-							dynamicLambdaFactor,
-							rigidPreAlign,
-							newMin,
-							newMax ) );
+				// TODO: re-assemble allTileIds and idToTileSpec
+				new BlockData< M, FIBSEMAlignmentParameters< M, S >, F >(
+						
+						);
+
+				new BlockData< M, FIBSEMAlignmentParameters< M, S >, F >(
+						id,
+						inputSolveItem.globalSolveModelInstance(),
+						inputSolveItem.blockSolveModelInstance(),
+						inputSolveItem.solveItemData.stitchingModelSupplier(),
+						blockOptimizerLambdasRigid,
+						blockOptimizerLambdasTranslation,
+						blockOptimizerIterations,
+						blockMaxPlateauWidth,
+						minStitchingInliers,
+						blockMaxAllowedError,
+						dynamicLambdaFactor,
+						rigidPreAlign,
+						newMin,
+						newMax );
+				//final AffineBlockDataWrapper< M, S, F > solveItem = new AffineBlockDataWrapper<>();
 
 				++id;
 
-				LOG.info( "block " + solveItem.getId() + ": old graph id=" + inputSolveItem.getId() + ", new graph id=" + solveItem.getId() );
+				LOG.info( "block " + solveItem.getId() + ": old graph id=" + inputSolveItem.blockData().getId() + ", new graph id=" + solveItem.getId() );
 				LOG.info( "block " + solveItem.getId() + ": min: " + newMin + " > max: " + newMax );
 
 				// update all the maps
@@ -892,8 +897,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 						solveItem.idToTileMap().put( tileId, t );
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-						solveItem.idToTileSpec().put( tileId, inputSolveItem.idToTileSpec().get( tileId ) );
-						solveItem.idToNewModel().put( tileId, inputSolveItem.idToNewModel().get( tileId ) );
+						solveItem.idToTileSpec().put( tileId, inputSolveItem.blockData().idToTileSpec().get( tileId ) );
+						solveItem.idToNewModel().put( tileId, inputSolveItem.blockData().idToNewModel().get( tileId ) );
 
 						solveItem.idToStitchingModel().put( tileId, inputSolveItem.idToStitchingModel().get( tileId ) );
 
@@ -912,7 +917,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				// used for global solve outside
 				for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
 				{
-					final HashSet< String > allTilesPerZ = inputSolveItem.zToTileId().get( z );
+					final HashSet< String > allTilesPerZ = inputSolveItem.blockData().zToTileId().get( z );
 
 					if ( allTilesPerZ == null )
 						continue;
