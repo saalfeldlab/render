@@ -99,7 +99,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	final boolean stitchFirst;
 
 	// for error computation (local)
-	final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
+	ArrayList< CanvasMatches > canvasMatches;
 
 	// how many stitching inliers are needed to stitch first
 	// reason: if tiles are rarely connected and it is stitched first, a useful
@@ -158,7 +158,9 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
-		assembleMatchData( pairs, zToPairs, blockData.solveTypeParameters().maxZRangeMatches() );
+		this.canvasMatches = assembleMatchData(
+				inputSolveItem, sectionIdToZMap, matchFilter, minZ, maxZ, matchDataClient, renderDataClient, renderStack,
+				pairs, zToPairs, blockData.solveTypeParameters().maxZRangeMatches() );
 		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, minStitchingInliersSupplier, stitchFirst, numThreads );
 		connectGroupedTiles( pairs, inputSolveItem );
 		this.solveItems = splitSolveItem( inputSolveItem, startId );
@@ -188,11 +190,20 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		System.gc();
 	}
 
-	protected void assembleMatchData(
+	protected ArrayList< CanvasMatches > assembleMatchData(
+			final AffineBlockDataWrapper< M, S, F > inputSolveItem,
+			final Map<String, ArrayList<Double>> sectionIdToZMap,
+			final MatchFilter matchFilter,
+			final int minZ,
+			final int maxZ,
+			final RenderDataClient matchDataClient,
+			final RenderDataClient renderDataClient,
+			final String renderStack,
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
 			final HashMap< Integer, List< Integer > > zToPairs,
 			final double maxZRangeMatches ) throws IOException
 	{
+		final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
 		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().allTileIds().size() + "tiles, from " + this.minZ + " to layer " + this.maxZ );
@@ -201,26 +212,26 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			LOG.info( "block " + inputSolveItem.blockData().getId() + ": WARNING! max z range for matching is " + maxZRangeMatches );
 
 		// Note: this is not sorted anymore
-		for ( final String sectionId : this.sectionIdToZMap.keySet() )
+		for ( final String sectionId : sectionIdToZMap.keySet() )
 		{
 			LOG.info("block " + inputSolveItem.blockData().getId() + ": run: connecting tiles with sectionID {}", sectionId );
 
 			final int maxTries = 10;
-			final List<CanvasMatches> matches = getCanvasMatches(sectionId, maxTries);
+			final List<CanvasMatches> matches = getCanvasMatches(inputSolveItem, matchDataClient, sectionId, maxTries);
 
 			for (final CanvasMatches match : matches)
 			{
 				final String pGroupId = sectionId;
 				final String pId = match.getpId();
-				final TileSpec pTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, this.renderStack, pGroupId, pId);
+				final TileSpec pTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, renderStack, pGroupId, pId);
 
 				final String qGroupId = match.getqGroupId();
 				final String qId = match.getqId();
-				final TileSpec qTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, this.renderStack, qGroupId, qId);
+				final TileSpec qTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, renderStack, qGroupId, qId);
 
 				if ((pTileSpec == null) || (qTileSpec == null))
 				{
-					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, this.renderStack );
+					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, renderStack );
 					continue;
 				}
 
@@ -229,14 +240,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				// if any of the matches is outside the set of tiles of this Block we ignore them
 				if ( !inputSolveItem.blockData().allTileIds().contains( qTileSpec.getTileId() ) )
 				{
-					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, this.renderStack);
+					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, renderStack);
 					continue;
 				}
 	
 				// if any of the matches is outside the range we ignore them
-				if ( pTileSpec.getZ() < this.minZ || pTileSpec.getZ() > this.maxZ || qTileSpec.getZ() < this.minZ || qTileSpec.getZ() > this.maxZ )
+				if ( pTileSpec.getZ() < minZ || pTileSpec.getZ() > maxZ || qTileSpec.getZ() < minZ || qTileSpec.getZ() > maxZ )
 				{
-					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range in z - THIS CANNOT HAPPEN. STOPPING. {}", pId, qId, this.renderStack);
+					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range in z - THIS CANNOT HAPPEN. STOPPING. {}", pId, qId, renderStack);
 					System.exit( 0 );
 				}
 
@@ -267,12 +278,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				}
 
 				// for error computation
-				this.canvasMatches.add( match );
+				canvasMatches.add( match );
 			}
 		}
+
+		return canvasMatches;
 	}
 
-	private List<CanvasMatches> getCanvasMatches(final String sectionId, final int maxTries) {
+	private List<CanvasMatches> getCanvasMatches(final AffineBlockDataWrapper< M, S, F > inputSolveItem, final RenderDataClient matchDataClient, final String sectionId, final int maxTries) {
 		int run = 0;
 		List<CanvasMatches> matches;
 		do {
