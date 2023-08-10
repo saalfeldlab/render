@@ -81,9 +81,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	// only for dynamic lambda stuff that we never used
 	//final Set<Integer> excludeFromRegularization;
 
-	final double maxAllowedErrorStitching;
-	final int maxIterationsStitching, maxPlateauWidthStitching;
-
 	final List<Double> blockOptimizerLambdasRigid, blockOptimizerLambdasTranslation;
 	final List<Integer> blockOptimizerIterations, blockMaxPlateauWidth;
 	final double blockMaxAllowedError;
@@ -100,14 +97,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 	// for error computation (local)
 	ArrayList< CanvasMatches > canvasMatches;
-
-	// how many stitching inliers are needed to stitch first
-	// reason: if tiles are rarely connected and it is stitched first, a useful
-	// common alignment model after stitching cannot be found
-	final Function< Integer, Integer > minStitchingInliersSupplier;
-
-	// limit the z-range of the solver for matches (default: '-1' - no limit)
-	final int maxZRangeMatches;
 
 	// created by SolveItemData.createWorker()
 	public AffineAlignBlockWorker(
@@ -129,19 +118,12 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		this.blockOptimizerLambdasTranslation = blockData.solveTypeParameters().blockOptimizerLambdasTranslation();
 		this.blockOptimizerIterations = blockData.solveTypeParameters().blockOptimizerIterations();
 		this.blockMaxPlateauWidth = blockData.solveTypeParameters().blockMaxPlateauWidth();
-
-		this.minStitchingInliersSupplier = blockData.solveTypeParameters().minStitchingInliersSupplier();
-		this.maxAllowedErrorStitching = blockData.solveTypeParameters().maxAllowedErrorStitching();
-		this.maxIterationsStitching = blockData.solveTypeParameters().maxIterationsStitching();
-		this.maxPlateauWidthStitching = blockData.solveTypeParameters().maxPlateauWidthStitching();
 		this.blockMaxAllowedError = blockData.solveTypeParameters().blockMaxAllowedError();
 
 		if ( blockData.solveTypeParameters().maxNumMatches() <= 0 )
 			this.matchFilter = new NoMatchFilter();
 		else
 			this.matchFilter = new RandomMaxAmountFilter( blockData.solveTypeParameters().maxNumMatches() );
-
-		this.maxZRangeMatches = blockData.solveTypeParameters().maxZRangeMatches();
 
 		// used locally
 		this.stitchFirst = blockData.solveTypeParameters().minStitchingInliersSupplier() != null;
@@ -161,8 +143,21 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		this.canvasMatches = assembleMatchData(
 				inputSolveItem, sectionIdToZMap, matchFilter, minZ, maxZ, matchDataClient, renderDataClient, renderStack,
 				pairs, zToPairs, blockData.solveTypeParameters().maxZRangeMatches() );
-		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, minStitchingInliersSupplier, stitchFirst, numThreads );
+
+		// minStitchingInliersSupplier:
+		// how many stitching inliers are needed to stitch first
+		// reason: if tiles are rarely connected and it is stitched first, a useful
+		// common alignment model after stitching cannot be found
+		stitchSectionsAndCreateGroupedTiles(
+				inputSolveItem, pairs, zToPairs,
+				blockData.solveTypeParameters().maxPlateauWidthStitching(),
+				blockData.solveTypeParameters().maxAllowedErrorStitching(),
+				blockData.solveTypeParameters().maxIterationsStitching(),
+				blockData.solveTypeParameters().minStitchingInliersSupplier(),
+				stitchFirst, numThreads );
+
 		connectGroupedTiles( pairs, inputSolveItem );
+
 		this.solveItems = splitSolveItem( inputSolveItem, startId );
 
 		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
@@ -605,6 +600,9 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			final AffineBlockDataWrapper< M, S, F > solveItem,
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
 			final HashMap< Integer, List< Integer > > zToPairs,
+			final int maxPlateauWidthStitching,
+			final double maxAllowedErrorStitching,
+			final int maxIterationsStitching,
 			final Function< Integer, Integer > minStitchingInliersSupplier,
 			final boolean stitchFirst,
 			final int numThreads )
@@ -811,7 +809,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
 					solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
-					LOG.info( "block " + inputSolveItem.blockData().getId() + ": Single TileId " + tileId );
+					LOG.info( "block " + solveItem.blockData().getId() + ": Single TileId " + tileId );
 				}
 			}
 		}
