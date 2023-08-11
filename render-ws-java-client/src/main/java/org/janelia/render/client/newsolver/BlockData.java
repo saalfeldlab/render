@@ -94,6 +94,8 @@ public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveP
 
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 
+	public List< Function< Double, Double > > weightFunctions() { return weightF; }
+
 	public Worker< M, P, F > createWorker()
 	{
 		// should maybe ask the solveTypeParamters to create the object I think

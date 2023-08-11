@@ -322,9 +322,9 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	 * The goal is to map the grouped tile to the averaged metadata coordinate transform
 	 * (alternative: top left corner?)
 	 * 
-	 * @param solveItem - the input solve item
+	 * @param solveItem - the solve item
 	 */
-	protected boolean assignRegularizationModel( final SolveItem<G, M, S> solveItem )
+	protected boolean assignRegularizationModel( final AffineBlockDataWrapper< M, S, F > solveItem )
 	{
 		LOG.info( "Assigning regularization models." );
 
@@ -335,7 +335,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		{
 			final int z =
 					(int)Math.round(
-						solveItem.idToTileSpec().get(
+						solveItem.blockData().idToTileSpec().get(
 							solveItem.tileToIdMap().get( 
 									solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ) ) ).getZ() );
 
@@ -354,13 +354,13 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			for ( final int z : allZ )
 			{
 				final List<Tile<M>> groupedTiles = zToGroupedTileList.get( z );
-	
+
 				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (ConstantAffineModel2D)" );
-	
+
 				// find out where the Tile sits in average (given the n tiles it is grouped from)
 				for ( final Tile< M > groupedTile : groupedTiles )
 				{
-					final List< Tile<M> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
+					final List< Tile< M> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
 	
 					if ( groupedTiles.size() > 1 )
 						LOG.info( "z=" + z + " grouped tile [" + groupedTile + "] contains " + imageTiles.size() + " image tiles." );
@@ -379,14 +379,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	//				TileId 19-07-31_120407_0-0-2.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 16066.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
 	//				TileId 19-07-31_120407_0-0-0.24501.0 Model=     [3,3](AffineTransform[[0.999999730969417, -6.35252550002E-4, 369.469292002579], [6.35252550002E-4, 0.999999730969417, 403.522028590144]]) 1.7976931348623157E308
 	//				TileId 19-07-31_120407_0-0-0.24501.0 prev Model=[3,3](AffineTransform[[1.0, 0.0, 400.0], [0.0, 1.0, 400.0]]) 1.7976931348623157E308
-	
+
 					// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
 					final List< PointMatch > matches = new ArrayList<>();
-	
+
 					for ( final Tile<M> imageTile : imageTiles )
 					{
 						final String tileId = solveItem.tileToIdMap().get( imageTile );
-						final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+						final TileSpec tileSpec = solveItem.blockData().idToTileSpec().get( tileId );
 						
 						//if ( !tileId.contains("_0-0-0") )
 						//	continue;
@@ -398,8 +398,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 						//LOG.info( "z=" + z + " metaData model : " + metaDataTransform );
 	
 						final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-						final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);:
-	
+						final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
+
 						// ALTERNATIVELY: ONLY SELECT ONE OF THE TILES
 						for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
 						{
@@ -414,9 +414,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	
 								matches.add(new PointMatch( new Point(p), new Point(q) ));
 							}
-						}					
+						}
 					}
-	
 					//final RigidModel2D regularizationModel = new RigidModel2D();
 					//final TranslationModel2D regularizationModel = new TranslationModel2D();
 					//final S regularizationModel = solveItem.stitchingSolveModelInstance();
@@ -451,106 +450,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		}
 		else
 		{
-			//
-			// it is based on StabilizingAffineModel2Ds, meaning each image wants to sit where its corresponding one in the above layer sits
-			//
-			for ( int i = 0; i < allZ.size(); ++i )
-			{
-				final int z = allZ.get( i );
-
-				// first get all tiles from adjacent layers and the associated grouped tile
-				final ArrayList< Pair< Pair< Integer, String>, Tile<M> > > neighboringTiles = new ArrayList<>();
-
-				int from = i, to = i;
-
-				for ( int d = 1; d <= stabilizationRadius && i + d < allZ.size(); ++d )
-				{
-					if ( solveItem.restarts().contains( allZ.get( i + d ) ) )
-						break;
-					else
-						neighboringTiles.addAll( SolveTools.layerDetails( allZ, zToGroupedTileList, solveItem, i + d ) );
-
-					to = i + d;
-				}
-
-				// if this z section is a restart we only go down from here
-				if ( !solveItem.restarts().contains( z ) )
-				{
-					for ( int d = 1; d <= stabilizationRadius && i - d >= 0; ++d )
-					{
-						// always connect up, even if it is a restart, then break afterwards
-						neighboringTiles.addAll( SolveTools.layerDetails( allZ, zToGroupedTileList, solveItem, i - d ) );
-
-						from = i - d;
-
-						if ( solveItem.restarts().contains( allZ.get( i - d ) ) )
-							break;
-					}
-				}
-
-				final List<Tile<M>> groupedTiles = zToGroupedTileList.get( z );
-
-				if ( solveItem.restarts().contains( z ) )
-					LOG.info( "z=" + z + " is a RESTART" );
-
-				LOG.info( "z=" + z + " contains " + groupedTiles.size() + " grouped tiles (StabilizingAffineModel2D), connected from " + allZ.get( from ) + " to " + allZ.get( to ) );
-
-				// now go over all tiles of the current z
-				for ( final Tile< M > groupedTile : groupedTiles )
-				{
-					final List< Tile<M> > imageTiles = solveItem.groupedTileToTiles().get( groupedTile );
-
-					if ( groupedTiles.size() > 1 )
-						LOG.info( "z=" + z + " grouped tile [" + groupedTile + "] contains " + imageTiles.size() + " image tiles." );
-					
-					// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
-					final List< Pair< List< PointMatch >, Tile< M > > > matchesList = new ArrayList<>();
-
-					for ( final Tile<M> imageTile : imageTiles )
-					{
-						final String tileId = solveItem.tileToIdMap().get( imageTile );
-						final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
-
-						final int tileCol = tileSpec.getImageCol();
-
-//						if ( tileCol != 0 )
-//							continue;
-		
-						final ArrayList< Pair< Pair< Integer, String>, Tile<M> > > neighbors = new ArrayList<>();
-						
-						for ( final Pair< Pair< Integer, String>, Tile<M> > neighboringTile : neighboringTiles )
-							if ( neighboringTile.getA().getA() == tileCol )
-								neighbors.add( neighboringTile );
-
-						if ( neighbors.size() == 0 )
-						{
-							// this can happen when number of tiles per layer changes for example
-							LOG.info( "could not find corresponding tile for: " + tileId );
-							continue;
-						}
-
-						for ( final Pair< Pair< Integer, String>, Tile<M> >  neighbor : neighbors )
-						{
-							final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get( tileId );
-							final AffineModel2D stitchingTransformPrev = solveItem.idToStitchingModel().get( neighbor.getA().getB() );
-	
-							final List< PointMatch > matches = SolveTools.createFakeMatches(
-									tileSpec.getWidth(),
-									tileSpec.getHeight(),
-									stitchingTransform, // p
-									stitchingTransformPrev ); // q
-
-							matchesList.add( new ValuePair<>( matches, neighbor.getB() ) );
-						}
-					}
-					
-					// in every iteration, update q with the current group tile transformation(s), the fit p to q for regularization
-					final StabilizingAffineModel2D cModel = (StabilizingAffineModel2D)((InterpolatedAffineModel2D) groupedTile.getModel()).getB();
-					
-					cModel.setFitData( matchesList );
-				}
-			}
-			return true;
+			LOG.info( "Not using ConstantAffineModel2D for regularization. Nothing to do in assignRegularizationModel()." );
 		}
 	}
 
@@ -561,7 +461,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	 * @param tileId - which TileId
 	 * @return - AffineModel2D with the metadata transformation for this tile
 	 */
-	protected static AffineModel2D getMetaDataTransformation( final SolveItem<?, ?, ?> solveItem, final String tileId )
+	protected static AffineModel2D getMetaDataTransformation( final AffineBlockDataWrapper<?, ?, ?> solveItem, final String tileId )
 	{
 		return solveItem.idToPreviousModel().get( tileId );
 	}
@@ -839,47 +739,37 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			{
 				LOG.info( "block " + inputSolveItem.blockData().getId() + ": new graph " + graphCount++ + " has " + subgraph.size() + " tiles." );
 
-				int newMin = maxZ;
-				int newMax = minZ;
 
-				// first figure out new minZ and maxZ
+				// re-assemble allTileIds and idToTileSpec
+				final ArrayList<String> allTileIdsNew = new ArrayList<>();
+				final Map<String, TileSpec> idToTileSpecNew = new HashMap<>();
+
+				// update all the maps
 				for ( final Tile< ? > groupedTile : subgraph )
 				{
-					for ( final Tile< ? > t : inputSolveItem.groupedTileToTiles().get( groupedTile ) )
+					for ( final Tile< M > t : inputSolveItem.groupedTileToTiles().get( groupedTile ) )
 					{
-						final TileSpec tileSpec = inputSolveItem.blockData().idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
-	
-						newMin = Math.min( newMin, (int)Math.round( tileSpec.getZ() ) );
-						newMax = Math.max( newMax, (int)Math.round( tileSpec.getZ() ) );
+						final String tileId = inputSolveItem.tileToIdMap().get( t );
+
+						allTileIdsNew.add( tileId );
+						idToTileSpecNew.put( tileId, inputSolveItem.blockData().idToTileSpec().get( tileId ) );
 					}
 				}
 
-				// TODO: re-assemble allTileIds and idToTileSpec
-				new BlockData< M, FIBSEMAlignmentParameters< M, S >, F >(
-						
-						);
-
-				new BlockData< M, FIBSEMAlignmentParameters< M, S >, F >(
-						id,
-						inputSolveItem.globalSolveModelInstance(),
-						inputSolveItem.blockSolveModelInstance(),
-						inputSolveItem.solveItemData.stitchingModelSupplier(),
-						blockOptimizerLambdasRigid,
-						blockOptimizerLambdasTranslation,
-						blockOptimizerIterations,
-						blockMaxPlateauWidth,
-						minStitchingInliers,
-						blockMaxAllowedError,
-						dynamicLambdaFactor,
-						rigidPreAlign,
-						newMin,
-						newMax );
-				//final AffineBlockDataWrapper< M, S, F > solveItem = new AffineBlockDataWrapper<>();
+				final AffineBlockDataWrapper< M, S, F > solveItem =
+						new AffineBlockDataWrapper<>(
+								new BlockData< M, FIBSEMAlignmentParameters< M, S >, F >(
+										inputSolveItem.blockData().blockFactory(), // no copy necessary
+										inputSolveItem.blockData().solveTypeParameters(), // no copy necessary
+										id,
+										inputSolveItem.blockData().weightFunctions(), // no copy necessary
+										allTileIdsNew,
+										idToTileSpecNew ) );
 
 				++id;
 
-				LOG.info( "block " + solveItem.getId() + ": old graph id=" + inputSolveItem.blockData().getId() + ", new graph id=" + solveItem.getId() );
-				LOG.info( "block " + solveItem.getId() + ": min: " + newMin + " > max: " + newMax );
+				LOG.info( "block " + solveItem.blockData().getId() + ": old graph id=" + inputSolveItem.blockData().getId() + ", new graph id=" + solveItem.blockData().getId() );
+				LOG.info( "block " + solveItem.blockData().getId() + ": min: " + solveItem.blockData().minZ() + " > max: " + solveItem.blockData().maxZ() );
 
 				// update all the maps
 				for ( final Tile< ? > groupedTile : subgraph )
@@ -891,8 +781,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 						solveItem.idToTileMap().put( tileId, t );
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-						solveItem.idToTileSpec().put( tileId, inputSolveItem.blockData().idToTileSpec().get( tileId ) );
-						solveItem.idToNewModel().put( tileId, inputSolveItem.blockData().idToNewModel().get( tileId ) );
+						//solveItem.idToTileSpec().put( tileId, inputSolveItem.blockData().idToTileSpec().get( tileId ) ); // now done initially
+						solveItem.blockData().idToNewModel().put( tileId, inputSolveItem.blockData().idToNewModel().get( tileId ) );
 
 						solveItem.idToStitchingModel().put( tileId, inputSolveItem.idToStitchingModel().get( tileId ) );
 
@@ -905,11 +795,11 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 				// add the restart lookup
 				for ( final int z : inputSolveItem.restarts() )
-					if ( z >= newMin && z <= newMax )
+					if ( z >= solveItem.blockData().minZ() && z <= solveItem.blockData().maxZ() )
 						solveItem.restarts().add( z );
 
 				// used for global solve outside
-				for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
+				for ( int z = solveItem.blockData().minZ(); z <= solveItem.blockData().maxZ(); ++z )
 				{
 					final HashSet< String > allTilesPerZ = inputSolveItem.blockData().zToTileId().get( z );
 
@@ -926,11 +816,11 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					
 					if ( myTilesPerZ.size() == 0 )
 					{
-						LOG.info( "block " + solveItem.getId() + ": ERROR: z=" + z + " of new graph has 0 tileIds, the must not happen, this is a bug." );
+						LOG.info( "block " + solveItem.blockData().getId() + ": ERROR: z=" + z + " of new graph has 0 tileIds, the must not happen, this is a bug." );
 						System.exit( 0 );
 					}
 
-					solveItem.zToTileId().put( z, myTilesPerZ );
+					solveItem.blockData().zToTileId().put( z, myTilesPerZ );
 				}
 
 				solveItems.add( solveItem );
