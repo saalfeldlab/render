@@ -159,14 +159,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			solve( solveItem, zRadiusRestarts, dynamicLambdaFactor, numThreads );
 		}
 
-		for ( final SolveItem< G, M, S > solveItem : solveItems )
+		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
 			computeSolveItemErrors( solveItem, canvasMatches );
 
 		// clean up
 		this.result = new ArrayList<>();
-		for ( final SolveItem< G, M, S > solveItem : solveItems )
+		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
 		{
-			result.add( solveItem.getSolveItemData() );
+			result.add( solveItem.blockData() );
 			solveItem.matches().clear();
 			solveItem.tileToGroupedTile().clear();
 			solveItem.groupedTileToTiles().clear();
@@ -451,6 +451,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		else
 		{
 			LOG.info( "Not using ConstantAffineModel2D for regularization. Nothing to do in assignRegularizationModel()." );
+			return true;
 		}
 	}
 
