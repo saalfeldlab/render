@@ -68,7 +68,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	// sections, but can be solved easily later using non-rigid alignment.
 
 	final protected static int visualizeZSection = 0;//10000;
-	final private static int zRadiusRestarts = 10;
+	//final private static int zRadiusRestarts = 10;
 	final private static int stabilizationRadius = 25;
 
 	final RenderDataClient matchDataClient;
@@ -158,10 +158,10 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
 		{
-			if ( !assignRegularizationModel( solveItem ) )
+			if ( !assignRegularizationModel( solveItem, AffineBlockDataWrapper.samplesPerDimension, stabilizationRadius ) )
 				throw new RuntimeException( "Couldn't regularize. Please check." );
 
-			solve( solveItem, zRadiusRestarts, numThreads );
+			solve( solveItem, numThreads );
 		}
 
 		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
@@ -949,15 +949,9 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 	protected void solve(
 			final AffineBlockDataWrapper< M, S, F > solveItem,
-			final int zRadiusRestarts,
-			final int numThreads
-			) throws InterruptedException, ExecutionException
+			final int numThreads ) throws InterruptedException, ExecutionException
 	{
 		final PreAlign preAlign = solveItem.blockData().solveTypeParameters().preAlign();
-
-		//final List<Double> blockOptimizerLambdasRigid, blockOptimizerLambdasTranslation;
-		//final List<Integer> blockOptimizerIterations, blockMaxPlateauWidth;
-		//final double blockMaxAllowedError;
 
 		final List<Double> blockOptimizerLambdasRigid = solveItem.blockData().solveTypeParameters().blockOptimizerLambdasRigid();
 		final List<Double> blockOptimizerLambdasTranslation = solveItem.blockData().solveTypeParameters().blockOptimizerLambdasTranslation();
@@ -1008,10 +1002,11 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	
 				SolveTools.preAlignByLayerDistance( tileConfig, tileToZ );
 				//tileConfig.preAlign();
-				
+
 				errors = SolveTools.computeErrors( tileConfig.getTiles() );
 				LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
 			}
+			// TODO: else they should be in the right position
 		}
 		catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e)
 		{
@@ -1019,11 +1014,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			e.printStackTrace();
 		}
 
-		LOG.info( "block " + solveItem.blockData().getId() + ": lambda's used (rigid, translation):" );
+		LOG.info( "block " + solveItem.blockData().getId() + ": lambda's used (rigid, translation, regularization):" );
 	
 		for ( int l = 0; l < blockOptimizerLambdasRigid.size(); ++l )
 		{
-			LOG.info( "block " + solveItem.blockData().getId() + ": l=" + blockOptimizerLambdasRigid.get( l ) + ", " + blockOptimizerLambdasTranslation.get( l ) );
+			LOG.info( "block " + solveItem.blockData().getId() + ": l=" + 
+					blockOptimizerLambdasRigid.get( l ) + ", " + 
+					blockOptimizerLambdasTranslation.get( l ) + ", " + 
+					blockOptimizerLambdasRegularization.get( l ) );
 		}
 
 		for ( int s = 0; s < blockOptimizerIterations.size(); ++s )
@@ -1039,19 +1037,19 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 			final double lambdaRigid = blockOptimizerLambdasRigid.get( s );
 			final double lambdaTranslation = blockOptimizerLambdasTranslation.get( s );
-			final double regularization = blockOptimizerLambdasRegularization.get( s );
+			final double lambdaRegularization = blockOptimizerLambdasRegularization.get( s );
 
 			for (final Tile< ? > tile : tileConfig.getTiles() )
 			{
 				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( lambdaRigid);
 				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( lambdaTranslation );
-				((InterpolatedAffineModel2D) tile.getModel()).setLambda( tileToDynamicLambda.get( tile ) ); // dynamic
+				((InterpolatedAffineModel2D) tile.getModel()).setLambda( lambdaRegularization ); // dynamic
 			}
 
 			final int numIterations = blockOptimizerIterations.get( s );
 			final int maxPlateauWidth = blockMaxPlateauWidth.get( s );
 
-			LOG.info( "block " + solveItem.getId() + ": l(rigid)=" + lambdaRigid + ", l(translation)=" + lambdaTranslation + ", numIterations=" + numIterations + ", maxPlateauWidth=" + maxPlateauWidth );
+			LOG.info( "block " + solveItem.blockData().getId() + ": l(rigid)=" + lambdaRigid + ", l(translation)=" + lambdaTranslation + ": l(regularization)=" + lambdaRegularization + ", numIterations=" + numIterations + ", maxPlateauWidth=" + maxPlateauWidth );
 
 			final ErrorStatistic observer = new ErrorStatistic( maxPlateauWidth + 1 );
 			final float damp = 1.0f;
@@ -1073,7 +1071,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		//
 		// create lookup for the new models
 		//
-		solveItem.idToNewModel().clear();
+		solveItem.blockData().idToNewModel().clear();
 
 		final ArrayList< String > tileIds = new ArrayList<>();
 		final HashMap< String, AffineModel2D > tileIdToGroupModel = new HashMap<>();
@@ -1094,7 +1092,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 			affine.preConcatenate( tileIdToGroupModel.get( tileId ) );
 
-			LOG.info("block " + solveItem.getId() + ": grouped model for tile {} is {}", tileId, tileIdToGroupModel.get( tileId ));
+			LOG.info("block " + solveItem.blockData().getId() + ": grouped model for tile {} is {}", tileId, tileIdToGroupModel.get( tileId ));
 
 			/*
 			// TODO: REMOVE
@@ -1106,17 +1104,15 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			}
 			*/
 
-			solveItem.idToNewModel().put( tileId, affine );
-			LOG.info("block " + solveItem.getId() + ": tile {} model from grouped tile is {}", tileId, affine);
+			solveItem.blockData().idToNewModel().put( tileId, affine );
+			LOG.info("block " + solveItem.blockData().getId() + ": tile {} model from grouped tile is {}", tileId, affine);
 		}
 	}
 
 	// note: these are local errors of a single block only
-	protected void computeSolveItemErrors( final SolveItem< G,M,S > solveItem, final ArrayList< CanvasMatches > canvasMatches )
+	protected void computeSolveItemErrors( final AffineBlockDataWrapper< M, S, F > solveItem, final ArrayList< CanvasMatches > canvasMatches )
 	{
-		LOG.info( "Computing per-block errors for " + solveItem.idToTileSpec().keySet().size() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
-
-		LOG.info( "Serializing all matches=" + serializeMatches );
+		LOG.info( "Computing per-block errors for " + solveItem.blockData().idToTileSpec().keySet().size() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
 
 		// for local fits
 		final Model< ? > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
@@ -1127,16 +1123,16 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			final String pTileId = match.getpId();
 			final String qTileId = match.getqId();
 
-			final MinimalTileSpec pTileSpec = solveItem.idToTileSpec().get( pTileId );
-			final MinimalTileSpec qTileSpec = solveItem.idToTileSpec().get( qTileId );
+			final TileSpec pTileSpec = solveItem.blockData().idToTileSpec().get( pTileId );
+			final TileSpec qTileSpec = solveItem.blockData().idToTileSpec().get( qTileId );
 
 			// it is from a different solveitem
 			if ( pTileSpec == null || qTileSpec == null )
 				continue;
 
 			// for a correct computation of errors after global alignment
-			if ( serializeMatches )
-				solveItem.matches().add( new SerializableValuePair<>(new SerializableValuePair<>(pTileId, qTileId ), match.getMatches() ) );
+			//if ( serializeMatches )
+			//	solveItem.matches().add( new SerializableValuePair<>(new SerializableValuePair<>(pTileId, qTileId ), match.getMatches() ) );
 
 			final double vDiff = SolveTools.computeAlignmentError(
 					crossLayerModel, solveItem.stitchingSolveModelInstance( (int)Math.round( pTileSpec.getZ() ) ), pTileSpec, qTileSpec, solveItem.idToNewModel().get( pTileId ), solveItem.idToNewModel().get( qTileId ), match.getMatches() );

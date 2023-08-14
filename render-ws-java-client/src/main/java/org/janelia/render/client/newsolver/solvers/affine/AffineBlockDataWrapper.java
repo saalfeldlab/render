@@ -2,7 +2,6 @@ package org.janelia.render.client.newsolver.solvers.affine;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 
 import org.janelia.alignment.match.Matches;
