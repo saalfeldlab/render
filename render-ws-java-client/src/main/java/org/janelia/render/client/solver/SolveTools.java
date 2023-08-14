@@ -787,14 +787,13 @@ public class SolveTools
 			final int samplesPerDimension,
 			final TileSpec tileSpec )
 	{
-        final AffineModel2D lastTransform = loadLastTransformFromSpec( tileSpec );
-        final AffineModel2D lastTransformCopy = lastTransform.copy();
+        final AffineModel2D lastTransform = loadLastTransformFromSpec( tileSpec ).copy();
 
         final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
         final double sampleHeight = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
 
         try {
-            ScriptUtil.fit(instance, lastTransformCopy, sampleWidth, sampleHeight, samplesPerDimension);
+            ScriptUtil.fit(instance, lastTransform, sampleWidth, sampleHeight, samplesPerDimension);
         } catch (final Throwable t) {
             throw new IllegalArgumentException(instance.getClass() + " model derivation failed for tile '" +
                                                tileSpec.getTileId() + "', cause: " + t.getMessage(),
@@ -802,8 +801,8 @@ public class SolveTools
         }
 
         return new ValuePair<>(
-        		new Tile< B >( instance ), 
-        		lastTransform.copy() );
+                new Tile< B >( instance ),
+                lastTransform );
 	}
 
 
