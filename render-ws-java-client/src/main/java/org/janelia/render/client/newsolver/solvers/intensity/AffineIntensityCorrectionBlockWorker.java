@@ -36,17 +36,18 @@ import java.util.stream.Collectors;
 public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<M>, F extends BlockFactory<F>>
 		extends Worker<M, M, FIBSEMIntensityCorrectionParameters<M>, F> {
 
+	private final FIBSEMIntensityCorrectionParameters<M> parameters;
+
 	public AffineIntensityCorrectionBlockWorker(
 			final BlockData<M, M, FIBSEMIntensityCorrectionParameters<M>, F> blockData,
 			final int startId,
 			final int numThreads) throws IOException {
 		super(startId, blockData, numThreads);
+		parameters = blockData.solveTypeParameters();
 
-
-		final IntensityAdjustParameters intensityParameters = blockData.solveTypeParameters().intensityParameters;
-		if (intensityParameters.deriveFilterData()) {
+		if (parameters.intensityCorrectedFilterStack() != null) {
 			final StackMetaData stackMetaData = renderDataClient.getStackMetaData(renderStack);
-			renderDataClient.setupDerivedStack(stackMetaData, intensityParameters.intensityCorrectedFilterStack);
+			renderDataClient.setupDerivedStack(stackMetaData, parameters.intensityCorrectedFilterStack());
 		}
 	}
 
@@ -56,17 +57,13 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
-		final IntensityBlockDataWrapper<M, F> solveItems = new IntensityBlockDataWrapper<>(blockData);
-
 		// TODO: blockData.idToTileSpec() already resolved?
 		final ResolvedTileSpecCollection resolvedTileSpecs = getResolvedTileSpecs();
 
-		final IntensityAdjustParameters intensityParameters = blockData.solveTypeParameters().intensityParameters;
-
 		// if specified, use match collection to determine patch pairs instead of tile bounds w/distanceZ
 		final List<CanvasMatches> tilePairs;
-		if (intensityParameters.matchCollection != null) {
-			tilePairs = getMatchPairsFromCollection(intensityParameters.matchCollection);
+		if (parameters.matchCollection() != null) {
+			tilePairs = getMatchPairsFromCollection(parameters.matchCollection());
 		} else {
 			tilePairs = new ArrayList<>();
 		}
@@ -122,15 +119,14 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 
 		LOG.info("deriveAndStoreIntensityFilterData: entry");
 
-		final IntensityAdjustParameters intensityParameters = blockData.solveTypeParameters().intensityParameters;
 		if (resolvedTiles.getTileCount() > 1) {
-			final long maxCachedPixels = intensityParameters.getMaxNumberOfCachedPixels();
+			final long maxCachedPixels = parameters.maxNumberOfCachedPixels();
 			final ImageProcessorCache imageProcessorCache = (maxCachedPixels == 0)
 					? ImageProcessorCache.DISABLED_CACHE
-					: new ImageProcessorCache(intensityParameters.getMaxNumberOfCachedPixels(), true, false);
+					: new ImageProcessorCache(parameters.maxNumberOfCachedPixels(), true, false);
 
 			final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
-			final IntensityCorrectionStrategy strategy = new AffineIntensityCorrectionStrategy(intensityParameters.lambda1, intensityParameters.lambda2);
+			final IntensityCorrectionStrategy strategy = new AffineIntensityCorrectionStrategy(parameters.lambdaTranslation(), parameters.lambdaIdentity());
 			final List<OnTheFlyIntensity> corrected;
 
 			if (!tilePairs.isEmpty()) {
@@ -142,19 +138,19 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 								.collect(Collectors.toList());
 
 				corrected = AdjustBlock.correctIntensitiesForPatchPairs(patchPairs,
-																		intensityParameters.renderScale,
+																		parameters.renderScale(),
 																		imageProcessorCache,
-																		intensityParameters.numCoefficients,
+																		parameters.numCoefficients(),
 																		strategy,
-																		intensityParameters.numThreads);
+																		numThreads);
 			} else {
 				corrected = AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
-																		intensityParameters.renderScale,
-																		intensityParameters.zDistance,
+																		parameters.renderScale(),
+																		parameters.zDistance(),
 																		imageProcessorCache,
-																		intensityParameters.numCoefficients,
+																		parameters.numCoefficients(),
 																		strategy,
-																		intensityParameters.numThreads);
+																		numThreads);
 			}
 
 			for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
@@ -171,7 +167,7 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 			LOG.info("deriveAndStoreIntensityFilterData: skipping correction because collection contains {}", tileCountMsg);
 		}
 
-		dataClient.saveResolvedTiles(resolvedTiles, intensityParameters.intensityCorrectedFilterStack, null);
+		dataClient.saveResolvedTiles(resolvedTiles, parameters.intensityCorrectedFilterStack(), null);
 	}
 
 	/**

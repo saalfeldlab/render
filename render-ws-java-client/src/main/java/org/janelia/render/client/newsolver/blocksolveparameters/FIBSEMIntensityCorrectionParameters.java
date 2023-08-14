@@ -21,7 +21,7 @@ public class FIBSEMIntensityCorrectionParameters<M extends Model<M> & Affine1D<M
 	final private List<Integer> blockOptimizerIterations;
 	final private List<Integer> blockMaxPlateauWidth;
 
-	final public IntensityAdjustParameters intensityParameters;
+	final private IntensityAdjustParameters intensityParameters;
 
 	public FIBSEMIntensityCorrectionParameters(
 			final M blockSolveModel,
@@ -48,7 +48,13 @@ public class FIBSEMIntensityCorrectionParameters<M extends Model<M> & Affine1D<M
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
 
 	@Override
-	public FIBSEMIntensityCorrectionParameters<M> createInstance(final boolean hasIssue) {
-		return null;
-	}
+	public FIBSEMIntensityCorrectionParameters<M> createInstance(final boolean hasIssue) { return null; }
+	public String intensityCorrectedFilterStack() { return intensityParameters.intensityCorrectedFilterStack; }
+	public String matchCollection() { return intensityParameters.matchCollection; }
+	public long maxNumberOfCachedPixels() { return intensityParameters.getMaxNumberOfCachedPixels(); }
+	public double lambdaTranslation() { return intensityParameters.lambda1; }
+	public double lambdaIdentity() { return intensityParameters.lambda2; }
+	public double renderScale() { return intensityParameters.renderScale; }
+	public int numCoefficients() { return intensityParameters.numCoefficients; }
+	public Integer zDistance() { return intensityParameters.zDistance; }
 }
