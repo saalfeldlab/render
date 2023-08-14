@@ -20,6 +20,7 @@ import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.solver.ConstantAffineModel2D;
 import org.janelia.render.client.solver.DistributedSolveWorker;
@@ -129,6 +130,13 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		this.stitchFirst = blockData.solveTypeParameters().minStitchingInliersSupplier() != null;
 		this.pairs = new ArrayList<>();
 		this.zToPairs = new HashMap<>();
+
+		// NOTE: if you choose to stitch first, you need to pre-align, otherwise, it's OK to use the initial alignment for each tile
+		if ( stitchFirst && inputSolveItem.blockData().solveTypeParameters().preAlign() == PreAlign.NONE )
+		{
+			LOG.error( "Since you choose to stitch first, you must pre-align with Translation or Rigid." );
+			throw new RuntimeException( "Since you choose to stitch first, you must pre-align with Translation or Rigid." );
+		}
 	}
 
 	@Override
@@ -156,7 +164,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		{
 			if ( !assignRegularizationModel( solveItem ) )
 				throw new RuntimeException( "Couldn't regularize. Please check." );
-			solve( solveItem, zRadiusRestarts, dynamicLambdaFactor, numThreads );
+			solve( solveItem, zRadiusRestarts, numThreads );
 		}
 
 		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
@@ -831,9 +839,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	}
 
 	protected void solve(
-			final SolveItem< G,M,S > solveItem,
+			final AffineBlockDataWrapper< M, S, F > solveItem,
 			final int zRadiusRestarts,
-			final double dynamicLambdaFactor,
 			final int numThreads
 			) throws InterruptedException, ExecutionException
 	{
@@ -842,14 +849,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
 		tileConfig.addTiles( new HashSet<>( solveItem.tileToGroupedTile().values() ) );
 
-		LOG.info("block " + solveItem.getId() + ": run: optimizing {} tiles", solveItem.groupedTileToTiles().keySet().size() );
+		LOG.info("block " + solveItem.blockData().getId() + ": run: optimizing {} tiles", solveItem.groupedTileToTiles().keySet().size() );
 
 		final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem, zRadiusRestarts, excludeFromRegularization, dynamicLambdaFactor );
 
 		if ( rigidPreAlign )
-			LOG.info( "block " + solveItem.getId() + ": prealigning with rigid and no dynamic lambda" );
+			LOG.info( "block " + solveItem.blockData().getId() + ": prealigning with rigid" );
 		else
-			LOG.info( "block " + solveItem.getId() + ": prealigning with translation and no dynamic lambda" );
+			LOG.info( "block " + solveItem.blockData().getId() + ": prealigning with translation" );
 
 		for (final Tile< ? > tile : tileConfig.getTiles() )
 		{
@@ -882,15 +889,15 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		}
 		catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e)
 		{
-			LOG.info( "block " + solveItem.getId() + ": prealign failed: " + e );
+			LOG.info( "block " + solveItem.blockData().getId() + ": prealign failed: " + e );
 			e.printStackTrace();
 		}
 
-		LOG.info( "block " + solveItem.getId() + ": lambda's used (rigid, translation):" );
+		LOG.info( "block " + solveItem.blockData().getId() + ": lambda's used (rigid, translation):" );
 	
 		for ( int l = 0; l < blockOptimizerLambdasRigid.size(); ++l )
 		{
-			LOG.info( "block " + solveItem.getId() + ": l=" + blockOptimizerLambdasRigid.get( l ) + ", " + blockOptimizerLambdasTranslation.get( l ) );
+			LOG.info( "block " + solveItem.blockData().getId() + ": l=" + blockOptimizerLambdasRigid.get( l ) + ", " + blockOptimizerLambdasTranslation.get( l ) );
 		}
 
 		for ( int s = 0; s < blockOptimizerIterations.size(); ++s )
