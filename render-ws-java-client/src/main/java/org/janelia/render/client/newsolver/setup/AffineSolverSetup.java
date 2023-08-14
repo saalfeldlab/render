@@ -6,7 +6,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -19,12 +18,12 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.solver.DistributedSolveParameters;
 import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
-import org.janelia.render.client.solver.DistributedSolveParameters.RangeConverter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,12 +34,14 @@ import com.beust.jcommander.ParametersDelegate;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.TranslationModel2D;
 import mpicbg.models.RigidModel2D;
+import mpicbg.models.TranslationModel2D;
 import net.imglib2.util.Pair;
 
-public class AffineSolverSetup
+public class AffineSolverSetup extends CommandLineParameters
 {
+	private static final long serialVersionUID = 655629544594300471L;
+
 	public static class RangeConverter implements IStringConverter<SerializableValuePair<Integer, Integer>>
 	{
 		@Override
@@ -199,8 +200,14 @@ public class AffineSolverSetup
     )
     public Double blockMaxAllowedError = 10.0;
 
+    @Parameter(names = "--maxNumMatches", description = "Limit maximum number of matches in between tile pairs (default:0, no limit)")
+    public int maxNumMatches = 0;
+
+    @Parameter(names = "--maxZRangeMatches", description = "max z-range in which to load matches (default: '-1' - no limit)")
+    public int maxZRangeMatches = 0;
+
     //
-    // for saving
+    // for saving and running
     //
 
     @Parameter(
@@ -231,12 +238,6 @@ public class AffineSolverSetup
 
     @Parameter(names = "--threadsGlobal", description = "Number of threads to be used for aligning all blocks (default: numProcessors/2)")
     public int threadsGlobal = Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 );
-
-    @Parameter(names = "--maxNumMatches", description = "Limit maximum number of matches in between tile pairs (default:0, no limit)")
-    public int maxNumMatches = 0;
-
-    @Parameter(names = "--maxZRangeMatches", description = "max z-range in which to load matches (default: '-1' - no limit)")
-    public int maxZRangeMatches = 0;
 
     @Parameter(
             names = "--serializeMatches",
@@ -294,7 +295,7 @@ public class AffineSolverSetup
 			return this.modelTypeStitching.getInterpolatedInstance( modelTypeStitchingRegularizer, lambdaStitching );
 	}
 
-	public static RunParameters setupSolve( final DistributedSolveParameters parameters ) throws IOException
+	public static RunParameters setupSolve( final AffineSolverSetup parameters ) throws IOException
 	{
 		final RunParameters runParams = new RunParameters();
 

@@ -8,6 +8,7 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blockfactories.ZBlock;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
+import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
 import org.janelia.render.client.solver.DistributedSolveParameters;
 import org.janelia.render.client.solver.RunParameters;
 
@@ -17,7 +18,7 @@ public class AffineDistributedSolver
 {
 	public static void main( final String[] args ) throws IOException
 	{
-        final DistributedSolveParameters parameters = new DistributedSolveParameters();
+        final AffineSolverSetup parameters = new AffineSolverSetup();
 
         // TODO: remove testing hack ...
         if (args.length == 0) {
@@ -35,9 +36,9 @@ public class AffineDistributedSolver
 //                    "--completeTargetStack",
 //                    "--visualizeResults",
 
-                    // note: prealign is with translation only
-                    "--blockOptimizerLambdasRigid",       "1.0,1.0,0.9,0.3,0.01",
-                    "--blockOptimizerLambdasTranslation", "1.0,0.0,0.0,0.0,0.0",
+                    "--blockOptimizerLambdasRigid",          "1.0,1.0,0.9,0.3,0.01",
+                    "--blockOptimizerLambdasTranslation",    "1.0,0.0,0.0,0.0,0.0",
+                    "--blockOptimizerLambdasRegularization", "0.0,0.0,0.0,0.0,0.0",
                     "--blockOptimizerIterations", "100,100,50,25,25",
                     "--blockMaxPlateauWidth", "25,25,15,10,10",
                     //"--blockOptimizerIterations", "1000,1000,500,250,250",
@@ -56,7 +57,7 @@ public class AffineDistributedSolver
             parameters.parse(args);
         }
 
-		final RunParameters runParameters = DistributedSolveParameters.setupSolve(parameters);
+		final RunParameters runParameters = AffineSolverSetup.setupSolve(parameters);
 
 		//
 		// setup Z BlockFactory
