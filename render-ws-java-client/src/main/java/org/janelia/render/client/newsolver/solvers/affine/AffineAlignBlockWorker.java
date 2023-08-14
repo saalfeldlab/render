@@ -16,7 +16,6 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
@@ -25,9 +24,7 @@ import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.newsolver.solvers.WorkerTools.LayerDetails;
 import org.janelia.render.client.solver.ConstantAffineModel2D;
-import org.janelia.render.client.solver.DistributedSolveWorker;
 import org.janelia.render.client.solver.Graph;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.SerializableValuePair;
 import org.janelia.render.client.solver.SolveItem;
@@ -358,7 +355,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 		final Model<?> model = ((InterpolatedAffineModel2D<?,?>) zToGroupedTileList.get(allZ.get(0)).get(0).getModel()).getB();
 
-		if ( ConstantAffineModel2D.class.isInstance( model ) )
+		if (model instanceof ConstantAffineModel2D)
 		{
 			//
 			// it is based on ConstantAffineModels, meaning we extract metadata and use that as regularizer
@@ -460,7 +457,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			}
 			return true;
 		}
-		else if ( StabilizingAffineModel2D.class.isInstance( model ) )
+		else if (model instanceof StabilizingAffineModel2D)
 		{
 			//
 			// it is based on StabilizingAffineModel2Ds, meaning each image wants to sit where its corresponding one in the above layer sits
@@ -534,7 +531,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 							if ( neighboringTile.tileCol == tileCol && neighboringTile.tileRow == tileRow )
 								neighbors.add( neighboringTile );
 
-						if ( neighbors.size() == 0 )
+						if (neighbors.isEmpty())
 						{
 							// this can happen when number of tiles per layer changes for example
 							LOG.info( "could not find corresponding tile for: " + tileId );
@@ -702,7 +699,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				{
 					LOG.info( "block " + solveItem.blockData().getId() + ": unconnected tileId " + tileId );
 
-					final Tile< S > tile = new Tile< S >( solveItem.blockData().solveTypeParameters().stitchingSolveModelInstance( z ).copy() );
+					final Tile< S > tile = new Tile<>(solveItem.blockData().solveTypeParameters().stitchingSolveModelInstance(z).copy());
 					idTotile.put( tileId, tile );
 					tileToId.put( tile, tileId );
 				}
@@ -839,7 +836,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Graph of SolveItem " + inputSolveItem.blockData().getId() + " consists of " + graphs.size() + " subgraphs." );
 
-		if ( graphs.size() == 0 )
+		if (graphs.isEmpty())
 		{
 			throw new RuntimeException( "Something went wrong. The inputsolve item has 0 subgraphs. stopping." );
 		}
@@ -876,13 +873,13 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 				final AffineBlockDataWrapper< M, S, F > solveItem =
 						new AffineBlockDataWrapper<>(
-								new BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F >(
+								new BlockData<>(
 										inputSolveItem.blockData().blockFactory(), // no copy necessary
 										inputSolveItem.blockData().solveTypeParameters(), // no copy necessary
 										id,
 										inputSolveItem.blockData().weightFunctions(), // no copy necessary
 										allTileIdsNew,
-										idToTileSpecNew ) );
+										idToTileSpecNew) );
 
 				++id;
 
@@ -932,7 +929,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 							myTilesPerZ.add( tileId );
 					}
 					
-					if ( myTilesPerZ.size() == 0 )
+					if (myTilesPerZ.isEmpty())
 					{
 						LOG.info( "block " + solveItem.blockData().getId() + ": ERROR: z=" + z + " of new graph has 0 tileIds, the must not happen, this is a bug." );
 						System.exit( 0 );
@@ -1081,7 +1078,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			final String tileId = solveItem.tileToIdMap().get( tile );
 
 			tileIds.add( tileId );
-			tileIdToGroupModel.put( tileId, SolveTools.createAffine( (Affine2D<?>)solveItem.tileToGroupedTile().get( tile ).getModel() ) );
+			tileIdToGroupModel.put( tileId, SolveTools.createAffine(solveItem.tileToGroupedTile().get(tile ).getModel()) );
 		}
 
 		Collections.sort( tileIds );
@@ -1199,7 +1196,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			final Set< Tile< ? > > deferredTiles = new HashSet<>();
 			safelyTraceConnectedGraph(tile, currentGraph, deferredTiles, 0);
 
-			while (deferredTiles.size() > 0) {
+			while (!deferredTiles.isEmpty()) {
 				LOG.info("safelyIdentifyConnectedGraphs: {} max recursion deferred tiles, current graph size is {}",
 						 deferredTiles.size(), currentGraph.size());
 				final List<Tile<?>> toDoList = new ArrayList<>(deferredTiles);
@@ -1222,5 +1219,5 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		return graphs;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveWorker.class);
+	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
 }
