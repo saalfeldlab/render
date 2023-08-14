@@ -36,7 +36,7 @@ import net.imglib2.util.Pair;
  * @author Stephan Preibisch and Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
 
-public class StabilizingAffineModel2D< A extends Model< A > & Affine2D< A >, M extends StabilizingAffineModel2D< A, M > > extends AbstractModel< M > implements Affine2D< M >
+public class StabilizingAffineModel2D< A extends Model< A > & Affine2D< A > > extends AbstractModel< StabilizingAffineModel2D< A > > implements Affine2D< StabilizingAffineModel2D< A > >
 {
 	private static final long serialVersionUID = 4028319936789363770L;
 
@@ -95,13 +95,12 @@ public class StabilizingAffineModel2D< A extends Model< A > & Affine2D< A >, M e
 	}
 
 	@Override
-	public void set( final M m ) {}
+	public void set( final StabilizingAffineModel2D< A > m ) {}
 
 	@Override
-	public M copy()
+	public StabilizingAffineModel2D< A > copy()
 	{
-		@SuppressWarnings( "unchecked" )
-		final M copy = ( M )new StabilizingAffineModel2D< A, M >( model.copy() );
+		final StabilizingAffineModel2D< A > copy = new StabilizingAffineModel2D< A >( model.copy() );
 		copy.cost = cost;
 		return copy;
 	}
@@ -145,13 +144,13 @@ public class StabilizingAffineModel2D< A extends Model< A > & Affine2D< A >, M e
 	}
 
 	@Override
-	public void preConcatenate(final M affine2d)
+	public void preConcatenate(final StabilizingAffineModel2D< A > affine2d)
 	{
 		throw new RuntimeException( "Constant Model cannot preconcatentate" );
 	}
 
 	@Override
-	public void concatenate(M affine2d)
+	public void concatenate(final StabilizingAffineModel2D< A > affine2d)
 	{
 		throw new RuntimeException( "Constant Model cannot concatentate" );
 	}
@@ -168,10 +167,9 @@ public class StabilizingAffineModel2D< A extends Model< A > & Affine2D< A >, M e
 	}
 
 	@Override
-	public M createInverse()
+	public StabilizingAffineModel2D< A > createInverse()
 	{
-		@SuppressWarnings( "unchecked" )
-		final M inverse = ( M )new StabilizingAffineModel2D< A, M >( model.createInverse() );
+		final StabilizingAffineModel2D< A > inverse = new StabilizingAffineModel2D< A >( model.createInverse() );
 		inverse.cost = cost;
 		return inverse;
 	}

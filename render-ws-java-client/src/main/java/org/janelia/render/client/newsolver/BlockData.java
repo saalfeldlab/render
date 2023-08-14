@@ -31,6 +31,8 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	private static final long serialVersionUID = -6491517262420660476L;
 
 	private int id;
+
+	// one function per dimension that maps location[dim] to a weight
 	private List< Function< Double, Double > > weightF;
 
 	// the BlockFactory that created this BlockData
