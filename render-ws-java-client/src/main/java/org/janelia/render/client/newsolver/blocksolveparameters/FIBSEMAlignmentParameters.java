@@ -27,6 +27,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 
 	final private List<Double> blockOptimizerLambdasRigid;
 	final private List<Double> blockOptimizerLambdasTranslation;
+	final private List<Double> blockOptimizerLambdasRegularization;
 	final private List<Integer> blockOptimizerIterations;
 	final private List<Integer> blockMaxPlateauWidth;
 
@@ -70,6 +71,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 			final int maxPlateauWidthStitching,
 			final List<Double> blockOptimizerLambdasRigid,
 			final List<Double> blockOptimizerLambdasTranslation,
+			final List<Double> blockOptimizerLambdasRegularization,
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
 			final double blockMaxAllowedError,
@@ -92,6 +94,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 		this.maxPlateauWidthStitching = maxPlateauWidthStitching;
 		this.blockOptimizerLambdasRigid = blockOptimizerLambdasRigid;
 		this.blockOptimizerLambdasTranslation = blockOptimizerLambdasTranslation;
+		this.blockOptimizerLambdasRegularization = blockOptimizerLambdasRegularization;
 		this.blockOptimizerIterations = blockOptimizerIterations;
 		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
 		this.blockMaxAllowedError = blockMaxAllowedError;
@@ -112,6 +115,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 
 	public List<Double> blockOptimizerLambdasRigid() { return blockOptimizerLambdasRigid; }
 	public List<Double> blockOptimizerLambdasTranslation() { return blockOptimizerLambdasTranslation; }
+	public List<Double> blockOptimizerLambdasRegularization() { return blockOptimizerLambdasRegularization; }
 	public List<Integer> blockOptimizerIterations() { return blockOptimizerIterations; }
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
 	public double blockMaxAllowedError() { return blockMaxAllowedError; }
