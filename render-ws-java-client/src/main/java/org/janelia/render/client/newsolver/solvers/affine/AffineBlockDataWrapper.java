@@ -41,8 +41,11 @@ public class AffineBlockDataWrapper< M extends Model< M > & Affine2D< M >, S ext
 	final private HashMap< Tile< M >, Tile< M > > tileToGroupedTile = new HashMap<>();
 	final private HashMap< Tile< M >, List< Tile< M > > > groupedTileToTiles = new HashMap<>();
 
+	// removed layer-specific handling of restarts (needed for not using regularization with StabilizingAffineModel2D)
+	// >> just do it for the entire block if needed
+	// 
 	// which z layers are restarts
-	final private HashSet< Integer > restarts = new HashSet<Integer>();
+	// final private HashSet< Integer > restarts = new HashSet<Integer>();
 
 	// contains the model as loaded from renderer (can go right now except for debugging)
 	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
@@ -63,7 +66,7 @@ public class AffineBlockDataWrapper< M extends Model< M > & Affine2D< M >, S ext
 	public HashMap<String, AffineModel2D> idToStitchingModel() { return idToStitchingModel; }
 	public HashMap< Tile< M >, Tile< M > > tileToGroupedTile() { return tileToGroupedTile; }
 	public HashMap< Tile< M >, List< Tile< M > > > groupedTileToTiles() { return groupedTileToTiles; }
-	public HashSet< Integer > restarts() { return restarts; }
+	//public HashSet< Integer > restarts() { return restarts; }
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 
 }

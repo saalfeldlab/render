@@ -173,12 +173,12 @@ public class SolveTools
 		return Math.sqrt( sum );
 	}
 
-	protected static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel )
+	public static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel )
 	{
 		return createFakeMatches( w, h, pModel, qModel, SolveItem.samplesPerDimension );
 	}
 
-	protected static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel, final int samplesPerDimension )
+	public static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel, final int samplesPerDimension )
 	{
 		final List< PointMatch > matches = new ArrayList<>();
 		
@@ -555,7 +555,7 @@ public class SolveTools
 		return new double[] { minX, minY };
 	}
 
-	protected static double[] computeErrors( final Collection< ? extends Tile< ? > > tiles )
+	public static double[] computeErrors( final Collection< ? extends Tile< ? > > tiles )
 	{
 		double cd = 0.0;
 		double minError = Double.MAX_VALUE;
