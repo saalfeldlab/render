@@ -10,14 +10,15 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
 import mpicbg.models.CoordinateTransform;
+import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 
-public abstract class Worker < M extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > 
+public abstract class Worker < M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > 
 {
 	// for assigning new id's when splitting BlockData
 	final protected int startId;
 
-	final protected BlockData< M, P, F > blockData;
+	final protected BlockData< M, R, P, F > blockData;
 	final protected RenderDataClient renderDataClient;
 	final protected String renderStack;
 
@@ -25,7 +26,7 @@ public abstract class Worker < M extends CoordinateTransform, P extends BlockDat
 
 	public Worker(
 			final int startId,
-			final BlockData< M, P, F > blockData,
+			final BlockData< M, R, P, F > blockData,
 			final int numThreads )
 	{
 		this.startId = startId;
@@ -48,5 +49,5 @@ public abstract class Worker < M extends CoordinateTransform, P extends BlockDat
 	/**
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
-	public abstract List< BlockData< M, P, F > > getBlockDataList();
+	public abstract List< BlockData< M, R, P, F > > getBlockDataList();
 }

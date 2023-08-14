@@ -13,7 +13,7 @@ import java.util.HashSet;
 public class IntensityCorrectionBlockDataWrapper<M extends Model<M> & Affine1D<M>, F extends BlockFactory<F>> {
 	final public static int samplesPerDimension = 2;
 
-	final BlockData<M, FIBSEMIntensityCorrectionParameters<M>, F> blockData;
+	final BlockData<M, ?, FIBSEMIntensityCorrectionParameters<M>, F> blockData;
 
 	//
 	// local only variables needed for the block solve below
@@ -28,11 +28,11 @@ public class IntensityCorrectionBlockDataWrapper<M extends Model<M> & Affine1D<M
 	// which z layers are restarts
 	final private HashSet<Integer> restarts = new HashSet<>();
 
-	public IntensityCorrectionBlockDataWrapper(final BlockData<M, FIBSEMIntensityCorrectionParameters<M>, F> blockData) {
+	public IntensityCorrectionBlockDataWrapper(final BlockData<M, ?, FIBSEMIntensityCorrectionParameters<M>, F> blockData) {
 		this.blockData = blockData;
 	}
 
-	public BlockData<M, FIBSEMIntensityCorrectionParameters<M>, F>  blockData() { return blockData; }
+	public BlockData<M, ?, FIBSEMIntensityCorrectionParameters<M>, F>  blockData() { return blockData; }
 	public HashMap<String, Tile<M>> idToTileMap() { return idToTileMap; }
 	public HashMap<Tile<M>, String> tileToIdMap() { return tileToIdMap; }
 	public HashSet<Integer> restarts() { return restarts; }

@@ -6,18 +6,19 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
 import mpicbg.models.CoordinateTransform;
+import mpicbg.models.Model;
 
-public class BlockCollection< M extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > 
+public class BlockCollection< M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > 
 {
-	final List< BlockData< M, P, F > > blockDataList;
+	final List< BlockData< M, R, P, F > > blockDataList;
 	final int minId, maxId;
 
-	public BlockCollection( final List< BlockData< M, P, F > > blockDataList )
+	public BlockCollection( final List< BlockData< M, R, P, F > > blockDataList )
 	{
 		int min = Integer.MAX_VALUE;
 		int max = Integer.MIN_VALUE;
 
-		for ( final BlockData< M, P, F > bd : blockDataList )
+		for ( final BlockData< M, R, P, F > bd : blockDataList )
 		{
 			min = Math.min( min, bd.getId() );
 			max = Math.max( max, bd.getId() );
@@ -30,5 +31,5 @@ public class BlockCollection< M extends CoordinateTransform, P extends BlockData
 
 	public int minId() { return minId; }
 	public int maxId() { return maxId; }
-	public List< BlockData< M, P, F > > allBlocks() { return blockDataList; }
+	public List< BlockData< M, R, P, F > > allBlocks() { return blockDataList; }
 }

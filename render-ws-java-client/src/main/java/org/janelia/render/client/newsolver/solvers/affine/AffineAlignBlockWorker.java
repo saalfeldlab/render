@@ -60,7 +60,7 @@ import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S >, F extends BlockFactory< F > > extends Worker< M, FIBSEMAlignmentParameters< M, S >, F >
+public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S >, F extends BlockFactory< F > > extends Worker< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F >
 {
 	// attempts to stitch each section first (if the tiles are connected) and
 	// then treat them as one big, "grouped" tile in the global optimization
@@ -90,7 +90,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 	final AffineBlockDataWrapper< M, S, F > inputSolveItem;
 	private List< AffineBlockDataWrapper< M, S, F > > solveItems;
-	private List< BlockData< M, FIBSEMAlignmentParameters< M, S >, F > > result;
+	private List< BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > > result;
 
 	// to filter matches
 	final MatchFilter matchFilter;
@@ -103,7 +103,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 	// created by SolveItemData.createWorker()
 	public AffineAlignBlockWorker(
-			final BlockData< M, FIBSEMAlignmentParameters< M, S >, F > blockData,
+			final BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > blockData,
 			final int startId,
 			final int numThreads )
 	{
@@ -136,7 +136,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	}
 
 	@Override
-	public List< BlockData< M, FIBSEMAlignmentParameters< M, S >, F > > getBlockDataList()
+	public List< BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > > getBlockDataList()
 	{
 		return result;
 	}
@@ -876,7 +876,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 				final AffineBlockDataWrapper< M, S, F > solveItem =
 						new AffineBlockDataWrapper<>(
-								new BlockData< M, FIBSEMAlignmentParameters< M, S >, F >(
+								new BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F >(
 										inputSolveItem.blockData().blockFactory(), // no copy necessary
 										inputSolveItem.blockData().solveTypeParameters(), // no copy necessary
 										id,
@@ -1134,15 +1134,22 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			//if ( serializeMatches )
 			//	solveItem.matches().add( new SerializableValuePair<>(new SerializableValuePair<>(pTileId, qTileId ), match.getMatches() ) );
 
-			final double vDiff = SolveTools.computeAlignmentError(
-					crossLayerModel, solveItem.stitchingSolveModelInstance( (int)Math.round( pTileSpec.getZ() ) ), pTileSpec, qTileSpec, solveItem.idToNewModel().get( pTileId ), solveItem.idToNewModel().get( qTileId ), match.getMatches() );
+			final double vDiff = WorkerTools.computeAlignmentError(
+					crossLayerModel,
+					solveItem.blockData().solveTypeParameters().stitchingSolveModelInstance( (int)Math.round( pTileSpec.getZ() ) ),
+					pTileSpec,
+					qTileSpec,
+					solveItem.blockData().idToNewModel().get( pTileId ),
+					solveItem.blockData().idToNewModel().get( qTileId ),
+					match.getMatches() );
 
-			solveItem.idToSolveItemErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
-			solveItem.idToSolveItemErrorMap().putIfAbsent( qTileId, new ArrayList<>() );
+			solveItem.blockData().idToSolveItemErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
+			solveItem.blockData().idToSolveItemErrorMap().putIfAbsent( qTileId, new ArrayList<>() );
 
-			solveItem.idToSolveItemErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
-			solveItem.idToSolveItemErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
+			solveItem.blockData().idToSolveItemErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
+			solveItem.blockData().idToSolveItemErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
 		}
+
 		LOG.info( "computeSolveItemErrors, exit" );
 	}
 

@@ -4,7 +4,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.janelia.alignment.match.Matches;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.solvers.affine.AffineBlockDataWrapper;
+import org.janelia.render.client.solver.MinimalTileSpec;
+import org.janelia.render.client.solver.SolveTools;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
@@ -49,6 +53,26 @@ public class WorkerTools
 			}
 
 		return prevTiles;
+	}
+
+	public static double computeAlignmentError(
+			final Model< ? > crossLayerModel,
+			final Model< ? > montageLayerModel,
+			final TileSpec pTileSpec,
+			final TileSpec qTileSpec,
+			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
+			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
+			final Matches matches )
+	{
+		return SolveTools.computeAlignmentError(
+				crossLayerModel,
+				montageLayerModel,
+				new MinimalTileSpec( pTileSpec ),
+				new MinimalTileSpec( qTileSpec ),
+				pAlignmentModel,
+				qAlignmentModel,
+				matches,
+				10);
 	}
 
 }

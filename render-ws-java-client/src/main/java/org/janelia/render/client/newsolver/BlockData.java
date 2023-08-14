@@ -15,6 +15,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 import org.janelia.render.client.newsolver.solvers.Worker;
 
 import mpicbg.models.CoordinateTransform;
+import mpicbg.models.Model;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -25,7 +26,7 @@ import net.imglib2.util.ValuePair;
  * @author preibischs
  *
  */
-public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > implements Serializable
+public class BlockData< M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > implements Serializable
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 
@@ -48,7 +49,10 @@ public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveP
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 
 	// contains the model as determined by the local solve
-	final private HashMap<String, M> idToNewModel = new HashMap<>();
+	final private HashMap<String, R> idToNewModel = new HashMap<>();
+
+	// the errors per tile
+	final HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap = new HashMap<>();
 
 	// what z-range this block covers
 	final protected int minZ, maxZ;
@@ -90,13 +94,14 @@ public class BlockData< M extends CoordinateTransform, P extends BlockDataSolveP
 
 	public Map<String, TileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashSet<String> allTileIds() { return allTileIds; }
-	public HashMap<String, M> idToNewModel() { return idToNewModel; }
+	public HashMap<String, R> idToNewModel() { return idToNewModel; }
+	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return idToSolveItemErrorMap; }
 
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 
 	public List< Function< Double, Double > > weightFunctions() { return weightF; }
 
-	public Worker< M, P, F > createWorker()
+	public Worker< M, R, P, F > createWorker()
 	{
 		// should maybe ask the solveTypeParamters to create the object I think
 		return null;

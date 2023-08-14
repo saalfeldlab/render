@@ -17,6 +17,7 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
 import mpicbg.models.CoordinateTransform;
+import mpicbg.models.Model;
 
 public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 {
@@ -42,7 +43,8 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <M extends CoordinateTransform, P extends BlockDataSolveParameters<M,P>> BlockCollection<M, P, ZBlock> defineBlockCollection( final P blockSolveParameters)
+	public <M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters<M,P>> BlockCollection<M, R, P, ZBlock> defineBlockCollection(
+			final P blockSolveParameters )
 	{
 		final List< ZBlockInit > initBlocks = defineBlockLayout( minZ, maxZ, blockSize, minBlockSize );
 
@@ -55,7 +57,7 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 				blockSolveParameters.project() );
 
 		
-		final List< BlockData<M, P, ZBlock> > blockDataList = new ArrayList<>();
+		final List< BlockData<M, R, P, ZBlock> > blockDataList = new ArrayList<>();
 
 		for ( final ZBlockInit initBlock : initBlocks )
 		{
@@ -84,7 +86,7 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 					weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
 					weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - ( initBlock.maxZ() - initBlock.minZ() ) / 2 ) );
 
-					final BlockData< M, P, ZBlock > block = 
+					final BlockData< M, R, P, ZBlock > block = 
 							new BlockData<>(
 									this,
 									blockSolveParameters.createInstance( hasIssues ),
