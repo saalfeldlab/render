@@ -13,7 +13,7 @@ import org.janelia.render.client.solver.RunParameters;
 
 import mpicbg.models.Affine2D;
 
-public class DistributedSolver
+public class AffineDistributedSolver
 {
 	public static void main( final String[] args ) throws IOException
 	{
