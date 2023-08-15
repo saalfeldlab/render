@@ -2,12 +2,12 @@ package org.janelia.render.client.newsolver;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.List;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
-import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 
@@ -17,6 +17,17 @@ import mpicbg.models.Model;
 
 public class AffineDistributedSolver
 {
+	final AffineSolverSetup cmdLineSetup;
+	final RenderSetup renderSetup;
+
+	public AffineDistributedSolver(
+			final AffineSolverSetup cmdLineSetup,
+			final RenderSetup renderSetup )
+	{
+		this.cmdLineSetup = cmdLineSetup;
+		this.renderSetup = renderSetup;
+	}
+
 	public static void main( final String[] args ) throws IOException
 	{
         final AffineSolverSetup cmdLineSetup = new AffineSolverSetup();
@@ -60,29 +71,52 @@ public class AffineDistributedSolver
 
 		final RenderSetup renderSetup = RenderSetup.setupSolve( cmdLineSetup );
 
-		new AffineDistributedSolver().setup(
-				cmdLineSetup,
-				renderSetup,
-				cmdLineSetup.blockModel(),
-				cmdLineSetup.stitchingModel() );
+		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
+		final AffineDistributedSolver solverSetup = new AffineDistributedSolver( cmdLineSetup, renderSetup );
+
+		solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
 	}
 
-	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > >  void setup(
-			final AffineSolverSetup cmdLineSetup,
-			final RenderSetup renderSetup,
+	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > void setupSolve(
 			final M blockModel,
 			final S stitchingModel )
 	{
 		//
 		// setup Z BlockFactory
 		//
+		final ZBlockFactory blockFactory = setupBlockFactory();
+
+		//
+		// setup FIB-SEM solve parameters
+		//
+		final FIBSEMAlignmentParameters< M, S > solveParams =
+				setupSolveParameters( blockModel, stitchingModel );
+
+		//
+		// create all blocks
+		//
+		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
+				setupBlockCollection( blockFactory, solveParams );
+	}
+
+	protected ZBlockFactory setupBlockFactory()
+	{
+		//
+		// setup Z BlockFactory
+		//
+
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = 5000;//(int)Math.round( runParameters.maxZ );
 		final int blockSize = cmdLineSetup.blockSize;
 		final int minBlockSize = cmdLineSetup.minBlockSize;
 
-		final BlockFactory< ZBlockFactory > blockFactory = new ZBlockFactory( minZ, maxZ, blockSize, minBlockSize );
+		return new ZBlockFactory( minZ, maxZ, blockSize, minBlockSize );
+	}
 
+	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > FIBSEMAlignmentParameters< M, S > setupSolveParameters(
+			final M blockModel,
+			final S stitchingModel )
+	{
 		//
 		// setup FIB-SEM solve parameters
 		//
@@ -111,12 +145,19 @@ public class AffineDistributedSolver
 				cmdLineSetup.matchOwner,
 				cmdLineSetup.matchCollection );
 
+		return solveParams;
+	}
+
+	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > setupBlockCollection(
+			final ZBlockFactory blockFactory,
+			final FIBSEMAlignmentParameters< M, S > solveParams )
+	{
 		//
 		// create all blocks
 		//
 		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
 				blockFactory.defineBlockCollection( solveParams );
 
+		return col;
 	}
-
 }
