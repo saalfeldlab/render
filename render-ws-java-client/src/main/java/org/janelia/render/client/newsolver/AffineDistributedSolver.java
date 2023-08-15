@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.render.client.newsolver.blockfactories.ParameterProvider;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
@@ -166,7 +168,7 @@ public class AffineDistributedSolver
 			final FIBSEMAlignmentParameters< M, S > solveParams )
 	{
 		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
-				blockFactory.defineBlockCollection( solveParams );
+				blockFactory.defineBlockCollection( rtsc -> solveParams );
 
 		return col;
 	}

@@ -2,15 +2,12 @@ package org.janelia.render.client.newsolver.blockfactories;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
@@ -44,17 +41,19 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 	@SuppressWarnings("unchecked")
 	@Override
 	public <M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters<M,P>> BlockCollection<M, R, P, ZBlockFactory> defineBlockCollection(
-			final P blockSolveParameters )
+			final ParameterProvider< M, P > blockSolveParameterProvider )
 	{
 		final List< ZBlockInit > initBlocks = defineBlockLayout( minZ, maxZ, blockSize, minBlockSize );
+
+		final BlockDataSolveParameters< ?,? > basicParameters = blockSolveParameterProvider.basicParameters();
 
 		//
 		// fetch metadata from render
 		//
 		final RenderDataClient r = new RenderDataClient(
-				blockSolveParameters.baseDataUrl(),
-				blockSolveParameters.owner(),
-				blockSolveParameters.project() );
+				basicParameters.baseDataUrl(),
+				basicParameters.owner(),
+				basicParameters.project() );
 
 		
 		final List< BlockData< M, R, P, ZBlockFactory > > blockDataList = new ArrayList<>();
@@ -69,12 +68,9 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 				// TODO: trautmane
 				// we fetch all TileSpecs for our z-range
 				final ResolvedTileSpecCollection rtsc =
-						r.getResolvedTilesForZRange( blockSolveParameters.stack(), (double)initBlock.minZ(), (double)initBlock.maxZ() );
+						r.getResolvedTilesForZRange( basicParameters.stack(), (double)initBlock.minZ(), (double)initBlock.maxZ() );
 
 				System.out.println( "Loaded " + rtsc.getTileIds().size() + " tiles.");
-
-				// TODO: find out if yes
-				final boolean hasIssues = false;
 
 				// we also define our own distance functions
 				// here, xy doesn't matter, only z
@@ -86,7 +82,7 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 				final BlockData< M, R, P, ZBlockFactory > block = 
 						new BlockData<>(
 								this,
-								blockSolveParameters.createInstance( hasIssues ),
+								blockSolveParameterProvider.create( rtsc ),
 								initBlock.getId(),
 								weightF,
 								rtsc );
