@@ -190,7 +190,7 @@ public class AffineSolverSetup extends CommandLineParameters
     public int maxNumMatches = 0;
 
     @Parameter(names = "--maxZRangeMatches", description = "max z-range in which to load matches (default: '-1' - no limit)")
-    public int maxZRangeMatches = 0;
+    public int maxZRangeMatches = -1;
 
     //
     // for saving and running
