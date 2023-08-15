@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
@@ -37,7 +38,7 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	private int id;
 
 	// one function per dimension that maps location[dim] to a weight
-	private List< Function< Double, Double > > weightF;
+	private ArrayList< Function< Double, Double > > weightF;
 
 	// the BlockFactory that created this BlockData
 	final F blockFactory;
@@ -45,11 +46,18 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	// contains solve-specific parameters and models
 	final P solveTypeParameters;
 
-	// used for global solve outside
-	final private HashSet<String> allTileIds;
-
 	// used for saving and display
-	final private Map<String, TileSpec> idToTileSpec;
+	final private ResolvedTileSpecCollection rtsc;
+
+	// all z-layers as String map to List that only contains the z-layer as double
+	final protected Map<String, ArrayList<Double>> sectionIdToZMap; 
+
+	// what z-range this block covers
+	final protected int minZ, maxZ;
+
+	//
+	// below are the results that the worker has to fill up
+	//
 
 	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
@@ -60,31 +68,23 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	// the errors per tile
 	final HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap = new HashMap<>();
 
-	// what z-range this block covers
-	final protected int minZ, maxZ;
-
-	// all z-layers as String map to List that only contains the z-layer as double
-	final protected Map<String, ArrayList<Double>> sectionIdToZMap; 
-
 	public BlockData(
 			final F blockFactory, // knows how it was created for assembly later?
 			final P solveTypeParameters,
 			final int id,
-			final List< Function< Double, Double > > weightF,
-			final Collection<String> allTileIds,
-			final Map<String, TileSpec> idToTileSpec )
+			final ArrayList< Function< Double, Double > > weightF,
+			final ResolvedTileSpecCollection rtsc )
 	{
 		this.id = id;
 		this.blockFactory = blockFactory;
 		this.solveTypeParameters = solveTypeParameters;
-		this.allTileIds = new HashSet<>( allTileIds );
-		this.idToTileSpec = idToTileSpec;
+		this.rtsc = rtsc;
 		this.weightF = weightF;
 
 		this.sectionIdToZMap = new HashMap<>();
 
 		// TODO: trautmane
-		final Pair<Integer, Integer> minmax = fetchRenderDetails( idToTileSpec().values(), sectionIdToZMap );
+		final Pair<Integer, Integer> minmax = fetchRenderDetails( rtsc.getTileSpecs(), sectionIdToZMap );
 		this.minZ = minmax.getA();
 		this.maxZ = minmax.getB();
 	}
@@ -99,14 +99,13 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	public P solveTypeParameters() { return solveTypeParameters; }
 	public F blockFactory() { return blockFactory; }
 
-	public Map<String, TileSpec> idToTileSpec() { return idToTileSpec; }
-	public HashSet<String> allTileIds() { return allTileIds; }
-	public HashMap<String, R> idToNewModel() { return idToNewModel; }
+	public ResolvedTileSpecCollection rtsc() { return rtsc; }
+	public HashMap< String, R > idToNewModel() { return idToNewModel; }
 	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return idToSolveItemErrorMap; }
 
-	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
+	public HashMap< Integer, HashSet< String > > zToTileId() { return zToTileId; }
 
-	public List< Function< Double, Double > > weightFunctions() { return weightF; }
+	public ArrayList< Function< Double, Double > > weightFunctions() { return weightF; }
 
 	/**
 	 * Fetches basic data for all TileSpecs

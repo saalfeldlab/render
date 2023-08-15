@@ -57,8 +57,9 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 				blockSolveParameters.project() );
 
 		
-		final List< BlockData<M, R, P, ZBlockFactory> > blockDataList = new ArrayList<>();
+		final List< BlockData< M, R, P, ZBlockFactory > > blockDataList = new ArrayList<>();
 
+		// for each block, we know the z-range
 		for ( final ZBlockInit initBlock : initBlocks )
 		{
 			System.out.println( initBlock.id + ": " + initBlock.minZ() + " >> " + initBlock.maxZ() + " [#"+(initBlock.maxZ()-initBlock.minZ()+1) + "]" );
@@ -66,16 +67,11 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 			try
 			{
 				// TODO: trautmane
-				final ResolvedTileSpecCollection tsc =
+				// we fetch all TileSpecs for our z-range
+				final ResolvedTileSpecCollection rtsc =
 						r.getResolvedTilesForZRange( blockSolveParameters.stack(), (double)initBlock.minZ(), (double)initBlock.maxZ() );
 
-				System.out.println( "Loaded " + tsc.getTileIds().size() + " tiles.");
-
-				final Set< String > allTileIds = tsc.getTileIds();
-				final HashMap< String, TileSpec > idToTileSpec = new HashMap<>();
-
-				for ( final String id :allTileIds )
-					idToTileSpec.put( id, tsc.getTileSpec( id ) );
+				System.out.println( "Loaded " + rtsc.getTileIds().size() + " tiles.");
 
 				// TODO: find out if yes
 				final boolean hasIssues = false;
@@ -93,8 +89,7 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 								blockSolveParameters.createInstance( hasIssues ),
 								initBlock.getId(),
 								weightF,
-								allTileIds,
-								idToTileSpec );
+								rtsc );
 
 				blockDataList.add( block );
 			}

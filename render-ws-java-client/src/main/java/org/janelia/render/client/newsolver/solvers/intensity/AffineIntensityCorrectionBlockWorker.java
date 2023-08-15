@@ -78,7 +78,8 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 		final List<CanvasMatches> tilePairs = new ArrayList<>();
 		final Set<String> alreadyConsidered = new HashSet<>();
 
-		for (final TileSpec tileSpec : blockData.idToTileSpec().values()) {
+		/*
+		for (final TileSpec tileSpec : blockData.rtsc().getTileSpecs()) {
 			final String pGroupId = tileSpec.getLayout().getSectionId();
 			final boolean isInBlock = blockData.idToTileSpec().containsKey(pGroupId);
 			if (!alreadyConsidered.contains(pGroupId) && isInBlock) {
@@ -88,7 +89,7 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 				}
 				alreadyConsidered.add(pGroupId);
 			}
-		}
+		}*/
 		return tilePairs;
 	}
 
@@ -106,7 +107,7 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 		}
 
 		final Set<String> outOfBlockIds = resolvedTiles.getTileIds();
-		outOfBlockIds.removeAll(blockData.idToTileSpec().keySet());
+		outOfBlockIds.removeAll(blockData.rtsc().getTileIds());
 		resolvedTiles.removeTileSpecs(outOfBlockIds);
 
 		return resolvedTiles;

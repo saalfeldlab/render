@@ -197,7 +197,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
-		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().allTileIds().size() + " tiles, from " + minZ + " to layer " + maxZ );
+		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().rtsc().getTileCount() + " tiles, from " + minZ + " to layer " + maxZ );
 
 		if ( maxZRangeMatches >= 0 )
 			LOG.info( "block " + inputSolveItem.blockData().getId() + ": WARNING! max z range for matching is " + maxZRangeMatches );
@@ -239,7 +239,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				}
 
 				// if any of the matches is outside the set of tiles of this Block we ignore them
-				if ( !inputSolveItem.blockData().allTileIds().contains( qTileSpec.getTileId() ) )
+				if ( !inputSolveItem.blockData().rtsc().getTileIds().contains( qTileSpec.getTileId() ) )
 				{
 					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, renderStack);
 					continue;
@@ -355,7 +355,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		{
 			final int z =
 					(int)Math.round(
-						solveItem.blockData().idToTileSpec().get(
+						solveItem.blockData().rtsc().getTileSpec(
 							solveItem.tileToIdMap().get( 
 									solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ) ) ).getZ() );
 
@@ -408,7 +408,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					for ( final Tile<M> imageTile : imageTiles )
 					{
 						final String tileId = solveItem.tileToIdMap().get( imageTile );
-						final TileSpec tileSpec = solveItem.blockData().idToTileSpec().get( tileId );
+						final TileSpec tileSpec = solveItem.blockData().rtsc().getTileSpec( tileId );
 						
 						//if ( !tileId.contains("_0-0-0") )
 						//	continue;
@@ -530,7 +530,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					for ( final Tile< M > imageTile : imageTiles )
 					{
 						final String tileId = solveItem.tileToIdMap().get( imageTile );
-						final TileSpec tileSpec = solveItem.blockData().idToTileSpec().get( tileId );
+						final TileSpec tileSpec = solveItem.blockData().rtsc().getTileSpec( tileId );
 
 						final int tileCol = tileSpec.getLayout().getImageCol();// tileSpec.getImageCol();
 						final int tileRow = tileSpec.getLayout().getImageRow();
@@ -811,7 +811,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 							}
 
 							new ImageJ();
-							final ImagePlus imp1 = VisualizeTools.renderTS(models, solveItem.blockData().idToTileSpec(), 0.15 );
+							final ImagePlus imp1 = VisualizeTools.renderTS(models, solveItem.blockData().rtsc().getTileIdToSpecMap(), 0.15 );
 							imp1.setTitle( "z=" + z );
 						}
 						catch ( final NoninvertibleModelException e )
@@ -869,8 +869,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 
 				// re-assemble allTileIds and idToTileSpec
-				final ArrayList<String> allTileIdsNew = new ArrayList<>();
-				final Map<String, TileSpec> idToTileSpecNew = new HashMap<>();
+				final ResolvedTileSpecCollection newRTSC = new ResolvedTileSpecCollection();
 
 				// update all the maps
 				for ( final Tile< ? > groupedTile : subgraph )
@@ -879,8 +878,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					{
 						final String tileId = inputSolveItem.tileToIdMap().get( t );
 
-						allTileIdsNew.add( tileId );
-						idToTileSpecNew.put( tileId, inputSolveItem.blockData().idToTileSpec().get( tileId ) );
+						// TODO trautmane - improve this
+						newRTSC.addTileSpecToCollection( inputSolveItem.blockData().rtsc().getTileSpec( tileId ) );
 					}
 				}
 
@@ -891,8 +890,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 										inputSolveItem.blockData().solveTypeParameters(), // no copy necessary
 										id,
 										inputSolveItem.blockData().weightFunctions(), // no copy necessary
-										allTileIdsNew,
-										idToTileSpecNew) );
+										newRTSC ) );
 
 				++id;
 
@@ -1008,7 +1006,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				final Map< Tile< ? >, Integer > tileToZ = new HashMap<>();
 	
 				for ( final Tile< ? > tile : tileConfig.getTiles() )
-					tileToZ.put( tile, (int)Math.round( solveItem.blockData().idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) );
+					tileToZ.put( tile, (int)Math.round( solveItem.blockData().rtsc().getTileIdToSpecMap().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) );
 	
 				SolveTools.preAlignByLayerDistance( tileConfig, tileToZ );
 				//tileConfig.preAlign();
@@ -1122,7 +1120,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	// note: these are local errors of a single block only
 	protected void computeSolveItemErrors( final AffineBlockDataWrapper< M, S, F > solveItem, final ArrayList< CanvasMatches > canvasMatches )
 	{
-		LOG.info( "Computing per-block errors for " + solveItem.blockData().idToTileSpec().keySet().size() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
+		LOG.info( "Computing per-block errors for " + solveItem.blockData().rtsc().getTileCount() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
 
 		// for local fits
 		final Model< ? > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
@@ -1133,8 +1131,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			final String pTileId = match.getpId();
 			final String qTileId = match.getqId();
 
-			final TileSpec pTileSpec = solveItem.blockData().idToTileSpec().get( pTileId );
-			final TileSpec qTileSpec = solveItem.blockData().idToTileSpec().get( qTileId );
+			final TileSpec pTileSpec = solveItem.blockData().rtsc().getTileSpec( pTileId );
+			final TileSpec qTileSpec = solveItem.blockData().rtsc().getTileSpec( qTileId );
 
 			// it is from a different solveitem
 			if ( pTileSpec == null || qTileSpec == null )

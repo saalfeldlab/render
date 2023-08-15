@@ -46,8 +46,8 @@ public class WorkerTools
 			for ( final Tile< M > imageTile : solveItem.groupedTileToTiles().get( prevGroupedTile ) )
 			{
 				final String tileId = solveItem.tileToIdMap().get( imageTile );
-				final int tileCol = solveItem.blockData().idToTileSpec().get( tileId ).getLayout().getImageCol();//.getImageCol();
-				final int tileRow = solveItem.blockData().idToTileSpec().get( tileId ).getLayout().getImageRow();//
+				final int tileCol = solveItem.blockData().rtsc().getTileSpec( tileId ).getLayout().getImageCol();//.getImageCol();
+				final int tileRow = solveItem.blockData().rtsc().getTileSpec( tileId ).getLayout().getImageRow();//
 
 				prevTiles.add( new LayerDetails<>(tileId, tileCol, tileRow, prevGroupedTile ) );//new ValuePair<>( new ValuePair<>( tileCol, tileId ), prevGroupedTile ) );
 			}
