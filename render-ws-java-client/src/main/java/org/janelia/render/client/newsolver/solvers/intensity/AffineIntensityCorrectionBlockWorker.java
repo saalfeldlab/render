@@ -3,10 +3,8 @@ package org.janelia.render.client.newsolver.solvers.intensity;
 import mpicbg.models.Affine1D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
-import net.imglib2.util.ValuePair;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.filter.IntensityMap8BitFilter;
-import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -21,17 +19,14 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.parameter.IntensityAdjustParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<M>, F extends BlockFactory<F>>
 		extends Worker<M, M, FIBSEMIntensityCorrectionParameters<M>, F> {
@@ -56,119 +51,61 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 	 */
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
+		final Map<String, FilterSpec> idToFilterSpec = deriveIntensityFilterData(renderDataClient, blockData.rtsc());
 
-		// TODO: blockData.idToTileSpec() already resolved?
-		final ResolvedTileSpecCollection resolvedTileSpecs = getResolvedTileSpecs();
+		// this adds the filters to the tile specs and pushes the jata to the DB; don't know if we want that
+		// TODO: how do we want to store intensity corrected data?
+		//addFilters(blockData.rtsc(), idToFilterSpec);
+		//renderDataClient.saveResolvedTiles(blockData.rtsc(), parameters.intensityCorrectedFilterStack(), null);
 
-		// if specified, use match collection to determine patch pairs instead of tile bounds w/distanceZ
-		final List<CanvasMatches> tilePairs;
-		if (parameters.matchCollection() != null) {
-			tilePairs = getMatchPairsFromCollection(parameters.matchCollection());
-		} else {
-			tilePairs = new ArrayList<>();
-		}
-
-		deriveAndStoreIntensityFilterData(renderDataClient, resolvedTileSpecs, tilePairs);
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());
 	}
 
-	private List<CanvasMatches> getMatchPairsFromCollection(final String matchCollection) throws IOException {
-
-		final RenderDataClient matchClient = new RenderDataClient(renderDataClient.getBaseDataUrl(), renderDataClient.getOwner(), matchCollection);
-		final List<CanvasMatches> tilePairs = new ArrayList<>();
-		final Set<String> alreadyConsidered = new HashSet<>();
-
-		/*
-		for (final TileSpec tileSpec : blockData.rtsc().getTileSpecs()) {
-			final String pGroupId = tileSpec.getLayout().getSectionId();
-			final boolean isInBlock = blockData.idToTileSpec().containsKey(pGroupId);
-			if (!alreadyConsidered.contains(pGroupId) && isInBlock) {
-				for (final CanvasMatches pair : matchClient.getMatchesWithPGroupId(pGroupId, true)) {
-					if (blockData.idToTileSpec().containsKey(pair.getqId()))
-						tilePairs.add(pair);
-				}
-				alreadyConsidered.add(pGroupId);
-			}
-		}*/
-		return tilePairs;
-	}
-
-	private ResolvedTileSpecCollection getResolvedTileSpecs() {
-		final ResolvedTileSpecCollection resolvedTiles;
-		try {
-			if (blockData.minZ() == blockData.maxZ()) {
-				resolvedTiles = renderDataClient.getResolvedTiles(renderStack, (double) blockData.minZ());
-			} else {
-				resolvedTiles = renderDataClient.getResolvedTilesForZRange(renderStack, (double) blockData.minZ(), (double) blockData.maxZ());
-			}
-		} catch (final IOException e) {
-			LOG.error("Error getting resolved tiles for stack {} and z range {}-{}", renderStack, blockData.minZ(), blockData.maxZ());
-			throw new RuntimeException(e);
-		}
-
-		final Set<String> outOfBlockIds = resolvedTiles.getTileIds();
-		outOfBlockIds.removeAll(blockData.rtsc().getTileIds());
-		resolvedTiles.removeTileSpecs(outOfBlockIds);
-
-		return resolvedTiles;
-	}
-
-	protected void deriveAndStoreIntensityFilterData(
+	protected Map<String, FilterSpec> deriveIntensityFilterData(
 			final RenderDataClient dataClient,
-			final ResolvedTileSpecCollection resolvedTiles,
-			final List<CanvasMatches> tilePairs) throws ExecutionException, InterruptedException, IOException {
+			final ResolvedTileSpecCollection resolvedTiles) throws ExecutionException, InterruptedException, IOException {
 
-		LOG.info("deriveAndStoreIntensityFilterData: entry");
+		LOG.info("deriveIntensityFilterData: entry");
 
-		if (resolvedTiles.getTileCount() > 1) {
-			final long maxCachedPixels = parameters.maxNumberOfCachedPixels();
-			final ImageProcessorCache imageProcessorCache = (maxCachedPixels == 0)
-					? ImageProcessorCache.DISABLED_CACHE
-					: new ImageProcessorCache(parameters.maxNumberOfCachedPixels(), true, false);
-
-			final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
-			final IntensityCorrectionStrategy strategy = new AffineIntensityCorrectionStrategy(parameters.lambdaTranslation(), parameters.lambdaIdentity());
-			final List<OnTheFlyIntensity> corrected;
-
-			if (!tilePairs.isEmpty()) {
-				final List<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs =
-						tilePairs.stream()
-								.map(tp -> new ValuePair<>(resolvedTiles.getTileSpec(tp.getpId()), resolvedTiles.getTileSpec(tp.getqId())))
-								.filter(vp -> (vp.getA() != null) && (vp.getB() != null))
-								.map(vp -> new ValuePair<>(new MinimalTileSpecWrapper(vp.getA()), new MinimalTileSpecWrapper(vp.getB())))
-								.collect(Collectors.toList());
-
-				corrected = AdjustBlock.correctIntensitiesForPatchPairs(patchPairs,
-																		parameters.renderScale(),
-																		imageProcessorCache,
-																		parameters.numCoefficients(),
-																		strategy,
-																		numThreads);
-			} else {
-				corrected = AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
-																		parameters.renderScale(),
-																		parameters.zDistance(),
-																		imageProcessorCache,
-																		parameters.numCoefficients(),
-																		strategy,
-																		numThreads);
-			}
-
-			for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
-				final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
-				final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
-				final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
-				final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
-
-				tileSpec.setFilterSpec(filterSpec);
-				tileSpec.convertSingleChannelSpecToLegacyForm();
-			}
-		} else {
+		if (resolvedTiles.getTileCount() < 2) {
 			final String tileCountMsg = resolvedTiles.getTileCount() == 1 ? "1 tile" : "0 tiles";
-			LOG.info("deriveAndStoreIntensityFilterData: skipping correction because collection contains {}", tileCountMsg);
+			LOG.info("deriveIntensityFilterData: skipping correction because collection contains {}", tileCountMsg);
+			return null;
 		}
 
-		dataClient.saveResolvedTiles(resolvedTiles, parameters.intensityCorrectedFilterStack(), null);
+		final long maxCachedPixels = parameters.maxNumberOfCachedPixels();
+		final ImageProcessorCache imageProcessorCache = (maxCachedPixels == 0)
+				? ImageProcessorCache.DISABLED_CACHE
+				: new ImageProcessorCache(parameters.maxNumberOfCachedPixels(), true, false);
+
+		final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
+		final IntensityCorrectionStrategy strategy = new AffineIntensityCorrectionStrategy(parameters.lambdaTranslation(), parameters.lambdaIdentity());
+		final List<OnTheFlyIntensity> corrected = AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+																							  parameters.renderScale(),
+																							  parameters.zDistance(),
+																							  imageProcessorCache,
+																							  parameters.numCoefficients(),
+																							  strategy,
+																							  numThreads);
+
+		final Map<String, FilterSpec> idToFilterSpec = new HashMap<>();
+		for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
+			final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
+			final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
+			final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
+			idToFilterSpec.put(tileId, filterSpec);
+		}
+		return idToFilterSpec;
+	}
+
+	private void addFilters(final ResolvedTileSpecCollection tileSpecs, final Map<String, FilterSpec> idToFilterSpec) {
+		for (final Map.Entry<String, FilterSpec> entry : idToFilterSpec.entrySet()) {
+			final String tileId = entry.getKey();
+			final FilterSpec filterSpec = entry.getValue();
+			final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
+			tileSpec.setFilterSpec(filterSpec);
+			tileSpec.convertSingleChannelSpecToLegacyForm();
+		}
 	}
 
 	/**
