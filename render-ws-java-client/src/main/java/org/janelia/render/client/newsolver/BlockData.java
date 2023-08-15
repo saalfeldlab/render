@@ -25,6 +25,10 @@ import net.imglib2.util.ValuePair;
  * 
  * @author preibischs
  *
+ * @param <M> - the compute model
+ * @param <R> - the result model
+ * @param <P> - the solve parameters
+ * @param <F> - the block factory
  */
 public class BlockData< M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > implements Serializable
 {
@@ -78,8 +82,9 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 		this.weightF = weightF;
 
 		this.sectionIdToZMap = new HashMap<>();
-		final Pair<Integer, Integer> minmax = fetchRenderDetails( idToTileSpec().values(), sectionIdToZMap );
 
+		// TODO: trautmane
+		final Pair<Integer, Integer> minmax = fetchRenderDetails( idToTileSpec().values(), sectionIdToZMap );
 		this.minZ = minmax.getA();
 		this.maxZ = minmax.getB();
 	}

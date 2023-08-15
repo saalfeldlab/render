@@ -19,7 +19,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
 
-public class ZBlock extends BlockFactory< ZBlock > implements Serializable
+public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Serializable
 {
 	private static final long serialVersionUID = 4169473785487008894L;
 
@@ -33,7 +33,7 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 	 * @param blockSize - desired block size
 	 * @param minBlockSize - minimal block size (can fail if this is too high to be accommodated)
 	 */
-	public ZBlock( final int minZ, final int maxZ, final int blockSize, final int minBlockSize )
+	public ZBlockFactory( final int minZ, final int maxZ, final int blockSize, final int minBlockSize )
 	{
 		this.minZ = minZ;
 		this.maxZ = maxZ;
@@ -43,7 +43,7 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters<M,P>> BlockCollection<M, R, P, ZBlock> defineBlockCollection(
+	public <M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters<M,P>> BlockCollection<M, R, P, ZBlockFactory> defineBlockCollection(
 			final P blockSolveParameters )
 	{
 		final List< ZBlockInit > initBlocks = defineBlockLayout( minZ, maxZ, blockSize, minBlockSize );
@@ -57,7 +57,7 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 				blockSolveParameters.project() );
 
 		
-		final List< BlockData<M, R, P, ZBlock> > blockDataList = new ArrayList<>();
+		final List< BlockData<M, R, P, ZBlockFactory> > blockDataList = new ArrayList<>();
 
 		for ( final ZBlockInit initBlock : initBlocks )
 		{
@@ -65,37 +65,38 @@ public class ZBlock extends BlockFactory< ZBlock > implements Serializable
 
 			try
 			{
-					final ResolvedTileSpecCollection tsc =
-							r.getResolvedTilesForZRange( blockSolveParameters.stack(), (double)initBlock.minZ(), (double)initBlock.maxZ() );
+				// TODO: trautmane
+				final ResolvedTileSpecCollection tsc =
+						r.getResolvedTilesForZRange( blockSolveParameters.stack(), (double)initBlock.minZ(), (double)initBlock.maxZ() );
 
-					System.out.println( "Loaded " + tsc.getTileIds().size() + " tiles.");
+				System.out.println( "Loaded " + tsc.getTileIds().size() + " tiles.");
 
-					final Set< String > allTileIds = tsc.getTileIds();
-					final HashMap< String, TileSpec > idToTileSpec = new HashMap<>();
+				final Set< String > allTileIds = tsc.getTileIds();
+				final HashMap< String, TileSpec > idToTileSpec = new HashMap<>();
 
-					for ( final String id :allTileIds )
-						idToTileSpec.put( id, tsc.getTileSpec( id ) );
+				for ( final String id :allTileIds )
+					idToTileSpec.put( id, tsc.getTileSpec( id ) );
 
-					// TODO: find out if yes
-					final boolean hasIssues = false;
+				// TODO: find out if yes
+				final boolean hasIssues = false;
 
-					// we also define our own distance functions
-					// here, xy doesn't matter, only z
-					final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
-					weightF.add( (Function< Double, Double > & Serializable )(x) -> 0.0 );
-					weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
-					weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - ( initBlock.maxZ() - initBlock.minZ() ) / 2 ) );
+				// we also define our own distance functions
+				// here, xy doesn't matter, only z
+				final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
+				weightF.add( (Function< Double, Double > & Serializable )(x) -> 0.0 );
+				weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
+				weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - ( initBlock.maxZ() - initBlock.minZ() ) / 2 ) );
 
-					final BlockData< M, R, P, ZBlock > block = 
-							new BlockData<>(
-									this,
-									blockSolveParameters.createInstance( hasIssues ),
-									initBlock.getId(),
-									weightF,
-									allTileIds,
-									idToTileSpec );
+				final BlockData< M, R, P, ZBlockFactory > block = 
+						new BlockData<>(
+								this,
+								blockSolveParameters.createInstance( hasIssues ),
+								initBlock.getId(),
+								weightF,
+								allTileIds,
+								idToTileSpec );
 
-					blockDataList.add( block );
+				blockDataList.add( block );
 			}
 			catch (Exception e)
 			{

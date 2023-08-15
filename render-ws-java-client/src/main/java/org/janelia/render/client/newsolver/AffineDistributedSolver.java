@@ -5,10 +5,11 @@ import java.io.Serializable;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
-import org.janelia.render.client.newsolver.blockfactories.ZBlock;
+import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
+import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.solver.DistributedSolveParameters;
 import org.janelia.render.client.solver.RunParameters;
 
@@ -18,7 +19,7 @@ public class AffineDistributedSolver
 {
 	public static void main( final String[] args ) throws IOException
 	{
-        final AffineSolverSetup parameters = new AffineSolverSetup();
+        final AffineSolverSetup setupParameters = new AffineSolverSetup();
 
         // TODO: remove testing hack ...
         if (args.length == 0) {
@@ -52,12 +53,12 @@ public class AffineDistributedSolver
                     "--maxPlateauWidthGlobal", "50",
                     "--maxIterationsGlobal", "10000",
             };
-            parameters.parse(testArgs);
+            setupParameters.parse(testArgs);
         } else {
-            parameters.parse(args);
+        	setupParameters.parse(args);
         }
 
-		final RunParameters runParameters = AffineSolverSetup.setupSolve(parameters);
+		final RenderSetup renderSetup = AffineSolverSetup.setupSolve( setupParameters );
 
 		//
 		// setup Z BlockFactory
@@ -67,7 +68,7 @@ public class AffineDistributedSolver
 		final int blockSize = parameters.blockSize;
 		final int minBlockSize = parameters.minBlockSize;
 
-		final BlockFactory< ZBlock > blockFactory = new ZBlock( minZ, maxZ, blockSize, minBlockSize );
+		final BlockFactory< ZBlockFactory > blockFactory = new ZBlockFactory( minZ, maxZ, blockSize, minBlockSize );
 		/*
 		//
 		// setup FIB-SEM solve parameters
