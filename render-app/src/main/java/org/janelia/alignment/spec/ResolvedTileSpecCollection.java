@@ -139,6 +139,10 @@ public class ResolvedTileSpecCollection implements Serializable {
         return tileIdToSpecMap.values();
     }
 
+    public Map<String, TileSpec> getTileIdToSpecMap() {
+        return tileIdToSpecMap;
+    }
+
     public Map<String, TransformSpec> getTransformIdToSpecMap() {
         return transformIdToSpecMap;
     }
