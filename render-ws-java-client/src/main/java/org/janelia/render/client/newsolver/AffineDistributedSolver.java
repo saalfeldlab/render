@@ -10,16 +10,16 @@ import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentP
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
-import org.janelia.render.client.solver.DistributedSolveParameters;
-import org.janelia.render.client.solver.RunParameters;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.Model;
 
 public class AffineDistributedSolver
 {
 	public static void main( final String[] args ) throws IOException
 	{
-        final AffineSolverSetup setupParameters = new AffineSolverSetup();
+        final AffineSolverSetup cmdLineSetup = new AffineSolverSetup();
 
         // TODO: remove testing hack ...
         if (args.length == 0) {
@@ -53,47 +53,70 @@ public class AffineDistributedSolver
                     "--maxPlateauWidthGlobal", "50",
                     "--maxIterationsGlobal", "10000",
             };
-            setupParameters.parse(testArgs);
+            cmdLineSetup.parse(testArgs);
         } else {
-        	setupParameters.parse(args);
+        	cmdLineSetup.parse(args);
         }
 
-		final RenderSetup renderSetup = RenderSetup.setupSolve( setupParameters );
+		final RenderSetup renderSetup = RenderSetup.setupSolve( cmdLineSetup );
 
+		new AffineDistributedSolver().setup(
+				cmdLineSetup,
+				renderSetup,
+				cmdLineSetup.blockModel(),
+				cmdLineSetup.stitchingModel() );
+	}
+
+	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > >  void setup(
+			final AffineSolverSetup cmdLineSetup,
+			final RenderSetup renderSetup,
+			final M blockModel,
+			final S stitchingModel )
+	{
 		//
 		// setup Z BlockFactory
 		//
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = 5000;//(int)Math.round( runParameters.maxZ );
-		final int blockSize = setupParameters.blockSize;
-		final int minBlockSize = setupParameters.minBlockSize;
+		final int blockSize = cmdLineSetup.blockSize;
+		final int minBlockSize = cmdLineSetup.minBlockSize;
 
 		final BlockFactory< ZBlockFactory > blockFactory = new ZBlockFactory( minZ, maxZ, blockSize, minBlockSize );
-		/*
+
 		//
 		// setup FIB-SEM solve parameters
 		//
-		final PreAlign preAlign = PreAlign.NONE;
+		final boolean stitchFirst = cmdLineSetup.stitchFirst;
 
-		FIBSEMAlignmentParameters solveParams = new FIBSEMAlignmentParameters(
-				parameters.blockModel(),
-				(Function< Integer, Affine2D<?> > & Serializable )(z) -> parameters.stitchingModel(),
-				(Function< Integer, Integer > & Serializable )(z) -> parameters.minStitchingInliers,
-				parameters.blockOptimizerLambdasRigid,
-				parameters.blockOptimizerLambdasTranslation,
-				parameters.blockOptimizerIterations,
-				parameters.blockMaxPlateauWidth,
-				parameters.blockMaxAllowedError,
-				preAlign,
-				parameters.renderWeb.baseDataUrl,
-				parameters.renderWeb.owner,
-				parameters.renderWeb.project,
-				parameters.stack );
+		final FIBSEMAlignmentParameters< M, S > solveParams = new FIBSEMAlignmentParameters< M, S >(
+				blockModel,
+				stitchFirst ? (Function< Integer,S > & Serializable )(z) -> stitchingModel : null,
+				stitchFirst ? (Function< Integer, Integer > & Serializable )(z) -> cmdLineSetup.minStitchingInliers : null,
+				cmdLineSetup.maxAllowedErrorStitching,
+				cmdLineSetup. maxIterationsStitching,
+				cmdLineSetup.maxPlateauWidthStitching,
+				cmdLineSetup.blockOptimizerLambdasRigid,
+				cmdLineSetup.blockOptimizerLambdasTranslation,
+				cmdLineSetup.blockOptimizerLambdasRegularization,
+				cmdLineSetup.blockOptimizerIterations,
+				cmdLineSetup.blockMaxPlateauWidth,
+				cmdLineSetup.blockMaxAllowedError,
+				cmdLineSetup.maxNumMatches,
+				cmdLineSetup.maxZRangeMatches,
+				cmdLineSetup.preAlign,
+				cmdLineSetup.renderWeb.baseDataUrl,
+				cmdLineSetup.renderWeb.owner,
+				cmdLineSetup.renderWeb.project,
+				cmdLineSetup.stack,
+				cmdLineSetup.matchOwner,
+				cmdLineSetup.matchCollection );
 
 		//
 		// create all blocks
 		//
-		BlockCollection col = blockFactory.defineBlockCollection( solveParams );
-		*/
+		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
+				blockFactory.defineBlockCollection( solveParams );
+
 	}
+
 }

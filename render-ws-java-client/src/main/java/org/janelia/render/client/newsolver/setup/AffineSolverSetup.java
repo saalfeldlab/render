@@ -3,8 +3,10 @@ package org.janelia.render.client.newsolver.setup;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.janelia.alignment.match.ModelType;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
@@ -17,6 +19,7 @@ import com.beust.jcommander.ParametersDelegate;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InterpolatedAffineModel2D;
+import mpicbg.models.Model;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
 
@@ -90,20 +93,8 @@ public class AffineSolverSetup extends CommandLineParameters
     public Integer minBlockSize = 50;
 
     //
-    // stitching align model, by default TRANSLATION with tunable regularization --- with RIGID (default: 0.00)
+    // stitching align model, by TRANSLATION with tunable regularization --- with RIGID (default: 0.00)
     //
-    @Parameter(
-            names = "--modelTypeStitching",
-            description = "Type of transformation model for section stitching (default: Translation2D)"
-    )
-    public ModelType modelTypeStitching = ModelType.TRANSLATION;
-
-    @Parameter(
-            names = "--modelTypeStitchingRegularizer",
-            description = "Type of transformation model for regularization for section stitching (default: Rigid2D)"
-    )
-    public ModelType modelTypeStitchingRegularizer = ModelType.RIGID;
-
     @Parameter(
             names = "--lambdaStitching",
             description = "Lambda, used if modelTypeStitchingRegularizer is not null."
@@ -145,6 +136,13 @@ public class AffineSolverSetup extends CommandLineParameters
     // models are hardcoded: AFFINE, regularized with RIGID, regularized with Translation, regularized with RegularizingModel (Constant or Stabilizing)
     // and a set of decreasing lambdas (see below)
     //
+
+    @Parameter(
+            names = "--preAlign",
+            description = "Type of pre-alignment used: NONE, TRANSLATION, RIGID. Note: if you use 'stitchFirst' you must specify TRANSLATION or RIGID (default: none)"
+    )
+    public PreAlign preAlign = PreAlign.NONE;
+
     @Parameter(
             names = "--blockOptimizerLambdasRigid",
             description = "Explicit optimizer lambda values for the rigid regularizer, by default optimizer loops through lambdas (1.0,0.5,0.1,0.01)",
@@ -260,7 +258,6 @@ public class AffineSolverSetup extends CommandLineParameters
 				this.blockOptimizerLambdasTranslation.size() != this.blockOptimizerLambdasRigid.size())
 			throw new RuntimeException( "Number of entries for blockOptimizerIterations, blockMaxPlateauWidth, blockOptimizerLambdasTranslation and blockOptimizerLambdasRigid not identical." );
 
-
 		return new InterpolatedAffineModel2D<InterpolatedAffineModel2D< InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >, TranslationModel2D >, StabilizingAffineModel2D<RigidModel2D>>(
 						new InterpolatedAffineModel2D< InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >, TranslationModel2D >(
 								new InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >(
@@ -272,11 +269,8 @@ public class AffineSolverSetup extends CommandLineParameters
 						//new ConstantAffineModel2D( stitchingModel() ), 0.0 );
 	}
 
-	public Affine2D< ? > stitchingModel()
+	public InterpolatedAffineModel2D<TranslationModel2D, RigidModel2D> stitchingModel()
 	{
-		if ( this.modelTypeStitchingRegularizer == null )
-			return this.modelTypeStitching.getInstance();
-		else
-			return this.modelTypeStitching.getInterpolatedInstance( modelTypeStitchingRegularizer, lambdaStitching );
+		return new InterpolatedAffineModel2D<TranslationModel2D, RigidModel2D>( new TranslationModel2D(), new RigidModel2D(), lambdaStitching );
 	}
 }
