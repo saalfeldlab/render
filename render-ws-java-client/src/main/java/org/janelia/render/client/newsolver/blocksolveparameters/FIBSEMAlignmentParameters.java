@@ -106,7 +106,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	}
 
 	@Override
-	public M blockSolveModel() { return blockSolveModel().copy(); }
+	public M blockSolveModel() { return super.blockSolveModel().copy(); }
 	public S stitchingSolveModelInstance( final int z ) { return stitchingModelSupplier.apply( z ); }
 	public Function< Integer, S > stitchingModelSupplier() { return stitchingModelSupplier; }
 
