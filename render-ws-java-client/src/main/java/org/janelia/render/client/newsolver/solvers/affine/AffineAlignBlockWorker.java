@@ -202,8 +202,20 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		if ( maxZRangeMatches >= 0 )
 			LOG.info( "block " + inputSolveItem.blockData().getId() + ": WARNING! max z range for matching is " + maxZRangeMatches );
 
-		// Note: this is not sorted anymore
-		for ( final String sectionId : sectionIdToZMap.keySet() )
+		// sort sectionIds
+		final ArrayList< String > sortedSectionIds = new ArrayList<>( sectionIdToZMap.keySet() );
+		Collections.sort(sortedSectionIds, (s1, s2) -> {
+			final double d1 = Double.parseDouble(s1);
+			final double d2 = Double.parseDouble(s2);
+			if (d2 < d1)
+				return 1;
+			else if (d2 > d1)
+				return -1;
+			else
+				return 0;
+		});
+
+		for ( final String sectionId : sortedSectionIds )
 		{
 			LOG.info("block " + inputSolveItem.blockData().getId() + ": run: connecting tiles with sectionID {}", sectionId );
 
@@ -226,8 +238,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					continue;
 				}
 
-				// TODO: TEST IF qId is part of the solve set
-				
 				// if any of the matches is outside the set of tiles of this Block we ignore them
 				if ( !inputSolveItem.blockData().allTileIds().contains( qTileSpec.getTileId() ) )
 				{
