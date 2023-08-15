@@ -72,19 +72,11 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 
 				System.out.println( "Loaded " + rtsc.getTileIds().size() + " tiles.");
 
-				// we also define our own distance functions
-				// here, xy doesn't matter, only z
-				final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
-				weightF.add( (Function< Double, Double > & Serializable )(x) -> 0.0 );
-				weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
-				weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - ( initBlock.maxZ() - initBlock.minZ() ) / 2 ) );
-
 				final BlockData< M, R, P, ZBlockFactory > block = 
 						new BlockData<>(
 								this,
 								blockSolveParameterProvider.create( rtsc ),
 								initBlock.getId(),
-								weightF,
 								rtsc );
 
 				blockDataList.add( block );
@@ -181,5 +173,21 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 
 		// we can return them in one list since each object knows if it is right or left
 		return Stream.concat( leftSets.stream(), rightSets.stream() ).collect( Collectors.toList() );
+	}
+
+	@Override
+	public ArrayList<Function<Double, Double>> createWeightFunctions( final BlockData<?, ?, ?, ZBlockFactory > block)
+	{
+		// we also define our own distance functions
+		// here, xy doesn't matter, only z
+		final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
+
+		weightF.add( (Function< Double, Double > & Serializable )(x) -> 0.0 );
+		weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
+		// TODO: has to be between 0 and 1
+		// TODO: needs the Block to know
+		weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - ( block.maxZ() - block.minZ() ) / 2 ) );
+
+		return weightF;
 	}
 }

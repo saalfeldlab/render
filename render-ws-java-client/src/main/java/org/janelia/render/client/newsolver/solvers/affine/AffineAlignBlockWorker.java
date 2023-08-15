@@ -889,7 +889,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 										inputSolveItem.blockData().blockFactory(), // no copy necessary
 										inputSolveItem.blockData().solveTypeParameters(), // no copy necessary
 										id,
-										inputSolveItem.blockData().weightFunctions(), // no copy necessary
 										newRTSC ) );
 
 				++id;

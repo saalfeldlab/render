@@ -72,14 +72,12 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 			final F blockFactory, // knows how it was created for assembly later?
 			final P solveTypeParameters,
 			final int id,
-			final ArrayList< Function< Double, Double > > weightF,
 			final ResolvedTileSpecCollection rtsc )
 	{
 		this.id = id;
 		this.blockFactory = blockFactory;
 		this.solveTypeParameters = solveTypeParameters;
 		this.rtsc = rtsc;
-		this.weightF = weightF;
 
 		this.sectionIdToZMap = new HashMap<>();
 
@@ -94,7 +92,13 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	public Map<String, ArrayList<Double>> sectionIdToZMap() { return sectionIdToZMap; }
 
 	public int getId() { return id; }
-	public double getWeight( final double location, final int dim ) { return weightF.get( dim ).apply( location ); }
+	public ArrayList< Function< Double, Double > > weightFunctions()
+	{
+		if ( weightF == null )
+			this.weightF = blockFactory.createWeightFunctions( this );
+
+		return weightF;
+	}
 
 	public P solveTypeParameters() { return solveTypeParameters; }
 	public F blockFactory() { return blockFactory; }
@@ -104,8 +108,6 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return idToSolveItemErrorMap; }
 
 	public HashMap< Integer, HashSet< String > > zToTileId() { return zToTileId; }
-
-	public ArrayList< Function< Double, Double > > weightFunctions() { return weightF; }
 
 	/**
 	 * Fetches basic data for all TileSpecs
