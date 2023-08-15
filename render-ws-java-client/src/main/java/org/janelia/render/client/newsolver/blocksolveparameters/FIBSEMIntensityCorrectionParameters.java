@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 
 import mpicbg.models.Affine1D;
 import mpicbg.models.Model;
+import org.janelia.render.client.parameter.IntensityAdjustParameters;
 
 import java.util.List;
 
@@ -20,7 +21,7 @@ public class FIBSEMIntensityCorrectionParameters<M extends Model<M> & Affine1D<M
 	final private List<Integer> blockOptimizerIterations;
 	final private List<Integer> blockMaxPlateauWidth;
 
-	final private double blockMaxAllowedError;
+	final private IntensityAdjustParameters intensityParameters;
 
 	public FIBSEMIntensityCorrectionParameters(
 			final M blockSolveModel,
@@ -28,28 +29,32 @@ public class FIBSEMIntensityCorrectionParameters<M extends Model<M> & Affine1D<M
 			final List<Double> blockOptimizerLambdasIdentity,
 			final List<Integer> blockOptimizerIterations,
 			final List<Integer> blockMaxPlateauWidth,
-			final double blockMaxAllowedError,
 			final String baseDataUrl,
 			final String owner,
 			final String project,
-			final String stack) {
-		super(baseDataUrl, owner, project, stack, blockSolveModel.copy());
+			final IntensityAdjustParameters parameters) {
+		super(baseDataUrl, owner, project, parameters.stack, blockSolveModel.copy());
 
 		this.blockOptimizerLambdasTranslation = blockOptimizerLambdasTranslation;
 		this.blockOptimizerLambdasIdentity = blockOptimizerLambdasIdentity;
 		this.blockOptimizerIterations = blockOptimizerIterations;
 		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
-		this.blockMaxAllowedError = blockMaxAllowedError;
+		this.intensityParameters = parameters;
 	}
 
 	public List<Double> blockOptimizerLambdasTranslation() { return blockOptimizerLambdasTranslation; }
 	public List<Double> blockOptimizerLambdasRigid() { return blockOptimizerLambdasIdentity; }
 	public List<Integer> blockOptimizerIterations() { return blockOptimizerIterations; }
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
-	public double blockMaxAllowedError() { return blockMaxAllowedError; }
 
 	@Override
-	public FIBSEMIntensityCorrectionParameters<M> createInstance(final boolean hasIssue) {
-		return null;
-	}
+	public FIBSEMIntensityCorrectionParameters<M> createInstance(final boolean hasIssue) { return null; }
+	public String intensityCorrectedFilterStack() { return intensityParameters.intensityCorrectedFilterStack; }
+	public String matchCollection() { return intensityParameters.matchCollection; }
+	public long maxNumberOfCachedPixels() { return intensityParameters.getMaxNumberOfCachedPixels(); }
+	public double lambdaTranslation() { return intensityParameters.lambda1; }
+	public double lambdaIdentity() { return intensityParameters.lambda2; }
+	public double renderScale() { return intensityParameters.renderScale; }
+	public int numCoefficients() { return intensityParameters.numCoefficients; }
+	public Integer zDistance() { return intensityParameters.zDistance; }
 }
