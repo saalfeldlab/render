@@ -58,15 +58,15 @@ public class AffineDistributedSolver
         	setupParameters.parse(args);
         }
 
-		final RenderSetup renderSetup = AffineSolverSetup.setupSolve( setupParameters );
+		final RenderSetup renderSetup = RenderSetup.setupSolve( setupParameters );
 
 		//
 		// setup Z BlockFactory
 		//
-		final int minZ = (int)Math.round( runParameters.minZ );
+		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = 5000;//(int)Math.round( runParameters.maxZ );
-		final int blockSize = parameters.blockSize;
-		final int minBlockSize = parameters.minBlockSize;
+		final int blockSize = setupParameters.blockSize;
+		final int minBlockSize = setupParameters.minBlockSize;
 
 		final BlockFactory< ZBlockFactory > blockFactory = new ZBlockFactory( minZ, maxZ, blockSize, minBlockSize );
 		/*
