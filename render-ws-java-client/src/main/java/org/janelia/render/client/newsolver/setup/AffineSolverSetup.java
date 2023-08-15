@@ -226,11 +226,6 @@ public class AffineSolverSetup extends CommandLineParameters
     public int threadsGlobal = Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 );
 
 	@Parameter(
-			names = "--serializerDirectory",
-			description = "Directory for storing serialized data (omit to skip serialization)")
-	public String serializerDirectory;
-
-	@Parameter(
 			names = "--visualizeResults",
 			description = "Visualize results (if running interactively)",
 			arity = 0)

@@ -197,7 +197,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
 		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
 
-		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().allTileIds().size() + "tiles, from " + minZ + " to layer " + maxZ );
+		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().allTileIds().size() + " tiles, from " + minZ + " to layer " + maxZ );
 
 		if ( maxZRangeMatches >= 0 )
 			LOG.info( "block " + inputSolveItem.blockData().getId() + ": WARNING! max z range for matching is " + maxZRangeMatches );
@@ -280,6 +280,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 				// for error computation
 				canvasMatches.add( match );
+
+				//LOG.info("block " + inputSolveItem.blockData().getId() + ": run: linking pair ({}, {}) ", pId, qId  );
 			}
 		}
 

@@ -59,9 +59,10 @@ public class AffineDistributedSolver
                     //"--blockMaxPlateauWidth", "250,250,150,100,100",
 
                     //"--blockSize", "100",
-                    "--minStitchingInliers", "100000000",// do not stitch first
+                    //"--minStitchingInliers", "35",
+                    //"--stitchFirst", "", // perform stitch-first
                     "--maxNumMatches", "0", // no limit, default
-                    "--threadsWorker", "1", 
+                    "--threadsWorker", "1",
                     //"--threadsGlobal", "60",
                     //"--maxPlateauWidthGlobal", "50",
                     //"--maxIterationsGlobal", "10000",
@@ -83,6 +84,7 @@ public class AffineDistributedSolver
 		{
 			workers.get( 0 ).run();
 			System.out.println( workers.get( 0 ).getBlockDataList().size() );
+			
 		} catch (IOException | ExecutionException | InterruptedException | NoninvertibleModelException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -138,7 +140,7 @@ public class AffineDistributedSolver
 				(Function< Integer,S > & Serializable )(z) -> stitchingModel,
 				stitchFirst ? (Function< Integer, Integer > & Serializable )(z) -> cmdLineSetup.minStitchingInliers : null,
 				cmdLineSetup.maxAllowedErrorStitching,
-				cmdLineSetup. maxIterationsStitching,
+				cmdLineSetup.maxIterationsStitching,
 				cmdLineSetup.maxPlateauWidthStitching,
 				cmdLineSetup.blockOptimizerLambdasRigid,
 				cmdLineSetup.blockOptimizerLambdasTranslation,
