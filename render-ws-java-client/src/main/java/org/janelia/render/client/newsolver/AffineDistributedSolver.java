@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
@@ -10,6 +11,7 @@ import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
+import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
@@ -97,14 +99,20 @@ public class AffineDistributedSolver
 		//
 		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
 				setupBlockCollection( blockFactory, solveParams );
+
+		//
+		// create workers
+		//
+		final ArrayList< AffineAlignBlockWorker<M, S, ZBlockFactory > > workers = new ArrayList<>();
+
+		for ( final BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > block : col.allBlocks() )
+		{
+			workers.add( new AffineAlignBlockWorker<>( block, col.maxId() + 1, cmdLineSetup.threadsWorker ) );
+		}
 	}
 
 	protected ZBlockFactory setupBlockFactory()
 	{
-		//
-		// setup Z BlockFactory
-		//
-
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = 5000;//(int)Math.round( runParameters.maxZ );
 		final int blockSize = cmdLineSetup.blockSize;
@@ -117,9 +125,6 @@ public class AffineDistributedSolver
 			final M blockModel,
 			final S stitchingModel )
 	{
-		//
-		// setup FIB-SEM solve parameters
-		//
 		final boolean stitchFirst = cmdLineSetup.stitchFirst;
 
 		final FIBSEMAlignmentParameters< M, S > solveParams = new FIBSEMAlignmentParameters< M, S >(
@@ -152,9 +157,6 @@ public class AffineDistributedSolver
 			final ZBlockFactory blockFactory,
 			final FIBSEMAlignmentParameters< M, S > solveParams )
 	{
-		//
-		// create all blocks
-		//
 		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
 				blockFactory.defineBlockCollection( solveParams );
 

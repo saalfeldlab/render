@@ -108,12 +108,6 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 
 	public List< Function< Double, Double > > weightFunctions() { return weightF; }
 
-	public Worker< M, R, P, F > createWorker()
-	{
-		// should maybe ask the solveTypeParamters to create the object I think
-		return null;
-	}
-
 	/**
 	 * Fetches basic data for all TileSpecs
 	 *
