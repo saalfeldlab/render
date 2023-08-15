@@ -3,10 +3,9 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
@@ -16,6 +15,7 @@ import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
+import mpicbg.models.NoninvertibleModelException;
 
 public class AffineDistributedSolver
 {
@@ -45,7 +45,7 @@ public class AffineDistributedSolver
                     "--stack", "v5_acquire_trimmed",
                     "--targetStack", "v5_acquire_trimmed_test",
 //                    "--minZ", "1234",
-//                    "--maxZ", "1234",
+                    "--maxZ", "3001",
 
 //                    "--completeTargetStack",
 //                    "--visualizeResults",
@@ -62,9 +62,9 @@ public class AffineDistributedSolver
                     "--minStitchingInliers", "100000000",// do not stitch first
                     "--maxNumMatches", "0", // no limit, default
                     "--threadsWorker", "1", 
-                    "--threadsGlobal", "60",
-                    "--maxPlateauWidthGlobal", "50",
-                    "--maxIterationsGlobal", "10000",
+                    //"--threadsGlobal", "60",
+                    //"--maxPlateauWidthGlobal", "50",
+                    //"--maxIterationsGlobal", "10000",
             };
             cmdLineSetup.parse(testArgs);
         } else {
@@ -76,10 +76,21 @@ public class AffineDistributedSolver
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
 		final AffineDistributedSolver solverSetup = new AffineDistributedSolver( cmdLineSetup, renderSetup );
 
-		solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
+		final ArrayList< ? extends AffineAlignBlockWorker<?, ?, ZBlockFactory > > workers =
+				solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
+
+		try
+		{
+			workers.get( 0 ).run();
+			System.out.println( workers.get( 0 ).getBlockDataList().size() );
+		} catch (IOException | ExecutionException | InterruptedException | NoninvertibleModelException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
-	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > void setupSolve(
+	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > >
+			ArrayList< AffineAlignBlockWorker<M, S, ZBlockFactory > > setupSolve(
 			final M blockModel,
 			final S stitchingModel )
 	{
@@ -103,18 +114,13 @@ public class AffineDistributedSolver
 		//
 		// create workers
 		//
-		final ArrayList< AffineAlignBlockWorker<M, S, ZBlockFactory > > workers = new ArrayList<>();
-
-		for ( final BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > block : col.allBlocks() )
-		{
-			workers.add( new AffineAlignBlockWorker<>( block, col.maxId() + 1, cmdLineSetup.threadsWorker ) );
-		}
+		return createWorkers( col );
 	}
 
 	protected ZBlockFactory setupBlockFactory()
 	{
 		final int minZ = (int)Math.round( renderSetup.minZ );
-		final int maxZ = 5000;//(int)Math.round( runParameters.maxZ );
+		final int maxZ = (int)Math.round( renderSetup.maxZ );
 		final int blockSize = cmdLineSetup.blockSize;
 		final int minBlockSize = cmdLineSetup.minBlockSize;
 
@@ -161,5 +167,18 @@ public class AffineDistributedSolver
 				blockFactory.defineBlockCollection( solveParams );
 
 		return col;
+	}
+
+	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > ArrayList< AffineAlignBlockWorker<M, S, ZBlockFactory > > createWorkers(
+			final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col )
+	{
+		final ArrayList< AffineAlignBlockWorker<M, S, ZBlockFactory > > workers = new ArrayList<>();
+
+		for ( final BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > block : col.allBlocks() )
+		{
+			workers.add( new AffineAlignBlockWorker<>( block, col.maxId() + 1, cmdLineSetup.threadsWorker ) );
+		}
+
+		return workers;
 	}
 }
