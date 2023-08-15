@@ -135,7 +135,7 @@ public class AffineDistributedSolver
 
 		final FIBSEMAlignmentParameters< M, S > solveParams = new FIBSEMAlignmentParameters< M, S >(
 				blockModel,
-				stitchFirst ? (Function< Integer,S > & Serializable )(z) -> stitchingModel : null,
+				(Function< Integer,S > & Serializable )(z) -> stitchingModel,
 				stitchFirst ? (Function< Integer, Integer > & Serializable )(z) -> cmdLineSetup.minStitchingInliers : null,
 				cmdLineSetup.maxAllowedErrorStitching,
 				cmdLineSetup. maxIterationsStitching,

@@ -120,7 +120,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			this.matchFilter = new RandomMaxAmountFilter( blockData.solveTypeParameters().maxNumMatches() );
 
 		// used locally
-		this.stitchFirst = blockData.solveTypeParameters().minStitchingInliersSupplier() != null && blockData.solveTypeParameters().stitchingModelSupplier() != null;
+		this.stitchFirst = blockData.solveTypeParameters().minStitchingInliersSupplier() != null;
 		this.pairs = new ArrayList<>();
 		this.zToPairs = new HashMap<>();
 
