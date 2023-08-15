@@ -13,7 +13,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
-import org.janelia.render.client.newsolver.solvers.Worker;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
@@ -36,9 +35,6 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	private static final long serialVersionUID = -6491517262420660476L;
 
 	private int id;
-
-	// one function per dimension that maps location[dim] to a weight
-	private ArrayList< Function< Double, Double > > weightF;
 
 	// the BlockFactory that created this BlockData
 	final F blockFactory;
@@ -92,12 +88,9 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	public Map<String, ArrayList<Double>> sectionIdToZMap() { return sectionIdToZMap; }
 
 	public int getId() { return id; }
-	public ArrayList< Function< Double, Double > > weightFunctions()
+	public ArrayList< Function< Double, Double > > createWeightFunctions()
 	{
-		if ( weightF == null )
-			this.weightF = blockFactory.createWeightFunctions( this );
-
-		return weightF;
+		return blockFactory.createWeightFunctions( this );
 	}
 
 	public P solveTypeParameters() { return solveTypeParameters; }
