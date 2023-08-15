@@ -13,6 +13,15 @@ import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 
+/**
+ * 
+ * @author preibischs
+ *
+ * @param <M> - the compute model
+ * @param <R> - the result model
+ * @param <P> - the solve parameters
+ * @param <F> - the block factory
+ */
 public abstract class Worker < M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > 
 {
 	// for assigning new id's when splitting BlockData
