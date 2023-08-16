@@ -10,19 +10,25 @@ import org.slf4j.LoggerFactory;
 
 import mpicbg.models.CoordinateTransform;
 
-public abstract class Assembler< R extends CoordinateTransform, F extends BlockFactory< F > >
+public class Assembler< R extends CoordinateTransform, F extends BlockFactory< F > >
 {
 	final List<BlockData<?, R, ?, F> > blocks;
+	final BlockSolver< R, F > blockSolver;
 
-	int id;
 
-	public Assembler( final List<BlockData<?, R, ?, F> > blocks, final int startId )
+	/**
+	 * @param blocks - all individually computed blocks
+	 * @param startId - we may need to create DummyBlocks where z slices do not overlap with anything (beginning and end of stack)
+	 */
+	public Assembler(
+			final List<BlockData<?, R, ?, F> > blocks,
+			final BlockSolver< R, F > blockSolver )
 	{
-		this.id = startId;
 		this.blocks = blocks;
+		this.blockSolver = blockSolver;
 	}
 
-	public AssemblyMaps< R > getAssembly()
+	public AssemblyMaps< R > createAssembly()
 	{
 		AssemblyMaps< R > am;
 
@@ -32,12 +38,24 @@ public abstract class Assembler< R extends CoordinateTransform, F extends BlockF
 		else
 			am = new AssemblyMaps< R >();
 
-		assemble();
+		// now compute the final alignment for each block
+		try
+		{
+			blockSolver.globalSolve( blocks, am );
+		}
+		catch ( Exception e)
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
-		return null;
+		//assemble();
+
+		return am;
 	}
 
-	public abstract void assemble();
+	//public abstract void globalSolve();
+	//public abstract void assemble();
 
 	/**
 	 * 

@@ -15,6 +15,8 @@ import java.util.concurrent.Future;
 import java.util.function.Function;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.render.client.newsolver.assembly.Assembler;
+import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
@@ -34,6 +36,7 @@ import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.RigidModel2D;
 import mpicbg.spim.io.IOFunctions;
 
 public class AffineDistributedSolver
@@ -157,6 +160,18 @@ public class AffineDistributedSolver
 		final int maxId = WorkerTools.fixIds( allItems, solverSetup.col.maxId() );
 
 		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
+
+		final ZBlockSolver< RigidModel2D, AffineModel2D > solver =
+				new ZBlockSolver<>(
+						new RigidModel2D(),
+						new AffineModel2D(),
+						cmdLineSetup.maxPlateauWidthGlobal,
+						cmdLineSetup.maxAllowedErrorGlobal,
+						cmdLineSetup.maxIterationsGlobal,
+						cmdLineSetup.threadsGlobal );
+
+		final Assembler< AffineModel2D, ZBlockFactory > assembler = new Assembler<>( allItems, solver );
+		assembler.createAssembly();
 
 		/*
 		//
