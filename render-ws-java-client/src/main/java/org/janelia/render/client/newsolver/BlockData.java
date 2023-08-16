@@ -13,6 +13,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
+import org.janelia.render.client.newsolver.solvers.Worker;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
@@ -103,6 +104,12 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	public HashMap< Integer, HashSet< String > > zToTileId() { return zToTileId; }
 
 	public void assignUpdatedId( final int id ) { this.id = id; }
+
+	public Worker< M, R, P, F > createWorker( final int startId, final int threadsWorker )
+	{
+		return solveTypeParameters().createWorker( this , startId, threadsWorker );
+	}
+
 
 	/**
 	 * Fetches basic data for all TileSpecs

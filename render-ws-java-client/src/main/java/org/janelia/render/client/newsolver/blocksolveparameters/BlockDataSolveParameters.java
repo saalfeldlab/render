@@ -15,7 +15,7 @@ import mpicbg.models.Model;
  *
  * @param <M> - the result model type
  */
-public abstract class BlockDataSolveParameters< M extends Model< M >, R extends CoordinateTransform, B extends BlockDataSolveParameters< M, R, B > > implements Serializable
+public abstract class BlockDataSolveParameters< M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, R, P > > implements Serializable
 {
 	private static final long serialVersionUID = -813404780882760053L;
 
@@ -47,8 +47,8 @@ public abstract class BlockDataSolveParameters< M extends Model< M >, R extends 
 
 	public M blockSolveModel() { return blockSolveModel; }
 
-	public abstract < F extends BlockFactory< F > > Worker< M, R, B, F > createWorker(
-			final BlockData< M, R, B, F > blockData,
+	public abstract < F extends BlockFactory< F > > Worker< M, R, P, F > createWorker(
+			final BlockData< M, R, P, F > blockData,
 			final int startId,
 			final int threadsWorker );
 }

@@ -11,12 +11,10 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
 
-public abstract class BlockFactory< F extends BlockFactory< F > > implements Serializable
+public interface BlockFactory< F extends BlockFactory< F > > extends Serializable
 {
-	private static final long serialVersionUID = 5919345114414922447L;
-
-	public abstract <M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, R, P > > BlockCollection< M, R, P, F > defineBlockCollection(
+	public <M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, R, P > > BlockCollection< M, R, P, F > defineBlockCollection(
 			final ParameterProvider< M, R, P > blockSolveParameterProvider );
 
-	public abstract ArrayList< Function< Double, Double > > createWeightFunctions( final BlockData< ?, ?, ?, F > block );
+	public ArrayList< Function< Double, Double > > createWeightFunctions( final BlockData< ?, ?, ?, F > block );
 }

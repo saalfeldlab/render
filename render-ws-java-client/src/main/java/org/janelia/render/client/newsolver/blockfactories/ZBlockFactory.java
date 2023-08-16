@@ -16,7 +16,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
 
-public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Serializable
+public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializable
 {
 	private static final long serialVersionUID = 4169473785487008894L;
 

@@ -3,22 +3,38 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
+import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
+import org.janelia.render.client.solver.DistributedSolveDeSerialize;
+import org.janelia.render.client.solver.DistributedSolveWorker;
+import org.janelia.render.client.solver.MinimalTileSpec;
+import org.janelia.render.client.solver.SolveItemData;
+import org.janelia.render.client.solver.SolveTools;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.spim.io.IOFunctions;
 
 public class AffineDistributedSolver
 {
@@ -86,35 +102,89 @@ public class AffineDistributedSolver
 		final BlockCollection< ?, AffineModel2D, ?, ZBlockFactory > blockCollection =
 				solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
 
-		final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
+		//
+		// multi-threaded solve
+		//
+		LOG.info( "Multithreading with thread num=" + cmdLineSetup.threadsGlobal );
 
-		taskExecutor.submit( () ->
-			blockCollection.allBlocks().parallelStream().forEach( block ->
+		final ArrayList< Callable< List< BlockData<?, AffineModel2D, ?, ZBlockFactory> > > > workers = new ArrayList<>();
+
+		blockCollection.allBlocks().forEach( block ->
+		{
+			workers.add( () ->
+			{
+				final Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block.createWorker(
+						solverSetup.col.maxId() + 1,
+						cmdLineSetup.threadsWorker );
+
+				worker.run();
+
+				return new ArrayList<>( worker.getBlockDataList() );
+			} );
+		} );
+
+		final ArrayList< BlockData<?, AffineModel2D, ?, ZBlockFactory> > allItems = new ArrayList<>();
+
+		try
+		{
+			final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
+
+			taskExecutor.invokeAll( workers ).forEach( future ->
 			{
 				try
 				{
-					Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block.solveTypeParameters().createWorker( block, solverSetup.col.maxId() + 1, cmdLineSetup.threadsWorker );
-					worker.run();
+					allItems.addAll( future.get() );
 				}
-				catch (IOException | ExecutionException | InterruptedException | NoninvertibleModelException e)
+				catch (InterruptedException | ExecutionException e)
 				{
+					LOG.error( "Failed to compute alignments: " + e );
 					e.printStackTrace();
-					System.exit( 1 );
+					return;
 				}
-			}));
+			} );
 
-		taskExecutor.shutdown();
-		/*
-		for ( final Worker<?, ?, ZBlockFactory > worker : workers )
+			taskExecutor.shutdown();
+		}
+		catch (InterruptedException e1)
 		{
-			ArrayList< ? extends BlockData< ?, AffineModel2D, ?, ? > > blockData = worker.getBlockDataList();
+			LOG.error( "Failed to compute alignments: " + e1 );
+			e1.printStackTrace();
+			return;
 		}
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
 		// but do keep ids that are smaller or equal to the maxId of the initial solveset
-		final int maxId = SolveTools.fixIds( this.allItems, solverSetup.col.maxId() );
+		final int maxId = WorkerTools.fixIds( allItems, solverSetup.col.maxId() );
 
-		System.out.println( workers.get( 0 ).getBlockDataList().size() );
+		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
+
+		/*
+		//
+		// Saving the result
+		//
+		LOG.info( "Saving targetstack=" + cmdLineSetup.targetStack );
+
+		//
+		// save the re-aligned part
+		//
+		final HashSet< Double > zToSaveSet = new HashSet<>();
+
+		for ( final TileSpec ts : solve.idToTileSpecGlobal.values() )
+			zToSaveSet.add( ts.getZ() );
+
+		List< Double > zToSave = new ArrayList<>( zToSaveSet );
+		Collections.sort( zToSave );
+
+		LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+
+		SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, solve.idToFinalModelGlobal, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
+
+		if ( parameters.completeTargetStack )
+		{
+			LOG.info( "Completing targetstack=" + parameters.targetStack );
+
+			SolveTools.completeStack( parameters.targetStack, runParams );
+		}
 		*/
 	}
 
@@ -212,4 +282,6 @@ public class AffineDistributedSolver
 
 		return workers;
 	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(AffineDistributedSolver.class);
 }
