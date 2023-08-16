@@ -3,9 +3,7 @@ package org.janelia.render.client.newsolver.setup;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Supplier;
 
-import org.janelia.alignment.match.ModelType;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -16,10 +14,8 @@ import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
-import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.Model;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
 

@@ -3,18 +3,13 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.function.Function;
 
-import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
@@ -22,19 +17,12 @@ import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
-import org.janelia.render.client.solver.DistributedSolveDeSerialize;
-import org.janelia.render.client.solver.DistributedSolveWorker;
-import org.janelia.render.client.solver.MinimalTileSpec;
-import org.janelia.render.client.solver.SolveItemData;
-import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
-import mpicbg.models.NoninvertibleModelException;
-import mpicbg.spim.io.IOFunctions;
 
 public class AffineDistributedSolver
 {

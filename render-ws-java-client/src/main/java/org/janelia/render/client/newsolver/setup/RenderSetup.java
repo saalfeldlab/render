@@ -18,7 +18,6 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
