@@ -41,6 +41,4 @@ public abstract class BlockDataSolveParameters< M extends Model< M >, B extends 
 	public String stack() { return stack; }
 
 	public M blockSolveModel() { return blockSolveModel; }
-
-	public abstract B createInstance( boolean hasIssue );
 }

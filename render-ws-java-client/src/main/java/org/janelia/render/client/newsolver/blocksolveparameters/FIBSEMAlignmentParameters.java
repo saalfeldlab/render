@@ -130,15 +130,4 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	public int maxIterationsStitching() { return maxIterationsStitching; }
 	public int maxPlateauWidthStitching() { return maxPlateauWidthStitching; }
 
-	@Override
-	public FIBSEMAlignmentParameters<M, S> createInstance( final boolean hasIssue )
-	{
-		// creates a new set of parameters for a specific block
-
-		// see e.g. org.janelia.render.client.solver.custom.SolveSetFactoryOcellar
-
-		// TODO Auto-generated method stub
-		return this;
-	}
-
 }

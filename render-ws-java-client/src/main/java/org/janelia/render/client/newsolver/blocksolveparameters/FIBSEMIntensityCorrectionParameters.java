@@ -47,8 +47,6 @@ public class FIBSEMIntensityCorrectionParameters<M extends Model<M> & Affine1D<M
 	public List<Integer> blockOptimizerIterations() { return blockOptimizerIterations; }
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
 
-	@Override
-	public FIBSEMIntensityCorrectionParameters<M> createInstance(final boolean hasIssue) { return null; }
 	public String intensityCorrectedFilterStack() { return intensityParameters.intensityCorrectedFilterStack; }
 	public String matchCollection() { return intensityParameters.matchCollection; }
 	public long maxNumberOfCachedPixels() { return intensityParameters.getMaxNumberOfCachedPixels(); }
