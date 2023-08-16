@@ -3,9 +3,13 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
@@ -14,11 +18,17 @@ import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
+import org.janelia.render.client.solver.DistributedSolveDeSerialize;
+import org.janelia.render.client.solver.DistributedSolveWorker;
+import org.janelia.render.client.solver.SolveItemData;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.spim.io.IOFunctions;
 
 public class AffineDistributedSolver
 {
@@ -86,15 +96,72 @@ public class AffineDistributedSolver
 		final BlockCollection< ?, AffineModel2D, ?, ZBlockFactory > blockCollection =
 				solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
 
-		final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
+		LOG.info( "Multithreading with thread num=" + cmdLineSetup.threadsGlobal );
 
+		final ArrayList< Callable< List< BlockData<?, AffineModel2D, ?, ZBlockFactory> > > > workers = new ArrayList<>();
+
+		for ( final BlockData< ?, AffineModel2D, ?, ZBlockFactory > blockData : blockCollection.allBlocks() )
+		{
+			workers.add( new Callable<List< BlockData<?, AffineModel2D, ?, ZBlockFactory>>>()
+			{
+				@Override
+				public List< BlockData<?, AffineModel2D, ?, ZBlockFactory> > call() throws Exception
+				{
+					BlockData<?, AffineModel2D, ?, ZBlockFactory> block1 = blockData;
+
+					final Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block1.createWorker(
+							solverSetup.col.maxId() + 1,
+							cmdLineSetup.threadsWorker );
+
+					// final Worker<?, AffineModel2D, ?, ZBlockFactory> 
+					/*block1.solveTypeParameters().createWorker(
+							block1,
+							solverSetup.col.maxId() + 1,
+							cmdLineSetup.threadsWorker );*/
+
+					//worker.run();
+	
+					return null;//w.getSolveItemDataList();
+				}
+			});
+		}
+
+		final ArrayList< BlockData<?, AffineModel2D, ?, ZBlockFactory> > allItems  = new ArrayList<>();
+
+		try
+		{
+			final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
+
+			// invokeAll() returns when all tasks are complete
+			final List< Future< List< BlockData<?, AffineModel2D, ?, ZBlockFactory> > > > futures = taskExecutor.invokeAll( workers );
+
+			taskExecutor.shutdown();
+
+			for ( final Future< List< BlockData<?, AffineModel2D, ?, ZBlockFactory > > > future : futures )
+				allItems.addAll( future.get() );
+		}
+		catch ( final Exception e )
+		{
+			LOG.error( "Failed to compute alignments: " + e );
+			e.printStackTrace();
+			return;
+		}
+		
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
 		taskExecutor.submit( () ->
 			blockCollection.allBlocks().parallelStream().forEach( block ->
 			{
 				try
 				{
-					Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block.solveTypeParameters().createWorker( block, solverSetup.col.maxId() + 1, cmdLineSetup.threadsWorker );
+					BlockData<?, AffineModel2D, ?, ZBlockFactory> block1 = block;
+
+					final Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block1.createWorker(
+							solverSetup.col.maxId() + 1,
+							cmdLineSetup.threadsWorker );
+
 					worker.run();
+					ArrayList<?> l = worker.getBlockDataList();
+					Object l1 = l.get( 0 );
 				}
 				catch (IOException | ExecutionException | InterruptedException | NoninvertibleModelException e)
 				{
@@ -103,7 +170,6 @@ public class AffineDistributedSolver
 				}
 			}));
 
-		taskExecutor.shutdown();
 		/*
 		for ( final Worker<?, ?, ZBlockFactory > worker : workers )
 		{
@@ -212,4 +278,6 @@ public class AffineDistributedSolver
 
 		return workers;
 	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(AffineDistributedSolver.class);
 }
