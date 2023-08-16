@@ -151,7 +151,7 @@ public class AffineDistributedSolver
 		// but do keep ids that are smaller or equal to the maxId of the initial solveset
 		final int maxId = WorkerTools.fixIds( allItems, solverSetup.col.maxId() );
 
-		LOG.info( "computed " + allItems.size() + " blocks.");
+		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
 	}
 
 	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > >
