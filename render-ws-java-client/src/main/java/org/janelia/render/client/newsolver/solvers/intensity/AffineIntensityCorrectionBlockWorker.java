@@ -80,22 +80,22 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 	 */
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
-		final Map<String, FilterSpec> idToFilterSpec = deriveIntensityFilterData(blockData.rtsc());
+		final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(blockData.rtsc());
+		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
 
-		// this adds the filters to the tile specs and pushes the jata to the DB; don't know if we want that
-		// TODO: how do we want to store intensity corrected data?
+		// this adds the filters to the tile specs and pushes the data to the DB; this should happen in Assembler after merging the blocks
+		//final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(wrappedTiles, coefficientTiles);
 		//addFilters(blockData.rtsc(), idToFilterSpec);
 		//renderDataClient.saveResolvedTiles(blockData.rtsc(), parameters.intensityCorrectedFilterStack(), null);
 
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());
 	}
 
-	protected Map<String, FilterSpec> deriveIntensityFilterData(final ResolvedTileSpecCollection resolvedTiles) throws ExecutionException, InterruptedException {
+	protected HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<MinimalTileSpecWrapper> tiles) throws ExecutionException, InterruptedException {
 
 		LOG.info("deriveIntensityFilterData: entry");
-
-		if (resolvedTiles.getTileCount() <2) {
-			final String tileCountMsg = resolvedTiles.getTileCount() == 1 ? "1 tile" : "0 tiles";
+		if (tiles.size() <2) {
+			final String tileCountMsg = tiles.size() == 1 ? "1 tile" : "0 tiles";
 			LOG.info("deriveIntensityFilterData: skipping correction because collection contains {}", tileCountMsg);
 			return null;
 		}
@@ -105,52 +105,75 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 				? ImageProcessorCache.DISABLED_CACHE
 				: new ImageProcessorCache(parameters.maxNumberOfCachedPixels(), true, false);
 
-		final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
-
+		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = splitIntoCoefficientTiles(tiles, imageProcessorCache);
+		
 		final int iterations = 2000;
-		final List<OnTheFlyIntensity> corrected = match(wrappedTiles, iterations, imageProcessorCache);
+		solveForGlobalCoefficients(coefficientTiles, iterations);
 
-		final Map<String, FilterSpec> idToFilterSpec = new HashMap<>();
-		for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
-			final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
-			final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
-			final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
-			idToFilterSpec.put(tileId, filterSpec);
-		}
-		return idToFilterSpec;
+		return coefficientTiles;
 	}
 
-	private void addFilters(final ResolvedTileSpecCollection tileSpecs, final Map<String, FilterSpec> idToFilterSpec) {
-		for (final Map.Entry<String, FilterSpec> entry : idToFilterSpec.entrySet()) {
-			final String tileId = entry.getKey();
-			final FilterSpec filterSpec = entry.getValue();
-			final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
-			tileSpec.setFilterSpec(filterSpec);
-			tileSpec.convertSingleChannelSpecToLegacyForm();
-		}
-	}
-
-	public ArrayList<OnTheFlyIntensity> match(
-			final List<MinimalTileSpecWrapper> patches,
-			final int iterations,
+	public HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> splitIntoCoefficientTiles(
+			final List<MinimalTileSpecWrapper> tiles,
 			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException {
-		LOG.info("match: entry, collecting pairs for {} patches with zDistance {}",
-				 patches.size(), parameters.zDistance());
 
-		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
+		LOG.info("splitIntoCoefficientTiles: entry, collecting pairs for {} patches with zDistance {}", tiles.size(), parameters.zDistance());
 
 		// generate coefficient tiles for all patches
-		final int nCoefficients = parameters.numCoefficients() * parameters.numCoefficients();
+		final int nGridPoints = parameters.numCoefficients() * parameters.numCoefficients();
 		@SuppressWarnings("unchecked")
-		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles =
-				(HashMap) generateCoefficientsTiles(patches, nCoefficients);
+		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles =
+				(HashMap) generateCoefficientsTiles(tiles, nGridPoints);
 
-		final ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs = findOverlappingPatches(patches, parameters.zDistance());
-		final HashSet<MinimalTileSpecWrapper> patchSet = new HashSet<>(patches);
+		final ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs = findOverlappingPatches(tiles, parameters.zDistance());
 
-		LOG.info("match: found {} pairs for {} patches with zDistance {}", patchPairs.size(), patches.size(), parameters.zDistance());
+		LOG.info("splitIntoCoefficientTiles: found {} pairs for {} patches with zDistance {} -- matching intensities with {} threads", patchPairs.size(), tiles.size(), parameters.zDistance(), numThreads);
 
-		return getOnTheFlyIntensities(patches, iterations, imageProcessorCache, filter, coefficientsTiles, patchSet, patchPairs);
+		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
+		final ExecutorService exec = Executors.newFixedThreadPool(numThreads);
+		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
+		final ArrayList<Future<?>> futures = new ArrayList<>();
+		final int meshResolution = tiles.isEmpty() ? 64 : (int) tiles.get(0).getTileSpec().getMeshCellSize();
+		for (final ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper> patchPair : patchPairs) {
+			final Matcher matchJob = new Matcher(patchPair,
+												 (HashMap) coefficientTiles,
+												 filter,
+												 parameters.renderScale(),
+												 parameters.numCoefficients(),
+												 meshResolution,
+												 imageProcessorCache);
+			futures.add(exec.submit(matchJob));
+		}
+
+		for (final Future<?> future : futures)
+			future.get();
+		exec.shutdown();
+
+		LOG.info("splitIntoCoefficientTiles: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());
+		return coefficientTiles;
+	}
+
+	protected <T extends Model<T> & Affine1D<T>> HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> generateCoefficientsTiles(
+			final Collection<MinimalTileSpecWrapper> patches,
+			final int nGridPoints) {
+
+		final InterpolatedAffineModel1D<InterpolatedAffineModel1D<AffineModel1D, TranslationModel1D>, IdentityModel> modelTemplate =
+				new InterpolatedAffineModel1D<>(
+						new InterpolatedAffineModel1D<>(
+								new AffineModel1D(), new TranslationModel1D(), parameters.lambdaTranslation()),
+						new IdentityModel(), parameters.lambdaIdentity());
+
+		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> coefficientTiles = new HashMap<>();
+		for (final MinimalTileSpecWrapper p : patches) {
+			final ArrayList<Tile<T>> coefficientModels = new ArrayList<>();
+			for (int i = 0; i < nGridPoints; ++i) {
+				@SuppressWarnings("unchecked")
+				final T model = (T) modelTemplate.copy();
+				coefficientModels.add(new Tile<>(model));
+			}
+			coefficientTiles.put(p, coefficientModels);
+		}
+		return coefficientTiles;
 	}
 
 	private static ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> findOverlappingPatches(
@@ -179,96 +202,32 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 		return patchPairs;
 	}
 
-	protected <T extends Model<T> & Affine1D<T>> HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> generateCoefficientsTiles(
-			final Collection<MinimalTileSpecWrapper> patches,
-			final int nGridPoints) {
-
-		final InterpolatedAffineModel1D<InterpolatedAffineModel1D<AffineModel1D, TranslationModel1D>, IdentityModel> modelTemplate =
-				new InterpolatedAffineModel1D<>(
-						new InterpolatedAffineModel1D<>(
-								new AffineModel1D(), new TranslationModel1D(), parameters.lambdaTranslation()),
-						new IdentityModel(), parameters.lambdaIdentity());
-
-		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> coefficientTiles = new HashMap<>();
-		for (final MinimalTileSpecWrapper p : patches) {
-			final ArrayList<Tile<T>> coefficientModels = new ArrayList<>();
-			for (int i = 0; i < nGridPoints; ++i) {
-				@SuppressWarnings("unchecked")
-				final T model = (T) modelTemplate.copy();
-				coefficientModels.add(new Tile<>(model));
-			}
-			coefficientTiles.put(p, coefficientModels);
-		}
-		return coefficientTiles;
-	}
-
-	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2) {
-		final ArrayList<PointMatch> matches = new ArrayList<>();
-		matches.add(new PointMatch(new Point(new double[] { 0 }), new Point(new double[] { 0 })));
-		matches.add(new PointMatch(new Point(new double[] { 1 }), new Point(new double[] { 1 })));
-		t1.connect(t2, matches);
-	}
-
 	public static RealInterval getBoundingBox(final MinimalTileSpecWrapper m) {
 		final double[] p1min = new double[]{ m.getTileSpec().getMinX(), m.getTileSpec().getMinY() };
 		final double[] p1max = new double[]{ m.getTileSpec().getMaxX(), m.getTileSpec().getMaxY() };
 		return new FinalRealInterval(p1min, p1max);
 	}
 
-	private ArrayList<OnTheFlyIntensity> getOnTheFlyIntensities(final List<MinimalTileSpecWrapper> patches,
-			final int iterations,
-			final ImageProcessorCache imageProcessorCache,
-			final PointMatchFilter filter,
-			final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles,
-			final HashSet<MinimalTileSpecWrapper> allPatches,
-			final List<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs)
-			throws InterruptedException, ExecutionException {
-
-		LOG.info("getOnTheFlyIntensities: entry, matching intensities for {} pairs using {} threads", patchPairs.size(), numThreads);
-
-		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
-		final ExecutorService exec = Executors.newFixedThreadPool(numThreads);
-		final ArrayList<Future<?>> futures = new ArrayList<>();
-		final int meshResolution = patches.isEmpty() ? 64 : (int) patches.get(0).getTileSpec().getMeshCellSize();
-		for (final ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper> patchPair : patchPairs) {
-			final Matcher matchJob = new Matcher(patchPair,
-												 (HashMap) coefficientsTiles,
-												 filter,
-												 parameters.renderScale(),
-												 parameters.numCoefficients(),
-												 meshResolution,
-												 imageProcessorCache);
-			futures.add(exec.submit(matchJob));
-		}
-
-		for (final Future<?> future : futures)
-			future.get();
-
-		LOG.info("getOnTheFlyIntensities: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());
-
-		connectTilesWithinPatches(coefficientsTiles, allPatches);
+	private void solveForGlobalCoefficients(final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles, final int iterations) {
+		connectTilesWithinPatches(coefficientTiles);
 
 		/* optimize */
 		final TileConfiguration tc = new TileConfiguration();
-		for (final ArrayList<? extends Tile<?>> coefficients : coefficientsTiles.values())
+		for (final ArrayList<? extends Tile<?>> coefficients : coefficientTiles.values())
 			tc.addTiles(coefficients);
 
-		LOG.info("getOnTheFlyIntensities: optimizing {} tiles", tc.getTiles().size());
-
+		LOG.info("solveForGlobalCoefficients: optimizing {} tiles with {} threads", tc.getTiles().size(), numThreads);
 		try {
 			TileUtil.optimizeConcurrently(new ErrorStatistic(iterations + 1), 0.01f, iterations, iterations, 0.75f, tc, tc.getTiles(), tc.getFixedTiles(), 1);
 		} catch (final Exception e) {
 			throw new RuntimeException(e);
 		}
-
-		final ArrayList<OnTheFlyIntensity> onTheFlyIntensities = convertModelsToOtfIntensities(patches, parameters.numCoefficients(), coefficientsTiles);
-
-		LOG.info("getOnTheFlyIntensities: exit, returning intensity coefficients for {} tiles", onTheFlyIntensities.size());
-
-		return onTheFlyIntensities;
+		LOG.info("solveForGlobalCoefficients: exit, returning intensity coefficients for {} tiles", coefficientTiles.size());
 	}
 
-	private void connectTilesWithinPatches(final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles, final HashSet<MinimalTileSpecWrapper> allTiles) {
+	private void connectTilesWithinPatches(final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
+		final HashSet<MinimalTileSpecWrapper> allTiles = new HashSet<>(coefficientTiles.keySet());
+
 		for (final MinimalTileSpecWrapper p : allTiles) {
 			final ArrayList<? extends Tile<?>> coefficientTile = coefficientTiles.get(p);
 			for (int i = 1; i < parameters.numCoefficients(); ++i) {
@@ -294,17 +253,47 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 		return y * n + x;
 	}
 
+	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2) {
+		final ArrayList<PointMatch> matches = new ArrayList<>();
+		matches.add(new PointMatch(new Point(new double[] { 0 }), new Point(new double[] { 0 })));
+		matches.add(new PointMatch(new Point(new double[] { 1 }), new Point(new double[] { 1 })));
+		t1.connect(t2, matches);
+	}
+
+	private Map<String, FilterSpec> convertCoefficientsToFilter(final List<MinimalTileSpecWrapper> tiles, final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
+		final ArrayList<OnTheFlyIntensity> corrected = convertModelsToOtfIntensities(tiles, parameters.numCoefficients(), coefficientTiles);
+
+		final Map<String, FilterSpec> idToFilterSpec = new HashMap<>();
+		for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
+			final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
+			final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
+			final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
+			idToFilterSpec.put(tileId, filterSpec);
+		}
+		return idToFilterSpec;
+	}
+
+	private void addFilters(final ResolvedTileSpecCollection tileSpecs, final Map<String, FilterSpec> idToFilterSpec) {
+		for (final Map.Entry<String, FilterSpec> entry : idToFilterSpec.entrySet()) {
+			final String tileId = entry.getKey();
+			final FilterSpec filterSpec = entry.getValue();
+			final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
+			tileSpec.setFilterSpec(filterSpec);
+			tileSpec.convertSingleChannelSpecToLegacyForm();
+		}
+	}
+
 	public ArrayList<OnTheFlyIntensity> convertModelsToOtfIntensities(
 			final List<MinimalTileSpecWrapper> patches,
 			final int numCoefficients,
-			final Map<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles) {
+			final Map<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
 
 		final ArrayList<OnTheFlyIntensity> correctedOnTheFly = new ArrayList<>();
 		for (final MinimalTileSpecWrapper p : patches) {
 			/* save coefficients */
 			final double[][] ab_coefficients = new double[numCoefficients * numCoefficients][2];
 
-			final ArrayList<Tile<? extends Affine1D<?>>> tiles = coefficientsTiles.get(p);
+			final ArrayList<Tile<? extends Affine1D<?>>> tiles = coefficientTiles.get(p);
 
 			for (int i = 0; i < numCoefficients * numCoefficients; ++i)
 			{
@@ -332,7 +321,7 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 	{
 		//final private Rectangle roi;
 		final private ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper> patchPair;
-		final private HashMap<MinimalTileSpecWrapper, ArrayList<Tile<?>>> coefficientsTiles;
+		final private HashMap<MinimalTileSpecWrapper, ArrayList<Tile<?>>> coefficientTiles;
 		final private PointMatchFilter filter;
 		final private double scale;
 		final private int numCoefficients;
@@ -341,7 +330,7 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 
 		public Matcher(
 				final ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper> patchPair,
-				final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<?>>> coefficientsTiles,
+				final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<?>>> coefficientTiles,
 				final PointMatchFilter filter,
 				final double scale,
 				final int numCoefficients,
@@ -349,7 +338,7 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 				final ImageProcessorCache imageProcessorCache)
 		{
 			this.patchPair = patchPair;
-			this.coefficientsTiles = coefficientsTiles;
+			this.coefficientTiles = coefficientTiles;
 			this.filter = filter;
 			this.scale = scale;
 			this.numCoefficients = numCoefficients;
@@ -432,8 +421,8 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 			}
 
 			/* connect tiles across patches */
-			final ArrayList<Tile<?>> p1CoefficientsTiles = coefficientsTiles.get(p1);
-			final ArrayList<Tile<?>> p2CoefficientsTiles = coefficientsTiles.get(p2);
+			final ArrayList<Tile<?>> p1CoefficientsTiles = coefficientTiles.get(p1);
+			final ArrayList<Tile<?>> p2CoefficientsTiles = coefficientTiles.get(p2);
 			int connectionCount = 0;
 
 			for (int i = 0; i < dimSize; ++i) {
@@ -457,13 +446,12 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 			LOG.info("run: exit, pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
 		}
 
-		private static Rectangle getIntersection(MinimalTileSpecWrapper p1, MinimalTileSpecWrapper p2) {
+		private static Rectangle getIntersection(final MinimalTileSpecWrapper p1, final MinimalTileSpecWrapper p2) {
 			final Interval i1 = Intervals.smallestContainingInterval(getBoundingBox(p1));
 			final Rectangle box1 = new Rectangle((int)i1.min(0), (int)i1.min(1), (int)i1.dimension(0), (int)i1.dimension(1));
 			final Interval i2 = Intervals.smallestContainingInterval(getBoundingBox(p2));
 			final Rectangle box2 = new Rectangle((int)i2.min(0), (int)i2.min(1), (int)i2.dimension(0), (int)i2.dimension(1));
-			final Rectangle box = box1.intersection(box2);
-			return box;
+			return box1.intersection(box2);
 		}
 	}
 }
