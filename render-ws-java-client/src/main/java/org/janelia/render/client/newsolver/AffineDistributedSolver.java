@@ -3,6 +3,8 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -12,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
@@ -21,7 +24,9 @@ import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
 import org.janelia.render.client.solver.DistributedSolveDeSerialize;
 import org.janelia.render.client.solver.DistributedSolveWorker;
+import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.SolveItemData;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -152,6 +157,35 @@ public class AffineDistributedSolver
 		final int maxId = WorkerTools.fixIds( allItems, solverSetup.col.maxId() );
 
 		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
+
+		/*
+		//
+		// Saving the result
+		//
+		LOG.info( "Saving targetstack=" + cmdLineSetup.targetStack );
+
+		//
+		// save the re-aligned part
+		//
+		final HashSet< Double > zToSaveSet = new HashSet<>();
+
+		for ( final TileSpec ts : solve.idToTileSpecGlobal.values() )
+			zToSaveSet.add( ts.getZ() );
+
+		List< Double > zToSave = new ArrayList<>( zToSaveSet );
+		Collections.sort( zToSave );
+
+		LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+
+		SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, solve.idToFinalModelGlobal, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
+
+		if ( parameters.completeTargetStack )
+		{
+			LOG.info( "Completing targetstack=" + parameters.targetStack );
+
+			SolveTools.completeStack( parameters.targetStack, runParams );
+		}
+		*/
 	}
 
 	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > >
