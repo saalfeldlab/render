@@ -17,6 +17,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentP
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
+import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
 import org.janelia.render.client.solver.DistributedSolveDeSerialize;
 import org.janelia.render.client.solver.DistributedSolveWorker;
@@ -96,92 +97,61 @@ public class AffineDistributedSolver
 		final BlockCollection< ?, AffineModel2D, ?, ZBlockFactory > blockCollection =
 				solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
 
+		//
+		// multi-threaded solve
+		//
 		LOG.info( "Multithreading with thread num=" + cmdLineSetup.threadsGlobal );
 
 		final ArrayList< Callable< List< BlockData<?, AffineModel2D, ?, ZBlockFactory> > > > workers = new ArrayList<>();
 
-		for ( final BlockData< ?, AffineModel2D, ?, ZBlockFactory > blockData : blockCollection.allBlocks() )
+		blockCollection.allBlocks().forEach( block ->
 		{
-			workers.add( new Callable<List< BlockData<?, AffineModel2D, ?, ZBlockFactory>>>()
+			workers.add( () ->
 			{
-				@Override
-				public List< BlockData<?, AffineModel2D, ?, ZBlockFactory> > call() throws Exception
-				{
-					BlockData<?, AffineModel2D, ?, ZBlockFactory> block1 = blockData;
+				final Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block.createWorker(
+						solverSetup.col.maxId() + 1,
+						cmdLineSetup.threadsWorker );
 
-					final Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block1.createWorker(
-							solverSetup.col.maxId() + 1,
-							cmdLineSetup.threadsWorker );
+				worker.run();
 
-					// final Worker<?, AffineModel2D, ?, ZBlockFactory> 
-					/*block1.solveTypeParameters().createWorker(
-							block1,
-							solverSetup.col.maxId() + 1,
-							cmdLineSetup.threadsWorker );*/
+				return new ArrayList<>( worker.getBlockDataList() );
+			} );
+		} );
 
-					//worker.run();
-	
-					return null;//w.getSolveItemDataList();
-				}
-			});
-		}
-
-		final ArrayList< BlockData<?, AffineModel2D, ?, ZBlockFactory> > allItems  = new ArrayList<>();
+		final ArrayList< BlockData<?, AffineModel2D, ?, ZBlockFactory> > allItems = new ArrayList<>();
 
 		try
 		{
 			final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
 
-			// invokeAll() returns when all tasks are complete
-			final List< Future< List< BlockData<?, AffineModel2D, ?, ZBlockFactory> > > > futures = taskExecutor.invokeAll( workers );
-
-			taskExecutor.shutdown();
-
-			for ( final Future< List< BlockData<?, AffineModel2D, ?, ZBlockFactory > > > future : futures )
-				allItems.addAll( future.get() );
-		}
-		catch ( final Exception e )
-		{
-			LOG.error( "Failed to compute alignments: " + e );
-			e.printStackTrace();
-			return;
-		}
-		
-		final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
-		taskExecutor.submit( () ->
-			blockCollection.allBlocks().parallelStream().forEach( block ->
+			taskExecutor.invokeAll( workers ).forEach( future ->
 			{
 				try
 				{
-					BlockData<?, AffineModel2D, ?, ZBlockFactory> block1 = block;
-
-					final Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block1.createWorker(
-							solverSetup.col.maxId() + 1,
-							cmdLineSetup.threadsWorker );
-
-					worker.run();
-					ArrayList<?> l = worker.getBlockDataList();
-					Object l1 = l.get( 0 );
+					allItems.addAll( future.get() );
 				}
-				catch (IOException | ExecutionException | InterruptedException | NoninvertibleModelException e)
+				catch (InterruptedException | ExecutionException e)
 				{
+					LOG.error( "Failed to compute alignments: " + e );
 					e.printStackTrace();
-					System.exit( 1 );
+					return;
 				}
-			}));
+			} );
 
-		/*
-		for ( final Worker<?, ?, ZBlockFactory > worker : workers )
+			taskExecutor.shutdown();
+		}
+		catch (InterruptedException e1)
 		{
-			ArrayList< ? extends BlockData< ?, AffineModel2D, ?, ? > > blockData = worker.getBlockDataList();
+			LOG.error( "Failed to compute alignments: " + e1 );
+			e1.printStackTrace();
+			return;
 		}
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
 		// but do keep ids that are smaller or equal to the maxId of the initial solveset
-		final int maxId = SolveTools.fixIds( this.allItems, solverSetup.col.maxId() );
+		final int maxId = WorkerTools.fixIds( allItems, solverSetup.col.maxId() );
 
-		System.out.println( workers.get( 0 ).getBlockDataList().size() );
-		*/
+		LOG.info( "computed " + allItems.size() + " blocks.");
 	}
 
 	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > >
