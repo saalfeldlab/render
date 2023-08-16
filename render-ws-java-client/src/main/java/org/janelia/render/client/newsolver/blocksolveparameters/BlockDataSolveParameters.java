@@ -2,6 +2,11 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 
 import java.io.Serializable;
 
+import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
+import org.janelia.render.client.newsolver.solvers.Worker;
+
+import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
 
 /**
@@ -10,7 +15,7 @@ import mpicbg.models.Model;
  *
  * @param <M> - the result model type
  */
-public abstract class BlockDataSolveParameters< M extends Model< M >, B extends BlockDataSolveParameters< M, B > > implements Serializable
+public abstract class BlockDataSolveParameters< M extends Model< M >, R extends CoordinateTransform, B extends BlockDataSolveParameters< M, R, B > > implements Serializable
 {
 	private static final long serialVersionUID = -813404780882760053L;
 
@@ -41,4 +46,9 @@ public abstract class BlockDataSolveParameters< M extends Model< M >, B extends 
 	public String stack() { return stack; }
 
 	public M blockSolveModel() { return blockSolveModel; }
+
+	public abstract < F extends BlockFactory< F > > Worker< M, R, B, F > createWorker(
+			final BlockData< M, R, B, F > blockData,
+			final int startId,
+			final int threadsWorker );
 }

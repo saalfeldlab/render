@@ -38,14 +38,13 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 		this.minBlockSize = minBlockSize;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public <M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters<M,P>> BlockCollection<M, R, P, ZBlockFactory> defineBlockCollection(
-			final ParameterProvider< M, P > blockSolveParameterProvider )
+	public <M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters<M,R,P>> BlockCollection<M, R, P, ZBlockFactory> defineBlockCollection(
+			final ParameterProvider< M, R, P > blockSolveParameterProvider )
 	{
 		final List< ZBlockInit > initBlocks = defineBlockLayout( minZ, maxZ, blockSize, minBlockSize );
 
-		final BlockDataSolveParameters< ?,? > basicParameters = blockSolveParameterProvider.basicParameters();
+		final BlockDataSolveParameters< ?,?,? > basicParameters = blockSolveParameterProvider.basicParameters();
 
 		//
 		// fetch metadata from render
@@ -56,7 +55,7 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 				basicParameters.project() );
 
 		
-		final List< BlockData< M, R, P, ZBlockFactory > > blockDataList = new ArrayList<>();
+		final ArrayList< BlockData< M, R, P, ZBlockFactory > > blockDataList = new ArrayList<>();
 
 		// for each block, we know the z-range
 		for ( final ZBlockInit initBlock : initBlocks )
@@ -175,6 +174,7 @@ public class ZBlockFactory extends BlockFactory< ZBlockFactory > implements Seri
 		return Stream.concat( leftSets.stream(), rightSets.stream() ).collect( Collectors.toList() );
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public ArrayList<Function<Double, Double>> createWeightFunctions( final BlockData<?, ?, ?, ZBlockFactory > block)
 	{

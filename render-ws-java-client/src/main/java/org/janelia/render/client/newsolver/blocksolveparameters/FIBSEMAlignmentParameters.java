@@ -3,7 +3,13 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 import java.util.List;
 import java.util.function.Function;
 
+import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
+import org.janelia.render.client.newsolver.solvers.Worker;
+import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
+
 import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 
 /**
@@ -13,7 +19,7 @@ import mpicbg.models.Model;
  * @param <B> the final block solve type (the result)
  * @param <S> the stitching-first type
  */
-public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > extends BlockDataSolveParameters< M, FIBSEMAlignmentParameters< M, S> >
+public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > extends BlockDataSolveParameters< M, AffineModel2D, FIBSEMAlignmentParameters< M, S > >
 {
 	private static final long serialVersionUID = 4247180309556813829L;
 	public enum PreAlign { NONE, TRANSLATION, RIGID }
@@ -130,4 +136,12 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	public int maxIterationsStitching() { return maxIterationsStitching; }
 	public int maxPlateauWidthStitching() { return maxPlateauWidthStitching; }
 
+	@Override
+	public < F extends BlockFactory< F > > Worker< M, AffineModel2D, FIBSEMAlignmentParameters<M, S >, F > createWorker(
+			final BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > blockData,
+			final int startId,
+			final int threadsWorker )
+	{
+		return new AffineAlignBlockWorker<>( blockData, startId, threadsWorker );
+	}
 }

@@ -2,8 +2,15 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 
 import mpicbg.models.Affine1D;
 import mpicbg.models.Model;
+
+import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
+import org.janelia.render.client.newsolver.solvers.Worker;
+import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
+import org.janelia.render.client.newsolver.solvers.intensity.AffineIntensityCorrectionBlockWorker;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -13,7 +20,7 @@ import java.util.List;
  * @param <M> the final block solve type (the result)
  */
 public class FIBSEMIntensityCorrectionParameters<M extends Model<M> & Affine1D<M>>
-		extends BlockDataSolveParameters<M, FIBSEMIntensityCorrectionParameters<M>> {
+		extends BlockDataSolveParameters<M, M, FIBSEMIntensityCorrectionParameters<M>> {
 	private static final long serialVersionUID = -5349107301431384524L;
 
 	final private List<Double> blockOptimizerLambdasTranslation;
@@ -55,4 +62,20 @@ public class FIBSEMIntensityCorrectionParameters<M extends Model<M> & Affine1D<M
 	public double renderScale() { return intensityParameters.renderScale; }
 	public int numCoefficients() { return intensityParameters.numCoefficients; }
 	public Integer zDistance() { return intensityParameters.zDistance; }
+
+	@Override
+	public <F extends BlockFactory<F>> Worker<M, M, FIBSEMIntensityCorrectionParameters<M>, F> createWorker(
+			final BlockData<M, M, FIBSEMIntensityCorrectionParameters<M>, F> blockData,
+			final int startId,
+			final int threadsWorker )
+	{
+		try
+		{
+			return new AffineIntensityCorrectionBlockWorker<>( blockData, startId, threadsWorker );
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return null;
+		}
+	}
 }

@@ -3,10 +3,11 @@ package org.janelia.render.client.newsolver.blockfactories;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
+import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
 
-public interface ParameterProvider < M extends Model< M >, P extends BlockDataSolveParameters< M, P > >
+public interface ParameterProvider < M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, R, P > >
 {
 	public P create( ResolvedTileSpecCollection rtsc );
-	default public BlockDataSolveParameters< ?,? > basicParameters() { return create( null ); }
+	default public BlockDataSolveParameters< ?,?,? > basicParameters() { return create( null ); }
 }

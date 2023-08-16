@@ -30,7 +30,7 @@ import net.imglib2.util.ValuePair;
  * @param <P> - the solve parameters
  * @param <F> - the block factory
  */
-public class BlockData< M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > implements Serializable
+public class BlockData< M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > implements Serializable
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 
@@ -101,6 +101,8 @@ public class BlockData< M extends Model< M >, R extends CoordinateTransform, P e
 	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return idToSolveItemErrorMap; }
 
 	public HashMap< Integer, HashSet< String > > zToTileId() { return zToTileId; }
+
+	public void assignUpdatedId( final int id ) { this.id = id; }
 
 	/**
 	 * Fetches basic data for all TileSpecs

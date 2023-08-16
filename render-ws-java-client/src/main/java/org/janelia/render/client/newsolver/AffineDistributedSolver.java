@@ -3,7 +3,6 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -13,6 +12,7 @@ import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
+import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
 
 import mpicbg.models.Affine2D;
@@ -24,6 +24,8 @@ public class AffineDistributedSolver
 {
 	final AffineSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
+	BlockCollection< ?, AffineModel2D, ? extends FIBSEMAlignmentParameters< ?, ? >, ZBlockFactory > col;
+	ZBlockFactory blockFactory;
 
 	public AffineDistributedSolver(
 			final AffineSolverSetup cmdLineSetup,
@@ -80,16 +82,18 @@ public class AffineDistributedSolver
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
 		final AffineDistributedSolver solverSetup = new AffineDistributedSolver( cmdLineSetup, renderSetup );
 
-		final ArrayList< ? extends AffineAlignBlockWorker<?, ?, ZBlockFactory > > workers =
+		// create all block instances
+		final BlockCollection< ?, AffineModel2D, ?, ZBlockFactory > blockCollection =
 				solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
 
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
 
 		taskExecutor.submit( () ->
-			workers.parallelStream().forEach( worker ->
+			blockCollection.allBlocks().parallelStream().forEach( block ->
 			{
 				try
 				{
+					Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block.solveTypeParameters().createWorker( block, solverSetup.col.maxId() + 1, cmdLineSetup.threadsWorker );
 					worker.run();
 				}
 				catch (IOException | ExecutionException | InterruptedException | NoninvertibleModelException e)
@@ -100,17 +104,22 @@ public class AffineDistributedSolver
 			}));
 
 		taskExecutor.shutdown();
-
-		for ( final AffineAlignBlockWorker<?, ?, ZBlockFactory > worker : workers )
+		/*
+		for ( final Worker<?, ?, ZBlockFactory > worker : workers )
 		{
-			List<?> blockData = worker.getBlockDataList();
+			ArrayList< ? extends BlockData< ?, AffineModel2D, ?, ? > > blockData = worker.getBlockDataList();
 		}
 
+		// avoid duplicate id assigned while splitting solveitems in the workers
+		// but do keep ids that are smaller or equal to the maxId of the initial solveset
+		final int maxId = SolveTools.fixIds( this.allItems, solverSetup.col.maxId() );
+
 		System.out.println( workers.get( 0 ).getBlockDataList().size() );
+		*/
 	}
 
 	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > >
-			ArrayList< AffineAlignBlockWorker<M, S, ZBlockFactory > > setupSolve(
+			BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > setupSolve(
 			final M blockModel,
 			final S stitchingModel )
 	{
@@ -119,22 +128,17 @@ public class AffineDistributedSolver
 		//
 		final ZBlockFactory blockFactory = setupBlockFactory();
 
-		//
-		// setup FIB-SEM solve parameters
-		//
-		final FIBSEMAlignmentParameters< M, S > solveParams =
-				setupSolveParameters( blockModel, stitchingModel );
+		this.blockFactory = blockFactory;
 
 		//
 		// create all blocks
 		//
 		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
-				setupBlockCollection( blockFactory, solveParams );
+				setupBlockCollection( blockFactory, blockModel, stitchingModel );
 
-		//
-		// create workers
-		//
-		return createWorkers( col );
+		this.col = col;
+
+		return col;
 	}
 
 	protected ZBlockFactory setupBlockFactory()
@@ -181,10 +185,17 @@ public class AffineDistributedSolver
 
 	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > setupBlockCollection(
 			final ZBlockFactory blockFactory,
-			final FIBSEMAlignmentParameters< M, S > solveParams )
+			final M blockModel,
+			final S stitchingModel )
 	{
+		//
+		// setup FIB-SEM solve parameter object
+		//
+		final FIBSEMAlignmentParameters< M, S > defaultSolveParams =
+				setupSolveParameters( blockModel, stitchingModel );
+
 		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
-				blockFactory.defineBlockCollection( rtsc -> solveParams );
+				blockFactory.defineBlockCollection( rtsc -> defaultSolveParams );
 
 		return col;
 	}

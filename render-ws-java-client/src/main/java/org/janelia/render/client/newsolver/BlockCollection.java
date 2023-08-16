@@ -1,6 +1,6 @@
 package org.janelia.render.client.newsolver;
 
-import java.util.List;
+import java.util.ArrayList;
 
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
@@ -8,12 +8,12 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
 
-public class BlockCollection< M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, P >, F extends BlockFactory< F > > 
+public class BlockCollection< M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > 
 {
-	final List< BlockData< M, R, P, F > > blockDataList;
+	final ArrayList< BlockData< M, R, P, F > > blockDataList;
 	final int minId, maxId;
 
-	public BlockCollection( final List< BlockData< M, R, P, F > > blockDataList )
+	public BlockCollection( final ArrayList< BlockData< M, R, P, F > > blockDataList )
 	{
 		int min = Integer.MAX_VALUE;
 		int max = Integer.MIN_VALUE;
@@ -31,5 +31,5 @@ public class BlockCollection< M extends Model< M >, R extends CoordinateTransfor
 
 	public int minId() { return minId; }
 	public int maxId() { return maxId; }
-	public List< BlockData< M, R, P, F > > allBlocks() { return blockDataList; }
+	public ArrayList< BlockData< M, R, P, F > > allBlocks() { return blockDataList; }
 }
