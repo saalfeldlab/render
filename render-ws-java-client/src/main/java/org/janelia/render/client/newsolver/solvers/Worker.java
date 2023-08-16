@@ -1,7 +1,7 @@
 package org.janelia.render.client.newsolver.solvers;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.ExecutionException;
 
 import org.janelia.render.client.RenderDataClient;
@@ -58,5 +58,5 @@ public abstract class Worker < M extends Model< M >, R extends CoordinateTransfo
 	/**
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
-	public abstract List< BlockData< M, R, P, F > > getBlockDataList();
+	public abstract ArrayList< BlockData< M, R, P, F > > getBlockDataList();
 }

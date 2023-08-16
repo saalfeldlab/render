@@ -23,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,7 +113,7 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
 	@Override
-	public List<BlockData<M, M, FIBSEMIntensityCorrectionParameters<M>, F>> getBlockDataList() {
+	public ArrayList<BlockData<M, M, FIBSEMIntensityCorrectionParameters<M>, F>> getBlockDataList() {
 		return null;
 	}
 

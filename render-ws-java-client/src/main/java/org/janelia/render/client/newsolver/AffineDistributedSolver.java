@@ -3,7 +3,10 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
@@ -45,7 +48,7 @@ public class AffineDistributedSolver
                     "--stack", "v5_acquire_trimmed",
                     "--targetStack", "v5_acquire_trimmed_test",
 //                    "--minZ", "1234",
-                    "--maxZ", "3001",
+                    "--maxZ", "1001",
 
 //                    "--completeTargetStack",
 //                    "--visualizeResults",
@@ -80,15 +83,30 @@ public class AffineDistributedSolver
 		final ArrayList< ? extends AffineAlignBlockWorker<?, ?, ZBlockFactory > > workers =
 				solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
 
-		try
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
+
+		taskExecutor.submit( () ->
+			workers.parallelStream().forEach( worker ->
+			{
+				try
+				{
+					worker.run();
+				}
+				catch (IOException | ExecutionException | InterruptedException | NoninvertibleModelException e)
+				{
+					e.printStackTrace();
+					System.exit( 1 );
+				}
+			}));
+
+		taskExecutor.shutdown();
+
+		for ( final AffineAlignBlockWorker<?, ?, ZBlockFactory > worker : workers )
 		{
-			workers.get( 0 ).run();
-			System.out.println( workers.get( 0 ).getBlockDataList().size() );
-			
-		} catch (IOException | ExecutionException | InterruptedException | NoninvertibleModelException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			List<?> blockData = worker.getBlockDataList();
 		}
+
+		System.out.println( workers.get( 0 ).getBlockDataList().size() );
 	}
 
 	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > >

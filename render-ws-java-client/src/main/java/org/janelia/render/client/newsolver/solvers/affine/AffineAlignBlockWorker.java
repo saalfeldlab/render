@@ -86,8 +86,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	//final double blockMaxAllowedError;
 
 	final AffineBlockDataWrapper< M, S, F > inputSolveItem;
-	private List< AffineBlockDataWrapper< M, S, F > > solveItems;
-	private List< BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > > result;
+	private ArrayList< AffineBlockDataWrapper< M, S, F > > solveItems;
+	private ArrayList< BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > > result;
 
 	// to filter matches
 	final MatchFilter matchFilter;
@@ -133,7 +133,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	}
 
 	@Override
-	public List< BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > > getBlockDataList()
+	public ArrayList< BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > > getBlockDataList()
 	{
 		return result;
 	}
@@ -837,7 +837,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		}
 	}
 
-	protected List< AffineBlockDataWrapper< M, S, F > > splitSolveItem( final AffineBlockDataWrapper< M, S, F > inputSolveItem, final int startId )
+	protected ArrayList< AffineBlockDataWrapper< M, S, F > > splitSolveItem( final AffineBlockDataWrapper< M, S, F > inputSolveItem, final int startId )
 	{
 		// assigning new id's to the solve items (they collide for now with other workers, fix upon merging)
 		int id = startId + 1;
