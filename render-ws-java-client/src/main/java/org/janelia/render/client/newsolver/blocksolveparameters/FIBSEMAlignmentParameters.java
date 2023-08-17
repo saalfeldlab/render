@@ -16,7 +16,7 @@ import mpicbg.models.Model;
  * 
  * @author preibischs
  *
- * @param <B> the final block solve type (the result)
+ * @param <M> the final block solve type (the result)
  * @param <S> the stitching-first type
  */
 public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > extends BlockDataSolveParameters< M, AffineModel2D, FIBSEMAlignmentParameters< M, S > >
