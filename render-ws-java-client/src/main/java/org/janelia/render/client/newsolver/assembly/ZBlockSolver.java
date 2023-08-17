@@ -25,7 +25,7 @@ import mpicbg.models.TileUtil;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform > implements BlockSolver< R, ZBlockFactory >
+public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform > extends BlockSolver< M, R, ZBlockFactory >
 {
 	final M globalModel;
 	final R resultModel;
@@ -45,6 +45,8 @@ public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform >
 			final int maxIterations,
 			final int numThreads )
 	{
+		super( globalModel );
+
 		this.globalModel = globalModel;
 		this.resultModel = resultModel;
 		this.sameTileMatchCreator = sameTileMatchCreator;
@@ -133,17 +135,17 @@ public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform >
 
 						for ( final String tileId : tileIds )
 						{
-							// tilespec is identical
-							final TileSpec tileSpec = solveItemA.rtsc().getTileSpec( tileId );
+							// tilespec is identical for blockA and blockB
+							final TileSpec tileSpecAB = solveItemA.rtsc().getTileSpec( tileId );
 
 							// remember the tileids and tileSpecs
 							am.zToTileIdGlobal.get( z ).add( tileId );
-							am.idToTileSpecGlobal.put( tileId, tileSpec );
+							am.idToTileSpecGlobal.put( tileId, tileSpecAB );
 
 							final R modelA = solveItemA.idToNewModel().get( tileId );
 							final R modelB = solveItemB.idToNewModel().get( tileId );
 
-							sameTileMatchCreator.addMatches( tileSpec, modelA, modelB, matchesAtoB );
+							sameTileMatchCreator.addMatches( tileSpecAB, modelA, modelB, matchesAtoB );
 						}
 
 						final Tile< M > tileA = blockToTile.get( solveItemA );

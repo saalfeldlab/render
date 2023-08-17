@@ -9,12 +9,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mpicbg.models.CoordinateTransform;
+import mpicbg.models.Model;
 
-public class Assembler< R extends CoordinateTransform, F extends BlockFactory< F > >
+public class Assembler< M extends Model< M >, R extends CoordinateTransform, F extends BlockFactory< F > >
 {
 	final List<BlockData<?, R, ?, F> > blocks;
-	final BlockSolver< R, F > blockSolver;
-
+	final BlockSolver< M, R, F > blockSolver;
 
 	/**
 	 * @param blocks - all individually computed blocks
@@ -22,7 +22,7 @@ public class Assembler< R extends CoordinateTransform, F extends BlockFactory< F
 	 */
 	public Assembler(
 			final List<BlockData<?, R, ?, F> > blocks,
-			final BlockSolver< R, F > blockSolver )
+			final BlockSolver< M, R, F > blockSolver )
 	{
 		this.blocks = blocks;
 		this.blockSolver = blockSolver;

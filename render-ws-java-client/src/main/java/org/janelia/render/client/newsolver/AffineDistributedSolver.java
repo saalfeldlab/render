@@ -66,7 +66,7 @@ public class AffineDistributedSolver
                     "--blockOptimizerLambdasRigid",          "1.0,1.0,0.9,0.3,0.01",
                     "--blockOptimizerLambdasTranslation",    "1.0,0.0,0.0,0.0,0.0",
                     "--blockOptimizerLambdasRegularization", "0.0,0.0,0.0,0.0,0.0",
-                    "--blockOptimizerIterations", "100,100,50,25,25",
+                    "--blockOptimizerIterations", "50,50,30,25,25",
                     "--blockMaxPlateauWidth", "25,25,15,10,10",
                     //"--blockOptimizerIterations", "1000,1000,500,250,250",
                     //"--blockMaxPlateauWidth", "250,250,150,100,100",
@@ -160,7 +160,7 @@ public class AffineDistributedSolver
 						cmdLineSetup.maxIterationsGlobal,
 						cmdLineSetup.threadsGlobal );
 
-		final Assembler< AffineModel2D, ZBlockFactory > assembler = new Assembler<>( allItems, solver );
+		final Assembler< RigidModel2D, AffineModel2D, ZBlockFactory > assembler = new Assembler<>( allItems, solver );
 		assembler.createAssembly();
 
 		/*

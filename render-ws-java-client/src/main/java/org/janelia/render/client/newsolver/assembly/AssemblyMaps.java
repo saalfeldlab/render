@@ -13,6 +13,6 @@ public class AssemblyMaps< R extends CoordinateTransform >
 {
 	final public HashMap< String, R > idToFinalModelGlobal = new HashMap<>();
 	final public HashMap< String, TileSpec > idToTileSpecGlobal = new HashMap<>();
-	final public HashMap<Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
+	final public HashMap< Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
 	final public HashMap< String, List< Pair< String, Double > > > idToErrorMapGlobal = new HashMap<>();
 }
