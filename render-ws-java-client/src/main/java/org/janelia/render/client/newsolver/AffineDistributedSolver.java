@@ -176,6 +176,8 @@ public class AffineDistributedSolver
 		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler = new Assembler<>( allItems, solver );
 		assembler.createAssembly();
 
+		// TODO: interface to interpolate many R's into a Z given the weights - should support trivial case of 1 single R to Z
+
 		/*
 		//
 		// Saving the result
