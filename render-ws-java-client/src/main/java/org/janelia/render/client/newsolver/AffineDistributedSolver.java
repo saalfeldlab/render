@@ -13,6 +13,7 @@ import java.util.function.Function;
 import org.janelia.render.client.newsolver.assembly.Assembler;
 import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
+import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
@@ -24,9 +25,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel1D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.RigidModel2D;
+import mpicbg.models.TranslationModel1D;
 
 public class AffineDistributedSolver
 {
@@ -150,17 +153,27 @@ public class AffineDistributedSolver
 
 		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
 
-		final ZBlockSolver< RigidModel2D, AffineModel2D > solver =
+		/*
+		final ZBlockSolver< List< AffineModel1D >, TranslationModel1D, List< AffineModel1D > > solver1D =
+				new ZBlockSolver<>(
+						new TranslationModel1D(),
+						new SameTileMatchCreatorAffineIntensity(),
+						cmdLineSetup.maxPlateauWidthGlobal,
+						cmdLineSetup.maxAllowedErrorGlobal,
+						cmdLineSetup.maxIterationsGlobal,
+						cmdLineSetup.threadsGlobal );
+		*/
+
+		final ZBlockSolver< AffineModel2D, RigidModel2D, AffineModel2D > solver =
 				new ZBlockSolver<>(
 						new RigidModel2D(),
-						new AffineModel2D(),
-						new SameTileMatchCreatorAffine2D<>(),
+						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
 						cmdLineSetup.maxPlateauWidthGlobal,
 						cmdLineSetup.maxAllowedErrorGlobal,
 						cmdLineSetup.maxIterationsGlobal,
 						cmdLineSetup.threadsGlobal );
 
-		final Assembler< RigidModel2D, AffineModel2D, ZBlockFactory > assembler = new Assembler<>( allItems, solver );
+		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler = new Assembler<>( allItems, solver );
 		assembler.createAssembly();
 
 		/*

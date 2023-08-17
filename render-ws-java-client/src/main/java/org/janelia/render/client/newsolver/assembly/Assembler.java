@@ -8,10 +8,19 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Assembler< M, R, F extends BlockFactory< F > >
+/**
+ * 
+ * @author preibischs
+ *
+ * @param <Z> - the final output for each TileSpec
+ * @param <G> - model used for global solve
+ * @param <R> - the result from the block solves
+ * @param <F> - the blockFactory that was used
+ */
+public class Assembler< Z, G, R, F extends BlockFactory< F > >
 {
 	final List<BlockData<?, R, ?, F> > blocks;
-	final BlockSolver< M, R, F > blockSolver;
+	final BlockSolver< Z, G, R, F > blockSolver;
 
 	/**
 	 * @param blocks - all individually computed blocks
@@ -19,21 +28,21 @@ public class Assembler< M, R, F extends BlockFactory< F > >
 	 */
 	public Assembler(
 			final List<BlockData<?, R, ?, F> > blocks,
-			final BlockSolver< M, R, F > blockSolver )
+			final BlockSolver< Z, G, R, F > blockSolver )
 	{
 		this.blocks = blocks;
 		this.blockSolver = blockSolver;
 	}
 
-	public AssemblyMaps< M > createAssembly()
+	public AssemblyMaps< Z > createAssembly()
 	{
-		AssemblyMaps< M > am;
+		AssemblyMaps< Z > am;
 
 		// the trivial case of a single block, would crash with the code below
 		if ( ( am = handleTrivialCase() ) != null )
 			return am;
 		else
-			am = new AssemblyMaps< M >();
+			am = new AssemblyMaps< Z >();
 
 		// now compute the final alignment for each block
 		try
@@ -57,13 +66,13 @@ public class Assembler< M, R, F extends BlockFactory< F > >
 	 * 
 	 * @return - the result of the trivial case if it was a single block
 	 */
-	protected AssemblyMaps< M > handleTrivialCase()
+	protected AssemblyMaps< Z > handleTrivialCase()
 	{
 		if ( blocks.size() == 1 )
 		{
 			LOG.info( "Assembler: only a single block, no solve across blocks necessary." );
 
-			final AssemblyMaps< M > am = new AssemblyMaps<>();
+			final AssemblyMaps< Z > am = new AssemblyMaps<>();
 
 			final BlockData< ?, R, ?, F > solveItem = blocks.get( 0 );
 
@@ -83,7 +92,7 @@ public class Assembler< M, R, F extends BlockFactory< F > >
 					am.zToTileIdGlobal.get( z ).add( tileId );
 					am.idToTileSpecGlobal.put( tileId, solveItem.rtsc().getTileSpec( tileId ) );
 					
-					// TODO: Converter from R to M
+					// TODO: Converter from R to Z
 					//am.idToFinalModelGlobal.put( tileId, solveItem.idToNewModel().get( tileId ) );
 				}
 			}

@@ -9,18 +9,18 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.NotEnoughDataPointsException;
 
-public abstract class BlockSolver< M, R, F extends BlockFactory< F > >
+public abstract class BlockSolver< Z, G, R, F extends BlockFactory< F > >
 {
-	final private M globalModel;
+	final private G globalModel;
 
-	public BlockSolver( final M globalModel )
+	public BlockSolver( final G globalModel )
 	{
 		this.globalModel = globalModel;
 	}
 
-	public M globalModel() { return globalModel; }
+	public G globalSolveModel() { return globalModel; }
 
 	public abstract void globalSolve(
 			List< ? extends BlockData<?, R, ?, F> > blocks,
-			AssemblyMaps< M > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException;
+			AssemblyMaps< Z > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException;
 }

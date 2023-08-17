@@ -24,10 +24,9 @@ import mpicbg.models.TileUtil;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, ZBlockFactory >
+public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, G, R, ZBlockFactory >
 {
-	final M globalModel;
-	final R resultModel;
+	final G globalModel;
 	final SameTileMatchCreator< R > sameTileMatchCreator;
 
 	final int maxPlateauWidth;
@@ -36,8 +35,7 @@ public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, 
 	final int numThreads;
 
 	public ZBlockSolver(
-			final M globalModel,
-			final R resultModel,
+			final G globalModel,
 			final SameTileMatchCreator< R > sameTileMatchCreator,
 			final int maxPlateauWidth,
 			final double maxAllowedError,
@@ -47,7 +45,6 @@ public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, 
 		super( globalModel );
 
 		this.globalModel = globalModel;
-		this.resultModel = resultModel;
 		this.sameTileMatchCreator = sameTileMatchCreator;
 		this.maxPlateauWidth = maxPlateauWidth;
 		this.maxAllowedError = maxAllowedError;
@@ -58,7 +55,7 @@ public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, 
 	@Override
 	public void globalSolve(
 			final List< ? extends BlockData<?, R, ?, ZBlockFactory > > blocks,
-			final AssemblyMaps< M > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException
+			final AssemblyMaps< Z > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException
 	{
 		// local structures required for solvig
 		final HashMap<
@@ -72,7 +69,7 @@ public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, 
 		
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
-		final HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< M > > blockToTile = new HashMap<>();
+		final HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > blockToTile = new HashMap<>();
 
 		// important: all images within one block must be connected to each other!
 
@@ -82,7 +79,7 @@ public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, 
 		for ( int a = 0; a < blocks.size() - 1; ++a )
 		{
 			final BlockData<?, R, ?, ZBlockFactory > solveItemA = blocks.get( a );
-			blockToTile.putIfAbsent( solveItemA, new Tile<M>( globalModel.copy() ) );
+			blockToTile.putIfAbsent( solveItemA, new Tile< G >( globalModel.copy() ) );
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
@@ -94,7 +91,7 @@ public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, 
 				for ( int b = a + 1; b < blocks.size(); ++b )
 				{
 					final BlockData<?, R, ?, ZBlockFactory > solveItemB = blocks.get( b );
-					blockToTile.putIfAbsent( solveItemB, new Tile<M>( globalModel.copy() ) );
+					blockToTile.putIfAbsent( solveItemB, new Tile< G >( globalModel.copy() ) );
 
 					LOG.info( "globalSolve: solveItemB z range is {} to {}", solveItemB.minZ(), solveItemB.maxZ());
 
@@ -147,8 +144,8 @@ public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, 
 							sameTileMatchCreator.addMatches( tileSpecAB, modelA, modelB, matchesAtoB );
 						}
 
-						final Tile< M > tileA = blockToTile.get( solveItemA );
-						final Tile< M > tileB = blockToTile.get( solveItemB );
+						final Tile< G > tileA = blockToTile.get( solveItemA );
+						final Tile< G > tileB = blockToTile.get( solveItemB );
 
 						tileA.connect( tileB, matchesAtoB );
 
@@ -194,7 +191,7 @@ public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, 
 						final BlockData<?, R, ?, ZBlockFactory > solveItemB = null; //solveItemA.createCorrespondingDummySolveItem( id, z );
 
 						zToBlockPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
-						blockToTile.putIfAbsent( solveItemB, new Tile<M>( globalModel.copy() ) );
+						blockToTile.putIfAbsent( solveItemB, new Tile< G >( globalModel.copy() ) );
 	
 						//++id;
 
