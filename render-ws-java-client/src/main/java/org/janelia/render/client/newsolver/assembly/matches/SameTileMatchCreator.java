@@ -4,7 +4,6 @@ import java.util.List;
 
 import org.janelia.alignment.spec.TileSpec;
 
-import mpicbg.models.CoordinateTransform;
 import mpicbg.models.PointMatch;
 
 public interface SameTileMatchCreator< R >

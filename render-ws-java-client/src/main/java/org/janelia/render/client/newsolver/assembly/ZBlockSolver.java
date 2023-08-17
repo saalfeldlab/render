@@ -13,7 +13,6 @@ import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import mpicbg.models.CoordinateTransform;
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;

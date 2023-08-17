@@ -8,10 +8,7 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.Model;
-
-public class Assembler< M extends Model< M >, R, F extends BlockFactory< F > >
+public class Assembler< M, R, F extends BlockFactory< F > >
 {
 	final List<BlockData<?, R, ?, F> > blocks;
 	final BlockSolver< M, R, F > blockSolver;

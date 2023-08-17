@@ -6,10 +6,9 @@ import java.util.List;
 
 import org.janelia.alignment.spec.TileSpec;
 
-import mpicbg.models.Model;
 import net.imglib2.util.Pair;
 
-public class AssemblyMaps< M extends Model< M > >
+public class AssemblyMaps< M >
 {
 	final public HashMap< String, M > idToFinalModelGlobal = new HashMap<>();
 	final public HashMap< String, TileSpec > idToTileSpecGlobal = new HashMap<>();
