@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark.n5;
+package org.janelia.alignment.util;
 
 import java.io.IOException;
 import java.nio.file.Path;

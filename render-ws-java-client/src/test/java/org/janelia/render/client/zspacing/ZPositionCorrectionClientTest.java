@@ -89,24 +89,26 @@ public class ZPositionCorrectionClientTest {
         final String userHome = System.getProperty("user.home");
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[]{
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--owner", "fibsem",
-                "--project", "Z0422_17_VNC_1",
-                "--stack", "v6_acquire_trimmed_align_destreak_1_to_1b_test_a",
-                "--scale", "0.22",
-                "--minZ", "59415",
-                "--maxZ", "59417",
-                "--runName", "testPoorCorrelation",
+                "--owner", "hess_wafer_53",
+                "--project", "cut_000_to_009",
+                "--stack", "c000_s095_v01_align",
+                "--scale", "0.05",
+                "--minZ", "1",
+                "--maxZ", "2",
+//                "--runName", "testWafer53",
 //                "--runName", "testBatch",
-                "--correlationBatch", "1:1",
+//                "--correlationBatch", "1:1",
 //                "--solveExisting",
                 "--poorCorrelationThreshold", "0.975",
+                "--poorCorrelationRegionRows", "12",
+                "--poorCorrelationRegionColumns", "12",
 
 //                "--minX", "2500",
 //                "--maxX", "5500",
 //                "--minY", "400",
 //                "--maxY", "1700",
 //                "--debugFormat", "png",
-//                "--optionsJson", userHome + "/Desktop/inference-options.json",
+                "--optionsJson", userHome + "/Desktop/zcorr/inference-options.sf_0_1.json",
                 "--rootDirectory", userHome + "/Desktop/zcorr"
         };
 
