@@ -6,16 +6,13 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
 
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.Model;
-
 /**
  * 
  * @author preibischs
  *
  * @param <M> - the result model type
  */
-public abstract class BlockDataSolveParameters< M extends Model< M >, R, P extends BlockDataSolveParameters< M, R, P > > implements Serializable
+public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolveParameters< M, R, P > > implements Serializable
 {
 	private static final long serialVersionUID = -813404780882760053L;
 

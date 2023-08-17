@@ -15,8 +15,6 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.Model;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -31,7 +29,7 @@ import net.imglib2.util.ValuePair;
  * @param <P> - the solve parameters
  * @param <F> - the block factory
  */
-public class BlockData< M extends Model< M >, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > implements Serializable
+public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > implements Serializable
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 

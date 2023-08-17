@@ -11,7 +11,6 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.solvers.affine.AffineBlockDataWrapper;
 import org.janelia.render.client.solver.MinimalTileSpec;
-import org.janelia.render.client.solver.SolveItemData;
 import org.janelia.render.client.solver.SolveTools;
 
 import com.esotericsoftware.minlog.Log;
@@ -62,7 +61,7 @@ public class WorkerTools
 		return max;
 	}
 
-	public static class LayerDetails< M extends Model<M> & Affine2D< M >>
+	public static class LayerDetails< M extends Model<M> >
 	{
 		final public String tileId;
 		final public int tileCol, tileRow;

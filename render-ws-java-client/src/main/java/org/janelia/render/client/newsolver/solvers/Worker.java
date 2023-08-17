@@ -9,8 +9,6 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 
 /**
@@ -22,7 +20,7 @@ import mpicbg.models.NoninvertibleModelException;
  * @param <P> - the solve parameters
  * @param <F> - the block factory
  */
-public abstract class Worker < M extends Model< M >, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > 
+public abstract class Worker < M, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > 
 {
 	// for assigning new id's when splitting BlockData
 	final protected int startId;

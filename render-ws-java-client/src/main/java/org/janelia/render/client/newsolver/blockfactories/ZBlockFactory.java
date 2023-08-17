@@ -39,7 +39,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 	}
 
 	@Override
-	public <M extends Model< M >, R, P extends BlockDataSolveParameters<M,R,P>> BlockCollection<M, R, P, ZBlockFactory> defineBlockCollection(
+	public <M, R, P extends BlockDataSolveParameters<M,R,P>> BlockCollection<M, R, P, ZBlockFactory> defineBlockCollection(
 			final ParameterProvider< M, R, P > blockSolveParameterProvider )
 	{
 		final List< ZBlockInit > initBlocks = defineBlockLayout( minZ, maxZ, blockSize, minBlockSize );

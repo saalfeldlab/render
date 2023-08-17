@@ -5,9 +5,7 @@ import java.util.ArrayList;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
-import mpicbg.models.Model;
-
-public class BlockCollection< M extends Model< M >, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > 
+public class BlockCollection< M, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > 
 {
 	final ArrayList< BlockData< M, R, P, F > > blockDataList;
 	final int minId, maxId;
