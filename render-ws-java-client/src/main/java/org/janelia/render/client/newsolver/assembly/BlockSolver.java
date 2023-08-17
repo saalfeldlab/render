@@ -6,12 +6,11 @@ import java.util.concurrent.ExecutionException;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 
-import mpicbg.models.CoordinateTransform;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
 
-public abstract class BlockSolver<  M extends Model< M >, R extends CoordinateTransform, F extends BlockFactory< F > >
+public abstract class BlockSolver<  M extends Model< M >, R, F extends BlockFactory< F > >
 {
 	final private M globalModel;
 
@@ -24,5 +23,5 @@ public abstract class BlockSolver<  M extends Model< M >, R extends CoordinateTr
 
 	public abstract void globalSolve(
 			List< ? extends BlockData<?, R, ?, F> > blocks,
-			AssemblyMaps< R > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException;
+			AssemblyMaps< M > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException;
 }

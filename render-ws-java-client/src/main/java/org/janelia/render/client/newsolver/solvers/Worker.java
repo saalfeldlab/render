@@ -22,7 +22,7 @@ import mpicbg.models.NoninvertibleModelException;
  * @param <P> - the solve parameters
  * @param <F> - the block factory
  */
-public abstract class Worker < M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > 
+public abstract class Worker < M extends Model< M >, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > 
 {
 	// for assigning new id's when splitting BlockData
 	final protected int startId;

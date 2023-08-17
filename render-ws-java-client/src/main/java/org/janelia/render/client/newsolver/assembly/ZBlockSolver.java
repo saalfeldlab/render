@@ -59,7 +59,7 @@ public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform >
 	@Override
 	public void globalSolve(
 			final List< ? extends BlockData<?, R, ?, ZBlockFactory > > blocks,
-			final AssemblyMaps< R > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException
+			final AssemblyMaps< M > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException
 	{
 		// local structures required for solvig
 		final HashMap<

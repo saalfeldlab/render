@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.Model;
 
-public class Assembler< M extends Model< M >, R extends CoordinateTransform, F extends BlockFactory< F > >
+public class Assembler< M extends Model< M >, R, F extends BlockFactory< F > >
 {
 	final List<BlockData<?, R, ?, F> > blocks;
 	final BlockSolver< M, R, F > blockSolver;
@@ -28,15 +28,15 @@ public class Assembler< M extends Model< M >, R extends CoordinateTransform, F e
 		this.blockSolver = blockSolver;
 	}
 
-	public AssemblyMaps< R > createAssembly()
+	public AssemblyMaps< M > createAssembly()
 	{
-		AssemblyMaps< R > am;
+		AssemblyMaps< M > am;
 
 		// the trivial case of a single block, would crash with the code below
 		if ( ( am = handleTrivialCase() ) != null )
 			return am;
 		else
-			am = new AssemblyMaps< R >();
+			am = new AssemblyMaps< M >();
 
 		// now compute the final alignment for each block
 		try
@@ -45,7 +45,6 @@ public class Assembler< M extends Model< M >, R extends CoordinateTransform, F e
 		}
 		catch ( Exception e)
 		{
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -61,13 +60,13 @@ public class Assembler< M extends Model< M >, R extends CoordinateTransform, F e
 	 * 
 	 * @return - the result of the trivial case if it was a single block
 	 */
-	protected AssemblyMaps< R > handleTrivialCase()
+	protected AssemblyMaps< M > handleTrivialCase()
 	{
 		if ( blocks.size() == 1 )
 		{
 			LOG.info( "Assembler: only a single block, no solve across blocks necessary." );
 
-			final AssemblyMaps< R > am = new AssemblyMaps< R >();
+			final AssemblyMaps< M > am = new AssemblyMaps<>();
 
 			final BlockData< ?, R, ?, F > solveItem = blocks.get( 0 );
 
@@ -86,7 +85,9 @@ public class Assembler< M extends Model< M >, R extends CoordinateTransform, F e
 				{
 					am.zToTileIdGlobal.get( z ).add( tileId );
 					am.idToTileSpecGlobal.put( tileId, solveItem.rtsc().getTileSpec( tileId ) );
-					am.idToFinalModelGlobal.put( tileId, solveItem.idToNewModel().get( tileId ) );
+					
+					// TODO: Converter from R to M
+					//am.idToFinalModelGlobal.put( tileId, solveItem.idToNewModel().get( tileId ) );
 				}
 			}
 
@@ -97,19 +98,6 @@ public class Assembler< M extends Model< M >, R extends CoordinateTransform, F e
 			return null;
 		}
 	}
-
-	/*
-	public static ResolvedTileSpecCollection combineAllTileSpecs( final List< BlockData<?, ?, ?, ?> > allItems )
-	{
-		final ResolvedTileSpecCollection rtsc = new ResolvedTileSpecCollection();
-
-		// TODO trautmane - improve this
-		// this should automatically get rid of duplicates due to the common tileId
-		for ( BlockData<?, ?, ?, ?> block : allItems )
-			block.rtsc().getTileSpecs().forEach( tileSpec -> rtsc.addTileSpecToCollection( tileSpec ) );
-
-		return rtsc;
-	}*/
 
 	private static final Logger LOG = LoggerFactory.getLogger(Assembler.class);
 }

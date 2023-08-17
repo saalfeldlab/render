@@ -27,11 +27,11 @@ import net.imglib2.util.ValuePair;
  * @author preibischs
  *
  * @param <M> - the compute model
- * @param <R> - the result model
+ * @param <R> - the result
  * @param <P> - the solve parameters
  * @param <F> - the block factory
  */
-public class BlockData< M extends Model< M >, R extends CoordinateTransform, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > implements Serializable
+public class BlockData< M extends Model< M >, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > implements Serializable
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 

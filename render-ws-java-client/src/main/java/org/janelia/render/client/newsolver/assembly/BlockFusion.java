@@ -11,5 +11,5 @@ public interface BlockFusion< R extends CoordinateTransform, F extends BlockFact
 {
 	public void globalFusion(
 			List< ? extends BlockData<?, R, ?, F> > blocks,
-			AssemblyMaps< R > am );
+			AssemblyMaps< ? > am );
 }
