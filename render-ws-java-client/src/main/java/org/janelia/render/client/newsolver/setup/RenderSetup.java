@@ -18,6 +18,9 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.parameter.LayerBoundsParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,87 +60,95 @@ public class RenderSetup
 		return runParams;
 	}
 
-	public static RenderSetup setupSolve( final AffineSolverSetup parameters ) throws IOException
+	public static RenderSetup setupSolve( final AffineSolverSetup parameters ) throws IOException {
+		parameters.initDefaultValues();
+		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
+		final ZRangeParameters layerRange = new ZRangeParameters();
+		layerRange.minZ = parameters.minZ;
+		layerRange.maxZ = parameters.maxZ;
+		final String stack = parameters.stack;
+		final String targetStack = parameters.targetStack;
+		final String targetOwner = parameters.targetOwner;
+		final String targetProject = parameters.targetProject;
+		final String matchOwner = parameters.matchOwner;
+		final String matchCollection = parameters.matchCollection;
+
+		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, layerRange);
+	}
+
+	public static RenderSetup setupSolve( final IntensityCorrectionSetup parameters ) throws IOException
 	{
+		parameters.initDefaultValues();
+		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
+		final ZRangeParameters layerRange = parameters.layerRange;
+		final String stack = parameters.stack;
+		final String targetStack = parameters.targetStack;
+		final String targetOwner = parameters.targetOwner;
+		final String targetProject = parameters.targetProject;
+		final String matchOwner = null;
+		final String matchCollection = null;
+
+		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, layerRange);
+	}
+
+	private static RenderSetup setupSolve(
+			final RenderWebServiceParameters webServiceParameters,
+			final String targetStack,
+			final String targetOwner,
+			final String targetProject,
+			final String matchOwner,
+			final String matchCollection,
+			final String stack,
+			final ZRangeParameters layerRange) throws IOException {
+
 		final RenderSetup runParams = new RenderSetup();
 
-		parameters.initDefaultValues();
-
-		if ( parameters.blockSize < 3 )
-			throw new RuntimeException( "Blocksize has to be >= 3." );
-
-		runParams.renderDataClient = parameters.renderWeb.getDataClient();
-		runParams.matchDataClient = new RenderDataClient(
-				parameters.renderWeb.baseDataUrl,
-				parameters.matchOwner,
-				parameters.matchCollection);
-
+		runParams.renderDataClient = webServiceParameters.getDataClient();
+		runParams.matchDataClient = new RenderDataClient(webServiceParameters.baseDataUrl, matchOwner, matchCollection);
 		runParams.sectionIdToZMap = new TreeMap<>();
 		runParams.zToTileSpecsMap = new HashMap<>();
 		runParams.totalTileCount = 0;
 
-		if (parameters.targetStack == null)
-		{
+		if (targetStack == null) {
 			runParams.targetDataClient = null;
-		}
-		else
-		{
-			runParams.targetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl, parameters.targetOwner, parameters.targetProject);
+		} else {
+			runParams.targetDataClient = new RenderDataClient(webServiceParameters.baseDataUrl, targetOwner, targetProject);
 
-			final StackMetaData sourceStackMetaData = runParams.renderDataClient.getStackMetaData(parameters.stack);
-			runParams.targetDataClient.setupDerivedStack(sourceStackMetaData, parameters.targetStack);
+			final StackMetaData sourceStackMetaData = runParams.renderDataClient.getStackMetaData(stack);
+			runParams.targetDataClient.setupDerivedStack(sourceStackMetaData, targetStack);
 		}
 
-		final ZFilter zFilter = new ZFilter(parameters.minZ,parameters.maxZ,null);
-		final List<SectionData> allSectionDataList = runParams.renderDataClient.getStackSectionData(parameters.stack, null, null );
+		final ZFilter zFilter = new ZFilter(layerRange.minZ, layerRange.maxZ, null);
+		final List<SectionData> allSectionDataList = runParams.renderDataClient.getStackSectionData(stack, null, null );
 
 		runParams.pGroupList = new ArrayList<>(allSectionDataList.size());
 
-		/*
-		runParams.pGroupList.addAll(
-				allSectionDataList.stream()
-						.filter(sectionData -> zFilter.accept(sectionData.getZ()))
-						.map(SectionData::getSectionId)
-						.distinct()
-						.sorted()
-						.collect(Collectors.toList()));
-		*/
-
 		final HashMap< String, Double > sectionIds = new HashMap<>();
-		for ( final SectionData data : allSectionDataList )
-		{
-			if ( zFilter.accept( data.getZ() ) )
-			{
+		for (final SectionData data : allSectionDataList) {
+			if (zFilter.accept(data.getZ())) {
 				final String sectionId = data.getSectionId();
-				final double z = data.getZ().doubleValue();
+				final double z = data.getZ();
 
-				if ( !sectionIds.containsKey( sectionId ) )
-					sectionIds.put( sectionId, z );
+				if (!sectionIds.containsKey(sectionId))
+					sectionIds.put(sectionId, z);
 			}
 		}
 
 		for ( final String entry : sectionIds.keySet() )
-			runParams.pGroupList.add( new SerializableValuePair< String, Double >( entry, sectionIds.get( entry ) ) );
+			runParams.pGroupList.add(new SerializableValuePair<>(entry, sectionIds.get(entry)));
 
-		Collections.sort( runParams.pGroupList, new Comparator< Pair< String, Double > >()
-		{
-			@Override
-			public int compare( final Pair< String, Double > o1, final Pair< String, Double > o2 )
-			{
-				return o1.getA().compareTo( o2.getA() );
-			}
-		} );
+		runParams.pGroupList.sort(Comparator.comparing(Pair::getA));
 
-		if (runParams.pGroupList.size() == 0)
-			throw new IllegalArgumentException("stack " + parameters.stack + " does not contain any sections with the specified z values");
+		if (runParams.pGroupList.isEmpty())
+			throw new IllegalArgumentException("stack " + stack + " does not contain any sections with the specified z values");
 
-		Double minZForRun = parameters.minZ;
-		Double maxZForRun = parameters.maxZ;
+		Double minZForRun = layerRange.minZ;
+		Double maxZForRun = layerRange.maxZ;
 
 		// if minZ || maxZ == null in parameters, then use min and max of the stack
 		if ((minZForRun == null) || (maxZForRun == null))
 		{
-			final StackMetaData stackMetaData = runParams.renderDataClient.getStackMetaData(parameters.stack);
+			final StackMetaData stackMetaData = runParams.renderDataClient.getStackMetaData(stack);
 			final StackStats stackStats = stackMetaData.getStats();
 			if (stackStats != null)
 			{
@@ -153,10 +164,10 @@ public class RenderSetup
 			}
 
 			if ( (minZForRun == null) || (maxZForRun == null) )
-				throw new IllegalArgumentException( "Failed to derive min and/or max z values for stack " + parameters.stack + ".  Stack may need to be completed.");
+				throw new IllegalArgumentException( "Failed to derive min and/or max z values for stack " + stack + ".  Stack may need to be completed.");
 
-			parameters.minZ = minZForRun;
-			parameters.maxZ = maxZForRun;
+			layerRange.minZ = minZForRun;
+			layerRange.maxZ = maxZForRun;
 		}
 
 		final Double minZ = minZForRun;
@@ -166,16 +177,16 @@ public class RenderSetup
 		runParams.maxZ = maxZForRun;
 
 		allSectionDataList.forEach(sd ->
-		{
-			final Double z = sd.getZ();
-			if ((z != null) && (z.compareTo(minZ) >= 0) && (z.compareTo(maxZ) <= 0))
-			{
-				final List<Double> zListForSection = runParams.sectionIdToZMap.computeIfAbsent(
-						sd.getSectionId(), zList -> new ArrayList<>());
+								   {
+									   final Double z = sd.getZ();
+									   if ((z != null) && (z.compareTo(minZ) >= 0) && (z.compareTo(maxZ) <= 0))
+									   {
+										   final List<Double> zListForSection = runParams.sectionIdToZMap.computeIfAbsent(
+												   sd.getSectionId(), zList -> new ArrayList<>());
 
-				zListForSection.add(sd.getZ());
-			}
-		});
+										   zListForSection.add(sd.getZ());
+									   }
+								   });
 
 		// a HashMap where int is the z section, and string is the description (problem, restart, ...)
 		runParams.zToGroupIdMap = new HashMap<>();
@@ -183,7 +194,7 @@ public class RenderSetup
 			LOG.debug( "Querying: " + groupId );
 			try {
 				final ResolvedTileSpecCollection groupTileSpecs =
-						runParams.renderDataClient.getResolvedTiles(parameters.stack,
+						runParams.renderDataClient.getResolvedTiles(stack,
 																	runParams.minZ,
 																	runParams.maxZ,
 																	groupId,
@@ -199,7 +210,7 @@ public class RenderSetup
 		}
 
 		final List<Integer> challengeListZ = runParams.zToGroupIdMap.keySet().stream().sorted().collect(Collectors.toList());
-		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}", (int)Math.round(parameters.minZ), (int)Math.round(parameters.maxZ), challengeListZ);
+		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}", (int)Math.round(layerRange.minZ), (int)Math.round(layerRange.maxZ), challengeListZ);
 
 		return runParams;
 	}
