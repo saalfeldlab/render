@@ -25,7 +25,7 @@ import mpicbg.models.TileUtil;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform > extends BlockSolver< M, R, ZBlockFactory >
+public class ZBlockSolver< M extends Model< M >, R > extends BlockSolver< M, R, ZBlockFactory >
 {
 	final M globalModel;
 	final R resultModel;

@@ -7,7 +7,7 @@ import org.janelia.alignment.spec.TileSpec;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.PointMatch;
 
-public interface SameTileMatchCreator< R extends CoordinateTransform >
+public interface SameTileMatchCreator< R >
 {
 	/**
 	 * Add a reasonable number of matches to the provided List that map the same TileSpec from one BlockData to another
