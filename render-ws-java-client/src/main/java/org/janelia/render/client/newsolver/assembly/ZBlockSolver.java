@@ -8,8 +8,8 @@ import java.util.concurrent.ExecutionException;
 
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreator;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
-import org.janelia.render.client.solver.SolveItem;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +18,6 @@ import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
@@ -30,6 +29,7 @@ public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform >
 {
 	final M globalModel;
 	final R resultModel;
+	final SameTileMatchCreator< R > sameTileMatchCreator;
 
 	final int maxPlateauWidth;
 	final double maxAllowedError;
@@ -39,6 +39,7 @@ public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform >
 	public ZBlockSolver(
 			final M globalModel,
 			final R resultModel,
+			final SameTileMatchCreator< R > sameTileMatchCreator,
 			final int maxPlateauWidth,
 			final double maxAllowedError,
 			final int maxIterations,
@@ -46,6 +47,7 @@ public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform >
 	{
 		this.globalModel = globalModel;
 		this.resultModel = resultModel;
+		this.sameTileMatchCreator = sameTileMatchCreator;
 		this.maxPlateauWidth = maxPlateauWidth;
 		this.maxAllowedError = maxAllowedError;
 		this.maxIterations = maxIterations;
@@ -141,25 +143,7 @@ public class ZBlockSolver< M extends Model< M >, R extends CoordinateTransform >
 							final R modelA = solveItemA.idToNewModel().get( tileId );
 							final R modelB = solveItemB.idToNewModel().get( tileId );
 
-							// TODO: this depends on the model dimensionality and type (request interface for it)
-							// make a regular grid
-							final double sampleWidth = (tileSpec.getWidth() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-							final double sampleHeight = (tileSpec.getHeight() - 1.0) / (SolveItem.samplesPerDimension - 1.0);
-
-							for (int y = 0; y < SolveItem.samplesPerDimension; ++y)
-							{
-								final double sampleY = y * sampleHeight;
-								for (int x = 0; x < SolveItem.samplesPerDimension; ++x)
-								{
-									final double[] p = new double[] { x * sampleWidth, sampleY };
-									final double[] q = new double[] { x * sampleWidth, sampleY };
-
-									modelA.applyInPlace( p );
-									modelB.applyInPlace( q );
-
-									matchesAtoB.add(new PointMatch( new Point(p), new Point(q) ));
-								}
-							}
+							sameTileMatchCreator.addMatches( tileSpec, modelA, modelB, matchesAtoB );
 						}
 
 						final Tile< M > tileA = blockToTile.get( solveItemA );

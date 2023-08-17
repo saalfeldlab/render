@@ -12,6 +12,7 @@ import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.assembly.Assembler;
 import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
+import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
@@ -153,6 +154,7 @@ public class AffineDistributedSolver
 				new ZBlockSolver<>(
 						new RigidModel2D(),
 						new AffineModel2D(),
+						new SameTileMatchCreatorAffine2D<>(),
 						cmdLineSetup.maxPlateauWidthGlobal,
 						cmdLineSetup.maxAllowedErrorGlobal,
 						cmdLineSetup.maxIterationsGlobal,
