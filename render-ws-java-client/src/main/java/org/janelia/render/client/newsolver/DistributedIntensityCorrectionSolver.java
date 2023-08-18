@@ -134,7 +134,8 @@ public class DistributedIntensityCorrectionSolver {
 						cmdLineSetup.distributedSolve.maxIterationsGlobal,
 						cmdLineSetup.threadsGlobal);
 
-		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>, ZBlockFactory> assembler = new Assembler<>(allItems, solver);
+		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>, ZBlockFactory> assembler =
+				new Assembler<>(allItems, solver, (r, z) -> z.addAll(r), ArrayList::new);
 		assembler.createAssembly();
 	}
 

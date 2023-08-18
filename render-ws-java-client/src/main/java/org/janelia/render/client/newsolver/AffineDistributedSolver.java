@@ -127,20 +127,19 @@ public class AffineDistributedSolver
 				{
 					allItems.addAll( future.get() );
 				}
-				catch (InterruptedException | ExecutionException e)
+				catch (final InterruptedException | ExecutionException e)
 				{
 					LOG.error( "Failed to compute alignments: " + e );
 					e.printStackTrace();
-					return;
 				}
 			} );
 
 			taskExecutor.shutdown();
 		}
-		catch (InterruptedException e1)
+		catch (final InterruptedException e)
 		{
-			LOG.error( "Failed to compute alignments: " + e1 );
-			e1.printStackTrace();
+			LOG.error( "Failed to compute alignments: " + e );
+			e.printStackTrace();
 			return;
 		}
 
@@ -164,7 +163,7 @@ public class AffineDistributedSolver
 						allItems,
 						solver,
 						(r,z) -> z.set( r ),
-						() -> new AffineModel2D() );
+						AffineModel2D::new);
 
 		assembler.createAssembly();
 
