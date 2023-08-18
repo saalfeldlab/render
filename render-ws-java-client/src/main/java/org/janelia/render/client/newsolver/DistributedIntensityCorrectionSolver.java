@@ -3,6 +3,7 @@ package org.janelia.render.client.newsolver;
 import mpicbg.models.AffineModel1D;
 import mpicbg.models.TranslationModel1D;
 import org.janelia.render.client.newsolver.assembly.Assembler;
+import org.janelia.render.client.newsolver.assembly.ZBlockFusion;
 import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
@@ -134,8 +135,11 @@ public class DistributedIntensityCorrectionSolver {
 						cmdLineSetup.distributedSolve.maxIterationsGlobal,
 						cmdLineSetup.threadsGlobal);
 
+		// TODO: flesh out lambdas (preconcatenate for all items in list)
+		final ZBlockFusion<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
+				new ZBlockFusion<>(solver, (r,g) -> null,  (i,w) -> null);
 		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>, ZBlockFactory> assembler =
-				new Assembler<>(allItems, solver, (r, z) -> z.addAll(r), ArrayList::new);
+				new Assembler<>(allItems, solver, fusion, r -> null);
 		assembler.createAssembly();
 	}
 
