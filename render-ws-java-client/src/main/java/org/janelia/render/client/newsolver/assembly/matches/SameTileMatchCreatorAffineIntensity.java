@@ -1,5 +1,6 @@
 package org.janelia.render.client.newsolver.assembly.matches;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.janelia.alignment.spec.TileSpec;
@@ -7,7 +8,7 @@ import org.janelia.alignment.spec.TileSpec;
 import mpicbg.models.AffineModel1D;
 import mpicbg.models.PointMatch;
 
-public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator< List< AffineModel1D > >
+public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator<ArrayList<AffineModel1D>>
 {
 	final int samplesPerDimension;
 
@@ -19,7 +20,7 @@ public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator
 	public SameTileMatchCreatorAffineIntensity() { this( 2 ); }
 
 	@Override
-	public void addMatches(TileSpec tileSpec, List< AffineModel1D > modelA, List< AffineModel1D > modelB, List<PointMatch> matchesAtoB)
+	public void addMatches(TileSpec tileSpec, ArrayList< AffineModel1D > modelA, ArrayList< AffineModel1D > modelB, List<PointMatch> matchesAtoB)
 	{
 		// TODO: make 64 matches that map A to p and B to q
 

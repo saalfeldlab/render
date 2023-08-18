@@ -43,6 +43,9 @@ public class AffineSolverSetup extends CommandLineParameters
 	@ParametersDelegate
     public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
+	@ParametersDelegate
+	public DistributedSolveParameters distributedSolve = new DistributedSolveParameters();
+
     @Parameter(
             names = "--stack",
             description = "Stack name",
@@ -71,22 +74,6 @@ public class AffineSolverSetup extends CommandLineParameters
             required = true
     )
     public String matchCollection;
-
-    //
-    // not required parameters
-    //
-
-    @Parameter(
-            names = "--blockSize",
-            description = "The size of the blocks in z, which will be computed in paralell (default:500, min:3) "
-    )
-    public Integer blockSize = 500;
-
-    @Parameter(
-            names = "--minBlockSize",
-            description = "The minimal size of the blocks in z, which will be computed in paralell (default: 50) "
-    )
-    public Integer minBlockSize = 50;
 
     //
     // stitching align model, by TRANSLATION with tunable regularization --- with RIGID (default: 0.00)
@@ -187,27 +174,6 @@ public class AffineSolverSetup extends CommandLineParameters
 
     @Parameter(names = "--maxZRangeMatches", description = "max z-range in which to load matches (default: '-1' - no limit)")
     public int maxZRangeMatches = -1;
-
-    //
-    // global assembly solve paramters
-    //
-    @Parameter(
-            names = "--maxAllowedErrorGlobal",
-            description = "Max allowed error global"
-    )
-    public Double maxAllowedErrorGlobal = 10.0;
-
-    @Parameter(
-            names = "--maxIterationsGlobal",
-            description = "Max iterations global"
-    )
-    public Integer maxIterationsGlobal = 10000;
-
-    @Parameter(
-            names = "--maxPlateauWidthGlobal",
-            description = "Max plateau width global"
-    )
-    public Integer maxPlateauWidthGlobal = 500;
 
     //
     // for saving and running

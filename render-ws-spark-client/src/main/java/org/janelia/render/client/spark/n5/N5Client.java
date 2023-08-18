@@ -25,6 +25,7 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.Grid;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.ImageProcessorCacheSpec;
+import org.janelia.alignment.util.NeuroglancerAttributes;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;

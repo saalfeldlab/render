@@ -150,24 +150,13 @@ public class AffineDistributedSolver
 
 		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
 
-		/*
-		final ZBlockSolver< List< AffineModel1D >, TranslationModel1D, List< AffineModel1D > > solver1D =
-				new ZBlockSolver<>(
-						new TranslationModel1D(),
-						new SameTileMatchCreatorAffineIntensity(),
-						cmdLineSetup.maxPlateauWidthGlobal,
-						cmdLineSetup.maxAllowedErrorGlobal,
-						cmdLineSetup.maxIterationsGlobal,
-						cmdLineSetup.threadsGlobal );
-		*/
-
 		final ZBlockSolver< AffineModel2D, RigidModel2D, AffineModel2D > solver =
 				new ZBlockSolver<>(
 						new RigidModel2D(),
 						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
-						cmdLineSetup.maxPlateauWidthGlobal,
-						cmdLineSetup.maxAllowedErrorGlobal,
-						cmdLineSetup.maxIterationsGlobal,
+						cmdLineSetup.distributedSolve.maxPlateauWidthGlobal,
+						cmdLineSetup.distributedSolve.maxAllowedErrorGlobal,
+						cmdLineSetup.distributedSolve.maxIterationsGlobal,
 						cmdLineSetup.threadsGlobal );
 
 		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler =
@@ -238,8 +227,8 @@ public class AffineDistributedSolver
 	{
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = (int)Math.round( renderSetup.maxZ );
-		final int blockSize = cmdLineSetup.blockSize;
-		final int minBlockSize = cmdLineSetup.minBlockSize;
+		final int blockSize = cmdLineSetup.distributedSolve.blockSize;
+		final int minBlockSize = cmdLineSetup.distributedSolve.minBlockSize;
 
 		return new ZBlockFactory( minZ, maxZ, blockSize, minBlockSize );
 	}
@@ -250,7 +239,7 @@ public class AffineDistributedSolver
 	{
 		final boolean stitchFirst = cmdLineSetup.stitchFirst;
 
-		final FIBSEMAlignmentParameters< M, S > solveParams = new FIBSEMAlignmentParameters< M, S >(
+		return new FIBSEMAlignmentParameters<>(
 				blockModel,
 				(Function< Integer,S > & Serializable )(z) -> stitchingModel,
 				stitchFirst ? (Function< Integer, Integer > & Serializable )(z) -> cmdLineSetup.minStitchingInliers : null,
@@ -272,8 +261,6 @@ public class AffineDistributedSolver
 				cmdLineSetup.stack,
 				cmdLineSetup.matchOwner,
 				cmdLineSetup.matchCollection );
-
-		return solveParams;
 	}
 
 	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > setupBlockCollection(
@@ -287,10 +274,7 @@ public class AffineDistributedSolver
 		final FIBSEMAlignmentParameters< M, S > defaultSolveParams =
 				setupSolveParameters( blockModel, stitchingModel );
 
-		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
-				blockFactory.defineBlockCollection( rtsc -> defaultSolveParams );
-
-		return col;
+		return blockFactory.defineBlockCollection(rtsc -> defaultSolveParams );
 	}
 
 	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > ArrayList< AffineAlignBlockWorker<M, S, ZBlockFactory > > createWorkers(
