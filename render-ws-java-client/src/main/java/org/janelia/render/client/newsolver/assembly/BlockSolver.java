@@ -7,9 +7,10 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 
 import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
 
-public abstract class BlockSolver< Z, G, R, F extends BlockFactory< F > >
+public abstract class BlockSolver< Z, G extends Model< G >, R, F extends BlockFactory< F > >
 {
 	final private G globalModel;
 

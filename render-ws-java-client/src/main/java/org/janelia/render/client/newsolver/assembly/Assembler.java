@@ -10,6 +10,8 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import mpicbg.models.Model;
+
 /**
  * 
  * @author preibischs
@@ -19,7 +21,7 @@ import org.slf4j.LoggerFactory;
  * @param <R> - the result from the block solves
  * @param <F> - the blockFactory that was used
  */
-public class Assembler< Z, G, R, F extends BlockFactory< F > >
+public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > >
 {
 	final List<BlockData<?, R, ?, F> > blocks;
 	final BlockSolver< Z, G, R, F > blockSolver;
@@ -62,6 +64,7 @@ public class Assembler< Z, G, R, F extends BlockFactory< F > >
 		catch (final Exception e)
 		{
 			e.printStackTrace();
+			return null;
 		}
 
 		//assemble();

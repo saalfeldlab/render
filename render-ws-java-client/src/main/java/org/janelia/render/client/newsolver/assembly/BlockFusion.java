@@ -5,7 +5,9 @@ import java.util.List;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 
-public interface BlockFusion< Z, G, R, F extends BlockFactory< F > >
+import mpicbg.models.Model;
+
+public interface BlockFusion< Z, G extends Model< G >, R, F extends BlockFactory< F > >
 {
 	public void globalFusion(
 			List< ? extends BlockData<?, R, ?, F> > blocks,
