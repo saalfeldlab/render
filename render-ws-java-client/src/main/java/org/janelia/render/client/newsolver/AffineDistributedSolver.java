@@ -8,9 +8,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.assembly.Assembler;
+import org.janelia.render.client.newsolver.assembly.ZBlockFusion;
 import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
@@ -25,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.RigidModel2D;
 
@@ -127,20 +130,19 @@ public class AffineDistributedSolver
 				{
 					allItems.addAll( future.get() );
 				}
-				catch (InterruptedException | ExecutionException e)
+				catch (final InterruptedException | ExecutionException e)
 				{
 					LOG.error( "Failed to compute alignments: " + e );
 					e.printStackTrace();
-					return;
 				}
 			} );
 
 			taskExecutor.shutdown();
 		}
-		catch (InterruptedException e1)
+		catch (final InterruptedException e)
 		{
-			LOG.error( "Failed to compute alignments: " + e1 );
-			e1.printStackTrace();
+			LOG.error( "Failed to compute alignments: " + e );
+			e.printStackTrace();
 			return;
 		}
 
@@ -159,7 +161,28 @@ public class AffineDistributedSolver
 						cmdLineSetup.distributedSolve.maxIterationsGlobal,
 						cmdLineSetup.threadsGlobal );
 
-		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler = new Assembler<>( allItems, solver );
+		final ZBlockFusion<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
+				new ZBlockFusion<>(
+						solver,
+						(r,g) -> {
+							final AffineModel2D i = new AffineModel2D();
+							i.set( r );
+							i.preConcatenate( WorkerTools.createAffine( g ) );
+							return i; },
+						(i,w) ->
+							new InterpolatedAffineModel2D<>( i.get( 0 ), i.get( 1 ), w.get( 1 ) ).createAffineModel2D()
+							);
+
+		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler =
+				new Assembler<>(
+						allItems,
+						solver,
+						fusion,
+						(r) -> {
+							final AffineModel2D a = new AffineModel2D();
+							a.set( r );
+							return a; } );
+
 		assembler.createAssembly();
 
 		// TODO: interface to interpolate many R's into a Z given the weights - should support trivial case of 1 single R to Z

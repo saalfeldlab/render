@@ -34,6 +34,16 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 	final int maxIterations;
 	final int numThreads;
 
+	// local structures required for solving
+	final public HashMap<
+			Integer,
+			ArrayList<
+				Pair<
+					Pair<
+						BlockData<?, R, ?, ZBlockFactory >,
+						BlockData<?, R, ?, ZBlockFactory > >,
+					HashSet< String > > > > zToBlockPairs = new HashMap<>();
+
 	public ZBlockSolver(
 			final G globalModel,
 			final SameTileMatchCreator< R > sameTileMatchCreator,
@@ -53,19 +63,10 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 	}
 
 	@Override
-	public void globalSolve(
+	public HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > globalSolve(
 			final List< ? extends BlockData<?, R, ?, ZBlockFactory > > blocks,
 			final AssemblyMaps< Z > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException
 	{
-		// local structures required for solvig
-		final HashMap<
-				Integer,
-				ArrayList<
-					Pair<
-						Pair<
-							BlockData<?, R, ?, ZBlockFactory >,
-							BlockData<?, R, ?, ZBlockFactory > >,
-						HashSet< String > > > > zToBlockPairs = new HashMap<>();
 		
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
@@ -226,6 +227,7 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 				tileConfigBlocks.getFixedTiles(),
 				numThreads );
 
+		return blockToTile;
 	}
 
 	protected boolean pairExists(

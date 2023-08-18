@@ -8,9 +8,6 @@ import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
-import mpicbg.models.CoordinateTransform;
-import mpicbg.models.Model;
-
 public interface BlockFactory< F extends BlockFactory< F > > extends Serializable
 {
 	public <M, R, P extends BlockDataSolveParameters< M, R, P > > BlockCollection< M, R, P, F > defineBlockCollection(
