@@ -163,8 +163,8 @@ public class AffineDistributedSolver
 		final ZBlockFusion<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
 				new ZBlockFusion<>(
 						solver,
-						(r,g) -> { return null; }, // TODO: BiFunction< R, G, I > combineResultGlobal, // I is some intermediate (maybe R, maybe something else)
-						(i,w) -> { return null; } ); // TODO: BiFunction< List< I >, List< Double >, Z > fusion ) // then fuse many weighted I's into Z's
+						(r,g) -> { return null; }, // TODO: preconcatenate :: BiFunction< R, G, I > combineResultGlobal, // I is some intermediate (maybe R, maybe something else)
+						(i,w) -> { return null; } ); // TODO: interpolate :: BiFunction< List< I >, List< Double >, Z > fusion ) // then fuse many weighted I's into Z's
 
 		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler =
 				new Assembler<>(
