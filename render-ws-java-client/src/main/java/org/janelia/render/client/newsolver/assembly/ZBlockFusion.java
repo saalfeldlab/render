@@ -67,9 +67,14 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 				{
 					final Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>> solveItemPair = entry.getA();
 
+					BlockData<?, R, ?, ZBlockFactory> solveItemA = solveItemPair.getA();
+					BlockData<?, R, ?, ZBlockFactory> solveItemB = solveItemPair.getB();
+
 					// TODO: one of them can be null (instead of former DummySolveItem)
-					final BlockData<?, R, ?, ZBlockFactory> solveItemA = solveItemPair.getA();
-					final BlockData<?, R, ?, ZBlockFactory> solveItemB = solveItemPair.getB();
+					if ( solveItemA == null )
+						solveItemA = solveItemB;
+					else if ( solveItemB == null )
+						solveItemB = solveItemA;
 
 					final R modelAIn = solveItemA.idToNewModel().get( tileId );
 					final R modelBIn = solveItemB.idToNewModel().get( tileId );
