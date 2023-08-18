@@ -1,5 +1,6 @@
 package org.janelia.render.client.newsolver.assembly;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -7,10 +8,12 @@ import java.util.function.Supplier;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
+import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Model;
+import mpicbg.models.Tile;
 
 /**
  * 
@@ -59,7 +62,10 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 		// now compute the final alignment for each block
 		try
 		{
-			blockSolver.globalSolve( blocks, am );
+			final HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > blockToTile =
+					blockSolver.globalSolve( blocks, am );
+
+			
 		}
 		catch (final Exception e)
 		{

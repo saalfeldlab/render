@@ -53,7 +53,7 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 	}
 
 	@Override
-	public void globalSolve(
+	public HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > globalSolve(
 			final List< ? extends BlockData<?, R, ?, ZBlockFactory > > blocks,
 			final AssemblyMaps< Z > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException
 	{
@@ -226,6 +226,7 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 				tileConfigBlocks.getFixedTiles(),
 				numThreads );
 
+		return blockToTile;
 	}
 
 	protected boolean pairExists(

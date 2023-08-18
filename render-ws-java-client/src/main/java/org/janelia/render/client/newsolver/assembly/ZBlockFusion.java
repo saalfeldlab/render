@@ -18,6 +18,7 @@ import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
+import mpicbg.models.Tile;
 import net.imglib2.util.Pair;
 
 public class ZBlockFusion< Z, G extends Model< G >, R > implements BlockFusion< Z, G, R, ZBlockFactory >
@@ -26,14 +27,14 @@ public class ZBlockFusion< Z, G extends Model< G >, R > implements BlockFusion< 
 	@Override
 	public void globalFusion(
 			final List<? extends BlockData<?, R, ?, ZBlockFactory>> blocks,
-			final AssemblyMaps<Z> am)
+			final AssemblyMaps<Z> am, 
+			final HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > blockToTile )
 	{
-		/*
 		final HashMap< BlockData<?, R, ?, ZBlockFactory>, Z > blockToResult = new HashMap<>();
-		
-		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItem : blockToTile.keySet() )
+		/*
+		for ( final BlockData<?, R, ?, ZBlockFactory > solveItem : blockToTile.keySet() )
 		{
-			blockToResult.put( solveItem, SolveTools.createAffine( solveItemDataToTile.get( solveItem ).getModel() ) );
+			blockToResult.put( solveItem, SolveTools.createAffine( blockToTile.get( solveItem ).getModel() ) );
 
 			if ( !DummySolveItemData.class.isInstance( solveItem ) )
 				LOG.info( "Block " + solveItem.getId() + ": " + blockToAffine2d.get( solveItem ) );
@@ -54,16 +55,16 @@ public class ZBlockFusion< Z, G extends Model< G >, R > implements BlockFusion< 
 					final Pair< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >, SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > solveItemPair =
 							entry.getA();
 
-					final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemA = solveItemPair.getA();
-					final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemB = solveItemPair.getB();
+					final BlockData<?, R, ?, ZBlockFactory> solveItemA = solveItemPair.getA();
+					final BlockData<?, R, ?, ZBlockFactory> solveItemB = solveItemPair.getB();
 
-					final AffineModel2D modelA = solveItemA.idToNewModel().get( tileId );
-					final AffineModel2D modelB = solveItemB.idToNewModel().get( tileId );
+					final R modelA = solveItemA.idToNewModel().get( tileId );
+					final R modelB = solveItemB.idToNewModel().get( tileId );
 
-					final AffineModel2D globalModelA = blockToResult.get( solveItemA );
+					final Z globalModelA = blockToResult.get( solveItemA );
 					modelA.preConcatenate( globalModelA );
 
-					final AffineModel2D globalModelB = blockToResult.get( solveItemB );
+					final Z globalModelB = blockToResult.get( solveItemB );
 					modelB.preConcatenate( globalModelB );
 
 					final double wA = solveItemA.getWeight( z );
@@ -106,8 +107,8 @@ public class ZBlockFusion< Z, G extends Model< G >, R > implements BlockFusion< 
 						gs.idToErrorMapGlobal.put( tileId, solveItemB.idToSolveItemErrorMap.get( tileId ) );
 				}
 			}
-		}*/
-
+		}
+		*/
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(ZBlockFusion.class);

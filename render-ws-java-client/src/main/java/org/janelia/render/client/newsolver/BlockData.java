@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -145,15 +146,23 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 		}
 
 		return new ValuePair<>( minZ, maxZ );
+	}
 
-		//final private HashSet<String> allTileIds;
-		//final private Map<String, MinimalTileSpec> idToTileSpec;
+	@Override
+	public int hashCode() {
+		return Objects.hash(id, maxZ, minZ, rtsc);
+	}
 
-		// tileId > String (this is the pId, qId)
-		// sectionId > String (this is the pGroupId, qGroupId)
-		
-		//TileSpec ts = blockData.idToTileSpec().values().iterator().next();
-		//String sectionId = ts.getLayout().getSectionId(); // 
-
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		@SuppressWarnings("rawtypes")
+		BlockData other = (BlockData) obj;
+		return id == other.id && maxZ == other.maxZ && minZ == other.minZ && Objects.equals(rtsc, other.rtsc);
 	}
 }
