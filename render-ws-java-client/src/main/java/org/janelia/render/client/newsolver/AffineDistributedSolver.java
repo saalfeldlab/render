@@ -97,6 +97,17 @@ public class AffineDistributedSolver
 		final BlockCollection< ?, AffineModel2D, ?, ZBlockFactory > blockCollection =
 				solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
 
+		// test weight function
+
+		BlockData<?, AffineModel2D, ?, ZBlockFactory> b = blockCollection.allBlocks().get( 0 );
+
+		for ( int z = b.minZ() - 1; z <= b.maxZ() + 1; ++z )
+		{
+			System.out.println( z + ": " + b.createWeightFunctions().get( 2 ).apply( (double)z ) );
+		}
+
+		System.exit( 0 );
+
 		//
 		// multi-threaded solve
 		//

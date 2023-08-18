@@ -173,7 +173,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public ArrayList<Function<Double, Double>> createWeightFunctions( final BlockData<?, ?, ?, ZBlockFactory > block)
+	public ArrayList<Function<Double, Double>> createWeightFunctions( final BlockData<?, ?, ?, ZBlockFactory > block )
 	{
 		// we also define our own distance functions
 		// here, xy doesn't matter, only z
@@ -183,13 +183,11 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 		weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
 		// TODO: has to be between 0 and 1
 		// TODO: needs the Block to know
-		weightF.add( (Function< Double, Double > & Serializable )(z) -> 
-			1.0 - 
-			(
-			Math.abs( z - ( ( block.maxZ() - block.minZ() ) / 2. + block.minZ() ) )
-			/
-			( block.maxZ() - block.minZ() ) / 2.
-			)
+		weightF.add( (Function< Double, Double > & Serializable )(z) ->
+			1.0 - Math.min( 1, Math.max( 0, 
+			( Math.abs( z - ( ( block.maxZ() - block.minZ() ) / 2. + block.minZ() ) ) /
+			( ( block.maxZ() - block.minZ() ) / 2. + 0.01) ) // first and last z-slice not 0.0
+			) )
 			);
 
 		return weightF;
