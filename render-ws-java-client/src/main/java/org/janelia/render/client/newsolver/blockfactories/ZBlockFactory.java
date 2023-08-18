@@ -183,7 +183,14 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 		weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
 		// TODO: has to be between 0 and 1
 		// TODO: needs the Block to know
-		weightF.add( (Function< Double, Double > & Serializable )(z) -> Math.abs( z - ( block.maxZ() - block.minZ() ) / 2. ) );
+		weightF.add( (Function< Double, Double > & Serializable )(z) -> 
+			1.0 - 
+			(
+			Math.abs( z - ( ( block.maxZ() - block.minZ() ) / 2. + block.minZ() ) )
+			/
+			( block.maxZ() - block.minZ() ) / 2.
+			)
+			);
 
 		return weightF;
 	}
