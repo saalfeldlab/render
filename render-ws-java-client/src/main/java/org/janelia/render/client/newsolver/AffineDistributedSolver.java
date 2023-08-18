@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.RigidModel2D;
 
@@ -163,8 +164,14 @@ public class AffineDistributedSolver
 		final ZBlockFusion<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
 				new ZBlockFusion<>(
 						solver,
-						(r,g) -> { return null; }, // TODO: preconcatenate :: BiFunction< R, G, I > combineResultGlobal, // I is some intermediate (maybe R, maybe something else)
-						(i,w) -> { return null; } ); // TODO: interpolate :: BiFunction< List< I >, List< Double >, Z > fusion ) // then fuse many weighted I's into Z's
+						(r,g) -> {
+							final AffineModel2D i = new AffineModel2D();
+							i.set( r );
+							i.preConcatenate( WorkerTools.createAffine( g ) );
+							return i; },
+						(i,w) ->
+							new InterpolatedAffineModel2D<>( i.get( 0 ), i.get( 1 ), w.get( 1 ) ).createAffineModel2D()
+							);
 
 		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler =
 				new Assembler<>(
