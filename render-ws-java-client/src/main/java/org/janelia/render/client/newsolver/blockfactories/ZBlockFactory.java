@@ -171,7 +171,6 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 		return Stream.concat( leftSets.stream(), rightSets.stream() ).collect( Collectors.toList() );
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public ArrayList<Function<Double, Double>> createWeightFunctions( final BlockData<?, ?, ?, ZBlockFactory > block )
 	{
@@ -179,11 +178,11 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 		// here, xy doesn't matter, only z
 		final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
 
-		weightF.add( (Function< Double, Double > & Serializable )(x) -> 0.0 );
-		weightF.add( (Function< Double, Double > & Serializable )(y) -> 0.0 );
+		weightF.add( (x) -> 0.0 );
+		weightF.add( (y) -> 0.0 );
 		// TODO: has to be between 0 and 1
 		// TODO: needs the Block to know
-		weightF.add( (Function< Double, Double > & Serializable )(z) ->
+		weightF.add( (z) ->
 			1.0 - Math.min( 1, Math.max( 0, 
 			( Math.abs( z - ( ( block.maxZ() - block.minZ() ) / 2. + block.minZ() ) ) /
 			( ( block.maxZ() - block.minZ() ) / 2. + 0.01) ) // first and last z-slice not 0.0
