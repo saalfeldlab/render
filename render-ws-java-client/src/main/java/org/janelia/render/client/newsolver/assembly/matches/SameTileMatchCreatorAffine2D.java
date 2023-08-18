@@ -7,6 +7,7 @@ import org.janelia.alignment.spec.TileSpec;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
+import org.janelia.render.client.newsolver.BlockData;
 
 /**
  * Note: this code would work with any CoordinateTransform, however it is only the right thing to do if the underlying model is some 2D-affine
@@ -48,5 +49,9 @@ public class SameTileMatchCreatorAffine2D< R extends Affine2D< R > > implements 
 			}
 		}
 	}
+
+	 // not needed for alignment
+	@Override
+	public void setBlockContext(final BlockData<?, ?, ?, ?> blockContext) {}
 
 }

@@ -80,7 +80,7 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 		for ( int a = 0; a < blocks.size() - 1; ++a )
 		{
 			final BlockData<?, R, ?, ZBlockFactory > solveItemA = blocks.get( a );
-			blockToTile.putIfAbsent( solveItemA, new Tile< G >( globalModel.copy() ) );
+			blockToTile.computeIfAbsent(solveItemA, k -> new Tile<G>(globalModel.copy()));
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
@@ -92,7 +92,7 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 				for ( int b = a + 1; b < blocks.size(); ++b )
 				{
 					final BlockData<?, R, ?, ZBlockFactory > solveItemB = blocks.get( b );
-					blockToTile.putIfAbsent( solveItemB, new Tile< G >( globalModel.copy() ) );
+					blockToTile.computeIfAbsent(solveItemB, k -> new Tile<G>(globalModel.copy()));
 
 					LOG.info( "globalSolve: solveItemB z range is {} to {}", solveItemB.minZ(), solveItemB.maxZ());
 
@@ -119,16 +119,17 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 						final HashSet< String > tileIds = commonStrings( tileIdsA, tileIdsB );
 
 						// if there are none, we continue with the next
-						if ( tileIds.size() == 0 )
+						if (tileIds.isEmpty())
 							continue;
 
-						am.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
-						zToBlockPairs.putIfAbsent( z, new ArrayList<>() );
+						am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>());
+						zToBlockPairs.computeIfAbsent(z, k -> new ArrayList<>());
 
 						// remember which solveItems defined which tileIds of this z section
 						zToBlockPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
 
 						final List< PointMatch > matchesAtoB = new ArrayList<>();
+
 
 						for ( final String tileId : tileIds )
 						{
@@ -181,18 +182,18 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 						final HashSet< String > tileIds = solveItemA.zToTileId().get( z );
 
 						// if there are none, we continue with the next
-						if ( tileIds.size() == 0 )
+						if (tileIds.isEmpty())
 							continue;
 	
-						am.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
-						zToBlockPairs.putIfAbsent( z, new ArrayList<>() );
+						am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>());
+						zToBlockPairs.computeIfAbsent(z, k -> new ArrayList<>());
 	
 						// remember which solveItems defined which tileIds of this z section
 						// TODO: no DummyBlocks anymore, just set it to null, let's see how to fix it down the road
 						final BlockData<?, R, ?, ZBlockFactory > solveItemB = null; //solveItemA.createCorrespondingDummySolveItem( id, z );
 
 						zToBlockPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
-						blockToTile.putIfAbsent( solveItemB, new Tile< G >( globalModel.copy() ) );
+						blockToTile.computeIfAbsent(solveItemB, k -> new Tile<G>(globalModel.copy()));
 	
 						//++id;
 
