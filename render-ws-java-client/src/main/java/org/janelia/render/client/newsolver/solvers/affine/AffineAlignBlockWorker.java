@@ -216,16 +216,16 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				return 0;
 		});
 
-		for ( final String sectionId : sortedSectionIds )
+		for ( final String pGroupId : sortedSectionIds )
 		{
-			LOG.info("block " + inputSolveItem.blockData().getId() + ": run: connecting tiles with sectionID {}", sectionId );
+			LOG.info("block {}: run: connecting tiles with pGroupId {}",
+					 inputSolveItem.blockData().getId(), pGroupId);
 
-			final int maxTries = 10;
-			final List<CanvasMatches> matches = getCanvasMatches(inputSolveItem, matchDataClient, sectionId, maxTries);
+			final List<CanvasMatches> serviceMatchList = matchDataClient.getMatchesWithPGroupId(pGroupId,
+																								false);
 
-			for (final CanvasMatches match : matches)
+			for (final CanvasMatches match : serviceMatchList)
 			{
-				final String pGroupId = sectionId;
 				final String pId = match.getpId();
 				final TileSpec pTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, renderStack, pGroupId, pId);
 
@@ -283,26 +283,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		}
 
 		return canvasMatches;
-	}
-
-	private List<CanvasMatches> getCanvasMatches(final AffineBlockDataWrapper< M, S, F > inputSolveItem, final RenderDataClient matchDataClient, final String sectionId, final int maxTries) {
-		int run = 0;
-		List<CanvasMatches> matches;
-		do {
-			try {
-				matches = matchDataClient.getMatchesWithPGroupId(sectionId, false);
-			} catch (final Exception e ) {
-				matches = null;
-				final int id = inputSolveItem.blockData().getId();
-				if ( ++run <= maxTries) {
-					LOG.warn( "block " + id + ": Failed at: " + sectionId + ": " + e );
-					SimpleMultiThreading.threadWait( 1000 );
-				} else {
-					throw new RuntimeException( "failed to retrieve matches for sectionId " + sectionId + " after " + maxTries + " attempts (id=" + id + ")" );
-				}
-			}
-		} while( matches == null );
-		return matches;
 	}
 
 	protected Tile<M> getOrBuildTile( final String id, final TileSpec tileSpec )
