@@ -1,28 +1,37 @@
 package org.janelia.render.client.newsolver.assembly;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
-import org.janelia.render.client.solver.DummySolveItemData;
-import org.janelia.render.client.solver.SolveItemData;
-import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import net.imglib2.util.Pair;
 
-public class ZBlockFusion< Z, G extends Model< G >, R > implements BlockFusion< Z, G, R, ZBlockFactory >
+public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusion< Z, G, R, ZBlockFactory >
 {
+	final ZBlockSolver<Z, G, R> solver;
+	final BiFunction< R, G, I > combineResultGlobal;
+	final BiFunction< List< I >, List< Double >, Z > fusion;
+
+	public ZBlockFusion(
+			final ZBlockSolver< Z, G, R > solver,
+			final BiFunction< R, G, I > combineResultGlobal, // I is some intermediate (maybe R, maybe something else)
+			final BiFunction< List< I >, List< Double >, Z > fusion ) // then fuse many weighted I's into Z's
+	{
+		this.solver = solver;
+		this.combineResultGlobal = combineResultGlobal;
+		this.fusion = fusion;
+	}
 
 	@Override
 	public void globalFusion(
@@ -30,85 +39,98 @@ public class ZBlockFusion< Z, G extends Model< G >, R > implements BlockFusion< 
 			final AssemblyMaps<Z> am, 
 			final HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > blockToTile )
 	{
-		final HashMap< BlockData<?, R, ?, ZBlockFactory>, Z > blockToResult = new HashMap<>();
-		/*
+		final HashMap< BlockData<?, R, ?, ZBlockFactory>, G > blockToG = new HashMap<>();
+
 		for ( final BlockData<?, R, ?, ZBlockFactory > solveItem : blockToTile.keySet() )
 		{
-			blockToResult.put( solveItem, SolveTools.createAffine( blockToTile.get( solveItem ).getModel() ) );
+			if ( solveItem != null )
+			{
+				blockToG.put( solveItem, blockToTile.get( solveItem ).getModel() );//SolveTools.createAffine( blockToTile.get( solveItem ).getModel() ) );
+				LOG.info( "Block " + solveItem.getId() + ": " + blockToG.get( solveItem ) );
+			}
 
-			if ( !DummySolveItemData.class.isInstance( solveItem ) )
-				LOG.info( "Block " + solveItem.getId() + ": " + blockToAffine2d.get( solveItem ) );
+			//if ( !DummySolveItemData.class.isInstance( solveItem ) )
+			//	LOG.info( "Block " + solveItem.getId() + ": " + blockToZ.get( solveItem ) );
 		}
 
-		final ArrayList< Integer > zSections = new ArrayList<>( gs.zToTileIdGlobal.keySet() );
+		final ArrayList< Integer > zSections = new ArrayList<>( am.zToTileIdGlobal.keySet() );
 		Collections.sort( zSections );
 
 		for ( final int z : zSections )
 		{
 			// for every z section, tileIds might be provided from different overlapping blocks if they were not connected and have been split
-			final ArrayList< Pair< Pair< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >, SolveItemData < ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >>, HashSet< String > > > entries = zToSolveItemPairs.get( z );
+			final ArrayList< Pair< Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>>, HashSet< String > > > entries = solver.zToBlockPairs.get( z );
 
-			for ( final Pair< Pair< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >, SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > >, HashSet< String > > entry : entries )
+			for ( final Pair< Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>>, HashSet< String > > entry : entries )
 			{
 				for ( final String tileId : entry.getB() )
 				{
-					final Pair< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >, SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > solveItemPair =
-							entry.getA();
+					final Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>> solveItemPair = entry.getA();
 
+					// TODO: one of them can be null (instead of former DummySolveItem)
 					final BlockData<?, R, ?, ZBlockFactory> solveItemA = solveItemPair.getA();
 					final BlockData<?, R, ?, ZBlockFactory> solveItemB = solveItemPair.getB();
 
-					final R modelA = solveItemA.idToNewModel().get( tileId );
-					final R modelB = solveItemB.idToNewModel().get( tileId );
+					final R modelAIn = solveItemA.idToNewModel().get( tileId );
+					final R modelBIn = solveItemB.idToNewModel().get( tileId );
 
-					final Z globalModelA = blockToResult.get( solveItemA );
-					modelA.preConcatenate( globalModelA );
+					final G globalModelA = blockToG.get( solveItemA );
+					//modelA.preConcatenate( globalModelA );
+					final I modelA = combineResultGlobal.apply( modelAIn, globalModelA );
 
-					final Z globalModelB = blockToResult.get( solveItemB );
-					modelB.preConcatenate( globalModelB );
+					final G globalModelB = blockToG.get( solveItemB );
+					//modelB.preConcatenate( globalModelB );
+					final I modelB = combineResultGlobal.apply( modelBIn, globalModelB );
 
-					final double wA = solveItemA.getWeight( z );
-					final double wB = solveItemB.getWeight( z );
+					// TODO: very inefficient to create the weight functions on the fly
+					final double wA = solveItemA.createWeightFunctions().get( 2 ).apply( (double)z );// .getWeight( z );
+					final double wB = solveItemB.createWeightFunctions().get( 2 ).apply( (double)z );//.getWeight( z );
 
 					// if one of them is zero the model stays at it is
-					final double regularizeB, dynamicLambda;
-					final AffineModel2D tileModel;
+					final double regularizeB;
+					//final double dynamicLambda;
+					//final AffineModel2D tileModel;
+					final Z tileModel;
 
 					if ( wA == 0 && wB == 0 )
 						throw new RuntimeException( "Two block with weight 0, this must not happen: " + solveItemA.getId() + ", " + solveItemB.getId() );
-					else if ( wA == 0 )
+					/*else if ( wA == 0 )
 					{
 						tileModel = modelB.copy();
 						regularizeB = 1;
-						dynamicLambda = solveItemB.zToDynamicLambda().get( z );
+						//dynamicLambda = solveItemB.zToDynamicLambda().get( z );
 					}
 					else if ( wB == 0 )
 					{
 						tileModel = modelA.copy();
 						regularizeB = 0;
-						dynamicLambda = solveItemA.zToDynamicLambda().get( z );
-					}
+						//dynamicLambda = solveItemA.zToDynamicLambda().get( z );
+					}*/
 					else
 					{
 						regularizeB = wB / (wA + wB);
-						tileModel = new InterpolatedAffineModel2D<>( modelA, modelB, regularizeB ).createAffineModel2D();
-						dynamicLambda = solveItemA.zToDynamicLambda().get( z ) *  (1 - regularizeB) + solveItemB.zToDynamicLambda().get( z ) * regularizeB;
+
+						tileModel = fusion.apply(
+								new ArrayList<>( Arrays.asList( modelA, modelB ) ),
+								new ArrayList<>( Arrays.asList( 1.0 - regularizeB, regularizeB ) ) );
+
+						//tileModel = new InterpolatedAffineModel2D<>( modelA, modelB, regularizeB ).createAffineModel2D();
+						//dynamicLambda = solveItemA.zToDynamicLambda().get( z ) *  (1 - regularizeB) + solveItemB.zToDynamicLambda().get( z ) * regularizeB;
 					}
 
 					LOG.info( "z=" + z + ": " + solveItemA.getId() + "-" + wA + " ----- " + solveItemB.getId() + "-" + wB + " ----regB=" + regularizeB );
 
-					gs.zToDynamicLambdaGlobal.put( z, dynamicLambda );
-					gs.idToFinalModelGlobal.put( tileId, tileModel );
+					//gs.zToDynamicLambdaGlobal.put( z, dynamicLambda );
+					am.idToFinalModelGlobal.put( tileId, tileModel );
 
 					// TODO: proper error computation using the matches that are now stored in the SolveItemData object
 					if ( regularizeB < 0.5 )
-						gs.idToErrorMapGlobal.put( tileId, solveItemA.idToSolveItemErrorMap.get( tileId ) );
+						am.idToErrorMapGlobal.put( tileId, solveItemA.idToBlockErrorMap().get( tileId ) );
 					else
-						gs.idToErrorMapGlobal.put( tileId, solveItemB.idToSolveItemErrorMap.get( tileId ) );
+						am.idToErrorMapGlobal.put( tileId, solveItemB.idToBlockErrorMap().get( tileId ) );
 				}
 			}
 		}
-		*/
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(ZBlockFusion.class);

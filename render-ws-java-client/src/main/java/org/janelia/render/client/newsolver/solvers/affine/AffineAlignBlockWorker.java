@@ -1150,11 +1150,11 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					solveItem.blockData().idToNewModel().get( qTileId ),
 					match.getMatches() );
 
-			solveItem.blockData().idToSolveItemErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
-			solveItem.blockData().idToSolveItemErrorMap().putIfAbsent( qTileId, new ArrayList<>() );
+			solveItem.blockData().idToBlockErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
+			solveItem.blockData().idToBlockErrorMap().putIfAbsent( qTileId, new ArrayList<>() );
 
-			solveItem.blockData().idToSolveItemErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
-			solveItem.blockData().idToSolveItemErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
+			solveItem.blockData().idToBlockErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
+			solveItem.blockData().idToBlockErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
 		}
 
 		LOG.info( "computeSolveItemErrors, exit" );

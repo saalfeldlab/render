@@ -3,8 +3,7 @@ package org.janelia.render.client.newsolver.assembly;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.function.BiConsumer;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
@@ -28,25 +27,25 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 {
 	final List<BlockData<?, R, ?, F> > blocks;
 	final BlockSolver< Z, G, R, F > blockSolver;
-	final BiConsumer< R, Z > converter;
-	final Supplier< Z > outputInstanceSupplier;
+	final BlockFusion< Z, G, R, F > blockFusion;
+	final Function< R, Z > converter;
 
 	/**
 	 * @param blocks - all individually computed blocks
-	 * @param converter - a converter from R to Z
-	 * @param outputInstanceSupplier - a Supplier for instances of Z
 	 * @param blockSolver - solver to use for the final assembly
+	 * @param blockFusion - fusion to use for the final assembly
+	 * @param converter - a converter from R to Z - for the trivial case of a single block
 	 */
 	public Assembler(
 			final List<BlockData<?, R, ?, F> > blocks,
 			final BlockSolver< Z, G, R, F > blockSolver,
-			final BiConsumer< R, Z > converter,
-			final Supplier< Z > outputInstanceSupplier )
+			final BlockFusion< Z, G, R, F > blockFusion,
+			final Function< R, Z > converter )
 	{
 		this.blocks = blocks;
 		this.blockSolver = blockSolver;
+		this.blockFusion = blockFusion;
 		this.converter = converter;
-		this.outputInstanceSupplier = outputInstanceSupplier;
 	}
 
 	public AssemblyMaps< Z > createAssembly()
@@ -54,26 +53,25 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 		AssemblyMaps< Z > am;
 
 		// the trivial case of a single block, would crash with the code below
-		if ( ( am = handleTrivialCase( converter, outputInstanceSupplier ) ) != null )
+		if ( ( am = handleTrivialCase( converter ) ) != null )
 			return am;
 		else
 			am = new AssemblyMaps< Z >();
 
-		// now compute the final alignment for each block
 		try
 		{
+			// now compute the final alignment for each block
 			final HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > blockToTile =
 					blockSolver.globalSolve( blocks, am );
 
-			
+			// now fuse blocks into a full assembly
+			blockFusion.globalFusion( blocks, am, blockToTile );
 		}
 		catch (final Exception e)
 		{
 			e.printStackTrace();
 			return null;
 		}
-
-		//assemble();
 
 		return am;
 	}
@@ -85,7 +83,7 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 	 * 
 	 * @return - the result of the trivial case if it was a single block
 	 */
-	protected AssemblyMaps< Z > handleTrivialCase( final BiConsumer< R, Z > converter, final Supplier< Z > outputInstanceSupplier )
+	protected AssemblyMaps< Z > handleTrivialCase( final Function< R, Z > converter )
 	{
 		if ( blocks.size() == 1 )
 		{
@@ -110,10 +108,7 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 				{
 					am.zToTileIdGlobal.get( z ).add( tileId );
 					am.idToTileSpecGlobal.put( tileId, solveItem.rtsc().getTileSpec( tileId ) );
-
-					final Z output = outputInstanceSupplier.get();
-					converter.accept( solveItem.idToNewModel().get( tileId ), output );
-					am.idToFinalModelGlobal.put( tileId, output );
+					am.idToFinalModelGlobal.put( tileId, converter.apply( solveItem.idToNewModel().get( tileId ) ) );
 				}
 			}
 

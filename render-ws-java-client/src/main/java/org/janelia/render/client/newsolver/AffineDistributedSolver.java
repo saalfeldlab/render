@@ -8,9 +8,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.assembly.Assembler;
+import org.janelia.render.client.newsolver.assembly.ZBlockFusion;
 import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
@@ -158,6 +160,12 @@ public class AffineDistributedSolver
 						cmdLineSetup.distributedSolve.maxAllowedErrorGlobal,
 						cmdLineSetup.distributedSolve.maxIterationsGlobal,
 						cmdLineSetup.threadsGlobal );
+
+		final ZBlockFusion<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
+				new ZBlockFusion<>(
+						solver,
+						(r,g) -> { return null; }, // TODO: BiFunction< R, G, I > combineResultGlobal, // I is some intermediate (maybe R, maybe something else)
+						(i,w) -> { return null; } ); // TODO: BiFunction< List< I >, List< Double >, Z > fusion ) // then fuse many weighted I's into Z's
 
 		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler =
 				new Assembler<>(

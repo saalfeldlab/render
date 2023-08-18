@@ -62,7 +62,7 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 	final private HashMap<String, R> idToNewModel = new HashMap<>();
 
 	// the errors per tile
-	final HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap = new HashMap<>();
+	final HashMap< String, List< Pair< String, Double > > > idToBlockErrorMap = new HashMap<>();
 
 	public BlockData(
 			final F blockFactory, // knows how it was created for assembly later?
@@ -98,7 +98,7 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 
 	public ResolvedTileSpecCollection rtsc() { return rtsc; }
 	public HashMap< String, R > idToNewModel() { return idToNewModel; }
-	public HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap() { return idToSolveItemErrorMap; }
+	public HashMap< String, List< Pair< String, Double > > > idToBlockErrorMap() { return idToBlockErrorMap; }
 
 	public HashMap< Integer, HashSet< String > > zToTileId() { return zToTileId; }
 
