@@ -55,14 +55,15 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 	// below are the results that the worker has to fill up
 	//
 
-	// used for global solve outside
-	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
-
 	// contains the model as determined by the local solve
 	final private HashMap<String, R> idToNewModel = new HashMap<>();
 
+	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
 	// the errors per tile
 	final HashMap< String, List< Pair< String, Double > > > idToBlockErrorMap = new HashMap<>();
+	// TODO: goes into the ZBlockFactory??
+	// used for global solve outside
+	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 
 	public BlockData(
 			final F blockFactory, // knows how it was created for assembly later?
