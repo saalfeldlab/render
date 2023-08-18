@@ -1,20 +1,14 @@
 package org.janelia.render.client.newsolver.blocksolveparameters;
 
-import mpicbg.models.Affine1D;
+import java.io.IOException;
+import java.util.ArrayList;
+
 import mpicbg.models.AffineModel1D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.Model;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
 import org.janelia.render.client.newsolver.solvers.intensity.AffineIntensityCorrectionBlockWorker;
-import org.janelia.render.client.parameter.IntensityAdjustParameters;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 
