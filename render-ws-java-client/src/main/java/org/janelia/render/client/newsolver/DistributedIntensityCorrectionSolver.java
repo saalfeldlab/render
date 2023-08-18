@@ -60,8 +60,9 @@ public class DistributedIntensityCorrectionSolver {
 					"--project", "Sec24",
 					"--stack", "v5_acquire_trimmed_align",
 					"--targetStack", "v5_acquire_trimmed_test",
-					"--completeCorrectedStack",
+					//"--completeCorrectedStack",
 					"--numThreads", "12",
+					"--minBlockSize", "2",
 					// for entire stack minZ is 1 and maxZ is 63,300
 					"--zDistance", "1", "--minZ", "1000", "--maxZ", "1001"
 			};
