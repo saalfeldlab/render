@@ -265,17 +265,13 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				final int pZ = (int)Math.round( pTileSpec.getZ() );
 				final int qZ = (int)Math.round( qTileSpec.getZ() );
 
-				inputSolveItem.blockData().zToTileId().putIfAbsent( pZ, new HashSet<>() );
-				inputSolveItem.blockData().zToTileId().putIfAbsent( qZ, new HashSet<>() );
-
-				inputSolveItem.blockData().zToTileId().get( pZ ).add( pId );
-				inputSolveItem.blockData().zToTileId().get( qZ ).add( qId );
+				inputSolveItem.blockData().zToTileId().computeIfAbsent(pZ, k -> new HashSet<>()).add(pId);
+				inputSolveItem.blockData().zToTileId().computeIfAbsent(qZ, k -> new HashSet<>()).add(qId);
 
 				// if the pair is from the same layer we remember the current index in the pairs list for stitching
 				if ( pZ == qZ )
 				{
-					zToPairs.putIfAbsent( pZ, new ArrayList<>() );
-					zToPairs.get( pZ ).add( pairs.size() - 1 );
+					zToPairs.computeIfAbsent(pZ, k -> new ArrayList<>()).add(pairs.size() - 1);
 				}
 
 				// for error computation
@@ -1150,11 +1146,12 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					solveItem.blockData().idToNewModel().get( qTileId ),
 					match.getMatches() );
 
-			solveItem.blockData().idToBlockErrorMap().putIfAbsent( pTileId, new ArrayList<>() );
-			solveItem.blockData().idToBlockErrorMap().putIfAbsent( qTileId, new ArrayList<>() );
-
-			solveItem.blockData().idToBlockErrorMap().get( pTileId ).add( new SerializableValuePair<>( qTileId, vDiff ) );
-			solveItem.blockData().idToBlockErrorMap().get( qTileId ).add( new SerializableValuePair<>( pTileId, vDiff ) );
+			solveItem.blockData().idToBlockErrorMap()
+					.computeIfAbsent(pTileId, k -> new ArrayList<>())
+					.add(new SerializableValuePair<>(qTileId, vDiff));
+			solveItem.blockData().idToBlockErrorMap()
+					.computeIfAbsent(qTileId, k -> new ArrayList<>())
+					.add(new SerializableValuePair<>(pTileId, vDiff));
 		}
 
 		LOG.info( "computeSolveItemErrors, exit" );

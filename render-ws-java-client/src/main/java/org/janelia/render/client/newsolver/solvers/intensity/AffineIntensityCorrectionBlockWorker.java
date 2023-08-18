@@ -21,6 +21,7 @@ import net.imglib2.RealInterval;
 import net.imglib2.img.list.ListImg;
 import net.imglib2.img.list.ListRandomAccess;
 import net.imglib2.util.Intervals;
+import net.imglib2.util.Pair;
 import net.imglib2.util.StopWatch;
 import net.imglib2.util.ValuePair;
 import org.janelia.alignment.filter.FilterSpec;
@@ -56,6 +57,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		extends Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F> {
@@ -81,6 +83,14 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 		final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(blockData.rtsc());
+
+		for (final MinimalTileSpecWrapper wrappedTile : wrappedTiles) {
+			final String tileId = wrappedTile.getTileId();
+			final int z = (int) Math.round(wrappedTile.getZ());
+			blockData.zToTileId().computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
+		}
+
+
 		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
 
 		// this adds the filters to the tile specs and pushes the data to the DB; this should happen in Assembler after merging the blocks
@@ -91,7 +101,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());
 	}
 
-	protected HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<MinimalTileSpecWrapper> tiles) throws ExecutionException, InterruptedException {
+	private HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<MinimalTileSpecWrapper> tiles) throws ExecutionException, InterruptedException {
 
 		LOG.info("deriveIntensityFilterData: entry");
 		if (tiles.size() <2) {
@@ -113,7 +123,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		return coefficientTiles;
 	}
 
-	public HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> splitIntoCoefficientTiles(
+	private HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> splitIntoCoefficientTiles(
 			final List<MinimalTileSpecWrapper> tiles,
 			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException {
 
@@ -153,7 +163,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		return coefficientTiles;
 	}
 
-	protected <T extends Model<T> & Affine1D<T>> HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> generateCoefficientsTiles(
+	private  <T extends Model<T> & Affine1D<T>> HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> generateCoefficientsTiles(
 			final Collection<MinimalTileSpecWrapper> patches,
 			final int nGridPoints) {
 
@@ -202,7 +212,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		return patchPairs;
 	}
 
-	public static RealInterval getBoundingBox(final MinimalTileSpecWrapper m) {
+	private static RealInterval getBoundingBox(final MinimalTileSpecWrapper m) {
 		final double[] p1min = new double[]{ m.getTileSpec().getMinX(), m.getTileSpec().getMinY() };
 		final double[] p1max = new double[]{ m.getTileSpec().getMaxX(), m.getTileSpec().getMaxY() };
 		return new FinalRealInterval(p1min, p1max);
@@ -213,8 +223,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 
 		/* optimize */
 		final TileConfiguration tc = new TileConfiguration();
-		for (final ArrayList<? extends Tile<?>> coefficients : coefficientTiles.values())
-			tc.addTiles(coefficients);
+		coefficientTiles.values().forEach(tc::addTiles);
 
 		LOG.info("solveForGlobalCoefficients: optimizing {} tiles with {} threads", tc.getTiles().size(), numThreads);
 		try {
@@ -222,6 +231,16 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		} catch (final Exception e) {
 			throw new RuntimeException(e);
 		}
+
+		// TODO: this is not the right error measure, what is idToBlockErrorMap supposed to be exactly?
+		for (final Map.Entry<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> entry : coefficientTiles.entrySet()) {
+			final String tileId = entry.getKey().getTileId();
+			final Double error = entry.getValue().stream().mapToDouble(t -> t.getModel().getCost()).average().orElse(Double.MAX_VALUE);
+			final List<Pair<String, Double>> errorList = new ArrayList<>();
+			errorList.add(new ValuePair<>(tileId, error));
+			blockData.idToBlockErrorMap().put(tileId, errorList);
+		}
+
 		LOG.info("solveForGlobalCoefficients: exit, returning intensity coefficients for {} tiles", coefficientTiles.size());
 	}
 
@@ -283,7 +302,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		}
 	}
 
-	public ArrayList<OnTheFlyIntensity> convertModelsToOtfIntensities(
+	private ArrayList<OnTheFlyIntensity> convertModelsToOtfIntensities(
 			final List<MinimalTileSpecWrapper> patches,
 			final int numCoefficients,
 			final Map<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
