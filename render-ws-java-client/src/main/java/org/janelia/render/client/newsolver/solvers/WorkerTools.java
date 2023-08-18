@@ -16,11 +16,20 @@ import org.janelia.render.client.solver.SolveTools;
 import com.esotericsoftware.minlog.Log;
 
 import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
 
 public class WorkerTools
 {
+	public static AffineModel2D createAffine( final Affine2D< ? > model )
+	{
+		final AffineModel2D m = new AffineModel2D();
+		m.set( model.createAffine() );
+
+		return m;
+	}
+
 	public static int fixIds( final List<? extends BlockData<?, ?, ?, ?>> allItems, final int maxId )
 	{
 		final HashSet<Integer> existingIds = new HashSet<>();
