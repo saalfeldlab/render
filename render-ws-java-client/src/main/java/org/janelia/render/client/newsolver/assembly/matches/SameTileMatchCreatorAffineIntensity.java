@@ -4,9 +4,7 @@ import java.util.List;
 
 import org.janelia.alignment.spec.TileSpec;
 
-import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel1D;
-import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
 public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator< List< AffineModel1D > >
