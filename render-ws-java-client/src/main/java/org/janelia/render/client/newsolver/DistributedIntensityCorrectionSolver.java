@@ -22,6 +22,19 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+/*
+// TODO: move this to common class and update once everything is semi-stable
+Cheatsheet for the generics used in the whole distributed solver:
+    Mnemonic        Alignment                           Intensity correction
+F   factory         ZBlockFactory                       ZBlockFactory
+G   global          RigidModel2D                        TranslationModel1D
+M   block(model)    InterpolatedAffineModel2D           ArrayList<AffineModel1D>
+S   stitching       InterpolatedAffineModel2D           -
+P   parameters      FIBSEMAlignmentParameters<M, S>     FIBSEMIntensityCorrectionParameters<M>
+R   (block) result  AffineModel2D                       ArrayList<AffineModel1D>
+Z   final (result)  AffineModel2D                       ArrayList<AffineModel1D>
+ */
+
 public class DistributedIntensityCorrectionSolver {
 	final IntensityCorrectionSetup cmdLineSetup;
 	final RenderSetup renderSetup;
@@ -121,7 +134,8 @@ public class DistributedIntensityCorrectionSolver {
 						cmdLineSetup.distributedSolve.maxIterationsGlobal,
 						cmdLineSetup.threadsGlobal);
 
-		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>, ZBlockFactory> assembler = new Assembler<>(allItems, solver);
+		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>, ZBlockFactory> assembler =
+				new Assembler<>(allItems, solver, (r, z) -> z.addAll(r), ArrayList::new);
 		assembler.createAssembly();
 	}
 
