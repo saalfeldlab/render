@@ -1,49 +1,50 @@
 package org.janelia.render.client.newsolver.assembly.matches;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
+import mpicbg.models.Point;
 import org.janelia.alignment.spec.TileSpec;
 
 import mpicbg.models.AffineModel1D;
 import mpicbg.models.PointMatch;
+import org.janelia.render.client.newsolver.BlockData;
 
-public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator<ArrayList<AffineModel1D>>
-{
-	final int samplesPerDimension;
+public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator<ArrayList<AffineModel1D>> {
 
-	public SameTileMatchCreatorAffineIntensity( final int samplesPerDimension )
-	{
-		this.samplesPerDimension = samplesPerDimension;
+	private BlockData<?, ?, ?, ?> blockContext = null;
+	@Override
+	public void addMatches(
+			final TileSpec tileSpec,
+			final ArrayList<AffineModel1D> modelsA,
+			final ArrayList<AffineModel1D> modelsB,
+			final List<PointMatch> matchesAtoB) {
+
+		if (modelsA.size() != modelsB.size())
+			throw new IllegalArgumentException("Lists of models for A and B must have the same size");
+
+		final ArrayList<Double> averages = blockContext.idToAverages().get(tileSpec.getTileId());
+
+		final int nModels = modelsA.size();
+		for (int i = 0; i < nModels; ++i) {
+			final AffineModel1D modelA = modelsA.get(i);
+			final AffineModel1D modelB = modelsB.get(i);
+			final double subTileAverage = averages.get(i);
+
+			final double[] p = new double[] { subTileAverage };
+			final double[] q = new double[] { subTileAverage };
+
+			modelA.applyInPlace(p);
+			modelB.applyInPlace(q);
+
+			matchesAtoB.add(new PointMatch(new Point(p), new Point(q)));
+		}
 	}
 
-	public SameTileMatchCreatorAffineIntensity() { this( 2 ); }
-
 	@Override
-	public void addMatches(TileSpec tileSpec, ArrayList< AffineModel1D > modelA, ArrayList< AffineModel1D > modelB, List<PointMatch> matchesAtoB)
-	{
-		// TODO: make 64 matches that map A to p and B to q
-
-		/*
-		// make a regular grid
-		final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
-		final double sampleHeight = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
-
-		for (int y = 0; y < samplesPerDimension; ++y)
-		{
-			final double sampleY = y * sampleHeight;
-			for (int x = 0; x < samplesPerDimension; ++x)
-			{
-				final double[] p = new double[] { x * sampleWidth, sampleY };
-				final double[] q = new double[] { x * sampleWidth, sampleY };
-
-				modelA.applyInPlace( p );
-				modelB.applyInPlace( q );
-
-				matchesAtoB.add(new PointMatch( new Point(p), new Point(q) ));
-			}
-		}
-		*/
+	public void setBlockContext(final BlockData<?, ?, ?, ?> blockContext) {
+		this.blockContext = blockContext;
 	}
 
 }

@@ -5,6 +5,7 @@ import java.util.List;
 import org.janelia.alignment.spec.TileSpec;
 
 import mpicbg.models.PointMatch;
+import org.janelia.render.client.newsolver.BlockData;
 
 public interface SameTileMatchCreator< R >
 {
@@ -21,4 +22,10 @@ public interface SameTileMatchCreator< R >
 			R modelA,
 			R modelB,
 			List< PointMatch > matchesAtoB );
+
+	/**
+	 * Set the block context in which the matches are created - this is required for the intensity based match creator
+	 * @param blockContext - the block that is queried for context data
+	 */
+	void setBlockContext(BlockData<?, ?, ?, ?> blockContext);
 }

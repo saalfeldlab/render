@@ -57,7 +57,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 
 public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		extends Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F> {
@@ -142,7 +141,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
 		final ExecutorService exec = Executors.newFixedThreadPool(numThreads);
 		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
-		final ArrayList<Future<?>> futures = new ArrayList<>();
+		final ArrayList<Future<?>> matchComputations = new ArrayList<>();
 		final int meshResolution = tiles.isEmpty() ? 64 : (int) tiles.get(0).getTileSpec().getMeshCellSize();
 		for (final ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper> patchPair : patchPairs) {
 			final Matcher matchJob = new Matcher(patchPair,
@@ -152,13 +151,20 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 												 parameters.numCoefficients(),
 												 meshResolution,
 												 imageProcessorCache);
-			futures.add(exec.submit(matchJob));
+			matchComputations.add(exec.submit(matchJob));
 		}
 
-		for (final Future<?> future : futures)
+		for (final Future<?> future : matchComputations)
 			future.get();
-		exec.shutdown();
 
+		final List<Future<Pair<String, ArrayList<Double>>>> averageCompuations = new ArrayList<>();
+		for (final MinimalTileSpecWrapper tile : tiles)
+			averageCompuations.add(exec.submit(() -> computeAverages(tile, parameters.numCoefficients(), parameters.renderScale(), meshResolution, imageProcessorCache)));
+
+		for (final Future<Pair<String, ArrayList<Double>>> average : averageCompuations)
+			blockData.idToAverages().put(average.get().getA(), average.get().getB());
+
+		exec.shutdown();
 		LOG.info("splitIntoCoefficientTiles: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());
 		return coefficientTiles;
 	}
@@ -326,6 +332,48 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		return correctedOnTheFly;
 	}
 
+	private Pair<String, ArrayList<Double>> computeAverages(
+			final MinimalTileSpecWrapper tile,
+			final int numCoefficients,
+			final double scale,
+			final int meshResolution,
+			final ImageProcessorCache imageProcessorCache) {
+
+		final Interval interval = Intervals.smallestContainingInterval(getBoundingBox(tile));
+		final Rectangle box = new Rectangle((int)interval.min(0), (int)interval.min(1), (int)interval.dimension(0), (int)interval.dimension(1));
+
+		final int w = (int) (box.width * parameters.renderScale() + 0.5);
+		final int h = (int) (box.height * parameters.renderScale() + 0.5);
+		final int n = w * h;
+
+		final FloatProcessor pixels = new FloatProcessor(w, h);
+		final FloatProcessor weights = new FloatProcessor(w, h);
+		final ColorProcessor subTiles = new ColorProcessor(w, h);
+
+		Render.render(tile, numCoefficients, numCoefficients, pixels, weights, subTiles, box.x, box.y, scale, meshResolution, imageProcessorCache);
+
+		final float[] averages = new float[numCoefficients * numCoefficients];
+		final int[] counts = new int[numCoefficients * numCoefficients];
+
+		// iterate over all pixels to compute averages
+		for (int i = 0; i < n; ++i) {
+			final int label = subTiles.get(i);
+
+			/* first label is 1 */
+			if (label > 0) {
+				final float p = pixels.getf(i);
+				averages[label - 1] += p;
+				counts[label - 1]++;
+			}
+		}
+
+		final ArrayList<Double> result = new ArrayList<>();
+		for (int i = 0; i < averages.length; ++i)
+			result.add((double) (averages[i] / counts[i]));
+
+		return new ValuePair<>(tile.getTileId(), result);
+	}
+
 	/**
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
@@ -375,20 +423,20 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 
 			LOG.info("run: entry, pair {} <-> {}", p1.getTileId(), p2.getTileId());
 
-			final Rectangle box = getIntersection(p1, p2);
+			final Rectangle box = computeIntersection(p1, p2);
 			final int w = (int) (box.width * scale + 0.5);
 			final int h = (int) (box.height * scale + 0.5);
 			final int n = w * h;
 
 			final FloatProcessor pixels1 = new FloatProcessor(w, h);
 			final FloatProcessor weights1 = new FloatProcessor(w, h);
-			final ColorProcessor coefficients1 = new ColorProcessor(w, h);
+			final ColorProcessor subTiles1 = new ColorProcessor(w, h);
 			final FloatProcessor pixels2 = new FloatProcessor(w, h);
 			final FloatProcessor weights2 = new FloatProcessor(w, h);
-			final ColorProcessor coefficients2 = new ColorProcessor(w, h);
+			final ColorProcessor subTiles2 = new ColorProcessor(w, h);
 
-			Render.render(p1, numCoefficients, numCoefficients, pixels1, weights1, coefficients1, box.x, box.y, scale, meshResolution, imageProcessorCache);
-			Render.render(p2, numCoefficients, numCoefficients, pixels2, weights2, coefficients2, box.x, box.y, scale, meshResolution, imageProcessorCache);
+			Render.render(p1, numCoefficients, numCoefficients, pixels1, weights1, subTiles1, box.x, box.y, scale, meshResolution, imageProcessorCache);
+			Render.render(p2, numCoefficients, numCoefficients, pixels2, weights2, subTiles2, box.x, box.y, scale, meshResolution, imageProcessorCache);
 
 			LOG.info("run: generate matrix for pair {} <-> {} and filter", p1.getTileId(), p2.getTileId());
 
@@ -410,11 +458,11 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 			 * iterate over all pixels and feed matches into the match
 			 * matrix
 			 */
+			int label1 = 0, label2 = 0, weight1 = 0, weight2 = 0;
 			for (int i = 0; i < n; ++i) {
 				// lazily check if it pays to create a match
-				int coordinate1 = 0, coordinate2 = 0, weight1 = 0, weight2 = 0;
-				final boolean matchCanContribute = (coordinate1 = coefficients1.get(i)) > 0
-						&& (coordinate2 = coefficients2.get(i)) > 0
+				final boolean matchCanContribute = (label1 = subTiles1.get(i)) > 0
+						&& (label2 = subTiles2.get(i)) > 0
 						&& (weight1 = weights1.get(i)) > 0
 						&& (weight2 = weights2.get(i)) > 0;
 
@@ -423,9 +471,9 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 					final double q = pixels2.getf(i);
 					final PointMatch pq = new PointMatch(new Point(new double[] {p}), new Point(new double[] {q}), weight1 * weight2);
 
-					/* first label is 1 */
-					ra.setPosition(coordinate1 - 1, 0);
-					ra.setPosition(coordinate2 - 1, 1);
+					/* first sub-tile label is 1 */
+					ra.setPosition(label1 - 1, 0);
+					ra.setPosition(label2 - 1, 1);
 					ra.get().add(pq);
 				}
 			}
@@ -465,7 +513,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 			LOG.info("run: exit, pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
 		}
 
-		private static Rectangle getIntersection(final MinimalTileSpecWrapper p1, final MinimalTileSpecWrapper p2) {
+		private static Rectangle computeIntersection(final MinimalTileSpecWrapper p1, final MinimalTileSpecWrapper p2) {
 			final Interval i1 = Intervals.smallestContainingInterval(getBoundingBox(p1));
 			final Rectangle box1 = new Rectangle((int)i1.min(0), (int)i1.min(1), (int)i1.dimension(0), (int)i1.dimension(1));
 			final Interval i2 = Intervals.smallestContainingInterval(getBoundingBox(p2));

@@ -126,6 +126,7 @@ public class DistributedIntensityCorrectionSolver {
 
 		LOG.info("computed " + allItems.size() + " blocks, maxId=" + maxId);
 
+		solverSetup.col.blockDataList.get(0);
 		final ZBlockSolver<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> solver =
 				new ZBlockSolver<>(
 						new TranslationModel1D(),

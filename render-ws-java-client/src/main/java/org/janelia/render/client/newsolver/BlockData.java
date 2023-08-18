@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import mpicbg.models.AffineModel1D;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
@@ -61,6 +62,8 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
 	// the errors per tile
 	final HashMap< String, List< Pair< String, Double > > > idToBlockErrorMap = new HashMap<>();
+	// coefficient-tile intensity average for global intensity-correction
+	final HashMap<String, ArrayList<Double>> idToAverages = new HashMap<>();
 	// TODO: goes into the ZBlockFactory??
 	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
@@ -100,6 +103,7 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 	public ResolvedTileSpecCollection rtsc() { return rtsc; }
 	public HashMap< String, R > idToNewModel() { return idToNewModel; }
 	public HashMap< String, List< Pair< String, Double > > > idToBlockErrorMap() { return idToBlockErrorMap; }
+	public HashMap<String, ArrayList<Double>> idToAverages() { return idToAverages; }
 
 	public HashMap< Integer, HashSet< String > > zToTileId() { return zToTileId; }
 
