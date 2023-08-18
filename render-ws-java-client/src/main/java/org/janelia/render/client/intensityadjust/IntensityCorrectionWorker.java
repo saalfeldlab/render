@@ -4,14 +4,10 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 
@@ -19,7 +15,6 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.filter.IntensityMap8BitFilter;
-import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -33,8 +28,6 @@ import org.janelia.render.client.parameter.IntensityAdjustParameters;
 import org.janelia.render.client.parameter.IntensityAdjustParameters.StrategyName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import net.imglib2.util.ValuePair;
 
 /**
  * Core logic for distributed intensity correction processing that can be used for either LSF Array or Spark jobs.
@@ -114,27 +107,8 @@ public class IntensityCorrectionWorker implements Serializable {
         }
 
         if (parameters.deriveFilterData()) {
-
-            final List<CanvasMatches> tilePairs = new ArrayList<>();
-
-            // if specified, use match collection to determine patch pairs instead of tile bounds w/distanceZ
-            if (parameters.matchCollection != null) {
-                final RenderDataClient matchClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
-                                                                          parameters.renderWeb.owner,
-                                                                          parameters.matchCollection);
-                final Set<String> pGroupIds = new HashSet<>();
-                for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
-                    final String pGroupId = tileSpec.getLayout().getSectionId();
-                    if (! pGroupIds.contains(pGroupId)) {
-                        tilePairs.addAll(matchClient.getMatchesWithPGroupId(pGroupId, true));
-                        pGroupIds.add(pGroupId);
-                    }
-                }
-            }
-
             deriveAndStoreIntensityFilterData(dataClient,
-                                              resolvedTiles,
-                                              tilePairs);
+                                              resolvedTiles);
         } else {
             for (int z = minZ.intValue(); z <= maxZ.intValue(); z += 1) {
                 renderIntensityAdjustedScape(dataClient,
@@ -147,8 +121,7 @@ public class IntensityCorrectionWorker implements Serializable {
     }
 
     public void deriveAndStoreIntensityFilterData(final RenderDataClient dataClient,
-                                                  final ResolvedTileSpecCollection resolvedTiles,
-                                                  final List<CanvasMatches> tilePairs)
+                                                  final ResolvedTileSpecCollection resolvedTiles)
             throws ExecutionException, InterruptedException, IOException {
 
         LOG.info("deriveAndStoreIntensityFilterData: entry");
@@ -164,39 +137,14 @@ public class IntensityCorrectionWorker implements Serializable {
 
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
-            final List<OnTheFlyIntensity> corrected;
-            if (tilePairs.size() > 0) {
-
-                final List<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs =
-                        tilePairs.stream().map(tp -> {
-                            final TileSpec pTileSpec = resolvedTiles.getTileSpec(tp.getpId());
-                            final TileSpec qTileSpec = resolvedTiles.getTileSpec(tp.getqId());
-                            if ((pTileSpec != null) && (qTileSpec != null)) {
-                                return new ValuePair<>(new MinimalTileSpecWrapper(pTileSpec),
-                                                       new MinimalTileSpecWrapper(qTileSpec));
-                            } else {
-                                return null;
-                            }
-                        }).filter(Objects::nonNull)
-                                .collect(Collectors.toList());
-
-                corrected = AdjustBlock.correctIntensitiesForPatchPairs(patchPairs,
-                                                                        parameters.renderScale,
-                                                                        imageProcessorCache,
-                                                                        parameters.numCoefficients,
-                                                                        strategy,
-                                                                        parameters.numThreads);
-            } else {
-
-                corrected = AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
-                                                                        parameters.renderScale,
-                                                                        parameters.zDistance,
-                                                                        imageProcessorCache,
-                                                                        parameters.numCoefficients,
-                                                                        strategy,
-                                                                        parameters.numThreads);
-            }
-
+            final List<OnTheFlyIntensity> corrected =
+                    AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
+                                                                parameters.renderScale,
+                                                                parameters.zDistance,
+                                                                imageProcessorCache,
+                                                                parameters.numCoefficients,
+                                                                strategy,
+                                                                parameters.numThreads);
 
             for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
                 final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();

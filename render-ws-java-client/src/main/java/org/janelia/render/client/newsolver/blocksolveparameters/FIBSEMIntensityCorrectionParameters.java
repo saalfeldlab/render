@@ -1,17 +1,16 @@
 package org.janelia.render.client.newsolver.blocksolveparameters;
 
+import java.io.IOException;
+import java.util.List;
+
 import mpicbg.models.Affine1D;
 import mpicbg.models.Model;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
 import org.janelia.render.client.newsolver.solvers.intensity.AffineIntensityCorrectionBlockWorker;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
-
-import java.io.IOException;
-import java.util.List;
 
 /**
  * 
@@ -55,7 +54,6 @@ public class FIBSEMIntensityCorrectionParameters<M extends Model<M> & Affine1D<M
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
 
 	public String intensityCorrectedFilterStack() { return intensityParameters.intensityCorrectedFilterStack; }
-	public String matchCollection() { return intensityParameters.matchCollection; }
 	public long maxNumberOfCachedPixels() { return intensityParameters.getMaxNumberOfCachedPixels(); }
 	public double lambdaTranslation() { return intensityParameters.lambda1; }
 	public double lambdaIdentity() { return intensityParameters.lambda2; }
@@ -72,10 +70,9 @@ public class FIBSEMIntensityCorrectionParameters<M extends Model<M> & Affine1D<M
 		try
 		{
 			return new AffineIntensityCorrectionBlockWorker<>( blockData, startId, threadsWorker );
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return null;
+		} catch (final IOException e) {
+			// TODO: determine if IOException should be propagated instead of wrapping it in a RuntimeException
+			throw new RuntimeException("failed to create worker", e); // don't swallow exceptions!
 		}
 	}
 }
