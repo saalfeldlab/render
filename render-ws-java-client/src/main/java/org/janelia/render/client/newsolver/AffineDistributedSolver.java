@@ -170,8 +170,11 @@ public class AffineDistributedSolver
 				new Assembler<>(
 						allItems,
 						solver,
-						(r,z) -> z.set( r ),
-						AffineModel2D::new);
+						fusion,
+						(r) -> {
+							final AffineModel2D a = new AffineModel2D();
+							a.set( r );
+							return a; } );
 
 		assembler.createAssembly();
 
