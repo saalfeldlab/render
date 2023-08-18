@@ -57,13 +57,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<M>, F extends BlockFactory<F>>
-		extends Worker<M, M, FIBSEMIntensityCorrectionParameters<M>, F> {
+public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
+		extends Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F> {
 
 	private final FIBSEMIntensityCorrectionParameters<M> parameters;
 
 	public AffineIntensityCorrectionBlockWorker(
-			final BlockData<M, M, FIBSEMIntensityCorrectionParameters<M>, F> blockData,
+			final BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F> blockData,
 			final int startId,
 			final int numThreads) throws IOException {
 		super(startId, blockData, numThreads);
@@ -311,7 +311,7 @@ public class AffineIntensityCorrectionBlockWorker<M extends Model<M> & Affine1D<
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
 	@Override
-	public ArrayList<BlockData<M, M, FIBSEMIntensityCorrectionParameters<M>, F>> getBlockDataList() {
+	public ArrayList<BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F>> getBlockDataList() {
 		return null;
 	}
 

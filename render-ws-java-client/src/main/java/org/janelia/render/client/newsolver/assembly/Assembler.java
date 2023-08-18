@@ -24,7 +24,7 @@ public class Assembler< Z, G, R, F extends BlockFactory< F > >
 
 	/**
 	 * @param blocks - all individually computed blocks
-	 * @param startId - we may need to create DummyBlocks where z slices do not overlap with anything (beginning and end of stack)
+	 * @param blockSolver - solver to use for the final assembly
 	 */
 	public Assembler(
 			final List<BlockData<?, R, ?, F> > blocks,
@@ -49,7 +49,7 @@ public class Assembler< Z, G, R, F extends BlockFactory< F > >
 		{
 			blockSolver.globalSolve( blocks, am );
 		}
-		catch ( Exception e)
+		catch (final Exception e)
 		{
 			e.printStackTrace();
 		}
@@ -82,7 +82,7 @@ public class Assembler< Z, G, R, F extends BlockFactory< F > >
 				final HashSet< String > tileIds = solveItem.zToTileId().get( z );
 
 				// if there are none, we continue with the next
-				if ( tileIds.size() == 0 )
+				if (tileIds.isEmpty())
 					continue;
 
 				am.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
