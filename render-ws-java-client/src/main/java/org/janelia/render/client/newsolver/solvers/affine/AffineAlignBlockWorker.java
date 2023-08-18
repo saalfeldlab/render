@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -869,19 +870,18 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 
 				// re-assemble allTileIds and idToTileSpec
-				final ResolvedTileSpecCollection newRTSC = new ResolvedTileSpecCollection();
-
 				// update all the maps
-				for ( final Tile< ? > groupedTile : subgraph )
-				{
-					for ( final Tile< M > t : inputSolveItem.groupedTileToTiles().get( groupedTile ) )
-					{
-						final String tileId = inputSolveItem.tileToIdMap().get( t );
+				final ResolvedTileSpecCollection originalRTSC = inputSolveItem.blockData().rtsc();
+				final List<TileSpec> groupedTileSpecList = subgraph.stream()
+						.map(groupedTile -> inputSolveItem.groupedTileToTiles().get(groupedTile))
+						.flatMap(Collection::stream)
+						.map(tile -> inputSolveItem.tileToIdMap().get(tile))
+						.map(originalRTSC::getTileSpec)
+						.collect(Collectors.toList());
 
-						// TODO trautmane - improve this
-						newRTSC.addTileSpecToCollection( inputSolveItem.blockData().rtsc().getTileSpec( tileId ) );
-					}
-				}
+				final ResolvedTileSpecCollection newRTSC =
+						new ResolvedTileSpecCollection(originalRTSC.getTransformSpecs(),
+													   groupedTileSpecList);
 
 				final AffineBlockDataWrapper< M, S, F > solveItem =
 						new AffineBlockDataWrapper<>(
