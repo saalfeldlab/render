@@ -70,7 +70,8 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 					BlockData<?, R, ?, ZBlockFactory> solveItemA = solveItemPair.getA();
 					BlockData<?, R, ?, ZBlockFactory> solveItemB = solveItemPair.getB();
 
-					// TODO: one of them can be null (instead of former DummySolveItem)
+					// TODO: one of them can be null
+					// TODO: better, just the weight functions are actually important here!
 					if ( solveItemA == null )
 						solveItemA = solveItemB;
 					else if ( solveItemB == null )
