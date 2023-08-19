@@ -3,12 +3,11 @@ package org.janelia.render.client.newsolver.assembly.matches;
 import java.util.List;
 
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.newsolver.BlockData;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 
 /**
  * Note: this code would work with any CoordinateTransform, however it is only the right thing to do if the underlying model is some 2D-affine
@@ -17,7 +16,7 @@ import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
  *
  * @param <R> - the result model of the block solves
  */
-public class SameTileMatchCreatorAffine2D< R extends Affine2D< R >, F extends BlockFactory< F > > implements SameTileMatchCreator< R, F >
+public class SameTileMatchCreatorAffine2D< R extends Affine2D< R > > implements SameTileMatchCreator< R >
 {
 	final int samplesPerDimension;
 
@@ -32,8 +31,8 @@ public class SameTileMatchCreatorAffine2D< R extends Affine2D< R >, F extends Bl
 	public void addMatches(
 			TileSpec tileSpec,
 			R modelA, R modelB,
-			BlockData<?, R, ?, F> blockContextA,
-			BlockData<?, R, ?, F> blockContextB,
+			BlockData<?, R, ?, ?> blockContextA,
+			BlockData<?, R, ?, ?> blockContextB,
 			List<PointMatch> matchesAtoB)
 	{
 		// make a regular grid

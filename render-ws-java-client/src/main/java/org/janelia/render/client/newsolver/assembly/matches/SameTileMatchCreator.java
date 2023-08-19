@@ -3,12 +3,11 @@ package org.janelia.render.client.newsolver.assembly.matches;
 import java.util.List;
 
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.newsolver.BlockData;
 
 import mpicbg.models.PointMatch;
-import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 
-public interface SameTileMatchCreator< R, F extends BlockFactory< F > >
+public interface SameTileMatchCreator< R >
 {
 	/**
 	 * Add a reasonable number of matches to the provided List that map the same TileSpec from one BlockData to another
@@ -24,8 +23,8 @@ public interface SameTileMatchCreator< R, F extends BlockFactory< F > >
 			TileSpec tileSpec,
 			R modelA,
 			R modelB,
-			BlockData<?, R, ?, F> blockContextA,
-			BlockData<?, R, ?, F> blockContextB,
+			BlockData<?, R, ?, ?> blockContextA,
+			BlockData<?, R, ?, ?> blockContextB,
 			List< PointMatch > matchesAtoB );
 
 	
