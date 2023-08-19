@@ -27,7 +27,7 @@ import net.imglib2.util.ValuePair;
 public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, G, R, ZBlockFactory >
 {
 	final G globalModel;
-	final SameTileMatchCreator< R > sameTileMatchCreator;
+	final SameTileMatchCreator< R, ZBlockFactory > sameTileMatchCreator;
 
 	final int maxPlateauWidth;
 	final double maxAllowedError;
@@ -46,7 +46,7 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 
 	public ZBlockSolver(
 			final G globalModel,
-			final SameTileMatchCreator< R > sameTileMatchCreator,
+			final SameTileMatchCreator< R, ZBlockFactory > sameTileMatchCreator,
 			final int maxPlateauWidth,
 			final double maxAllowedError,
 			final int maxIterations,
@@ -143,7 +143,7 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 							final R modelA = solveItemA.idToNewModel().get( tileId );
 							final R modelB = solveItemB.idToNewModel().get( tileId );
 
-							sameTileMatchCreator.addMatches( tileSpecAB, modelA, modelB, matchesAtoB );
+							sameTileMatchCreator.addMatches( tileSpecAB, modelA, modelB, solveItemA, solveItemB, matchesAtoB );
 						}
 
 						final Tile< G > tileA = blockToTile.get( solveItemA );

@@ -1,30 +1,32 @@
 package org.janelia.render.client.newsolver.assembly.matches;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 
-import mpicbg.models.Point;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 
 import mpicbg.models.AffineModel1D;
+import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import org.janelia.render.client.newsolver.BlockData;
 
-public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator<ArrayList<AffineModel1D>> {
+public class SameTileMatchCreatorAffineIntensity< F extends BlockFactory< F > > implements SameTileMatchCreator<ArrayList<AffineModel1D>, F> {
 
-	private BlockData<?, ?, ?, ?> blockContext = null;
 	@Override
 	public void addMatches(
 			final TileSpec tileSpec,
 			final ArrayList<AffineModel1D> modelsA,
 			final ArrayList<AffineModel1D> modelsB,
+			final BlockData<?, ArrayList<AffineModel1D>, ?, F> blockContextA,
+			final BlockData<?, ArrayList<AffineModel1D>, ?, F> blockContextB,
 			final List<PointMatch> matchesAtoB) {
 
 		if (modelsA.size() != modelsB.size())
 			throw new IllegalArgumentException("Lists of models for A and B must have the same size");
 
-		final ArrayList<Double> averages = blockContext.idToAverages().get(tileSpec.getTileId());
+		// TODO: in this case it doesn't matter if it's A or B, for other cases the blocks might be useful
+		final ArrayList<Double> averages = blockContextA.idToAverages().get(tileSpec.getTileId());
 
 		final int nModels = modelsA.size();
 		for (int i = 0; i < nModels; ++i) {
@@ -41,10 +43,4 @@ public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator
 			matchesAtoB.add(new PointMatch(new Point(p), new Point(q)));
 		}
 	}
-
-	@Override
-	public void setBlockContext(final BlockData<?, ?, ?, ?> blockContext) {
-		this.blockContext = blockContext;
-	}
-
 }

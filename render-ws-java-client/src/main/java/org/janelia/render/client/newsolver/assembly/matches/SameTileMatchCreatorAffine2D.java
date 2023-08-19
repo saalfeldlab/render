@@ -8,6 +8,7 @@ import mpicbg.models.Affine2D;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 
 /**
  * Note: this code would work with any CoordinateTransform, however it is only the right thing to do if the underlying model is some 2D-affine
@@ -16,7 +17,7 @@ import org.janelia.render.client.newsolver.BlockData;
  *
  * @param <R> - the result model of the block solves
  */
-public class SameTileMatchCreatorAffine2D< R extends Affine2D< R > > implements SameTileMatchCreator< R >
+public class SameTileMatchCreatorAffine2D< R extends Affine2D< R >, F extends BlockFactory< F > > implements SameTileMatchCreator< R, F >
 {
 	final int samplesPerDimension;
 
@@ -28,7 +29,12 @@ public class SameTileMatchCreatorAffine2D< R extends Affine2D< R > > implements 
 	public SameTileMatchCreatorAffine2D() { this( 2 ); }
 
 	@Override
-	public void addMatches(TileSpec tileSpec, R modelA, R modelB, List<PointMatch> matchesAtoB)
+	public void addMatches(
+			TileSpec tileSpec,
+			R modelA, R modelB,
+			BlockData<?, R, ?, F> blockContextA,
+			BlockData<?, R, ?, F> blockContextB,
+			List<PointMatch> matchesAtoB)
 	{
 		// make a regular grid
 		final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
@@ -49,9 +55,4 @@ public class SameTileMatchCreatorAffine2D< R extends Affine2D< R > > implements 
 			}
 		}
 	}
-
-	 // not needed for alignment
-	@Override
-	public void setBlockContext(final BlockData<?, ?, ?, ?> blockContext) {}
-
 }
