@@ -20,6 +20,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +71,9 @@ public class Create16BitH5StackClient {
                 variableArity = true)
         public List<Double> zValues;
 
+        @ParametersDelegate
+        public ZRangeParameters layerRange = new ZRangeParameters();
+
         @Parameter(
                 names = "--skipFileValidation",
                 description = "Skip check for existence of .raw-archive.h5 files",
@@ -99,9 +103,10 @@ public class Create16BitH5StackClient {
                 // remove mipmap path builder because 16-bit mipmaps don't exist
                 renderDataClient.deleteMipmapPathBuilder(parameters.rawStack);
 
-                final List<Double> zValues = parameters.zValues == null ?
-                                             renderDataClient.getStackZValues(parameters.alignStack) :
-                                             parameters.zValues;
+                final List<Double> zValues = renderDataClient.getStackZValues(parameters.alignStack,
+                                                                              parameters.layerRange.minZ,
+                                                                              parameters.layerRange.maxZ,
+                                                                              parameters.zValues);
                 for (final Double z : zValues) {
                     client.copyZ(renderDataClient, z);
                 }
