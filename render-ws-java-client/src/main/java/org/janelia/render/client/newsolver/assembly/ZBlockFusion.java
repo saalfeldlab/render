@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
@@ -56,10 +57,14 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 		final ArrayList< Integer > zSections = new ArrayList<>( am.zToTileIdGlobal.keySet() );
 		Collections.sort( zSections );
 
+		final HashMap< BlockData<?, R, ?, ZBlockFactory>, ArrayList< Function< Double, Double > > > blockToWeightfunctions =
+				new HashMap<>();
+
 		for ( final int z : zSections )
 		{
 			// for every z section, tileIds might be provided from different overlapping blocks if they were not connected and have been split
-			final ArrayList< Pair< Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>>, HashSet< String > > > entries = solver.zToBlockPairs.get( z );
+			final ArrayList< Pair< Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>>, HashSet< String > > > entries =
+					solver.zToBlockPairs.get( z );
 
 			for ( final Pair< Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>>, HashSet< String > > entry : entries )
 			{
@@ -67,30 +72,73 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 				{
 					final Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>> solveItemPair = entry.getA();
 
-					BlockData<?, R, ?, ZBlockFactory> solveItemA = solveItemPair.getA();
-					BlockData<?, R, ?, ZBlockFactory> solveItemB = solveItemPair.getB();
+					final BlockData<?, R, ?, ZBlockFactory> solveItemA = solveItemPair.getA();
+					final BlockData<?, R, ?, ZBlockFactory> solveItemB = solveItemPair.getB();
 
-					// TODO: one of them can be null
-					// TODO: better, just the weight functions are actually important here!
+					// one of them can be null (beginning and end of stack)
+					// just the weight functions are actually important here!
+					final ArrayList< Function< Double, Double > > wfA, wfB;
+					final R modelAIn, modelBIn;
+					final G globalModelA, globalModelB;
+					final int idA, idB;
+
 					if ( solveItemA == null )
-						solveItemA = solveItemB;
+					{
+						wfA = emptyWeightFunction( 3 );
+						wfB = blockToWeightfunctions.computeIfAbsent( solveItemB, s -> s.createWeightFunctions() );
+
+						modelAIn = solveItemB.idToNewModel().get( tileId );
+						modelBIn = solveItemB.idToNewModel().get( tileId );
+
+						globalModelA = blockToG.get( solveItemB );
+						globalModelB = blockToG.get( solveItemB );
+
+						idA = -1;
+						idB = solveItemB.getId();
+					}
 					else if ( solveItemB == null )
-						solveItemB = solveItemA;
+					{
+						wfA = blockToWeightfunctions.computeIfAbsent( solveItemA, s -> s.createWeightFunctions() );
+						wfB = emptyWeightFunction( 3 );
 
-					final R modelAIn = solveItemA.idToNewModel().get( tileId );
-					final R modelBIn = solveItemB.idToNewModel().get( tileId );
+						modelAIn = solveItemA.idToNewModel().get( tileId );
+						modelBIn = solveItemA.idToNewModel().get( tileId );
 
-					final G globalModelA = blockToG.get( solveItemA );
+						globalModelA = blockToG.get( solveItemA );
+						globalModelB = blockToG.get( solveItemA );
+
+						idA = solveItemA.getId();
+						idB = -1;
+					}
+					else
+					{
+						wfA = blockToWeightfunctions.computeIfAbsent( solveItemA, s -> s.createWeightFunctions() );
+						wfB = blockToWeightfunctions.computeIfAbsent( solveItemB, s -> s.createWeightFunctions() );
+
+						modelAIn = solveItemA.idToNewModel().get( tileId );
+						modelBIn = solveItemB.idToNewModel().get( tileId );
+
+						globalModelA = blockToG.get( solveItemA );
+						globalModelB = blockToG.get( solveItemB );
+
+						idA = solveItemA.getId();
+						idB = solveItemB.getId();
+					}
+
+					//final R modelAIn = solveItemA.idToNewModel().get( tileId );
+					//final R modelBIn = solveItemB.idToNewModel().get( tileId );
+
+					//final G globalModelA = blockToG.get( solveItemA );
 					//modelA.preConcatenate( globalModelA );
 					final I modelA = combineResultGlobal.apply( modelAIn, globalModelA );
 
-					final G globalModelB = blockToG.get( solveItemB );
+					//final G globalModelB = blockToG.get( solveItemB );
 					//modelB.preConcatenate( globalModelB );
 					final I modelB = combineResultGlobal.apply( modelBIn, globalModelB );
 
 					// TODO: very inefficient to create the weight functions on the fly
-					final double wA = solveItemA.createWeightFunctions().get( 2 ).apply( (double)z );// .getWeight( z );
-					final double wB = solveItemB.createWeightFunctions().get( 2 ).apply( (double)z );//.getWeight( z );
+					final double wA = wfA.get( 2 ).apply( (double)z );// .getWeight( z );
+					final double wB = wfB.get( 2 ).apply( (double)z );//.getWeight( z );
 
 					// if one of them is zero the model stays at it is
 					final double regularizeB;
@@ -99,7 +147,7 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 					final Z tileModel;
 
 					if ( wA == 0 && wB == 0 )
-						throw new RuntimeException( "Two block with weight 0, this must not happen: " + solveItemA.getId() + ", " + solveItemB.getId() );
+						throw new RuntimeException( "Two block with weight 0, this must not happen: " + idA + ", " + idB );
 					/*else if ( wA == 0 )
 					{
 						tileModel = modelB.copy();
@@ -124,12 +172,13 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 						//dynamicLambda = solveItemA.zToDynamicLambda().get( z ) *  (1 - regularizeB) + solveItemB.zToDynamicLambda().get( z ) * regularizeB;
 					}
 
-					LOG.info( "z=" + z + ": " + solveItemA.getId() + "-" + wA + " ----- " + solveItemB.getId() + "-" + wB + " ----regB=" + regularizeB );
+					LOG.info( "z=" + z + ": " + idA + "-" + wA + " ----- " + idB + "-" + wB + " ----regB=" + regularizeB );
 
 					//gs.zToDynamicLambdaGlobal.put( z, dynamicLambda );
 					am.idToFinalModelGlobal.put( tileId, tileModel );
 
 					// TODO: proper error computation using the matches that are now stored in the SolveItemData object
+					// works, because a null solveItem always has a weight of 0
 					if ( regularizeB < 0.5 )
 						am.idToErrorMapGlobal.put( tileId, solveItemA.idToBlockErrorMap().get( tileId ) );
 					else
@@ -137,6 +186,16 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 				}
 			}
 		}
+	}
+
+	public static ArrayList< Function< Double, Double > > emptyWeightFunction( final int dim )
+	{
+		final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
+
+		for ( int d = 0; d < dim; ++d )
+			weightF.add( m -> 0.0 );
+
+		return weightF;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(ZBlockFusion.class);
