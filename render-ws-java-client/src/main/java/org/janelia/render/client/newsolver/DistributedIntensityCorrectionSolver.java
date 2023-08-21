@@ -55,12 +55,11 @@ public class DistributedIntensityCorrectionSolver {
 		// TODO: remove testing hack ...
 		if (args.length == 0) {
 			final String[] testArgs = {
-					"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+					"--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
 					"--owner", "Z0720_07m_BR",
 					"--project", "Sec24",
 					"--stack", "v5_acquire_trimmed_align",
-					"--targetStack", "v5_acquire_trimmed_test",
-					//"--completeCorrectedStack",
+					"--targetStack", "v5_acquire_trimmed_test_intensity",
 					"--numThreads", "12",
 					"--minBlockSize", "2",
 					// for entire stack minZ is 1 and maxZ is 63,300
@@ -175,7 +174,6 @@ public class DistributedIntensityCorrectionSolver {
 				cmdLineSetup.renderWeb.owner,
 				cmdLineSetup.renderWeb.project,
 				cmdLineSetup.stack,
-				cmdLineSetup.intensityCorrectedFilterStack,
 				cmdLineSetup.maxPixelCacheGb,
 				cmdLineSetup.lambdaTranslation,
 				cmdLineSetup.lambdaIdentity,
