@@ -60,7 +60,8 @@ public class RenderSetup
 		return runParams;
 	}
 
-	public static RenderSetup setupSolve( final AffineSolverSetup parameters ) throws IOException {
+	public static RenderSetup setupSolve(final AffineSolverSetup parameters) throws IOException {
+
 		parameters.initDefaultValues();
 		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
 		final ZRangeParameters layerRange = new ZRangeParameters();
@@ -76,8 +77,8 @@ public class RenderSetup
 		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, layerRange);
 	}
 
-	public static RenderSetup setupSolve( final IntensityCorrectionSetup parameters ) throws IOException
-	{
+	public static RenderSetup setupSolve(final IntensityCorrectionSetup parameters) throws IOException {
+
 		parameters.initDefaultValues();
 		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
 		final ZRangeParameters layerRange = parameters.layerRange;

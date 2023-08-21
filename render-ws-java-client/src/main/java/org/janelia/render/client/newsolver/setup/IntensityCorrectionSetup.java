@@ -27,12 +27,6 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 			required = true)
 	public String stack;
 
-	@Parameter(
-			names = "--intensityCorrectedFilterStack",
-			description = "Name of stack to store tile specs with intensity corrected filter data.  " +
-					"Omit to render intensity corrected scape-images to disk.")
-	public String intensityCorrectedFilterStack;
-
 	@ParametersDelegate
 	public ZRangeParameters layerRange = new ZRangeParameters();
 

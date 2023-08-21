@@ -48,6 +48,7 @@ import java.awt.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -67,13 +68,9 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 			final BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F> blockData,
 			final int startId,
 			final int numThreads) throws IOException {
+
 		super(startId, blockData, numThreads);
 		parameters = blockData.solveTypeParameters();
-
-		if (parameters.intensityCorrectedFilterStack() != null) {
-			final StackMetaData stackMetaData = renderDataClient.getStackMetaData(renderStack);
-			renderDataClient.setupDerivedStack(stackMetaData, parameters.intensityCorrectedFilterStack());
-		}
 	}
 
 	/**
@@ -89,13 +86,16 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 			blockData.zToTileId().computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
 		}
 
-
 		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
 
-		// this adds the filters to the tile specs and pushes the data to the DB; this should happen in Assembler after merging the blocks
-		//final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(wrappedTiles, coefficientTiles);
-		//addFilters(blockData.rtsc(), idToFilterSpec);
-		//renderDataClient.saveResolvedTiles(blockData.rtsc(), parameters.intensityCorrectedFilterStack(), null);
+		// TODO: this should happen in Assembler after merging the blocks
+		// this adds the filters to the tile specs and pushes the data to the DB
+		final boolean saveResults = true;
+		if (saveResults) {
+			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(wrappedTiles, coefficientTiles);
+			addFilters(blockData.rtsc(), idToFilterSpec);
+			renderDataClient.saveResolvedTiles(blockData.rtsc(), "v5_acquire_trimmed_test_intensity", null);
+		}
 
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());
 	}
@@ -379,7 +379,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 	 */
 	@Override
 	public ArrayList<BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F>> getBlockDataList() {
-		return null;
+		return new ArrayList<>(List.of(blockData));
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);

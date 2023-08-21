@@ -5,6 +5,7 @@ import java.util.ArrayList;
 
 import mpicbg.models.AffineModel1D;
 
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -19,7 +20,6 @@ import org.janelia.render.client.newsolver.solvers.intensity.AffineIntensityCorr
 public class FIBSEMIntensityCorrectionParameters<M>
 		extends BlockDataSolveParameters<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> {
 	private static final long serialVersionUID = -5349107301431384524L;
-	private final String intensityCorrectedFilterStack;
 	private final long maxNumberOfCachedPixels;
 	private final double lambdaTranslation;
 	private final double lambdaIdentity;
@@ -33,7 +33,6 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final String owner,
 			final String project,
 			final String stack,
-			final String intensityCorrectedFilterStack,
 			final long maxNumberOfCachedPixels,
 			final double lambdaTranslation,
 			final double lambdaIdentity,
@@ -43,7 +42,6 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
-		this.intensityCorrectedFilterStack = intensityCorrectedFilterStack;
 		this.maxNumberOfCachedPixels = maxNumberOfCachedPixels;
 		this.lambdaTranslation = lambdaTranslation;
 		this.lambdaIdentity = lambdaIdentity;
@@ -52,7 +50,6 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.zDistance = zDistance;
 	}
 
-	public String intensityCorrectedFilterStack() { return intensityCorrectedFilterStack; }
 	public long maxNumberOfCachedPixels() { return maxNumberOfCachedPixels; }
 	public double lambdaTranslation() { return lambdaTranslation; }
 	public double lambdaIdentity() { return lambdaIdentity; }
