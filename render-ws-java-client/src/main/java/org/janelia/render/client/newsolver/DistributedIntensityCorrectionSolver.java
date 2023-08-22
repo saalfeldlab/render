@@ -174,13 +174,13 @@ public class DistributedIntensityCorrectionSolver {
 				cmdLineSetup.renderWeb.baseDataUrl,
 				cmdLineSetup.renderWeb.owner,
 				cmdLineSetup.renderWeb.project,
-				cmdLineSetup.stack,
-				cmdLineSetup.maxPixelCacheGb,
-				cmdLineSetup.lambdaTranslation,
-				cmdLineSetup.lambdaIdentity,
-				cmdLineSetup.renderScale,
-				cmdLineSetup.numCoefficients,
-				cmdLineSetup.zDistance);
+				cmdLineSetup.intensityAdjust.stack,
+				cmdLineSetup.intensityAdjust.maxPixelCacheGb,
+				cmdLineSetup.intensityAdjust.lambda1,
+				cmdLineSetup.intensityAdjust.lambda2,
+				cmdLineSetup.intensityAdjust.renderScale,
+				cmdLineSetup.intensityAdjust.numCoefficients,
+				cmdLineSetup.intensityAdjust.zDistance);
 	}
 
 	protected <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, ZBlockFactory> setupBlockCollection( final ZBlockFactory blockFactory){

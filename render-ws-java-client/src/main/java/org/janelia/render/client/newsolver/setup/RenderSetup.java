@@ -3,7 +3,6 @@ package org.janelia.render.client.newsolver.setup;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -18,7 +17,6 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
@@ -81,8 +79,8 @@ public class RenderSetup
 
 		parameters.initDefaultValues();
 		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
-		final ZRangeParameters layerRange = parameters.layerRange;
-		final String stack = parameters.stack;
+		final ZRangeParameters layerRange = parameters.intensityAdjust.layerRange;
+		final String stack = parameters.intensityAdjust.stack;
 		final String targetStack = parameters.targetStack;
 		final String targetOwner = parameters.targetOwner;
 		final String targetProject = parameters.targetProject;
