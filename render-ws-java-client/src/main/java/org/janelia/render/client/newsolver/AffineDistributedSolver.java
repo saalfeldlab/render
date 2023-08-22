@@ -8,7 +8,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.assembly.Assembler;
@@ -108,7 +107,7 @@ public class AffineDistributedSolver
 		//
 		// multi-threaded solve
 		//
-		LOG.info( "Multithreading with thread num=" + cmdLineSetup.threadsGlobal );
+		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
 
 		final ArrayList< Callable< List< BlockData<?, AffineModel2D, ?, ZBlockFactory> > > > workers = new ArrayList<>();
 
@@ -118,7 +117,7 @@ public class AffineDistributedSolver
 			{
 				final Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block.createWorker(
 						solverSetup.col.maxId() + 1,
-						cmdLineSetup.threadsWorker );
+						cmdLineSetup.distributedSolve.threadsWorker);
 
 				worker.run();
 
@@ -130,7 +129,7 @@ public class AffineDistributedSolver
 
 		try
 		{
-			final ExecutorService taskExecutor = Executors.newFixedThreadPool( cmdLineSetup.threadsGlobal );
+			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 
 			taskExecutor.invokeAll( workers ).forEach( future ->
 			{
@@ -167,7 +166,7 @@ public class AffineDistributedSolver
 						cmdLineSetup.distributedSolve.maxPlateauWidthGlobal,
 						cmdLineSetup.distributedSolve.maxAllowedErrorGlobal,
 						cmdLineSetup.distributedSolve.maxIterationsGlobal,
-						cmdLineSetup.threadsGlobal );
+						cmdLineSetup.distributedSolve.threadsGlobal);
 
 		final ZBlockFusion<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
 				new ZBlockFusion<>(
@@ -284,8 +283,8 @@ public class AffineDistributedSolver
 				cmdLineSetup.renderWeb.owner,
 				cmdLineSetup.renderWeb.project,
 				cmdLineSetup.stack,
-				cmdLineSetup.matchOwner,
-				cmdLineSetup.matchCollection );
+				cmdLineSetup.matches.matchOwner,
+				cmdLineSetup.matches.matchCollection);
 	}
 
 	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > setupBlockCollection(
@@ -309,7 +308,7 @@ public class AffineDistributedSolver
 
 		for ( final BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > block : col.allBlocks() )
 		{
-			workers.add( new AffineAlignBlockWorker<>( block, col.maxId() + 1, cmdLineSetup.threadsWorker ) );
+			workers.add(new AffineAlignBlockWorker<>(block, col.maxId() + 1, cmdLineSetup.distributedSolve.threadsWorker));
 		}
 
 		return workers;

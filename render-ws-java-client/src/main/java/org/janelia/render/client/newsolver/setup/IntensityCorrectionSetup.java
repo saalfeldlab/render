@@ -22,15 +22,7 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 	@ParametersDelegate
 	public TargetStackParameters targetStack = new TargetStackParameters();
 
-    //
-    // Parameters for running and testing
-    //
-    @Parameter(names = "--threadsWorker", description = "Number of threads to be used within each worker job (default:1)")
-    public int threadsWorker = 1;
-
-    @Parameter(names = "--threadsGlobal", description = "Number of threads to be used for global intensity correction (default: numProcessors/2)")
-    public int threadsGlobal = Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 );
-
+    // Parameter for testing
 	@Parameter(
 			names = "--visualizeResults",
 			description = "Visualize results (if running interactively)",

@@ -69,8 +69,8 @@ public class RenderSetup
 		final String targetStack = parameters.targetStack.stack;
 		final String targetOwner = parameters.targetStack.owner;
 		final String targetProject = parameters.targetStack.project;
-		final String matchOwner = parameters.matchOwner;
-		final String matchCollection = parameters.matchCollection;
+		final String matchOwner = parameters.matches.matchOwner;
+		final String matchCollection = parameters.matches.matchCollection;
 
 		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, layerRange);
 	}

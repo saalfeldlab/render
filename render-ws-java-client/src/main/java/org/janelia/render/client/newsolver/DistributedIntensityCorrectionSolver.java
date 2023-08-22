@@ -82,7 +82,7 @@ public class DistributedIntensityCorrectionSolver {
 		//
 		// multi-threaded solve
 		//
-		LOG.info("Multithreading with thread num=" + cmdLineSetup.threadsGlobal);
+		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
 
 		final ArrayList<Callable<List<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>>>> workers = new ArrayList<>();
 
@@ -92,7 +92,7 @@ public class DistributedIntensityCorrectionSolver {
 						{
 							final Worker<?, ArrayList<AffineModel1D>, ?, ZBlockFactory> worker = block.createWorker(
 									solverSetup.col.maxId() + 1,
-									cmdLineSetup.threadsWorker);
+									cmdLineSetup.distributedSolve.threadsWorker);
 
 							worker.run();
 
@@ -103,7 +103,7 @@ public class DistributedIntensityCorrectionSolver {
 		final ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>> allItems = new ArrayList<>();
 
 		try {
-			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.threadsGlobal);
+			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 
 			taskExecutor.invokeAll(workers).forEach(future -> {
 				try {
@@ -135,7 +135,7 @@ public class DistributedIntensityCorrectionSolver {
 						cmdLineSetup.distributedSolve.maxPlateauWidthGlobal,
 						cmdLineSetup.distributedSolve.maxAllowedErrorGlobal,
 						cmdLineSetup.distributedSolve.maxIterationsGlobal,
-						cmdLineSetup.threadsGlobal);
+						cmdLineSetup.distributedSolve.threadsGlobal);
 
 		// TODO: flesh out lambdas (preconcatenate for all items in list)
 		final ZBlockFusion<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =

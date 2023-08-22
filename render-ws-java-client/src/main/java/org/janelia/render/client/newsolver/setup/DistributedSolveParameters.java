@@ -45,6 +45,16 @@ public class DistributedSolveParameters implements Serializable {
 	)
 	public Integer maxPlateauWidthGlobal = 500;
 
+	@Parameter(
+			names = "--threadsWorker",
+			description = "Number of threads to be used within each worker job (default:1)")
+	public int threadsWorker = 1;
+
+	@Parameter(
+			names = "--threadsGlobal",
+			description = "Number of threads to be used for global intensity correction (default: numProcessors/2)")
+	public int threadsGlobal = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+
 	public DistributedSolveParameters() {}
 
 	public DistributedSolveParameters(
@@ -52,7 +62,9 @@ public class DistributedSolveParameters implements Serializable {
 			final Integer minBlockSize,
 			final Double maxAllowedErrorGlobal,
 			final Integer maxIterationsGlobal,
-			final Integer maxPlateauWidthGlobal) {
+			final Integer maxPlateauWidthGlobal,
+			final int threadsWorker,
+			final int threadsGlobal) {
 
 		if (blockSize < 3)
 			throw new RuntimeException("Blocksize has to be >= 3.");
@@ -64,11 +76,17 @@ public class DistributedSolveParameters implements Serializable {
 			throw new RuntimeException("MaxIterationsGlobal has to be > 0.");
 		if (maxPlateauWidthGlobal < 1)
 			throw new RuntimeException("MaxPlateauWidthGlobal has to be > 0.");
+		if (threadsWorker < 1)
+			throw new RuntimeException("ThreadsWorker has to be > 0.");
+		if (threadsGlobal < 1)
+			throw new RuntimeException("ThreadsGlobal has to be > 0.");
 
 		this.blockSize = blockSize;
 		this.minBlockSize = minBlockSize;
 		this.maxAllowedErrorGlobal = maxAllowedErrorGlobal;
 		this.maxIterationsGlobal = maxIterationsGlobal;
 		this.maxPlateauWidthGlobal = maxPlateauWidthGlobal;
+		this.threadsWorker = threadsWorker;
+		this.threadsGlobal = threadsGlobal;
 	}
 }

@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
@@ -53,24 +54,14 @@ public class AffineSolverSetup extends CommandLineParameters
 	@ParametersDelegate
 	public ZRangeParameters zRange = new ZRangeParameters();
 
+	@ParametersDelegate
+	public MatchCollectionParameters matches = new MatchCollectionParameters();
+
     @Parameter(
             names = "--stack",
             description = "Stack name",
             required = true)
     public String stack;
-
-    @Parameter(
-            names = "--matchOwner",
-            description = "Owner of match collection for tiles (default is owner)"
-    )
-    public String matchOwner;
-
-    @Parameter(
-            names = "--matchCollection",
-            description = "Name of match collection for tiles",
-            required = true
-    )
-    public String matchCollection;
 
     //
     // stitching align model, by TRANSLATION with tunable regularization --- with RIGID (default: 0.00)
@@ -172,15 +163,7 @@ public class AffineSolverSetup extends CommandLineParameters
     @Parameter(names = "--maxZRangeMatches", description = "max z-range in which to load matches (default: '-1' - no limit)")
     public int maxZRangeMatches = -1;
 
-    //
-    // Parameters for running and testing
-    //
-    @Parameter(names = "--threadsWorker", description = "Number of threads to be used within each worker job (default:1)")
-    public int threadsWorker = 1;
-
-    @Parameter(names = "--threadsGlobal", description = "Number of threads to be used for aligning all blocks (default: numProcessors/2)")
-    public int threadsGlobal = Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 );
-
+    // Parameter for testing
 	@Parameter(
 			names = "--visualizeResults",
 			description = "Visualize results (if running interactively)",
@@ -190,8 +173,8 @@ public class AffineSolverSetup extends CommandLineParameters
 	public void initDefaultValues()
 	{
 		// owner for matches is the same as owner for render, if not specified otherwise
-		if ( this.matchOwner == null )
-			this.matchOwner = renderWeb.owner;
+		if ( this.matches.matchOwner == null )
+			this.matches.matchOwner = renderWeb.owner;
 
 		// owner for target is the same as owner for render, if not specified otherwise
 		if ( this.targetStack.owner == null )
