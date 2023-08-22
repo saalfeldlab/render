@@ -2,9 +2,10 @@ package org.janelia.render.client.newsolver.setup;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.IntensityAdjustParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 
 
 public class IntensityCorrectionSetup extends CommandLineParameters {
@@ -17,10 +18,13 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 	public DistributedSolveParameters distributedSolve = new DistributedSolveParameters();
 
 	@ParametersDelegate
-	public IntensityAdjustParameters intensityAdjust = new IntensityAdjustParameters();
+	public AlgorithmicIntensityAdjustParameters intensityAdjust = new AlgorithmicIntensityAdjustParameters();
 
 	@ParametersDelegate
 	public TargetStackParameters targetStack = new TargetStackParameters();
+
+	@ParametersDelegate
+	public ZRangeParameters layerRange = new ZRangeParameters();
 
     // Parameter for testing
 	@Parameter(

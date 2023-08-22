@@ -12,6 +12,8 @@ import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
+import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +62,7 @@ public class DistributedIntensityCorrectionSolver {
 					"--project", "Sec24",
 					"--stack", "v5_acquire_trimmed_align",
 					"--targetStack", "v5_acquire_trimmed_test_intensity",
-					"--numThreads", "12",
+					"--threadsWorker", "12",
 					"--minBlockSize", "2",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 63,300
@@ -169,18 +171,20 @@ public class DistributedIntensityCorrectionSolver {
 
 	protected <M> FIBSEMIntensityCorrectionParameters<M> setupSolveParameters() {
 
+		final RenderWebServiceParameters renderWeb = cmdLineSetup.renderWeb;
+		final AlgorithmicIntensityAdjustParameters intensityAdjust = cmdLineSetup.intensityAdjust;
 		return new FIBSEMIntensityCorrectionParameters<>(
 				null,
-				cmdLineSetup.renderWeb.baseDataUrl,
-				cmdLineSetup.renderWeb.owner,
-				cmdLineSetup.renderWeb.project,
-				cmdLineSetup.intensityAdjust.stack,
-				cmdLineSetup.intensityAdjust.maxPixelCacheGb,
-				cmdLineSetup.intensityAdjust.lambda1,
-				cmdLineSetup.intensityAdjust.lambda2,
-				cmdLineSetup.intensityAdjust.renderScale,
-				cmdLineSetup.intensityAdjust.numCoefficients,
-				cmdLineSetup.intensityAdjust.zDistance);
+				renderWeb.baseDataUrl,
+				renderWeb.owner,
+				renderWeb.project,
+				intensityAdjust.stack,
+				intensityAdjust.maxPixelCacheGb,
+				intensityAdjust.lambda1,
+				intensityAdjust.lambda2,
+				intensityAdjust.renderScale,
+				intensityAdjust.numCoefficients,
+				intensityAdjust.zDistance);
 	}
 
 	protected <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, ZBlockFactory> setupBlockCollection( final ZBlockFactory blockFactory){

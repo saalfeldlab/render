@@ -14,8 +14,6 @@ import java.util.List;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.render.client.intensityadjust.AdjustBlock;
-import org.janelia.render.client.intensityadjust.AffineIntensityCorrectionStrategy;
 
 /**
  * Parameters for rendering intensity adjusted montage scapes for layers within a stack.
@@ -37,11 +35,11 @@ public class IntensityAdjustParameters
     @ParametersDelegate
     public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
-    @Parameter(
-            names = "--stack",
-            description = "Stack name",
-            required = true)
-    public String stack;
+    @ParametersDelegate
+    public AlgorithmicIntensityAdjustParameters algorithmic = new AlgorithmicIntensityAdjustParameters();
+
+    @ParametersDelegate
+    public ZRangeParameters layerRange = new ZRangeParameters();
 
     @Parameter(
             names = "--intensityCorrectedFilterStack",
@@ -60,9 +58,6 @@ public class IntensityAdjustParameters
                           "(e.g. /Z0720_7m_BR/Sec39/v1_align/intensity_adjusted_scapes_20210501_112233).  " +
                           "Omit to have auto generated data set path.")
     public String dataSetPath;
-
-    @ParametersDelegate
-    public ZRangeParameters layerRange = new ZRangeParameters();
 
     @Parameter(
             names = "--z",
@@ -91,46 +86,6 @@ public class IntensityAdjustParameters
             description = "Number of threads to use")
     public Integer numThreads = 1;
 
-    @Parameter(
-            names = "--lambda1",
-            description = "First lambda for strategy model")
-    public Double lambda1 = AffineIntensityCorrectionStrategy.DEFAULT_LAMBDA;
-
-    @Parameter(
-            names = "--lambda2",
-            description = "Second lambda for strategy model")
-    public Double lambda2 = AffineIntensityCorrectionStrategy.DEFAULT_LAMBDA;
-
-    @Parameter(
-            names = { "--maxPixelCacheGb" },
-            description = "Maximum number of gigabytes of pixels to cache"
-    )
-    public Integer maxPixelCacheGb = 1;
-
-    @Parameter(
-            names = "--completeCorrectedStack",
-            description = "Complete the intensity corrected stack after processing",
-            arity = 0)
-    public boolean completeCorrectedStack = false;
-
-    @Parameter(
-            names = "--renderScale",
-            description = "Scale for rendered tiles used during intensity comparison")
-    public double renderScale = 0.1;
-
-    @Parameter(
-            names = "--zDistance",
-            description = "If specified, apply correction across this many z-layers from the current z-layer " +
-                          "(omit to only correct in 2D)")
-    public Integer zDistance;
-
-    @Parameter(
-            names = { "--numCoefficients" },
-            description = "Number of correction coefficients to derive in each dimension " +
-                          "(e.g. value of 8 will divide each tile into 8x8 = 64 sub-regions)"
-    )
-    public int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
-
     public File getSectionRootDirectory(final Date forRunTime) {
 
         final Path sectionRootPath;
@@ -140,7 +95,7 @@ public class IntensityAdjustParameters
             sectionRootPath = Paths.get(rootDirectory,
                                         renderWeb.owner,
                                         renderWeb.project,
-                                        stack,
+                                        algorithmic.stack,
                                         scapeDir).toAbsolutePath();
         } else {
             sectionRootPath = Paths.get(rootDirectory, dataSetPath);
@@ -160,7 +115,7 @@ public class IntensityAdjustParameters
     }
 
     public long getMaxNumberOfCachedPixels() {
-        return maxPixelCacheGb * 1_000_000_000L;
+        return algorithmic.maxPixelCacheGb * 1_000_000_000L;
     }
 
     public void validateAndSetDefaults() throws IllegalArgumentException {
@@ -181,6 +136,6 @@ public class IntensityAdjustParameters
     }
 
     public boolean correctIn3D() {
-        return (zDistance != null) && (zDistance > 0);
+        return (algorithmic.zDistance != null) && (algorithmic.zDistance > 0);
     }
 }

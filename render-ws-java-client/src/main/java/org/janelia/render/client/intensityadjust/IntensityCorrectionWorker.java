@@ -44,36 +44,36 @@ public class IntensityCorrectionWorker implements Serializable {
                                      final RenderDataClient dataClient) throws IOException {
         this.parameters = parameters;
 
-        this.zValues = dataClient.getStackZValues(parameters.stack,
+        this.zValues = dataClient.getStackZValues(parameters.algorithmic.stack,
                                                   parameters.layerRange.minZ,
                                                   parameters.layerRange.maxZ,
                                                   parameters.zValues);
-        if (this.zValues.size() == 0) {
+        if (this.zValues.isEmpty()) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
         if (StrategyName.AFFINE.equals(parameters.strategyName)) {
 
-            this.strategy = new AffineIntensityCorrectionStrategy(parameters.lambda1,
-                                                                  parameters.lambda2);
+            this.strategy = new AffineIntensityCorrectionStrategy(parameters.algorithmic.lambda1,
+                                                                  parameters.algorithmic.lambda2);
 
         } else if (StrategyName.FIRST_LAYER_QUADRATIC.equals(parameters.strategyName)) {
 
-            this.strategy = new QuadraticIntensityCorrectionStrategy(parameters.lambda1,
-                                                                     parameters.lambda2,
+            this.strategy = new QuadraticIntensityCorrectionStrategy(parameters.algorithmic.lambda1,
+                                                                     parameters.algorithmic.lambda2,
                                                                      this.zValues.get(0));
 
         } else if (StrategyName.ALL_LAYERS_QUADRATIC.equals(parameters.strategyName)) {
 
-            this.strategy = new QuadraticIntensityCorrectionStrategy(parameters.lambda1,
-                                                                     parameters.lambda2,
+            this.strategy = new QuadraticIntensityCorrectionStrategy(parameters.algorithmic.lambda1,
+                                                                     parameters.algorithmic.lambda2,
                                                                      new HashSet<>(this.zValues));
 
         } else {
             throw new IllegalArgumentException(parameters.strategyName + " strategy is not supported");
         }
 
-        this.stackMetaData = dataClient.getStackMetaData(parameters.stack);
+        this.stackMetaData = dataClient.getStackMetaData(parameters.algorithmic.stack);
         if (parameters.intensityCorrectedFilterStack == null) {
             final File sectionRootDirectory = parameters.getSectionRootDirectory(new Date());
             FileUtil.ensureWritableDirectory(sectionRootDirectory);
@@ -101,9 +101,9 @@ public class IntensityCorrectionWorker implements Serializable {
         
         final ResolvedTileSpecCollection resolvedTiles;
         if (minZ.equals(maxZ)) {
-            resolvedTiles = dataClient.getResolvedTiles(parameters.stack, minZ);
+            resolvedTiles = dataClient.getResolvedTiles(parameters.algorithmic.stack, minZ);
         } else {
-            resolvedTiles = dataClient.getResolvedTilesForZRange(parameters.stack, minZ, maxZ);
+            resolvedTiles = dataClient.getResolvedTilesForZRange(parameters.algorithmic.stack, minZ, maxZ);
         }
 
         if (parameters.deriveFilterData()) {
@@ -139,10 +139,10 @@ public class IntensityCorrectionWorker implements Serializable {
 
             final List<OnTheFlyIntensity> corrected =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
-                                                                parameters.renderScale,
-                                                                parameters.zDistance,
+                                                                parameters.algorithmic.renderScale,
+                                                                parameters.algorithmic.zDistance,
                                                                 imageProcessorCache,
-                                                                parameters.numCoefficients,
+                                                                parameters.algorithmic.numCoefficients,
                                                                 strategy,
                                                                 parameters.numThreads);
 
@@ -176,7 +176,7 @@ public class IntensityCorrectionWorker implements Serializable {
         final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
 
         final String parametersUrl =
-                dataClient.getRenderParametersUrlString(parameters.stack,
+                dataClient.getRenderParametersUrlString(parameters.algorithmic.stack,
                                                         stackBounds.getMinX(),
                                                         stackBounds.getMinY(),
                                                         integralZ,
@@ -207,8 +207,8 @@ public class IntensityCorrectionWorker implements Serializable {
 //            case GLOBAL_PER_SLICE:
         slice = AdjustBlock.renderIntensityAdjustedSliceGlobalPerSlice(resolvedTiles,
                                                                        sliceRenderParameters,
-                                                                       parameters.renderScale,
-                                                                       parameters.zDistance,
+                                                                       parameters.algorithmic.renderScale,
+                                                                       parameters.algorithmic.zDistance,
                                                                        imageProcessorCache,
                                                                        integralZ,
                                                                        AdjustBlock.DEFAULT_NUM_COEFFICIENTS,
@@ -235,7 +235,7 @@ public class IntensityCorrectionWorker implements Serializable {
 
     public void completeCorrectedStackAsNeeded(final RenderDataClient dataClient)
             throws IOException {
-        if (parameters.deriveFilterData() && parameters.completeCorrectedStack) {
+        if (parameters.deriveFilterData() && parameters.algorithmic.completeCorrectedStack) {
             dataClient.setStackState(parameters.intensityCorrectedFilterStack,
                                      StackMetaData.StackState.COMPLETE);
 

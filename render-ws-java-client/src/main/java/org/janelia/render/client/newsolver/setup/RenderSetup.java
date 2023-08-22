@@ -79,7 +79,7 @@ public class RenderSetup
 
 		parameters.initDefaultValues();
 		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
-		final ZRangeParameters layerRange = parameters.intensityAdjust.layerRange;
+		final ZRangeParameters layerRange = parameters.layerRange;
 		final String stack = parameters.intensityAdjust.stack;
 		final String targetStack = parameters.targetStack.stack;
 		final String targetOwner = parameters.targetStack.owner;
