@@ -30,6 +30,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.AdjustBlock;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
@@ -90,11 +91,13 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 
 		// TODO: this should happen in Assembler after merging the blocks
 		// this adds the filters to the tile specs and pushes the data to the DB
-		final boolean saveResults = true;
+		final boolean saveResults = false;
 		if (saveResults) {
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(wrappedTiles, coefficientTiles);
 			addFilters(blockData.rtsc(), idToFilterSpec);
-			renderDataClient.saveResolvedTiles(blockData.rtsc(), "v5_acquire_trimmed_test_intensity", null);
+			final String targetStack = "v5_acquire_trimmed_test_intensity";
+			renderDataClient.saveResolvedTiles(blockData.rtsc(), targetStack, null);
+			renderDataClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
 		}
 
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());

@@ -62,6 +62,7 @@ public class DistributedIntensityCorrectionSolver {
 					"--targetStack", "v5_acquire_trimmed_test_intensity",
 					"--numThreads", "12",
 					"--minBlockSize", "2",
+					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 63,300
 					"--zDistance", "1", "--minZ", "1000", "--maxZ", "1001"
 			};
