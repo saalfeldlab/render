@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver.setup;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
+import org.janelia.render.client.parameter.CommandLineParameters;
 
 import java.io.Serializable;
 

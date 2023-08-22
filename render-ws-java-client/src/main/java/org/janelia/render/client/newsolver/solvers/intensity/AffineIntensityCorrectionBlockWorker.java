@@ -95,7 +95,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		if (saveResults) {
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(wrappedTiles, coefficientTiles);
 			addFilters(blockData.rtsc(), idToFilterSpec);
-			final String targetStack = "v5_acquire_trimmed_test_intensity";
+			final String targetStack = "v2_acquire_test_intensity";
 			renderDataClient.saveResolvedTiles(blockData.rtsc(), targetStack, null);
 			renderDataClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
 		}

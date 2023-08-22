@@ -1,6 +1,7 @@
 package org.janelia.render.client.newsolver.setup;
 
 import com.beust.jcommander.Parameter;
+import com.beust.jcommander.Parameters;
 import com.beust.jcommander.ParametersDelegate;
 import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -8,11 +9,12 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 
 
+@Parameters
 public class IntensityCorrectionSetup extends CommandLineParameters {
 	private static final long serialVersionUID = -932686804562684884L;
 
 	@ParametersDelegate
-    public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+	public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
 	@ParametersDelegate
 	public DistributedSolveParameters distributedSolve = new DistributedSolveParameters();

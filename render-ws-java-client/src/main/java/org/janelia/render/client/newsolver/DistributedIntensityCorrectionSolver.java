@@ -57,13 +57,13 @@ public class DistributedIntensityCorrectionSolver {
 		// TODO: remove testing hack ...
 		if (args.length == 0) {
 			final String[] testArgs = {
-					"--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-					"--owner", "Z0720_07m_BR",
-					"--project", "Sec24",
-					"--stack", "v5_acquire_trimmed_align",
-					"--targetStack", "v5_acquire_trimmed_test_intensity",
+					"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+					"--owner", "cellmap",
+					"--project", "jrc_mus_thymus_1",
+					"--stack", "v2_acquire",
+					"--targetStack", "v2_acquire_test_intensity",
 					"--threadsWorker", "12",
-					"--minBlockSize", "2",
+					"--minBlockSize", "12",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 63,300
 					"--zDistance", "1", "--minZ", "1000", "--maxZ", "1001"
