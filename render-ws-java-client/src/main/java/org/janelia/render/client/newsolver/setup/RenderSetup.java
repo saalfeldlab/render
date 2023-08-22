@@ -63,12 +63,12 @@ public class RenderSetup
 		parameters.initDefaultValues();
 		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
 		final ZRangeParameters layerRange = new ZRangeParameters();
-		layerRange.minZ = parameters.minZ;
-		layerRange.maxZ = parameters.maxZ;
+		layerRange.minZ = parameters.zRange.minZ;
+		layerRange.maxZ = parameters.zRange.maxZ;
 		final String stack = parameters.stack;
-		final String targetStack = parameters.targetStack;
-		final String targetOwner = parameters.targetOwner;
-		final String targetProject = parameters.targetProject;
+		final String targetStack = parameters.targetStack.stack;
+		final String targetOwner = parameters.targetStack.owner;
+		final String targetProject = parameters.targetStack.project;
 		final String matchOwner = parameters.matchOwner;
 		final String matchCollection = parameters.matchCollection;
 
@@ -81,13 +81,11 @@ public class RenderSetup
 		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
 		final ZRangeParameters layerRange = parameters.intensityAdjust.layerRange;
 		final String stack = parameters.intensityAdjust.stack;
-		final String targetStack = parameters.targetStack;
-		final String targetOwner = parameters.targetOwner;
-		final String targetProject = parameters.targetProject;
-		final String matchOwner = null;
-		final String matchCollection = null;
+		final String targetStack = parameters.targetStack.stack;
+		final String targetOwner = parameters.targetStack.owner;
+		final String targetProject = parameters.targetStack.project;
 
-		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, layerRange);
+		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, null, null, stack, layerRange);
 	}
 
 	private static RenderSetup setupSolve(

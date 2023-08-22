@@ -6,7 +6,6 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 
-import java.util.List;
 
 public class IntensityCorrectionSetup extends CommandLineParameters {
 	private static final long serialVersionUID = -932686804562684884L;
@@ -20,33 +19,12 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 	@ParametersDelegate
 	public IntensityAdjustParameters intensityAdjust = new IntensityAdjustParameters();
 
+	@ParametersDelegate
+	public TargetStackParameters targetStack = new TargetStackParameters();
+
     //
-    // for saving and running
+    // Parameters for running and testing
     //
-
-    @Parameter(
-            names = "--targetOwner",
-            description = "Owner name for intensity corrected result stack (default is same as owner)"
-    )
-    public String targetOwner;
-
-    @Parameter(
-            names = "--targetProject",
-            description = "Project name for intensity corrected result stack (default is same as project)"
-    )
-    public String targetProject;
-
-    @Parameter(
-            names = "--targetStack",
-            description = "Name for intensity corrected result stack (if omitted, models are simply logged)")
-    public String targetStack;
-
-    @Parameter(
-            names = "--completeTargetStack",
-            description = "Complete the target stack after processing",
-            arity = 0)
-    public boolean completeTargetStack = false;
-
     @Parameter(names = "--threadsWorker", description = "Number of threads to be used within each worker job (default:1)")
     public int threadsWorker = 1;
 
@@ -61,11 +39,11 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 
 	public void initDefaultValues() {
 		// owner for target is the same as owner for render, if not specified otherwise
-		if ( this.targetOwner == null )
-			this.targetOwner = renderWeb.owner;
+		if ( this.targetStack.owner == null )
+			this.targetStack.owner = renderWeb.owner;
 
 		// project for target is the same as project for render, if not specified otherwise
-		if ( this.targetProject == null )
-			this.targetProject = renderWeb.project;
+		if ( this.targetStack.project == null )
+			this.targetStack.project = renderWeb.project;
 	}
 }

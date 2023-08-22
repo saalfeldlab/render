@@ -7,6 +7,7 @@ import java.util.List;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
 
@@ -46,21 +47,17 @@ public class AffineSolverSetup extends CommandLineParameters
 	@ParametersDelegate
 	public DistributedSolveParameters distributedSolve = new DistributedSolveParameters();
 
+	@ParametersDelegate
+	public TargetStackParameters targetStack = new TargetStackParameters();
+
+	@ParametersDelegate
+	public ZRangeParameters zRange = new ZRangeParameters();
+
     @Parameter(
             names = "--stack",
             description = "Stack name",
             required = true)
     public String stack;
-
-    @Parameter(
-            names = "--minZ",
-            description = "Minimum (split) Z value for layers to be processed")
-    public Double minZ;
-
-    @Parameter(
-            names = "--maxZ",
-            description = "Maximum (split) Z value for layers to be processed")
-    public Double maxZ;
 
     @Parameter(
             names = "--matchOwner",
@@ -176,32 +173,8 @@ public class AffineSolverSetup extends CommandLineParameters
     public int maxZRangeMatches = -1;
 
     //
-    // for saving and running
+    // Parameters for running and testing
     //
-
-    @Parameter(
-            names = "--targetOwner",
-            description = "Owner name for aligned result stack (default is same as owner)"
-    )
-    public String targetOwner;
-
-    @Parameter(
-            names = "--targetProject",
-            description = "Project name for aligned result stack (default is same as project)"
-    )
-    public String targetProject;
-
-    @Parameter(
-            names = "--targetStack",
-            description = "Name for aligned result stack (if omitted, aligned models are simply logged)")
-    public String targetStack;
-
-    @Parameter(
-            names = "--completeTargetStack",
-            description = "Complete the target stack after processing",
-            arity = 0)
-    public boolean completeTargetStack = false;
-
     @Parameter(names = "--threadsWorker", description = "Number of threads to be used within each worker job (default:1)")
     public int threadsWorker = 1;
 
@@ -221,12 +194,12 @@ public class AffineSolverSetup extends CommandLineParameters
 			this.matchOwner = renderWeb.owner;
 
 		// owner for target is the same as owner for render, if not specified otherwise
-		if ( this.targetOwner == null )
-			this.targetOwner = renderWeb.owner;
+		if ( this.targetStack.owner == null )
+			this.targetStack.owner = renderWeb.owner;
 
 		// project for target is the same as project for render, if not specified otherwise
-		if ( this.targetProject == null )
-			this.targetProject = renderWeb.project;
+		if ( this.targetStack.project == null )
+			this.targetStack.project = renderWeb.project;
 	}
 
 	public InterpolatedAffineModel2D<InterpolatedAffineModel2D< InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >, TranslationModel2D >, StabilizingAffineModel2D<RigidModel2D>> blockModel()
