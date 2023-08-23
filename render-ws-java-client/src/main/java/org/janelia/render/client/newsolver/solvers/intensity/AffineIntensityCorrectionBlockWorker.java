@@ -7,7 +7,6 @@ import mpicbg.models.AffineModel1D;
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IdentityModel;
 import mpicbg.models.InterpolatedAffineModel1D;
-import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
@@ -24,20 +23,13 @@ import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
 import net.imglib2.util.StopWatch;
 import net.imglib2.util.ValuePair;
-import org.janelia.alignment.filter.FilterSpec;
-import org.janelia.alignment.filter.IntensityMap8BitFilter;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.AdjustBlock;
 import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
 import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduceFilter;
 import org.janelia.render.client.intensityadjust.intensity.Render;
-import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity;
-import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
@@ -49,11 +41,9 @@ import java.awt.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -87,23 +77,24 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 			blockData.zToTileId().computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
 		}
 
-		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
+		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
 
-		// TODO: this should happen in Assembler after merging the blocks
-		// this adds the filters to the tile specs and pushes the data to the DB
-		final boolean saveResults = false;
-		if (saveResults) {
-			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(wrappedTiles, coefficientTiles);
-			addFilters(blockData.rtsc(), idToFilterSpec);
-			final String targetStack = "v2_acquire_test_intensity";
-			renderDataClient.saveResolvedTiles(blockData.rtsc(), targetStack, null);
-			renderDataClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
-		}
+		if (coefficientTiles == null)
+			throw new RuntimeException("AffineIntensityCorrectionBlockWorker: no coefficient tiles were computed");
+
+		coefficientTiles.forEach((tileId, tiles) -> {
+			final ArrayList<AffineModel1D> models = new ArrayList<>();
+			tiles.forEach(tile -> {
+				final AffineModel1D model = ((InterpolatedAffineModel1D<?, ?>) tile.getModel()).createAffineModel1D();
+				models.add(model);
+			});
+			blockData.idToNewModel().put(tileId, models);
+		});
 
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());
 	}
 
-	private HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<MinimalTileSpecWrapper> tiles) throws ExecutionException, InterruptedException {
+	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<MinimalTileSpecWrapper> tiles) throws ExecutionException, InterruptedException {
 
 		LOG.info("deriveIntensityFilterData: entry");
 		if (tiles.size() <2) {
@@ -117,7 +108,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 				? ImageProcessorCache.DISABLED_CACHE
 				: new ImageProcessorCache(parameters.maxNumberOfCachedPixels(), true, false);
 
-		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = splitIntoCoefficientTiles(tiles, imageProcessorCache);
+		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = splitIntoCoefficientTiles(tiles, imageProcessorCache);
 		
 		final int iterations = 2000;
 		solveForGlobalCoefficients(coefficientTiles, iterations);
@@ -125,7 +116,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		return coefficientTiles;
 	}
 
-	private HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> splitIntoCoefficientTiles(
+	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> splitIntoCoefficientTiles(
 			final List<MinimalTileSpecWrapper> tiles,
 			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException {
 
@@ -134,8 +125,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		// generate coefficient tiles for all patches
 		final int nGridPoints = parameters.numCoefficients() * parameters.numCoefficients();
 		@SuppressWarnings("unchecked")
-		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles =
-				(HashMap) generateCoefficientsTiles(tiles, nGridPoints);
+		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = generateCoefficientsTiles(tiles, nGridPoints);
 
 		final ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs = findOverlappingPatches(tiles, parameters.zDistance());
 
@@ -172,7 +162,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		return coefficientTiles;
 	}
 
-	private  <T extends Model<T> & Affine1D<T>> HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> generateCoefficientsTiles(
+	private  HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> generateCoefficientsTiles(
 			final Collection<MinimalTileSpecWrapper> patches,
 			final int nGridPoints) {
 
@@ -182,15 +172,14 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 								new AffineModel1D(), new TranslationModel1D(), parameters.lambdaTranslation()),
 						new IdentityModel(), parameters.lambdaIdentity());
 
-		final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<T>>> coefficientTiles = new HashMap<>();
+		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = new HashMap<>();
 		for (final MinimalTileSpecWrapper p : patches) {
-			final ArrayList<Tile<T>> coefficientModels = new ArrayList<>();
+			final ArrayList<Tile<? extends Affine1D<?>>> coefficientModels = new ArrayList<>();
 			for (int i = 0; i < nGridPoints; ++i) {
-				@SuppressWarnings("unchecked")
-				final T model = (T) modelTemplate.copy();
+				final InterpolatedAffineModel1D<?,?> model = modelTemplate.copy();
 				coefficientModels.add(new Tile<>(model));
 			}
-			coefficientTiles.put(p, coefficientModels);
+			coefficientTiles.put(p.getTileId(), coefficientModels);
 		}
 		return coefficientTiles;
 	}
@@ -227,7 +216,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		return new FinalRealInterval(p1min, p1max);
 	}
 
-	private void solveForGlobalCoefficients(final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles, final int iterations) {
+	private void solveForGlobalCoefficients(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles, final int iterations) {
 		connectTilesWithinPatches(coefficientTiles);
 
 		/* optimize */
@@ -242,22 +231,22 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		}
 
 		// TODO: this is not the right error measure, what is idToBlockErrorMap supposed to be exactly?
-		for (final Map.Entry<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> entry : coefficientTiles.entrySet()) {
-			final String tileId = entry.getKey().getTileId();
-			final Double error = entry.getValue().stream().mapToDouble(t -> t.getModel().getCost()).average().orElse(Double.MAX_VALUE);
+		coefficientTiles.forEach((tileId, tiles) -> {
+			final Double error = tiles.stream().mapToDouble(t -> t.getModel().getCost()).average().orElse(Double.MAX_VALUE);
 			final List<Pair<String, Double>> errorList = new ArrayList<>();
 			errorList.add(new ValuePair<>(tileId, error));
 			blockData.idToBlockErrorMap().put(tileId, errorList);
-		}
+		});
 
 		LOG.info("solveForGlobalCoefficients: exit, returning intensity coefficients for {} tiles", coefficientTiles.size());
 	}
 
-	private void connectTilesWithinPatches(final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
-		final HashSet<MinimalTileSpecWrapper> allTiles = new HashSet<>(coefficientTiles.keySet());
+	private void connectTilesWithinPatches(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
+		final Collection<TileSpec> allTiles = blockData.rtsc().getTileSpecs();
 
-		for (final MinimalTileSpecWrapper p : allTiles) {
-			final ArrayList<? extends Tile<?>> coefficientTile = coefficientTiles.get(p);
+
+		for (final TileSpec p : allTiles) {
+			final ArrayList<? extends Tile<?>> coefficientTile = coefficientTiles.get(p.getTileId());
 			for (int i = 1; i < parameters.numCoefficients(); ++i) {
 				for (int j = 0; j < parameters.numCoefficients(); ++j) {
 					// connect left to right
@@ -286,53 +275,6 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		matches.add(new PointMatch(new Point(new double[] { 0 }), new Point(new double[] { 0 })));
 		matches.add(new PointMatch(new Point(new double[] { 1 }), new Point(new double[] { 1 })));
 		t1.connect(t2, matches);
-	}
-
-	private Map<String, FilterSpec> convertCoefficientsToFilter(final List<MinimalTileSpecWrapper> tiles, final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
-		final ArrayList<OnTheFlyIntensity> corrected = convertModelsToOtfIntensities(tiles, parameters.numCoefficients(), coefficientTiles);
-
-		final Map<String, FilterSpec> idToFilterSpec = new HashMap<>();
-		for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
-			final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
-			final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
-			final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
-			idToFilterSpec.put(tileId, filterSpec);
-		}
-		return idToFilterSpec;
-	}
-
-	private void addFilters(final ResolvedTileSpecCollection tileSpecs, final Map<String, FilterSpec> idToFilterSpec) {
-		for (final Map.Entry<String, FilterSpec> entry : idToFilterSpec.entrySet()) {
-			final String tileId = entry.getKey();
-			final FilterSpec filterSpec = entry.getValue();
-			final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
-			tileSpec.setFilterSpec(filterSpec);
-			tileSpec.convertSingleChannelSpecToLegacyForm();
-		}
-	}
-
-	private ArrayList<OnTheFlyIntensity> convertModelsToOtfIntensities(
-			final List<MinimalTileSpecWrapper> patches,
-			final int numCoefficients,
-			final Map<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
-
-		final ArrayList<OnTheFlyIntensity> correctedOnTheFly = new ArrayList<>();
-		for (final MinimalTileSpecWrapper p : patches) {
-			/* save coefficients */
-			final double[][] ab_coefficients = new double[numCoefficients * numCoefficients][2];
-
-			final ArrayList<Tile<? extends Affine1D<?>>> tiles = coefficientTiles.get(p);
-
-			for (int i = 0; i < numCoefficients * numCoefficients; ++i)
-			{
-				final Tile<? extends Affine1D<?>> t = tiles.get(i);
-				final Affine1D<?> affine = t.getModel();
-				affine.toArray(ab_coefficients[i]);
-			}
-
-			correctedOnTheFly.add(new LinearOnTheFlyIntensity(p, ab_coefficients, numCoefficients ));
-		}
-		return correctedOnTheFly;
 	}
 
 	private Pair<String, ArrayList<Double>> computeAverages(

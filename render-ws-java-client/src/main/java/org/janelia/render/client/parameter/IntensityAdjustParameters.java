@@ -42,6 +42,12 @@ public class IntensityAdjustParameters
     public ZRangeParameters layerRange = new ZRangeParameters();
 
     @Parameter(
+            names = "--completeCorrectedStack",
+            description = "Complete the intensity corrected stack after processing",
+            arity = 0)
+    public boolean completeCorrectedStack = false;
+
+    @Parameter(
             names = "--intensityCorrectedFilterStack",
             description = "Name of stack to store tile specs with intensity corrected filter data.  " +
                           "Omit to render intensity corrected scape-images to disk.")
