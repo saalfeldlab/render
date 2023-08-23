@@ -124,7 +124,6 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 
 		// generate coefficient tiles for all patches
 		final int nGridPoints = parameters.numCoefficients() * parameters.numCoefficients();
-		@SuppressWarnings("unchecked")
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = generateCoefficientsTiles(tiles, nGridPoints);
 
 		final ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs = findOverlappingPatches(tiles, parameters.zDistance());
@@ -138,7 +137,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		final int meshResolution = tiles.isEmpty() ? 64 : (int) tiles.get(0).getTileSpec().getMeshCellSize();
 		for (final ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper> patchPair : patchPairs) {
 			final Matcher matchJob = new Matcher(patchPair,
-												 (HashMap) coefficientTiles,
+												 coefficientTiles,
 												 filter,
 												 parameters.renderScale(),
 												 parameters.numCoefficients(),
@@ -333,7 +332,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 	{
 		//final private Rectangle roi;
 		final private ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper> patchPair;
-		final private HashMap<MinimalTileSpecWrapper, ArrayList<Tile<?>>> coefficientTiles;
+		final private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles;
 		final private PointMatchFilter filter;
 		final private double scale;
 		final private int numCoefficients;
@@ -342,7 +341,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 
 		public Matcher(
 				final ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper> patchPair,
-				final HashMap<MinimalTileSpecWrapper, ArrayList<Tile<?>>> coefficientTiles,
+				final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
 				final PointMatchFilter filter,
 				final double scale,
 				final int numCoefficients,
@@ -403,7 +402,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 			 * iterate over all pixels and feed matches into the match
 			 * matrix
 			 */
-			int label1 = 0, label2 = 0, weight1 = 0, weight2 = 0;
+			int label1, label2 = 0, weight1 = 0, weight2 = 0;
 			for (int i = 0; i < n; ++i) {
 				// lazily check if it pays to create a match
 				final boolean matchCanContribute = (label1 = subTiles1.get(i)) > 0
@@ -433,12 +432,12 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 			}
 
 			/* connect tiles across patches */
-			final ArrayList<Tile<?>> p1CoefficientsTiles = coefficientTiles.get(p1);
-			final ArrayList<Tile<?>> p2CoefficientsTiles = coefficientTiles.get(p2);
+			final ArrayList<Tile<? extends Affine1D<?>>> p1CoefficientTiles = coefficientTiles.get(p1.getTileId());
+			final ArrayList<Tile<? extends Affine1D<?>>> p2CoefficientTiles = coefficientTiles.get(p2.getTileId());
 			int connectionCount = 0;
 
 			for (int i = 0; i < dimSize; ++i) {
-				final Tile<?> t1 = p1CoefficientsTiles.get(i);
+				final Tile<?> t1 = p1CoefficientTiles.get(i);
 				ra.setPosition(i, 0);
 
 				for (int j = 0; j < dimSize; ++j) {
@@ -447,7 +446,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 					if (matches.isEmpty())
 						continue;
 
-					final Tile<?> t2 = p2CoefficientsTiles.get(j);{
+					final Tile<?> t2 = p2CoefficientTiles.get(j);{
 						t1.connect(t2, ra.get());
 						connectionCount++;
 					}
