@@ -133,7 +133,7 @@ public class N5ClientTest {
         final long[] dimensions = { 100L, 200L, 300L };
         final int[] blockSize = p.getBlockSize();
 
-        N5Client.setupFullScaleExportN5(p, datasetName, stackMetaData, dimensions, blockSize);
+        N5Client.setupFullScaleExportN5(p, datasetName, stackMetaData, dimensions, blockSize, DataType.UINT8);
 
         try (final N5Reader n5Reader = new N5FSReader(n5Path.toString())) {
             Assert.assertTrue("dataset " + datasetName + " is missing", n5Reader.datasetExists(datasetName));

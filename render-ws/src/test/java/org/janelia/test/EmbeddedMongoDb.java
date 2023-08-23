@@ -96,7 +96,40 @@ public class EmbeddedMongoDb {
         final MongoImportExecutable mongoImportExecutable =
                 MongoImportStarter.getInstance(MONGO_IMPORT_RUNTIME_CONFIG).prepare(mongoImportConfig);
 
-        mongoImportExecutable.start();
+        // Occasionally during GitHub Action builds, imports will fail with
+        //   java.io.IOException: error=26, Text file busy
+        //
+        // The following GitHub issues mention similar problems:
+        //   https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/246
+        //   https://github.com/flapdoodle-oss/de.flapdoodle.embed.mongo/issues/226
+        //
+        // but do not provide a useful solution for the import failures here (as far as I can tell).
+        // I've added the following retry logic as a workaround.
+        final int maxRetries = 3;
+        final long retryWaitMilliseconds = 5000;
+        for (int i = 0; i < maxRetries; i++) {
+            try {
+                mongoImportExecutable.start();
+                i = maxRetries; // break out of retry loop upon success
+            } catch (final IOException e) {
+                final int numberOfAttempts = i + 1;
+                if (numberOfAttempts < maxRetries) {
+                    LOG.warn("importCollection: sleeping {}ms before next retry after catching exception {}",
+                             retryWaitMilliseconds, e.getMessage());
+                    try {
+                        Thread.sleep(retryWaitMilliseconds);
+                    } catch (final InterruptedException sleepEx) {
+                        LOG.warn("importCollection: ignoring sleep exception and continuing", sleepEx);
+                    }
+                    LOG.warn("importCollection: retry import of {} after {} prior attempt(s)",
+                             jsonFile, numberOfAttempts);
+                } else {
+                    LOG.warn("importCollection: failed {} times to import {}, giving up and re-raising exception",
+                             numberOfAttempts, jsonFile);
+                    throw e;
+                }
+            }
+        }
     }
 
     public void stop() {
