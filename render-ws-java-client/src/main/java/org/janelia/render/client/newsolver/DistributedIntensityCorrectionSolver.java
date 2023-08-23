@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver;
 
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
+import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.TranslationModel1D;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.filter.IntensityMap8BitFilter;
@@ -148,9 +149,17 @@ public class DistributedIntensityCorrectionSolver {
 
 		// TODO: flesh out lambdas (preconcatenate for all items in list)
 		final ZBlockFusion<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
-				new ZBlockFusion<>(blockSolver, (r,g) -> null,  (i,w) -> null);
+				new ZBlockFusion<>(blockSolver,
+								   DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
+								   DistributedIntensityCorrectionSolver::combineWeightedModels);
+
 		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>, ZBlockFactory> assembler =
-				new Assembler<>(allItems, blockSolver, fusion, r -> null);
+				new Assembler<>(allItems, blockSolver, fusion, r -> {
+					final ArrayList<AffineModel1D> rCopy = new ArrayList<>(r.size());
+					r.forEach(model -> rCopy.add(model.copy()));
+					return rCopy;
+				});
+
 		final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = assembler.createAssembly();
 
 		// this adds the filters to the tile specs and pushes the data to the DB
@@ -165,6 +174,35 @@ public class DistributedIntensityCorrectionSolver {
 			renderDataClient.saveResolvedTiles(rtsc, cmdLineSetup.targetStack.stack, null);
 			renderDataClient.setStackState(cmdLineSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
 		}
+	}
+
+	private static ArrayList<AffineModel1D> integrateGlobalTranslation(final ArrayList<AffineModel1D> localModels, final TranslationModel1D globalModel) {
+		final AffineModel1D affineTranslationWrapper = new AffineModel1D();
+		affineTranslationWrapper.set(globalModel);
+		final ArrayList<AffineModel1D> fusedModels = new ArrayList<>();
+		for (final AffineModel1D affine : localModels) {
+			final AffineModel1D affineCopy = affine.copy();
+			affineCopy.preConcatenate(affineTranslationWrapper);
+			fusedModels.add(affineCopy);
+		}
+		return fusedModels;
+	}
+
+	private static ArrayList<AffineModel1D> combineWeightedModels(final List<ArrayList<AffineModel1D>> models, final List<Double> weights) {
+		// TODO: make this run for more than two blocks
+		if (models.size() != 2)
+			throw new IllegalArgumentException("Only two blocks supported for now");
+
+		final ArrayList<AffineModel1D> coeffsBlockA = models.get(0);
+		final ArrayList<AffineModel1D> coeffsBlockB = models.get(1);
+		final int n = coeffsBlockA.size();
+		final ArrayList<AffineModel1D> fusedCoeffs = new ArrayList<>(n);
+		final double lambda = weights.get(1);
+
+		for (int i = 0; i < n; i++)
+			fusedCoeffs.add(new InterpolatedAffineModel1D<>(coeffsBlockA.get(i), coeffsBlockB.get(i), lambda).createAffineModel1D());
+
+		return fusedCoeffs;
 	}
 
 	private static Map<String, FilterSpec> convertCoefficientsToFilter(
