@@ -112,18 +112,20 @@ public class EmbeddedMongoDb {
                 mongoImportExecutable.start();
                 i = maxRetries; // break out of retry loop upon success
             } catch (final IOException e) {
-                if ((i + 1) < maxRetries) {
-                    LOG.warn("importCollection: caught exception, will now sleep " + retryWaitMilliseconds +
-                             "ms before next retry", e);
+                final int numberOfAttempts = i + 1;
+                if (numberOfAttempts < maxRetries) {
+                    LOG.warn("importCollection: sleeping {}ms before next retry after catching exception {}",
+                             retryWaitMilliseconds, e.getMessage());
                     try {
                         Thread.sleep(retryWaitMilliseconds);
                     } catch (final InterruptedException sleepEx) {
                         LOG.warn("importCollection: ignoring sleep exception and continuing", sleepEx);
                     }
-                    LOG.warn("importCollection: retry import of {} after {} prior attempt(s)", jsonFile, i);
+                    LOG.warn("importCollection: retry import of {} after {} prior attempt(s)",
+                             jsonFile, numberOfAttempts);
                 } else {
                     LOG.warn("importCollection: failed {} times to import {}, giving up and re-raising exception",
-                             (i + 1), jsonFile);
+                             numberOfAttempts, jsonFile);
                     throw e;
                 }
             }
