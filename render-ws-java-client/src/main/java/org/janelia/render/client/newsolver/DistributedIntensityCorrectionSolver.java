@@ -41,18 +41,6 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/*
-// TODO: move this to common class and update once everything is semi-stable
-Cheatsheet for the generics used in the whole distributed solver:
-    Mnemonic        Alignment                           Intensity correction
-F   factory         ZBlockFactory                       ZBlockFactory
-G   global          RigidModel2D                        TranslationModel1D
-M   block(model)    InterpolatedAffineModel2D           ArrayList<AffineModel1D>
-S   stitching       InterpolatedAffineModel2D           -
-P   parameters      FIBSEMAlignmentParameters<M, S>     FIBSEMIntensityCorrectionParameters<M>
-R   (block) result  AffineModel2D                       ArrayList<AffineModel1D>
-Z   final (result)  AffineModel2D                       ArrayList<AffineModel1D>
- */
 
 public class DistributedIntensityCorrectionSolver {
 	final IntensityCorrectionSetup cmdLineSetup;
@@ -81,7 +69,7 @@ public class DistributedIntensityCorrectionSolver {
 					"--threadsWorker", "12",
 					"--minBlockSize", "2",
 					"--completeTargetStack",
-					// for entire stack minZ is 1 and maxZ is 63,300
+					// for entire stack minZ is 1 and maxZ is 14,503
 					"--zDistance", "1", "--minZ", "1000", "--maxZ", "1001"
 			};
 			cmdLineSetup.parse(testArgs);
@@ -222,23 +210,23 @@ public class DistributedIntensityCorrectionSolver {
 	}
 
 	private static ArrayList<OnTheFlyIntensity> convertModelsToOtfIntensities(
-			final List<TileSpec> patches,
+			final List<TileSpec> tiles,
 			final int numCoefficients,
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles) {
 
 		final ArrayList<OnTheFlyIntensity> correctedOnTheFly = new ArrayList<>();
-		for (final TileSpec p : patches) {
+		for (final TileSpec tile : tiles) {
 			/* save coefficients */
 			final double[][] ab_coefficients = new double[numCoefficients * numCoefficients][2];
 
-			final ArrayList<AffineModel1D> models = coefficientTiles.get(p.getTileId());
+			final ArrayList<AffineModel1D> models = coefficientTiles.get(tile.getTileId());
 
 			for (int i = 0; i < numCoefficients * numCoefficients; ++i) {
 				final Affine1D<?> affine = models.get(i);
 				affine.toArray(ab_coefficients[i]);
 			}
 
-			correctedOnTheFly.add(new LinearOnTheFlyIntensity(new MinimalTileSpecWrapper(p), ab_coefficients, numCoefficients ));
+			correctedOnTheFly.add(new LinearOnTheFlyIntensity(new MinimalTileSpecWrapper(tile), ab_coefficients, numCoefficients ));
 		}
 		return correctedOnTheFly;
 	}
