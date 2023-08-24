@@ -101,13 +101,10 @@ public class SolveTools
 		else
 			model = crossLayerModel;
 
-		try
-		{
-			model.fit( pms );
-		}
-		catch ( Exception e )
-		{
-			e.printStackTrace();
+		try {
+			model.fit(pms);
+		} catch (final Exception e) {
+			LOG.info("Could not fit point matches", e);
 		}
 
 		final List< PointMatch > local = SolveTools.createFakeMatches(
@@ -127,11 +124,9 @@ public class SolveTools
 			relativeMatches.add( new PointMatch( new Point( local.get( i ).getP2().getL().clone() ), new Point( global.get( i ).getP2().getL().clone() ) ) );
 		}
 
-		try
-		{
-			relativeModel.fit( relativeMatches );
-		}
-		catch (Exception e){}
+		try {
+			relativeModel.fit(relativeMatches);
+		} catch (final Exception ignored){}
 
 		double vDiff = 0;
 
@@ -155,12 +150,12 @@ public class SolveTools
 			//vDiff += SolveTools.distance( l2.getW()[ 0 ], l2.getW()[ 1 ], global.get( i ).getP2().getL()[ 0 ], global.get( i ).getP2().getL()[ 1 ] );
 		}
 
-		vDiff /= (double)global.size(); 
+		vDiff /= global.size();
 
 		return vDiff;
 	}
 
-	final static public double distance( final double px, final double py, final double qx, final double qy )
+	static public double distance(final double px, final double py, final double qx, final double qy)
 	{
 		double sum = 0.0;
 		
@@ -245,7 +240,7 @@ public class SolveTools
 
 	protected static <B extends Model<B> & Affine2D< B >> ArrayList< Pair< Pair< Integer, String>, Tile<B> > > layerDetails(
 			final ArrayList< Integer > allZ,
-			HashMap< Integer, List<Tile<B>> > zToGroupedTileList,
+			final HashMap<Integer, List<Tile<B>>> zToGroupedTileList,
 			final SolveItem<?,B,?> solveItem,
 			final int i )
 	{
@@ -277,7 +272,7 @@ public class SolveTools
 		// a z-section can have more than one grouped tile if they are connected from above and below
 		final HashMap< Integer, List< Pair< Tile< ? >, Tile< TranslationModel2D > > > > zToTiles = fakePreAlign( tiles, solveItem );
 
-		final ArrayList< Integer > allZ = new ArrayList<Integer>( zToTiles.keySet() );
+		final ArrayList<Integer> allZ = new ArrayList<>(zToTiles.keySet());
 		Collections.sort( allZ );
 
 		final Img< DoubleType > valueX = ArrayImgs.doubles( allZ.size() );
@@ -301,22 +296,22 @@ public class SolveTools
 		//ImageJFunctions.show( valueX ).setTitle( "valueX" );
 		//ImageJFunctions.show( valueY ).setTitle( "valueY" );
 
-		RandomAccess< DoubleType > rxIn = Views.extendMirrorDouble( valueX ).randomAccess();
-		RandomAccess< DoubleType > ryIn = Views.extendMirrorDouble( valueY ).randomAccess();
+		final RandomAccess<DoubleType> rxIn = Views.extendMirrorDouble(valueX).randomAccess();
+		final RandomAccess<DoubleType> ryIn = Views.extendMirrorDouble(valueY).randomAccess();
 
 		final Img< DoubleType > derX = ArrayImgs.doubles( allZ.size() );
 		final Img< DoubleType > derY = ArrayImgs.doubles( allZ.size() );
 
-		RandomAccess< DoubleType > rxOut = derX.randomAccess();
-		RandomAccess< DoubleType > ryOut = derY.randomAccess();
+		final RandomAccess<DoubleType> rxOut = derX.randomAccess();
+		final RandomAccess<DoubleType> ryOut = derY.randomAccess();
 
 		for ( int z = 0; z < allZ.size(); ++z )
 		{
 			rxIn.setPosition( z - 1, 0 );
 			ryIn.setPosition( z - 1, 0 );
 
-			double x = rxIn.get().get();
-			double y = ryIn.get().get();
+			final double x = rxIn.get().get();
+			final double y = ryIn.get().get();
 
 			rxIn.setPosition( z + 1, 0 );
 			ryIn.setPosition( z + 1, 0 );
@@ -439,8 +434,8 @@ public class SolveTools
 			final Tile< ? > aTile = solveItem.groupedTileToTiles().get( tile ).get( 0 ); 
 			final String tileId = solveItem.tileToIdMap().get( aTile );
 			final int z = (int)Math.round( solveItem.idToTileSpec().get( tileId ).getZ() );
-			zToTiles.putIfAbsent( z, new ArrayList<>() ); 
-			zToTiles.get( z ).add( new ValuePair<>( tile, fakeTile ) );
+			zToTiles.computeIfAbsent(z, k -> new ArrayList<>())
+					.add(new ValuePair<>(tile,fakeTile));
 		}
 
 		final HashSet< Tile<?> > alreadyVisited = new HashSet<>();
@@ -465,8 +460,8 @@ public class SolveTools
 						new Point( pm.getP2().getL().clone(), pm.getP2().getW().clone() ),
 						pm.getWeight() );
 				
-				matches.putIfAbsent( connectedFakeTile, new ArrayList<PointMatch>() );
-				matches.get( connectedFakeTile ).add( newPM );
+				matches.computeIfAbsent(connectedFakeTile, k -> new ArrayList<>())
+						.add(newPM);
 			}
 		
 			final Tile< TranslationModel2D > fakeTile = tilesToFaketiles.get( tile );
@@ -501,11 +496,8 @@ public class SolveTools
 			
 			errors = computeErrors( tileConfig.getTiles() );
 			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
-		}
-		catch (NotEnoughDataPointsException | IllDefinedDataPointsException e)
-		{
-			LOG.info( "prealign failed: " + e );
-			e.printStackTrace();
+		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+			LOG.info("pre-align failed: ", e);
 		}
 
 		return zToTiles;
@@ -532,7 +524,7 @@ public class SolveTools
 				final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
 				affine.preConcatenate( groupedModel );
 
-				double[] tmp = new double[ 2 ];
+				final double[] tmp = new double[2];
 
 				tmp[ 0 ] = 0;
 				tmp[ 1 ] = tileSpec.getHeight() / 2.0;
@@ -542,7 +534,7 @@ public class SolveTools
 				minX = Math.min( minX, tmp[ 0 ] );
 				minY = Math.min( minY, tmp[ 1 ] );
 
-				tmp[ 0 ] = tileSpec.getWidth() / 2;
+				tmp[ 0 ] = tileSpec.getWidth() / 2.0;
 				tmp[ 1 ] = 0;
 
 				affine.applyInPlace( tmp );
@@ -585,21 +577,18 @@ public class SolveTools
 		// first get order all tiles by
 		// a) unaligned
 		// b) aligned - which initially only contains the fixed ones
-		final ArrayList< Tile< ? > > unAlignedTiles = new ArrayList< Tile< ? > >();
-		final ArrayList< Tile< ? > > alignedTiles = new ArrayList< Tile< ? > >();
+		final ArrayList<Tile<?>> unAlignedTiles = new ArrayList<>();
+		final ArrayList<Tile<?>> alignedTiles = new ArrayList<>();
 
 		final Tile< ? > firstTile;
 
 		// if no tile is fixed, take another */
-		if ( tileConfig.getFixedTiles().size() == 0 )
+		if (tileConfig.getFixedTiles().isEmpty())
 		{
 			final Iterator< Tile< ? > > it = tileConfig.getTiles().iterator();
 			alignedTiles.add( it.next() );
-			
-			if ( alignedTiles.size() > 0 )
-				firstTile = alignedTiles.get( 0 );
-			else
-				firstTile = null;
+
+			firstTile = alignedTiles.get(0);
 			
 			while ( it.hasNext() )
 				unAlignedTiles.add( it.next() );
@@ -621,7 +610,7 @@ public class SolveTools
 		for ( final ListIterator< Tile< ?> > referenceIterator = alignedTiles.listIterator(); referenceIterator.hasNext(); )
 		{
 			// once all tiles are aligned we can quit this loop
-			if ( unAlignedTiles.size() == 0 )
+			if (unAlignedTiles.isEmpty())
 				break;
 
 			// get the next reference tile (either a fixed or an already aligned one
@@ -635,17 +624,14 @@ public class SolveTools
 			//
 			// NEW: we sort the unaligned by distance to the reference
 			//
-			Collections.sort( unAlignedTiles, new Comparator<Tile< ? >>()
-			{
+			unAlignedTiles.sort(new Comparator<Tile<?>>() {
 				@Override
-				public int compare( final Tile< ? > o1, final Tile< ? > o2 )
-				{	
-					return deltaZ( o2, referenceTile ) - deltaZ( o1, referenceTile );
+				public int compare(final Tile<?> o1, final Tile<?> o2) {
+					return deltaZ(o2, referenceTile) - deltaZ(o1, referenceTile);
 				}
 
-				public int deltaZ( final Tile<?> tile1, final Tile<?> tile2 )
-				{
-					return Math.abs( tileToZ.get( tile1 ) - tileToZ.get( tile2 ) );
+				public int deltaZ(final Tile<?> tile1, final Tile<?> tile2) {
+					return Math.abs(tileToZ.get(tile1) - tileToZ.get(tile2));
 				}
 			});
 			
@@ -719,7 +705,7 @@ public class SolveTools
 		return m;
 	}
 
-	public static List< PointMatch > duplicate( List< PointMatch > pms )
+	public static List<PointMatch> duplicate(final List<PointMatch> pms)
 	{
 		final List< PointMatch > copy = new ArrayList<>();
 
@@ -736,7 +722,7 @@ public class SolveTools
 	{
 		final List< PointMatch > relativePMs = new ArrayList<>( absolutePMs.size() );
 
-		if ( absolutePMs.size() == 0 )
+		if (absolutePMs.isEmpty())
 			return relativePMs;
 
 		final int n = absolutePMs.get( 0 ).getP1().getL().length;
@@ -800,9 +786,7 @@ public class SolveTools
                                                t);
         }
 
-        return new ValuePair<>(
-                new Tile< B >( instance ),
-                lastTransform );
+        return new ValuePair<>(new Tile<>(instance), lastTransform);
 	}
 
 

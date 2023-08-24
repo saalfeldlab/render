@@ -149,11 +149,11 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 		for (final Future<?> future : matchComputations)
 			future.get();
 
-		final List<Future<Pair<String, ArrayList<Double>>>> averageCompuations = new ArrayList<>();
+		final List<Future<Pair<String, ArrayList<Double>>>> averageComputations = new ArrayList<>();
 		for (final MinimalTileSpecWrapper tile : tiles)
-			averageCompuations.add(exec.submit(() -> computeAverages(tile, parameters.numCoefficients(), parameters.renderScale(), meshResolution, imageProcessorCache)));
+			averageComputations.add(exec.submit(() -> computeAverages(tile, parameters.numCoefficients(), parameters.renderScale(), meshResolution, imageProcessorCache)));
 
-		for (final Future<Pair<String, ArrayList<Double>>> average : averageCompuations)
+		for (final Future<Pair<String, ArrayList<Double>>> average : averageComputations)
 			blockData.idToAverages().put(average.get().getA(), average.get().getB());
 
 		exec.shutdown();
@@ -231,7 +231,10 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 
 		// TODO: this is not the right error measure, what is idToBlockErrorMap supposed to be exactly?
 		coefficientTiles.forEach((tileId, tiles) -> {
-			final Double error = tiles.stream().mapToDouble(t -> t.getModel().getCost()).average().orElse(Double.MAX_VALUE);
+			final Double error = tiles.stream().mapToDouble(t -> {
+				t.updateCost();
+				return t.getDistance();
+			}).average().orElse(Double.MAX_VALUE);
 			final List<Pair<String, Double>> errorList = new ArrayList<>();
 			errorList.add(new ValuePair<>(tileId, error));
 			blockData.idToBlockErrorMap().put(tileId, errorList);
