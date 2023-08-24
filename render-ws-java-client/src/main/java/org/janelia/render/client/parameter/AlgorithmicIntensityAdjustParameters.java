@@ -37,12 +37,6 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	public Integer maxPixelCacheGb = 1;
 
 	@Parameter(
-			names = "--completeCorrectedStack",
-			description = "Complete the intensity corrected stack after processing",
-			arity = 0)
-	public boolean completeCorrectedStack = false;
-
-	@Parameter(
 			names = "--renderScale",
 			description = "Scale for rendered tiles used during intensity comparison")
 	public double renderScale = 0.1;

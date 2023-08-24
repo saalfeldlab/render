@@ -1,8 +1,20 @@
 package org.janelia.render.client.newsolver;
 
+import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
+import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.TranslationModel1D;
+import org.janelia.alignment.filter.FilterSpec;
+import org.janelia.alignment.filter.IntensityMap8BitFilter;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
+import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity;
+import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.newsolver.assembly.Assembler;
+import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
 import org.janelia.render.client.newsolver.assembly.ZBlockFusion;
 import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
@@ -19,7 +31,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -41,7 +55,7 @@ Z   final (result)  AffineModel2D                       ArrayList<AffineModel1D>
 public class DistributedIntensityCorrectionSolver {
 	final IntensityCorrectionSetup cmdLineSetup;
 	final RenderSetup renderSetup;
-	BlockCollection<?, ArrayList<AffineModel1D>, ? extends FIBSEMIntensityCorrectionParameters<?>, ZBlockFactory> col;
+	BlockCollection<?, ArrayList<AffineModel1D>, ? extends FIBSEMIntensityCorrectionParameters<?>, ZBlockFactory> blocks;
 	ZBlockFactory blockFactory;
 
 	public DistributedIntensityCorrectionSolver(
@@ -63,7 +77,7 @@ public class DistributedIntensityCorrectionSolver {
 					"--stack", "v2_acquire",
 					"--targetStack", "v2_acquire_test_intensity",
 					"--threadsWorker", "12",
-					"--minBlockSize", "12",
+					"--minBlockSize", "2",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 63,300
 					"--zDistance", "1", "--minZ", "1000", "--maxZ", "1001"
@@ -76,10 +90,10 @@ public class DistributedIntensityCorrectionSolver {
 		final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
-		final DistributedIntensityCorrectionSolver solverSetup = new DistributedIntensityCorrectionSolver(cmdLineSetup, renderSetup);
+		final DistributedIntensityCorrectionSolver intensitySolver = new DistributedIntensityCorrectionSolver(cmdLineSetup, renderSetup);
 
 		// create all block instances
-		final BlockCollection<?, ArrayList<AffineModel1D>, ?, ZBlockFactory> blockCollection = solverSetup.setupSolve();
+		final BlockCollection<?, ArrayList<AffineModel1D>, ?, ZBlockFactory> blockCollection = intensitySolver.setupSolve();
 
 		//
 		// multi-threaded solve
@@ -87,13 +101,11 @@ public class DistributedIntensityCorrectionSolver {
 		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
 
 		final ArrayList<Callable<List<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>>>> workers = new ArrayList<>();
-
-
 		for (final BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory> block : blockCollection.allBlocks()) {
 			workers.add(() ->
 						{
 							final Worker<?, ArrayList<AffineModel1D>, ?, ZBlockFactory> worker = block.createWorker(
-									solverSetup.col.maxId() + 1,
+									intensitySolver.blocks.maxId() + 1,
 									cmdLineSetup.distributedSolve.threadsWorker);
 
 							worker.run();
@@ -103,10 +115,8 @@ public class DistributedIntensityCorrectionSolver {
 		}
 
 		final ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>> allItems = new ArrayList<>();
-
 		try {
 			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
-
 			taskExecutor.invokeAll(workers).forEach(future -> {
 				try {
 					allItems.addAll(future.get());
@@ -115,7 +125,6 @@ public class DistributedIntensityCorrectionSolver {
 					e.printStackTrace();
 				}
 			});
-
 			taskExecutor.shutdown();
 		} catch (final InterruptedException e) {
 			LOG.error("Failed to compute alignments: " + e);
@@ -125,12 +134,11 @@ public class DistributedIntensityCorrectionSolver {
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
 		// but do keep ids that are smaller or equal to the maxId of the initial solveset
-		final int maxId = WorkerTools.fixIds(allItems, solverSetup.col.maxId());
+		final int maxId = WorkerTools.fixIds(allItems, intensitySolver.blocks.maxId());
 
 		LOG.info("computed " + allItems.size() + " blocks, maxId=" + maxId);
 
-		solverSetup.col.blockDataList.get(0);
-		final ZBlockSolver<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> solver =
+		final ZBlockSolver<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> blockSolver =
 				new ZBlockSolver<>(
 						new TranslationModel1D(),
 						new SameTileMatchCreatorAffineIntensity(),
@@ -141,10 +149,111 @@ public class DistributedIntensityCorrectionSolver {
 
 		// TODO: flesh out lambdas (preconcatenate for all items in list)
 		final ZBlockFusion<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
-				new ZBlockFusion<>(solver, (r,g) -> null,  (i,w) -> null);
+				new ZBlockFusion<>(blockSolver,
+								   DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
+								   DistributedIntensityCorrectionSolver::combineWeightedModels);
+
 		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>, ZBlockFactory> assembler =
-				new Assembler<>(allItems, solver, fusion, r -> null);
-		assembler.createAssembly();
+				new Assembler<>(allItems, blockSolver, fusion, r -> {
+					final ArrayList<AffineModel1D> rCopy = new ArrayList<>(r.size());
+					r.forEach(model -> rCopy.add(model.copy()));
+					return rCopy;
+				});
+
+		final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = assembler.createAssembly();
+
+		// this adds the filters to the tile specs and pushes the data to the DB
+		final boolean saveResults = (cmdLineSetup.targetStack.stack != null) && cmdLineSetup.targetStack.completeStack;
+		if (saveResults) {
+			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.idToTileSpecGlobal.values());
+			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.idToFinalModelGlobal;
+			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, cmdLineSetup.intensityAdjust.numCoefficients);
+			final ResolvedTileSpecCollection rtsc = addFilters(finalizedItems.idToTileSpecGlobal, idToFilterSpec);
+
+			final RenderDataClient renderDataClient = cmdLineSetup.renderWeb.getDataClient();
+			renderDataClient.saveResolvedTiles(rtsc, cmdLineSetup.targetStack.stack, null);
+			renderDataClient.setStackState(cmdLineSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
+		}
+	}
+
+	private static ArrayList<AffineModel1D> integrateGlobalTranslation(final ArrayList<AffineModel1D> localModels, final TranslationModel1D globalModel) {
+		final AffineModel1D affineTranslationWrapper = new AffineModel1D();
+		affineTranslationWrapper.set(globalModel);
+		final ArrayList<AffineModel1D> fusedModels = new ArrayList<>();
+		for (final AffineModel1D affine : localModels) {
+			final AffineModel1D affineCopy = affine.copy();
+			affineCopy.preConcatenate(affineTranslationWrapper);
+			fusedModels.add(affineCopy);
+		}
+		return fusedModels;
+	}
+
+	private static ArrayList<AffineModel1D> combineWeightedModels(final List<ArrayList<AffineModel1D>> models, final List<Double> weights) {
+		// TODO: make this run for more than two blocks
+		if (models.size() != 2)
+			throw new IllegalArgumentException("Only two blocks supported for now");
+
+		final ArrayList<AffineModel1D> coeffsBlockA = models.get(0);
+		final ArrayList<AffineModel1D> coeffsBlockB = models.get(1);
+		final int n = coeffsBlockA.size();
+		final ArrayList<AffineModel1D> fusedCoeffs = new ArrayList<>(n);
+		final double lambda = weights.get(1);
+
+		for (int i = 0; i < n; i++)
+			fusedCoeffs.add(new InterpolatedAffineModel1D<>(coeffsBlockA.get(i), coeffsBlockB.get(i), lambda).createAffineModel1D());
+
+		return fusedCoeffs;
+	}
+
+	private static Map<String, FilterSpec> convertCoefficientsToFilter(
+			final List<TileSpec> tiles,
+			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles,
+			final int numCoefficients) {
+
+		final ArrayList<OnTheFlyIntensity> corrected = convertModelsToOtfIntensities(tiles, numCoefficients, coefficientTiles);
+
+		final Map<String, FilterSpec> idToFilterSpec = new HashMap<>();
+		for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
+			final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
+			final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
+			final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
+			idToFilterSpec.put(tileId, filterSpec);
+		}
+
+		return idToFilterSpec;
+	}
+
+	private static ArrayList<OnTheFlyIntensity> convertModelsToOtfIntensities(
+			final List<TileSpec> patches,
+			final int numCoefficients,
+			final Map<String, ArrayList<AffineModel1D>> coefficientTiles) {
+
+		final ArrayList<OnTheFlyIntensity> correctedOnTheFly = new ArrayList<>();
+		for (final TileSpec p : patches) {
+			/* save coefficients */
+			final double[][] ab_coefficients = new double[numCoefficients * numCoefficients][2];
+
+			final ArrayList<AffineModel1D> models = coefficientTiles.get(p.getTileId());
+
+			for (int i = 0; i < numCoefficients * numCoefficients; ++i) {
+				final Affine1D<?> affine = models.get(i);
+				affine.toArray(ab_coefficients[i]);
+			}
+
+			correctedOnTheFly.add(new LinearOnTheFlyIntensity(new MinimalTileSpecWrapper(p), ab_coefficients, numCoefficients ));
+		}
+		return correctedOnTheFly;
+	}
+
+	private static ResolvedTileSpecCollection addFilters(final Map<String, TileSpec> tileSpecs, final Map<String, FilterSpec> idToFilterSpec) {
+		final ResolvedTileSpecCollection rtsc = new ResolvedTileSpecCollection();
+		idToFilterSpec.forEach((tileId, filterSpec) -> {
+			final TileSpec tileSpec = tileSpecs.get(tileId);
+			tileSpec.setFilterSpec(filterSpec);
+			tileSpec.convertSingleChannelSpecToLegacyForm();
+			rtsc.addTileSpecToCollection(tileSpec);
+		});
+		return rtsc;
 	}
 
 	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, ZBlockFactory> setupSolve() {
@@ -155,7 +264,7 @@ public class DistributedIntensityCorrectionSolver {
 		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, ZBlockFactory> col =
 				setupBlockCollection(blockFactory);
 
-		this.col = col;
+		this.blocks = col;
 
 		return col;
 	}

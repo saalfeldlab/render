@@ -235,7 +235,7 @@ public class IntensityCorrectionWorker implements Serializable {
 
     public void completeCorrectedStackAsNeeded(final RenderDataClient dataClient)
             throws IOException {
-        if (parameters.deriveFilterData() && parameters.algorithmic.completeCorrectedStack) {
+        if (parameters.deriveFilterData() && parameters.completeCorrectedStack) {
             dataClient.setStackState(parameters.intensityCorrectedFilterStack,
                                      StackMetaData.StackState.COMPLETE);
 

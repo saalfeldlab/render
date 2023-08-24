@@ -1077,16 +1077,6 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 			LOG.info("block " + solveItem.blockData().getId() + ": grouped model for tile {} is {}", tileId, tileIdToGroupModel.get( tileId ));
 
-			/*
-			// TODO: REMOVE
-			if ( inputSolveItem.getId() == 2 )
-			{
-			final TranslationModel2D t = new TranslationModel2D();
-			t.set( 1000, 0 );
-			affine.preConcatenate( t );
-			}
-			*/
-
 			solveItem.blockData().idToNewModel().put( tileId, affine );
 			LOG.info("block " + solveItem.blockData().getId() + ": tile {} model from grouped tile is {}", tileId, affine);
 		}

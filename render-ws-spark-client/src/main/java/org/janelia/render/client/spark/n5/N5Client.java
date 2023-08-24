@@ -236,6 +236,14 @@ public class N5Client {
         this.renderDataClient = parameters.renderWeb.getDataClient();
     }
 
+    public Parameters getParameters() {
+        return parameters;
+    }
+
+    public DataType getDataType() {
+        return DataType.UINT8;
+    }
+
     public void run()
             throws IOException {
 
@@ -295,18 +303,12 @@ public class N5Client {
                      parameters.n5Path, datasetName, viewStackCommandOffsets);
 
             // save full scale first ...
-            setupFullScaleExportN5(parameters, fullScaleDatasetName, stackMetaData, dimensions, blockSize);
-
-            final ByteBoxRenderer boxRenderer = new ByteBoxRenderer(parameters.renderWeb.baseDataUrl,
-                                                                    parameters.renderWeb.owner,
-                                                                    parameters.renderWeb.project,
-                                                                    parameters.stack,
-                                                                    parameters.tileWidth,
-                                                                    parameters.tileHeight,
-                                                                    1.0,
-                                                                    parameters.minIntensity,
-                                                                    parameters.maxIntensity,
-                                                                    parameters.exportMask);
+            setupFullScaleExportN5(parameters,
+                                   fullScaleDatasetName,
+                                   stackMetaData,
+                                   dimensions,
+                                   blockSize,
+                                   getDataType());
 
             // This "spec" is broadcast to Spark executors allowing each one to construct and share
             // an ImageProcessor cache across each task assigned to the executor.
@@ -318,33 +320,15 @@ public class N5Client {
                                                 true,
                                                 false);
 
-            if (is2DVolume) {
-                save2DRenderStack(
-                        sparkContext,
-                        boxRenderer,
-                        parameters.tileWidth,
-                        parameters.tileHeight,
-                        parameters.n5Path,
-                        fullScaleDatasetName,
-                        min,
-                        dimensions,
+            renderStack(sparkContext,
                         blockSize,
-                        boundsForRun.getMinZ().longValue(),
-                        cacheSpec);
-            } else {
-                saveRenderStack(
-                        sparkContext,
-                        boxRenderer,
-                        parameters.tileWidth,
-                        parameters.tileHeight,
-                        parameters.n5Path,
                         fullScaleDatasetName,
-                        min,
-                        dimensions,
-                        blockSize,
                         thicknessCorrectionData,
+                        boundsForRun,
+                        min,
+                        dimensions,
+                        is2DVolume,
                         cacheSpec);
-            }
 
         } else {
             final File s1Dir = new File(datasetDir.getParent(), "s1");
@@ -413,11 +397,62 @@ public class N5Client {
         sparkContext.close();
     }
 
+    public void renderStack(final JavaSparkContext sparkContext,
+                            final int[] blockSize,
+                            final String fullScaleDatasetName,
+                            final ThicknessCorrectionData thicknessCorrectionData,
+                            final Bounds boundsForRun,
+                            final long[] min,
+                            final long[] dimensions,
+                            final boolean is2DVolume,
+                            final ImageProcessorCacheSpec cacheSpec) {
+
+        final ByteBoxRenderer boxRenderer = new ByteBoxRenderer(parameters.renderWeb.baseDataUrl,
+                                                                parameters.renderWeb.owner,
+                                                                parameters.renderWeb.project,
+                                                                parameters.stack,
+                                                                parameters.tileWidth,
+                                                                parameters.tileHeight,
+                                                                1.0,
+                                                                parameters.minIntensity,
+                                                                parameters.maxIntensity,
+                                                                parameters.exportMask);
+
+        if (is2DVolume) {
+            save2DRenderStack(
+                    sparkContext,
+                    boxRenderer,
+                    parameters.tileWidth,
+                    parameters.tileHeight,
+                    parameters.n5Path,
+                    fullScaleDatasetName,
+                    min,
+                    dimensions,
+                    blockSize,
+                    boundsForRun.getMinZ().longValue(),
+                    cacheSpec);
+        } else {
+            saveRenderStack(
+                    sparkContext,
+                    boxRenderer,
+                    parameters.tileWidth,
+                    parameters.tileHeight,
+                    parameters.n5Path,
+                    fullScaleDatasetName,
+                    min,
+                    dimensions,
+                    blockSize,
+                    thicknessCorrectionData,
+                    cacheSpec);
+        }
+    }
+
     public static void setupFullScaleExportN5(final Parameters parameters,
                                               final String fullScaleDatasetName,
                                               final StackMetaData stackMetaData,
                                               final long[] dimensions,
-                                              final int[] blockSize)
+                                              final int[] blockSize,
+                                              final DataType dataType)
             throws IOException {
 
         String exportAttributesDatasetName = fullScaleDatasetName;
@@ -426,7 +461,7 @@ public class N5Client {
             n5.createDataset(fullScaleDatasetName,
                              dimensions,
                              blockSize,
-                             DataType.UINT8,
+                             dataType,
                              new GzipCompression());
 
             final Map<String, Object> export_attributes = new HashMap<>();

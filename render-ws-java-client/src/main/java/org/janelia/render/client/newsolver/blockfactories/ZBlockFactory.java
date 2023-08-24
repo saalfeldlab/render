@@ -77,7 +77,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 
 				blockDataList.add( block );
 			}
-			catch (Exception e)
+			catch (final Exception e)
 			{
 				System.out.println( "Failed to fetch data from render. stopping.");
 				e.printStackTrace();
@@ -119,7 +119,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 	 * @param minBlockSize - minimal block size (can fail if this is too high to be accommodated)
 	 * @return overlapping blocks that are solved individually - or null if minBlockSize is too big
 	 */
-	public static List< ZBlockInit > defineBlockLayout( final int minZ, final int maxZ, final int blockSize, final int minBlockSize )
+	static List< ZBlockInit > defineBlockLayout( final int minZ, final int maxZ, final int blockSize, final int minBlockSize )
 	{
 		final ArrayList< ZBlockInit > leftSets = new ArrayList<>();
 		final ArrayList< ZBlockInit > rightSets = new ArrayList<>();
@@ -182,12 +182,12 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 		weightF.add( (y) -> 0.0 );
 		// TODO: has to be between 0 and 1
 		// TODO: needs the Block to know
-		weightF.add( (z) ->
-			1.0 - Math.min( 1, Math.max( 0, 
-			( Math.abs( z - ( ( block.maxZ() - block.minZ() ) / 2. + block.minZ() ) ) /
-			( ( block.maxZ() - block.minZ() ) / 2. + 0.01) ) // first and last z-slice not 0.0
-			) )
-			);
+		weightF.add((z) -> {
+			final double halfZRange = (block.maxZ() - block.minZ()) / 2.;
+			final double midpoint = block.minZ() + halfZRange;
+			final double eps = 0.01; // to make weights of minZ and maxZ > 0
+			return 1.0 - Math.min(1, Math.max(0, Math.abs(z - midpoint) / (halfZRange + eps)));
+		});
 
 		return weightF;
 	}
