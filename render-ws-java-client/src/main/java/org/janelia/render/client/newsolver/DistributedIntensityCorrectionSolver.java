@@ -9,6 +9,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
@@ -116,19 +117,14 @@ public class DistributedIntensityCorrectionSolver {
 		}
 
 		final ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>> allItems = new ArrayList<>();
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 		try {
-			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
-			taskExecutor.invokeAll(workers).forEach(future -> {
-				try {
+			for (final Future<List<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>>> future : taskExecutor.invokeAll(workers))
 					allItems.addAll(future.get());
-				} catch (final InterruptedException | ExecutionException e) {
-					LOG.error("Failed to compute alignments", e); // TODO: confirm that it makes sense to swallow task exceptions rather than raise them
-				}
-			});
+		} catch (final InterruptedException | ExecutionException e) {
+			throw new RuntimeException("Failed to compute alignments", e);
+		} finally {
 			taskExecutor.shutdown();
-		} catch (final InterruptedException e) {
-			LOG.error("Failed to compute alignments", e);
-			return; // TODO: confirm that it makes sense to swallow task exceptions rather than raise them
 		}
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
@@ -164,16 +160,17 @@ public class DistributedIntensityCorrectionSolver {
 		// TODO: consider removing completeStack option since it doesn't make sense for 3D solves (need to discuss)
 
 		// this adds the filters to the tile specs and pushes the data to the DB
-		final boolean saveResults = (cmdLineSetup.targetStack.stack != null) && cmdLineSetup.targetStack.completeStack;
+		final boolean saveResults = (cmdLineSetup.targetStack.stack != null);
+		final RenderDataClient renderDataClient = cmdLineSetup.renderWeb.getDataClient();
 		if (saveResults) {
 			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.idToTileSpecGlobal.values());
 			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.idToFinalModelGlobal;
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, cmdLineSetup.intensityAdjust.numCoefficients);
 			addFilters(finalizedItems.idToTileSpecGlobal, idToFilterSpec);
 			final ResolvedTileSpecCollection rtsc = finalizedItems.buildResolvedTileSpecs();
-			final RenderDataClient renderDataClient = cmdLineSetup.renderWeb.getDataClient();
 			renderDataClient.saveResolvedTiles(rtsc, cmdLineSetup.targetStack.stack, null);
-			renderDataClient.setStackState(cmdLineSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
+			if (cmdLineSetup.targetStack.completeStack)
+				renderDataClient.setStackState(cmdLineSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
 		}
 	}
 
