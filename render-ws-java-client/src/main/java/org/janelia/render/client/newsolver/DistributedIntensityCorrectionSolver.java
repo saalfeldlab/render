@@ -1,9 +1,20 @@
 package org.janelia.render.client.newsolver;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
 import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.TranslationModel1D;
+
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.filter.IntensityMap8BitFilter;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -28,16 +39,6 @@ import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 /*
 // TODO: move this to common class and update once everything is semi-stable
@@ -121,15 +122,13 @@ public class DistributedIntensityCorrectionSolver {
 				try {
 					allItems.addAll(future.get());
 				} catch (final InterruptedException | ExecutionException e) {
-					LOG.error("Failed to compute alignments: " + e);
-					e.printStackTrace();
+					LOG.error("Failed to compute alignments", e); // TODO: confirm that it makes sense to swallow task exceptions rather than raise them
 				}
 			});
 			taskExecutor.shutdown();
 		} catch (final InterruptedException e) {
-			LOG.error("Failed to compute alignments: " + e);
-			e.printStackTrace();
-			return;
+			LOG.error("Failed to compute alignments", e);
+			return; // TODO: confirm that it makes sense to swallow task exceptions rather than raise them
 		}
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
@@ -162,14 +161,16 @@ public class DistributedIntensityCorrectionSolver {
 
 		final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = assembler.createAssembly();
 
+		// TODO: consider removing completeStack option since it doesn't make sense for 3D solves (need to discuss)
+
 		// this adds the filters to the tile specs and pushes the data to the DB
 		final boolean saveResults = (cmdLineSetup.targetStack.stack != null) && cmdLineSetup.targetStack.completeStack;
 		if (saveResults) {
 			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.idToTileSpecGlobal.values());
 			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.idToFinalModelGlobal;
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, cmdLineSetup.intensityAdjust.numCoefficients);
-			final ResolvedTileSpecCollection rtsc = addFilters(finalizedItems.idToTileSpecGlobal, idToFilterSpec);
-
+			addFilters(finalizedItems.idToTileSpecGlobal, idToFilterSpec);
+			final ResolvedTileSpecCollection rtsc = finalizedItems.buildResolvedTileSpecs();
 			final RenderDataClient renderDataClient = cmdLineSetup.renderWeb.getDataClient();
 			renderDataClient.saveResolvedTiles(rtsc, cmdLineSetup.targetStack.stack, null);
 			renderDataClient.setStackState(cmdLineSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
@@ -245,15 +246,13 @@ public class DistributedIntensityCorrectionSolver {
 		return correctedOnTheFly;
 	}
 
-	private static ResolvedTileSpecCollection addFilters(final Map<String, TileSpec> tileSpecs, final Map<String, FilterSpec> idToFilterSpec) {
-		final ResolvedTileSpecCollection rtsc = new ResolvedTileSpecCollection();
+	private static void addFilters(final Map<String, TileSpec> idToTileSpec,
+								   final Map<String, FilterSpec> idToFilterSpec) {
 		idToFilterSpec.forEach((tileId, filterSpec) -> {
-			final TileSpec tileSpec = tileSpecs.get(tileId);
+			final TileSpec tileSpec = idToTileSpec.get(tileId);
 			tileSpec.setFilterSpec(filterSpec);
 			tileSpec.convertSingleChannelSpecToLegacyForm();
-			rtsc.addTileSpecToCollection(tileSpec);
 		});
-		return rtsc;
 	}
 
 	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, ZBlockFactory> setupSolve() {

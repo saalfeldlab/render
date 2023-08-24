@@ -50,27 +50,25 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 
 	public AssemblyMaps< Z > createAssembly()
 	{
-		AssemblyMaps< Z > am;
-
 		// the trivial case of a single block, would crash with the code below
-		if ( ( am = handleTrivialCase( converter ) ) != null )
-			return am;
-		else
-			am = new AssemblyMaps< Z >();
+		if (isTrivialCase()) {
+			return buildTrivialAssembly();
+		}
 
-		try
-		{
+		final AssemblyMaps<Z> am = new AssemblyMaps<>();
+
+		// add shared transforms to assembly so that they can be used later when building resolved tile spec collections
+		blocks.forEach(block -> am.sharedTransformSpecs.addAll(block.rtsc().getTransformSpecs()));
+
+		try {
 			// now compute the final alignment for each block
-			final HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > blockToTile =
-					blockSolver.globalSolve( blocks, am );
+			final HashMap<BlockData<?, R, ?, ZBlockFactory>, Tile<G>> blockToTile =
+					blockSolver.globalSolve(blocks, am);
 
 			// now fuse blocks into a full assembly
-			blockFusion.globalFusion( blocks, am, blockToTile );
-		}
-		catch (final Exception e)
-		{
-			e.printStackTrace();
-			return null;
+			blockFusion.globalFusion(blocks, am, blockToTile);
+		} catch (final Exception e) {
+			throw new RuntimeException("failed assembly", e);
 		}
 
 		return am;
@@ -79,45 +77,43 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 	//public abstract void globalSolve();
 	//public abstract void assemble();
 
+	protected boolean isTrivialCase() {
+		return blocks.size() == 1;
+	}
+
 	/**
-	 * 
-	 * @return - the result of the trivial case if it was a single block
+	 * @return - the result of the trivial case
 	 */
-	protected AssemblyMaps< Z > handleTrivialCase( final Function< R, Z > converter )
+	private AssemblyMaps< Z > buildTrivialAssembly()
 	{
-		if ( blocks.size() == 1 )
+		LOG.info("buildTrivialAssembly: entry, only a single block, no solve across blocks necessary.");
+
+		final AssemblyMaps< Z > am = new AssemblyMaps<>();
+
+		final BlockData< ?, R, ?, F > solveItem = blocks.get( 0 );
+
+		am.sharedTransformSpecs.addAll(solveItem.rtsc().getTransformSpecs());
+
+		for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
 		{
-			LOG.info( "Assembler: only a single block, no solve across blocks necessary." );
+			// there is no overlap with any other solveItem (should be beginning or end of the entire stack)
+			final HashSet< String > tileIds = solveItem.zToTileId().get( z );
 
-			final AssemblyMaps< Z > am = new AssemblyMaps<>();
+			// if there are none, we continue with the next
+			if (tileIds.isEmpty())
+				continue;
 
-			final BlockData< ?, R, ?, F > solveItem = blocks.get( 0 );
+			am.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
 
-			for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
+			for ( final String tileId : tileIds )
 			{
-				// there is no overlap with any other solveItem (should be beginning or end of the entire stack)
-				final HashSet< String > tileIds = solveItem.zToTileId().get( z );
-
-				// if there are none, we continue with the next
-				if (tileIds.isEmpty())
-					continue;
-
-				am.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
-
-				for ( final String tileId : tileIds )
-				{
-					am.zToTileIdGlobal.get( z ).add( tileId );
-					am.idToTileSpecGlobal.put( tileId, solveItem.rtsc().getTileSpec( tileId ) );
-					am.idToFinalModelGlobal.put( tileId, converter.apply( solveItem.idToNewModel().get( tileId ) ) );
-				}
+				am.zToTileIdGlobal.get( z ).add( tileId );
+				am.idToTileSpecGlobal.put( tileId, solveItem.rtsc().getTileSpec( tileId ) );
+				am.idToFinalModelGlobal.put( tileId, converter.apply( solveItem.idToNewModel().get( tileId ) ) );
 			}
+		}
 
-			return am;
-		}
-		else
-		{
-			return null;
-		}
+		return am;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(Assembler.class);
