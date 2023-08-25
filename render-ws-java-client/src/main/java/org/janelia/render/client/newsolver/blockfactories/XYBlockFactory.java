@@ -62,7 +62,6 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 		final ArrayList< BlockData< M, R, P, XYBlockFactory > > blockDataList = new ArrayList<>();
 
-		// for each block, we know the z-range
 		for ( int y = 0; y < initBlocksY.size(); ++y )
 		{
 			final ZBlockInit initBlockY = initBlocksY.get( y );
@@ -98,6 +97,8 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 					System.out.println( "Loaded " + rtsc.getTileIds().size() + " tiles.");
 
 					final int id = y * initBlocksX.size() + x;
+
+					System.out.println( "XY: " + id + ": [" + initBlockX.minZ() + ", " + initBlockY.minZ() + ", " + minZ + "] >>> [" + initBlockX.maxZ() + ", " + initBlockY.maxZ() + ", " + maxZ + "]" );
 
 					final BlockData< M, R, P, XYBlockFactory > block = 
 							new BlockData<>(
