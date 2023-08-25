@@ -30,14 +30,14 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.RigidModel2D;
 
-public class AffineDistributedSolver
+public class DistributedAffineZBlockSolver
 {
 	final AffineSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
 	BlockCollection< ?, AffineModel2D, ? extends FIBSEMAlignmentParameters< ?, ? >, ZBlockFactory > col;
 	ZBlockFactory blockFactory;
 
-	public AffineDistributedSolver(
+	public DistributedAffineZBlockSolver(
 			final AffineSolverSetup cmdLineSetup,
 			final RenderSetup renderSetup )
 	{
@@ -90,7 +90,7 @@ public class AffineDistributedSolver
 		final RenderSetup renderSetup = RenderSetup.setupSolve( cmdLineSetup );
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
-		final AffineDistributedSolver solverSetup = new AffineDistributedSolver( cmdLineSetup, renderSetup );
+		final DistributedAffineZBlockSolver solverSetup = new DistributedAffineZBlockSolver( cmdLineSetup, renderSetup );
 
 		// create all block instances
 		final BlockCollection< ?, AffineModel2D, ?, ZBlockFactory > blockCollection =
@@ -314,5 +314,5 @@ public class AffineDistributedSolver
 		return workers;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(AffineDistributedSolver.class);
+	private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineZBlockSolver.class);
 }
