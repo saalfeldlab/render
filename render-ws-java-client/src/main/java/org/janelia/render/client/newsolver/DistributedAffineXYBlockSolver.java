@@ -5,20 +5,20 @@ import java.io.IOException;
 import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
-import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
+import org.janelia.render.client.newsolver.setup.AffineZBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 
 import mpicbg.models.AffineModel2D;
 
 public class DistributedAffineXYBlockSolver
 {
-	final AffineSolverSetup cmdLineSetup;
+	final AffineZBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
 	BlockCollection< ?, AffineModel2D, ? extends FIBSEMAlignmentParameters< ?, ? >, ZBlockFactory > col;
 	XYBlockFactory blockFactory;
 
 	public DistributedAffineXYBlockSolver(
-			final AffineSolverSetup cmdLineSetup,
+			final AffineZBlockSolverSetup cmdLineSetup,
 			final RenderSetup renderSetup )
 	{
 		this.cmdLineSetup = cmdLineSetup;
@@ -27,20 +27,20 @@ public class DistributedAffineXYBlockSolver
 
 	public static void main( final String[] args ) throws IOException
 	{
-        final AffineSolverSetup cmdLineSetup = new AffineSolverSetup();
+        final AffineZBlockSolverSetup cmdLineSetup = new AffineZBlockSolverSetup();
 
         // TODO: remove testing hack ...
         if (args.length == 0) {
             final String[] testArgs = {
-                    "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                    "--project", "Sec24", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                    "--matchCollection", "Sec24_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-
-                    "--stack", "v5_acquire_trimmed",
-                    "--targetStack", "v5_acquire_trimmed_test",
-//                    "--minZ", "1234",
-                    "--maxZ", "1001",
+                    //"--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
+                    "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+                    "--owner", "hess",
+                    "--project", "wafer_52c",
+                    "--matchCollection", "wafer_52c_v4",
+                    "--stack", "v1_acquire_slab_001_trimmed",
+                    "--targetStack", "	v1_acquire_slab_001_trimmed_test",
+//                    "--minZ", "1225",
+//                    "--maxZ", "1246",
 
 //                    "--completeTargetStack",
 //                    "--visualizeResults",
@@ -58,7 +58,7 @@ public class DistributedAffineXYBlockSolver
                     //"--stitchFirst", "", // perform stitch-first
                     "--maxNumMatches", "0", // no limit, default
                     "--threadsWorker", "1",
-                    //"--threadsGlobal", "60",
+                    "--threadsGlobal", "60",
                     //"--maxPlateauWidthGlobal", "50",
                     //"--maxIterationsGlobal", "10000",
             };
@@ -69,4 +69,21 @@ public class DistributedAffineXYBlockSolver
 
 		final RenderSetup renderSetup = RenderSetup.setupSolve( cmdLineSetup );
 	}
+
+	protected XYBlockFactory setupBlockFactory()
+	{
+		/*
+		final int minX = (int)Math.round( renderSetup.minX );
+		final int maxX = (int)Math.round( renderSetup.maxX );
+		final int minY = (int)Math.round( renderSetup.minY );
+		final int maxY = (int)Math.round( renderSetup.maxY );*/
+		final int minZ = (int)Math.round( renderSetup.minZ );
+		final int maxZ = (int)Math.round( renderSetup.maxZ );
+		final int blockSize = cmdLineSetup.distributedSolve.blockSize;
+		final int minBlockSize = cmdLineSetup.distributedSolve.minBlockSize;
+
+		return null;//new XYBlockFactory( minZ, maxZ, blockSize, minBlockSize );
+	}
+
+	
 }

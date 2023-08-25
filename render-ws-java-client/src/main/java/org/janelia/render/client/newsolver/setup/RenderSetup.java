@@ -58,7 +58,7 @@ public class RenderSetup
 		return runParams;
 	}
 
-	public static RenderSetup setupSolve(final AffineSolverSetup parameters) throws IOException {
+	public static RenderSetup setupSolve(final AffineZBlockSolverSetup parameters) throws IOException {
 
 		parameters.initDefaultValues();
 		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;

@@ -21,7 +21,7 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
 
-public class AffineSolverSetup extends CommandLineParameters
+public class AffineZBlockSolverSetup extends CommandLineParameters
 {
 	private static final long serialVersionUID = 655629544594300471L;
 
