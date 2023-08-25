@@ -54,7 +54,6 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -205,16 +204,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 		// sort sectionIds
 		final ArrayList< String > sortedSectionIds = new ArrayList<>( sectionIdToZMap.keySet() );
-		Collections.sort(sortedSectionIds, (s1, s2) -> {
-			final double d1 = Double.parseDouble(s1);
-			final double d2 = Double.parseDouble(s2);
-			if (d2 < d1)
-				return 1;
-			else if (d2 > d1)
-				return -1;
-			else
-				return 0;
-		});
+		sortedSectionIds.sort((s1, s2) -> Double.compare(Double.parseDouble(s1), Double.parseDouble(s2)));
 
 		for ( final String pGroupId : sortedSectionIds )
 		{
@@ -438,10 +428,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 							//LOG.info( "P1: " + Util.printCoordinates( pm.getP1().getW() ) + ", P2: " + Util.printCoordinates( pm.getP2().getW() ) + ", d=" + distance );
 						}
 						LOG.info( "Error=" + (sumError / matches.size()) );
-					}
-					catch ( final Exception e)
-					{
-						e.printStackTrace();
+					} catch (final Exception e) {
+						LOG.info("Caught exception: ", e);
 					}
 				}
 			}
@@ -717,14 +705,10 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 					// we always prealign (not sure how far off the current alignment in renderer is)
 					// a simple preAlign suffices for Translation and Rigid as it doesn't matter which Tile is fixed during alignment
-					try
-					{
+					try {
 						tileConfig.preAlign();
-					}
-					catch ( final NotEnoughDataPointsException | IllDefinedDataPointsException e )
-					{
-						LOG.info( "block " + solveItem.blockData().getId() + ": Could not solve prealign for z=" + z + ", cause: " + e );
-						e.printStackTrace();
+					} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+						LOG.info("block " + solveItem.blockData().getId() + ": Could not solve prealign for z=" + z + ", cause: ", e);
 					}
 
 					// test if the graph has cycles, if yes we would need to do a solve
@@ -735,8 +719,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					{
 						LOG.info( "block " + solveItem.blockData().getId() + ": Full solve required for stitching z=" + z  );
 
-						try
-						{
+						try {
 							TileUtil.optimizeConcurrently(
 								new ErrorStatistic( maxPlateauWidthStitching + 1 ),
 								maxAllowedErrorStitching,
@@ -749,11 +732,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 								numThreads );
 
 							LOG.info( "block " + solveItem.blockData().getId() + ": Solve z=" + z + " avg=" + tileConfig.getError() + ", min=" + tileConfig.getMinError() + ", max=" + tileConfig.getMaxError() );
-						}
-						catch ( final Exception e )
-						{
-							LOG.info( "block " + solveItem.blockData().getId() + ": Could not solve stitiching for z=" + z + ", cause: " + e );
-							e.printStackTrace();
+						} catch (final Exception e) {
+							LOG.info("block " + solveItem.blockData().getId() + ": Could not solve stitiching for z=" + z + ", cause: ", e);
 						}
 					}
 
@@ -778,8 +758,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 					// Hack: show a section after alignment
 					if ( visualizeZSection == z )
 					{
-						try
-						{
+						try {
 							final HashMap< String, AffineModel2D > models = new HashMap<>();
 							for ( final Tile< ? > t : set )
 							{
@@ -790,10 +769,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 							new ImageJ();
 							final ImagePlus imp1 = VisualizeTools.renderTS(models, solveItem.blockData().rtsc().getTileIdToSpecMap(), 0.15 );
 							imp1.setTitle( "z=" + z );
-						}
-						catch ( final NoninvertibleModelException e )
-						{
-							e.printStackTrace();
+						} catch (final NoninvertibleModelException e) {
+							LOG.info("Could not show section: ", e);
 						}
 					}
 				}
@@ -971,8 +948,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 			((InterpolatedAffineModel2D) tile.getModel()).setLambda( 0.0 ); // prealign without regularization
 		}
 		
-		try
-		{
+		try {
 			double[] errors = SolveTools.computeErrors( tileConfig.getTiles() );
 			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
 
@@ -990,11 +966,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
 			}
 			// TODO: else they should be in the right position
-		}
-		catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e)
-		{
-			LOG.info( "block " + solveItem.blockData().getId() + ": prealign failed: " + e );
-			e.printStackTrace();
+		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+			LOG.info("block " + solveItem.blockData().getId() + ": prealign failed: ", e);
 		}
 
 		LOG.info( "block " + solveItem.blockData().getId() + ": lambda's used (rigid, translation, regularization):" );
@@ -1002,8 +975,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		for ( int l = 0; l < blockOptimizerLambdasRigid.size(); ++l )
 		{
 			LOG.info( "block " + solveItem.blockData().getId() + ": l=" + 
-					blockOptimizerLambdasRigid.get( l ) + ", " + 
-					blockOptimizerLambdasTranslation.get( l ) + ", " + 
+					blockOptimizerLambdasRigid.get( l ) + ", " +
+					blockOptimizerLambdasTranslation.get( l ) + ", " +
 					blockOptimizerLambdasRegularization.get( l ) );
 		}
 
