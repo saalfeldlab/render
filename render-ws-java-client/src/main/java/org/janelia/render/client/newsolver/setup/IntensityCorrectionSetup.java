@@ -17,7 +17,7 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 	public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
 	@ParametersDelegate
-	public DistributedSolveParameters distributedSolve = new DistributedSolveParameters();
+	public DistributedZSolveParameters distributedSolve = new DistributedZSolveParameters();
 
 	@ParametersDelegate
 	public AlgorithmicIntensityAdjustParameters intensityAdjust = new AlgorithmicIntensityAdjustParameters();

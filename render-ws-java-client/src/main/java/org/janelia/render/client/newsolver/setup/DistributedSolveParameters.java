@@ -1,10 +1,9 @@
 package org.janelia.render.client.newsolver.setup;
 
+import java.io.Serializable;
+
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
-import org.janelia.render.client.parameter.CommandLineParameters;
-
-import java.io.Serializable;
 
 /**
  * Parameters for distributed solver.
@@ -14,18 +13,7 @@ import java.io.Serializable;
 @Parameters
 public class DistributedSolveParameters implements Serializable {
 
-	// Initialization parameters
-	@Parameter(
-			names = "--blockSize",
-			description = "The size of the blocks in z, which will be computed in paralell (default:500, min:3) "
-	)
-	public Integer blockSize = 500;
-
-	@Parameter(
-			names = "--minBlockSize",
-			description = "The minimal size of the blocks in z, which will be computed in parallel (default: 50) "
-	)
-	public Integer minBlockSize = 50;
+	private static final long serialVersionUID = -4732166396721717685L;
 
 	// global assembly solve parameters
 	@Parameter(
@@ -59,18 +47,12 @@ public class DistributedSolveParameters implements Serializable {
 	public DistributedSolveParameters() {}
 
 	public DistributedSolveParameters(
-			final Integer blockSize,
-			final Integer minBlockSize,
 			final Double maxAllowedErrorGlobal,
 			final Integer maxIterationsGlobal,
 			final Integer maxPlateauWidthGlobal,
 			final int threadsWorker,
 			final int threadsGlobal) {
 
-		if (blockSize < 3)
-			throw new RuntimeException("Blocksize has to be >= 3.");
-		if (minBlockSize < 1)
-			throw new RuntimeException("MinBlockSize has to be > 0.");
 		if (maxAllowedErrorGlobal < 0)
 			throw new RuntimeException("MaxAllowedErrorGlobal has to be >= 0.");
 		if (maxIterationsGlobal < 1)
@@ -82,8 +64,6 @@ public class DistributedSolveParameters implements Serializable {
 		if (threadsGlobal < 1)
 			throw new RuntimeException("ThreadsGlobal has to be > 0.");
 
-		this.blockSize = blockSize;
-		this.minBlockSize = minBlockSize;
 		this.maxAllowedErrorGlobal = maxAllowedErrorGlobal;
 		this.maxIterationsGlobal = maxIterationsGlobal;
 		this.maxPlateauWidthGlobal = maxPlateauWidthGlobal;
