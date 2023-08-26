@@ -5,20 +5,20 @@ import java.io.IOException;
 import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
-import org.janelia.render.client.newsolver.setup.AffineZBlockSolverSetup;
+import org.janelia.render.client.newsolver.setup.AffineXYBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 
 import mpicbg.models.AffineModel2D;
 
 public class DistributedAffineXYBlockSolver
 {
-	final AffineZBlockSolverSetup cmdLineSetup;
+	final AffineXYBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
 	BlockCollection< ?, AffineModel2D, ? extends FIBSEMAlignmentParameters< ?, ? >, ZBlockFactory > col;
 	XYBlockFactory blockFactory;
 
 	public DistributedAffineXYBlockSolver(
-			final AffineZBlockSolverSetup cmdLineSetup,
+			final AffineXYBlockSolverSetup cmdLineSetup,
 			final RenderSetup renderSetup )
 	{
 		this.cmdLineSetup = cmdLineSetup;
@@ -27,7 +27,7 @@ public class DistributedAffineXYBlockSolver
 
 	public static void main( final String[] args ) throws IOException
 	{
-        final AffineZBlockSolverSetup cmdLineSetup = new AffineZBlockSolverSetup();
+        final AffineXYBlockSolverSetup cmdLineSetup = new AffineXYBlockSolverSetup();
 
         // TODO: remove testing hack ...
         if (args.length == 0) {
@@ -72,17 +72,18 @@ public class DistributedAffineXYBlockSolver
 
 	protected XYBlockFactory setupBlockFactory()
 	{
-		/*
-		final int minX = (int)Math.round( renderSetup.minX );
-		final int maxX = (int)Math.round( renderSetup.maxX );
-		final int minY = (int)Math.round( renderSetup.minY );
-		final int maxY = (int)Math.round( renderSetup.maxY );*/
+		final double minX = renderSetup.minX;
+		final double maxX = renderSetup.maxX;
+		final double minY = renderSetup.minY;
+		final double maxY = renderSetup.maxY;
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = (int)Math.round( renderSetup.maxZ );
-		final int blockSize = cmdLineSetup.distributedSolve.blockSize;
-		final int minBlockSize = cmdLineSetup.distributedSolve.minBlockSize;
+		final int blockSizeX = cmdLineSetup.distributedSolve.blockSizeX;
+		final int minBlockSizeX = cmdLineSetup.distributedSolve.minBlockSizeX;
+		final int blockSizeY = cmdLineSetup.distributedSolve.blockSizeY;
+		final int minBlockSizeY = cmdLineSetup.distributedSolve.minBlockSizeY;
 
-		return null;//new XYBlockFactory( minZ, maxZ, blockSize, minBlockSize );
+		return new XYBlockFactory( minX, maxX, minY, maxY, minZ, maxZ, blockSizeX, blockSizeY, minBlockSizeX, minBlockSizeY );
 	}
 
 	

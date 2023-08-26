@@ -16,23 +16,24 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 {
 	private static final long serialVersionUID = -2022190797935740332L;
 
-	final int minX, maxX, minY, maxY, minZ, maxZ;
+	final int minX, maxX, minY, maxY;
+	final int minZ, maxZ;
 	final int minBlockSizeX, minBlockSizeY;
 	final int blockSizeX, blockSizeY;
 
 	public XYBlockFactory(
-			final int minX, final int maxX,
-			final int minY, final int maxY,
+			final double minX, final double maxX,
+			final double minY, final double maxY,
 			final int minZ, final int maxZ,
 			final int blockSizeX,
 			final int blockSizeY,
 			final int minBlockSizeX,
 			final int minBlockSizeY )
 	{
-		this.minX = minX;
-		this.maxX = maxX;
-		this.minY = minY;
-		this.maxY = maxY;
+		this.minX = (int)Math.round(Math.floor( minX ));
+		this.maxX = (int)Math.round(Math.ceil( maxX ));
+		this.minY = (int)Math.round(Math.floor( minY ));
+		this.maxY = (int)Math.round(Math.ceil( maxY ));
 		this.minZ = minZ;
 		this.maxZ = maxZ;
 		this.blockSizeX = blockSizeX;
