@@ -5,7 +5,6 @@ import java.io.Serializable;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
-import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineXYBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
