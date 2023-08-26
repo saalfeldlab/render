@@ -47,7 +47,7 @@ public class AffineXYBlockSolverSetup extends CommandLineParameters
     public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
 	@ParametersDelegate
-	public DistributedSolveParameters distributedSolve = new DistributedSolveParameters();
+	public DistributedXYSolveParameters distributedSolve = new DistributedXYSolveParameters();
 
 	@ParametersDelegate
 	public TargetStackParameters targetStack = new TargetStackParameters();
