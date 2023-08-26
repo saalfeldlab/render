@@ -97,6 +97,12 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 					System.out.println( "Loaded " + rtsc.getTileIds().size() + " tiles.");
 
+					if ( rtsc.getTileCount() == 0 )
+					{
+						System.out.println( "Since no tiles are in this XY block, continuing with next one.");
+						continue;
+					}
+
 					final int id = y * initBlocksX.size() + x;
 
 					System.out.println( "XY: " + id + ": [" + initBlockX.minZ() + ", " + initBlockY.minZ() + ", " + minZ + "] >>> [" + initBlockX.maxZ() + ", " + initBlockY.maxZ() + ", " + maxZ + "]" );
