@@ -1,20 +1,26 @@
 package org.janelia.render.client.newsolver;
 
 import java.io.IOException;
+import java.io.Serializable;
+import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineXYBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.Model;
 
 public class DistributedAffineXYBlockSolver
 {
 	final AffineXYBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
-	BlockCollection< ?, AffineModel2D, ? extends FIBSEMAlignmentParameters< ?, ? >, ZBlockFactory > col;
+	BlockCollection< ?, AffineModel2D, ? extends FIBSEMAlignmentParameters< ?, ? >, XYBlockFactory > col;
 	XYBlockFactory blockFactory;
 
 	public DistributedAffineXYBlockSolver(
@@ -68,6 +74,56 @@ public class DistributedAffineXYBlockSolver
         }
 
 		final RenderSetup renderSetup = RenderSetup.setupSolve( cmdLineSetup );
+
+		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
+		final DistributedAffineXYBlockSolver solverSetup = new DistributedAffineXYBlockSolver( cmdLineSetup, renderSetup );
+
+		// create all block instances
+		final BlockCollection< ?, AffineModel2D, ?, XYBlockFactory > blockCollection =
+				solverSetup.setupSolve( cmdLineSetup.blockModel() );
+
+		//
+		// multi-threaded solve
+		//
+		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
+
+		// TODO ...
+	}
+
+	public < M extends Model< M > & Affine2D< M > >
+			BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory > setupSolve(
+					final M blockModel )
+	{
+		//
+		// setup XY BlockFactory
+		//
+		final XYBlockFactory blockFactory = setupBlockFactory();
+		
+		this.blockFactory = blockFactory;
+		
+		//
+		// create all blocks
+		//
+		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory > col =
+				setupBlockCollection( blockFactory, blockModel );
+		
+		this.col = col;
+		
+		return col;
+	}
+
+	protected < M extends Model< M > & Affine2D< M > >
+			BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory > setupBlockCollection(
+					final XYBlockFactory blockFactory,
+					final M blockModel )
+	{
+		//
+		// setup FIB-SEM solve parameter object
+		//
+		final FIBSEMAlignmentParameters< M, M > defaultSolveParams =
+				setupSolveParameters( blockModel );
+
+		return blockFactory.defineBlockCollection(rtsc -> defaultSolveParams );
 	}
 
 	protected XYBlockFactory setupBlockFactory()
@@ -86,5 +142,34 @@ public class DistributedAffineXYBlockSolver
 		return new XYBlockFactory( minX, maxX, minY, maxY, minZ, maxZ, blockSizeX, blockSizeY, minBlockSizeX, minBlockSizeY );
 	}
 
-	
+	protected < M extends Model< M > & Affine2D< M > > FIBSEMAlignmentParameters< M, M > setupSolveParameters(
+			final M blockModel )
+	{
+		final boolean stitchFirst = cmdLineSetup.stitchFirst;
+
+		return new FIBSEMAlignmentParameters<>(
+				blockModel.copy(),
+				(Function< Integer, M > & Serializable )(z) -> blockModel.copy(),
+				(Function< Integer, Integer > & Serializable )(z) -> null,
+				0,//cmdLineSetup.maxAllowedErrorStitching,
+				0,//cmdLineSetup.maxIterationsStitching,
+				0,//cmdLineSetup.maxPlateauWidthStitching,
+				cmdLineSetup.blockOptimizerLambdasRigid,
+				cmdLineSetup.blockOptimizerLambdasTranslation,
+				cmdLineSetup.blockOptimizerLambdasRegularization,
+				cmdLineSetup.blockOptimizerIterations,
+				cmdLineSetup.blockMaxPlateauWidth,
+				cmdLineSetup.blockMaxAllowedError,
+				cmdLineSetup.maxNumMatches,
+				cmdLineSetup.maxZRangeMatches,
+				cmdLineSetup.preAlign,
+				cmdLineSetup.renderWeb.baseDataUrl,
+				cmdLineSetup.renderWeb.owner,
+				cmdLineSetup.renderWeb.project,
+				cmdLineSetup.stack,
+				cmdLineSetup.matches.matchOwner,
+				cmdLineSetup.matches.matchCollection);
+	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineXYBlockSolver.class);
 }
