@@ -18,6 +18,7 @@ import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.XYRangeParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
 import org.slf4j.Logger;
@@ -35,7 +36,7 @@ public class RenderSetup
 	public Map<Integer, String> zToGroupIdMap; // a HashMap where int is the z section, and string is the description (problem, restart, ...)
 	public Map<String, ArrayList<Double>> sectionIdToZMap; // this is a cache
 	public Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
-	public Double minZ, maxZ;
+	public Double minX, maxX, minY, maxY, minZ, maxZ;
 	public int totalTileCount;
 
 	@Override
@@ -51,11 +52,37 @@ public class RenderSetup
 		runParams.sectionIdToZMap = this.sectionIdToZMap;
 		runParams.zToGroupIdMap = this.zToGroupIdMap;
 		runParams.zToTileSpecsMap = new HashMap<>(); // otherwise we get synchronization issues, TODO: Reuse
+		runParams.minX = this.minX;
+		runParams.maxX = this.maxX;
+		runParams.minY = this.minY;
+		runParams.maxY = this.maxY;
 		runParams.minZ = this.minZ;
 		runParams.maxZ = this.maxZ;
 		runParams.totalTileCount = 0;
 
 		return runParams;
+	}
+
+	public static RenderSetup setupSolve(final AffineXYBlockSolverSetup parameters) throws IOException {
+
+		parameters.initDefaultValues();
+		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
+		final ZRangeParameters layerRange = new ZRangeParameters();
+		layerRange.minZ = parameters.zRange.minZ;
+		layerRange.maxZ = parameters.zRange.maxZ;
+		final XYRangeParameters xyRange = new XYRangeParameters();
+		xyRange.minX = parameters.xyRange.minX;
+		xyRange.maxX = parameters.xyRange.maxX;
+		xyRange.minY = parameters.xyRange.minY;
+		xyRange.maxY = parameters.xyRange.maxY;
+		final String stack = parameters.stack;
+		final String targetStack = parameters.targetStack.stack;
+		final String targetOwner = parameters.targetStack.owner;
+		final String targetProject = parameters.targetStack.project;
+		final String matchOwner = parameters.matches.matchOwner;
+		final String matchCollection = parameters.matches.matchCollection;
+
+		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, xyRange, layerRange);
 	}
 
 	public static RenderSetup setupSolve(final AffineZBlockSolverSetup parameters) throws IOException {
@@ -65,6 +92,7 @@ public class RenderSetup
 		final ZRangeParameters layerRange = new ZRangeParameters();
 		layerRange.minZ = parameters.zRange.minZ;
 		layerRange.maxZ = parameters.zRange.maxZ;
+		final XYRangeParameters xyRange = new XYRangeParameters();
 		final String stack = parameters.stack;
 		final String targetStack = parameters.targetStack.stack;
 		final String targetOwner = parameters.targetStack.owner;
@@ -72,7 +100,7 @@ public class RenderSetup
 		final String matchOwner = parameters.matches.matchOwner;
 		final String matchCollection = parameters.matches.matchCollection;
 
-		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, layerRange);
+		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, xyRange, layerRange);
 	}
 
 	public static RenderSetup setupSolve(final IntensityCorrectionSetup parameters) throws IOException {
@@ -80,12 +108,13 @@ public class RenderSetup
 		parameters.initDefaultValues();
 		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
 		final ZRangeParameters layerRange = parameters.layerRange;
+		final XYRangeParameters xyRange = new XYRangeParameters();
 		final String stack = parameters.intensityAdjust.stack;
 		final String targetStack = parameters.targetStack.stack;
 		final String targetOwner = parameters.targetStack.owner;
 		final String targetProject = parameters.targetStack.project;
 
-		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, null, null, stack, layerRange);
+		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, null, null, stack, xyRange, layerRange);
 	}
 
 	private static RenderSetup setupSolve(
@@ -96,6 +125,7 @@ public class RenderSetup
 			final String matchOwner,
 			final String matchCollection,
 			final String stack,
+			final XYRangeParameters xyRange,
 			final ZRangeParameters layerRange) throws IOException {
 
 		final RenderSetup runParams = new RenderSetup();
@@ -139,6 +169,12 @@ public class RenderSetup
 		if (runParams.pGroupList.isEmpty())
 			throw new IllegalArgumentException("stack " + stack + " does not contain any sections with the specified z values");
 
+		Double minXForRun = xyRange.minX;
+		Double maxXForRun = xyRange.maxX;
+
+		Double minYForRun = xyRange.minY;
+		Double maxYForRun = xyRange.maxY;
+
 		Double minZForRun = layerRange.minZ;
 		Double maxZForRun = layerRange.maxZ;
 
@@ -152,6 +188,18 @@ public class RenderSetup
 				final Bounds stackBounds = stackStats.getStackBounds();
 				if (stackBounds != null)
 				{
+					if (minXForRun == null)
+						minXForRun = stackBounds.getMinX();
+
+					if (maxXForRun == null)
+						maxXForRun = stackBounds.getMaxX();
+
+					if (minYForRun == null)
+						minYForRun = stackBounds.getMinY();
+
+					if (maxYForRun == null)
+						maxYForRun = stackBounds.getMaxY();
+
 					if (minZForRun == null)
 						minZForRun = stackBounds.getMinZ();
 
@@ -160,8 +208,20 @@ public class RenderSetup
 				}
 			}
 
+			if ( (minXForRun == null) || (maxXForRun == null) )
+				throw new IllegalArgumentException( "Failed to derive min and/or max x values for stack " + stack + ".  Stack may need to be completed.");
+
+			if ( (minYForRun == null) || (maxYForRun == null) )
+				throw new IllegalArgumentException( "Failed to derive min and/or max y values for stack " + stack + ".  Stack may need to be completed.");
+
 			if ( (minZForRun == null) || (maxZForRun == null) )
 				throw new IllegalArgumentException( "Failed to derive min and/or max z values for stack " + stack + ".  Stack may need to be completed.");
+
+			xyRange.minX = minXForRun;
+			xyRange.maxX = maxXForRun;
+
+			xyRange.minY = minYForRun;
+			xyRange.maxY = maxYForRun;
 
 			layerRange.minZ = minZForRun;
 			layerRange.maxZ = maxZForRun;
@@ -169,6 +229,12 @@ public class RenderSetup
 
 		final Double minZ = minZForRun;
 		final Double maxZ = maxZForRun;
+
+		runParams.minX = minXForRun;
+		runParams.maxX = maxXForRun;
+
+		runParams.minY = minYForRun;
+		runParams.maxY = maxYForRun;
 
 		runParams.minZ = minZForRun;
 		runParams.maxZ = maxZForRun;
