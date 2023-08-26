@@ -264,8 +264,8 @@ public class DistributedAffineZBlockSolver
 		final boolean stitchFirst = cmdLineSetup.stitchFirst;
 
 		return new FIBSEMAlignmentParameters<>(
-				blockModel,
-				(Function< Integer,S > & Serializable )(z) -> stitchingModel,
+				blockModel.copy(),
+				(Function< Integer,S > & Serializable )(z) -> stitchingModel.copy(),
 				stitchFirst ? (Function< Integer, Integer > & Serializable )(z) -> cmdLineSetup.minStitchingInliers : null,
 				cmdLineSetup.maxAllowedErrorStitching,
 				cmdLineSetup.maxIterationsStitching,
