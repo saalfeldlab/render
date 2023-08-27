@@ -1,8 +1,11 @@
 package org.janelia.render.client.newsolver.blocksolveparameters;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.function.Function;
 
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -143,5 +146,33 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 			final int threadsWorker )
 	{
 		return new AffineAlignBlockWorker<>( blockData, startId, threadsWorker );
+	}
+
+	@Override
+	public <F extends BlockFactory<F>> double[] centerOfMass( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>, F> blockData)
+	{
+		final HashMap<String, AffineModel2D> models = blockData.idToNewModel();
+
+		final double[] c = new double[ 3 ];
+		int count = 0;
+
+		for ( final Entry<String, AffineModel2D> entry : models.entrySet() )
+		{
+			final TileSpec ts = blockData.rtsc().getTileSpec( entry.getKey() );
+			final double[] coord = new double[] { (ts.getWidth() - 1) /2.0, (ts.getHeight() - 1) /2.0 };
+
+			entry.getValue().applyInPlace( coord );
+
+			c[ 0 ] += coord[ 0 ];
+			c[ 1 ] += coord[ 1 ];
+			c[ 2 ] += ts.getZ();
+			++count;
+		}
+
+		c[ 0 ] /= (double)count;
+		c[ 1 ] /= (double)count;
+		c[ 2 ] /= (double)count;
+
+		return c;
 	}
 }

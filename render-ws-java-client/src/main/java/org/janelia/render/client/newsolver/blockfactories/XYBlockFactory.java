@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver.blockfactories;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.function.Function;
 
@@ -133,7 +134,28 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 	public ArrayList<Function<Double, Double>> createWeightFunctions( final BlockData<?, ?, ?, XYBlockFactory> block )
 	{
 		// TODO Auto-generated method stub
-		return null;
+
+		// TODO: this will be ugly ... need to cast here, or make M part of BlockFactory - which is ugly too, projects all the way through
+		// and creates ugly long generics constructs, just tried it out
+
+		// TODO: Or the block must be able to compute it's center of mass and return it
+		// (which makes sense when we adjust intensities, because then the NEW model is for intensities, not for transformations)
+		// (so actually the parameter object should be able to compute the center of mass of a block)
+		// i.e. blockdata should delegate the center-of-mass computation to the parameter object
+
+		// compute current center-of-mass
+		final double[] center = block.centerOfMass();
+
+		// we also define our own distance functions
+		// here, z doesn't matter, only xy
+		final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
+
+		weightF.add( (x) -> 0.0 );
+		weightF.add( (y) -> 0.0 );
+
+		weightF.add( (z) -> 0.0 );
+
+		return weightF;
 	}
 
 }

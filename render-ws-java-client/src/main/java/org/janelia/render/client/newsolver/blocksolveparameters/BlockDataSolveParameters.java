@@ -44,6 +44,11 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 
 	public M blockSolveModel() { return blockSolveModel; }
 
+	/**
+	 * @return - the center of mass of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
+	 */
+	public abstract < F extends BlockFactory< F > > double[] centerOfMass( final BlockData<M, R, P, F > blockData );
+
 	public abstract < F extends BlockFactory< F > > Worker< M, R, P, F > createWorker(
 			final BlockData< M, R, P, F > blockData,
 			final int startId,
