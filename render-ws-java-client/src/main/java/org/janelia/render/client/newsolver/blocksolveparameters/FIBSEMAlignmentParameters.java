@@ -10,6 +10,10 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.esotericsoftware.minlog.Log;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
@@ -154,6 +158,14 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 		if ( blockData.idToNewModel() == null || blockData.idToNewModel().size() == 0 )
 			return super.centerOfMass( blockData );
 
+		// check that all TileSpecs are part of the idToNewModel map
+		for ( final TileSpec ts : blockData.rtsc().getTileSpecs() )
+			if ( !blockData.idToNewModel().containsKey( ts.getTileId() ) )
+			{
+				LOG.info( "WARNING: a TileSpec is not part of the idToNewModel() - that should not happen." );
+				return super.centerOfMass( blockData );
+			}
+
 		final HashMap<String, AffineModel2D> models = blockData.idToNewModel();
 
 		final double[] c = new double[ 3 ];
@@ -178,4 +190,6 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 
 		return c;
 	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(FIBSEMAlignmentParameters.class);
 }
