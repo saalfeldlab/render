@@ -171,12 +171,11 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 		final double[] c = new double[ 3 ];
 		int count = 0;
 
-		for ( final Entry<String, AffineModel2D> entry : models.entrySet() )
+		for ( final TileSpec ts : blockData.rtsc().getTileSpecs() )
 		{
-			final TileSpec ts = blockData.rtsc().getTileSpec( entry.getKey() );
 			final double[] coord = new double[] { (ts.getWidth() - 1) /2.0, (ts.getHeight() - 1) /2.0 };
 
-			entry.getValue().applyInPlace( coord );
+			models.get( ts.getTileId() ).applyInPlace( coord );
 
 			c[ 0 ] += coord[ 0 ];
 			c[ 1 ] += coord[ 1 ];
