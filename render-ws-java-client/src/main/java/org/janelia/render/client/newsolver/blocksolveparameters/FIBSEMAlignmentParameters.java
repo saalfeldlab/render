@@ -151,6 +151,9 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	@Override
 	public <F extends BlockFactory<F>> double[] centerOfMass( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>, F> blockData)
 	{
+		if ( blockData.idToNewModel() == null || blockData.idToNewModel().size() == 0 )
+			return super.centerOfMass( blockData );
+
 		final HashMap<String, AffineModel2D> models = blockData.idToNewModel();
 
 		final double[] c = new double[ 3 ];

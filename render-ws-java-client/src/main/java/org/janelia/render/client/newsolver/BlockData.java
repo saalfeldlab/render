@@ -100,10 +100,12 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 	/**
 	 * @return - the center of mass of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
 	 */
-	public double[] centerOfMass()
-	{
-		return solveTypeParameters().centerOfMass( this );
-	}
+	public double[] centerOfMass() { return solveTypeParameters().centerOfMass( this ); }
+
+	/**
+	 * @return - the bounding box of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
+	 */
+	public Pair<double[],double[]> boundingBox( final BlockData<M, R, P, F> blockData ) { return solveTypeParameters().boundingBox( blockData ); }
 
 	public P solveTypeParameters() { return solveTypeParameters; }
 	public F blockFactory() { return blockFactory; }

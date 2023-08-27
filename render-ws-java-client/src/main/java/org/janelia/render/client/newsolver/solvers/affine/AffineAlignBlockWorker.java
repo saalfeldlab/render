@@ -26,9 +26,8 @@ import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.newsolver.solvers.WorkerTools.LayerDetails;
 import org.janelia.render.client.solver.ConstantAffineModel2D;
 import org.janelia.render.client.solver.Graph;
-import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.SerializableValuePair;
-import org.janelia.render.client.solver.SolveItem;
+import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.janelia.render.client.solver.matchfilter.MatchFilter;
 import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
@@ -281,7 +280,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		if (!inputSolveItem.idToTileMap().containsKey(id))
 		{
 			final Pair<Tile<M>, AffineModel2D> pair =
-					SolveTools.buildTileFromSpec( inputSolveItem.blockData().solveTypeParameters().blockSolveModel().copy(), SolveItem.samplesPerDimension, tileSpec );
+					SolveTools.buildTileFromSpec( inputSolveItem.blockData().solveTypeParameters().blockSolveModel().copy(), AffineBlockDataWrapper.samplesPerDimension, tileSpec );
 			tile = pair.getA();
 			inputSolveItem.idToTileMap().put(id, tile);
 			inputSolveItem.tileToIdMap().put(tile, id);
