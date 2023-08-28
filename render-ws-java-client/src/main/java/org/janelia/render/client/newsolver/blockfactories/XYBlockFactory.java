@@ -82,49 +82,61 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 				System.out.println( "   X: "+ initBlockX.id + ": " + initBlockX.minZ() + " >> " + initBlockX.maxZ() + " [#"+(initBlockX.maxZ()-initBlockX.minZ()+1) + "]" );
 
+				ResolvedTileSpecCollection rtsc = null;
+
 				try
 				{
 					// TODO: trautmane
 					// we fetch all TileSpecs for our x,y,z-range
-					final ResolvedTileSpecCollection rtsc =
-							r.getResolvedTiles(
-									basicParameters.stack(),
-									(double)minZ,
-									(double)maxZ,
-									null,//groupId,
-									(double)initBlockX.minZ(),
-									(double)initBlockX.maxZ(),
-									(double)initBlockY.minZ(),
-									(double)initBlockY.maxZ(),
-									null );// matchPattern
-
-					System.out.println( "Loaded " + rtsc.getTileIds().size() + " tiles.");
-
-					if ( rtsc.getTileCount() == 0 )
-					{
-						System.out.println( "Since no tiles are in this XY block, continuing with next one.");
-						continue;
-					}
-
-					final int id = y * initBlocksX.size() + x;
-
-					System.out.println( "XY: " + id + ": [" + initBlockX.minZ() + ", " + initBlockY.minZ() + ", " + minZ + "] >>> [" + initBlockX.maxZ() + ", " + initBlockY.maxZ() + ", " + maxZ + "]" );
-
-					final BlockData< M, R, P, XYBlockFactory > block = 
-							new BlockData<>(
-									this,
-									blockSolveParameterProvider.create( rtsc ),
-									id,
-									rtsc );
-	
-					blockDataList.add( block );
+					
+					rtsc = r.getResolvedTiles(
+							basicParameters.stack(),
+							(double)minZ,
+							(double)maxZ,
+							null,//groupId,
+							(double)initBlockX.minZ(),
+							(double)initBlockX.maxZ(),
+							(double)initBlockY.minZ(),
+							(double)initBlockY.maxZ(),
+							null );// matchPattern
 				}
 				catch (final Exception e)
 				{
-					System.out.println( "Failed to fetch data from render. stopping.");
-					e.printStackTrace();
-					return null;
+					if ( e.getMessage().contains( "no tile specifications found" ) )
+					{
+						rtsc = null;
+					}
+					else
+					{
+						System.out.println( "Failed to fetch data from render. stopping.");
+						e.printStackTrace();
+						return null;
+					}
 				}
+
+				if ( rtsc != null )
+					System.out.println( "Loaded " + rtsc.getTileIds().size() + " tiles.");
+				else
+					System.out.println( "Loaded null tiles.");
+
+				if ( rtsc == null || rtsc.getTileCount() == 0 )
+				{
+					System.out.println( "Since no tiles are in this XY block, continuing with next one.");
+					continue;
+				}
+
+				final int id = y * initBlocksX.size() + x;
+
+				System.out.println( "XY: " + id + ": [" + initBlockX.minZ() + ", " + initBlockY.minZ() + ", " + minZ + "] >>> [" + initBlockX.maxZ() + ", " + initBlockY.maxZ() + ", " + maxZ + "]" );
+
+				final BlockData< M, R, P, XYBlockFactory > block = 
+						new BlockData<>(
+								this,
+								blockSolveParameterProvider.create( rtsc ),
+								id,
+								rtsc );
+
+				blockDataList.add( block );
 			}
 
 		}
