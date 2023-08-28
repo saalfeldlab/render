@@ -37,8 +37,8 @@ public class DistributedAffineXYBlockSolver
         // TODO: remove testing hack ...
         if (args.length == 0) {
             final String[] testArgs = {
-                    //"--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                    "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+                    "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
+                    //"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
                     "--owner", "hess",
                     "--project", "wafer_52c",
                     "--matchCollection", "wafer_52c_v4",
@@ -122,7 +122,29 @@ public class DistributedAffineXYBlockSolver
 		final FIBSEMAlignmentParameters< M, M > defaultSolveParams =
 				setupSolveParameters( blockModel );
 
-		return blockFactory.defineBlockCollection(rtsc -> defaultSolveParams );
+		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory> bc =
+				blockFactory.defineBlockCollection( rtsc -> defaultSolveParams );
+
+		int minTileCount = Integer.MAX_VALUE;
+		int maxTileCount = Integer.MIN_VALUE;
+		double avgTileCount = 0;
+		int count = 0;
+
+		for ( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory> block : bc.allBlocks() )
+		{
+			final int tc = block.rtsc().getTileCount();
+
+			minTileCount = Math.min( tc, minTileCount );
+			maxTileCount = Math.max( tc, maxTileCount );
+			avgTileCount += tc;
+			++count;
+		}
+
+		avgTileCount /= (double)count;
+
+		LOG.info( "minTileCount=" + minTileCount + ", maxTileCount=" + maxTileCount + ", avgTileCount=" + avgTileCount );
+
+		return bc;
 	}
 
 	protected XYBlockFactory setupBlockFactory()
