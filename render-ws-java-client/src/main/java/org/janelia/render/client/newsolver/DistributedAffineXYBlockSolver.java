@@ -11,7 +11,6 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
-import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineXYBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
@@ -113,29 +112,21 @@ public class DistributedAffineXYBlockSolver
 
 		final ArrayList< BlockData<?, AffineModel2D, ?, XYBlockFactory> > allItems = new ArrayList<>();
 
-		try
-		{
+		try {
 			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 
 			taskExecutor.invokeAll( workers ).forEach( future ->
 			{
-				try
-				{
+				try {
 					allItems.addAll( future.get() );
-				}
-				catch (final InterruptedException | ExecutionException e)
-				{
-					LOG.error( "Failed to compute alignments: " + e );
-					e.printStackTrace();
+				} catch (final InterruptedException | ExecutionException e) {
+					LOG.error("Failed to compute alignments: ", e);
 				}
 			} );
 
 			taskExecutor.shutdown();
-		}
-		catch (final InterruptedException e)
-		{
-			LOG.error( "Failed to compute alignments: " + e );
-			e.printStackTrace();
+		} catch (final InterruptedException e) {
+			LOG.error("Failed to compute alignments: ", e);
 			return;
 		}
 

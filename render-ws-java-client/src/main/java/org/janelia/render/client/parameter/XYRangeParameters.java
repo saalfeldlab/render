@@ -14,6 +14,7 @@ import com.beust.jcommander.Parameter;
 public class XYRangeParameters
         implements Serializable {
 
+    // TODO: this seems to be a duplicate of LayerBoundsParameters
     @Parameter(
             names = "--minX",
             description = "Minimum X value within layers to be processed")
