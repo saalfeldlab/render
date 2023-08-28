@@ -231,7 +231,8 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				// if any of the matches is outside the set of tiles of this Block we ignore them
 				if ( !inputSolveItem.blockData().rtsc().getTileIds().contains( qTileSpec.getTileId() ) )
 				{
-					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, renderStack);
+					// commented because it is too many outputs
+					//LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, renderStack);
 					continue;
 				}
 	
