@@ -13,6 +13,8 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory.ZBlockInit;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
+import net.imglib2.util.Pair;
+
 public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializable
 {
 	private static final long serialVersionUID = -2022190797935740332L;
@@ -133,29 +135,37 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 	@Override
 	public ArrayList<Function<Double, Double>> createWeightFunctions( final BlockData<?, ?, ?, XYBlockFactory> block )
 	{
-		// TODO Auto-generated method stub
-
-		// TODO: this will be ugly ... need to cast here, or make M part of BlockFactory - which is ugly too, projects all the way through
-		// and creates ugly long generics constructs, just tried it out
-
-		// TODO: Or the block must be able to compute it's center of mass and return it
+		// the block must be able to compute it's center of mass and bounding box and return it
 		// (which makes sense when we adjust intensities, because then the NEW model is for intensities, not for transformations)
-		// (so actually the parameter object should be able to compute the center of mass of a block)
-		// i.e. blockdata should delegate the center-of-mass computation to the parameter object
+		// (so actually the parameter object is able to compute the center of mass and BB of a block)
+		// i.e. blockdata delegates the center-of-mass and BB computation to the parameter object
 
-		// compute current center-of-mass
+		// TODO: this is a very simple implementation that only working correctly for circular regions
+
+		// compute current center-of-mass and bounding box
 		final double[] center = block.centerOfMass();
+		final Pair<double[], double[]> bb = block.boundingBox();
+		final double[] maxDistance = maxDistance( center, bb );
 
 		// we also define our own distance functions
 		// here, z doesn't matter, only xy
 		final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
 
-		weightF.add( (x) -> 0.0 );
-		weightF.add( (y) -> 0.0 );
+		weightF.add( (x) -> 1.0 - Math.min( 1.0, Math.abs( center[ 0 ] - x ) / maxDistance[ 0 ] ) );
+		weightF.add( (y) -> 1.0 - Math.min( 1.0, Math.abs( center[ 1 ] - y ) / maxDistance[ 1 ] ) );
 
 		weightF.add( (z) -> 0.0 );
 
 		return weightF;
 	}
 
+	public static double[] maxDistance( final double[] center, final Pair<double[], double[]> bb )
+	{
+		final double[] md = new double[ center.length ];
+
+		for ( int d = 0; d < center.length; ++d )
+			md[ d ] = Math.max( bb.getB()[ d ] - center[ d ], center[ d ] - bb.getA()[ d ]);
+
+		return md;
+	}
 }
