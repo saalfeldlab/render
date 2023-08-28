@@ -115,9 +115,9 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 				}
 
 				if ( rtsc != null )
-					System.out.println( "Loaded " + rtsc.getTileIds().size() + " tiles.");
+					System.out.println( "   Loaded " + rtsc.getTileIds().size() + " tiles.");
 				else
-					System.out.println( "Loaded null tiles.");
+					System.out.println( "   Loaded null tiles.");
 
 				if ( rtsc == null || rtsc.getTileCount() == 0 )
 				{
@@ -127,7 +127,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 				final int id = y * initBlocksX.size() + x;
 
-				System.out.println( "XY: " + id + ": [" + initBlockX.minZ() + ", " + initBlockY.minZ() + ", " + minZ + "] >>> [" + initBlockX.maxZ() + ", " + initBlockY.maxZ() + ", " + maxZ + "]" );
+				System.out.println( "   XY: " + id + ": [" + initBlockX.minZ() + ", " + initBlockY.minZ() + ", " + minZ + "] >>> [" + initBlockX.maxZ() + ", " + initBlockY.maxZ() + ", " + maxZ + "]" );
 
 				final BlockData< M, R, P, XYBlockFactory > block = 
 						new BlockData<>(
