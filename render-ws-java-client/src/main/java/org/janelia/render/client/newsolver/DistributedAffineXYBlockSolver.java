@@ -2,12 +2,21 @@ package org.janelia.render.client.newsolver;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
+import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineXYBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
+import org.janelia.render.client.newsolver.solvers.Worker;
+import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,6 +94,56 @@ public class DistributedAffineXYBlockSolver
 		// multi-threaded solve
 		//
 		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
+
+		final ArrayList< Callable< List< BlockData<?, AffineModel2D, ?, XYBlockFactory> > > > workers = new ArrayList<>();
+
+		blockCollection.allBlocks().forEach( block ->
+		{
+			workers.add( () ->
+			{
+				final Worker<?, AffineModel2D, ?, XYBlockFactory> worker = block.createWorker(
+						solverSetup.col.maxId() + 1,
+						cmdLineSetup.distributedSolve.threadsWorker);
+
+				worker.run();
+
+				return new ArrayList<>( worker.getBlockDataList() );
+			} );
+		} );
+
+		final ArrayList< BlockData<?, AffineModel2D, ?, XYBlockFactory> > allItems = new ArrayList<>();
+
+		try
+		{
+			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
+
+			taskExecutor.invokeAll( workers ).forEach( future ->
+			{
+				try
+				{
+					allItems.addAll( future.get() );
+				}
+				catch (final InterruptedException | ExecutionException e)
+				{
+					LOG.error( "Failed to compute alignments: " + e );
+					e.printStackTrace();
+				}
+			} );
+
+			taskExecutor.shutdown();
+		}
+		catch (final InterruptedException e)
+		{
+			LOG.error( "Failed to compute alignments: " + e );
+			e.printStackTrace();
+			return;
+		}
+
+		// avoid duplicate id assigned while splitting solveitems in the workers
+		// but do keep ids that are smaller or equal to the maxId of the initial solveset
+		final int maxId = WorkerTools.fixIds( allItems, solverSetup.col.maxId() );
+
+		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
 
 		// TODO ...
 	}
@@ -171,7 +230,7 @@ public class DistributedAffineXYBlockSolver
 		return new FIBSEMAlignmentParameters<>(
 				blockModel.copy(),
 				(Function< Integer, M > & Serializable )(z) -> blockModel.copy(),
-				(Function< Integer, Integer > & Serializable )(z) -> null,
+				null, // do not stitch first
 				0,//cmdLineSetup.maxAllowedErrorStitching,
 				0,//cmdLineSetup.maxIterationsStitching,
 				0,//cmdLineSetup.maxPlateauWidthStitching,
