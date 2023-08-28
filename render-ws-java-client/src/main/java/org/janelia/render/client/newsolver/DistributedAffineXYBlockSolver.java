@@ -72,7 +72,7 @@ public class DistributedAffineXYBlockSolver
                     //"--stitchFirst", "", // perform stitch-first
                     "--maxNumMatches", "0", // no limit, default
                     "--threadsWorker", "1",
-                    "--threadsGlobal", "60",
+                    "--threadsGlobal", "1",
                     //"--maxPlateauWidthGlobal", "50",
                     //"--maxIterationsGlobal", "10000",
             };
