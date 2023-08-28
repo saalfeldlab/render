@@ -140,43 +140,62 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
-		// TODO: trautmane
-		this.canvasMatches = assembleMatchData( inputSolveItem, matchFilter, matchDataClient, renderDataClient, renderStack, pairs, zToPairs );
-
-		// minStitchingInliersSupplier:
-		// how many stitching inliers are needed to stitch first
-		// reason: if tiles are rarely connected and it is stitched first, a useful
-		// common alignment model after stitching cannot be found
-		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, stitchFirst, numThreads );
-
-		connectGroupedTiles( pairs, inputSolveItem );
-
-		this.solveItems = splitSolveItem( inputSolveItem, startId );
-
-		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
+		try
 		{
-			if ( !assignRegularizationModel( solveItem, AffineBlockDataWrapper.samplesPerDimension, stabilizationRadius ) )
-				throw new RuntimeException( "Couldn't regularize. Please check." );
-
-			solve( solveItem, numThreads );
+			// TODO: trautmane
+			this.canvasMatches = assembleMatchData( inputSolveItem, matchFilter, matchDataClient, renderDataClient, renderStack, pairs, zToPairs );
+	
+			// minStitchingInliersSupplier:
+			// how many stitching inliers are needed to stitch first
+			// reason: if tiles are rarely connected and it is stitched first, a useful
+			// common alignment model after stitching cannot be found
+			stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, stitchFirst, numThreads );
+	
+			connectGroupedTiles( pairs, inputSolveItem );
+	
+			this.solveItems = splitSolveItem( inputSolveItem, startId );
+	
+			for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
+			{
+				/*
+				java.lang.NullPointerException: Cannot invoke "org.janelia.alignment.spec.TileSpec.getZ()" because the return value of "org.janelia.alignment.spec.ResolvedTileSpecCollection.getTileSpec(String)" is null
+						at org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker.assignRegularizationModel(AffineAlignBlockWorker.java:345)
+						at org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker.run(AffineAlignBlockWorker.java:164)
+						at org.janelia.render.client.newsolver.DistributedAffineXYBlockSolver.lambda$1(DistributedAffineXYBlockSolver.java:108)
+						at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
+						at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
+						at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
+						at java.base/java.lang.Thread.run(Thread.java:833)
+				*/
+	
+				if ( !assignRegularizationModel( solveItem, AffineBlockDataWrapper.samplesPerDimension, stabilizationRadius ) )
+					throw new RuntimeException( "Couldn't regularize. Please check." );
+	
+				solve( solveItem, numThreads );
+			}
+	
+			for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
+				computeSolveItemErrors( solveItem, canvasMatches );
+	
+			// clean up
+			this.result = new ArrayList<>();
+			for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
+			{
+				result.add( solveItem.blockData() );
+				solveItem.matches().clear();
+				solveItem.tileToGroupedTile().clear();
+				solveItem.groupedTileToTiles().clear();
+				solveItem.idToTileMap().clear();
+			}
+			this.solveItems.clear();
+			this.solveItems = null;
+			System.gc();
 		}
-
-		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
-			computeSolveItemErrors( solveItem, canvasMatches );
-
-		// clean up
-		this.result = new ArrayList<>();
-		for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
+		catch ( Exception e )
 		{
-			result.add( solveItem.blockData() );
-			solveItem.matches().clear();
-			solveItem.tileToGroupedTile().clear();
-			solveItem.groupedTileToTiles().clear();
-			solveItem.idToTileMap().clear();
+			LOG.info( "Exception: " +e );
+			e.printStackTrace();
 		}
-		this.solveItems.clear();
-		this.solveItems = null;
-		System.gc();
 	}
 
 	protected ArrayList< CanvasMatches > assembleMatchData(
