@@ -1,5 +1,6 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -7,6 +8,7 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
@@ -54,6 +56,16 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 		final List< ZBlockInit > initBlocksX = ZBlockFactory.defineBlockLayout( minX, maxX, blockSizeX, minBlockSizeX );
 		final List< ZBlockInit > initBlocksY = ZBlockFactory.defineBlockLayout( minY, maxY, blockSizeY, minBlockSizeY );
 
+		System.out.println( "X: " + minX + " >>> " + maxX );
+
+		for ( ZBlockInit bx : initBlocksX )
+			System.out.println( bx.min + " >>> " + bx.max + ", " + bx.location + ", " + bx.id );
+
+		System.out.println( "\nY: " + minY + " >>> " + maxY );
+
+		for ( ZBlockInit by : initBlocksY )
+			System.out.println( by.min + " >>> " + by.max + ", " + by.location + ", " + by.id );
+
 		final BlockDataSolveParameters< ?,?,? > basicParameters = blockSolveParameterProvider.basicParameters();
 
 		//
@@ -63,6 +75,15 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 				basicParameters.baseDataUrl(),
 				basicParameters.owner(),
 				basicParameters.project() );
+
+		// 001_000003_078_20220405_180741.1241.0
+		//  "z" : 1241.0,
+		//  "minX" : 17849.0,
+		//  "maxX" : 19853.0,
+		//  "minY" : 10261.0,
+		//  "maxY" : 12009.0,
+		// should be found in [x: 17747 >>> 35096, LEFT, 1 ------ y: 400 >>> 17585, LEFT, 0]
+		// ends up in Block id=1, id=9
 
 		final ArrayList< BlockData< M, R, P, XYBlockFactory > > blockDataList = new ArrayList<>();
 
@@ -74,7 +95,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 			for ( int x = 0; x < initBlocksX.size(); ++x )
 			{
-				final ZBlockInit initBlockX = initBlocksY.get( x );
+				final ZBlockInit initBlockX = initBlocksX.get( x );
 
 				// only RIGHT-RIGHT and LEFT-LEFT are combined
 				if ( initBlockX.location() != initBlockY.location() )
