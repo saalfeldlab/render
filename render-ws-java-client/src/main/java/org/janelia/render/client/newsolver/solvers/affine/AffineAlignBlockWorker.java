@@ -339,6 +339,11 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
 		for ( final Tile< M > groupedTile : new HashSet<>( solveItem.tileToGroupedTile().values() ) )
 		{
+			// TODO: 001_000003_078_20220405_180741.1241.0 is only in Block id=1, id=9, not id=0
+			// but it is part of solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ) )
+			// so somehow it gets in here when assembling everything (must be XY-specific I guess)
+			try
+			{
 			final int z =
 					(int)Math.round(
 						solveItem.blockData().rtsc().getTileSpec(
@@ -347,6 +352,13 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 			zToGroupedTileList.putIfAbsent(z, new ArrayList<>());
 			zToGroupedTileList.get( z ).add( groupedTile );
+			}
+			catch ( Exception e )
+			{
+				e.printStackTrace();
+				System.out.println( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ) ) );
+				System.exit( 0 );
+			}
 		}
 		
 		final ArrayList< Integer > allZ = new ArrayList<>( zToGroupedTileList.keySet() );
