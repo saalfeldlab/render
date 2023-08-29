@@ -216,8 +216,6 @@ public class DistributedAffineXYBlockSolver
 	protected < M extends Model< M > & Affine2D< M > > FIBSEMAlignmentParameters< M, M > setupSolveParameters(
 			final M blockModel )
 	{
-		final boolean stitchFirst = cmdLineSetup.stitchFirst;
-
 		return new FIBSEMAlignmentParameters<>(
 				blockModel.copy(),
 				(Function< Integer, M > & Serializable )(z) -> blockModel.copy(),
