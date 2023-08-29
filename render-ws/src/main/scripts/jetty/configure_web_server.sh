@@ -4,11 +4,14 @@
 # This script downloads logback and swagger-ui components (via curl) to the current directory and
 # copies the components into appropriate jetty deployment directories.
 
-if [[ -z "${JETTY_BASE}" || ! -d "${JETTY_BASE}" ]] ; then
+if [ -z "${JETTY_BASE}" ] ; then
+  echo "ERROR: JETTY_BASE not defined" >&2
+  exit 1
+fi
+
+if [ ! -d "${JETTY_BASE}" ] ; then
   echo "ERROR: JETTY_BASE directory '${JETTY_BASE}' not found" >&2
   exit 1
-else
-  JETTY_BASE_DIR="${JETTY_BASE}"
 fi
 
 SLF4J_VERSION="2.0.5" # should be kept in sync with root pom.xml slf4j.version and root Dockerfile SLF4J_VERSION (for jetty)
@@ -24,8 +27,8 @@ SWAGGER_UI_URL="https://github.com/swagger-api/swagger-ui/archive/v${SWAGGER_UI_
 # setup logging components
 echo "configure_web_server: setup logging"
 
-JETTY_LIB_LOGGING="${JETTY_BASE_DIR}/lib/logging"
-mkdir -p "${JETTY_BASE_DIR}/logs" "${JETTY_LIB_LOGGING}"
+JETTY_LIB_LOGGING="${JETTY_BASE}/lib/logging"
+mkdir -p "${JETTY_BASE}/logs" "${JETTY_LIB_LOGGING}"
 
 for MODULE in classic core; do
   MODULE_JAR="logback-${MODULE}-${LOGBACK_VERSION}.jar"
@@ -45,7 +48,7 @@ curl -L "${SWAGGER_UI_URL}" | tar xz
 
 SWAGGER_UI_SOURCE_DIR="swagger-ui-${SWAGGER_UI_VERSION}"
 
-SWAGGER_UI_DEPLOY_DIR="${JETTY_BASE_DIR}/webapps/swagger-ui"
+SWAGGER_UI_DEPLOY_DIR="${JETTY_BASE}/webapps/swagger-ui"
 cp -r ${SWAGGER_UI_SOURCE_DIR}/dist "${SWAGGER_UI_DEPLOY_DIR}"
 
 # modify index.html to dynamically derive the swagger.json URL and sort functions by method
@@ -69,4 +72,4 @@ rm -rf "${SWAGGER_UI_SOURCE_DIR}"
 # -------------------------------------------------------------------------------------------
 # make jetty base and tmp directories accessible to all so that containers can be run as different external users
 
-chmod -R 777 "${JETTY_BASE_DIR}" "${TMPDIR}"
+chmod -R 777 "${JETTY_BASE}" "${TMPDIR}"
