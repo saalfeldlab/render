@@ -64,7 +64,7 @@ public class DistributedIntensityCorrectionSolver {
 					"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
 					"--owner", "cellmap",
 					"--project", "jrc_mus_thymus_1",
-					"--stack", "v2_acquire",
+					"--stack", "v2_acquire_align",
 					"--targetStack", "v2_acquire_test_intensity",
 					"--threadsWorker", "12",
 					"--minBlockSize", "2",
