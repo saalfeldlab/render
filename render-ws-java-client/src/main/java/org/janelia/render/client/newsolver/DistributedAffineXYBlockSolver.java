@@ -42,7 +42,8 @@ public class DistributedAffineXYBlockSolver
 	{
         final AffineXYBlockSolverSetup cmdLineSetup = new AffineXYBlockSolverSetup();
 
-        // TODO: remove testing hack ...
+        // Pointmatch explorer link to the used dataset
+        // http://em-services-1.int.janelia.org:8080/render-ws/view/point-match-explorer.html?renderStackOwner=hess&dynamicRenderHost=renderer.int.janelia.org%3A8080&catmaidHost=renderer-catmaid.int.janelia.org%3A8000&matchOwner=hess&renderDataHost=em-services-1.int.janelia.org%3A8080&ndvizHost=renderer.int.janelia.org%3A8080&renderStackProject=wafer_52c&renderStack=v1_acquire_slab_001_trimmed&startZ=1241&endZ=1241&matchCollection=wafer_52c_v4
         if (args.length == 0) {
             final String[] testArgs = {
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
