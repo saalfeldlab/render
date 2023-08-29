@@ -4,7 +4,7 @@
 # This script downloads logback and swagger-ui components (via curl) to the current directory and
 # copies the components into appropriate jetty deployment directories.
 
-if [ -z "${JETTY_BASE}" ] | [ ! -d "${JETTY_BASE}" ] ; then
+if [[ -z "${JETTY_BASE}" || ! -d "${JETTY_BASE}" ]] ; then
   echo "ERROR: JETTY_BASE directory '${JETTY_BASE}' not found" >&2
   exit 1
 else
