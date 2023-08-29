@@ -226,15 +226,24 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 		for ( final String pGroupId : sortedSectionIds )
 		{
-			LOG.info("block {}: run: connecting tiles with pGroupId {}",
+			LOG.info("block {}: run: connecting tiles with pGroupId {}", // e.g. 1226.0
 					 inputSolveItem.blockData().getId(), pGroupId);
 
-			final List<CanvasMatches> serviceMatchList = matchDataClient.getMatchesWithPGroupId(pGroupId,
-																								false);
+			// TODO: I think this fetches all matches of a z layer, not only for our TileSpecs (inputSolveItem.blockData().rtsc())
+			// TODO: @trautmane -- this is quite inefficient, this fetches way to many matches per z-layer
+			// TODO: for now I will throw those away that we don't need (the majority), but this does not scale well when xy size increases further
+			// TODO: it is also quite slow already now
+			final List<CanvasMatches> serviceMatchList = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
 
 			for (final CanvasMatches match : serviceMatchList)
 			{
 				final String pId = match.getpId();
+
+				// this match is not part of our solve
+				// TODO: do not load those in the first place
+				if ( !inputSolveItem.blockData().rtsc().getTileIds().contains( pId ) )
+					continue;
+
 				final TileSpec pTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, renderStack, pGroupId, pId);
 
 				final String qGroupId = match.getqGroupId();
