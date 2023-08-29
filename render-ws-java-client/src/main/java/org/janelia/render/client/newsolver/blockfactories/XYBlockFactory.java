@@ -1,14 +1,24 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import ij.ImagePlus;
+import ij.process.ByteProcessor;
+import ij.process.FloatProcessor;
+import ij.plugin.filter.EDM;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.Renderer;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
@@ -58,12 +68,12 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 		System.out.println( "X: " + minX + " >>> " + maxX );
 
-		for ( ZBlockInit bx : initBlocksX )
+		for (final ZBlockInit bx : initBlocksX)
 			System.out.println( bx.min + " >>> " + bx.max + ", " + bx.location + ", " + bx.id );
 
 		System.out.println( "\nY: " + minY + " >>> " + maxY );
 
-		for ( ZBlockInit by : initBlocksY )
+		for (final ZBlockInit by : initBlocksY)
 			System.out.println( by.min + " >>> " + by.max + ", " + by.location + ", " + by.id );
 
 		final BlockDataSolveParameters< ?,?,? > basicParameters = blockSolveParameterProvider.basicParameters();
@@ -103,7 +113,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 				System.out.println( "   X: "+ initBlockX.id + ": " + initBlockX.minZ() + " >> " + initBlockX.maxZ() + " [#"+(initBlockX.maxZ()-initBlockX.minZ()+1) + "]" );
 
-				ResolvedTileSpecCollection rtsc = null;
+				ResolvedTileSpecCollection rtsc;
 
 				try
 				{
@@ -189,6 +199,10 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 		weightF.add( (z) -> 0.0 );
 
+		// TODO: finish alternative implementation; weight function must have access to x and y simultaneously!
+		// final Map<Integer, FloatProcessor> layerDistanceMaps = new HashMap<>(block.zToTileId().size());
+		// block.zToTileId().forEach((z, layerIds) -> layerDistanceMaps.put(z, createLayerDistanceMap(block, layerIds)));
+
 		return weightF;
 	}
 
@@ -200,5 +214,39 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 			md[ d ] = Math.max( bb.getB()[ d ] - center[ d ], center[ d ] - bb.getA()[ d ]);
 
 		return md;
+	}
+
+	public static FloatProcessor createLayerDistanceMap(final BlockData<?, ?, ?, ?> block, final Set<String> layerIds) {
+
+		// sort the tile specs by tile id and convert them into simple masks
+		final List<TileSpec> layerTiles = block.rtsc().getTileSpecs().stream()
+				.filter(tileSpec -> layerIds.contains(tileSpec.getTileId()))
+				.sorted(Comparator.comparing(TileSpec::getTileId))
+				.collect(Collectors.toList());
+		layerTiles.forEach(TileSpec::replaceFirstChannelImageWithItsMask);
+
+		// the renderScale needs to be fairly small so that the entire MFOV area fits into one image
+		final double renderScale = 0.01;
+		final Pair<double[], double[]> bounds = block.boundingBox();
+		final Bounds stackXYBounds = new Bounds(bounds.getA()[0], bounds.getA()[1], bounds.getB()[0], bounds.getB()[1]);
+
+		final RenderParameters renderParameters = new RenderParameters();
+		renderParameters.setBounds(stackXYBounds);
+		renderParameters.setScale(renderScale);
+		renderParameters.addTileSpecs(layerTiles);
+		renderParameters.initializeDerivedValues();
+
+		// render the layer into an 8-bit mask: 0=background (no tiles), everything else is foreground (tiles)
+		final long pixelsToCache = 100_000_000L;
+		final ImageProcessorCache ipCache = new ImageProcessorCache(pixelsToCache, false, false);
+		final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+				Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
+		final ByteProcessor renderedLayerMask = ipwm.ip.convertToByteProcessor();
+
+		// compute approximate Euclidean distance map to background (=0) where edges also count as background
+		final FloatProcessor distanceMap = (new EDM()).makeFloatEDM(renderedLayerMask, 0, true);
+		new ImagePlus("distance map", distanceMap).show();
+
+		return distanceMap;
 	}
 }
