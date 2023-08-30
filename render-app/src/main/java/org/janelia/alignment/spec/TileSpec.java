@@ -488,7 +488,7 @@ public class TileSpec implements Serializable {
     @JsonIgnore
     public List<ChannelSpec> getAllChannels() {
         final List<ChannelSpec> channelList;
-        if ((channels == null) || (channels.size() == 0)) {
+        if ((channels == null) || channels.isEmpty()) {
             channelList = Collections.singletonList(new ChannelSpec(null,
                                                                     minIntensity,
                                                                     maxIntensity,
@@ -503,7 +503,7 @@ public class TileSpec implements Serializable {
 
     public List<ChannelSpec> getChannels(final Set<String> withNames) {
         final List<ChannelSpec> channelList = new ArrayList<>();
-        if ((channels == null) || (channels.size() == 0)) {
+        if ((channels == null) || channels.isEmpty()) {
             if (withNames.contains(null)) {
                 channelList.add(new ChannelSpec(null,
                                                 minIntensity,
@@ -525,7 +525,7 @@ public class TileSpec implements Serializable {
     public String getFirstChannelName() {
         String firstChannelName = null;
         final List<ChannelSpec> channelSpecs = getAllChannels();
-        if (channelSpecs.size() > 0) {
+        if (! channelSpecs.isEmpty()) {
             firstChannelName = channelSpecs.get(0).getName();
         }
         return firstChannelName;
@@ -585,7 +585,7 @@ public class TileSpec implements Serializable {
     @JsonIgnore
     public Map.Entry<Integer, ImageAndMask> getFirstMipmapEntry() {
         final Map.Entry<Integer, ImageAndMask> firstEntry;
-        if ((channels == null) || (channels.size() == 0)) {
+        if ((channels == null) || channels.isEmpty()) {
             firstEntry = mipmapLevels.firstEntry();
         } else {
             firstEntry = channels.get(0).getFirstMipmapEntry();
@@ -639,7 +639,7 @@ public class TileSpec implements Serializable {
 
     public FilterSpec getFilterSpec() {
         FilterSpec spec = filterSpec;
-        if ((spec == null) && (channels != null) && (channels.size() > 0)) {
+        if ((spec == null) && (channels != null) && (! channels.isEmpty())) {
             spec = channels.get(0).getFilterSpec();
         }
         return spec;
@@ -689,7 +689,7 @@ public class TileSpec implements Serializable {
     public void replaceFirstChannelImageWithItsMask() {
 
         final TreeMap<Integer, ImageAndMask> levels;
-        if ((channels == null) || (channels.size() == 0)) {
+        if ((channels == null) || channels.isEmpty()) {
             levels = mipmapLevels;
             filterSpec = null;
         } else {
