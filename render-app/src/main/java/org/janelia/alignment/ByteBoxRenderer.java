@@ -58,7 +58,7 @@ public class ByteBoxRenderer
         if (renderParameters.numberOfTileSpecs() > 0) {
             if (exportMaskOnly) {
                 for (final TileSpec tileSpec : renderParameters.getTileSpecs()) {
-                    tileSpec.replaceFirstChannelImageWithItsMask();
+                    tileSpec.replaceFirstChannelImageWithMask(true);
                 }
             }
             final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =

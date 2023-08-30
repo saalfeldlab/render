@@ -682,11 +682,12 @@ public class TileSpec implements Serializable {
 
     /**
      * Utility for altering this tile spec to support rendering/exporting of transformed mask data.
-     * If the first channel has a mask, replace the source image with that mask.
-     * Otherwise, replace the source image with a dynamic empty mask that covers the full tile area.
-     * Also removes this tile spec's filter if it has one.
+     * If useExistingMask is true and the first channel has a mask, replace the source image with that mask.
+     * In all other cases, replace the source image with a dynamic empty mask that covers the full tile area
+     * and remove any existing mask.
+     * This tile spec's filter will also always be removed if it has one.
      */
-    public void replaceFirstChannelImageWithItsMask() {
+    public void replaceFirstChannelImageWithMask(final boolean useExistingMask) {
 
         final TreeMap<Integer, ImageAndMask> levels;
         if ((channels == null) || channels.isEmpty()) {
@@ -700,7 +701,7 @@ public class TileSpec implements Serializable {
 
         final Map.Entry<Integer, ImageAndMask> firstEntry = levels.firstEntry();
         final ImageAndMask imageAndMask = firstEntry.getValue();
-        if (imageAndMask.hasMask()) {
+        if (useExistingMask && imageAndMask.hasMask()) {
             levels.put(firstEntry.getKey(),
                        new ImageAndMask(imageAndMask.getMaskUrl(),
                                         imageAndMask.getMaskLoaderType(),

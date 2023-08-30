@@ -183,13 +183,12 @@ public class DebugTileDataTest {
                 resolvedTiles.getTileSpecs().stream()
                         .sorted(Comparator.comparing(TileSpec::getTileId))
                         .collect(Collectors.toList());
-        tileSpecsForZSortedByTileId.forEach(TileSpec::replaceFirstChannelImageWithItsMask);
+        tileSpecsForZSortedByTileId.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));
 
         final RenderParameters renderParameters = new RenderParameters();
         renderParameters.setBounds(stackOrLayerBounds);
         renderParameters.setScale(renderScale);
         renderParameters.addTileSpecs(tileSpecsForZSortedByTileId);
-        renderParameters.setBinaryMask(true); // TODO: verify this is desired
         renderParameters.initializeDerivedValues();
         
         return renderParameters;

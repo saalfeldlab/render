@@ -223,7 +223,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 				.filter(tileSpec -> layerIds.contains(tileSpec.getTileId()))
 				.sorted(Comparator.comparing(TileSpec::getTileId))
 				.collect(Collectors.toList());
-		layerTiles.forEach(TileSpec::replaceFirstChannelImageWithItsMask);
+		layerTiles.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));
 
 		// the renderScale needs to be fairly small so that the entire MFOV area fits into one image
 		final double renderScale = 0.01;
