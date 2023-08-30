@@ -184,7 +184,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 		// regularization to make weights of minZ and maxZ > 0
 		private final double eps;
 
-		ZDistanceWeightFunction(final BlockData<?, ?, ?, ZBlockFactory> block, final double eps) {
+		public ZDistanceWeightFunction(final BlockData<?, ?, ?, ZBlockFactory> block, final double eps) {
 			this.minZ = block.minZ();
 			this.maxZ = block.maxZ();
 			this.midpoint = (maxZ + minZ) / 2.0;

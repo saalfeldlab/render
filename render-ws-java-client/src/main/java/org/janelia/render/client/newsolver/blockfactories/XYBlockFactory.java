@@ -176,49 +176,18 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 	@Override
 	public WeightFunction createWeightFunction(final BlockData<?, ?, ?, XYBlockFactory> block) {
-		return new XYDistanceWeightFunction(block);
+		// the render scale needs to be fairly small so that the entire MFOV area fits into one image
+		return new XYDistanceWeightFunction(block, 0.01);
 	}
 
 	private static class XYDistanceWeightFunction implements WeightFunction {
-
-		private final double[] center;
-		private final double[] maxDistance;
-
-		XYDistanceWeightFunction(final BlockData<?, ?, ?, XYBlockFactory> block) {
-			// the block must be able to compute it's center of mass and bounding box and return it
-			// (which makes sense when we adjust intensities, because then the NEW model is for intensities, not for transformations)
-			// (so actually the parameter object is able to compute the center of mass and BB of a block)
-			// i.e. blockdata delegates the center-of-mass and BB computation to the parameter object
-
-			// TODO: this is a very simple implementation that only working correctly for rectangular regions
-			center = block.centerOfMass();
-			maxDistance = maxDistance(center, block.boundingBox());
-		}
-
-		private static double[] maxDistance(final double[] center, final Pair<double[], double[]> bb) {
-			final double[] md = new double[center.length];
-			for (int d = 0; d < center.length; ++d)
-				md[d] = Math.max(bb.getB()[d] - center[d], center[d] - bb.getA()[d]);
-			return md;
-		}
-
-		@Override
-		public double compute(final double x, final double y, final double z) {
-			final double wx =  1.0 - Math.min(1.0, Math.abs(center[0] - x) / maxDistance[0]);
-			final double wy =  1.0 - Math.min(1.0, Math.abs(center[1] - y) / maxDistance[1]);
-			return Math.sqrt(wx * wx + wy * wy);
-		}
-	}
-
-	private static class NewXYDistanceWeightFunction implements WeightFunction {
 
 		private final Map<Integer, FloatProcessor> layerDistanceMaps;
 		private final double resolution;
 		private final double minX;
 		private final double minY;
 
-		public NewXYDistanceWeightFunction(final BlockData<?, ?, ?, XYBlockFactory> block, final double resolution) {
-			// TODO: finish alternative implementation
+		public XYDistanceWeightFunction(final BlockData<?, ?, ?, XYBlockFactory> block, final double resolution) {
 			layerDistanceMaps = new HashMap<>(block.zToTileId().size());
 			this.resolution = resolution;
 
@@ -240,7 +209,6 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 
 			layerTiles.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));
 
-			// the renderScale needs to be fairly small so that the entire MFOV area fits into one image
 			final RenderParameters renderParameters = new RenderParameters();
 			renderParameters.setBounds(XYBounds);
 			renderParameters.setScale(resolution);
