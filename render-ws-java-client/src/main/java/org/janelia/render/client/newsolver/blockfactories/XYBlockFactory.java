@@ -226,13 +226,12 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 		layerTiles.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));
 
 		// the renderScale needs to be fairly small so that the entire MFOV area fits into one image
-		final double renderScale = 0.01;
 		final Pair<double[], double[]> bounds = block.boundingBox();
 		final Bounds stackXYBounds = new Bounds(bounds.getA()[0], bounds.getA()[1], bounds.getB()[0], bounds.getB()[1]);
 
 		final RenderParameters renderParameters = new RenderParameters();
 		renderParameters.setBounds(stackXYBounds);
-		renderParameters.setScale(renderScale);
+		renderParameters.setScale(0.01); // TODO: make this a parameter?
 		renderParameters.addTileSpecs(layerTiles);
 		renderParameters.initializeDerivedValues();
 
@@ -243,10 +242,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 				Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
 		final ByteProcessor renderedLayerMask = ipwm.ip.convertToByteProcessor();
 
-		// compute approximate Euclidean distance map to background (=0) where edges also count as background
-		final FloatProcessor distanceMap = (new EDM()).makeFloatEDM(renderedLayerMask, 0, true);
-		new ImagePlus("distance map", distanceMap).show();
-
-		return distanceMap;
+		// compute approximate Euclidean distance map to background (=0) where image border also counts as background
+		return (new EDM()).makeFloatEDM(renderedLayerMask, 0, true);
 	}
 }
