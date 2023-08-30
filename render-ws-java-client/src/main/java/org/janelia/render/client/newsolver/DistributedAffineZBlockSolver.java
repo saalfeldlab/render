@@ -90,11 +90,11 @@ public class DistributedAffineZBlockSolver
 		final RenderSetup renderSetup = RenderSetup.setupSolve( cmdLineSetup );
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
-		final DistributedAffineZBlockSolver solverSetup = new DistributedAffineZBlockSolver( cmdLineSetup, renderSetup );
+		final DistributedAffineZBlockSolver solver = new DistributedAffineZBlockSolver( cmdLineSetup, renderSetup );
 
 		// create all block instances
 		final BlockCollection< ?, AffineModel2D, ?, ZBlockFactory > blockCollection =
-				solverSetup.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
+				solver.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
 
 		/*
 		// test weight function
@@ -116,7 +116,7 @@ public class DistributedAffineZBlockSolver
 			workers.add( () ->
 			{
 				final Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block.createWorker(
-						solverSetup.col.maxId() + 1,
+						solver.col.maxId() + 1,
 						cmdLineSetup.distributedSolve.threadsWorker);
 
 				worker.run();
@@ -127,39 +127,31 @@ public class DistributedAffineZBlockSolver
 
 		final ArrayList< BlockData<?, AffineModel2D, ?, ZBlockFactory> > allItems = new ArrayList<>();
 
-		try
-		{
+		try {
 			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 
 			taskExecutor.invokeAll( workers ).forEach( future ->
 			{
-				try
-				{
+				try {
 					allItems.addAll( future.get() );
-				}
-				catch (final InterruptedException | ExecutionException e)
-				{
-					LOG.error( "Failed to compute alignments: " + e );
-					e.printStackTrace();
+				} catch (final InterruptedException | ExecutionException e) {
+					LOG.error("Failed to compute alignments: ", e);
 				}
 			} );
 
 			taskExecutor.shutdown();
-		}
-		catch (final InterruptedException e)
-		{
-			LOG.error( "Failed to compute alignments: " + e );
-			e.printStackTrace();
+		} catch (final InterruptedException e) {
+			LOG.error("Failed to compute alignments: ", e);
 			return;
 		}
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
 		// but do keep ids that are smaller or equal to the maxId of the initial solveset
-		final int maxId = WorkerTools.fixIds( allItems, solverSetup.col.maxId() );
+		final int maxId = WorkerTools.fixIds( allItems, solver.col.maxId() );
 
 		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
 
-		final ZBlockSolver< AffineModel2D, RigidModel2D, AffineModel2D > solver =
+		final ZBlockSolver< AffineModel2D, RigidModel2D, AffineModel2D > blockSolver =
 				new ZBlockSolver<>(
 						new RigidModel2D(),
 						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
@@ -170,7 +162,7 @@ public class DistributedAffineZBlockSolver
 
 		final ZBlockFusion<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
 				new ZBlockFusion<>(
-						solver,
+						blockSolver,
 						(r,g) -> {
 							final AffineModel2D i = new AffineModel2D();
 							i.set( r );
@@ -183,7 +175,7 @@ public class DistributedAffineZBlockSolver
 		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler =
 				new Assembler<>(
 						allItems,
-						solver,
+						blockSolver,
 						fusion,
 						(r) -> {
 							final AffineModel2D a = new AffineModel2D();

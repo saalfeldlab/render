@@ -3,7 +3,6 @@ package org.janelia.render.client.newsolver.blockfactories;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -11,6 +10,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
 public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializable
@@ -172,23 +172,29 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 	}
 
 	@Override
-	public ArrayList<Function<Double, Double>> createWeightFunctions( final BlockData<?, ?, ?, ZBlockFactory > block )
-	{
-		// we also define our own distance functions
-		// here, xy doesn't matter, only z
-		final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
+	public WeightFunction createWeightFunction(final BlockData<?, ?, ?, ZBlockFactory> block) {
+		return new ZDistanceWeightFunction(block, 0.01);
+	}
 
-		weightF.add( (x) -> 0.0 );
-		weightF.add( (y) -> 0.0 );
-		// TODO: has to be between 0 and 1
-		// TODO: needs the Block to know
-		weightF.add((z) -> {
-			final double halfZRange = (block.maxZ() - block.minZ()) / 2.;
-			final double midpoint = block.minZ() + halfZRange;
-			final double eps = 0.01; // to make weights of minZ and maxZ > 0
-			return 1.0 - Math.min(1, Math.max(0, Math.abs(z - midpoint) / (halfZRange + eps)));
-		});
+	private static class ZDistanceWeightFunction implements WeightFunction {
 
-		return weightF;
+		private final double midpoint;
+		private final double minZ;
+		private final double maxZ;
+		// regularization to make weights of minZ and maxZ > 0
+		private final double eps;
+
+		ZDistanceWeightFunction(final BlockData<?, ?, ?, ZBlockFactory> block, final double eps) {
+			this.minZ = block.minZ();
+			this.maxZ = block.maxZ();
+			this.midpoint = (maxZ + minZ) / 2.0;
+			this.eps = eps;
+		}
+
+		@Override
+		public double compute(final double x, final double y, final double z) {
+			final double distanceToBoundary = (z < midpoint) ? (z - minZ) : (maxZ - z);
+			return Math.max(0, distanceToBoundary + eps);
+		}
 	}
 }

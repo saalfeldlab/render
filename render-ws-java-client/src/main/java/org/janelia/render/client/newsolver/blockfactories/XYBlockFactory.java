@@ -2,13 +2,11 @@ package org.janelia.render.client.newsolver.blockfactories;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.function.Function;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-import ij.ImagePlus;
 import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
 import ij.plugin.filter.EDM;
@@ -22,6 +20,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory.ZBlockInit;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
@@ -176,73 +175,97 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 	}
 
 	@Override
-	public ArrayList<Function<Double, Double>> createWeightFunctions( final BlockData<?, ?, ?, XYBlockFactory> block )
-	{
-		// the block must be able to compute it's center of mass and bounding box and return it
-		// (which makes sense when we adjust intensities, because then the NEW model is for intensities, not for transformations)
-		// (so actually the parameter object is able to compute the center of mass and BB of a block)
-		// i.e. blockdata delegates the center-of-mass and BB computation to the parameter object
-
-		// TODO: this is a very simple implementation that only working correctly for circular regions
-
-		// compute current center-of-mass and bounding box
-		final double[] center = block.centerOfMass();
-		final Pair<double[], double[]> bb = block.boundingBox();
-		final double[] maxDistance = maxDistance( center, bb );
-
-		// we also define our own distance functions
-		// here, z doesn't matter, only xy
-		final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
-
-		weightF.add( (x) -> 1.0 - Math.min( 1.0, Math.abs( center[ 0 ] - x ) / maxDistance[ 0 ] ) );
-		weightF.add( (y) -> 1.0 - Math.min( 1.0, Math.abs( center[ 1 ] - y ) / maxDistance[ 1 ] ) );
-
-		weightF.add( (z) -> 0.0 );
-
-		// TODO: finish alternative implementation; weight function must have access to x and y simultaneously!
-		// final Map<Integer, FloatProcessor> layerDistanceMaps = new HashMap<>(block.zToTileId().size());
-		// block.zToTileId().forEach((z, layerIds) -> layerDistanceMaps.put(z, createLayerDistanceMap(block, layerIds)));
-
-		return weightF;
+	public WeightFunction createWeightFunction(final BlockData<?, ?, ?, XYBlockFactory> block) {
+		return new XYDistanceWeightFunction(block);
 	}
 
-	public static double[] maxDistance( final double[] center, final Pair<double[], double[]> bb )
-	{
-		final double[] md = new double[ center.length ];
+	private static class XYDistanceWeightFunction implements WeightFunction {
 
-		for ( int d = 0; d < center.length; ++d )
-			md[ d ] = Math.max( bb.getB()[ d ] - center[ d ], center[ d ] - bb.getA()[ d ]);
+		private final double[] center;
+		private final double[] maxDistance;
 
-		return md;
+		XYDistanceWeightFunction(final BlockData<?, ?, ?, XYBlockFactory> block) {
+			// the block must be able to compute it's center of mass and bounding box and return it
+			// (which makes sense when we adjust intensities, because then the NEW model is for intensities, not for transformations)
+			// (so actually the parameter object is able to compute the center of mass and BB of a block)
+			// i.e. blockdata delegates the center-of-mass and BB computation to the parameter object
+
+			// TODO: this is a very simple implementation that only working correctly for rectangular regions
+			center = block.centerOfMass();
+			maxDistance = maxDistance(center, block.boundingBox());
+		}
+
+		private static double[] maxDistance(final double[] center, final Pair<double[], double[]> bb) {
+			final double[] md = new double[center.length];
+			for (int d = 0; d < center.length; ++d)
+				md[d] = Math.max(bb.getB()[d] - center[d], center[d] - bb.getA()[d]);
+			return md;
+		}
+
+		@Override
+		public double compute(final double x, final double y, final double z) {
+			final double wx =  1.0 - Math.min(1.0, Math.abs(center[0] - x) / maxDistance[0]);
+			final double wy =  1.0 - Math.min(1.0, Math.abs(center[1] - y) / maxDistance[1]);
+			return Math.sqrt(wx * wx + wy * wy);
+		}
 	}
 
-	public static FloatProcessor createLayerDistanceMap(final BlockData<?, ?, ?, ?> block, final Set<String> layerIds) {
+	private static class NewXYDistanceWeightFunction implements WeightFunction {
 
-		// sort the tile specs by tile id and convert them into simple masks
-		final List<TileSpec> layerTiles = block.rtsc().getTileSpecs().stream()
-				.filter(tileSpec -> layerIds.contains(tileSpec.getTileId()))
-				.sorted(Comparator.comparing(TileSpec::getTileId))
-				.collect(Collectors.toList());
-		layerTiles.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));
+		private final Map<Integer, FloatProcessor> layerDistanceMaps;
+		private final double resolution;
+		private final double minX;
+		private final double minY;
 
-		// the renderScale needs to be fairly small so that the entire MFOV area fits into one image
-		final Pair<double[], double[]> bounds = block.boundingBox();
-		final Bounds stackXYBounds = new Bounds(bounds.getA()[0], bounds.getA()[1], bounds.getB()[0], bounds.getB()[1]);
+		public NewXYDistanceWeightFunction(final BlockData<?, ?, ?, XYBlockFactory> block, final double resolution) {
+			// TODO: finish alternative implementation
+			layerDistanceMaps = new HashMap<>(block.zToTileId().size());
+			this.resolution = resolution;
 
-		final RenderParameters renderParameters = new RenderParameters();
-		renderParameters.setBounds(stackXYBounds);
-		renderParameters.setScale(0.01); // TODO: make this a parameter?
-		renderParameters.addTileSpecs(layerTiles);
-		renderParameters.initializeDerivedValues();
+			final Pair<double[], double[]> bounds = block.boundingBox();
+			minX = bounds.getA()[0];
+			minY = bounds.getA()[1];
+			final Bounds stackXYBounds = new Bounds(minX, minY, bounds.getB()[0], bounds.getB()[1]);
 
-		// render the layer into an 8-bit mask: 0=background (no tiles), everything else is foreground (tiles)
-		final long pixelsToCache = 100_000_000L;
-		final ImageProcessorCache ipCache = new ImageProcessorCache(pixelsToCache, false, false);
-		final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
-				Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
-		final ByteProcessor renderedLayerMask = ipwm.ip.convertToByteProcessor();
+			block.zToTileId().forEach((z, layerIds) -> {
+				final List<TileSpec> layerTiles = layerIds.stream()
+						// .sorted() // to be consistent with the render order of the web service
+						.map(block.rtsc()::getTileSpec)
+						.collect(Collectors.toList());
+				layerDistanceMaps.put(z, createLayerDistanceMap(layerTiles, resolution, stackXYBounds));
+			});
+		}
 
-		// compute approximate Euclidean distance map to background (=0) where image border also counts as background
-		return (new EDM()).makeFloatEDM(renderedLayerMask, 0, true);
+		public static FloatProcessor createLayerDistanceMap(final List<TileSpec> layerTiles, final double resolution, final Bounds XYBounds) {
+
+			layerTiles.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));
+
+			// the renderScale needs to be fairly small so that the entire MFOV area fits into one image
+			final RenderParameters renderParameters = new RenderParameters();
+			renderParameters.setBounds(XYBounds);
+			renderParameters.setScale(resolution);
+			renderParameters.addTileSpecs(layerTiles);
+			renderParameters.initializeDerivedValues();
+
+			// render the layer into an 8-bit mask: 0=background (no tiles), everything else is foreground (tiles)
+			final long pixelsToCache = 100_000_000L;
+			final ImageProcessorCache ipCache = new ImageProcessorCache(pixelsToCache, false, false);
+			final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+					Renderer.renderImageProcessorWithMasks(renderParameters, ipCache);
+			final ByteProcessor renderedLayerMask = ipwm.ip.convertToByteProcessor();
+
+			// compute approximate Euclidean distance map to background (=0) where image border also counts as background
+			return (new EDM()).makeFloatEDM(renderedLayerMask, 0, true);
+		}
+
+		@Override
+		public double compute(final double x, final double y, final double z) {
+			// convert to local coordinates of distance map
+			final double xLocal = (x - minX) * resolution;
+			final double yLocal = (y - minY) * resolution;
+
+			final FloatProcessor distanceMap = layerDistanceMaps.get((int)z);
+			return distanceMap.getInterpolatedValue(xLocal, yLocal);
+		}
 	}
 }

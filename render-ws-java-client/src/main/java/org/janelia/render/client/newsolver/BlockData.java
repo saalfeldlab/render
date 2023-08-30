@@ -8,11 +8,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
 
-import mpicbg.models.AffineModel1D;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -92,9 +91,8 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 	public Map<String, ArrayList<Double>> sectionIdToZMap() { return sectionIdToZMap; }
 
 	public int getId() { return id; }
-	public ArrayList< Function< Double, Double > > createWeightFunctions()
-	{
-		return blockFactory.createWeightFunctions( this );
+	public WeightFunction createWeightFunctions() {
+		return blockFactory.createWeightFunction(this);
 	}
 
 	/**

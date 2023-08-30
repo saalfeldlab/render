@@ -6,8 +6,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
-import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
@@ -57,8 +57,7 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 		final ArrayList< Integer > zSections = new ArrayList<>( am.zToTileIdGlobal.keySet() );
 		Collections.sort( zSections );
 
-		final HashMap< BlockData<?, R, ?, ZBlockFactory>, ArrayList< Function< Double, Double > > > blockToWeightfunctions =
-				new HashMap<>();
+		final Map<BlockData<?, R, ?, ZBlockFactory>, WeightFunction> blockToWeightFunctions = new HashMap<>();
 
 		for ( final int z : zSections )
 		{
@@ -77,15 +76,15 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 
 					// one of them can be null (beginning and end of stack)
 					// just the weight functions are actually important here!
-					final ArrayList< Function< Double, Double > > wfA, wfB;
+					final WeightFunction wfA, wfB;
 					final R modelAIn, modelBIn;
 					final G globalModelA, globalModelB;
 					final int idA, idB;
 
 					if ( solveItemA == null )
 					{
-						wfA = emptyWeightFunction( 3 );
-						wfB = blockToWeightfunctions.computeIfAbsent( solveItemB, s -> s.createWeightFunctions() );
+						wfA = new EmptyWeightFunction();
+						wfB = blockToWeightFunctions.computeIfAbsent(solveItemB, BlockData::createWeightFunctions);
 
 						modelAIn = solveItemB.idToNewModel().get( tileId );
 						modelBIn = solveItemB.idToNewModel().get( tileId );
@@ -98,8 +97,8 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 					}
 					else if ( solveItemB == null )
 					{
-						wfA = blockToWeightfunctions.computeIfAbsent( solveItemA, s -> s.createWeightFunctions() );
-						wfB = emptyWeightFunction( 3 );
+						wfA = blockToWeightFunctions.computeIfAbsent(solveItemA, BlockData::createWeightFunctions);
+						wfB = new EmptyWeightFunction();
 
 						modelAIn = solveItemA.idToNewModel().get( tileId );
 						modelBIn = solveItemA.idToNewModel().get( tileId );
@@ -112,8 +111,8 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 					}
 					else
 					{
-						wfA = blockToWeightfunctions.computeIfAbsent( solveItemA, s -> s.createWeightFunctions() );
-						wfB = blockToWeightfunctions.computeIfAbsent( solveItemB, s -> s.createWeightFunctions() );
+						wfA = blockToWeightFunctions.computeIfAbsent(solveItemA, BlockData::createWeightFunctions);
+						wfB = blockToWeightFunctions.computeIfAbsent(solveItemB, BlockData::createWeightFunctions);
 
 						modelAIn = solveItemA.idToNewModel().get( tileId );
 						modelBIn = solveItemB.idToNewModel().get( tileId );
@@ -137,8 +136,8 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 					final I modelB = combineResultGlobal.apply( modelBIn, globalModelB );
 
 					// TODO: very inefficient to create the weight functions on the fly
-					final double wA = wfA.get( 2 ).apply( (double)z );// .getWeight( z );
-					final double wB = wfB.get( 2 ).apply( (double)z );//.getWeight( z );
+					final double wA = wfA.compute(0.0, 0.0, z);
+					final double wB = wfB.compute(0.0, 0.0, z);
 
 					// if one of them is zero the model stays at it is
 					final double regularizeB;
@@ -188,14 +187,11 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 		}
 	}
 
-	public static ArrayList< Function< Double, Double > > emptyWeightFunction( final int dim )
-	{
-		final ArrayList< Function< Double, Double > > weightF = new ArrayList<>();
-
-		for ( int d = 0; d < dim; ++d )
-			weightF.add( m -> 0.0 );
-
-		return weightF;
+	private static class EmptyWeightFunction implements WeightFunction {
+		@Override
+		public double compute(final double x, final double y, final double z) {
+			return 0.0;
+		}
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(ZBlockFusion.class);
