@@ -15,5 +15,5 @@ public interface BlockFusion< Z, G extends Model< G >, R, F extends BlockFactory
 	public void globalFusion(
 			List< ? extends BlockData<?, R, ?, F> > blocks,
 			AssemblyMaps< Z > am,
-			HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > blockToTile );
+			HashMap< BlockData<?, R, ?, F>, Tile< G > > blockToTile );
 }

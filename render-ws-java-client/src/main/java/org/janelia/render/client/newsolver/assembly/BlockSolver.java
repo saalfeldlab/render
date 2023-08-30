@@ -24,7 +24,7 @@ public abstract class BlockSolver< Z, G extends Model< G >, R, F extends BlockFa
 
 	public G globalSolveModel() { return globalModel; }
 
-	public abstract HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > globalSolve(
+	public abstract HashMap< BlockData<?, R, ?, F>, Tile< G > > globalSolve(
 			List< ? extends BlockData<?, R, ?, F> > blocks,
 			AssemblyMaps< Z > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException;
 }

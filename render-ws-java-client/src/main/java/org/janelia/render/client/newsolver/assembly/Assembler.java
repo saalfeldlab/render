@@ -62,7 +62,7 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 
 		try {
 			// now compute the final alignment for each block
-			final HashMap<BlockData<?, R, ?, ZBlockFactory>, Tile<G>> blockToTile =
+			final HashMap<BlockData<?, R, ?, F>, Tile<G>> blockToTile =
 					blockSolver.globalSolve(blocks, am);
 
 			// now fuse blocks into a full assembly
