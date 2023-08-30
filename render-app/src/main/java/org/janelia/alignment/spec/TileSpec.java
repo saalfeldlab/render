@@ -705,9 +705,9 @@ public class TileSpec implements Serializable {
                        new ImageAndMask(imageAndMask.getMaskUrl(),
                                         imageAndMask.getMaskLoaderType(),
                                         imageAndMask.getMaskSliceNumber(),
-                                        null,
-                                        null,
-                                        null));
+                                        imageAndMask.getMaskUrl(),
+                                        imageAndMask.getMaskLoaderType(),
+                                        imageAndMask.getMaskSliceNumber()));
         } else {
             final String emptyMaskUrl = DynamicMaskLoader.buildEmptyMaskDescription(getWidth(),
                                                                                     getHeight()).toString();
