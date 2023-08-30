@@ -80,13 +80,13 @@ public class Render
 	 * Create a {@link BufferedImage} from an existing pixel array.  Make sure
 	 * that pixels.length == width * height.
 	 *
-	 * @param pixels
-	 * @param width
-	 * @param height
+	 * @param pixels flat array of pixel values
+	 * @param width of the target image
+	 * @param height of the target image
 	 *
 	 * @return BufferedImage
 	 */
-	final static public BufferedImage createARGBImage( final int[] pixels, final int width, final int height )
+	static public BufferedImage createARGBImage( final int[] pixels, final int width, final int height )
 	{
 		assert( pixels.length == width * height ) : "The number of pixels is not equal to width * height.";
 
@@ -97,7 +97,7 @@ public class Render
 	}
 
 
-	final static void saveImage( final BufferedImage image, final String path, final String format ) throws IOException
+	static void saveImage( final BufferedImage image, final String path, final String format ) throws IOException
 	{
 		ImageIO.write( image, format, new File( path ) );
 	}
@@ -107,16 +107,16 @@ public class Render
 	 * a set of point samples using the {@link CoordinateTransform} and then
 	 * least-squares fitting a {@link SimilarityModel2D} to it.
 	 *
-	 * @param ct
+	 * @param ct coordinate transform to compute the scale-average of
 	 * @param width of the samples set
 	 * @param height of the samples set
 	 * @param dx spacing between samples
 	 *
 	 * @return average scale factor
 	 */
-	final static protected  double sampleAverageScale( final CoordinateTransform ct, final int width, final int height, final double dx )
+	static protected  double sampleAverageScale( final CoordinateTransform ct, final int width, final int height, final double dx )
 	{
-		final ArrayList< PointMatch > samples = new ArrayList< PointMatch >();
+		final ArrayList< PointMatch > samples = new ArrayList<>();
 		for ( double y = 0; y < height; y += dx )
 		{
 			for ( double x = 0; x < width; x += dx )
@@ -142,7 +142,7 @@ public class Render
 	}
 
 
-	final static protected int bestMipmapLevel( final double scale )
+	static protected int bestMipmapLevel( final double scale )
 	{
 		int invScale = ( int )( 1.0 / scale );
 		int scaleLevel = 0;
@@ -160,9 +160,8 @@ public class Render
 	 * averaging.
 	 *
 	 * @param scaleLevel
-	 * @return
 	 */
-	final static protected AffineModel2D createScaleLevelTransform( final int scaleLevel )
+	static protected AffineModel2D createScaleLevelTransform( final int scaleLevel )
 	{
 		final AffineModel2D a = new AffineModel2D();
 		final int scale = 1 << scaleLevel;
@@ -210,6 +209,7 @@ public class Render
 
 		/* estimate average scale and generate downsampled source */
 		final int width = patch.getWidth(), height = patch.getHeight();
+		// TODO: the last parameter is an integer division; should this be a float dvision instead?
 		final double s = sampleAverageScale( ctl, width, height, width / meshResolution );
 		final int mipmapLevel = bestMipmapLevel( s );
 		//System.out.println( s +  " " + mipmapLevel );
@@ -222,21 +222,9 @@ public class Render
 		final ImageProcessor tp = ipMipmap.createProcessor( targetImage.getWidth(), targetImage.getHeight() );
 
 		/* prepare and downsample alpha mask if there is one */
-		final ByteProcessor bpMaskMipmap;
-		final ByteProcessor bpMaskTarget;
-
 		final ByteProcessor bpMask = (ByteProcessor)impOriginal.mask;
-
-		if ( bpMask == null )
-		{
-			bpMaskMipmap = null;
-			bpMaskTarget = null;
-		}
-		else
-		{
-			bpMaskMipmap  = bpMask == null ? null : Downsampler.downsampleByteProcessor( bpMask, mipmapLevel );
-			bpMaskTarget = new ByteProcessor( tp.getWidth(), tp.getHeight() );
-		}
+		final ByteProcessor bpMaskMipmap = (bpMask == null) ? null : Downsampler.downsampleByteProcessor(bpMask, mipmapLevel);
+		final ByteProcessor bpMaskTarget = (bpMask == null) ? null : new ByteProcessor(tp.getWidth(), tp.getHeight());
 
 		/* create coefficients map */
 		final ColorProcessor cp = new ColorProcessor( ipMipmap.getWidth(), ipMipmap.getHeight() );
@@ -252,7 +240,7 @@ public class Render
 		}
 
 		/* attach mipmap transformation */
-		final CoordinateTransformList< CoordinateTransform > ctlMipmap = new CoordinateTransformList< CoordinateTransform >();
+		final CoordinateTransformList< CoordinateTransform > ctlMipmap = new CoordinateTransformList<>();
 		ctlMipmap.add( createScaleLevelTransform( mipmapLevel ) );
 		ctlMipmap.add( ctl );
 
@@ -262,10 +250,10 @@ public class Render
 		/* render */
 		final ImageProcessorWithMasks source = new ImageProcessorWithMasks( ipMipmap, bpMaskMipmap, null );
 		final ImageProcessorWithMasks target = new ImageProcessorWithMasks( tp, bpMaskTarget, null );
-		final TransformMeshMappingWithMasks< TransformMesh > mapping = new TransformMeshMappingWithMasks< TransformMesh >( mesh );
+		final TransformMeshMappingWithMasks< TransformMesh > mapping = new TransformMeshMappingWithMasks<>(mesh);
 		mapping.mapInterpolated( source, target, 1 );
 
-		final TransformMeshMapping< TransformMesh > coefficientsMapMapping = new TransformMeshMapping< TransformMesh >( mesh );
+		final TransformMeshMapping< TransformMesh > coefficientsMapMapping = new TransformMeshMapping<>(mesh);
 		coefficientsMapMapping.map( cp, targetCoefficients, 1 );
 
 		/* set alpha channel */

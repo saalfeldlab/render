@@ -16,7 +16,7 @@ import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
-import org.janelia.render.client.newsolver.setup.AffineSolverSetup;
+import org.janelia.render.client.newsolver.setup.AffineZBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
@@ -30,15 +30,15 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.RigidModel2D;
 
-public class AffineDistributedSolver
+public class DistributedAffineZBlockSolver
 {
-	final AffineSolverSetup cmdLineSetup;
+	final AffineZBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
 	BlockCollection< ?, AffineModel2D, ? extends FIBSEMAlignmentParameters< ?, ? >, ZBlockFactory > col;
 	ZBlockFactory blockFactory;
 
-	public AffineDistributedSolver(
-			final AffineSolverSetup cmdLineSetup,
+	public DistributedAffineZBlockSolver(
+			final AffineZBlockSolverSetup cmdLineSetup,
 			final RenderSetup renderSetup )
 	{
 		this.cmdLineSetup = cmdLineSetup;
@@ -47,7 +47,7 @@ public class AffineDistributedSolver
 
 	public static void main( final String[] args ) throws IOException
 	{
-        final AffineSolverSetup cmdLineSetup = new AffineSolverSetup();
+        final AffineZBlockSolverSetup cmdLineSetup = new AffineZBlockSolverSetup();
 
         // TODO: remove testing hack ...
         if (args.length == 0) {
@@ -90,7 +90,7 @@ public class AffineDistributedSolver
 		final RenderSetup renderSetup = RenderSetup.setupSolve( cmdLineSetup );
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
-		final AffineDistributedSolver solverSetup = new AffineDistributedSolver( cmdLineSetup, renderSetup );
+		final DistributedAffineZBlockSolver solverSetup = new DistributedAffineZBlockSolver( cmdLineSetup, renderSetup );
 
 		// create all block instances
 		final BlockCollection< ?, AffineModel2D, ?, ZBlockFactory > blockCollection =
@@ -264,8 +264,8 @@ public class AffineDistributedSolver
 		final boolean stitchFirst = cmdLineSetup.stitchFirst;
 
 		return new FIBSEMAlignmentParameters<>(
-				blockModel,
-				(Function< Integer,S > & Serializable )(z) -> stitchingModel,
+				blockModel.copy(),
+				(Function< Integer,S > & Serializable )(z) -> stitchingModel.copy(),
 				stitchFirst ? (Function< Integer, Integer > & Serializable )(z) -> cmdLineSetup.minStitchingInliers : null,
 				cmdLineSetup.maxAllowedErrorStitching,
 				cmdLineSetup.maxIterationsStitching,
@@ -314,5 +314,5 @@ public class AffineDistributedSolver
 		return workers;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(AffineDistributedSolver.class);
+	private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineZBlockSolver.class);
 }

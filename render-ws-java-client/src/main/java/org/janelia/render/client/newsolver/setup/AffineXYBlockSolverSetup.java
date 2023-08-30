@@ -8,6 +8,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentP
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.XYRangeParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
@@ -21,7 +22,7 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
 
-public class AffineSolverSetup extends CommandLineParameters
+public class AffineXYBlockSolverSetup extends CommandLineParameters
 {
 	private static final long serialVersionUID = 655629544594300471L;
 
@@ -46,10 +47,13 @@ public class AffineSolverSetup extends CommandLineParameters
     public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
 	@ParametersDelegate
-	public DistributedSolveParameters distributedSolve = new DistributedSolveParameters();
+	public DistributedXYSolveParameters distributedSolve = new DistributedXYSolveParameters();
 
 	@ParametersDelegate
 	public TargetStackParameters targetStack = new TargetStackParameters();
+
+	@ParametersDelegate
+	public XYRangeParameters xyRange = new XYRangeParameters();
 
 	@ParametersDelegate
 	public ZRangeParameters zRange = new ZRangeParameters();
@@ -63,43 +67,6 @@ public class AffineSolverSetup extends CommandLineParameters
             required = true)
     public String stack;
 
-    //
-    // stitching align model, by TRANSLATION with tunable regularization --- with RIGID (default: 0.00)
-    //
-    @Parameter(
-            names = "--lambdaStitching",
-            description = "Lambda, used if modelTypeStitchingRegularizer is not null."
-    )
-    public Double lambdaStitching = 0.0;
-
-    @Parameter(
-            names = "--maxAllowedErrorStitching",
-            description = "Max allowed error stitching"
-    )
-    public Double maxAllowedErrorStitching = 10.0;
-
-    @Parameter(
-            names = "--maxIterationsStitching",
-            description = "Max iterations stitching"
-    )
-    public Integer maxIterationsStitching = 500;
-
-    @Parameter(
-            names = "--maxPlateauWidthStitching",
-            description = "Max plateau width stitching"
-    )
-    public Integer maxPlateauWidthStitching = 50;
-
-    @Parameter(
-            names = "--minStitchingInliers",
-            description = "how many inliers per tile pair are necessary for 'stitching first'"
-    )
-    public Integer minStitchingInliers = 25;
-
-    @Parameter(
-            names = "--stitchFirst",
-            description = "if stitching per z-layer should be performed prior to block alignment (default: false)"
-    )
     public boolean stitchFirst = false;
 
     //
@@ -201,10 +168,5 @@ public class AffineSolverSetup extends CommandLineParameters
 						new StabilizingAffineModel2D<RigidModel2D>( new RigidModel2D() ), 0.0 );
 						//new StabilizingAffineModel2D( stitchingModel() ), 0.0 );
 						//new ConstantAffineModel2D( stitchingModel() ), 0.0 );
-	}
-
-	public InterpolatedAffineModel2D<TranslationModel2D, RigidModel2D> stitchingModel()
-	{
-		return new InterpolatedAffineModel2D<TranslationModel2D, RigidModel2D>( new TranslationModel2D(), new RigidModel2D(), lambdaStitching );
 	}
 }

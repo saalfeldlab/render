@@ -1,12 +1,19 @@
 package org.janelia.render.client.newsolver.blocksolveparameters;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.function.Function;
 
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.esotericsoftware.minlog.Log;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
@@ -144,4 +151,44 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	{
 		return new AffineAlignBlockWorker<>( blockData, startId, threadsWorker );
 	}
+
+	@Override
+	public <F extends BlockFactory<F>> double[] centerOfMass( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>, F> blockData)
+	{
+		if ( blockData.idToNewModel() == null || blockData.idToNewModel().size() == 0 )
+			return super.centerOfMass( blockData );
+
+		// check that all TileSpecs are part of the idToNewModel map
+		for ( final TileSpec ts : blockData.rtsc().getTileSpecs() )
+			if ( !blockData.idToNewModel().containsKey( ts.getTileId() ) )
+			{
+				LOG.info( "WARNING: a TileSpec is not part of the idToNewModel() - that should not happen." );
+				return super.centerOfMass( blockData );
+			}
+
+		final HashMap<String, AffineModel2D> models = blockData.idToNewModel();
+
+		final double[] c = new double[ 3 ];
+		int count = 0;
+
+		for ( final TileSpec ts : blockData.rtsc().getTileSpecs() )
+		{
+			final double[] coord = new double[] { (ts.getWidth() - 1) /2.0, (ts.getHeight() - 1) /2.0 };
+
+			models.get( ts.getTileId() ).applyInPlace( coord );
+
+			c[ 0 ] += coord[ 0 ];
+			c[ 1 ] += coord[ 1 ];
+			c[ 2 ] += ts.getZ();
+			++count;
+		}
+
+		c[ 0 ] /= (double)count;
+		c[ 1 ] /= (double)count;
+		c[ 2 ] /= (double)count;
+
+		return c;
+	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(FIBSEMAlignmentParameters.class);
 }

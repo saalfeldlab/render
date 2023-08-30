@@ -9,6 +9,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
@@ -40,18 +41,6 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/*
-// TODO: move this to common class and update once everything is semi-stable
-Cheatsheet for the generics used in the whole distributed solver:
-    Mnemonic        Alignment                           Intensity correction
-F   factory         ZBlockFactory                       ZBlockFactory
-G   global          RigidModel2D                        TranslationModel1D
-M   block(model)    InterpolatedAffineModel2D           ArrayList<AffineModel1D>
-S   stitching       InterpolatedAffineModel2D           -
-P   parameters      FIBSEMAlignmentParameters<M, S>     FIBSEMIntensityCorrectionParameters<M>
-R   (block) result  AffineModel2D                       ArrayList<AffineModel1D>
-Z   final (result)  AffineModel2D                       ArrayList<AffineModel1D>
- */
 
 public class DistributedIntensityCorrectionSolver {
 	final IntensityCorrectionSetup cmdLineSetup;
@@ -75,12 +64,12 @@ public class DistributedIntensityCorrectionSolver {
 					"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
 					"--owner", "cellmap",
 					"--project", "jrc_mus_thymus_1",
-					"--stack", "v2_acquire",
+					"--stack", "v2_acquire_align",
 					"--targetStack", "v2_acquire_test_intensity",
 					"--threadsWorker", "12",
 					"--minBlockSize", "2",
 					"--completeTargetStack",
-					// for entire stack minZ is 1 and maxZ is 63,300
+					// for entire stack minZ is 1 and maxZ is 14,503
 					"--zDistance", "1", "--minZ", "1000", "--maxZ", "1001"
 			};
 			cmdLineSetup.parse(testArgs);
@@ -116,19 +105,14 @@ public class DistributedIntensityCorrectionSolver {
 		}
 
 		final ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>> allItems = new ArrayList<>();
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 		try {
-			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
-			taskExecutor.invokeAll(workers).forEach(future -> {
-				try {
+			for (final Future<List<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>>> future : taskExecutor.invokeAll(workers))
 					allItems.addAll(future.get());
-				} catch (final InterruptedException | ExecutionException e) {
-					LOG.error("Failed to compute alignments", e); // TODO: confirm that it makes sense to swallow task exceptions rather than raise them
-				}
-			});
+		} catch (final InterruptedException | ExecutionException e) {
+			throw new RuntimeException("Failed to compute alignments", e);
+		} finally {
 			taskExecutor.shutdown();
-		} catch (final InterruptedException e) {
-			LOG.error("Failed to compute alignments", e);
-			return; // TODO: confirm that it makes sense to swallow task exceptions rather than raise them
 		}
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
@@ -164,16 +148,17 @@ public class DistributedIntensityCorrectionSolver {
 		// TODO: consider removing completeStack option since it doesn't make sense for 3D solves (need to discuss)
 
 		// this adds the filters to the tile specs and pushes the data to the DB
-		final boolean saveResults = (cmdLineSetup.targetStack.stack != null) && cmdLineSetup.targetStack.completeStack;
+		final boolean saveResults = (cmdLineSetup.targetStack.stack != null);
+		final RenderDataClient renderDataClient = cmdLineSetup.renderWeb.getDataClient();
 		if (saveResults) {
 			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.idToTileSpecGlobal.values());
 			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.idToFinalModelGlobal;
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, cmdLineSetup.intensityAdjust.numCoefficients);
 			addFilters(finalizedItems.idToTileSpecGlobal, idToFilterSpec);
 			final ResolvedTileSpecCollection rtsc = finalizedItems.buildResolvedTileSpecs();
-			final RenderDataClient renderDataClient = cmdLineSetup.renderWeb.getDataClient();
 			renderDataClient.saveResolvedTiles(rtsc, cmdLineSetup.targetStack.stack, null);
-			renderDataClient.setStackState(cmdLineSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
+			if (cmdLineSetup.targetStack.completeStack)
+				renderDataClient.setStackState(cmdLineSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
 		}
 	}
 
@@ -225,23 +210,23 @@ public class DistributedIntensityCorrectionSolver {
 	}
 
 	private static ArrayList<OnTheFlyIntensity> convertModelsToOtfIntensities(
-			final List<TileSpec> patches,
+			final List<TileSpec> tiles,
 			final int numCoefficients,
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles) {
 
 		final ArrayList<OnTheFlyIntensity> correctedOnTheFly = new ArrayList<>();
-		for (final TileSpec p : patches) {
+		for (final TileSpec tile : tiles) {
 			/* save coefficients */
 			final double[][] ab_coefficients = new double[numCoefficients * numCoefficients][2];
 
-			final ArrayList<AffineModel1D> models = coefficientTiles.get(p.getTileId());
+			final ArrayList<AffineModel1D> models = coefficientTiles.get(tile.getTileId());
 
 			for (int i = 0; i < numCoefficients * numCoefficients; ++i) {
 				final Affine1D<?> affine = models.get(i);
 				affine.toArray(ab_coefficients[i]);
 			}
 
-			correctedOnTheFly.add(new LinearOnTheFlyIntensity(new MinimalTileSpecWrapper(p), ab_coefficients, numCoefficients ));
+			correctedOnTheFly.add(new LinearOnTheFlyIntensity(new MinimalTileSpecWrapper(tile), ab_coefficients, numCoefficients ));
 		}
 		return correctedOnTheFly;
 	}

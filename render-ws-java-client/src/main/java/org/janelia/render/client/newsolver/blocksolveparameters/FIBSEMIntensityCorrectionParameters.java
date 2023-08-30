@@ -3,13 +3,12 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import mpicbg.models.AffineModel1D;
-
-import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.intensity.AffineIntensityCorrectionBlockWorker;
+
+import mpicbg.models.AffineModel1D;
 
 /**
  * 
