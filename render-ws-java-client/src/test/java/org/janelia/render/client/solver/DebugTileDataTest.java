@@ -32,7 +32,7 @@ import ch.qos.logback.classic.Level;
 /**
  * Prototype/test code for Preibisch ...
  */
-@SuppressWarnings({"SameParameterValue", "unused"})
+@SuppressWarnings({"SameParameterValue", "unused", "CommentedOutCode"})
 public class DebugTileDataTest {
 
     public static void main(final String[] args)
@@ -42,6 +42,12 @@ public class DebugTileDataTest {
         final String owner = "hess_wafer_53";
         final String project = "cut_000_to_009";
         final String stack = "c000_s095_v01";
+
+        // thymus test for Innerberger
+//        final String owner = "cellmap";
+//        final String project = "jrc_mus_thymus_1";
+//        final String stack = "v2_acquire_align";
+
         final double firstZ = 1.0;
 
         final RenderDataClient renderDataClient = new RenderDataClient(baseDataUrl,
@@ -183,6 +189,7 @@ public class DebugTileDataTest {
         renderParameters.setBounds(stackOrLayerBounds);
         renderParameters.setScale(renderScale);
         renderParameters.addTileSpecs(tileSpecsForZSortedByTileId);
+        renderParameters.setBinaryMask(true); // TODO: verify this is desired
         renderParameters.initializeDerivedValues();
         
         return renderParameters;
@@ -234,6 +241,7 @@ public class DebugTileDataTest {
         // final Bounds layerBounds = renderDataClient.getLayerBounds(stack, z);
 
         final List<Double> zValues = renderDataClient.getStackZValues(stack);
+//        final List<Double> zValues = Arrays.asList(1000.0); // thymus test hack for Innerberger
 
         ImageStack imageStack = null;
         for (final Double z : zValues) {
