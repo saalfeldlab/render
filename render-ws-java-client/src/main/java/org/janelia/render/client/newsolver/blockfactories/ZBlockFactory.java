@@ -2,7 +2,7 @@ package org.janelia.render.client.newsolver.blockfactories;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.RenderDataClient;
@@ -10,6 +10,8 @@ import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializable
 {
@@ -37,51 +39,34 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 	public <M, R, P extends BlockDataSolveParameters<M,R,P>> BlockCollection<M, R, P, ZBlockFactory> defineBlockCollection(
 			final ParameterProvider< M, R, P > blockSolveParameterProvider )
 	{
-		final List<ZBlockInit> initBlocks = ZBlockInit.defineBlockLayout(minZ, maxZ, blockSize, minBlockSize);
+		final Map<Integer, IntegerInterval> intervals = IntegerInterval.createOverlappingBlocks1D(minZ, maxZ, blockSize);
 
-		final BlockDataSolveParameters< ?,?,? > basicParameters = blockSolveParameterProvider.basicParameters();
-
-		//
 		// fetch metadata from render
-		//
-		final RenderDataClient r = new RenderDataClient(
+		final BlockDataSolveParameters<?,?,?> basicParameters = blockSolveParameterProvider.basicParameters();
+		final RenderDataClient dataClient = new RenderDataClient(
 				basicParameters.baseDataUrl(),
 				basicParameters.owner(),
-				basicParameters.project() );
+				basicParameters.project());
 
-		
 		final ArrayList< BlockData< M, R, P, ZBlockFactory > > blockDataList = new ArrayList<>();
 
 		// for each block, we know the z-range
-		for ( final ZBlockInit initBlock : initBlocks )
-		{
-			System.out.println( initBlock.id + ": " + initBlock.minZ() + " >> " + initBlock.maxZ() + " [#"+(initBlock.maxZ()-initBlock.minZ()+1) + "]" );
+		intervals.forEach((id, interval) -> {
+			LOG.info("Try to load block " + id + ": " + interval);
+			ResolvedTileSpecCollection rtsc = null;
 
-			try
-			{
+			try {
 				// TODO: trautmane
 				// we fetch all TileSpecs for our z-range
-				final ResolvedTileSpecCollection rtsc =
-						r.getResolvedTilesForZRange( basicParameters.stack(), (double)initBlock.minZ(), (double)initBlock.maxZ() );
-
-				System.out.println( "Loaded " + rtsc.getTileIds().size() + " tiles.");
-
-				final BlockData< M, R, P, ZBlockFactory > block = 
-						new BlockData<>(
-								this,
-								blockSolveParameterProvider.create( rtsc ),
-								initBlock.getId(),
-								rtsc );
-
-				blockDataList.add( block );
+				rtsc = dataClient.getResolvedTilesForZRange(basicParameters.stack(), (double)interval.min(), (double)interval.max());
+			} catch (final Exception e) {
+				throw new RuntimeException("Failed to fetch data from render.", e);
 			}
-			catch (final Exception e)
-			{
-				System.out.println( "Failed to fetch data from render. stopping.");
-				e.printStackTrace();
-				return null;
-			}
-		}
+
+			LOG.info("Loaded " + rtsc.getTileIds().size() + " tiles.");
+			final BlockData<M, R, P, ZBlockFactory> block = new BlockData<>(this, blockSolveParameterProvider.create(rtsc), id, rtsc);
+			blockDataList.add( block );
+		});
 
 		return new BlockCollection<>( blockDataList );
 	}
@@ -113,4 +98,6 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 			return Math.max(0, distanceToBoundary + eps);
 		}
 	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(ZBlockFactory.class);
 }

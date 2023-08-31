@@ -24,6 +24,8 @@ import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
 import net.imglib2.util.Pair;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializable
 {
@@ -59,118 +61,70 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P, XYBlockFactory> defineBlockCollection(
 			final ParameterProvider<M, R, P> blockSolveParameterProvider )
 	{
-		// we use the same code as for Z ...
-		// the LEFT sets are one more than the RIGHT sets and now simply form a grid of X*Y
-		final List<ZBlockInit> initBlocksX = ZBlockInit.defineBlockLayout(minX, maxX, blockSizeX, minBlockSizeX);
-		final List<ZBlockInit> initBlocksY = ZBlockInit.defineBlockLayout(minY, maxY, blockSizeY, minBlockSizeY);
+		final int[] minXY = new int[] {minX, minY};
+		final int[] maxXY = new int[] {maxX, maxY};
+		final int[] blockSizeXY = new int[] {blockSizeX, blockSizeY};
+		final Map<Integer, List<IntegerInterval>> intervals = IntegerInterval.createOverlappingBlocksND(minXY, maxXY, blockSizeXY);
 
-		System.out.println( "X: " + minX + " >>> " + maxX );
-
-		for (final ZBlockInit bx : initBlocksX)
-			System.out.println( bx.min + " >>> " + bx.max + ", " + bx.location + ", " + bx.id );
-
-		System.out.println( "\nY: " + minY + " >>> " + maxY );
-
-		for (final ZBlockInit by : initBlocksY)
-			System.out.println( by.min + " >>> " + by.max + ", " + by.location + ", " + by.id );
-
-		final BlockDataSolveParameters< ?,?,? > basicParameters = blockSolveParameterProvider.basicParameters();
-
-		//
 		// fetch metadata from render
-		//
-		final RenderDataClient r = new RenderDataClient(
+		final BlockDataSolveParameters<?,?,?> basicParameters = blockSolveParameterProvider.basicParameters();
+		final RenderDataClient dataClient = new RenderDataClient(
 				basicParameters.baseDataUrl(),
 				basicParameters.owner(),
-				basicParameters.project() );
+				basicParameters.project());
 
-		// 001_000003_078_20220405_180741.1241.0
-		//  "z" : 1241.0,
-		//  "minX" : 17849.0,
-		//  "maxX" : 19853.0,
-		//  "minY" : 10261.0,
-		//  "maxY" : 12009.0,
-		// should be found in [x: 17747 >>> 35096, LEFT, 1 ------ y: 400 >>> 17585, LEFT, 0]
-		// ends up in Block id=1, id=9
+		final ArrayList<BlockData<M, R, P, XYBlockFactory>> blockDataList = new ArrayList<>();
+		final IntegerInterval zInterval = new IntegerInterval(minZ, maxZ);
 
-		final ArrayList< BlockData< M, R, P, XYBlockFactory > > blockDataList = new ArrayList<>();
+		// for each block, we know the z-range
+		intervals.forEach((id, interval) -> {
+			final IntegerInterval xInterval = interval.get(0);
+			final IntegerInterval yInterval = interval.get(1);
+			LOG.info("Try to load block " + id + ": x -> " + xInterval + ", y -> " + yInterval + ", z -> " + zInterval);
+			ResolvedTileSpecCollection rtsc;
 
-		for ( int y = 0; y < initBlocksY.size(); ++y )
-		{
-			final ZBlockInit initBlockY = initBlocksY.get( y );
+			// TODO: remove debug comments
+			// 001_000003_078_20220405_180741.1241.0
+			//  "z" : 1241.0,
+			//  "minX" : 17849.0,
+			//  "maxX" : 19853.0,
+			//  "minY" : 10261.0,
+			//  "maxY" : 12009.0,
+			// should be found in [x: 17747 >>> 35096, LEFT, 1 ------ y: 400 >>> 17585, LEFT, 0]
+			// ends up in Block id=1, id=9
 
-			System.out.println( "Y: "+ initBlockY.id + ": " + initBlockY.minZ() + " >> " + initBlockY.maxZ() + " [#"+(initBlockY.maxZ()-initBlockY.minZ()+1) + "]" );
-
-			for ( int x = 0; x < initBlocksX.size(); ++x )
-			{
-				final ZBlockInit initBlockX = initBlocksX.get( x );
-
-				// only RIGHT-RIGHT and LEFT-LEFT are combined
-				if ( initBlockX.location() != initBlockY.location() )
-					continue;
-
-				System.out.println( "   X: "+ initBlockX.id + ": " + initBlockX.minZ() + " >> " + initBlockX.maxZ() + " [#"+(initBlockX.maxZ()-initBlockX.minZ()+1) + "]" );
-
-				ResolvedTileSpecCollection rtsc;
-
-				try
-				{
-					// TODO: trautmane
-					// we fetch all TileSpecs for our x,y,z-range
-					
-					rtsc = r.getResolvedTiles(
+			try {
+				// TODO: trautmane
+				// we fetch all TileSpecs for our z-range
+				rtsc = dataClient.getResolvedTiles(
 							basicParameters.stack(),
-							(double)minZ,
-							(double)maxZ,
+							(double) minZ,
+							(double) maxZ,
 							null,//groupId,
-							(double)initBlockX.minZ(),
-							(double)initBlockX.maxZ(),
-							(double)initBlockY.minZ(),
-							(double)initBlockY.maxZ(),
+							(double) xInterval.min(),
+							(double) xInterval.max(),
+							(double) yInterval.min(),
+							(double) yInterval.max(),
 							null );// matchPattern
-				}
-				catch (final Exception e)
-				{
-					if ( e.getMessage().contains( "no tile specifications found" ) )
-					{
-						rtsc = null;
-					}
-					else
-					{
-						System.out.println( "Failed to fetch data from render. stopping.");
-						e.printStackTrace();
-						return null;
-					}
-				}
-
-				if ( rtsc != null )
-					System.out.println( "   Loaded " + rtsc.getTileIds().size() + " tiles.");
+			} catch (final Exception e) {
+				if (e.getMessage().contains("no tile specifications found"))
+					rtsc = null;
 				else
-					System.out.println( "   Loaded null tiles.");
-
-				if ( rtsc == null || rtsc.getTileCount() == 0 )
-				{
-					System.out.println( "Since no tiles are in this XY block, continuing with next one.");
-					continue;
-				}
-
-				final int id = y * initBlocksX.size() + x;
-
-				System.out.println( "   XY: " + id + ": [" + initBlockX.minZ() + ", " + initBlockY.minZ() + ", " + minZ + "] >>> [" + initBlockX.maxZ() + ", " + initBlockY.maxZ() + ", " + maxZ + "]" );
-
-				final BlockData< M, R, P, XYBlockFactory > block = 
-						new BlockData<>(
-								this,
-								blockSolveParameterProvider.create( rtsc ),
-								id,
-								rtsc );
-
-				blockDataList.add( block );
+					throw new RuntimeException("Failed to fetch data from render. stopping.", e);
 			}
 
-		}
+			if (rtsc == null || rtsc.getTileCount() == 0) {
+				LOG.info("   Loaded null tiles.");
+				LOG.info("Since there are no tiles in this XY block, continuing with next one.");
+			} else {
+				LOG.info("   Loaded " + rtsc.getTileIds().size() + " tiles.");
+				final BlockData<M, R, P, XYBlockFactory> block =
+						new BlockData<>(this, blockSolveParameterProvider.create(rtsc), id, rtsc);
+				blockDataList.add(block);
+			}
+		});
 
-		return new BlockCollection<>( blockDataList );
+		return new BlockCollection<>(blockDataList);
 	}
 
 	@Override
@@ -235,4 +189,6 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 			return distanceMap.getInterpolatedValue(xLocal, yLocal);
 		}
 	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(XYBlockFactory.class);
 }
