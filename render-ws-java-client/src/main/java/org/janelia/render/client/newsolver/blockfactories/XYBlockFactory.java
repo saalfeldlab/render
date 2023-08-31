@@ -21,7 +21,6 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
-import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory.ZBlockInit;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
 import net.imglib2.util.Pair;
@@ -62,8 +61,8 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 	{
 		// we use the same code as for Z ...
 		// the LEFT sets are one more than the RIGHT sets and now simply form a grid of X*Y
-		final List< ZBlockInit > initBlocksX = ZBlockFactory.defineBlockLayout( minX, maxX, blockSizeX, minBlockSizeX );
-		final List< ZBlockInit > initBlocksY = ZBlockFactory.defineBlockLayout( minY, maxY, blockSizeY, minBlockSizeY );
+		final List<ZBlockInit> initBlocksX = ZBlockInit.defineBlockLayout(minX, maxX, blockSizeX, minBlockSizeX);
+		final List<ZBlockInit> initBlocksY = ZBlockInit.defineBlockLayout(minY, maxY, blockSizeY, minBlockSizeY);
 
 		System.out.println( "X: " + minX + " >>> " + maxX );
 
