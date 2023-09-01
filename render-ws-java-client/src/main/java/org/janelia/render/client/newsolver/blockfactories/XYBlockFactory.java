@@ -27,6 +27,8 @@ import net.imglib2.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
+
 public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializable
 {
 	private static final long serialVersionUID = -2022190797935740332L;
@@ -61,10 +63,15 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P, XYBlockFactory> defineBlockCollection(
 			final ParameterProvider<M, R, P> blockSolveParameterProvider )
 	{
-		final int[] minXY = new int[] {minX, minY};
-		final int[] maxXY = new int[] {maxX, maxY};
-		final int[] blockSizeXY = new int[] {blockSizeX, blockSizeY};
-		final Map<Integer, List<IntegerInterval>> intervals = IntegerInterval.createOverlappingBlocksND(minXY, maxXY, blockSizeXY);
+		final List<Bounds> blockBounds = new BlockLayoutCreator(new int[]{minBlockSizeX, minBlockSizeY, 0})
+				.regularGrid(In.X, minX, maxX, blockSizeX)
+				.regularGrid(In.Y, minY, maxY, blockSizeY)
+				.singleBlock(In.Z, minZ, maxZ)
+				.plus()
+				.shiftedGrid(In.X, minX, maxX, blockSizeX)
+				.shiftedGrid(In.Y, minY, maxY, blockSizeY)
+				.singleBlock(In.Z, minZ, maxZ)
+				.create();
 
 		// fetch metadata from render
 		final BlockDataSolveParameters<?,?,?> basicParameters = blockSolveParameterProvider.basicParameters();
@@ -74,13 +81,11 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 				basicParameters.project());
 
 		final ArrayList<BlockData<M, R, P, XYBlockFactory>> blockDataList = new ArrayList<>();
-		final IntegerInterval zInterval = new IntegerInterval(minZ, maxZ);
 
 		// for each block, we know the z-range
-		intervals.forEach((id, interval) -> {
-			final IntegerInterval xInterval = interval.get(0);
-			final IntegerInterval yInterval = interval.get(1);
-			LOG.info("Try to load block " + id + ": x -> " + xInterval + ", y -> " + yInterval + ", z -> " + zInterval);
+		int id = 0;
+		for (final Bounds bound : blockBounds) {
+			LOG.info("Try to load block " + id + ": " + bound);
 			ResolvedTileSpecCollection rtsc;
 
 			// TODO: remove debug comments
@@ -98,13 +103,10 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 				// we fetch all TileSpecs for our z-range
 				rtsc = dataClient.getResolvedTiles(
 							basicParameters.stack(),
-							(double) minZ,
-							(double) maxZ,
+							bound.getMinZ(), bound.getMaxZ(),
 							null,//groupId,
-							(double) xInterval.min(),
-							(double) xInterval.max(),
-							(double) yInterval.min(),
-							(double) yInterval.max(),
+							bound.getMinX(), bound.getMaxX(),
+							bound.getMinY(), bound.getMaxY(),
 							null );// matchPattern
 			} catch (final Exception e) {
 				if (e.getMessage().contains("no tile specifications found"))
@@ -122,7 +124,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 						new BlockData<>(this, blockSolveParameterProvider.create(rtsc), id, rtsc);
 				blockDataList.add(block);
 			}
-		});
+		}
 
 		return new BlockCollection<>(blockDataList);
 	}
