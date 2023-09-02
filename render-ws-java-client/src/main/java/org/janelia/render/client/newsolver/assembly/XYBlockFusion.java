@@ -4,7 +4,6 @@ import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import net.imglib2.util.Pair;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 
-public class XYBlockFusion<Z, I, G extends Model<G>, R> implements BlockFusion<Z, G, R, XYBlockFactory>
+public class XYBlockFusion<Z, I, G extends Model<G>, R> implements BlockFusion<Z, G, R>
 {
 	final XYBlockSolver<Z, G, R> solver;
 	final BiFunction<R, G, I> combineResultGlobal;
@@ -36,11 +35,11 @@ public class XYBlockFusion<Z, I, G extends Model<G>, R> implements BlockFusion<Z
 
 	@Override
 	public void globalFusion(
-			final List<? extends BlockData<?, R, ?, XYBlockFactory>> blocks,
+			final List<? extends BlockData<?, R, ?>> blocks,
 			final AssemblyMaps<Z> am, 
-			final HashMap<BlockData<?, R, ?, XYBlockFactory>, Tile<G>> blockToTile
+			final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile
 	) {
-		final HashMap<BlockData<?, R, ?, XYBlockFactory>, G> blockToG = new HashMap<>();
+		final HashMap<BlockData<?, R, ?>, G> blockToG = new HashMap<>();
 
 		blockToTile.forEach((block, tile) -> {
 			if (block != null) {
@@ -53,20 +52,20 @@ public class XYBlockFusion<Z, I, G extends Model<G>, R> implements BlockFusion<Z
 		final ArrayList<Integer> zSections = new ArrayList<>(am.zToTileIdGlobal.keySet());
 		Collections.sort(zSections);
 
-		final Map<BlockData<?, R, ?, XYBlockFactory>, WeightFunction> blockToWeightFunctions = new HashMap<>();
+		final Map<BlockData<?, R, ?>, WeightFunction> blockToWeightFunctions = new HashMap<>();
 
 		for (final int z : zSections) {
 			// for every z section, tileIds might be provided from different overlapping blocks if they were not connected and have been split
-			final ArrayList<Pair<Pair<BlockData<?, R, ?, XYBlockFactory>, BlockData<?, R, ?, XYBlockFactory>>, HashSet<String>>> blockPairsAndTileIdsForZLayer =
+			final ArrayList<Pair<Pair<BlockData<?, R, ?>, BlockData<?, R, ?>>, HashSet<String>>> blockPairsAndTileIdsForZLayer =
 					solver.zToBlockPairs.get(z);
 
-			for (final Pair<Pair<BlockData<?, R, ?, XYBlockFactory>, BlockData<?, R, ?, XYBlockFactory>>, HashSet<String>> blockPairAndTileId : blockPairsAndTileIdsForZLayer) {
+			for (final Pair<Pair<BlockData<?, R, ?>, BlockData<?, R, ?>>, HashSet<String>> blockPairAndTileId : blockPairsAndTileIdsForZLayer) {
 
-				final Pair<BlockData<?, R, ?, XYBlockFactory>, BlockData<?, R, ?, XYBlockFactory>> blockPair = blockPairAndTileId.getA();
+				final Pair<BlockData<?, R, ?>, BlockData<?, R, ?>> blockPair = blockPairAndTileId.getA();
 				final Set<String> tileIds = blockPairAndTileId.getB();
 
-				BlockData<?, R, ?, XYBlockFactory> blockA = blockPair.getA();
-				BlockData<?, R, ?, XYBlockFactory> blockB = blockPair.getB();
+				BlockData<?, R, ?> blockA = blockPair.getA();
+				BlockData<?, R, ?> blockB = blockPair.getB();
 
 				final WeightFunction weightA = (blockA == null) ? new EmptyWeightFunction()
 						: blockToWeightFunctions.computeIfAbsent(blockA, BlockData::createWeightFunctions);

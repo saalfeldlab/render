@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
-import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,14 +19,13 @@ import mpicbg.models.Tile;
  * @param <Z> - the final output for each TileSpec
  * @param <G> - model used for global solve
  * @param <R> - the result from the block solves
- * @param <F> - the blockFactory that was used
  */
-public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > >
+public class Assembler<Z, G extends Model<G>, R>
 {
-	final List<BlockData<?, R, ?, F> > blocks;
-	final BlockSolver< Z, G, R, F > blockSolver;
-	final BlockFusion< Z, G, R, F > blockFusion;
-	final Function< R, Z > converter;
+	final List<BlockData<?, R, ?>> blocks;
+	final BlockSolver<Z, G, R> blockSolver;
+	final BlockFusion<Z, G, R> blockFusion;
+	final Function<R, Z> converter;
 
 	/**
 	 * @param blocks - all individually computed blocks
@@ -37,10 +34,10 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 	 * @param converter - a converter from R to Z - for the trivial case of a single block
 	 */
 	public Assembler(
-			final List<BlockData<?, R, ?, F> > blocks,
-			final BlockSolver< Z, G, R, F > blockSolver,
-			final BlockFusion< Z, G, R, F > blockFusion,
-			final Function< R, Z > converter )
+			final List<BlockData<?, R, ?>> blocks,
+			final BlockSolver<Z, G, R> blockSolver,
+			final BlockFusion<Z, G, R> blockFusion,
+			final Function<R, Z> converter )
 	{
 		this.blocks = blocks;
 		this.blockSolver = blockSolver;
@@ -62,7 +59,7 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 
 		try {
 			// now compute the final alignment for each block
-			final HashMap<BlockData<?, R, ?, F>, Tile<G>> blockToTile =
+			final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile =
 					blockSolver.globalSolve(blocks, am);
 
 			// now fuse blocks into a full assembly
@@ -90,7 +87,7 @@ public class Assembler< Z, G extends Model< G >, R, F extends BlockFactory< F > 
 
 		final AssemblyMaps< Z > am = new AssemblyMaps<>();
 
-		final BlockData< ?, R, ?, F > solveItem = blocks.get( 0 );
+		final BlockData< ?, R, ?> solveItem = blocks.get( 0 );
 
 		am.sharedTransformSpecs.addAll(solveItem.rtsc().getTransformSpecs());
 

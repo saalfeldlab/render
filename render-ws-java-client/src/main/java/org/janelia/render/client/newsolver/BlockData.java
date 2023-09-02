@@ -28,16 +28,15 @@ import net.imglib2.util.ValuePair;
  * @param <M> - the compute model
  * @param <R> - the result
  * @param <P> - the solve parameters
- * @param <F> - the block factory
  */
-public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > implements Serializable
+public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implements Serializable
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 
 	private int id;
 
 	// the BlockFactory that created this BlockData
-	final F blockFactory;
+	final BlockFactory blockFactory;
 
 	// contains solve-specific parameters and models
 	final P solveTypeParameters;
@@ -68,7 +67,7 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 
 	public BlockData(
-			final F blockFactory, // knows how it was created for assembly later?
+			final BlockFactory blockFactory, // knows how it was created for assembly later?
 			final P solveTypeParameters,
 			final int id,
 			final ResolvedTileSpecCollection rtsc )
@@ -106,7 +105,7 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 	public Pair<double[],double[]> boundingBox() { return solveTypeParameters().boundingBox( this ); }
 
 	public P solveTypeParameters() { return solveTypeParameters; }
-	public F blockFactory() { return blockFactory; }
+	public BlockFactory blockFactory() { return blockFactory; }
 
 	public ResolvedTileSpecCollection rtsc() { return rtsc; }
 	public HashMap< String, R > idToNewModel() { return idToNewModel; }
@@ -117,7 +116,7 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 
 	public void assignUpdatedId( final int id ) { this.id = id; }
 
-	public Worker< M, R, P, F > createWorker( final int startId, final int threadsWorker )
+	public Worker<M, R, P> createWorker( final int startId, final int threadsWorker )
 	{
 		return solveTypeParameters().createWorker( this , startId, threadsWorker );
 	}
@@ -167,15 +166,14 @@ public class BlockData< M, R, P extends BlockDataSolveParameters< M, R, P >, F e
 	}
 
 	@Override
-	public boolean equals(Object obj) {
+	public boolean equals(final Object obj) {
 		if (this == obj)
 			return true;
 		if (obj == null)
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		@SuppressWarnings("rawtypes")
-		BlockData other = (BlockData) obj;
+		final BlockData<?,?,?> other = (BlockData<?,?,?>) obj;
 		return id == other.id && maxZ == other.maxZ && minZ == other.minZ && Objects.equals(rtsc, other.rtsc);
 	}
 }

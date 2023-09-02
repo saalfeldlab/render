@@ -34,7 +34,7 @@ public class DistributedAffineZBlockSolver
 {
 	final AffineZBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
-	BlockCollection< ?, AffineModel2D, ? extends FIBSEMAlignmentParameters< ?, ? >, ZBlockFactory > col;
+	BlockCollection<?, AffineModel2D, ? extends FIBSEMAlignmentParameters<?, ?>> col;
 	ZBlockFactory blockFactory;
 
 	public DistributedAffineZBlockSolver(
@@ -93,7 +93,7 @@ public class DistributedAffineZBlockSolver
 		final DistributedAffineZBlockSolver solver = new DistributedAffineZBlockSolver( cmdLineSetup, renderSetup );
 
 		// create all block instances
-		final BlockCollection< ?, AffineModel2D, ?, ZBlockFactory > blockCollection =
+		final BlockCollection<?, AffineModel2D, ?> blockCollection =
 				solver.setupSolve( cmdLineSetup.blockModel(), cmdLineSetup.stitchingModel() );
 
 		/*
@@ -109,13 +109,13 @@ public class DistributedAffineZBlockSolver
 		//
 		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
 
-		final ArrayList< Callable< List< BlockData<?, AffineModel2D, ?, ZBlockFactory> > > > workers = new ArrayList<>();
+		final ArrayList<Callable<List<BlockData<?, AffineModel2D, ?>>>> workers = new ArrayList<>();
 
 		blockCollection.allBlocks().forEach( block ->
 		{
 			workers.add( () ->
 			{
-				final Worker<?, AffineModel2D, ?, ZBlockFactory> worker = block.createWorker(
+				final Worker<?, AffineModel2D, ?> worker = block.createWorker(
 						solver.col.maxId() + 1,
 						cmdLineSetup.distributedSolve.threadsWorker);
 
@@ -125,7 +125,7 @@ public class DistributedAffineZBlockSolver
 			} );
 		} );
 
-		final ArrayList< BlockData<?, AffineModel2D, ?, ZBlockFactory> > allItems = new ArrayList<>();
+		final ArrayList<BlockData<?, AffineModel2D, ?>> allItems = new ArrayList<>();
 
 		try {
 			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
@@ -172,7 +172,7 @@ public class DistributedAffineZBlockSolver
 							new InterpolatedAffineModel2D<>( i.get( 0 ), i.get( 1 ), w.get( 1 ) ).createAffineModel2D()
 							);
 
-		final Assembler< AffineModel2D, RigidModel2D, AffineModel2D, ZBlockFactory > assembler =
+		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
 				new Assembler<>(
 						allItems,
 						blockSolver,
@@ -216,8 +216,8 @@ public class DistributedAffineZBlockSolver
 		*/
 	}
 
-	public < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > >
-			BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > setupSolve(
+	public <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
+			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> setupSolve(
 			final M blockModel,
 			final S stitchingModel )
 	{
@@ -231,7 +231,7 @@ public class DistributedAffineZBlockSolver
 		//
 		// create all blocks
 		//
-		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col =
+		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> col =
 				setupBlockCollection( blockFactory, blockModel, stitchingModel );
 
 		this.col = col;
@@ -279,7 +279,7 @@ public class DistributedAffineZBlockSolver
 				cmdLineSetup.matches.matchCollection);
 	}
 
-	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > setupBlockCollection(
+	protected <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> setupBlockCollection(
 			final ZBlockFactory blockFactory,
 			final M blockModel,
 			final S stitchingModel )
@@ -293,12 +293,12 @@ public class DistributedAffineZBlockSolver
 		return blockFactory.defineBlockCollection(rtsc -> defaultSolveParams );
 	}
 
-	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > ArrayList< AffineAlignBlockWorker<M, S, ZBlockFactory > > createWorkers(
-			final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > col )
+	protected <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> ArrayList<AffineAlignBlockWorker<M, S>> createWorkers(
+			final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> col )
 	{
-		final ArrayList< AffineAlignBlockWorker<M, S, ZBlockFactory > > workers = new ArrayList<>();
+		final ArrayList<AffineAlignBlockWorker<M, S>> workers = new ArrayList<>();
 
-		for ( final BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, ZBlockFactory > block : col.allBlocks() )
+		for ( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> block : col.allBlocks() )
 		{
 			workers.add(new AffineAlignBlockWorker<>(block, col.maxId() + 1, cmdLineSetup.distributedSolve.threadsWorker));
 		}

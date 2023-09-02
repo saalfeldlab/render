@@ -18,7 +18,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -56,7 +55,7 @@ import mpicbg.models.TranslationModel2D;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S >, F extends BlockFactory< F > > extends Worker< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F >
+public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> extends Worker<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>>
 {
 	// attempts to stitch each section first (if the tiles are connected) and
 	// then treat them as one big, "grouped" tile in the global optimization
@@ -84,9 +83,9 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	//final List<Integer> blockOptimizerIterations, blockMaxPlateauWidth;
 	//final double blockMaxAllowedError;
 
-	final AffineBlockDataWrapper< M, S, F > inputSolveItem;
-	private ArrayList< AffineBlockDataWrapper< M, S, F > > solveItems;
-	private ArrayList< BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > > result;
+	final AffineBlockDataWrapper<M, S> inputSolveItem;
+	private ArrayList<AffineBlockDataWrapper<M, S>> solveItems;
+	private ArrayList<BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>>> result;
 
 	// to filter matches
 	final MatchFilter matchFilter;
@@ -99,7 +98,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 
 	// created by SolveItemData.createWorker()
 	public AffineAlignBlockWorker(
-			final BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > blockData,
+			final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
 			final int startId,
 			final int numThreads )
 	{
@@ -132,7 +131,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	}
 
 	@Override
-	public ArrayList< BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > > getBlockDataList()
+	public ArrayList<BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>>> getBlockDataList()
 	{
 		return result;
 	}
@@ -155,7 +154,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	
 			this.solveItems = splitSolveItem( inputSolveItem, startId );
 	
-			for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
+			for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
 			{
 				/*
 				java.lang.NullPointerException: Cannot invoke "org.janelia.alignment.spec.TileSpec.getZ()" because the return value of "org.janelia.alignment.spec.ResolvedTileSpecCollection.getTileSpec(String)" is null
@@ -174,12 +173,12 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 				solve( solveItem, numThreads );
 			}
 	
-			for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
+			for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
 				computeSolveItemErrors( solveItem, canvasMatches );
 	
 			// clean up
 			this.result = new ArrayList<>();
-			for ( final AffineBlockDataWrapper< M, S, F > solveItem : solveItems )
+			for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
 			{
 				result.add( solveItem.blockData() );
 				solveItem.matches().clear();
@@ -199,7 +198,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	}
 
 	protected ArrayList< CanvasMatches > assembleMatchData(
-			final AffineBlockDataWrapper< M, S, F > inputSolveItem,
+			final AffineBlockDataWrapper<M, S> inputSolveItem,
 			final MatchFilter matchFilter,
 			final RenderDataClient matchDataClient,
 			final RenderDataClient renderDataClient,
@@ -337,7 +336,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	 * @param stabilizationRadius - the radius in z that is used for stabilization using StabilizingAffineModel2D
 	 */
 	protected boolean assignRegularizationModel(
-			final AffineBlockDataWrapper< M, S, F > solveItem,
+			final AffineBlockDataWrapper<M, S> solveItem,
 			final int samplesPerDimension,
 			final int stabilizationRadius )
 	{
@@ -594,14 +593,14 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	 * @param tileId - which TileId
 	 * @return - AffineModel2D with the metadata transformation for this tile
 	 */
-	protected static AffineModel2D getMetaDataTransformation( final AffineBlockDataWrapper<?, ?, ?> solveItem, final String tileId )
+	protected static AffineModel2D getMetaDataTransformation( final AffineBlockDataWrapper<?, ?> solveItem, final String tileId )
 	{
 		return solveItem.idToPreviousModel().get( tileId );
 	}
 
 	protected void connectGroupedTiles(
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
-			final AffineBlockDataWrapper< M, S, F > solveItem )
+			final AffineBlockDataWrapper<M, S> solveItem )
 	{
 		// next, group the stitched tiles together
 		for ( final Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > pair : pairs )
@@ -623,7 +622,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	}
 
 	protected void stitchSectionsAndCreateGroupedTiles(
-			final AffineBlockDataWrapper< M, S, F > solveItem,
+			final AffineBlockDataWrapper<M, S> solveItem,
 			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
 			final HashMap< Integer, List< Integer > > zToPairs,
 			final boolean stitchFirst,
@@ -831,12 +830,12 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 		}
 	}
 
-	protected ArrayList< AffineBlockDataWrapper< M, S, F > > splitSolveItem( final AffineBlockDataWrapper< M, S, F > inputSolveItem, final int startId )
+	protected ArrayList<AffineBlockDataWrapper<M, S>> splitSolveItem(final AffineBlockDataWrapper<M, S> inputSolveItem, final int startId)
 	{
 		// assigning new id's to the solve items (they collide for now with other workers, fix upon merging)
 		int id = startId + 1;
 
-		final ArrayList< AffineBlockDataWrapper< M, S, F > > solveItems = new ArrayList<>();
+		final ArrayList<AffineBlockDataWrapper<M, S>> solveItems = new ArrayList<>();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
 		final ArrayList< Set< Tile< ? > > > graphs = safelyIdentifyConnectedGraphs( new HashSet<>( inputSolveItem.tileToGroupedTile().values() ) );
@@ -876,7 +875,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 						new ResolvedTileSpecCollection(originalRTSC.getTransformSpecs(),
 													   groupedTileSpecList);
 
-				final AffineBlockDataWrapper< M, S, F > solveItem =
+				final AffineBlockDataWrapper<M, S> solveItem =
 						new AffineBlockDataWrapper<>(
 								new BlockData<>(
 										inputSolveItem.blockData().blockFactory(), // no copy necessary
@@ -948,7 +947,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	}
 
 	protected void solve(
-			final AffineBlockDataWrapper< M, S, F > solveItem,
+			final AffineBlockDataWrapper<M, S> solveItem,
 			final int numThreads ) throws InterruptedException, ExecutionException
 	{
 		final PreAlign preAlign = solveItem.blockData().solveTypeParameters().preAlign();
@@ -1096,7 +1095,7 @@ public class AffineAlignBlockWorker< M extends Model< M > & Affine2D< M >, S ext
 	}
 
 	// note: these are local errors of a single block only
-	protected void computeSolveItemErrors( final AffineBlockDataWrapper< M, S, F > solveItem, final ArrayList< CanvasMatches > canvasMatches )
+	protected void computeSolveItemErrors( final AffineBlockDataWrapper<M, S> solveItem, final ArrayList< CanvasMatches > canvasMatches )
 	{
 		LOG.info( "Computing per-block errors for " + solveItem.blockData().rtsc().getTileCount() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
 

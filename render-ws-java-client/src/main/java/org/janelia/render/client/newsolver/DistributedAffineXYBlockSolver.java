@@ -33,7 +33,7 @@ public class DistributedAffineXYBlockSolver
 {
 	final AffineXYBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
-	BlockCollection< ?, AffineModel2D, ? extends FIBSEMAlignmentParameters< ?, ? >, XYBlockFactory > col;
+	BlockCollection<?, AffineModel2D, ? extends FIBSEMAlignmentParameters<?, ?>> col;
 	XYBlockFactory blockFactory;
 
 	public DistributedAffineXYBlockSolver(
@@ -95,21 +95,20 @@ public class DistributedAffineXYBlockSolver
 		final DistributedAffineXYBlockSolver solverSetup = new DistributedAffineXYBlockSolver( cmdLineSetup, renderSetup );
 
 		// create all block instances
-		final BlockCollection< ?, AffineModel2D, ?, XYBlockFactory > blockCollection =
-				solverSetup.setupSolve( cmdLineSetup.blockModel() );
+		final BlockCollection<?, AffineModel2D, ?> blockCollection = solverSetup.setupSolve(cmdLineSetup.blockModel());
 
 		//
 		// multi-threaded solve
 		//
 		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
 
-		final ArrayList< Callable< List< BlockData<?, AffineModel2D, ?, XYBlockFactory> > > > workers = new ArrayList<>();
+		final ArrayList<Callable<List< BlockData<?, AffineModel2D, ?>>>> workers = new ArrayList<>();
 
 		blockCollection.allBlocks().forEach( block ->
 		{
 			workers.add( () ->
 			{
-				final Worker<?, AffineModel2D, ?, XYBlockFactory> worker = block.createWorker(
+				final Worker<?, AffineModel2D, ?> worker = block.createWorker(
 						solverSetup.col.maxId() + 1,
 						cmdLineSetup.distributedSolve.threadsWorker);
 
@@ -119,7 +118,7 @@ public class DistributedAffineXYBlockSolver
 			} );
 		} );
 
-		final ArrayList< BlockData<?, AffineModel2D, ?, XYBlockFactory> > allItems = new ArrayList<>();
+		final ArrayList< BlockData<?, AffineModel2D, ?> > allItems = new ArrayList<>();
 
 		try {
 			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
@@ -166,7 +165,7 @@ public class DistributedAffineXYBlockSolver
 						(i,w) -> new InterpolatedAffineModel2D<>(i.get(0), i.get(1), w.get(1)).createAffineModel2D()
 				);
 
-		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D, XYBlockFactory> assembler =
+		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
 				new Assembler<>(
 						allItems,
 						blockSolver,
@@ -180,9 +179,8 @@ public class DistributedAffineXYBlockSolver
 		assembler.createAssembly();
 	}
 
-	public < M extends Model< M > & Affine2D< M > >
-			BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory > setupSolve(
-					final M blockModel )
+	public <M extends Model<M> & Affine2D<M>>
+			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> setupSolve(final M blockModel)
 	{
 		//
 		// setup XY BlockFactory
@@ -194,16 +192,13 @@ public class DistributedAffineXYBlockSolver
 		//
 		// create all blocks
 		//
-		final BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory > col =
-				setupBlockCollection( blockFactory, blockModel );
-		
+		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> col = setupBlockCollection(blockFactory, blockModel);
 		this.col = col;
-		
 		return col;
 	}
 
-	protected < M extends Model< M > & Affine2D< M > >
-			BlockCollection< M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory > setupBlockCollection(
+	protected <M extends Model<M> & Affine2D<M>>
+			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> setupBlockCollection(
 					final XYBlockFactory blockFactory,
 					final M blockModel )
 	{
@@ -213,7 +208,7 @@ public class DistributedAffineXYBlockSolver
 		final FIBSEMAlignmentParameters< M, M > defaultSolveParams =
 				setupSolveParameters( blockModel );
 
-		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory> bc =
+		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> bc =
 				blockFactory.defineBlockCollection( rtsc -> defaultSolveParams );
 
 		int minTileCount = Integer.MAX_VALUE;
@@ -221,7 +216,7 @@ public class DistributedAffineXYBlockSolver
 		double avgTileCount = 0;
 		int count = 0;
 
-		for ( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters< M, M >, XYBlockFactory> block : bc.allBlocks() )
+		for ( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> block : bc.allBlocks() )
 		{
 			final int tc = block.rtsc().getTileCount();
 

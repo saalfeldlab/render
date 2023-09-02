@@ -16,7 +16,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreator;
-import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +27,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
-public class XYBlockSolver<Z, G extends Model<G>, R> extends BlockSolver<Z, G, R, XYBlockFactory> {
+public class XYBlockSolver<Z, G extends Model<G>, R> extends BlockSolver<Z, G, R> {
 
 	final G globalModel;
 	final SameTileMatchCreator<R> sameTileMatchCreator;
@@ -43,11 +42,8 @@ public class XYBlockSolver<Z, G extends Model<G>, R> extends BlockSolver<Z, G, R
 	final public HashMap<
 			Integer,
 			ArrayList<
-				Pair<
-					Pair<
-						BlockData<?, R, ?, XYBlockFactory>,
-						BlockData<?, R, ?, XYBlockFactory>>,
-					HashSet<String>>>> zToBlockPairs = new HashMap<>();
+					Pair<Pair<BlockData<?, R, ?>, BlockData<?, R, ?>>, HashSet<String>>>>
+			zToBlockPairs = new HashMap<>();
 
 	public XYBlockSolver(
 			final G globalModel,
@@ -68,23 +64,23 @@ public class XYBlockSolver<Z, G extends Model<G>, R> extends BlockSolver<Z, G, R
 	}
 
 	@Override
-	public HashMap<BlockData<?, R, ?, XYBlockFactory>, Tile<G>> globalSolve(
-			final List<? extends BlockData<?, R, ?, XYBlockFactory>> blocks,
+	public HashMap<BlockData<?, R, ?>, Tile<G>> globalSolve(
+			final List<? extends BlockData<?, R, ?>> blocks,
 			final AssemblyMaps<Z> am
 	) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException {
 		
-		final HashMap<BlockData<?, R, ?, XYBlockFactory>, Tile<G>> blockToTile = new HashMap<>();
+		final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile = new HashMap<>();
 		blocks.forEach(block -> blockToTile.put(block, new Tile<>(globalModel.copy())));
 
 		LOG.info("globalSolve: solving {} items", blocks.size());
-		final Set<? extends BlockData<?, R, ?, XYBlockFactory>> otherBlocks = new HashSet<>(blocks);
+		final Set<? extends BlockData<?, R, ?>> otherBlocks = new HashSet<>(blocks);
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
-		for (final BlockData<?, R, ?, XYBlockFactory> solveItemA : blocks) {
+		for (final BlockData<?, R, ?> solveItemA : blocks) {
 			LOG.info("globalSolve: solveItemA xy range is {}", solveItemA.boundingBox());
 			otherBlocks.remove(solveItemA);
 
-			for (final BlockData<?, R, ?, XYBlockFactory> solveItemB : otherBlocks) {
+			for (final BlockData<?, R, ?> solveItemB : otherBlocks) {
 				LOG.info("globalSolve: solveItemB xy range is {}", solveItemB.boundingBox());
 
 				// TODO: is the loop over z really necessary here?
@@ -157,7 +153,7 @@ public class XYBlockSolver<Z, G extends Model<G>, R> extends BlockSolver<Z, G, R
 		return blockToTile;
 	}
 
-	private int[] computeZOverlap(final BlockData<?, R, ?, XYBlockFactory> blockA, final BlockData<?, R, ?, XYBlockFactory> blockB) {
+	private int[] computeZOverlap(final BlockData<?, R, ?> blockA, final BlockData<?, R, ?> blockB) {
 		final Bounds boundsA = boundsFrom(blockA.boundingBox());
 		final Bounds boundsB = boundsFrom(blockB.boundingBox());
 		final Rectangle2D xyOverlap = boundsA.toRectangle().createIntersection(boundsB.toRectangle());
@@ -185,8 +181,8 @@ public class XYBlockSolver<Z, G extends Model<G>, R> extends BlockSolver<Z, G, R
 
 	protected static HashSet<String> getCommonTileIds(
 			final int z,
-			final BlockData<?, ?, ?, XYBlockFactory> blockA,
-			final BlockData<?, ?, ?, XYBlockFactory> blockB
+			final BlockData<?, ?, ?> blockA,
+			final BlockData<?, ?, ?> blockB
 	) {
 		final HashSet<String> tileIdsA = new HashSet<>(blockA.zToTileId().get(z));
 		final HashSet<String> tileIdsB = blockB.zToTileId().get(z);

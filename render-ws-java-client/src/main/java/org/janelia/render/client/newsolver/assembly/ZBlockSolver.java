@@ -9,7 +9,6 @@ import java.util.concurrent.ExecutionException;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreator;
-import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +23,7 @@ import mpicbg.models.TileUtil;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, G, R, ZBlockFactory >
+public class ZBlockSolver<Z, G extends Model<G>, R> extends BlockSolver<Z, G, R>
 {
 	final G globalModel;
 	final SameTileMatchCreator< R > sameTileMatchCreator;
@@ -39,9 +38,7 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 			Integer,
 			ArrayList<
 				Pair<
-					Pair<
-						BlockData<?, R, ?, ZBlockFactory >,
-						BlockData<?, R, ?, ZBlockFactory > >,
+					Pair<BlockData<?, R, ?>, BlockData<?, R, ?>>,
 					HashSet< String > > > > zToBlockPairs = new HashMap<>();
 
 	public ZBlockSolver(
@@ -63,14 +60,14 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 	}
 
 	@Override
-	public HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > globalSolve(
-			final List< ? extends BlockData<?, R, ?, ZBlockFactory > > blocks,
+	public HashMap<BlockData<?, R, ?>, Tile<G>> globalSolve(
+			final List<? extends BlockData<?, R, ?>> blocks,
 			final AssemblyMaps< Z > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException
 	{
 		
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
-		final HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > blockToTile = new HashMap<>();
+		final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile = new HashMap<>();
 
 		// important: all images within one block must be connected to each other!
 
@@ -79,8 +76,8 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 		// solve by solveitem, not by z layer
 		for ( int a = 0; a < blocks.size() - 1; ++a )
 		{
-			final BlockData<?, R, ?, ZBlockFactory > solveItemA = blocks.get( a );
-			blockToTile.computeIfAbsent(solveItemA, k -> new Tile<G>(globalModel.copy()));
+			final BlockData<?, R, ?> solveItemA = blocks.get( a );
+			blockToTile.computeIfAbsent(solveItemA, k -> new Tile<>(globalModel.copy()));
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
@@ -91,8 +88,8 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 
 				for ( int b = a + 1; b < blocks.size(); ++b )
 				{
-					final BlockData<?, R, ?, ZBlockFactory > solveItemB = blocks.get( b );
-					blockToTile.computeIfAbsent(solveItemB, k -> new Tile<G>(globalModel.copy()));
+					final BlockData<?, R, ?> solveItemB = blocks.get( b );
+					blockToTile.computeIfAbsent(solveItemB, k -> new Tile<>(globalModel.copy()));
 
 					LOG.info( "globalSolve: solveItemB z range is {} to {}", solveItemB.minZ(), solveItemB.maxZ());
 
@@ -166,7 +163,7 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 
 					if ( zToBlockPairs.containsKey( z ) )
 					{
-						for ( final Pair< ? extends Pair< ? extends BlockData<?, ?, ?, ? >, ? extends BlockData<?, ?, ?, ? > >, HashSet< String > > entry : zToBlockPairs.get( z ) )
+						for ( final Pair<? extends Pair<? extends BlockData<?, ?, ?>, ? extends BlockData<?, ?, ?>>, HashSet<String>> entry : zToBlockPairs.get( z ) )
 						{
 							if ( entry.getA().getA().equals( solveItemA ) || entry.getA().getB().equals( solveItemA ) )
 							{
@@ -190,10 +187,10 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 	
 						// remember which solveItems defined which tileIds of this z section
 						// TODO: no DummyBlocks anymore, just set it to null, let's see how to fix it down the road
-						final BlockData<?, R, ?, ZBlockFactory > solveItemB = null; //solveItemA.createCorrespondingDummySolveItem( id, z );
+						final BlockData<?, R, ?> solveItemB = null; //solveItemA.createCorrespondingDummySolveItem( id, z );
 
 						zToBlockPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
-						blockToTile.computeIfAbsent(solveItemB, k -> new Tile<G>(globalModel.copy()));
+						blockToTile.computeIfAbsent(solveItemB, k -> new Tile<>(globalModel.copy()));
 	
 						//++id;
 
@@ -233,15 +230,15 @@ public class ZBlockSolver< Z, G extends Model< G >, R > extends BlockSolver< Z, 
 
 	protected boolean pairExists(
 			final int z,
-			final BlockData<?, ?, ?, ZBlockFactory > blockA,
-			final BlockData<?, ?, ?, ZBlockFactory > blockB,
-			final HashMap<Integer, ? extends ArrayList< ? extends Pair< ? extends Pair< ? extends BlockData< ?, ?, ?, ? >, ? extends BlockData< ?, ?, ?, ? > >, HashSet< String > > > > zToBlockPairs )
+			final BlockData<?, ?, ?> blockA,
+			final BlockData<?, ?, ?> blockB,
+			final HashMap<Integer, ? extends ArrayList<? extends Pair<? extends Pair<? extends BlockData<?, ?, ?>, ? extends BlockData<?, ?, ?>>, HashSet<String>>>> zToBlockPairs )
 	{
 		if ( zToBlockPairs.containsKey( z ) )
 		{
-			final ArrayList< ? extends Pair< ? extends Pair< ? extends BlockData< ?, ?, ?, ? >, ? extends BlockData< ?, ?, ?, ? > >, HashSet< String > > > entries = zToBlockPairs.get( z );
+			final ArrayList<? extends Pair<? extends Pair<? extends BlockData<?, ?, ?>, ? extends BlockData<?, ?, ?>>, HashSet<String>>> entries = zToBlockPairs.get( z );
 
-			for ( final Pair< ? extends Pair< ? extends BlockData< ?, ?, ?, ? >, ? extends BlockData< ?, ?, ?, ? > >, HashSet< String > > entry : entries )
+			for ( final Pair<? extends Pair<? extends BlockData<?, ?, ?>, ? extends BlockData<?, ?, ?>>, HashSet<String>> entry : entries )
 				if (entry.getA().getA().equals( blockA ) && entry.getA().getB().equals( blockB ) ||
 					entry.getA().getA().equals( blockB ) && entry.getA().getB().equals( blockA ) )
 						return true;

@@ -23,8 +23,8 @@ public interface SameTileMatchCreator< R >
 			TileSpec tileSpec,
 			R modelA,
 			R modelB,
-			BlockData<?, R, ?, ?> blockContextA,
-			BlockData<?, R, ?, ?> blockContextB,
+			BlockData<?, R, ?> blockContextA,
+			BlockData<?, R, ?> blockContextB,
 			List< PointMatch > matchesAtoB );
 
 	

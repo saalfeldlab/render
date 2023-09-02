@@ -13,7 +13,7 @@ import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Tile;
 
-public abstract class BlockSolver< Z, G extends Model< G >, R, F extends BlockFactory< F > >
+public abstract class BlockSolver<Z, G extends Model<G>, R>
 {
 	final private G globalModel;
 
@@ -24,7 +24,7 @@ public abstract class BlockSolver< Z, G extends Model< G >, R, F extends BlockFa
 
 	public G globalSolveModel() { return globalModel; }
 
-	public abstract HashMap< BlockData<?, R, ?, F>, Tile< G > > globalSolve(
-			List< ? extends BlockData<?, R, ?, F> > blocks,
-			AssemblyMaps< Z > am ) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException;
+	public abstract HashMap<BlockData<?, R, ?>, Tile<G>> globalSolve(
+			List<? extends BlockData<?, R, ?>> blocks,
+			AssemblyMaps<Z> am) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException;
 }

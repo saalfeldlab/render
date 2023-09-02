@@ -16,11 +16,11 @@ import org.slf4j.LoggerFactory;
 
 public class Serizalization {
 
-	public static void serialize(final List<? extends BlockData<?, ?, ?, ?>> allItems, final File path)
+	public static void serialize(final List<? extends BlockData<?, ?, ?>> allItems, final File path)
 	{
 		try
 		{
-			for (final BlockData<?, ?, ?, ?> data : allItems)
+			for (final BlockData<?, ?, ?> data : allItems)
 			{
 				// Saving of object in a file
 				final File file = new File(path.getAbsoluteFile(), "id_" + data.getId() + ".obj");
@@ -43,7 +43,7 @@ public class Serizalization {
 		}
 	}
 
-	public static ArrayList<BlockData<?, ?, ?, ?>> deSerialize( final File path )
+	public static ArrayList<BlockData<?, ?, ?>> deSerialize( final File path )
 	{
 		String[] files = path.list( new FilenameFilter() {
 			
@@ -67,7 +67,7 @@ public class Serizalization {
 			System.exit( 0 );
 		}
 
-		final ArrayList<BlockData<?, ?, ?, ?>> allItems = new ArrayList<>();
+		final ArrayList<BlockData<?, ?, ?>> allItems = new ArrayList<>();
 
 		for (final String filename : files) {
 			try {
@@ -76,7 +76,7 @@ public class Serizalization {
 				ObjectInputStream in = new ObjectInputStream(file);
 
 				// Method for deserialization of object
-				BlockData<?, ?, ?, ?> solveItem = (BlockData<?, ?, ?, ?>) in.readObject();
+				BlockData<?, ?, ?> solveItem = (BlockData<?, ?, ?>) in.readObject();
 
 				allItems.add(solveItem);
 

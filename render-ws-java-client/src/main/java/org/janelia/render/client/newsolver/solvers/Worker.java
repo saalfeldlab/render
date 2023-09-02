@@ -6,7 +6,6 @@ import java.util.concurrent.ExecutionException;
 
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
 import mpicbg.models.NoninvertibleModelException;
@@ -18,14 +17,13 @@ import mpicbg.models.NoninvertibleModelException;
  * @param <M> - the compute model
  * @param <R> - the result model
  * @param <P> - the solve parameters
- * @param <F> - the block factory
  */
-public abstract class Worker < M, R, P extends BlockDataSolveParameters< M, R, P >, F extends BlockFactory< F > > 
+public abstract class Worker <M, R, P extends BlockDataSolveParameters<M, R, P>>
 {
 	// for assigning new id's when splitting BlockData
 	final protected int startId;
 
-	final protected BlockData< M, R, P, F > blockData;
+	final protected BlockData<M, R, P> blockData;
 	final protected RenderDataClient renderDataClient;
 	final protected String renderStack;
 
@@ -33,7 +31,7 @@ public abstract class Worker < M, R, P extends BlockDataSolveParameters< M, R, P
 
 	public Worker(
 			final int startId,
-			final BlockData< M, R, P, F > blockData,
+			final BlockData<M, R, P> blockData,
 			final int numThreads )
 	{
 		this.startId = startId;
@@ -56,5 +54,5 @@ public abstract class Worker < M, R, P extends BlockDataSolveParameters< M, R, P
 	/**
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
-	public abstract ArrayList< BlockData< M, R, P, F > > getBlockDataList();
+	public abstract ArrayList<BlockData< M, R, P>> getBlockDataList();
 }

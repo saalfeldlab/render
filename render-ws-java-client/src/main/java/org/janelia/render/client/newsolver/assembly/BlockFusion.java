@@ -4,16 +4,14 @@ import java.util.HashMap;
 import java.util.List;
 
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
-import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
 
-public interface BlockFusion< Z, G extends Model< G >, R, F extends BlockFactory< F > >
+public interface BlockFusion<Z, G extends Model<G>, R>
 {
 	public void globalFusion(
-			List< ? extends BlockData<?, R, ?, F> > blocks,
-			AssemblyMaps< Z > am,
-			HashMap< BlockData<?, R, ?, F>, Tile< G > > blockToTile );
+			List<? extends BlockData<?, R, ?>> blocks,
+			AssemblyMaps<Z> am,
+			HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile);
 }

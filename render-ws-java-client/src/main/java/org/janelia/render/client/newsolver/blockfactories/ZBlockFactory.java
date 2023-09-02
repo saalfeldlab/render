@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
-public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializable
+public class ZBlockFactory implements BlockFactory, Serializable
 {
 	private static final long serialVersionUID = 4169473785487008894L;
 
@@ -39,7 +39,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 	}
 
 	@Override
-	public <M, R, P extends BlockDataSolveParameters<M,R,P>> BlockCollection<M, R, P, ZBlockFactory> defineBlockCollection(
+	public <M, R, P extends BlockDataSolveParameters<M,R,P>> BlockCollection<M, R, P> defineBlockCollection(
 			final ParameterProvider< M, R, P > blockSolveParameterProvider )
 	{
 		final List<Bounds> blockBounds = new BlockLayoutCreator(minBlockSize)
@@ -55,7 +55,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 				basicParameters.owner(),
 				basicParameters.project());
 
-		final ArrayList< BlockData< M, R, P, ZBlockFactory > > blockDataList = new ArrayList<>();
+		final ArrayList<BlockData<M, R, P>> blockDataList = new ArrayList<>();
 
 		// for each block, we know the z-range
 		int id = 0;
@@ -72,7 +72,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 			}
 
 			LOG.info("Loaded " + rtsc.getTileIds().size() + " tiles.");
-			final BlockData<M, R, P, ZBlockFactory> block = new BlockData<>(this, blockSolveParameterProvider.create(rtsc), id, rtsc);
+			final BlockData<M, R, P> block = new BlockData<>(this, blockSolveParameterProvider.create(rtsc), id, rtsc);
 			blockDataList.add(block);
 			id++;
 		}
@@ -82,7 +82,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 
 
 	@Override
-	public WeightFunction createWeightFunction(final BlockData<?, ?, ?, ZBlockFactory> block) {
+	public WeightFunction createWeightFunction(final BlockData<?, ?, ?> block) {
 		return new ZDistanceWeightFunction(block, 0.01);
 	}
 
@@ -94,7 +94,7 @@ public class ZBlockFactory implements BlockFactory< ZBlockFactory >, Serializabl
 		// regularization to make weights of minZ and maxZ > 0
 		private final double eps;
 
-		public ZDistanceWeightFunction(final BlockData<?, ?, ?, ZBlockFactory> block, final double eps) {
+		public ZDistanceWeightFunction(final BlockData<?, ?, ?> block, final double eps) {
 			this.minZ = block.minZ();
 			this.maxZ = block.maxZ();
 			this.midpoint = (maxZ + minZ) / 2.0;

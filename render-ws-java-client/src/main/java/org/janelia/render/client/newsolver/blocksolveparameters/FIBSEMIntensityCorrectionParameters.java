@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.intensity.AffineIntensityCorrectionBlockWorker;
 
@@ -57,8 +56,8 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public Integer zDistance() { return zDistance; }
 
 	@Override
-	public <F extends BlockFactory<F>> Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F> createWorker(
-			final BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F> blockData,
+	public Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(
+			final BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
 			final int startId,
 			final int threadsWorker) {
 		try {

@@ -30,11 +30,11 @@ public class WorkerTools
 		return m;
 	}
 
-	public static int fixIds( final List<? extends BlockData<?, ?, ?, ?>> allItems, final int maxId )
+	public static int fixIds( final List<? extends BlockData<?, ?, ?>> allItems, final int maxId )
 	{
 		final HashSet<Integer> existingIds = new HashSet<>();
 
-		for ( final BlockData<?, ?, ?, ?> item : allItems )
+		for ( final BlockData<?, ?, ?> item : allItems )
 		{
 			final int id = item.getId();
 
@@ -88,7 +88,7 @@ public class WorkerTools
 	public static < M extends Model<M> & Affine2D< M >> ArrayList< LayerDetails< M > > layerDetails(
 			final ArrayList< Integer > allZ,
 			final HashMap< Integer, List<Tile<M>> > zToGroupedTileList,
-			final AffineBlockDataWrapper< M, ?, ? > solveItem,
+			final AffineBlockDataWrapper<M, ?> solveItem,
 			final int i )
 	{
 		final ArrayList< LayerDetails< M > > prevTiles = new ArrayList<>();

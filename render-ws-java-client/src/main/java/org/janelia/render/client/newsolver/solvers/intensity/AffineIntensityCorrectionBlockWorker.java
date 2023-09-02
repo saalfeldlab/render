@@ -31,7 +31,6 @@ import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
 import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduceFilter;
 import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.slf4j.Logger;
@@ -50,13 +49,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
-public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
-		extends Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F> {
+public class AffineIntensityCorrectionBlockWorker<M>
+		extends Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> {
 
 	private final FIBSEMIntensityCorrectionParameters<M> parameters;
 
 	public AffineIntensityCorrectionBlockWorker(
-			final BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F> blockData,
+			final BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
 			final int startId,
 			final int numThreads) throws IOException {
 
@@ -325,7 +324,7 @@ public class AffineIntensityCorrectionBlockWorker<M, F extends BlockFactory<F>>
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
 	@Override
-	public ArrayList<BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, F>> getBlockDataList() {
+	public ArrayList<BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>>> getBlockDataList() {
 		return new ArrayList<>(List.of(blockData));
 	}
 

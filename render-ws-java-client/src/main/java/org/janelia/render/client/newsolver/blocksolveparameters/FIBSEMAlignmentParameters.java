@@ -2,18 +2,14 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.function.Function;
 
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import com.esotericsoftware.minlog.Log;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
@@ -144,18 +140,18 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	public int maxPlateauWidthStitching() { return maxPlateauWidthStitching; }
 
 	@Override
-	public < F extends BlockFactory< F > > Worker< M, AffineModel2D, FIBSEMAlignmentParameters<M, S >, F > createWorker(
-			final BlockData< M, AffineModel2D, FIBSEMAlignmentParameters< M, S >, F > blockData,
+	public Worker<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> createWorker(
+			final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
 			final int startId,
-			final int threadsWorker )
+			final int threadsWorker)
 	{
 		return new AffineAlignBlockWorker<>( blockData, startId, threadsWorker );
 	}
 
 	@Override
-	public <F extends BlockFactory<F>> double[] centerOfMass( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>, F> blockData)
+	public double[] centerOfMass(final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData)
 	{
-		if ( blockData.idToNewModel() == null || blockData.idToNewModel().size() == 0 )
+		if (blockData.idToNewModel() == null || blockData.idToNewModel().isEmpty())
 			return super.centerOfMass( blockData );
 
 		// check that all TileSpecs are part of the idToNewModel map

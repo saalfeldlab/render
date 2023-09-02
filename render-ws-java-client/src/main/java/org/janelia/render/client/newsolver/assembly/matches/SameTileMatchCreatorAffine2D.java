@@ -31,8 +31,8 @@ public class SameTileMatchCreatorAffine2D< R extends Affine2D< R > > implements 
 	public void addMatches(
 			TileSpec tileSpec,
 			R modelA, R modelB,
-			BlockData<?, R, ?, ?> blockContextA,
-			BlockData<?, R, ?, ?> blockContextB,
+			BlockData<?, R, ?> blockContextA,
+			BlockData<?, R, ?> blockContextB,
 			List<PointMatch> matchesAtoB)
 	{
 		// make a regular grid

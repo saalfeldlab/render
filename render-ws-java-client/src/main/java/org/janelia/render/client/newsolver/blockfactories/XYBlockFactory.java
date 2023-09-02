@@ -29,8 +29,8 @@ import org.slf4j.LoggerFactory;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
-public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializable
-{
+public class XYBlockFactory implements BlockFactory, Serializable {
+
 	private static final long serialVersionUID = -2022190797935740332L;
 
 	final int minX, maxX, minY, maxY;
@@ -60,7 +60,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 	}
 
 	@Override
-	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P, XYBlockFactory> defineBlockCollection(
+	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
 			final ParameterProvider<M, R, P> blockSolveParameterProvider )
 	{
 		final List<Bounds> blockBounds = new BlockLayoutCreator(new int[]{minBlockSizeX, minBlockSizeY, 0})
@@ -80,7 +80,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 				basicParameters.owner(),
 				basicParameters.project());
 
-		final ArrayList<BlockData<M, R, P, XYBlockFactory>> blockDataList = new ArrayList<>();
+		final ArrayList<BlockData<M, R, P>> blockDataList = new ArrayList<>();
 
 		// for each block, we know the z-range
 		int id = 0;
@@ -120,9 +120,10 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 				LOG.info("Since there are no tiles in this XY block, continuing with next one.");
 			} else {
 				LOG.info("   Loaded " + rtsc.getTileIds().size() + " tiles.");
-				final BlockData<M, R, P, XYBlockFactory> block =
+				final BlockData<M, R, P> block =
 						new BlockData<>(this, blockSolveParameterProvider.create(rtsc), id, rtsc);
 				blockDataList.add(block);
+				id++;
 			}
 		}
 
@@ -130,7 +131,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 	}
 
 	@Override
-	public WeightFunction createWeightFunction(final BlockData<?, ?, ?, XYBlockFactory> block) {
+	public WeightFunction createWeightFunction(final BlockData<?, ?, ?> block) {
 		// the render scale needs to be fairly small so that the entire MFOV area fits into one image
 		return new XYDistanceWeightFunction(block, 0.01);
 	}
@@ -142,7 +143,7 @@ public class XYBlockFactory implements BlockFactory< XYBlockFactory >, Serializa
 		private final double minX;
 		private final double minY;
 
-		public XYDistanceWeightFunction(final BlockData<?, ?, ?, XYBlockFactory> block, final double resolution) {
+		public XYDistanceWeightFunction(final BlockData<?, ?, ?> block, final double resolution) {
 			layerDistanceMaps = new HashMap<>(block.zToTileId().size());
 			this.resolution = resolution;
 

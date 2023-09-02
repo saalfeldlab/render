@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.function.BiFunction;
 
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +17,7 @@ import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import net.imglib2.util.Pair;
 
-public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusion< Z, G, R, ZBlockFactory >
+public class ZBlockFusion<Z, I, G extends Model<G>, R> implements BlockFusion<Z, G, R>
 {
 	final ZBlockSolver<Z, G, R> solver;
 	final BiFunction< R, G, I > combineResultGlobal;
@@ -36,13 +35,13 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 
 	@Override
 	public void globalFusion(
-			final List<? extends BlockData<?, R, ?, ZBlockFactory>> blocks,
+			final List<? extends BlockData<?, R, ?>> blocks,
 			final AssemblyMaps<Z> am, 
-			final HashMap< BlockData<?, R, ?, ZBlockFactory >, Tile< G > > blockToTile )
+			final HashMap< BlockData<?, R, ?>, Tile< G > > blockToTile )
 	{
-		final HashMap< BlockData<?, R, ?, ZBlockFactory>, G > blockToG = new HashMap<>();
+		final HashMap< BlockData<?, R, ?>, G > blockToG = new HashMap<>();
 
-		for ( final BlockData<?, R, ?, ZBlockFactory > solveItem : blockToTile.keySet() )
+		for ( final BlockData<?, R, ?> solveItem : blockToTile.keySet() )
 		{
 			if ( solveItem != null )
 			{
@@ -57,22 +56,22 @@ public class ZBlockFusion< Z, I, G extends Model< G >, R > implements BlockFusio
 		final ArrayList< Integer > zSections = new ArrayList<>( am.zToTileIdGlobal.keySet() );
 		Collections.sort( zSections );
 
-		final Map<BlockData<?, R, ?, ZBlockFactory>, WeightFunction> blockToWeightFunctions = new HashMap<>();
+		final Map<BlockData<?, R, ?>, WeightFunction> blockToWeightFunctions = new HashMap<>();
 
 		for ( final int z : zSections )
 		{
 			// for every z section, tileIds might be provided from different overlapping blocks if they were not connected and have been split
-			final ArrayList< Pair< Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>>, HashSet< String > > > entries =
+			final ArrayList<Pair<Pair<BlockData<?, R, ?>, BlockData<?, R, ?>>, HashSet<String>>> entries =
 					solver.zToBlockPairs.get( z );
 
-			for ( final Pair< Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>>, HashSet< String > > entry : entries )
+			for ( final Pair<Pair<BlockData<?, R, ?>, BlockData<?, R, ?>>, HashSet<String>> entry : entries )
 			{
 				for ( final String tileId : entry.getB() )
 				{
-					final Pair< BlockData<?, R, ?, ZBlockFactory>, BlockData<?, R, ?, ZBlockFactory>> solveItemPair = entry.getA();
+					final Pair<BlockData<?, R, ?>, BlockData<?, R, ?>> solveItemPair = entry.getA();
 
-					final BlockData<?, R, ?, ZBlockFactory> solveItemA = solveItemPair.getA();
-					final BlockData<?, R, ?, ZBlockFactory> solveItemB = solveItemPair.getB();
+					final BlockData<?, R, ?> solveItemA = solveItemPair.getA();
+					final BlockData<?, R, ?> solveItemB = solveItemPair.getB();
 
 					// one of them can be null (beginning and end of stack)
 					// just the weight functions are actually important here!

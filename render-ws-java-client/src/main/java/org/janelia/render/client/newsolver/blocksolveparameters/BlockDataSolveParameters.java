@@ -4,7 +4,6 @@ import java.io.Serializable;
 
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.solver.SerializableValuePair;
 
@@ -51,7 +50,7 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 	/**
 	 * @return - the bounding box of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
 	 */
-	public <F extends BlockFactory<F>> Pair<double[],double[]> boundingBox( final BlockData<M, R, P, F> blockData )
+	public Pair<double[],double[]> boundingBox(final BlockData<M, R, P> blockData)
 	{
 		double minX = Double.MAX_VALUE;
 		double maxX = -Double.MAX_VALUE;
@@ -79,7 +78,7 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 	/**
 	 * @return - the center of mass of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
 	 */
-	public < F extends BlockFactory< F > > double[] centerOfMass( final BlockData< M, R, P, F > blockData )
+	public double[] centerOfMass(final BlockData<M, R, P> blockData)
 	{
 
 		final double[] c = new double[ 3 ];
@@ -105,8 +104,8 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 		return c;
 	}
 
-	public abstract < F extends BlockFactory< F > > Worker< M, R, P, F > createWorker(
-			final BlockData< M, R, P, F > blockData,
+	public abstract Worker<M, R, P> createWorker(
+			final BlockData<M, R, P> blockData,
 			final int startId,
-			final int threadsWorker );
+			final int threadsWorker);
 }

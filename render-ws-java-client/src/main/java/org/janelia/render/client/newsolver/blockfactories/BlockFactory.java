@@ -7,10 +7,10 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
-public interface BlockFactory< F extends BlockFactory< F > > extends Serializable
+public interface BlockFactory extends Serializable
 {
-	public <M, R, P extends BlockDataSolveParameters< M, R, P > > BlockCollection< M, R, P, F > defineBlockCollection(
+	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
 			final ParameterProvider< M, R, P > blockSolveParameterProvider );
 
-	public WeightFunction createWeightFunction(final BlockData<?, ?, ?, F> block);
+	public WeightFunction createWeightFunction(final BlockData<?, ?, ?> block);
 }

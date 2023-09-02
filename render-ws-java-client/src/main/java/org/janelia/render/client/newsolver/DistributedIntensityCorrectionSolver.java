@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
 public class DistributedIntensityCorrectionSolver {
 	final IntensityCorrectionSetup cmdLineSetup;
 	final RenderSetup renderSetup;
-	BlockCollection<?, ArrayList<AffineModel1D>, ? extends FIBSEMIntensityCorrectionParameters<?>, ZBlockFactory> blocks;
+	BlockCollection<?, ArrayList<AffineModel1D>, ? extends FIBSEMIntensityCorrectionParameters<?>> blocks;
 	ZBlockFactory blockFactory;
 
 	public DistributedIntensityCorrectionSolver(
@@ -84,18 +84,18 @@ public class DistributedIntensityCorrectionSolver {
 		final DistributedIntensityCorrectionSolver intensitySolver = new DistributedIntensityCorrectionSolver(cmdLineSetup, renderSetup);
 
 		// create all block instances
-		final BlockCollection<?, ArrayList<AffineModel1D>, ?, ZBlockFactory> blockCollection = intensitySolver.setupSolve();
+		final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection = intensitySolver.setupSolve();
 
 		//
 		// multi-threaded solve
 		//
 		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
 
-		final ArrayList<Callable<List<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>>>> workers = new ArrayList<>();
-		for (final BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory> block : blockCollection.allBlocks()) {
+		final ArrayList<Callable<List<BlockData<?, ArrayList<AffineModel1D>, ?>>>> workers = new ArrayList<>();
+		for (final BlockData<?, ArrayList<AffineModel1D>, ?> block : blockCollection.allBlocks()) {
 			workers.add(() ->
 						{
-							final Worker<?, ArrayList<AffineModel1D>, ?, ZBlockFactory> worker = block.createWorker(
+							final Worker<?, ArrayList<AffineModel1D>, ?> worker = block.createWorker(
 									intensitySolver.blocks.maxId() + 1,
 									cmdLineSetup.distributedSolve.threadsWorker);
 
@@ -105,10 +105,10 @@ public class DistributedIntensityCorrectionSolver {
 						});
 		}
 
-		final ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>> allItems = new ArrayList<>();
+		final ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 		try {
-			for (final Future<List<BlockData<?, ArrayList<AffineModel1D>, ?, ZBlockFactory>>> future : taskExecutor.invokeAll(workers))
+			for (final Future<List<BlockData<?, ArrayList<AffineModel1D>, ?>>> future : taskExecutor.invokeAll(workers))
 					allItems.addAll(future.get());
 		} catch (final InterruptedException | ExecutionException e) {
 			throw new RuntimeException("Failed to compute alignments", e);
@@ -137,7 +137,7 @@ public class DistributedIntensityCorrectionSolver {
 								   DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
 								   DistributedIntensityCorrectionSolver::combineWeightedModels);
 
-		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>, ZBlockFactory> assembler =
+		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> assembler =
 				new Assembler<>(allItems, blockSolver, fusion, r -> {
 					final ArrayList<AffineModel1D> rCopy = new ArrayList<>(r.size());
 					r.forEach(model -> rCopy.add(model.copy()));
@@ -241,16 +241,13 @@ public class DistributedIntensityCorrectionSolver {
 		});
 	}
 
-	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, ZBlockFactory> setupSolve() {
+	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> setupSolve() {
 
 		final ZBlockFactory blockFactory = setupBlockFactory();
 		this.blockFactory = blockFactory;
 
-		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, ZBlockFactory> col =
-				setupBlockCollection(blockFactory);
-
+		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col = setupBlockCollection(blockFactory);
 		this.blocks = col;
-
 		return col;
 	}
 
@@ -281,7 +278,7 @@ public class DistributedIntensityCorrectionSolver {
 				intensityAdjust.zDistance);
 	}
 
-	protected <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>, ZBlockFactory> setupBlockCollection( final ZBlockFactory blockFactory){
+	protected <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> setupBlockCollection(final ZBlockFactory blockFactory){
 
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = setupSolveParameters();
 		return blockFactory.defineBlockCollection(rtsc -> defaultSolveParams);
