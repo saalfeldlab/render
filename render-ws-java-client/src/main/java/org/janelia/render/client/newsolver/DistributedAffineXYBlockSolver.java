@@ -10,6 +10,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 
+import mpicbg.models.InterpolatedAffineModel2D;
+import mpicbg.models.RigidModel2D;
+import org.janelia.render.client.newsolver.assembly.Assembler;
+import org.janelia.render.client.newsolver.assembly.XYBlockFusion;
+import org.janelia.render.client.newsolver.assembly.XYBlockSolver;
+import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineXYBlockSolverSetup;
@@ -139,7 +145,39 @@ public class DistributedAffineXYBlockSolver
 
 		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
 
-		// TODO ...
+		final XYBlockSolver<AffineModel2D, RigidModel2D, AffineModel2D> blockSolver =
+				new XYBlockSolver<>(
+						new RigidModel2D(),
+						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
+						cmdLineSetup.distributedSolve.maxPlateauWidthGlobal,
+						cmdLineSetup.distributedSolve.maxAllowedErrorGlobal,
+						cmdLineSetup.distributedSolve.maxIterationsGlobal,
+						cmdLineSetup.distributedSolve.threadsGlobal);
+
+		final XYBlockFusion<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
+				new XYBlockFusion<>(
+						blockSolver,
+						(r,g) -> {
+							final AffineModel2D i = new AffineModel2D();
+							i.set(r);
+							i.preConcatenate(WorkerTools.createAffine(g));
+							return i;
+							},
+						(i,w) -> new InterpolatedAffineModel2D<>(i.get(0), i.get(1), w.get(1)).createAffineModel2D()
+				);
+
+		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D, XYBlockFactory> assembler =
+				new Assembler<>(
+						allItems,
+						blockSolver,
+						fusion,
+						(r) -> {
+							final AffineModel2D a = new AffineModel2D();
+							a.set(r);
+							return a;
+						});
+
+		assembler.createAssembly();
 	}
 
 	public < M extends Model< M > & Affine2D< M > >
