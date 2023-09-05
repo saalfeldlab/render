@@ -111,7 +111,6 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                 final List<Double> ccVolumeResolutionValues =
                         Arrays.asList(columnResolution, rowResolution, stackResolutionValues.get(2));
 
-                // TODO: figure out why neuroglancer ignores this for cc data n5
                 final List<Long> translationList = Arrays.asList(stackBounds.getMinX().longValue(),
                                                                  stackBounds.getMinY().longValue(),
                                                                  stackBounds.getMinZ().longValue());
