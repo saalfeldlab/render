@@ -1,4 +1,4 @@
-package org.janelia.render.client.spark;
+package org.janelia.render.client.spark.intensityadjust;
 
 import java.io.Serializable;
 
@@ -10,6 +10,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.IntensityCorrectionWorker;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
+import org.janelia.render.client.spark.LogUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,7 +20,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class IntensityAdjustedScapeClient
+public class IntensityCorrectionClient
         implements Serializable {
 
     public static void main(final String[] args) {
@@ -29,7 +30,6 @@ public class IntensityAdjustedScapeClient
 
                 final IntensityAdjustParameters parameters = new IntensityAdjustParameters();
                 parameters.parse(args);
-                parameters.validateAndSetDefaults();
 
                 if (parameters.correctIn3D()) {
                     throw new UnsupportedOperationException("3D correction is not yet supported for spark runs because we have yet to decide how to partition the work");
@@ -77,5 +77,5 @@ public class IntensityAdjustedScapeClient
         clientRunner.run();
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(IntensityAdjustedScapeClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(IntensityCorrectionClient.class);
 }

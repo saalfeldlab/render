@@ -9,11 +9,11 @@ import org.janelia.render.client.parameter.IntensityAdjustParameters.StrategyNam
 import org.junit.Test;
 
 /**
- * Tests the {@link IntensityAdjustedScapeClient} class.
+ * Tests the {@link IntensityCorrectionClient} class.
  *
  * @author Eric Trautman
  */
-public class IntensityAdjustedScapeClientTest {
+public class IntensityCorrectionClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
@@ -52,7 +52,7 @@ public class IntensityAdjustedScapeClientTest {
                 "--zDistance", "6", "--minZ", "1260", "--maxZ", "1266" // processing time: 14 minutes 30 seconds
         };
 
-        IntensityAdjustedScapeClient.main(effectiveArgs);
+        IntensityCorrectionClient.main(effectiveArgs);
     }
 
 }

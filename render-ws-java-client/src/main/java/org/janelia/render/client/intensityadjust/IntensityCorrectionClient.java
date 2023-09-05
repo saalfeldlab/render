@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class IntensityAdjustedScapeClient
+public class IntensityCorrectionClient
         implements Serializable {
 
     public static void main(final String[] args) {
@@ -25,7 +25,6 @@ public class IntensityAdjustedScapeClient
 
                 final IntensityAdjustParameters parameters = new IntensityAdjustParameters();
                 parameters.parse(args);
-                parameters.validateAndSetDefaults();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -47,5 +46,5 @@ public class IntensityAdjustedScapeClient
         clientRunner.run();
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(IntensityAdjustedScapeClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(IntensityCorrectionClient.class);
 }
