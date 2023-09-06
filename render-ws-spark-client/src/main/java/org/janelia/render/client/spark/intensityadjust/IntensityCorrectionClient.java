@@ -75,7 +75,17 @@ public class IntensityCorrectionClient
 
         // assign same id to each worker because it is required but not used in this case
         final int hackBlockStartId = blockCollection.maxId() + 1;
-        final int threadsForSparkTasks = 1;
+
+        // allow multithread tasks but warn if Spark isn't configured properly to support them
+        final int threadsForSparkTasks = cmdLineSetup.distributedSolve.threadsWorker;
+        final String taskCpusString = sparkContext.getConf().get("spark.task.cpus");
+        if (taskCpusString != null) {
+            final int taskCpus = Integer.parseInt(taskCpusString);
+            if (taskCpus != threadsForSparkTasks) {
+                LOG.warn("runWithContext: --threadsWorker {} does not match --conf spark.task.cpus={} (you likely want these to be the same)",
+                         threadsForSparkTasks, taskCpus);
+            }
+        }
 
         final ArrayList<? extends BlockData<?, ArrayList<AffineModel1D>, ?>> blocks = blockCollection.allBlocks();
         final JavaRDD<? extends BlockData<?, ArrayList<AffineModel1D>, ?>> rddBlocks = sparkContext.parallelize(blocks);
