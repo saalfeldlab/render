@@ -66,12 +66,13 @@ public class DistributedIntensityCorrectionSolver {
 					"--owner", "cellmap",
 					"--project", "jrc_mus_thymus_1",
 					"--stack", "v2_acquire_align",
-					"--targetStack", "v2_acquire_test_intensity",
+					"--targetStack", "v2_acquire_test_intensity_ett2",
 					"--threadsWorker", "12",
 					"--minBlockSize", "2",
+					"--blockSize", "3",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 14,503
-					"--zDistance", "1", "--minZ", "1000", "--maxZ", "1001"
+					"--zDistance", "1", "--minZ", "1000", "--maxZ", "1010"
 			};
 			cmdLineSetup.parse(testArgs);
 		} else {
@@ -81,22 +82,30 @@ public class DistributedIntensityCorrectionSolver {
 		final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
-		final DistributedIntensityCorrectionSolver intensitySolver = new DistributedIntensityCorrectionSolver(cmdLineSetup, renderSetup);
+		final DistributedIntensityCorrectionSolver intensitySolver =
+				new DistributedIntensityCorrectionSolver(cmdLineSetup, renderSetup);
 
 		// create all block instances
 		final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection = intensitySolver.setupSolve();
 
-		//
-		// multi-threaded solve
-		//
-		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
+		final ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?>> allItems =
+				intensitySolver.solveBlocksUsingThreadPool(blockCollection);
+
+		final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
+
+		intensitySolver.saveResultsAsNeeded(finalizedItems);
+	}
+
+	public ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?>> solveBlocksUsingThreadPool(final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection) {
+
+		LOG.info("solveBlocksUsingThreadPool: entry, threadsGlobal={}", cmdLineSetup.distributedSolve.threadsGlobal);
 
 		final ArrayList<Callable<List<BlockData<?, ArrayList<AffineModel1D>, ?>>>> workers = new ArrayList<>();
 		for (final BlockData<?, ArrayList<AffineModel1D>, ?> block : blockCollection.allBlocks()) {
 			workers.add(() ->
 						{
 							final Worker<?, ArrayList<AffineModel1D>, ?> worker = block.createWorker(
-									intensitySolver.blocks.maxId() + 1,
+									blocks.maxId() + 1,
 									cmdLineSetup.distributedSolve.threadsWorker);
 
 							worker.run();
@@ -118,9 +127,16 @@ public class DistributedIntensityCorrectionSolver {
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
 		// but do keep ids that are smaller or equal to the maxId of the initial solveset
-		final int maxId = WorkerTools.fixIds(allItems, intensitySolver.blocks.maxId());
+		final int maxId = WorkerTools.fixIds(allItems, blocks.maxId());
 
-		LOG.info("computed " + allItems.size() + " blocks, maxId=" + maxId);
+		LOG.info("solveBlocksUsingThreadPool: exit, computed {} blocks, maxId={}", allItems.size(), maxId);
+
+		return allItems;
+	}
+
+	public AssemblyMaps<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<?, ArrayList<AffineModel1D>, ?>> allItems) {
+
+		LOG.info("assembleBlocks: entry, processing {} blocks", allItems.size());
 
 		final ZBlockSolver<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> blockSolver =
 				new ZBlockSolver<>(
@@ -144,10 +160,13 @@ public class DistributedIntensityCorrectionSolver {
 					return rCopy;
 				});
 
-		final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = assembler.createAssembly();
+		LOG.info("assembleBlocks: exit");
 
-		// TODO: consider removing completeStack option since it doesn't make sense for 3D solves (need to discuss)
+		return assembler.createAssembly();
+	}
 
+	public void saveResultsAsNeeded(final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems)
+			throws IOException {
 		// this adds the filters to the tile specs and pushes the data to the DB
 		final boolean saveResults = (cmdLineSetup.targetStack.stack != null);
 		final RenderDataClient renderDataClient = cmdLineSetup.renderWeb.getDataClient();
