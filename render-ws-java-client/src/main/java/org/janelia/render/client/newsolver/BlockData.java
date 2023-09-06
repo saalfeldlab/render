@@ -15,6 +15,7 @@ import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
+import org.janelia.render.client.solver.SerializableValuePair;
 
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
@@ -59,7 +60,7 @@ public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implem
 
 	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
 	// the errors per tile
-	final HashMap< String, List< Pair< String, Double > > > idToBlockErrorMap = new HashMap<>();
+	final HashMap< String, List< SerializableValuePair< String, Double > > > idToBlockErrorMap = new HashMap<>();
 	// coefficient-tile intensity average for global intensity-correction
 	final HashMap<String, ArrayList<Double>> idToAverages = new HashMap<>();
 	// TODO: goes into the ZBlockFactory??
@@ -109,7 +110,7 @@ public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implem
 
 	public ResolvedTileSpecCollection rtsc() { return rtsc; }
 	public HashMap< String, R > idToNewModel() { return idToNewModel; }
-	public HashMap< String, List< Pair< String, Double > > > idToBlockErrorMap() { return idToBlockErrorMap; }
+	public HashMap< String, List<SerializableValuePair< String, Double >> > idToBlockErrorMap() { return idToBlockErrorMap; }
 	public HashMap<String, ArrayList<Double>> idToAverages() { return idToAverages; }
 
 	public HashMap< Integer, HashSet< String > > zToTileId() { return zToTileId; }

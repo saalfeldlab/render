@@ -33,6 +33,7 @@ import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
+import org.janelia.render.client.solver.SerializableValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -234,8 +235,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				t.updateCost();
 				return t.getDistance();
 			}).average().orElse(Double.MAX_VALUE);
-			final List<Pair<String, Double>> errorList = new ArrayList<>();
-			errorList.add(new ValuePair<>(tileId, error));
+			final List<SerializableValuePair<String, Double>> errorList = new ArrayList<>();
+			errorList.add(new SerializableValuePair<>(tileId, error));
 			blockData.idToBlockErrorMap().put(tileId, errorList);
 		});
 
