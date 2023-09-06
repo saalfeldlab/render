@@ -97,7 +97,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<MinimalTileSpecWrapper> tiles) throws ExecutionException, InterruptedException {
 
 		LOG.info("deriveIntensityFilterData: entry");
-		if (tiles.size() <2) {
+		if (tiles.size() < 2) {
 			final String tileCountMsg = tiles.size() == 1 ? "1 tile" : "0 tiles";
 			LOG.info("deriveIntensityFilterData: skipping correction because collection contains {}", tileCountMsg);
 			return null;
@@ -190,7 +190,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		final ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs = new ArrayList<>();
 		final Set<MinimalTileSpecWrapper> unconsideredPatches = new HashSet<>(allPatches);
 
-		final double maxDeltaZ = (zDistance == null) ? Double.MAX_VALUE : zDistance;
+		// add buffer to max z distance to account for rounding errors
+		final double maxDeltaZ = (zDistance == null) ? Double.MAX_VALUE : zDistance + 1e-2;
 
 		for (final MinimalTileSpecWrapper p1 : allPatches) {
 			unconsideredPatches.remove(p1);
@@ -202,7 +203,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				final double deltaX = i.realMax(0) - i.realMin(0);
 				final double deltaY = i.realMax(1) - i.realMin(1);
 				final double deltaZ = Math.abs(p1.getZ() - p2.getZ());
-				if ((deltaX > 0) && (deltaY > 0) && (deltaZ < maxDeltaZ))
+				if ((deltaX > 0) && (deltaY > 0) && (deltaZ <= maxDeltaZ))
 					patchPairs.add(new ValuePair<>(p1, p2));
 			}
 		}
