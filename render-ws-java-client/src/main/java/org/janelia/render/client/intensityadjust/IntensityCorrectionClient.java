@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Java client for adjusting same z-layer tile intensities for a stack.
- * Results can be stored as tile filters in a result stack or rendered to disk as corrected "montage-scapes".
+ * Results are stored as tile filters in a result stack.
  *
  * @author Eric Trautman
  */
