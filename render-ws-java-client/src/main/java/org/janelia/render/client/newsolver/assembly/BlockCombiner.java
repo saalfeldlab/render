@@ -18,13 +18,13 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.BiFunction;
 
-public class BlockFusion<Z, I, G extends Model<G>, R> {
+public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
 	final BlockSolver<Z, G, R> solver;
 	final BiFunction<R, G, I> combineResultGlobal;
 	final BiFunction<List<I>, List<Double>, Z> fusion;
 
-	public BlockFusion(
+	public BlockCombiner(
 			final BlockSolver<Z, G, R> solver,
 			final BiFunction<R, G, I> combineResultGlobal,
 			final BiFunction<List<I>, List<Double>, Z> fusion
@@ -120,5 +120,5 @@ public class BlockFusion<Z, I, G extends Model<G>, R> {
 		}
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(BlockFusion.class);
+	private static final Logger LOG = LoggerFactory.getLogger(BlockCombiner.class);
 }

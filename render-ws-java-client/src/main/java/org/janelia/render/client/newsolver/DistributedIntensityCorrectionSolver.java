@@ -28,7 +28,7 @@ import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.newsolver.assembly.Assembler;
 import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
 import org.janelia.render.client.newsolver.assembly.BlockSolver;
-import org.janelia.render.client.newsolver.assembly.BlockFusion;
+import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
@@ -147,10 +147,10 @@ public class DistributedIntensityCorrectionSolver {
 						cmdLineSetup.distributedSolve.maxIterationsGlobal,
 						cmdLineSetup.distributedSolve.threadsGlobal);
 
-		final BlockFusion<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
-				new BlockFusion<>(blockSolver,
-								  DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
-								  DistributedIntensityCorrectionSolver::combineWeightedModels);
+		final BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
+				new BlockCombiner<>(blockSolver,
+									DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
+									DistributedIntensityCorrectionSolver::combineWeightedModels);
 
 		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> assembler =
 				new Assembler<>(allItems, blockSolver, fusion, r -> {
