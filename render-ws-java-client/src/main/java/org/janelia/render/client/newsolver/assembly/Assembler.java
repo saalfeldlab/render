@@ -24,7 +24,7 @@ public class Assembler<Z, G extends Model<G>, R>
 {
 	final List<BlockData<?, R, ?>> blocks;
 	final BlockSolver<Z, G, R> blockSolver;
-	final BlockFusion<Z, G, R> blockFusion;
+	final BlockFusion<Z, ?, G, R> blockFusion;
 	final Function<R, Z> converter;
 
 	/**
@@ -36,7 +36,7 @@ public class Assembler<Z, G extends Model<G>, R>
 	public Assembler(
 			final List<BlockData<?, R, ?>> blocks,
 			final BlockSolver<Z, G, R> blockSolver,
-			final BlockFusion<Z, G, R> blockFusion,
+			final BlockFusion<Z, ?, G, R> blockFusion,
 			final Function<R, Z> converter )
 	{
 		this.blocks = blocks;
@@ -63,7 +63,7 @@ public class Assembler<Z, G extends Model<G>, R>
 					blockSolver.globalSolve(blocks, am);
 
 			// now fuse blocks into a full assembly
-			blockFusion.globalFusion(blocks, am, blockToTile);
+			blockFusion.fuseGlobally(am, blockToTile);
 		} catch (final Exception e) {
 			throw new RuntimeException("failed assembly", e);
 		}

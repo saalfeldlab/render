@@ -13,7 +13,7 @@ import java.util.function.Function;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.RigidModel2D;
 import org.janelia.render.client.newsolver.assembly.Assembler;
-import org.janelia.render.client.newsolver.assembly.XYBlockFusion;
+import org.janelia.render.client.newsolver.assembly.BlockFusion;
 import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
@@ -153,8 +153,8 @@ public class DistributedAffineXYBlockSolver
 						cmdLineSetup.distributedSolve.maxIterationsGlobal,
 						cmdLineSetup.distributedSolve.threadsGlobal);
 
-		final XYBlockFusion<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
-				new XYBlockFusion<>(
+		final BlockFusion<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
+				new BlockFusion<>(
 						blockSolver,
 						(r,g) -> {
 							final AffineModel2D i = new AffineModel2D();
