@@ -3,6 +3,7 @@ package org.janelia.render.client.newsolver.assembly;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import net.imglib2.util.Pair;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,23 +88,19 @@ public class XYBlockFusion<Z, I, G extends Model<G>, R> implements BlockFusion<Z
 				final G globalModelA = blockToG.get(blockA);
 				final G globalModelB = blockToG.get(blockB);
 
-				final double[] midpointA = blockA.centerOfMass();
-				final double[] midpointB = blockB.centerOfMass();
-
 				for (final String tileId : tileIds) {
-					final R modelAIn = blockA.idToNewModel().get(tileId);
-					final R modelBIn = blockB.idToNewModel().get(tileId);
+					final TileSpec tile = blockA.rtsc().getTileSpec(tileId);
+					final double[] midpointXY = tile.getWorldCoordinates((tile.getWidth() - 1) / 2.0, (tile.getHeight() - 1) / 2.0);
 
-					final I modelA = combineResultGlobal.apply(modelAIn, globalModelA);
-					final I modelB = combineResultGlobal.apply(modelBIn, globalModelB);
-
-					// TODO: very inefficient to create the weight functions on the fly
-					final double wA = weightA.compute(midpointA[0], midpointA[1], z);
-					final double wB = weightB.compute(midpointB[0], midpointB[1], z);
+					final double wA = weightA.compute(midpointXY[0], midpointXY[1], z);
+					final double wB = weightB.compute(midpointXY[0], midpointXY[1], z);
 					if (wA == 0 && wB == 0)
 						throw new RuntimeException("Two block with weight 0, this must not happen: " + idA + ", " + idB);
-
 					final double regularizeB = wB / (wA + wB);
+
+					final I modelA = combineResultGlobal.apply(blockA.idToNewModel().get(tileId), globalModelA);
+					final I modelB = combineResultGlobal.apply(blockB.idToNewModel().get(tileId), globalModelB);
+
 					final Z tileModel = fusion.apply(
 							new ArrayList<>(Arrays.asList(modelA, modelB)),
 							new ArrayList<>(Arrays.asList(1.0 - regularizeB, regularizeB)));
