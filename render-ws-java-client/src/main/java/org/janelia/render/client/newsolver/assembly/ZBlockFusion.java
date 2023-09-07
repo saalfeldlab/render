@@ -19,12 +19,12 @@ import net.imglib2.util.Pair;
 
 public class ZBlockFusion<Z, I, G extends Model<G>, R> implements BlockFusion<Z, G, R>
 {
-	final ZBlockSolver<Z, G, R> solver;
+	final BlockSolver<Z, G, R> solver;
 	final BiFunction< R, G, I > combineResultGlobal;
 	final BiFunction< List< I >, List< Double >, Z > fusion;
 
 	public ZBlockFusion(
-			final ZBlockSolver< Z, G, R > solver,
+			final BlockSolver< Z, G, R > solver,
 			final BiFunction< R, G, I > combineResultGlobal, // I is some intermediate (maybe R, maybe something else)
 			final BiFunction< List< I >, List< Double >, Z > fusion ) // then fuse many weighted I's into Z's
 	{

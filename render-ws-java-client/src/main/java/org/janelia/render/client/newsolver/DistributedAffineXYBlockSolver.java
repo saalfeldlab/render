@@ -14,7 +14,7 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.RigidModel2D;
 import org.janelia.render.client.newsolver.assembly.Assembler;
 import org.janelia.render.client.newsolver.assembly.XYBlockFusion;
-import org.janelia.render.client.newsolver.assembly.XYBlockSolver;
+import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
@@ -144,8 +144,8 @@ public class DistributedAffineXYBlockSolver
 
 		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
 
-		final XYBlockSolver<AffineModel2D, RigidModel2D, AffineModel2D> blockSolver =
-				new XYBlockSolver<>(
+		final BlockSolver<AffineModel2D, RigidModel2D, AffineModel2D> blockSolver =
+				new BlockSolver<>(
 						new RigidModel2D(),
 						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
 						cmdLineSetup.distributedSolve.maxPlateauWidthGlobal,

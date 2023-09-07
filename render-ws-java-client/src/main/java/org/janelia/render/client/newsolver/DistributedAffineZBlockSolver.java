@@ -11,8 +11,8 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 
 import org.janelia.render.client.newsolver.assembly.Assembler;
+import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.ZBlockFusion;
-import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
@@ -151,8 +151,8 @@ public class DistributedAffineZBlockSolver
 
 		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
 
-		final ZBlockSolver< AffineModel2D, RigidModel2D, AffineModel2D > blockSolver =
-				new ZBlockSolver<>(
+		final BlockSolver< AffineModel2D, RigidModel2D, AffineModel2D > blockSolver =
+				new BlockSolver<>(
 						new RigidModel2D(),
 						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
 						cmdLineSetup.distributedSolve.maxPlateauWidthGlobal,

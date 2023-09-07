@@ -20,12 +20,12 @@ import java.util.function.BiFunction;
 
 public class XYBlockFusion<Z, I, G extends Model<G>, R> implements BlockFusion<Z, G, R>
 {
-	final XYBlockSolver<Z, G, R> solver;
+	final BlockSolver<Z, G, R> solver;
 	final BiFunction<R, G, I> combineResultGlobal;
 	final BiFunction<List<I>, List<Double>, Z> fusion;
 
 	public XYBlockFusion(
-			final XYBlockSolver<Z, G, R> solver,
+			final BlockSolver<Z, G, R> solver,
 			final BiFunction<R, G, I> combineResultGlobal,
 			final BiFunction<List<I>, List<Double>, Z> fusion
 	) {

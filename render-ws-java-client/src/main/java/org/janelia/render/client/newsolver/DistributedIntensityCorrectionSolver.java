@@ -27,8 +27,8 @@ import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.newsolver.assembly.Assembler;
 import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
+import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.ZBlockFusion;
-import org.janelia.render.client.newsolver.assembly.ZBlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
 import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
@@ -138,8 +138,8 @@ public class DistributedIntensityCorrectionSolver {
 
 		LOG.info("assembleBlocks: entry, processing {} blocks", allItems.size());
 
-		final ZBlockSolver<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> blockSolver =
-				new ZBlockSolver<>(
+		final BlockSolver<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> blockSolver =
+				new BlockSolver<>(
 						new TranslationModel1D(),
 						new SameTileMatchCreatorAffineIntensity(),
 						cmdLineSetup.distributedSolve.maxPlateauWidthGlobal,
