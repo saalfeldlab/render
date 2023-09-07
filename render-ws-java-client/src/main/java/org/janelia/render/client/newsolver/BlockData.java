@@ -67,6 +67,7 @@ public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implem
 	// used for global solve outside
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 
+	// TODO: replace BlockFactory argument by WeightFunction?
 	public BlockData(
 			final BlockFactory blockFactory, // knows how it was created for assembly later?
 			final P solveTypeParameters,

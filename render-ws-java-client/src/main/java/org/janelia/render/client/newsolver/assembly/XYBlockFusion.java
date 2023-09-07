@@ -43,11 +43,8 @@ public class XYBlockFusion<Z, I, G extends Model<G>, R> implements BlockFusion<Z
 		final HashMap<BlockData<?, R, ?>, G> blockToG = new HashMap<>();
 
 		blockToTile.forEach((block, tile) -> {
-			if (block != null) {
-				final G model = tile.getModel();
-				blockToG.put(block, model);
-				LOG.info("Block " + block.getId() + ": " + model);
-			}
+			if (block != null)
+				blockToG.put(block, tile.getModel());
 		});
 
 		final ArrayList<Integer> zSections = new ArrayList<>(am.zToTileIdGlobal.keySet());

@@ -21,14 +21,15 @@ public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator
 			final BlockData<?, ArrayList<AffineModel1D>, ?> blockContextB,
 			final List<PointMatch> matchesAtoB) {
 
-		if (modelsA.size() != modelsB.size())
+		final int nModels = modelsA.size();
+		if (nModels != modelsB.size())
 			throw new IllegalArgumentException("Lists of models for A and B must have the same size");
 
 		// TODO: in this case it doesn't matter if it's A or B, for other cases the blocks might be useful
 		// TODO: very likely that idToAverages() will move to FIBSEMIntensityCorrectionParameters in the future, thus we will need a P
 		final ArrayList<Double> averages = blockContextA.idToAverages().get(tileSpec.getTileId());
 
-		final int nModels = modelsA.size();
+		// TODO: instead of average, a random pixel could be taken
 		for (int i = 0; i < nModels; ++i) {
 			final AffineModel1D modelA = modelsA.get(i);
 			final AffineModel1D modelB = modelsB.get(i);

@@ -82,15 +82,13 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 			otherBlocks.remove(solveItemA);
 
 			for (final BlockData<?, R, ?> solveItemB : otherBlocks) {
-				LOG.info("globalSolve: solveItemB xy range is {}", solveItemB.boundingBox());
+				LOG.info("globalSolve: solveItemB xy range is {}", solveItemB.boundingBox()); // TODO: use Bounds instead of Pair?
 
 				// TODO: is the loop over z really necessary here?
 				// TODO: does this work if more than two blocks overlap? common tile ids are added for each block pair
 				final int[] overlapZRange = computeZOverlap(solveItemA, solveItemB);
 				for (final int z : overlapZRange) {
 					final HashSet<String> commonTileIds = getCommonTileIds(z, solveItemA, solveItemB);
-					final HashSet<String> assignedTileIds = am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>());
-					assignedTileIds.addAll(commonTileIds);
 
 					// tilespec is identical for blockA and blockB
 					final ResolvedTileSpecCollection tileSpecs = solveItemA.rtsc();
@@ -116,20 +114,30 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 					zToBlockPairs.computeIfAbsent(z, k -> new ArrayList<>())
 							.add(new ValuePair<>(new ValuePair<>(solveItemA, solveItemB), commonTileIds));
 
-					// non-common tiles
-					final HashSet<String> unmatchedTileIds = new HashSet<>(solveItemA.zToTileId().get(z));
-					unmatchedTileIds.removeAll(commonTileIds);
-					unmatchedTileIds.removeAll(assignedTileIds);
-
-					// store them in relevant collections
-					for (final String tileId : unmatchedTileIds) {
-						assignedTileIds.add(tileId);
-						am.idToTileSpecGlobal.put(tileId, tileSpecs.getTileSpec(tileId));
-						am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
-					}
-					// TODO: no DummyBlocks anymore, just set it to null, let's see how to fix it down the road -> use solveItemA?
-					zToBlockPairs.get(z).add(new ValuePair<>(new ValuePair<>(solveItemA, null), unmatchedTileIds));
+					final HashSet<String> assignedTileIds = am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>());
+					assignedTileIds.addAll(commonTileIds);
 				}
+			}
+		}
+
+		// TODO: find a better way of doing this
+		// find not-yet assigned tiles
+		for (final BlockData<?, R, ?> solveItem : blocks) {
+			final IntRange zRange = new IntRange(solveItem.minZ(), solveItem.maxZ());
+
+			for (final int z : zRange.toArray()) {
+				final HashSet<String> unmatchedTileIds = new HashSet<>(solveItem.zToTileId().get(z));
+				final HashSet<String> assignedTileIds = am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>());
+				unmatchedTileIds.removeAll(assignedTileIds);
+
+				// store them in relevant collections
+				for (final String tileId : unmatchedTileIds) {
+					am.idToTileSpecGlobal.put(tileId, solveItem.rtsc().getTileSpec(tileId));
+					am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
+				}
+				// TODO: no DummyBlocks anymore, just set it to null, let's see how to fix it down the road -> use solveItem?
+				zToBlockPairs.computeIfAbsent(z, k -> new ArrayList<>())
+						.add(new ValuePair<>(new ValuePair<>(solveItem, null), unmatchedTileIds));
 			}
 		}
 
