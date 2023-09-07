@@ -262,45 +262,24 @@ public class DistributedIntensityCorrectionSolver {
 
 	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> setupSolve() {
 
-		final ZBlockFactory blockFactory = setupBlockFactory();
-		this.blockFactory = blockFactory;
-
-		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col = setupBlockCollection(blockFactory);
-		this.blocks = col;
-		return col;
-	}
-
-	protected ZBlockFactory setupBlockFactory() {
 		final int minZ = (int) Math.round(renderSetup.minZ);
 		final int maxZ = (int) Math.round(renderSetup.maxZ);
 		final int blockSize = cmdLineSetup.distributedSolve.blockSize;
 		final int minBlockSize = cmdLineSetup.distributedSolve.minBlockSize;
+		this.blockFactory = new ZBlockFactory(minZ, maxZ, blockSize, minBlockSize);
 
-		return new ZBlockFactory(minZ, maxZ, blockSize, minBlockSize);
+		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();
+		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col =
+				blockFactory.defineBlockCollection(rtsc -> defaultSolveParams);
+
+		this.blocks = col;
+		return col;
 	}
 
-	protected <M> FIBSEMIntensityCorrectionParameters<M> setupSolveParameters() {
-
+	protected <M> FIBSEMIntensityCorrectionParameters<M> getDefaultParameters() {
 		final RenderWebServiceParameters renderWeb = cmdLineSetup.renderWeb;
 		final AlgorithmicIntensityAdjustParameters intensityAdjust = cmdLineSetup.intensityAdjust;
-		return new FIBSEMIntensityCorrectionParameters<>(
-				null,
-				renderWeb.baseDataUrl,
-				renderWeb.owner,
-				renderWeb.project,
-				intensityAdjust.stack,
-				intensityAdjust.maxPixelCacheGb,
-				intensityAdjust.lambda1,
-				intensityAdjust.lambda2,
-				intensityAdjust.renderScale,
-				intensityAdjust.numCoefficients,
-				intensityAdjust.zDistance);
-	}
-
-	protected <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> setupBlockCollection(final ZBlockFactory blockFactory){
-
-		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = setupSolveParameters();
-		return blockFactory.defineBlockCollection(rtsc -> defaultSolveParams);
+		return new FIBSEMIntensityCorrectionParameters<>(null, renderWeb, intensityAdjust);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedIntensityCorrectionSolver.class);

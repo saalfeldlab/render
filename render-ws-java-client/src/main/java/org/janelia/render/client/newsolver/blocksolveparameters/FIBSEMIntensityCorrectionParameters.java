@@ -8,6 +8,8 @@ import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.intensity.AffineIntensityCorrectionBlockWorker;
 
 import mpicbg.models.AffineModel1D;
+import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 
 /**
  * 
@@ -24,6 +26,24 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final double renderScale;
 	private final int numCoefficients;
 	private final Integer zDistance;
+
+	public FIBSEMIntensityCorrectionParameters(
+			final M blockSolveModel,
+			final RenderWebServiceParameters renderWebService,
+			final AlgorithmicIntensityAdjustParameters intensityAdjust) {
+
+		this(blockSolveModel,
+			 renderWebService.baseDataUrl,
+			 renderWebService.owner,
+			 renderWebService.project,
+			 intensityAdjust.stack,
+			 intensityAdjust.maxPixelCacheGb,
+			 intensityAdjust.lambda1,
+			 intensityAdjust.lambda2,
+			 intensityAdjust.renderScale,
+			 intensityAdjust.numCoefficients,
+			 intensityAdjust.zDistance);
+	}
 
 	public FIBSEMIntensityCorrectionParameters(
 			final M blockSolveModel,
