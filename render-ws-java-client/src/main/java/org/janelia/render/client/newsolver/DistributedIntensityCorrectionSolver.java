@@ -68,6 +68,7 @@ public class DistributedIntensityCorrectionSolver {
 					"--stack", "v2_acquire_align",
 					"--targetStack", "v2_acquire_test_intensity_ett2",
 					"--threadsWorker", "12",
+					"--threadsGlobal", "1",
 					"--minBlockSize", "2",
 					"--blockSize", "3",
 					"--completeTargetStack",
@@ -194,19 +195,21 @@ public class DistributedIntensityCorrectionSolver {
 	}
 
 	private static ArrayList<AffineModel1D> combineWeightedModels(final List<ArrayList<AffineModel1D>> models, final List<Double> weights) {
-		// TODO: make this run for more than two blocks
-		if (models.size() != 2)
-			throw new IllegalArgumentException("Only two blocks supported for now");
-
 		final ArrayList<AffineModel1D> coeffsBlockA = models.get(0);
-		final ArrayList<AffineModel1D> coeffsBlockB = models.get(1);
 		final int n = coeffsBlockA.size();
 		final ArrayList<AffineModel1D> fusedCoeffs = new ArrayList<>(n);
-		final double lambda = weights.get(1);
 
-		for (int i = 0; i < n; i++)
-			fusedCoeffs.add(new InterpolatedAffineModel1D<>(coeffsBlockA.get(i), coeffsBlockB.get(i), lambda).createAffineModel1D());
-
+		// TODO: make this run for more than two blocks
+		if (models.size() == 1) {
+			fusedCoeffs.addAll(coeffsBlockA);
+		} else if (models.size() == 2){
+			final ArrayList<AffineModel1D> coeffsBlockB = models.get(1);
+			final double lambda = weights.get(1);
+			for (int i = 0; i < n; i++)
+				fusedCoeffs.add(new InterpolatedAffineModel1D<>(coeffsBlockA.get(i), coeffsBlockB.get(i), lambda).createAffineModel1D());
+		} else {
+			throw new UnsupportedOperationException("Combining more than two blocks is not yet supported");
+		}
 		return fusedCoeffs;
 	}
 

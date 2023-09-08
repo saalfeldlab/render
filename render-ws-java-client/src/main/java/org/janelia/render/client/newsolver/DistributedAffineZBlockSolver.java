@@ -163,14 +163,8 @@ public class DistributedAffineZBlockSolver
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D > fusion =
 				new BlockCombiner<>(
 						blockSolver,
-						(r,g) -> {
-							final AffineModel2D i = new AffineModel2D();
-							i.set( r );
-							i.preConcatenate( WorkerTools.createAffine( g ) );
-							return i; },
-						(i,w) ->
-							new InterpolatedAffineModel2D<>( i.get( 0 ), i.get( 1 ), w.get( 1 ) ).createAffineModel2D()
-							);
+						DistributedAffineZBlockSolver::integrateGlobalModel,
+						DistributedAffineZBlockSolver::combineModels);
 
 		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
 				new Assembler<>(
@@ -214,6 +208,24 @@ public class DistributedAffineZBlockSolver
 			SolveTools.completeStack( parameters.targetStack, runParams );
 		}
 		*/
+	}
+
+	private static AffineModel2D integrateGlobalModel(final AffineModel2D localModel, final RigidModel2D globalModel) {
+		final AffineModel2D fusedModel = new AffineModel2D();
+		fusedModel.set(localModel);
+		fusedModel.preConcatenate(WorkerTools.createAffine(globalModel));
+		return fusedModel;
+	}
+
+	private static AffineModel2D combineModels(final List<AffineModel2D> models, final List<Double> weights) {
+		// TODO: make this run for more than two blocks
+		if (models.size() == 1) {
+			return models.get(0);
+		} else if (models.size() == 2) {
+			return new InterpolatedAffineModel2D<>(models.get(0), models.get(1), weights.get(1)).createAffineModel2D();
+		} else {
+			throw new IllegalArgumentException("Only up to two blocks supported for now");
+		}
 	}
 
 	public <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
