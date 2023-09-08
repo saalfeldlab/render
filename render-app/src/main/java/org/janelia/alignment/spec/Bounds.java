@@ -121,7 +121,8 @@ public class Bounds implements Serializable {
 
     @Override
     public String toString() {
-        return toJson();
+        return String.format("[[%9.1f, %9.1f, %9.1f], [%9.1f, %9.1f, %9.1f]]",
+                             minX, minY, minZ, maxX, maxY, maxZ);
     }
 
     @Override

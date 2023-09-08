@@ -5,11 +5,15 @@ import java.io.Serializable;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.DoubleSummaryStatistics;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.NeuroglancerAttributes;
 import org.janelia.render.client.zspacing.CrossCorrelationWithNextRegionalData;
 import org.janelia.saalfeldlab.n5.DataType;
@@ -32,18 +36,21 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
     public static void writeN5(final List<CrossCorrelationWithNextRegionalData> dataList,
                                final String basePath,
                                final String datasetName,
-                               final StackMetaData stackMetaData) {
+                               final StackMetaData stackMetaData,
+                               final String stackResolutionUnit) {
 
         final int numberOfLayers = dataList.size();
-        LOG.info("writeN5: entry, processing {} z layers", numberOfLayers);
+        LOG.info("writeN5: entry, processing {} z layers for -i {} -d {}",
+                 numberOfLayers, basePath, datasetName);
 
         final CrossCorrelationWithNextRegionalData firstLayerData = dataList.get(0);
         final int rowCount = firstLayerData.getRegionalRowCount();
         final int columnCount = firstLayerData.getRegionalColumnCount();
         final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
 
-        if ((rowCount > 0) && (columnCount >0)) {
+        if ((rowCount > 0) && (columnCount > 0)) {
 
+            // TODO: this is no longer true, consider larger z block size
             // need to write z layers concurrently, so make z block size 1
             final int[] blockSize = { columnCount, rowCount, 1 };
             final long[] blockDimensions = { blockSize[0], blockSize[1], blockSize[2] };
@@ -56,6 +63,22 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                                        blockSize,
                                        DataType.UINT8,
                                        new GzipCompression());
+
+                final Map<String, Object> exportAttributes = new HashMap<>();
+                exportAttributes.put("runTimestamp", new Date());
+                exportAttributes.put("stackMetadata", stackMetaData);
+                exportAttributes.put("rowCount", rowCount);
+                exportAttributes.put("columnCount", columnCount);
+
+                final Map<String, Object> attributes = new HashMap<>();
+                attributes.put("crossCorrelationExport", exportAttributes);
+                n5Writer.setAttributes(datasetName, attributes);
+
+                final Path attributesPath = Paths.get(basePath, datasetName, "attributes.json").toAbsolutePath();
+                LOG.info("writeN5: saved {}", attributesPath);
+
+                final Path ccDataPath = Paths.get(attributesPath.getParent().toString(), "cc_regional_data.json.gz");
+                FileUtil.saveJsonFile(ccDataPath.toString(), dataList);
 
                 final int margin = 55;
                 final int minViz = 0;
@@ -98,7 +121,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
 
                     N5Utils.saveNonEmptyBlock(block, n5Writer, datasetName, gridOffset, new UnsignedByteType());
 
-                    if (i % 5 == 0) {
+                    if (i % 100 == 0) {
                         LOG.info("writeN5: saved blocks for {} out of {} z layers", (i+1), numberOfLayers);
                     }
                 }
@@ -111,7 +134,6 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                 final List<Double> ccVolumeResolutionValues =
                         Arrays.asList(columnResolution, rowResolution, stackResolutionValues.get(2));
 
-                // TODO: figure out why neuroglancer ignores this for cc data n5
                 final List<Long> translationList = Arrays.asList(stackBounds.getMinX().longValue(),
                                                                  stackBounds.getMinY().longValue(),
                                                                  stackBounds.getMinZ().longValue());
@@ -119,7 +141,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                 // save additional parameters so that n5 can be viewed in neuroglancer
                 final NeuroglancerAttributes ngAttributes =
                         new NeuroglancerAttributes(ccVolumeResolutionValues,
-                                                   "nm",
+                                                   stackResolutionUnit,
                                                    0,
                                                    new int[0],
                                                    translationList,
@@ -134,7 +156,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
 
         }
 
-        LOG.info("writeN5: exit");
+        LOG.info("writeN5: exit, finished writing {}{}", basePath, datasetName);
     }
 
     @SuppressWarnings("CommentedOutCode")

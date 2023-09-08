@@ -31,8 +31,8 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
-import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
 import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
+import org.janelia.render.client.zspacing.loader.ResinMaskParameters;
 import org.janelia.thickness.inference.Options;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,26 +88,8 @@ public class ZPositionCorrectionClient {
                 description = "Number of local estimates")
         public Integer nLocalEstimates = 1;
 
-        @Parameter(
-                names = "--resinMaskingEnabled",
-                description = "Specify as 'false' to skip masking of resin areas",
-                arity = 1)
-        public boolean resinMaskingEnabled = true;
-
-        @Parameter(
-                names = "--resinSigma",
-                description = "Standard deviation for gaussian convolution")
-        public Integer resinSigma = 100;
-
-        @Parameter(
-                names = "--resinContentThreshold",
-                description = "Threshold intensity that identifies content")
-        public Double resinContentThreshold = 3.0;
-
-        @Parameter(
-                names = "--resinMaskIntensity",
-                description = "Intensity value to use when masking resin areas (typically max intensity for image)")
-        public Float resinMaskIntensity = 255.0f;
+        @ParametersDelegate
+        public ResinMaskParameters resin = new ResinMaskParameters();
 
         @Parameter(
                 names = "--normalizedEdgeLayerCount",
@@ -312,7 +294,7 @@ public class ZPositionCorrectionClient {
                                                                                        parameters.layerRange.minZ,
                                                                                        parameters.layerRange.maxZ);
 
-        if (sectionDataList.size() == 0) {
+        if (sectionDataList.isEmpty()) {
             throw new IllegalArgumentException(
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
@@ -404,20 +386,10 @@ public class ZPositionCorrectionClient {
         final ImageProcessorCache maskCache = new ImageProcessorCache(pixelsInLargeMask,
                                                                       false,
                                                                       false);
-        final RenderLayerLoader layerLoader;
-        if (parameters.resinMaskingEnabled)  {
-            layerLoader = new MaskedResinLayerLoader(layerUrlPattern,
-                                                     sortedZList,
-                                                     maskCache,
-                                                     parameters.resinSigma,
-                                                     parameters.scale,
-                                                     parameters.resinContentThreshold,
-                                                     parameters.resinMaskIntensity);
-        } else {
-            layerLoader = new RenderLayerLoader(layerUrlPattern,
-                                                sortedZList,
-                                                maskCache);
-        }
+        final RenderLayerLoader layerLoader = parameters.resin.buildLoader(layerUrlPattern,
+                                                                           sortedZList,
+                                                                           maskCache,
+                                                                           parameters.scale);
 
         if (parameters.debugFormat != null) {
             final File debugDirectory = new File(runDirectory, "debug-images");
@@ -472,21 +444,10 @@ public class ZPositionCorrectionClient {
                                                                    column,
                                                                    numberOfRegionRows,
                                                                    numberOfRegionColumns);
-                final RenderLayerLoader layerLoader;
-                if (parameters.resinMaskingEnabled) {
-                    layerLoader = new MaskedResinLayerLoader(regionUrlPattern,
-                                                             zList,
-                                                             imageProcessorCache,
-                                                             parameters.resinSigma,
-                                                             parameters.scale,
-                                                             parameters.resinContentThreshold,
-                                                             parameters.resinMaskIntensity);
-                } else {
-                    layerLoader = new RenderLayerLoader(regionUrlPattern,
-                                                        zList,
-                                                        imageProcessorCache);
-                }
-                
+                final RenderLayerLoader layerLoader = parameters.resin.buildLoader(layerUrlPattern,
+                                                                                   sortedZList,
+                                                                                   imageProcessorCache,
+                                                                                   parameters.scale);
                 final CrossCorrelationData crossCorrelationData =
                         HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(layerLoader,
                                                                                             1,
