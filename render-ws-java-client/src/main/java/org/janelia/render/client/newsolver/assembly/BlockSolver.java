@@ -9,8 +9,6 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import net.imglib2.util.Pair;
-import net.imglib2.util.ValuePair;
-import org.apache.commons.lang.math.IntRange;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -19,7 +17,6 @@ import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreator
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,14 +33,6 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 	final private double maxAllowedError;
 	final private int maxIterations;
 	final private int numThreads;
-
-	// local structures required for solving
-	// TODO: this is too nested, simplify
-	final public HashMap<
-			Integer,
-			ArrayList<
-					Pair<Pair<BlockData<?, R, ?>, BlockData<?, R, ?>>, HashSet<String>>>>
-			zToBlockPairs = new HashMap<>();
 
 	public BlockSolver(
 			final G globalModel,
@@ -69,75 +58,52 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 			final List<? extends BlockData<?, R, ?>> blocks,
 			final AssemblyMaps<Z> am
 	) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException {
-		
+
 		final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile = new HashMap<>();
-		blocks.forEach(block -> blockToTile.put(block, new Tile<>(globalModel.copy())));
+		for (final BlockData<?, R, ?> block : blocks) {
+			blockToTile.put(block, new Tile<>(globalModel.copy()));
+
+			final ResolvedTileSpecCollection tileSpecs = block.rtsc();
+			for (final String tileId : tileSpecs.getTileIds()) {
+				final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
+				final Integer z = tileSpec.getZ().intValue();
+				am.idToTileSpecGlobal.put(tileId, tileSpec);
+				am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
+			}
+		}
 
 		LOG.info("globalSolve: solving {} items", blocks.size());
 		final Set<? extends BlockData<?, R, ?>> otherBlocks = new HashSet<>(blocks);
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
 		for (final BlockData<?, R, ?> solveItemA : blocks) {
-			LOG.info("globalSolve: solveItemA xy range is {}", solveItemA.boundingBox());
+			LOG.info("globalSolve: solveItemA xy range is {}", boundsFrom(solveItemA.boundingBox()));
 			otherBlocks.remove(solveItemA);
 
+			// tilespec is identical for all overlapping blocks
+			final ResolvedTileSpecCollection tileSpecs = solveItemA.rtsc();
+
 			for (final BlockData<?, R, ?> solveItemB : otherBlocks) {
-				LOG.info("globalSolve: solveItemB xy range is {}", solveItemB.boundingBox()); // TODO: use Bounds instead of Pair?
+				LOG.info("globalSolve: solveItemB xy range is {}", boundsFrom(solveItemB.boundingBox()));
 
-				// TODO: is the loop over z really necessary here?
-				// TODO: does this work if more than two blocks overlap? common tile ids are added for each block pair
-				final int[] overlapZRange = computeZOverlap(solveItemA, solveItemB);
-				for (final int z : overlapZRange) {
-					final HashSet<String> commonTileIds = getCommonTileIds(z, solveItemA, solveItemB);
+				final Set<String> commonTileIds = getCommonTileIds(solveItemA, solveItemB);
+				final List<PointMatch> matchesAtoB = new ArrayList<>();
 
-					// tilespec is identical for blockA and blockB
-					final ResolvedTileSpecCollection tileSpecs = solveItemA.rtsc();
-					final List<PointMatch> matchesAtoB = new ArrayList<>();
+				for (final String tileId : commonTileIds) {
+					final TileSpec tileSpecAB = tileSpecs.getTileSpec(tileId);
+					am.idToTileSpecGlobal.put(tileId, tileSpecAB);
 
-					for (final String tileId : commonTileIds) {
-						final TileSpec tileSpecAB = tileSpecs.getTileSpec(tileId);
-						am.idToTileSpecGlobal.put(tileId, tileSpecAB);
-
-						final R modelA = solveItemA.idToNewModel().get(tileId);
-						final R modelB = solveItemB.idToNewModel().get(tileId);
-						sameTileMatchCreator.addMatches(tileSpecAB, modelA, modelB, solveItemA, solveItemB, matchesAtoB);
-					}
-
-					// connect global tiles and mark for optimization
-					final Tile<G> tileA = blockToTile.get(solveItemA);
-					final Tile<G> tileB = blockToTile.get(solveItemB);
-					tileA.connect(tileB, matchesAtoB);
-					tileConfigBlocks.addTile(tileA);
-					tileConfigBlocks.addTile(tileB);
-
-					// remember which solveItems defined which tileIds of this z section
-					zToBlockPairs.computeIfAbsent(z, k -> new ArrayList<>())
-							.add(new ValuePair<>(new ValuePair<>(solveItemA, solveItemB), commonTileIds));
-
-					final HashSet<String> assignedTileIds = am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>());
-					assignedTileIds.addAll(commonTileIds);
+					final R modelA = solveItemA.idToNewModel().get(tileId);
+					final R modelB = solveItemB.idToNewModel().get(tileId);
+					sameTileMatchCreator.addMatches(tileSpecAB, modelA, modelB, solveItemA, solveItemB, matchesAtoB);
 				}
-			}
-		}
 
-		// TODO: find a better way of doing this
-		// find not-yet assigned tiles
-		for (final BlockData<?, R, ?> solveItem : blocks) {
-			final IntRange zRange = new IntRange(solveItem.minZ(), solveItem.maxZ());
-
-			for (final int z : zRange.toArray()) {
-				final HashSet<String> unmatchedTileIds = new HashSet<>(solveItem.zToTileId().get(z));
-				final HashSet<String> assignedTileIds = am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>());
-				unmatchedTileIds.removeAll(assignedTileIds);
-
-				// store them in relevant collections
-				for (final String tileId : unmatchedTileIds) {
-					am.idToTileSpecGlobal.put(tileId, solveItem.rtsc().getTileSpec(tileId));
-					am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
-				}
-				// TODO: no DummyBlocks anymore, just set it to null, let's see how to fix it down the road -> use solveItem?
-				zToBlockPairs.computeIfAbsent(z, k -> new ArrayList<>())
-						.add(new ValuePair<>(new ValuePair<>(solveItem, null), unmatchedTileIds));
+				// connect global tiles and mark for optimization
+				final Tile<G> tileA = blockToTile.get(solveItemA);
+				final Tile<G> tileB = blockToTile.get(solveItemB);
+				tileA.connect(tileB, matchesAtoB);
+				tileConfigBlocks.addTile(tileA);
+				tileConfigBlocks.addTile(tileB);
 			}
 		}
 
@@ -162,39 +128,18 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 		return blockToTile;
 	}
 
-	private int[] computeZOverlap(final BlockData<?, R, ?> blockA, final BlockData<?, R, ?> blockB) {
-		final Bounds boundsA = boundsFrom(blockA.boundingBox());
-		final Bounds boundsB = boundsFrom(blockB.boundingBox());
-		final Rectangle2D xyOverlap = boundsA.toRectangle().createIntersection(boundsB.toRectangle());
-
-		if (xyOverlap.isEmpty())
-			return new int[0];
-
-		final IntRange zRangeA = new IntRange(blockA.minZ(), blockA.maxZ());
-		final IntRange zRangeB = new IntRange(blockB.minZ(), blockB.maxZ());
-
-		if (!zRangeA.overlapsRange(zRangeB))
-			return new int[0];
-
-		final IntRange zOverlap = new IntRange(Math.max(zRangeA.getMinimumInteger(), zRangeB.getMinimumInteger()),
-											   Math.min(zRangeA.getMaximumInteger(), zRangeB.getMaximumInteger()));
-
-		return zOverlap.toArray();
-	}
-
 	private Bounds boundsFrom(final Pair<double[], double[]> minMax) {
 		final double[] min = minMax.getA();
 		final double[] max = minMax.getB();
 		return new Bounds(min[0], min[1], min[2], max[0], max[1], max[2]);
 	}
 
-	protected static HashSet<String> getCommonTileIds(
-			final int z,
+	protected static Set<String> getCommonTileIds(
 			final BlockData<?, ?, ?> blockA,
 			final BlockData<?, ?, ?> blockB
 	) {
-		final HashSet<String> tileIdsA = new HashSet<>(blockA.zToTileId().get(z));
-		final HashSet<String> tileIdsB = blockB.zToTileId().get(z);
+		final Set<String> tileIdsA = new HashSet<>(blockA.rtsc().getTileIds());
+		final Set<String> tileIdsB = blockB.rtsc().getTileIds();
 		if (tileIdsB != null)
 			tileIdsA.retainAll(tileIdsB);
 		return tileIdsA;
