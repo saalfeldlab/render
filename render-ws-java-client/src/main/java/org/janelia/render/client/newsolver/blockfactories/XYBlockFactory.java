@@ -147,26 +147,25 @@ public class XYBlockFactory implements BlockFactory, Serializable {
 			layerDistanceMaps = new HashMap<>(block.zToTileId().size());
 			this.resolution = resolution;
 
-			final Pair<double[], double[]> bounds = block.boundingBox();
-			minX = bounds.getA()[0];
-			minY = bounds.getA()[1];
-			final Bounds stackXYBounds = new Bounds(minX, minY, bounds.getB()[0], bounds.getB()[1]);
+			final Bounds stackBounds = block.boundingBox();
+			minX = stackBounds.getMinX();
+			minY = stackBounds.getMinY();
 
 			block.zToTileId().forEach((z, layerIds) -> {
 				final List<TileSpec> layerTiles = layerIds.stream()
 						// .sorted() // to be consistent with the render order of the web service
 						.map(block.rtsc()::getTileSpec)
 						.collect(Collectors.toList());
-				layerDistanceMaps.put(z, createLayerDistanceMap(layerTiles, resolution, stackXYBounds));
+				layerDistanceMaps.put(z, createLayerDistanceMap(layerTiles, resolution, stackBounds));
 			});
 		}
 
-		public static FloatProcessor createLayerDistanceMap(final List<TileSpec> layerTiles, final double resolution, final Bounds XYBounds) {
+		public static FloatProcessor createLayerDistanceMap(final List<TileSpec> layerTiles, final double resolution, final Bounds bounds) {
 
 			layerTiles.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));
 
 			final RenderParameters renderParameters = new RenderParameters();
-			renderParameters.setBounds(XYBounds);
+			renderParameters.setBounds(bounds);
 			renderParameters.setScale(resolution);
 			renderParameters.addTileSpecs(layerTiles);
 			renderParameters.initializeDerivedValues();

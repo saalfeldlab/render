@@ -8,8 +8,6 @@ import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
-import net.imglib2.util.Pair;
-import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
@@ -77,14 +75,14 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
 		for (final BlockData<?, R, ?> solveItemA : blocks) {
-			LOG.info("globalSolve: solveItemA xy range is {}", boundsFrom(solveItemA.boundingBox()));
+			LOG.info("globalSolve: solveItemA xy range is {}", solveItemA.boundingBox());
 			otherBlocks.remove(solveItemA);
 
 			// tilespec is identical for all overlapping blocks
 			final ResolvedTileSpecCollection tileSpecs = solveItemA.rtsc();
 
 			for (final BlockData<?, R, ?> solveItemB : otherBlocks) {
-				LOG.info("globalSolve: solveItemB xy range is {}", boundsFrom(solveItemB.boundingBox()));
+				LOG.info("globalSolve: solveItemB xy range is {}",solveItemB.boundingBox());
 
 				final Set<String> commonTileIds = getCommonTileIds(solveItemA, solveItemB);
 				final List<PointMatch> matchesAtoB = new ArrayList<>();
@@ -126,12 +124,6 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 				numThreads);
 
 		return blockToTile;
-	}
-
-	private Bounds boundsFrom(final Pair<double[], double[]> minMax) {
-		final double[] min = minMax.getA();
-		final double[] max = minMax.getB();
-		return new Bounds(min[0], min[1], min[2], max[0], max[1], max[2]);
 	}
 
 	protected static Set<String> getCommonTileIds(

@@ -71,7 +71,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 				final I model = combineResultGlobal.apply(block.idToNewModel().get(tileId), globalModel);
 				models.add(model);
 
-				final WeightFunction weight = blockToWeightFunctions.computeIfAbsent(block, BlockData::createWeightFunctions);
+				final WeightFunction weight = blockToWeightFunctions.computeIfAbsent(block, BlockData::createWeightFunction);
 				final double w = weight.compute(midpointXY[0], midpointXY[1], z);
 				weights.add(w);
 

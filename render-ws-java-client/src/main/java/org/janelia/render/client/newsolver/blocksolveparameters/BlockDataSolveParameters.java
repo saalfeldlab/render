@@ -2,12 +2,10 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.solver.SerializableValuePair;
-
-import net.imglib2.util.Pair;
 
 /**
  * 
@@ -50,7 +48,7 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 	/**
 	 * @return - the bounding box of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
 	 */
-	public Pair<double[],double[]> boundingBox(final BlockData<M, R, P> blockData)
+	public Bounds boundingBox(final BlockData<M, R, P> blockData)
 	{
 		double minX = Double.MAX_VALUE;
 		double maxX = -Double.MAX_VALUE;
@@ -72,7 +70,7 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 			maxZ = Math.max( maxZ, ts.getZ() );
 		}
 
-		return new SerializableValuePair<>( new double[]{minX,minY,minZ}, new double[]{maxX,maxY,maxZ} );
+		return new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
 	}
 
 	/**

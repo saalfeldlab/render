@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
@@ -92,7 +93,7 @@ public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implem
 	public Map<String, ArrayList<Double>> sectionIdToZMap() { return sectionIdToZMap; }
 
 	public int getId() { return id; }
-	public WeightFunction createWeightFunctions() {
+	public WeightFunction createWeightFunction() {
 		return blockFactory.createWeightFunction(this);
 	}
 
@@ -104,7 +105,7 @@ public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implem
 	/**
 	 * @return - the bounding box of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
 	 */
-	public Pair<double[],double[]> boundingBox() { return solveTypeParameters().boundingBox( this ); }
+	public Bounds boundingBox() { return solveTypeParameters().boundingBox(this); }
 
 	public P solveTypeParameters() { return solveTypeParameters; }
 	public BlockFactory blockFactory() { return blockFactory; }

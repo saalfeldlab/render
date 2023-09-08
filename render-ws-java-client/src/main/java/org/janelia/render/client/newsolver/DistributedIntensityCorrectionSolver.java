@@ -66,7 +66,7 @@ public class DistributedIntensityCorrectionSolver {
 					"--owner", "cellmap",
 					"--project", "jrc_mus_thymus_1",
 					"--stack", "v2_acquire_align",
-					"--targetStack", "v2_acquire_test_intensity_ett2",
+					"--targetStack", "v2_acquire_test_intensity_debug",
 					"--threadsWorker", "12",
 					"--threadsGlobal", "1",
 					"--minBlockSize", "2",
