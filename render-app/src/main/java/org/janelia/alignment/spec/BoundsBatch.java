@@ -1,5 +1,6 @@
 package org.janelia.alignment.spec;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,7 +12,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class BoundsBatch {
+public class BoundsBatch implements Serializable {
 
     private final List<Bounds> list;
 
