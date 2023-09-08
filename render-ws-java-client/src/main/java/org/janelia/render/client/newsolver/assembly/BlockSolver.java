@@ -65,8 +65,8 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 			for (final String tileId : tileSpecs.getTileIds()) {
 				final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
 				final Integer z = tileSpec.getZ().intValue();
-				am.idToTileSpecGlobal.put(tileId, tileSpec);
-				am.zToTileIdGlobal.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
+				am.idToTileSpec.put(tileId, tileSpec);
+				am.zToTileId.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
 			}
 		}
 
@@ -89,7 +89,7 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 
 				for (final String tileId : commonTileIds) {
 					final TileSpec tileSpecAB = tileSpecs.getTileSpec(tileId);
-					am.idToTileSpecGlobal.put(tileId, tileSpecAB);
+					am.idToTileSpec.put(tileId, tileSpecAB);
 
 					final R modelA = solveItemA.idToNewModel().get(tileId);
 					final R modelB = solveItemB.idToNewModel().get(tileId);

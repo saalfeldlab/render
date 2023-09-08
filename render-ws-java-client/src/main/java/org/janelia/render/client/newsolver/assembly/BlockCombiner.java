@@ -33,7 +33,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 	}
 
 	public void fuseGlobally(
-			final AssemblyMaps<Z> am,
+			final AssemblyMaps<Z> globalData,
 			final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile
 	) {
 		final HashMap<BlockData<?, R, ?>, G> blockToG = new HashMap<>();
@@ -85,8 +85,8 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 			final List<Double> normalizedWeights = normalize(weights);
 			LOG.info("tile '" + tileId + "', models are fused following weights: " + Arrays.toString(normalizedWeights.toArray()));
 			final Z tileModel = fusion.apply(models, normalizedWeights);
-			am.idToFinalModelGlobal.put(tileId, tileModel);
-			am.idToErrorMapGlobal.put(tileId, error);
+			globalData.idToModel.put(tileId, tileModel);
+			globalData.idToErrorMap.put(tileId, error);
 		}
 	}
 

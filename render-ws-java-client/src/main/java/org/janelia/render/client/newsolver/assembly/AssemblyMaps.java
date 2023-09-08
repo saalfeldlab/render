@@ -13,17 +13,17 @@ import org.janelia.render.client.solver.SerializableValuePair;
 
 public class AssemblyMaps< M >
 {
-	final public HashMap< String, M > idToFinalModelGlobal = new HashMap<>();
-	final public HashMap< String, TileSpec > idToTileSpecGlobal = new HashMap<>();
-	final public HashMap< Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
-	final public HashMap< String, List<SerializableValuePair< String, Double >> > idToErrorMapGlobal = new HashMap<>();
+	final public HashMap<String, M> idToModel = new HashMap<>();
+	final public HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
+	final public HashMap<Integer, HashSet<String>> zToTileId = new HashMap<>();
+	final public HashMap<String, List<SerializableValuePair<String, Double>>> idToErrorMap = new HashMap<>();
 	final public Set<TransformSpec> sharedTransformSpecs = new HashSet<>();
 
 	/**
 	 * @return collection built from this assembly's shared transforms and tile specs.
 	 */
 	public ResolvedTileSpecCollection buildResolvedTileSpecs() {
-		return buildResolvedTileSpecs(idToTileSpecGlobal.values());
+		return buildResolvedTileSpecs(idToTileSpec.values());
 	}
 
 	/**

@@ -85,11 +85,11 @@ public class Assembler<Z, G extends Model<G>, R>
 	{
 		LOG.info("buildTrivialAssembly: entry, only a single block, no solve across blocks necessary.");
 
-		final AssemblyMaps< Z > am = new AssemblyMaps<>();
+		final AssemblyMaps< Z > globalData = new AssemblyMaps<>();
 
 		final BlockData< ?, R, ?> solveItem = blocks.get( 0 );
 
-		am.sharedTransformSpecs.addAll(solveItem.rtsc().getTransformSpecs());
+		globalData.sharedTransformSpecs.addAll(solveItem.rtsc().getTransformSpecs());
 
 		for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
 		{
@@ -100,17 +100,17 @@ public class Assembler<Z, G extends Model<G>, R>
 			if (tileIds.isEmpty())
 				continue;
 
-			am.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
+			globalData.zToTileId.putIfAbsent(z, new HashSet<>());
 
 			for ( final String tileId : tileIds )
 			{
-				am.zToTileIdGlobal.get( z ).add( tileId );
-				am.idToTileSpecGlobal.put( tileId, solveItem.rtsc().getTileSpec( tileId ) );
-				am.idToFinalModelGlobal.put( tileId, converter.apply( solveItem.idToNewModel().get( tileId ) ) );
+				globalData.zToTileId.get(z).add(tileId);
+				globalData.idToTileSpec.put(tileId, solveItem.rtsc().getTileSpec(tileId));
+				globalData.idToModel.put(tileId, converter.apply(solveItem.idToNewModel().get(tileId)));
 			}
 		}
 
-		return am;
+		return globalData;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(Assembler.class);
