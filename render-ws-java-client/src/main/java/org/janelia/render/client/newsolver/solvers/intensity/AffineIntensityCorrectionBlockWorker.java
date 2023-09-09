@@ -406,13 +406,14 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			 * iterate over all pixels and feed matches into the match
 			 * matrix
 			 */
-			int label1, label2 = 0, weight1 = 0, weight2 = 0;
+			int label1 = 0, label2 = 0;
+			float weight1 = 0, weight2 = 0;
 			for (int i = 0; i < n; ++i) {
 				// lazily check if it pays to create a match
 				final boolean matchCanContribute = (label1 = subTiles1.get(i)) > 0
 						&& (label2 = subTiles2.get(i)) > 0
-						&& (weight1 = weights1.get(i)) > 0
-						&& (weight2 = weights2.get(i)) > 0;
+						&& (weight1 = weights1.getf(i)) > 0
+						&& (weight2 = weights2.getf(i)) > 0;
 
 				if (matchCanContribute) {
 					final double p = pixels1.getf(i);
@@ -450,10 +451,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 					if (matches.isEmpty())
 						continue;
 
-					final Tile<?> t2 = p2CoefficientTiles.get(j);{
-						t1.connect(t2, ra.get());
-						connectionCount++;
-					}
+					final Tile<?> t2 = p2CoefficientTiles.get(j);
+					t1.connect(t2, ra.get());
+					connectionCount++;
 				}
 			}
 
