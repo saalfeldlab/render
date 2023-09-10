@@ -13,6 +13,7 @@ import org.janelia.alignment.spec.stack.StackMetaData;
  *
  * @author Eric Trautman
  */
+@SuppressWarnings("JavadocLinkAsPlainText")
 public class NeuroglancerUtil {
 
     /**
@@ -26,27 +27,36 @@ public class NeuroglancerUtil {
                                                    final StackMetaData stackMetaData) {
 
         final List<Double> res = stackMetaData.getCurrentResolutionValues();
+        final StackId stackId = stackMetaData.getStackId();
+        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+
         final String stackDimensions = "\"x\":[" + res.get(0).intValue() + "e-9,\"m\"]," +
                                        "\"y\":[" + res.get(1).intValue() + "e-9,\"m\"]," +
                                        "\"z\":[1e-8,\"m\"]"; // needs to be hardcoded for 2D view
 
-        final Bounds bounds = stackMetaData.getStats().getStackBounds();
-        final String position = (int) bounds.getCenterX() + "," +
-                                (int) bounds.getCenterY() + "," +
-                                bounds.getMinZ().intValue();
-
-        final StackId stackId = stackMetaData.getStackId();
+        final String positionAndScales = buildPositionAndScales(stackBounds,
+                                                                16,
+                                                                32768);
 
         final String ngJson =
-                "{\"dimensions\":{" + stackDimensions + "}," +
-                "\"position\":[" + position + "],\"crossSectionScale\":16,\"projectionScale\":32768," +
-                "\"layers\":[{\"type\":\"image\",\"source\":{\"url\":\"render://" +
+                "{\"dimensions\":{" + stackDimensions + "}," + positionAndScales +
+                ",\"layers\":[{\"type\":\"image\",\"source\":{\"url\":\"render://" +
                 rendererUrl + "/" + stackId.getOwner() + "/" + stackId.getProject() + "/" + stackId.getStack() +
                 "\",\"subsources\":{\"default\":true,\"bounds\":true},\"enableDefaultSubsources\":false}," +
                 "\"tab\":\"source\",\"name\":\"" + stackId.getStack() + "\"}]," +
                 "\"selectedLayer\":{\"layer\":\"" + stackId.getStack() + "\"},\"layout\":\"xy\"}";
 
         return rendererUrl + "/ng/#!" + URLEncoder.encode(ngJson, StandardCharsets.UTF_8);
+    }
+
+    public static String buildPositionAndScales(final Bounds bounds,
+                                                final int crossSectionScale,
+                                                final int projectionScale) {
+        final String position = (int) bounds.getCenterX() + "," +
+                                (int) bounds.getCenterY() + "," +
+                                bounds.getMinZ();
+        return "\"position\":[" + position + "],\"crossSectionScale\":" + crossSectionScale +
+               ",\"projectionScale\":" + projectionScale;
     }
 
     /**
