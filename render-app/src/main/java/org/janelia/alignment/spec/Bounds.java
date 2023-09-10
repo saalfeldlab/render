@@ -178,6 +178,10 @@ public class Bounds implements Serializable {
                           union(this.maxZ, that.maxZ, false));
     }
 
+    public Bounds withMinZ(final Double minZ) {
+        return new Bounds(this.minX, this.minY, minZ, this.maxX, this.maxY, this.maxZ);
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }

@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.DoubleStream;
 import java.util.stream.Stream;
 
 import org.janelia.alignment.json.JsonUtils;
@@ -64,6 +65,10 @@ public class CrossCorrelationWithNextRegionalData
 
     public double[][] getRegionalCorrelation() {
         return regionalCorrelation;
+    }
+
+    public DoubleStream flatMapRegionalCorrelation() {
+        return Arrays.stream(regionalCorrelation).flatMapToDouble(Arrays::stream);
     }
 
     public int getRegionalRowCount() {

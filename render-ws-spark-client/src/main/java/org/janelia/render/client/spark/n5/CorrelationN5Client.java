@@ -24,7 +24,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.ImageProcessorCacheSpec;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.CrossCorrelationWithNextRegionalDataN5Writer;
+import org.janelia.render.client.n5.CrossCorrelationWithNextRegionalDataN5Writer;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
