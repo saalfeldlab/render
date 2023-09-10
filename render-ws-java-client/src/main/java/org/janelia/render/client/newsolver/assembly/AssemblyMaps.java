@@ -1,5 +1,6 @@
 package org.janelia.render.client.newsolver.assembly;
 
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,7 +12,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.client.solver.SerializableValuePair;
 
-public class AssemblyMaps< M >
+public class AssemblyMaps< M > implements Serializable
 {
 	final public HashMap<String, M> idToModel = new HashMap<>();
 	final public HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
