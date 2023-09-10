@@ -78,7 +78,13 @@ public class IntensityCorrectionClient
 
         // allow multithread tasks but warn if Spark isn't configured properly to support them
         final int threadsForSparkTasks = cmdLineSetup.distributedSolve.threadsWorker;
-        final String taskCpusString = sparkContext.getConf().get("spark.task.cpus");
+        String taskCpusString = null;
+        try {
+            final SparkConf sparkConf = sparkContext.getConf();
+            taskCpusString = sparkConf.get("spark.task.cpus");
+        } catch (final Exception e) {
+            LOG.warn("ignoring failure to retrieve spark.task.cpus value", e);
+        }
         if (taskCpusString != null) {
             final int taskCpus = Integer.parseInt(taskCpusString);
             if (taskCpus != threadsForSparkTasks) {
