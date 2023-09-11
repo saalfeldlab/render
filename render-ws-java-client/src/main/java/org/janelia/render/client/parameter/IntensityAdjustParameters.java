@@ -61,6 +61,6 @@ public class IntensityAdjustParameters
     }
 
     public boolean correctIn3D() {
-        return (algorithmic.zDistance != null) && (algorithmic.zDistance > 0);
+        return (algorithmic.zDistance != null) && (algorithmic.zDistance.size() > 1);
     }
 }

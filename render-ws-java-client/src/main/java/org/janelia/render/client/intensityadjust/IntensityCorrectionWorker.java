@@ -106,10 +106,12 @@ public class IntensityCorrectionWorker implements Serializable {
 
             final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
 
+            // TODO: make this also work with selective z-layers
+            final int maxZDistance = parameters.algorithmic.zDistance.stream().mapToInt(i -> i).max().orElse(0);
             final List<OnTheFlyIntensity> corrected =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 parameters.algorithmic.renderScale,
-                                                                parameters.algorithmic.zDistance,
+                                                                maxZDistance,
                                                                 imageProcessorCache,
                                                                 parameters.algorithmic.numCoefficients,
                                                                 strategy,

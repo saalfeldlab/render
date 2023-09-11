@@ -66,14 +66,14 @@ public class DistributedIntensityCorrectionSolver {
 					"--owner", "cellmap",
 					"--project", "jrc_mus_thymus_1",
 					"--stack", "v2_acquire_align",
-					"--targetStack", "v2_acquire_test_intensity_debug",
-					"--threadsWorker", "12",
+					"--targetStack", "v2_acquire_test_intensity_debug13",
+					"--threadsWorker", "1",
 					"--threadsGlobal", "1",
 					"--minBlockSize", "2",
-					"--blockSize", "3",
+					"--blockSize", "6",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 14,503
-					"--zDistance", "1", "--minZ", "1000", "--maxZ", "1005"
+					"--zDistance", "1,3,5", "--minZ", "1000", "--maxZ", "1005"
 			};
 			cmdLineSetup.parse(testArgs);
 		} else {

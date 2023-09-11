@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -25,7 +26,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final double lambdaIdentity;
 	private final double renderScale;
 	private final int numCoefficients;
-	private final Integer zDistance;
+	private final List<Integer> zDistance;
 
 	public FIBSEMIntensityCorrectionParameters(
 			final M blockSolveModel,
@@ -56,7 +57,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final double lambdaIdentity,
 			final double renderScale,
 			final int numCoefficients,
-			final Integer zDistance) {
+			final List<Integer> zDistance) {
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
@@ -73,7 +74,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public double lambdaIdentity() { return lambdaIdentity; }
 	public double renderScale() { return renderScale; }
 	public int numCoefficients() { return numCoefficients; }
-	public Integer zDistance() { return zDistance; }
+	public List<Integer> zDistance() { return zDistance; }
 
 	@Override
 	public Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(

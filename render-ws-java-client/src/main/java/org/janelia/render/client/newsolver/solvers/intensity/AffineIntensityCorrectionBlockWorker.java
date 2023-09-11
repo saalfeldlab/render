@@ -185,13 +185,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private static ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> findOverlappingPatches(
 			final List<MinimalTileSpecWrapper> allPatches,
-			final Integer zDistance) {
+			final List<Integer> zDistance) {
 		// find the images that actually overlap (only for those we can extract intensity PointMatches)
 		final ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs = new ArrayList<>();
 		final Set<MinimalTileSpecWrapper> unconsideredPatches = new HashSet<>(allPatches);
-
-		// add buffer to max z distance to account for rounding errors
-		final double maxDeltaZ = (zDistance == null) ? Double.MAX_VALUE : zDistance + 1e-2;
 
 		for (final MinimalTileSpecWrapper p1 : allPatches) {
 			unconsideredPatches.remove(p1);
@@ -202,8 +199,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 				final double deltaX = i.realMax(0) - i.realMin(0);
 				final double deltaY = i.realMax(1) - i.realMin(1);
-				final double deltaZ = Math.abs(p1.getZ() - p2.getZ());
-				if ((deltaX > 0) && (deltaY > 0) && (deltaZ <= maxDeltaZ))
+				final int deltaZ = (int) Math.round(Math.abs(p1.getZ() - p2.getZ()));
+				if ((deltaX > 0) && (deltaY > 0) && (zDistance.contains(deltaZ)))
 					patchPairs.add(new ValuePair<>(p1, p2));
 			}
 		}
