@@ -248,7 +248,8 @@ public class IntensityMatcher
 			{
 				final FinalRealInterval i = Intervals.intersect( r1, getBoundingBox(p2) );
 
-				final double deltaZ = Math.abs(p1.getZ() - p2.getZ());
+				// to make sure zLayers are connected correctly, pad deltaZ with 0.01
+				final double deltaZ = Math.abs(p1.getZ() - p2.getZ()) + 0.01;
 				if ( i.realMax( 0 ) - i.realMin( 0 ) > 0 &&
 					 i.realMax( 1 ) - i.realMin( 1 ) > 0 &&
 					 deltaZ < maxDeltaZ)
