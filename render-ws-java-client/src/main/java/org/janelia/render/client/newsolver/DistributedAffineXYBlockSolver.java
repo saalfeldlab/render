@@ -12,7 +12,6 @@ import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.RigidModel2D;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -171,7 +170,7 @@ public class DistributedAffineXYBlockSolver
 				new BlockCombiner<>(
 						blockSolver,
 						DistributedAffineXYBlockSolver::integrateGlobalModel,
-						DistributedAffineXYBlockSolver::combineModels
+						DistributedAffineXYBlockSolver::interpolateModels
 				);
 
 		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
@@ -222,15 +221,31 @@ public class DistributedAffineXYBlockSolver
 		return fusedModel;
 	}
 
-	private static AffineModel2D combineModels(final List<AffineModel2D> models, final List<Double> weights) {
-		// TODO: make this run for more than two blocks
-		if (models.size() == 1) {
+	private static AffineModel2D interpolateModels(final List<AffineModel2D> models, final List<Double> weights) {
+		if (models.isEmpty() || models.size() != weights.size())
+			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
+
+		if (models.size() == 1)
 			return models.get(0);
-		} else if (models.size() == 2) {
-			return new InterpolatedAffineModel2D<>(models.get(0), models.get(1), weights.get(1)).createAffineModel2D();
-		} else {
-			throw new IllegalArgumentException("Only up to two blocks supported for now");
+
+		// normalize weights
+		final double sumWeights = weights.stream().mapToDouble(v -> v).sum();
+		final double[] w = weights.stream().mapToDouble(v -> v / sumWeights).toArray();
+
+		final int nCoefficients = 6;
+		final double[] c = new double[nCoefficients];
+		final double[] cFinal = new double[nCoefficients];
+
+		// extract and interpolate coefficients
+		for (int k = 0; k < models.size(); ++k) {
+			models.get(k).toArray(c);
+			for (int i = 0; i < nCoefficients; ++i)
+				cFinal[i] += w[k] * c[i];
 		}
+
+		final AffineModel2D interpolatedModel = new AffineModel2D();
+		interpolatedModel.set(cFinal[0], cFinal[1], cFinal[2], cFinal[3], cFinal[4], cFinal[5]);
+		return interpolatedModel;
 	}
 
 	public <M extends Model<M> & Affine2D<M>>
