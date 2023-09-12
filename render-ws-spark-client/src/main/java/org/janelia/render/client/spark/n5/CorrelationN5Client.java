@@ -72,14 +72,20 @@ public class CorrelationN5Client {
         public String n5Path;
 
         @Parameter(
+                names = "--regionSize",
+                description = "Derive regionRows and regionColumns values " +
+                              "so that each region has close to this width and height (e.g. 1000)")
+        public Integer regionSize;
+
+        @Parameter(
                 names = "--regionRows",
-                description = "Number of correlation region rows")
-        public int regionRows = 8;
+                description = "Explicit number of correlation region rows")
+        public Integer regionRows;
 
         @Parameter(
                 names = "--regionColumns",
-                description = "Number of correlation region columns")
-        public int regionColumns = 8;
+                description = "Explicit number of correlation region columns")
+        public Integer regionColumns;
 
         @Parameter(
                 names = "--regionCacheGB",
@@ -106,6 +112,26 @@ public class CorrelationN5Client {
             LOG.info("getBoundsForRun: returning {}", runBounds);
             return runBounds;
         }
+
+        public int getRegionRows(final Bounds boundsForRun) {
+            return regionSize == null ? regionRows : (int) Math.ceil(boundsForRun.getDeltaY() / regionSize);
+        }
+
+        public int getRegionColumns(final Bounds boundsForRun) {
+            return regionSize == null ? regionColumns : (int) Math.ceil(boundsForRun.getDeltaX() / regionSize);
+        }
+
+        public void validate() throws IllegalArgumentException {
+            if (regionSize == null) {
+                if ((regionRows == null) || (regionColumns == null)) {
+                    throw new IllegalArgumentException(
+                            "must specify both --regionRows and --regionColumns if you don't specify --regionSize");
+                }
+            } else if ((regionRows != null) || (regionColumns != null)) {
+                throw new IllegalArgumentException(
+                        "don't specify --regionRows or --regionColumns if you specify --regionSize");
+            }
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CorrelationN5Client.class);
@@ -118,6 +144,7 @@ public class CorrelationN5Client {
 
                 final CorrelationN5Client.Parameters parameters = new CorrelationN5Client.Parameters();
                 parameters.parse(args);
+                parameters.validate();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
@@ -161,17 +188,21 @@ public class CorrelationN5Client {
         final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
         final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
         final Bounds boundsForRun = parameters.getBoundsForRun(defaultBounds);
+        final int regionRowsForRun = parameters.getRegionRows(boundsForRun);
+        final int regionColumnsForRun = parameters.getRegionColumns(boundsForRun);
 
         final List<BoundsBatch> batchList = BoundsBatch.batchByAdjacentZThenXY(boundsForRun,
-                                                                               parameters.regionRows,
-                                                                               parameters.regionColumns,
+                                                                               regionRowsForRun,
+                                                                               regionColumnsForRun,
                                                                                sparkContext.defaultParallelism());
 
         final List<AreaCrossCorrelationWithNext> areaList = deriveAreaCrossCorrelations(sparkContext,
                                                                                         batchList,
                                                                                         stackUrlString);
 
-        final List<CrossCorrelationWithNextRegionalData> layerList = assembleAreaCrossCorrelations(areaList);
+        final List<CrossCorrelationWithNextRegionalData> layerList = assembleAreaCrossCorrelations(areaList,
+                                                                                                   regionRowsForRun,
+                                                                                                   regionColumnsForRun);
 
         CrossCorrelationWithNextRegionalDataN5Writer.writeN5(layerList,
                                                              parameters.n5Path,
@@ -244,7 +275,9 @@ public class CorrelationN5Client {
         return results;
     }
 
-    private List<CrossCorrelationWithNextRegionalData> assembleAreaCrossCorrelations(final List<AreaCrossCorrelationWithNext> areaList) {
+    private List<CrossCorrelationWithNextRegionalData> assembleAreaCrossCorrelations(final List<AreaCrossCorrelationWithNext> areaList,
+                                                                                     final int regionRowsForRun,
+                                                                                     final int regionColumnsForRun) {
         LOG.info("assembleAreaCrossCorrelations: entry, assembling {} areas", areaList.size());
 
         final List<CrossCorrelationWithNextRegionalData> layerList = new ArrayList<>();
@@ -263,8 +296,8 @@ public class CorrelationN5Client {
         for (final Double z : zToAreaListMap.keySet().stream().sorted().collect(Collectors.toList())) {
             layerList.add(assembleLayerCrossCorrelations(z,
                                                          zToAreaListMap.get(z),
-                                                         parameters.regionRows,
-                                                         parameters.regionColumns));
+                                                         regionRowsForRun,
+                                                         regionColumnsForRun));
         }
 
         LOG.info("assembleAreaCrossCorrelations: exit, returning data for {} z layers", layerList.size());

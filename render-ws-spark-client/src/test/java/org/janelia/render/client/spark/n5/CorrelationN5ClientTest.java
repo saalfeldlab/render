@@ -29,10 +29,8 @@ public class CorrelationN5ClientTest {
                 "--stack", "v1_acquire_align",
                 "--scale", "0.22",
                 "--n5Path", "/nrs/cellmap/data/jrc_ut23-0590-001/jrc_ut23-0590-001.n5",
-                "--regionRows", "8",
-                "--regionColumns", "8",
-                "--regionCacheGB", "2",
-                "--minZ", "45", "--maxZ", "46"
+                "--regionSize", "1000",
+                "--minZ", "40", "--maxZ", "50"
         };
 
         final int numberOfConcurrentTasks = 12;
@@ -43,6 +41,7 @@ public class CorrelationN5ClientTest {
 
         final CorrelationN5Client.Parameters parameters = new CorrelationN5Client.Parameters();
         parameters.parse(testArgs);
+        parameters.validate();
 
         final CorrelationN5Client client = new CorrelationN5Client(parameters);
 
