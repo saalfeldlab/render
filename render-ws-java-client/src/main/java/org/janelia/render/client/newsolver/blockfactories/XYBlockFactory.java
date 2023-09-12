@@ -57,7 +57,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 
 	@Override
 	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
-			final ParameterProvider<M, R, P> blockSolveParameterProvider )
+			final ParameterProvider<M, R, P> blockSolveParameterProvider)
 	{
 		final List<Bounds> blockLayout = new BlockLayoutCreator(new int[]{minBlockSizeX, minBlockSizeY, 0})
 				.regularGrid(In.X, minX, maxX, blockSizeX)
@@ -93,7 +93,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 		return new XYDistanceWeightFunction(block, 0.01);
 	}
 
-	private static class XYDistanceWeightFunction implements WeightFunction {
+	static class XYDistanceWeightFunction implements WeightFunction {
 
 		private final Map<Integer, FloatProcessor> layerDistanceMaps;
 		private final double resolution;

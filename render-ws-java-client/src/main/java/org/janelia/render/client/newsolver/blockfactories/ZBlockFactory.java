@@ -64,7 +64,7 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 		return new ZDistanceWeightFunction(block, 0.01);
 	}
 
-	protected static class ZDistanceWeightFunction implements WeightFunction {
+	static class ZDistanceWeightFunction implements WeightFunction {
 
 		private final double midpoint;
 		private final double minZ;
