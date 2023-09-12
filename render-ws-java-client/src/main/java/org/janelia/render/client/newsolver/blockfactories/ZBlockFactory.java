@@ -1,7 +1,7 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
+import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.janelia.alignment.spec.Bounds;
@@ -11,12 +11,10 @@ import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
-public class ZBlockFactory implements BlockFactory, Serializable
+public class ZBlockFactory extends BlockFactory implements Serializable
 {
 	private static final long serialVersionUID = 4169473785487008894L;
 
@@ -48,36 +46,16 @@ public class ZBlockFactory implements BlockFactory, Serializable
 				.shiftedGrid(In.Z, minZ, maxZ, blockSize)
 				.create();
 
-		// fetch metadata from render
-		final BlockDataSolveParameters<?,?,?> basicParameters = blockSolveParameterProvider.basicParameters();
-		final RenderDataClient dataClient = new RenderDataClient(
-				basicParameters.baseDataUrl(),
-				basicParameters.owner(),
-				basicParameters.project());
+		return blockCollectionFromLayout(blockBounds, blockSolveParameterProvider);
+	}
 
-		final ArrayList<BlockData<M, R, P>> blockDataList = new ArrayList<>();
+	@Override
+	protected ResolvedTileSpecCollection fetchTileSpecs(
+			final Bounds bound,
+			final RenderDataClient dataClient,
+			final BlockDataSolveParameters<?, ?, ?> basicParameters) throws IOException {
 
-		// for each block, we know the z-range
-		int id = 0;
-		for (final Bounds bound : blockBounds ) {
-			LOG.info("Try to load block " + id + ": " + bound);
-			ResolvedTileSpecCollection rtsc = null;
-
-			try {
-				// TODO: trautmane
-				// we fetch all TileSpecs for our z-range
-				rtsc = dataClient.getResolvedTilesForZRange(basicParameters.stack(), bound.getMinZ(), bound.getMaxZ());
-			} catch (final Exception e) {
-				throw new RuntimeException("Failed to fetch data from render.", e);
-			}
-
-			LOG.info("Loaded " + rtsc.getTileIds().size() + " tiles.");
-			final BlockData<M, R, P> block = new BlockData<>(this, blockSolveParameterProvider.create(rtsc), id, rtsc);
-			blockDataList.add(block);
-			id++;
-		}
-
-		return new BlockCollection<>( blockDataList );
+		return dataClient.getResolvedTilesForZRange(basicParameters.stack(), bound.getMinZ(), bound.getMaxZ());
 	}
 
 
@@ -86,7 +64,7 @@ public class ZBlockFactory implements BlockFactory, Serializable
 		return new ZDistanceWeightFunction(block, 0.01);
 	}
 
-	private static class ZDistanceWeightFunction implements WeightFunction {
+	protected static class ZDistanceWeightFunction implements WeightFunction {
 
 		private final double midpoint;
 		private final double minZ;
@@ -107,6 +85,4 @@ public class ZBlockFactory implements BlockFactory, Serializable
 			return Math.max(0, distanceToBoundary + eps);
 		}
 	}
-
-	private static final Logger LOG = LoggerFactory.getLogger(ZBlockFactory.class);
 }
