@@ -12,7 +12,7 @@ public class DistributedXYSolveParameters extends DistributedSolveParameters imp
 	// Initialization parameters
 	@Parameter(
 			names = "--blockSizeX",
-			description = "The size of the blocks in X, which will be computed in paralell (default:2500, min:1) "
+			description = "The size of the blocks in X, which will be computed in parallel (default:2500, min:1) "
 	)
 	public Integer blockSizeX = 25000;
 
@@ -24,7 +24,7 @@ public class DistributedXYSolveParameters extends DistributedSolveParameters imp
 
 	@Parameter(
 			names = "--blockSizeY",
-			description = "The size of the blocks in Y, which will be computed in paralell (default:2500, min:1) "
+			description = "The size of the blocks in Y, which will be computed in parallel (default:2500, min:1) "
 	)
 	public Integer blockSizeY = 25000;
 
