@@ -3,14 +3,19 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.assembly.Assembler;
+import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
 import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
@@ -21,6 +26,8 @@ import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
+import org.janelia.render.client.solver.RunParameters;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,16 +60,15 @@ public class DistributedAffineZBlockSolver
         if (args.length == 0) {
             final String[] testArgs = {
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "Z0720_07m_BR", //"flyem", //"cosem", //"Z1217_33m_BR",
-                    "--project", "Sec24", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
-                    "--matchCollection", "Sec24_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
-
-                    "--stack", "v5_acquire_trimmed",
-                    "--targetStack", "v5_acquire_trimmed_test",
-//                    "--minZ", "1234",
+                    "--owner", "cellmap", //"flyem", //"cosem", //"Z1217_33m_BR",
+                    "--project", "jrc_mus_thymus_1", //"Z0419_25_Alpha3", //"jrc_hela_2", //"Sec10",
+                    "--matchCollection", "jrc_mus_thymus_1_v1", //"Sec32_v1", //"Z0419_25_Alpha3_v1", //"jrc_hela_2_v1", //"Sec10_multi",
+                    "--stack", "v2_acquire",
+                    "--targetStack", "v2_acquire_debug",
+                    "--minZ", "1000",
                     "--maxZ", "1001",
 
-//                    "--completeTargetStack",
+                    "--completeTargetStack",
 //                    "--visualizeResults",
 
                     "--blockOptimizerLambdasRigid",          "1.0,1.0,0.9,0.3,0.01",
@@ -77,8 +83,9 @@ public class DistributedAffineZBlockSolver
                     //"--minStitchingInliers", "35",
                     //"--stitchFirst", "", // perform stitch-first
                     "--maxNumMatches", "0", // no limit, default
+					//"--threadsGlobal", "60",
                     "--threadsWorker", "1",
-                    //"--threadsGlobal", "60",
+					"--minBlockSize", "1",
                     //"--maxPlateauWidthGlobal", "50",
                     //"--maxIterationsGlobal", "10000",
             };
@@ -176,38 +183,33 @@ public class DistributedAffineZBlockSolver
 							a.set( r );
 							return a; } );
 
-		assembler.createAssembly();
+		final AssemblyMaps<AffineModel2D> finalTiles = assembler.createAssembly();
 
-		// TODO: interface to interpolate many R's into a Z given the weights - should support trivial case of 1 single R to Z
-
-		/*
-		//
-		// Saving the result
-		//
-		LOG.info( "Saving targetstack=" + cmdLineSetup.targetStack );
-
-		//
 		// save the re-aligned part
-		//
-		final HashSet< Double > zToSaveSet = new HashSet<>();
+		LOG.info( "Saving targetstack=" + cmdLineSetup.targetStack );
+		final List<Double> zToSave = finalTiles.idToTileSpec.values().stream()
+				.map(TileSpec::getZ)
+				.distinct()
+				.sorted()
+				.collect(Collectors.toList());
 
-		for ( final TileSpec ts : solve.idToTileSpecGlobal.values() )
-			zToSaveSet.add( ts.getZ() );
+		final RunParameters runParams = new RunParameters();
+		runParams.renderDataClient = cmdLineSetup.renderWeb.getDataClient();
+		runParams.matchDataClient = cmdLineSetup.matches.getMatchDataClient(cmdLineSetup.renderWeb.baseDataUrl, cmdLineSetup.renderWeb.owner);
+		runParams.targetDataClient = cmdLineSetup.renderWeb.getDataClient();
+		runParams.pGroupList = null; // not needed below
+		runParams.zToGroupIdMap = null; // not needed below
+		runParams.sectionIdToZMap = new HashMap<>();
+		runParams.zToTileSpecsMap = new HashMap<>();
+		runParams.minZ = zToSave.get(0);
+		runParams.maxZ = zToSave.get(zToSave.size() - 1);
+		LOG.info("Saving from " + runParams.minZ + " to " + runParams.maxZ);
 
-		List< Double > zToSave = new ArrayList<>( zToSaveSet );
-		Collections.sort( zToSave );
-
-		LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
-
-		SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, solve.idToFinalModelGlobal, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
-
-		if ( parameters.completeTargetStack )
-		{
-			LOG.info( "Completing targetstack=" + parameters.targetStack );
-
-			SolveTools.completeStack( parameters.targetStack, runParams );
+		SolveTools.saveTargetStackTiles(cmdLineSetup.stack, cmdLineSetup.targetStack.stack, runParams, finalTiles.idToModel, null, zToSave, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
+		if (cmdLineSetup.targetStack.completeStack) {
+			LOG.info("Completing targetstack=" + cmdLineSetup.targetStack.stack);
+			SolveTools.completeStack(cmdLineSetup.targetStack.stack, runParams);
 		}
-		*/
 	}
 
 	private static AffineModel2D integrateGlobalModel(final AffineModel2D localModel, final RigidModel2D globalModel) {
