@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.awt.Rectangle;
 import java.io.Serializable;
+import java.util.Objects;
 
 import org.janelia.alignment.json.JsonUtils;
 
@@ -142,7 +143,7 @@ public class Bounds implements Serializable {
         if (!minY.equals(bounds.minY)) {
             return false;
         }
-        if (minZ != null ? !minZ.equals(bounds.minZ) : bounds.minZ != null) {
+        if (! Objects.equals(minZ, bounds.minZ)) {
             return false;
         }
         if (!maxX.equals(bounds.maxX)) {
@@ -151,7 +152,7 @@ public class Bounds implements Serializable {
         if (!maxY.equals(bounds.maxY)) {
             return false;
         }
-        return maxZ != null ? maxZ.equals(bounds.maxZ) : bounds.maxZ == null;
+        return Objects.equals(maxZ, bounds.maxZ);
     }
 
     @Override
@@ -167,6 +168,20 @@ public class Bounds implements Serializable {
 
     public Rectangle toRectangle() {
         return new Rectangle(minX.intValue(), minY.intValue(), getWidth(), getHeight());
+    }
+
+    /**
+     * @return true if these bounds contain the specified bounds after converting components
+     *         (e.g. minX, maxX, minY, ...) to integral values.
+     *         Components with null values always contain (or are contained).
+     */
+    public boolean containsInt(final Bounds bounds) {
+        return containsInt(this.minZ, bounds.minZ, true) &&
+               containsInt(this.maxZ, bounds.maxZ, false) &&
+               containsInt(this.minY, bounds.minY, true) &&
+               containsInt(this.maxY, bounds.maxY, false) &&
+               containsInt(this.minX, bounds.minX, true) &&
+               containsInt(this.maxX, bounds.maxX, false);
     }
 
     public Bounds union(final Bounds that) {
@@ -207,5 +222,19 @@ public class Bounds implements Serializable {
             value = Math.max(a, b);
         }
         return value;
+    }
+
+    private static boolean containsInt(final Double a,
+                                       final Double b,
+                                       final boolean isMin) {
+        final boolean result;
+        if ((a == null) || (b == null)) {
+            result = true;
+        } else if (isMin) {
+            result = a.intValue() <= b.intValue();
+        } else {
+            result = a.intValue() >= b.intValue();
+        }
+        return result;
     }
 }
