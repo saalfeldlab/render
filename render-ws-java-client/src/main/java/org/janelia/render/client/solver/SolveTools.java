@@ -82,20 +82,10 @@ public class SolveTools
 			final int samplesPerDimension )
 	{
 		// for fitting local to global pair
-		final Model<?> relativeModel = new RigidModel2D();
-
-		final List< PointMatch > global = SolveTools.createFakeMatches(
-				pTileSpec.getWidth(),
-				pTileSpec.getHeight(),
-				pAlignmentModel, // p
-				qAlignmentModel,
-				samplesPerDimension ); // q
 
 		// the actual matches, local solve
 		final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( matches );
-
 		final Model< ? > model;
-
 		if ( pTileSpec.getZ() == qTileSpec.getZ() )
 			model = montageLayerModel;
 		else
@@ -107,6 +97,8 @@ public class SolveTools
 			LOG.info("Could not fit point matches", e);
 		}
 
+		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
+		// but do not change the transformations relative to each other (in local, global)
 		final List< PointMatch > local = SolveTools.createFakeMatches(
 				pTileSpec.getWidth(),
 				pTileSpec.getHeight(),
@@ -114,10 +106,15 @@ public class SolveTools
 				new IdentityModel(),
 				samplesPerDimension ); // q
 
-		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
-		// but do not change the transformations relative to each other (in local, global)
-		final ArrayList< PointMatch > relativeMatches = new ArrayList<>();
+		final List< PointMatch > global = SolveTools.createFakeMatches(
+				pTileSpec.getWidth(),
+				pTileSpec.getHeight(),
+				pAlignmentModel, // p
+				qAlignmentModel,
+				samplesPerDimension ); // q
 
+		final Model<?> relativeModel = new RigidModel2D();
+		final ArrayList< PointMatch > relativeMatches = new ArrayList<>();
 		for ( int i = 0; i < global.size(); ++i )
 		{
 			relativeMatches.add( new PointMatch( new Point( local.get( i ).getP1().getL().clone() ), new Point( global.get( i ).getP1().getL().clone() ) ) );
@@ -129,7 +126,6 @@ public class SolveTools
 		} catch (final Exception ignored){}
 
 		double vDiff = 0;
-
 		for ( int i = 0; i < global.size(); ++i )
 		{
 			final double dGx = global.get( i ).getP2().getL()[ 0 ] - global.get( i ).getP1().getL()[ 0 ];
