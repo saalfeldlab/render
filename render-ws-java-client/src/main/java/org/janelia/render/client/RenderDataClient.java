@@ -277,7 +277,7 @@ public class RenderDataClient {
 
         final List<Double> zList;
 
-        if ((explicitZValues == null) || (explicitZValues.size() == 0)) {
+        if ((explicitZValues == null) || (explicitZValues.isEmpty())) {
 
             zList = getStackZValues(stack, minZ, maxZ);
 
@@ -346,7 +346,7 @@ public class RenderDataClient {
 
         final List<SectionData> sectionDataList;
 
-        if ((explicitZValues == null) || (explicitZValues.size() == 0)) {
+        if ((explicitZValues == null) || (explicitZValues.isEmpty())) {
 
             sectionDataList = getStackSectionData(stack, minZ, maxZ);
 
@@ -1326,7 +1326,7 @@ public class RenderDataClient {
     public void saveMatches(final List<CanvasMatches> canvasMatches)
             throws IOException {
 
-        if (canvasMatches.size() > 0) {
+        if (!canvasMatches.isEmpty()) {
 
             final String json = JsonUtils.MAPPER.writeValueAsString(canvasMatches);
             final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
