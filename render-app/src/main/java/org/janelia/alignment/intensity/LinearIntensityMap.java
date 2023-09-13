@@ -106,14 +106,20 @@ public class LinearIntensityMap< T extends RealType< T > >
 	public LinearIntensityMap( final RandomAccessibleInterval< T > source, final InterpolatorFactory< RealComposite< T >, RandomAccessible< RealComposite< T > > > interpolatorFactory )
 	{
 		this.interpolatorFactory = interpolatorFactory;
+		// collapses the e.g. 3d image stack where the planes are the coefficients into a 2d image with 2 values per pixel (the coefficients)
+		// not limited to this case though, would work on 3d volumes as well
 		final CompositeIntervalView< T, RealComposite< T > > collapsedSource = Views.collapseReal( source );
 		dimensions = new FinalInterval( collapsedSource );
+		// shift everything in xy by 0.5 pixels so the coefficient sits in the middle of the block
 		final double[] shift = new double[ dimensions.numDimensions() ];
 		for ( int d = 0; d < shift.length; ++d )
 			shift[ d ] = 0.5;
 		translation = new Translation( shift );
 
+		// make it infinite by extending the border values (this way we can interpolate anywhere without going outofbounds)
 		final RandomAccessible< RealComposite< T > > extendedCollapsedSource = Views.extendBorder( collapsedSource );
+
+		// make it a realrandomaccessible, which can be queried at floating-point locations using (linear) interpolation
 		coefficients = Views.interpolate( extendedCollapsedSource, interpolatorFactory );
 	}
 
@@ -132,6 +138,8 @@ public class LinearIntensityMap< T extends RealType< T > >
 	{
 		assert image.numDimensions() == dimensions.numDimensions() : "Number of dimensions do not match.";
 
+		// how much bigger (or smaller, but unlikely) is the image compared to the coefficients
+		// this is before applying any image transformations
 		final double[] s = new double[ dimensions.numDimensions() ];
 		for ( int d = 0; d < s.length; ++d )
 			s[ d ] = image.dimension( d ) / dimensions.dimension( d );
@@ -145,20 +153,21 @@ public class LinearIntensityMap< T extends RealType< T > >
 								RealViews.transform(
 										RealViews.transform(
 												coefficients,
-												translation ),
-										scale ) ),
-						image );
+												translation ), // apply 0.5 pixel shift
+										scale ) // apply scaling
+								), // raster (put on pixel grid)
+						image ); // apply potential offset of the image
 
 		/* decide on type which mapping to use */
-		final S t = image.randomAccess().get();
+		final S apixel = image.randomAccess().get();
 
-		if ( ARGBType.class.isInstance( t ) )
+		if ( ARGBType.class.isInstance( apixel ) )
 			mapARGB( Views.flatIterable( ( RandomAccessibleInterval< ARGBType > )image ), Views.flatIterable( stretchedCoefficients ) );
-		else if ( RealComposite.class.isInstance( t ) )
+		else if ( RealComposite.class.isInstance( apixel ) )
 			mapComposite( Views.flatIterable( ( RandomAccessibleInterval )image ), Views.flatIterable( stretchedCoefficients ) );
-		else if ( RealType.class.isInstance( t ) )
+		else if ( RealType.class.isInstance( apixel ) )
 		{
-			final RealType< ? > r = ( RealType )t;
+			final RealType< ? > r = ( RealType )apixel;
 			if ( r.getMinValue() > -Double.MAX_VALUE || r.getMaxValue() < Double.MAX_VALUE )
 //			    TODO Bug in javac does not enable cast from RandomAccessibleInterval< S > to RandomAccessibleInterval< RealType >, remove when fixed
 				mapCrop( Views.flatIterable( ( RandomAccessibleInterval< RealType > )( Object )image ), Views.flatIterable( stretchedCoefficients ) );
@@ -190,6 +199,8 @@ public class LinearIntensityMap< T extends RealType< T > >
 	{
 		final Cursor<S> cs = image.cursor();
 		final S firstValue = cs.next();
+		// ensure the values stay within the bounds of the Type (e.g. 0...255 for UnsignedByte)
+		// otherwise clip it
 		final double minS = firstValue.getMinValue();
 		final double maxS = firstValue.getMaxValue();
 
