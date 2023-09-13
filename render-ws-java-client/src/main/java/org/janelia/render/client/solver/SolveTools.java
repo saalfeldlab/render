@@ -76,8 +76,8 @@ public class SolveTools
 			final Model< ? > montageLayerModel,
 			final MinimalTileSpec pTileSpec,
 			final MinimalTileSpec qTileSpec,
-			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
-			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
+			final CoordinateTransform pAlignmentTransform,
+			final CoordinateTransform qAlignmentTransform,
 			final Matches matches,
 			final int samplesPerDimension )
 	{
@@ -102,16 +102,16 @@ public class SolveTools
 		final List< PointMatch > local = SolveTools.createFakeMatches(
 				pTileSpec.getWidth(),
 				pTileSpec.getHeight(),
-				model, // p
+				model,
 				new IdentityModel(),
-				samplesPerDimension ); // q
+				samplesPerDimension);
 
 		final List< PointMatch > global = SolveTools.createFakeMatches(
 				pTileSpec.getWidth(),
 				pTileSpec.getHeight(),
-				pAlignmentModel, // p
-				qAlignmentModel,
-				samplesPerDimension ); // q
+				pAlignmentTransform,
+				qAlignmentTransform,
+				samplesPerDimension);
 
 		final Model<?> relativeModel = new RigidModel2D();
 		final ArrayList< PointMatch > relativeMatches = new ArrayList<>();
@@ -164,12 +164,21 @@ public class SolveTools
 		return Math.sqrt( sum );
 	}
 
-	public static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel )
+	public static List< PointMatch > createFakeMatches(
+			final int w,
+			final int h,
+			final CoordinateTransform pTransform,
+			final CoordinateTransform qTransform)
 	{
-		return createFakeMatches( w, h, pModel, qModel, SolveItem.samplesPerDimension );
+		return createFakeMatches(w, h, pTransform, qTransform, SolveItem.samplesPerDimension);
 	}
 
-	public static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel, final int samplesPerDimension )
+	public static List<PointMatch> createFakeMatches(
+			final int w,
+			final int h,
+			final CoordinateTransform pTransform,
+			final CoordinateTransform qTransform,
+			final int samplesPerDimension)
 	{
 		final List< PointMatch > matches = new ArrayList<>();
 		
@@ -184,8 +193,8 @@ public class SolveTools
 				final double[] p = new double[] { x * sampleWidth, sampleY };
 				final double[] q = new double[] { x * sampleWidth, sampleY };
 
-				pModel.applyInPlace( p );
-				qModel.applyInPlace( q );
+				pTransform.applyInPlace(p);
+				qTransform.applyInPlace(q);
 
 				matches.add(new PointMatch( new Point(p), new Point(q) ));
 			}
