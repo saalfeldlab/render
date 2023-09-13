@@ -3,16 +3,20 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.RigidModel2D;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.assembly.Assembler;
+import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
@@ -22,6 +26,8 @@ import org.janelia.render.client.newsolver.setup.AffineXYBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
+import org.janelia.render.client.solver.RunParameters;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,15 +62,22 @@ public class DistributedAffineXYBlockSolver
             final String[] testArgs = {
                     "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
                     //"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "hess",
-                    "--project", "wafer_52c",
-                    "--matchCollection", "wafer_52c_v4",
-                    "--stack", "v1_acquire_slab_001_trimmed",
-                    "--targetStack", "	v1_acquire_slab_001_trimmed_test",
-//                    "--minZ", "1225",
-//                    "--maxZ", "1246",
+                    "--owner", "cellmap",
+                    "--project", "jrc_mus_thymus_1",
+                    "--matchCollection", "jrc_mus_thymus_1_v1",
+                    "--stack", "v2_acquire",
+                    "--targetStack", "v2_acquire_debug",
+					"--minX", "-8750",
+					"--maxX", "8759",
+					"--minY", "-6250",
+					"--maxY", "6250",
+                    "--minZ", "1000",
+                    "--maxZ", "1001",
 
-//                    "--completeTargetStack",
+					"--blockSizeX", "8000",
+					"--blockSizeY", "6000",
+
+                    "--completeTargetStack",
 //                    "--visualizeResults",
 
                     "--blockOptimizerLambdasRigid",          "1.0,1.0,0.9,0.3,0.01",
@@ -157,7 +170,7 @@ public class DistributedAffineXYBlockSolver
 				new BlockCombiner<>(
 						blockSolver,
 						DistributedAffineXYBlockSolver::integrateGlobalModel,
-						DistributedAffineXYBlockSolver::combineModels
+						DistributedAffineXYBlockSolver::interpolateModels
 				);
 
 		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
@@ -171,7 +184,33 @@ public class DistributedAffineXYBlockSolver
 							return a;
 						});
 
-		assembler.createAssembly();
+		final AssemblyMaps<AffineModel2D> finalTiles = assembler.createAssembly();
+
+		// save the re-aligned part
+		LOG.info( "Saving targetstack=" + cmdLineSetup.targetStack );
+		final List<Double> zToSave = finalTiles.idToTileSpec.values().stream()
+				.map(TileSpec::getZ)
+				.distinct()
+				.sorted()
+				.collect(Collectors.toList());
+
+		final RunParameters runParams = new RunParameters();
+		runParams.renderDataClient = cmdLineSetup.renderWeb.getDataClient();
+		runParams.matchDataClient = cmdLineSetup.matches.getMatchDataClient(cmdLineSetup.renderWeb.baseDataUrl, cmdLineSetup.renderWeb.owner);
+		runParams.targetDataClient = cmdLineSetup.renderWeb.getDataClient();
+		runParams.pGroupList = null; // not needed below
+		runParams.zToGroupIdMap = null; // not needed below
+		runParams.sectionIdToZMap = new HashMap<>();
+		runParams.zToTileSpecsMap = new HashMap<>();
+		runParams.minZ = zToSave.get(0);
+		runParams.maxZ = zToSave.get(zToSave.size() - 1);
+		LOG.info("Saving from " + runParams.minZ + " to " + runParams.maxZ);
+
+		SolveTools.saveTargetStackTiles(cmdLineSetup.stack, cmdLineSetup.targetStack.stack, runParams, finalTiles.idToModel, null, zToSave, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
+		if (cmdLineSetup.targetStack.completeStack) {
+			LOG.info("Completing targetstack=" + cmdLineSetup.targetStack.stack);
+			SolveTools.completeStack(cmdLineSetup.targetStack.stack, runParams);
+		}
 	}
 
 
@@ -182,15 +221,31 @@ public class DistributedAffineXYBlockSolver
 		return fusedModel;
 	}
 
-	private static AffineModel2D combineModels(final List<AffineModel2D> models, final List<Double> weights) {
-		// TODO: make this run for more than two blocks
-		if (models.size() == 1) {
+	private static AffineModel2D interpolateModels(final List<AffineModel2D> models, final List<Double> weights) {
+		if (models.isEmpty() || models.size() != weights.size())
+			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
+
+		if (models.size() == 1)
 			return models.get(0);
-		} else if (models.size() == 2) {
-			return new InterpolatedAffineModel2D<>(models.get(0), models.get(1), weights.get(1)).createAffineModel2D();
-		} else {
-			throw new IllegalArgumentException("Only up to two blocks supported for now");
+
+		// normalize weights
+		final double sumWeights = weights.stream().mapToDouble(v -> v).sum();
+		final double[] w = weights.stream().mapToDouble(v -> v / sumWeights).toArray();
+
+		final int nCoefficients = 6;
+		final double[] c = new double[nCoefficients];
+		final double[] cFinal = new double[nCoefficients];
+
+		// extract and interpolate coefficients
+		for (int k = 0; k < models.size(); ++k) {
+			models.get(k).toArray(c);
+			for (int i = 0; i < nCoefficients; ++i)
+				cFinal[i] += w[k] * c[i];
 		}
+
+		final AffineModel2D interpolatedModel = new AffineModel2D();
+		interpolatedModel.set(cFinal[0], cFinal[1], cFinal[2], cFinal[3], cFinal[4], cFinal[5]);
+		return interpolatedModel;
 	}
 
 	public <M extends Model<M> & Affine2D<M>>

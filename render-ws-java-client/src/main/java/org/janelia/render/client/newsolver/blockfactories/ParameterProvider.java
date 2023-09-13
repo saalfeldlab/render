@@ -6,5 +6,5 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 public interface ParameterProvider < M, R, P extends BlockDataSolveParameters< M, R, P > >
 {
 	public P create( ResolvedTileSpecCollection rtsc );
-	default public BlockDataSolveParameters< ?,?,? > basicParameters() { return create( null ); }
+	default public BlockDataSolveParameters<M, R, P> basicParameters() { return create(null); }
 }

@@ -1,7 +1,7 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
+import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,13 +23,9 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
-import net.imglib2.util.Pair;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
-public class XYBlockFactory implements BlockFactory, Serializable {
+public class XYBlockFactory extends BlockFactory implements Serializable {
 
 	private static final long serialVersionUID = -2022190797935740332L;
 
@@ -61,9 +57,9 @@ public class XYBlockFactory implements BlockFactory, Serializable {
 
 	@Override
 	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
-			final ParameterProvider<M, R, P> blockSolveParameterProvider )
+			final ParameterProvider<M, R, P> blockSolveParameterProvider)
 	{
-		final List<Bounds> blockBounds = new BlockLayoutCreator(new int[]{minBlockSizeX, minBlockSizeY, 0})
+		final List<Bounds> blockLayout = new BlockLayoutCreator(new int[]{minBlockSizeX, minBlockSizeY, 0})
 				.regularGrid(In.X, minX, maxX, blockSizeX)
 				.regularGrid(In.Y, minY, maxY, blockSizeY)
 				.singleBlock(In.Z, minZ, maxZ)
@@ -73,61 +69,22 @@ public class XYBlockFactory implements BlockFactory, Serializable {
 				.singleBlock(In.Z, minZ, maxZ)
 				.create();
 
-		// fetch metadata from render
-		final BlockDataSolveParameters<?,?,?> basicParameters = blockSolveParameterProvider.basicParameters();
-		final RenderDataClient dataClient = new RenderDataClient(
-				basicParameters.baseDataUrl(),
-				basicParameters.owner(),
-				basicParameters.project());
+		return blockCollectionFromLayout(blockLayout, blockSolveParameterProvider);
+	}
 
-		final ArrayList<BlockData<M, R, P>> blockDataList = new ArrayList<>();
+	@Override
+	protected ResolvedTileSpecCollection fetchTileSpecs(
+			final Bounds bound,
+			final RenderDataClient dataClient,
+			final BlockDataSolveParameters<?, ?, ?> basicParameters) throws IOException {
 
-		// for each block, we know the z-range
-		int id = 0;
-		for (final Bounds bound : blockBounds) {
-			LOG.info("Try to load block " + id + ": " + bound);
-			ResolvedTileSpecCollection rtsc;
-
-			// TODO: remove debug comments
-			// 001_000003_078_20220405_180741.1241.0
-			//  "z" : 1241.0,
-			//  "minX" : 17849.0,
-			//  "maxX" : 19853.0,
-			//  "minY" : 10261.0,
-			//  "maxY" : 12009.0,
-			// should be found in [x: 17747 >>> 35096, LEFT, 1 ------ y: 400 >>> 17585, LEFT, 0]
-			// ends up in Block id=1, id=9
-
-			try {
-				// TODO: trautmane
-				// we fetch all TileSpecs for our z-range
-				rtsc = dataClient.getResolvedTiles(
-							basicParameters.stack(),
-							bound.getMinZ(), bound.getMaxZ(),
-							null,//groupId,
-							bound.getMinX(), bound.getMaxX(),
-							bound.getMinY(), bound.getMaxY(),
-							null );// matchPattern
-			} catch (final Exception e) {
-				if (e.getMessage().contains("no tile specifications found"))
-					rtsc = null;
-				else
-					throw new RuntimeException("Failed to fetch data from render. stopping.", e);
-			}
-
-			if (rtsc == null || rtsc.getTileCount() == 0) {
-				LOG.info("   Loaded null tiles.");
-				LOG.info("Since there are no tiles in this XY block, continuing with next one.");
-			} else {
-				LOG.info("   Loaded " + rtsc.getTileIds().size() + " tiles.");
-				final BlockData<M, R, P> block =
-						new BlockData<>(this, blockSolveParameterProvider.create(rtsc), id, rtsc);
-				blockDataList.add(block);
-				id++;
-			}
-		}
-
-		return new BlockCollection<>(blockDataList);
+		return dataClient.getResolvedTiles(
+				basicParameters.stack(),
+				bound.getMinZ(), bound.getMaxZ(),
+				null, // groupId,
+				bound.getMinX(), bound.getMaxX(),
+				bound.getMinY(), bound.getMaxY(),
+				null); // matchPattern
 	}
 
 	@Override
@@ -136,7 +93,7 @@ public class XYBlockFactory implements BlockFactory, Serializable {
 		return new XYDistanceWeightFunction(block, 0.01);
 	}
 
-	private static class XYDistanceWeightFunction implements WeightFunction {
+	static class XYDistanceWeightFunction implements WeightFunction {
 
 		private final Map<Integer, FloatProcessor> layerDistanceMaps;
 		private final double resolution;
@@ -191,6 +148,4 @@ public class XYBlockFactory implements BlockFactory, Serializable {
 			return distanceMap.getInterpolatedValue(xLocal, yLocal);
 		}
 	}
-
-	private static final Logger LOG = LoggerFactory.getLogger(XYBlockFactory.class);
 }

@@ -13,7 +13,6 @@ import java.util.concurrent.Future;
 
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
-import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.TranslationModel1D;
 
 import org.janelia.alignment.filter.FilterSpec;
@@ -151,7 +150,7 @@ public class DistributedIntensityCorrectionSolver {
 		final BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
 				new BlockCombiner<>(blockSolver,
 									DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
-									DistributedIntensityCorrectionSolver::combineWeightedModels);
+									DistributedIntensityCorrectionSolver::interpolateModels);
 
 		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> assembler =
 				new Assembler<>(allItems, blockSolver, fusion, r -> {
@@ -194,23 +193,42 @@ public class DistributedIntensityCorrectionSolver {
 		return fusedModels;
 	}
 
-	private static ArrayList<AffineModel1D> combineWeightedModels(final List<ArrayList<AffineModel1D>> models, final List<Double> weights) {
-		final ArrayList<AffineModel1D> coeffsBlockA = models.get(0);
-		final int n = coeffsBlockA.size();
-		final ArrayList<AffineModel1D> fusedCoeffs = new ArrayList<>(n);
+	private static ArrayList<AffineModel1D> interpolateModels(final List<ArrayList<AffineModel1D>> tiledModels, final List<Double> weights) {
+		if (tiledModels.isEmpty() || tiledModels.size() != weights.size())
+			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
 
-		// TODO: make this run for more than two blocks
-		if (models.size() == 1) {
-			fusedCoeffs.addAll(coeffsBlockA);
-		} else if (models.size() == 2){
-			final ArrayList<AffineModel1D> coeffsBlockB = models.get(1);
-			final double lambda = weights.get(1);
-			for (int i = 0; i < n; i++)
-				fusedCoeffs.add(new InterpolatedAffineModel1D<>(coeffsBlockA.get(i), coeffsBlockB.get(i), lambda).createAffineModel1D());
-		} else {
-			throw new UnsupportedOperationException("Combining more than two blocks is not yet supported");
+		if (tiledModels.size() == 1)
+			return tiledModels.get(0);
+
+		// normalize weights
+		final double sumWeights = weights.stream().mapToDouble(v -> v).sum();
+		final double[] w = weights.stream().mapToDouble(v -> v / sumWeights).toArray();
+
+		final int nCoefficients = 2;
+		final int nModelsPerTile = tiledModels.get(0).size();
+		final double[] c = new double[nCoefficients];
+		final List<double[]> finalCoefficients = new ArrayList<>();
+		for (int i = 0; i < nModelsPerTile; ++i)
+			finalCoefficients.add(new double[nCoefficients]);
+
+		// extract and interpolate coefficients
+		for (int n = 0; n < tiledModels.size(); n++) {
+			final List<AffineModel1D> models = tiledModels.get(n);
+			for (int k = 0; k < models.size(); ++k) {
+				models.get(k).toArray(c);
+				final double[] cFinal = finalCoefficients.get(k);
+				cFinal[0] += w[n] * c[0];
+				cFinal[1] += w[n] * c[1];
+			}
 		}
-		return fusedCoeffs;
+
+		final ArrayList<AffineModel1D> interpolatedModels = new ArrayList<>();
+		for (final double[] cFinal : finalCoefficients) {
+			final AffineModel1D interpolatedModel = new AffineModel1D();
+			interpolatedModel.set(cFinal[0], cFinal[1]);
+			interpolatedModels.add(interpolatedModel);
+		}
+		return interpolatedModels;
 	}
 
 	private static Map<String, FilterSpec> convertCoefficientsToFilter(
