@@ -59,8 +59,4 @@ public class IntensityAdjustParameters
     public long getMaxNumberOfCachedPixels() {
         return algorithmic.maxPixelCacheGb * 1_000_000_000L;
     }
-
-    public boolean correctIn3D() {
-        return (algorithmic.zDistance != null) && (algorithmic.zDistance.size() > 1);
-    }
 }
