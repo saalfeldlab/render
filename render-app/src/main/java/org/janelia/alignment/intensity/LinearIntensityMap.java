@@ -56,6 +56,7 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.InterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
+import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.realtransform.RealViews;
 import net.imglib2.realtransform.Scale;
 import net.imglib2.realtransform.Translation;
@@ -175,25 +176,33 @@ public class LinearIntensityMap< T extends RealType< T > >
 
 //		System.out.println( "translation-n " + translation.numDimensions() );
 
+		final AffineTransform2D tr = new AffineTransform2D( );
+		tr.preConcatenate( translation );
+		tr.preConcatenate( scale );
+
 		final RandomAccessibleInterval< T > stretchedCoefficientsA =
 				Views.offsetInterval(
 						Views.raster(
+								RealViews.transform( coefficientsA, tr ) // apply 0.5 pixel shift and scaling
+								/*
 								RealViews.transform(
 										RealViews.transform(
 												coefficientsA,
 												translation ), // apply 0.5 pixel shift
-										scale ) // apply scaling
+										scale ) // apply scaling */
 								), // raster (put on pixel grid)
 						image ); // apply potential offset of the image
 
 		final RandomAccessibleInterval< T > stretchedCoefficientsB =
 				Views.offsetInterval(
 						Views.raster(
+								RealViews.transform( coefficientsB, tr ) // apply 0.5 pixel shift and scaling
+								/*
 								RealViews.transform(
 										RealViews.transform(
 												coefficientsB,
 												translation ), // apply 0.5 pixel shift
-										scale ) // apply scaling
+										scale ) // apply scaling*/
 								), // raster (put on pixel grid)
 						image ); // apply potential offset of the image
 
