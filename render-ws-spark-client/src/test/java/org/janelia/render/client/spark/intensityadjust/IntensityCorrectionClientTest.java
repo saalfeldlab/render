@@ -28,11 +28,12 @@ public class IntensityCorrectionClientTest {
                 "--owner", "cellmap",
                 "--project", "jrc_mus_thymus_1",
                 "--stack", "v2_acquire_align",
-                "--targetStack", "v2_acquire_test_intensity_ett3",
+                "--targetStack", "v2_acquire_test_intensity_ett4",
                 "--threadsWorker", "1",
-                "--minBlockSize", "2",  // TODO: figure out blockSize vs minBlockSize
+                "--minBlockSize", "2",
                 "--blockSize", "3",
                 "--completeTargetStack",
+//                "--zDistanceJson", "/Users/trautmane/Desktop/z-dist.json",
                 "--zDistance", "1", "--minZ", "1000", "--maxZ", "1010"
         };
 

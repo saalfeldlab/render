@@ -29,6 +29,7 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 	public ZRangeParameters layerRange = new ZRangeParameters();
 
     // Parameter for testing
+	@SuppressWarnings("unused")
 	@Parameter(
 			names = "--visualizeResults",
 			description = "Visualize results (if running interactively)",
@@ -43,5 +44,7 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 		// project for target is the same as project for render, if not specified otherwise
 		if ( this.targetStack.project == null )
 			this.targetStack.project = renderWeb.project;
+
+		this.intensityAdjust.initDefaultValues();
 	}
 }

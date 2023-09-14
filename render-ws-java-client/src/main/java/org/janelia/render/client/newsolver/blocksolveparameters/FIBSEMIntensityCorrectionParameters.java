@@ -2,15 +2,15 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
+
+import mpicbg.models.AffineModel1D;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.intensity.AffineIntensityCorrectionBlockWorker;
-
-import mpicbg.models.AffineModel1D;
 import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZDistanceParameters;
 
 /**
  * 
@@ -26,7 +26,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final double lambdaIdentity;
 	private final double renderScale;
 	private final int numCoefficients;
-	private final List<Integer> zDistance;
+	private final ZDistanceParameters zDistance;
 
 	public FIBSEMIntensityCorrectionParameters(
 			final M blockSolveModel,
@@ -57,7 +57,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final double lambdaIdentity,
 			final double renderScale,
 			final int numCoefficients,
-			final List<Integer> zDistance) {
+			final ZDistanceParameters zDistance) {
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
@@ -74,7 +74,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public double lambdaIdentity() { return lambdaIdentity; }
 	public double renderScale() { return renderScale; }
 	public int numCoefficients() { return numCoefficients; }
-	public List<Integer> zDistance() { return zDistance; }
+	public ZDistanceParameters zDistance() { return zDistance; }
 
 	@Override
 	public Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(

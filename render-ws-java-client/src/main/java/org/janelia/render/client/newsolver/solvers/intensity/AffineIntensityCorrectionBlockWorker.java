@@ -23,6 +23,8 @@ import net.imglib2.util.Intervals;
 import net.imglib2.util.Pair;
 import net.imglib2.util.StopWatch;
 import net.imglib2.util.ValuePair;
+
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.AdjustBlock;
@@ -33,6 +35,7 @@ import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
+import org.janelia.render.client.parameter.ZDistanceParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -185,7 +188,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private static ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> findOverlappingPatches(
 			final List<MinimalTileSpecWrapper> allPatches,
-			final List<Integer> zDistance) {
+			final ZDistanceParameters zDistance) {
 		// find the images that actually overlap (only for those we can extract intensity PointMatches)
 		final ArrayList<ValuePair<MinimalTileSpecWrapper, MinimalTileSpecWrapper>> patchPairs = new ArrayList<>();
 		final Set<MinimalTileSpecWrapper> unconsideredPatches = new HashSet<>(allPatches);
@@ -193,14 +196,15 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		for (final MinimalTileSpecWrapper p1 : allPatches) {
 			unconsideredPatches.remove(p1);
 			final RealInterval r1 = getBoundingBox(p1);
+			final TileBounds p1Bounds = p1.getTileSpec().toTileBounds();
 
 			for (final MinimalTileSpecWrapper p2 : unconsideredPatches) {
 				final FinalRealInterval i = Intervals.intersect(r1, getBoundingBox(p2));
+				final TileBounds p2Bounds = p2.getTileSpec().toTileBounds();
 
 				final double deltaX = i.realMax(0) - i.realMin(0);
 				final double deltaY = i.realMax(1) - i.realMin(1);
-				final int deltaZ = (int) Math.round(Math.abs(p1.getZ() - p2.getZ()));
-				if ((deltaX > 0) && (deltaY > 0) && (zDistance.contains(deltaZ)))
+				if ((deltaX > 0) && (deltaY > 0) && zDistance.includePair(p1Bounds, p2Bounds))
 					patchPairs.add(new ValuePair<>(p1, p2));
 			}
 		}
