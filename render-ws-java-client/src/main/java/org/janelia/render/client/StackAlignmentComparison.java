@@ -15,11 +15,12 @@ import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,7 @@ public class StackAlignmentComparison {
 	private static final String baseDataUrl = "http://em-services-1.int.janelia.org:8080/render-ws/v1";
 	private static final String owner = "cellmap";
 	private static final String project = "jrc_mus_thymus_1";
+	private static final String matchCollection = "jrc_mus_thymus_1_v1";
 	private static final String stack1 = "v2_acquire_align";
 	private static final String stack2 = "v2_acquire_align";
 
@@ -45,29 +47,32 @@ public class StackAlignmentComparison {
 			new StabilizingAffineModel2D<>(new RigidModel2D()), 0.0).createAffineModel2D();
 
 	public static void main(final String[] args) throws Exception {
-		// data client (and z values) should be the same for both stacks
+		// data clients (and z values) should be the same for both stacks
 		final RenderDataClient renderClient = new RenderDataClient(baseDataUrl, owner, project);
+		final RenderDataClient matchClient = new RenderDataClient(baseDataUrl, owner, matchCollection);
+
 		final List<Double> zValues = renderClient.getStackZValues(stack1);
 		final DoubleSummaryStatistics minMax = zValues.stream().collect(Collectors.summarizingDouble(Double::doubleValue));
 
 		final ResolvedTileSpecCollection rtsc1 = renderClient.getResolvedTilesForZRange(stack1, minMax.getMin(), minMax.getMax());
 		final ResolvedTileSpecCollection rtsc2 = renderClient.getResolvedTilesForZRange(stack2, minMax.getMin(), minMax.getMax());
+		final List<CanvasMatches> canvasMatches = getMatchData(rtsc1, matchClient);
 
-		final List<CanvasMatches> canvasMatches = getMatchData(rtsc1, renderClient);
 		final AlignmentErrors errors1 = computeSolveItemErrors(rtsc1, canvasMatches);
 		final AlignmentErrors errors2 = computeSolveItemErrors(rtsc2, canvasMatches);
 
-		final List<Pair<String, String>> pairs = AlignmentErrors.getWorstPairs(errors1, errors2, 10);
-		for (final Pair<String, String> pair : pairs)
-			System.out.println(pair.getA() + " " + pair.getB() + " : " + errors1.getPairwiseError(pair.getA(), pair.getB()));
+		final AlignmentErrors differences = AlignmentErrors.computeDifferences(errors1, errors2);
+		AlignmentErrors.writeAsCsv(differences, "pairwiseErrorDifferences.csv");
+		for (final Pair<String, String> pair : differences.getWorstPairs(10))
+			System.out.println(pair.getA() + " " + pair.getB() + " : " + differences.getPairwiseError(pair.getA(), pair.getB()));
 	}
 
 	protected static List<CanvasMatches> getMatchData(final ResolvedTileSpecCollection rtsc, final RenderDataClient matchDataClient) throws IOException {
 
-		final Collection<String> sectionIds = rtsc.getTileSpecs().stream().map(TileSpec::getSectionId).distinct().collect(Collectors.toList());
+		final Collection<String> sectionIds = rtsc.getTileSpecs().stream().map(TileSpec::getSectionId).distinct().sorted().collect(Collectors.toList());
 		final List<CanvasMatches> canvasMatches = new ArrayList<>();
 
-		for (final String pGroupId : sectionIds) {
+		for (final String pGroupId : sectionIds.stream().limit(10).collect(Collectors.toList())) {
 			final List<CanvasMatches> serviceMatchList = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
 			canvasMatches.addAll(serviceMatchList);
 		}
@@ -82,12 +87,18 @@ public class StackAlignmentComparison {
 		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
 		final AlignmentErrors alignmentErrors = new AlignmentErrors();
 
+		int n = 0;
+		final int N = canvasMatches.size();
 		for (final CanvasMatches match : canvasMatches) {
+			LOG.info("Processing match {} / {}", ++n, N);
 			final String pTileId = match.getpId();
 			final String qTileId = match.getqId();
 
 			final TileSpec pTileSpec = rtsc.getTileSpec(pTileId);
 			final TileSpec qTileSpec = rtsc.getTileSpec(qTileId);
+
+			if (pTileSpec == null || qTileSpec == null)
+				continue;
 
 			final double vDiff = WorkerTools.computeAlignmentError(
 					crossLayerModel,
@@ -127,15 +138,38 @@ public class StackAlignmentComparison {
 				return pairToErrorMap.get(new SerializableValuePair<>(otherTileId, tileId));
 		}
 
-		public static List<Pair<String, String>> getWorstPairs(final AlignmentErrors errors1, final AlignmentErrors errors2, int n) {
-			final HashMap<Pair<String, String>, Double> pairToErrorDifference = new HashMap<>();
+		public int number() {
+			return pairToErrorMap.size();
+		}
+
+		public List<Pair<String, String>> getWorstPairs(final int n) {
+			return pairToErrorMap.keySet().stream()
+					.sorted((p1, p2) -> Double.compare(pairToErrorMap.get(p2), pairToErrorMap.get(p1)))
+					.limit(n)
+					.collect(Collectors.toList());
+		}
+
+		public static AlignmentErrors computeDifferences(final AlignmentErrors errors1, final AlignmentErrors errors2) {
+			final AlignmentErrors differences = new AlignmentErrors();
+
 			errors1.pairToErrorMap.forEach((pair, error1) -> {
-				final double error2 = errors2.getPairwiseError(pair.getA(), pair.getB());
-				pairToErrorDifference.put(pair, Math.abs(error1 - error2));
+				final double error2 = errors2.pairToErrorMap.get(pair);
+				differences.pairToErrorMap.put(pair, Math.abs(error1 - error2));
 			});
-			final List<Map.Entry<Pair<String, String>, Double>> entries = new ArrayList<>(pairToErrorDifference.entrySet());
-			entries.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
-			return entries.stream().map(Map.Entry::getKey).limit(n).collect(Collectors.toList());
+
+			return differences;
+		}
+
+		public static void writeAsCsv(final AlignmentErrors errors, final String filename) throws IOException {
+			final File file = new File(filename);
+			try (final FileWriter writer = new FileWriter(file)) {
+				for (final Map.Entry<Pair<String, String>, Double> entry : errors.pairToErrorMap.entrySet()) {
+					final String pTileId = entry.getKey().getA();
+					final String qTileId = entry.getKey().getB();
+					final double error = entry.getValue();
+					writer.write(pTileId + "," + qTileId + "," + error + "\n");
+				}
+			}
 		}
 	}
 
