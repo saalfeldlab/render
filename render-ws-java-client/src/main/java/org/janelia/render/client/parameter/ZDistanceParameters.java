@@ -159,11 +159,9 @@ public class ZDistanceParameters implements Serializable {
         public boolean includePair(final TileBounds pBounds,
                                    final TileBounds qBounds,
                                    final int zDistance) {
-            return (this.distanceList.contains(zDistance)) &&
-                   (
-                           (this.bounds == null) ||
-                           (this.bounds.containsInt(pBounds) && this.bounds.containsInt(qBounds))
-                   );
+            final boolean pairInRegion = (this.bounds == null) ||
+                                         (this.bounds.containsInt(pBounds) && this.bounds.containsInt(qBounds));
+            return this.distanceList.contains(zDistance) && pairInRegion;
         }
 
         @Override
