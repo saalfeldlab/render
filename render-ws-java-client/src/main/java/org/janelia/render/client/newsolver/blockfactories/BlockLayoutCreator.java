@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-class BlockLayoutCreator {
+public class BlockLayoutCreator {
 
 	public enum In {
 
@@ -196,7 +196,7 @@ class BlockLayoutCreator {
 	private List<IntegerInterval> getUnspecifiedIntervals(final In dimension) {
 		final List<IntegerInterval> targetInterval = new ArrayList<>();
 		if (intervalCollections.set(dimension.index, targetInterval) != null)
-			throw new RuntimeException("Intervals for dimension " + dimension + " already specified");
+			throw new RuntimeException("Intervals for " + dimension + " already specified");
 		return targetInterval;
 	}
 
