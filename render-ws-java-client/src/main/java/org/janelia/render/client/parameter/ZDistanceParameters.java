@@ -41,6 +41,24 @@ public class ZDistanceParameters implements Serializable {
 
     private List<DistanceListForRegion> normalizedDistances;
 
+    public ZDistanceParameters() {
+    }
+
+    public ZDistanceParameters(final List<DistanceListForRegion> listOfDistanceLists) {
+        this.normalizedDistances = new ArrayList<>();
+        for (final DistanceListForRegion sourceList : listOfDistanceLists) {
+            this.normalizedDistances.add(new DistanceListForRegion(sourceList.distanceList,
+                                                                   sourceList.bounds));
+        }
+    }
+
+    /**
+     * @return normalizedDistances (for testing)
+     */
+    protected List<DistanceListForRegion> getNormalizedDistances() {
+        return normalizedDistances;
+    }
+
     /**
      * Defaults/sets up internal state based upon the external command line parameters.
      * This must be called after the command line parameters are parsed but before other usage of them.
@@ -120,6 +138,10 @@ public class ZDistanceParameters implements Serializable {
             this.bounds = bounds;
         }
 
+        public List<Integer> getDistanceList() {
+            return distanceList;
+        }
+
         /**
          * Sets this object's distanceList to a copy of the specified list that is normalized.
          * Normalization adds inferred values, makes the list distinct, and sorts the list.
@@ -137,7 +159,8 @@ public class ZDistanceParameters implements Serializable {
                     throw new IllegalArgumentException("zDistance must not contain negative values");
                 } else if (valueList.size() == 1) {
                     // include whole range up to given value
-                    normalizedList.addAll(IntStream.range(1, valueList.get(0)).boxed().collect(Collectors.toList()));
+                    final int endExclusive = valueList.get(0) + 1;
+                    normalizedList.addAll(IntStream.range(1, endExclusive).boxed().collect(Collectors.toList()));
                 } else {
                     normalizedList.addAll(valueList);
                 }
@@ -169,7 +192,7 @@ public class ZDistanceParameters implements Serializable {
             return "{\"distanceList\":" + distanceList + ", \"bounds\":" + bounds + '}';
         }
 
-        private static List<DistanceListForRegion> fromJsonArray(final Reader json)
+        public static List<DistanceListForRegion> fromJsonArray(final Reader json)
                 throws IllegalArgumentException {
             try {
                 return Arrays.asList(JsonUtils.MAPPER.readValue(json, DistanceListForRegion[].class));
