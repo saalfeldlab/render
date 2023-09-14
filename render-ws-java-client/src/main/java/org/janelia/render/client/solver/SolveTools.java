@@ -76,26 +76,16 @@ public class SolveTools
 			final Model< ? > montageLayerModel,
 			final MinimalTileSpec pTileSpec,
 			final MinimalTileSpec qTileSpec,
-			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
-			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
+			final CoordinateTransform pAlignmentTransform,
+			final CoordinateTransform qAlignmentTransform,
 			final Matches matches,
 			final int samplesPerDimension )
 	{
 		// for fitting local to global pair
-		final Model<?> relativeModel = new RigidModel2D();
-
-		final List< PointMatch > global = SolveTools.createFakeMatches(
-				pTileSpec.getWidth(),
-				pTileSpec.getHeight(),
-				pAlignmentModel, // p
-				qAlignmentModel,
-				samplesPerDimension ); // q
 
 		// the actual matches, local solve
 		final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( matches );
-
 		final Model< ? > model;
-
 		if ( pTileSpec.getZ() == qTileSpec.getZ() )
 			model = montageLayerModel;
 		else
@@ -107,17 +97,24 @@ public class SolveTools
 			LOG.info("Could not fit point matches", e);
 		}
 
+		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
+		// but do not change the transformations relative to each other (in local, global)
 		final List< PointMatch > local = SolveTools.createFakeMatches(
 				pTileSpec.getWidth(),
 				pTileSpec.getHeight(),
-				model, // p
+				model,
 				new IdentityModel(),
-				samplesPerDimension ); // q
+				samplesPerDimension);
 
-		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
-		// but do not change the transformations relative to each other (in local, global)
+		final List< PointMatch > global = SolveTools.createFakeMatches(
+				pTileSpec.getWidth(),
+				pTileSpec.getHeight(),
+				pAlignmentTransform,
+				qAlignmentTransform,
+				samplesPerDimension);
+
+		final Model<?> relativeModel = new RigidModel2D();
 		final ArrayList< PointMatch > relativeMatches = new ArrayList<>();
-
 		for ( int i = 0; i < global.size(); ++i )
 		{
 			relativeMatches.add( new PointMatch( new Point( local.get( i ).getP1().getL().clone() ), new Point( global.get( i ).getP1().getL().clone() ) ) );
@@ -129,7 +126,6 @@ public class SolveTools
 		} catch (final Exception ignored){}
 
 		double vDiff = 0;
-
 		for ( int i = 0; i < global.size(); ++i )
 		{
 			final double dGx = global.get( i ).getP2().getL()[ 0 ] - global.get( i ).getP1().getL()[ 0 ];
@@ -168,12 +164,21 @@ public class SolveTools
 		return Math.sqrt( sum );
 	}
 
-	public static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel )
+	public static List< PointMatch > createFakeMatches(
+			final int w,
+			final int h,
+			final CoordinateTransform pTransform,
+			final CoordinateTransform qTransform)
 	{
-		return createFakeMatches( w, h, pModel, qModel, SolveItem.samplesPerDimension );
+		return createFakeMatches(w, h, pTransform, qTransform, SolveItem.samplesPerDimension);
 	}
 
-	public static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel, final int samplesPerDimension )
+	public static List<PointMatch> createFakeMatches(
+			final int w,
+			final int h,
+			final CoordinateTransform pTransform,
+			final CoordinateTransform qTransform,
+			final int samplesPerDimension)
 	{
 		final List< PointMatch > matches = new ArrayList<>();
 		
@@ -188,8 +193,8 @@ public class SolveTools
 				final double[] p = new double[] { x * sampleWidth, sampleY };
 				final double[] q = new double[] { x * sampleWidth, sampleY };
 
-				pModel.applyInPlace( p );
-				qModel.applyInPlace( q );
+				pTransform.applyInPlace(p);
+				qTransform.applyInPlace(q);
 
 				matches.add(new PointMatch( new Point(p), new Point(q) ));
 			}

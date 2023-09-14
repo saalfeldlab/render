@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+import mpicbg.models.CoordinateTransform;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
@@ -114,8 +115,8 @@ public class WorkerTools
 			final Model< ? > montageLayerModel,
 			final TileSpec pTileSpec,
 			final TileSpec qTileSpec,
-			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
-			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
+			final CoordinateTransform pAlignmentTransform,
+			final CoordinateTransform qAlignmentTransform,
 			final Matches matches )
 	{
 		return SolveTools.computeAlignmentError(
@@ -123,8 +124,8 @@ public class WorkerTools
 				montageLayerModel,
 				new MinimalTileSpec( pTileSpec ),
 				new MinimalTileSpec( qTileSpec ),
-				pAlignmentModel,
-				qAlignmentModel,
+				pAlignmentTransform,
+				qAlignmentTransform,
 				matches,
 				10);
 	}
