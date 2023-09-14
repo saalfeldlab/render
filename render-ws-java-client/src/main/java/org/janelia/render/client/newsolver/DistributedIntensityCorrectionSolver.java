@@ -59,7 +59,6 @@ public class DistributedIntensityCorrectionSolver {
 
 		// TODO: remove testing hack ...
 		if (args.length == 0) {
-			// TODO: figure out blocksize vs minblocksize
 			final String[] testArgs = {
 					"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
 					"--owner", "cellmap",
