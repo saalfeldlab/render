@@ -93,6 +93,11 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 
 					final R modelA = solveItemA.idToNewModel().get(tileId);
 					final R modelB = solveItemB.idToNewModel().get(tileId);
+					if (modelA == null)  {
+						throw new IllegalArgumentException("model A is missing for tile " + tileId);
+					} else if (modelB == null)  {
+						throw new IllegalArgumentException("model B is missing for tile " + tileId);
+					}
 					sameTileMatchCreator.addMatches(tileSpecAB, modelA, modelB, solveItemA, solveItemB, matchesAtoB);
 				}
 
@@ -130,10 +135,9 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 			final BlockData<?, ?, ?> blockA,
 			final BlockData<?, ?, ?> blockB
 	) {
-		final Set<String> tileIdsA = new HashSet<>(blockA.rtsc().getTileIds());
-		final Set<String> tileIdsB = blockB.rtsc().getTileIds();
-		if (tileIdsB != null)
-			tileIdsA.retainAll(tileIdsB);
+		final Set<String> tileIdsA = new HashSet<>(blockA.idToNewModel().keySet());
+		final Set<String> tileIdsB = blockB.idToNewModel().keySet();
+		tileIdsA.retainAll(tileIdsB);
 		return tileIdsA;
 	}
 
