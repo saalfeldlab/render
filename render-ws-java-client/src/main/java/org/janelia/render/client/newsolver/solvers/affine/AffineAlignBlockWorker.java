@@ -139,23 +139,21 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
-		try
+		// TODO: trautmane
+		this.canvasMatches = assembleMatchData( inputSolveItem, matchFilter, matchDataClient, renderDataClient, renderStack, pairs, zToPairs );
+
+		// minStitchingInliersSupplier:
+		// how many stitching inliers are needed to stitch first
+		// reason: if tiles are rarely connected and it is stitched first, a useful
+		// common alignment model after stitching cannot be found
+		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, stitchFirst, numThreads );
+
+		connectGroupedTiles( pairs, inputSolveItem );
+
+		this.solveItems = splitSolveItem( inputSolveItem, startId );
+
+		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
 		{
-			// TODO: trautmane
-			this.canvasMatches = assembleMatchData( inputSolveItem, matchFilter, matchDataClient, renderDataClient, renderStack, pairs, zToPairs );
-	
-			// minStitchingInliersSupplier:
-			// how many stitching inliers are needed to stitch first
-			// reason: if tiles are rarely connected and it is stitched first, a useful
-			// common alignment model after stitching cannot be found
-			stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, stitchFirst, numThreads );
-	
-			connectGroupedTiles( pairs, inputSolveItem );
-	
-			this.solveItems = splitSolveItem( inputSolveItem, startId );
-	
-			for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
-			{
 				/*
 				java.lang.NullPointerException: Cannot invoke "org.janelia.alignment.spec.TileSpec.getZ()" because the return value of "org.janelia.alignment.spec.ResolvedTileSpecCollection.getTileSpec(String)" is null
 						at org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker.assignRegularizationModel(AffineAlignBlockWorker.java:345)
@@ -166,35 +164,30 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
 						at java.base/java.lang.Thread.run(Thread.java:833)
 				*/
-	
-				if ( !assignRegularizationModel( solveItem, AffineBlockDataWrapper.samplesPerDimension, stabilizationRadius ) )
-					throw new RuntimeException( "Couldn't regularize. Please check." );
-	
-				solve( solveItem, numThreads );
-			}
-	
-			for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
-				computeSolveItemErrors( solveItem, canvasMatches );
-	
-			// clean up
-			this.result = new ArrayList<>();
-			for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
-			{
-				result.add( solveItem.blockData() );
-				solveItem.matches().clear();
-				solveItem.tileToGroupedTile().clear();
-				solveItem.groupedTileToTiles().clear();
-				solveItem.idToTileMap().clear();
-			}
-			this.solveItems.clear();
-			this.solveItems = null;
-			System.gc();
+
+			if ( !assignRegularizationModel( solveItem, AffineBlockDataWrapper.samplesPerDimension, stabilizationRadius ) )
+				throw new RuntimeException( "Couldn't regularize. Please check." );
+
+			solve( solveItem, numThreads );
 		}
-		catch ( Exception e )
+
+		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
+			computeSolveItemErrors( solveItem, canvasMatches );
+
+		// clean up
+		this.result = new ArrayList<>();
+		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
 		{
-			LOG.info( "Exception: " +e );
-			e.printStackTrace();
+			result.add( solveItem.blockData() );
+			solveItem.matches().clear();
+			solveItem.tileToGroupedTile().clear();
+			solveItem.groupedTileToTiles().clear();
+			solveItem.idToTileMap().clear();
 		}
+		this.solveItems.clear();
+		this.solveItems = null;
+		// TODO: find out why gc call was here - usually a sign of hiding some larger problem
+		// System.gc();
 	}
 
 	protected ArrayList< CanvasMatches > assembleMatchData(
@@ -340,11 +333,13 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final int samplesPerDimension,
 			final int stabilizationRadius )
 	{
-		LOG.info( "Assigning regularization models." );
+		final String blockContext = "block " + solveItem.blockData.getId();
+		LOG.info("assignRegularizationModel: entry, {}", blockContext);
 
 		final HashMap< Integer, List<Tile<M>> > zToGroupedTileList = new HashMap<>();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
+		Tile< M > currentTile = null;
 		for ( final Tile< M > groupedTile : new HashSet<>( solveItem.tileToGroupedTile().values() ) )
 		{
 			// TODO: 001_000003_078_20220405_180741.1241.0 is only in Block id=1, id=9, not id=0
@@ -352,20 +347,19 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			// so somehow it gets in here when assembling everything (must be XY-specific I guess)
 			try
 			{
+				currentTile = solveItem.groupedTileToTiles().get( groupedTile ).get( 0 );
 			final int z =
 					(int)Math.round(
 						solveItem.blockData().rtsc().getTileSpec(
-							solveItem.tileToIdMap().get( 
-									solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ) ) ).getZ() );
+							solveItem.tileToIdMap().get( currentTile ) ).getZ() );
 
 			zToGroupedTileList.putIfAbsent(z, new ArrayList<>());
 			zToGroupedTileList.get( z ).add( groupedTile );
 			}
-			catch ( Exception e )
-			{
-				e.printStackTrace();
-				System.out.println( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ) ) );
-				System.exit( 0 );
+			catch (final Exception e) {
+				final String currentTileId = solveItem.tileToIdMap().get(currentTile);
+				throw new RuntimeException("failed to to populate zToGroupedTileList for " + blockContext +
+										   ", currentTileId is " + currentTileId, e);
 			}
 		}
 		
@@ -472,6 +466,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					}
 				}
 			}
+			LOG.info("assignRegularizationModel: exit, {}", blockContext);
 			return true;
 		}
 		else if (model instanceof StabilizingAffineModel2D)

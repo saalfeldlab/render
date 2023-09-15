@@ -60,22 +60,21 @@ public class DistributedAffineXYBlockSolver
         // http://em-services-1.int.janelia.org:8080/render-ws/view/stacks.html?renderStackOwner=hess&renderStackProject=wafer_52c&dynamicRenderHost=renderer.int.janelia.org%3A8080&catmaidHost=renderer-catmaid.int.janelia.org%3A8000&undefined=v1_acquire_slab_001_trimmed_test
         if (args.length == 0) {
             final String[] testArgs = {
-                    "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                    //"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "cellmap",
-                    "--project", "jrc_mus_thymus_1",
-                    "--matchCollection", "jrc_mus_thymus_1_v1",
-                    "--stack", "v2_acquire",
-                    "--targetStack", "v2_acquire_debug",
-					"--minX", "-8750",
-					"--maxX", "8759",
-					"--minY", "-6250",
-					"--maxY", "6250",
-                    "--minZ", "1000",
-                    "--maxZ", "1001",
+                    "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+                    "--owner", "hess_wafer_53",
+                    "--project", "cut_000_to_009",
+                    "--matchCollection", "c000_s095_v01_match",
+                    "--stack", "c000_s095_v01",
+                    "--targetStack", "c000_s095_v01_align_test_xy_qq",
+					"--minX", "0",
+					"--maxX", "84000",
+					"--minY", "0",
+					"--maxY", "86000",
+                    "--minZ", "20",
+                    "--maxZ", "21",
 
-					"--blockSizeX", "8000",
-					"--blockSizeY", "6000",
+					"--blockSizeX", "12000",
+					"--blockSizeY", "12000",
 
                     "--completeTargetStack",
 //                    "--visualizeResults",
@@ -92,8 +91,8 @@ public class DistributedAffineXYBlockSolver
                     //"--minStitchingInliers", "35",
                     //"--stitchFirst", "", // perform stitch-first
                     "--maxNumMatches", "0", // no limit, default
-                    "--threadsWorker", "1",
-                    "--threadsGlobal", "1",
+                    "--threadsWorker", "12",
+                    "--threadsGlobal", "12",
                     //"--maxPlateauWidthGlobal", "50",
                     //"--maxIterationsGlobal", "10000",
             };
@@ -127,7 +126,12 @@ public class DistributedAffineXYBlockSolver
 
 				worker.run();
 
-				return new ArrayList<>( worker.getBlockDataList() );
+				final ArrayList<? extends BlockData<?, AffineModel2D, ?>> blockDataList = worker.getBlockDataList();
+				if (blockDataList == null) {
+					throw new IllegalStateException("no items returned for worker " + worker);
+				}
+
+				return new ArrayList<>( blockDataList );
 			} );
 		} );
 
