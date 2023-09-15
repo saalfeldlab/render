@@ -258,9 +258,8 @@ public class DistributedAffineZBlockSolver
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = (int)Math.round( renderSetup.maxZ );
 		final int blockSize = cmdLineSetup.distributedSolve.blockSize;
-		final int minBlockSize = cmdLineSetup.distributedSolve.minBlockSize;
 
-		return new ZBlockFactory( minZ, maxZ, blockSize, minBlockSize );
+		return new ZBlockFactory(minZ, maxZ, blockSize);
 	}
 
 	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > FIBSEMAlignmentParameters< M, S > setupSolveParameters(

@@ -315,11 +315,9 @@ public class DistributedAffineXYBlockSolver
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = (int)Math.round( renderSetup.maxZ );
 		final int blockSizeX = cmdLineSetup.distributedSolve.blockSizeX;
-		final int minBlockSizeX = cmdLineSetup.distributedSolve.minBlockSizeX;
 		final int blockSizeY = cmdLineSetup.distributedSolve.blockSizeY;
-		final int minBlockSizeY = cmdLineSetup.distributedSolve.minBlockSizeY;
 
-		return new XYBlockFactory( minX, maxX, minY, maxY, minZ, maxZ, blockSizeX, blockSizeY, minBlockSizeX, minBlockSizeY );
+		return new XYBlockFactory(minX, maxX, minY, maxY, minZ, maxZ, blockSizeX, blockSizeY);
 	}
 
 	protected < M extends Model< M > & Affine2D< M > > FIBSEMAlignmentParameters< M, M > setupSolveParameters(

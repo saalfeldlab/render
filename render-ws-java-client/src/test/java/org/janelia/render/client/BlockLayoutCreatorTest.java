@@ -5,6 +5,7 @@ import org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator;
 import org.junit.Test;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 import static org.junit.Assert.assertEquals;
@@ -16,17 +17,16 @@ public class BlockLayoutCreatorTest {
 	private static final int MIN = -100;
 	private static final int MAX = 100;
 	private static final int BLOCK_SIZE = 10;
-	private static final int MIN_BLOCK_SIZE = 1;
 
 	@Test
 	public void emptyConfigurationProducesOneBlock() {
-		final List<Bounds> blocks = new BlockLayoutCreator(MIN_BLOCK_SIZE).create();
+		final List<Bounds> blocks = new BlockLayoutCreator().create();
 		assertEquals(1, blocks.size());
 	}
 
 	@Test
 	public void singleBlockHasCorrectBounds() {
-		final List<Bounds> blocks = new BlockLayoutCreator(MIN_BLOCK_SIZE)
+		final List<Bounds> blocks = new BlockLayoutCreator()
 				.singleBlock(In.X, 0, MAX)
 				.singleBlock(In.Y, 2*MIN, 3*MAX)
 				.singleBlock(In.Z, 4*MIN, 5*MAX)
@@ -42,7 +42,7 @@ public class BlockLayoutCreatorTest {
 
 	@Test
 	public void slightlyTooLargeIntervalCreatesSingleBlock() {
-		final List<Bounds> blocks = new BlockLayoutCreator(MIN_BLOCK_SIZE)
+		final List<Bounds> blocks = new BlockLayoutCreator()
 				.regularGrid(In.X, 1, 2 * BLOCK_SIZE - 1, BLOCK_SIZE)
 				.create();
 		assertEquals(1, blocks.size());
@@ -50,7 +50,7 @@ public class BlockLayoutCreatorTest {
 
 	@Test
 	public void sligthlyTooSmallIntervallCreatesSingleBlock() {
-		final List<Bounds> blocks = new BlockLayoutCreator(MIN_BLOCK_SIZE)
+		final List<Bounds> blocks = new BlockLayoutCreator()
 				.regularGrid(In.X, 1, BLOCK_SIZE - 1, BLOCK_SIZE)
 				.create();
 		assertEquals(1, blocks.size());
@@ -59,9 +59,9 @@ public class BlockLayoutCreatorTest {
 
 	@Test
 	public void resultsAreConsistentAcrossDimensions() {
-		final List<Bounds> xSlices = new BlockLayoutCreator(MIN_BLOCK_SIZE).regularGrid(In.X, MIN, MAX, BLOCK_SIZE).create();
-		final List<Bounds> ySlices = new BlockLayoutCreator(MIN_BLOCK_SIZE).regularGrid(In.Y, MIN, MAX, BLOCK_SIZE).create();
-		final List<Bounds> zSlices = new BlockLayoutCreator(MIN_BLOCK_SIZE).regularGrid(In.Z, MIN, MAX, BLOCK_SIZE).create();
+		final List<Bounds> xSlices = new BlockLayoutCreator().regularGrid(In.X, MIN, MAX, BLOCK_SIZE).create();
+		final List<Bounds> ySlices = new BlockLayoutCreator().regularGrid(In.Y, MIN, MAX, BLOCK_SIZE).create();
+		final List<Bounds> zSlices = new BlockLayoutCreator().regularGrid(In.Z, MIN, MAX, BLOCK_SIZE).create();
 
 		final int nSlices = xSlices.size();
 		assertEquals(nSlices, ySlices.size());
@@ -89,7 +89,7 @@ public class BlockLayoutCreatorTest {
 	public void compoundConfigurationProducesCorrectNumberOfBlocks() {
 		// regular grid should have n blocks, shifted grid should have n-1 blocks per dimension
 		final int n = (MAX - MIN) / BLOCK_SIZE;
-		final List<Bounds> blocks = new BlockLayoutCreator(MIN_BLOCK_SIZE)
+		final List<Bounds> blocks = new BlockLayoutCreator()
 				.regularGrid(In.X, MIN, MAX, BLOCK_SIZE)
 				.regularGrid(In.Y, MIN, MAX, BLOCK_SIZE)
 				.everything(In.Z)
@@ -103,7 +103,7 @@ public class BlockLayoutCreatorTest {
 
 	@Test
 	public void regularGridCoversEntireDomainNonoverlapping() {
-		final List<Bounds> blocks = new BlockLayoutCreator(MIN_BLOCK_SIZE)
+		final List<Bounds> blocks = new BlockLayoutCreator()
 				.regularGrid(In.X, MIN, MAX, BLOCK_SIZE)
 				.regularGrid(In.Y, MIN, MAX, BLOCK_SIZE)
 				.regularGrid(In.Z, MIN, MAX, BLOCK_SIZE)
@@ -114,8 +114,9 @@ public class BlockLayoutCreatorTest {
 		final double totalVolume = sideLength * sideLength * sideLength;
 		assertEquals(totalVolume, volumes.stream().reduce(0.0, Double::sum), 1e-6);
 
-		final Bounds combinedBounds = blocks.stream().reduce(Bounds::union).get();
-		assertEquals(totalVolume, computeVolume(combinedBounds), 1e-6);
+		final Optional<Bounds> combinedBounds = blocks.stream().reduce(Bounds::union);
+		assertTrue(combinedBounds.isPresent());
+		assertEquals(totalVolume, computeVolume(combinedBounds.get()), 1e-6);
 	}
 
 	private static double computeVolume(final Bounds bounds) {
@@ -125,24 +126,12 @@ public class BlockLayoutCreatorTest {
 	@Test
 	public void specifyingDimensionTwiceThrowsError() {
 		try {
-			new BlockLayoutCreator(MIN_BLOCK_SIZE)
+			new BlockLayoutCreator()
 					.regularGrid(In.X, MIN, MAX, BLOCK_SIZE)
 					.regularGrid(In.X, MIN, MAX, BLOCK_SIZE);
 			fail("Expected exception not thrown");
 		} catch (final RuntimeException e) {
 			assertEquals("Intervals for dimension x already specified", e.getMessage());
-		}
-	}
-
-	@Test
-	public void tooSmallBlockThrowsError() {
-		try {
-			new BlockLayoutCreator(2*BLOCK_SIZE)
-					.regularGrid(In.X, MIN, MAX, BLOCK_SIZE)
-					.create();
-			fail("Expected exception not thrown");
-		} catch (final RuntimeException e) {
-			assertTrue(e.getMessage().startsWith("Could not create blocks with minimal blocksize"));
 		}
 	}
 }

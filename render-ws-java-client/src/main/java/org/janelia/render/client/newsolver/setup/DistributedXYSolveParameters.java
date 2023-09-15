@@ -17,30 +17,16 @@ public class DistributedXYSolveParameters extends DistributedSolveParameters imp
 	public Integer blockSizeX = 25000;
 
 	@Parameter(
-			names = "--minBlockSizeX",
-			description = "The minimal x-size of the blocks which will be computed in parallel (default: 1000) "
-	)
-	public Integer minBlockSizeX = 1000;
-
-	@Parameter(
 			names = "--blockSizeY",
 			description = "The y-size of the blocks which will be computed in parallel (default:25000, min:1) "
 	)
 	public Integer blockSizeY = 25000;
 
-	@Parameter(
-			names = "--minBlockSizeY",
-			description = "The minimal y-size of the blocks which will be computed in parallel (default: 1000) "
-	)
-	public Integer minBlockSizeY = 1000;
-
 	public DistributedXYSolveParameters() {}
 
 	public DistributedXYSolveParameters(
 			final Integer blockSizeX,
-			final Integer minBlockSizeX,
 			final Integer blockSizeY,
-			final Integer minBlockSizeY,
 			final Double maxAllowedErrorGlobal,
 			final Integer maxIterationsGlobal,
 			final Integer maxPlateauWidthGlobal,
@@ -50,13 +36,9 @@ public class DistributedXYSolveParameters extends DistributedSolveParameters imp
 		super( maxAllowedErrorGlobal, maxIterationsGlobal, maxPlateauWidthGlobal, threadsWorker, threadsGlobal );
 
 		ensurePositive(blockSizeX, "BlockSizeX");
-		ensurePositive(minBlockSizeX, "MinBlockSizeX");
 		ensurePositive(blockSizeY, "BlockSizeY");
-		ensurePositive(minBlockSizeY, "MinBlockSizeY");
 
 		this.blockSizeX = blockSizeX;
-		this.minBlockSizeX = minBlockSizeX;
 		this.blockSizeY = blockSizeY;
-		this.minBlockSizeY = minBlockSizeY;
 	}
 }

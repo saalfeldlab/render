@@ -31,7 +31,6 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 
 	final int minX, maxX, minY, maxY;
 	final int minZ, maxZ;
-	final int minBlockSizeX, minBlockSizeY;
 	final int blockSizeX, blockSizeY;
 
 	public XYBlockFactory(
@@ -39,9 +38,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			final double minY, final double maxY,
 			final int minZ, final int maxZ,
 			final int blockSizeX,
-			final int blockSizeY,
-			final int minBlockSizeX,
-			final int minBlockSizeY )
+			final int blockSizeY)
 	{
 		this.minX = (int)Math.round(Math.floor( minX ));
 		this.maxX = (int)Math.round(Math.ceil( maxX ));
@@ -51,15 +48,13 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 		this.maxZ = maxZ;
 		this.blockSizeX = blockSizeX;
 		this.blockSizeY = blockSizeY;
-		this.minBlockSizeX = minBlockSizeX;
-		this.minBlockSizeY = minBlockSizeY;
 	}
 
 	@Override
 	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
 			final ParameterProvider<M, R, P> blockSolveParameterProvider)
 	{
-		final List<Bounds> blockLayout = new BlockLayoutCreator(new int[]{minBlockSizeX, minBlockSizeY, 0})
+		final List<Bounds> blockLayout = new BlockLayoutCreator()
 				.regularGrid(In.X, minX, maxX, blockSizeX)
 				.regularGrid(In.Y, minY, maxY, blockSizeY)
 				.singleBlock(In.Z, minZ, maxZ)

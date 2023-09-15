@@ -284,8 +284,7 @@ public class DistributedIntensityCorrectionSolver {
 		final int minZ = (int) Math.round(renderSetup.minZ);
 		final int maxZ = (int) Math.round(renderSetup.maxZ);
 		final int blockSize = cmdLineSetup.distributedSolve.blockSize;
-		final int minBlockSize = cmdLineSetup.distributedSolve.minBlockSize;
-		this.blockFactory = new ZBlockFactory(minZ, maxZ, blockSize, minBlockSize);
+		this.blockFactory = new ZBlockFactory(minZ, maxZ, blockSize);
 
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();
 		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col =

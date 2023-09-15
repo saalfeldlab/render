@@ -52,7 +52,7 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
 			final ParameterProvider<M, R, P> blockSolveParameterProvider)
 	{
-		final List<Bounds> blockLayout = new BlockLayoutCreator(new int[]{minBlockSizeX, minBlockSizeY, minBlockSizeZ})
+		final List<Bounds> blockLayout = new BlockLayoutCreator()
 				.regularGrid(In.X, minX, maxX, blockSizeX)
 				.regularGrid(In.Y, minY, maxY, blockSizeY)
 				.regularGrid(In.Z, minZ, maxZ, blockSizeZ)

@@ -18,29 +18,27 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 {
 	private static final long serialVersionUID = 4169473785487008894L;
 
-	final int minZ, maxZ, blockSize, minBlockSize;
+	final int minZ, maxZ, blockSize;
 
 	/**
-	 * Implementation that balances blocksize using the averageblock size.
+	 * Creates a partition of a stack in z.
 	 * 
 	 * @param minZ - first z slice
 	 * @param maxZ - last z slice
 	 * @param blockSize - desired block size
-	 * @param minBlockSize - minimal block size (can fail if this is too high to be accommodated)
 	 */
-	public ZBlockFactory( final int minZ, final int maxZ, final int blockSize, final int minBlockSize )
+	public ZBlockFactory(final int minZ, final int maxZ, final int blockSize)
 	{
 		this.minZ = minZ;
 		this.maxZ = maxZ;
 		this.blockSize = blockSize;
-		this.minBlockSize = minBlockSize;
 	}
 
 	@Override
 	public <M, R, P extends BlockDataSolveParameters<M,R,P>> BlockCollection<M, R, P> defineBlockCollection(
 			final ParameterProvider< M, R, P > blockSolveParameterProvider )
 	{
-		final List<Bounds> blockBounds = new BlockLayoutCreator(minBlockSize)
+		final List<Bounds> blockBounds = new BlockLayoutCreator()
 				.regularGrid(In.Z, minZ, maxZ, blockSize)
 				.plus()
 				.shiftedGrid(In.Z, minZ, maxZ, blockSize)
