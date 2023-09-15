@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,11 +29,11 @@ import java.util.stream.Collectors;
 public class StackAlignmentComparison {
 
 	private static final String baseDataUrl = "http://em-services-1.int.janelia.org:8080/render-ws/v1";
-	private static final String owner = "cellmap";
-	private static final String project = "jrc_mus_thymus_1";
-	private static final String matchCollection = "jrc_mus_thymus_1_v1";
-	private static final String stack1 = "v2_acquire_align";
-	private static final String stack2 = "v2_acquire_align";
+	private static final String owner = "hess_wafer_53";
+	private static final String project = "cut_000_to_009";
+	private static final String matchCollection = "c000_s095_v01_match_agg2";
+	private static final String baselineStack = "c000_s095_v01_align";
+	private static final String newStack = "c000_s095_v01_align2";
 
 	private static final List<Double> blockOptimizerLambdasRigid = Arrays.asList(1.0, 1.0, 0.9, 0.3, 0.01);
 	private static final List<Double> blockOptimizerLambdasTranslation = Arrays.asList(1.0, 0.0, 0.0, 0.0, 0.0);
@@ -51,17 +50,14 @@ public class StackAlignmentComparison {
 		final RenderDataClient renderClient = new RenderDataClient(baseDataUrl, owner, project);
 		final RenderDataClient matchClient = new RenderDataClient(baseDataUrl, owner, matchCollection);
 
-		final List<Double> zValues = renderClient.getStackZValues(stack1);
-		final DoubleSummaryStatistics minMax = zValues.stream().collect(Collectors.summarizingDouble(Double::doubleValue));
+		final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTilesForZRange(baselineStack, null, null);
+		final ResolvedTileSpecCollection rtscNew = renderClient.getResolvedTilesForZRange(newStack, null, null);
+		final List<CanvasMatches> canvasMatches = getMatchData(rtscBaseline, matchClient);
 
-		final ResolvedTileSpecCollection rtsc1 = renderClient.getResolvedTilesForZRange(stack1, minMax.getMin(), minMax.getMax());
-		final ResolvedTileSpecCollection rtsc2 = renderClient.getResolvedTilesForZRange(stack2, minMax.getMin(), minMax.getMax());
-		final List<CanvasMatches> canvasMatches = getMatchData(rtsc1, matchClient);
+		final AlignmentErrors errorsBaseline = computeSolveItemErrors(rtscBaseline, canvasMatches);
+		final AlignmentErrors errorsNew = computeSolveItemErrors(rtscNew, canvasMatches);
 
-		final AlignmentErrors errors1 = computeSolveItemErrors(rtsc1, canvasMatches);
-		final AlignmentErrors errors2 = computeSolveItemErrors(rtsc2, canvasMatches);
-
-		final AlignmentErrors differences = AlignmentErrors.computeDifferences(errors1, errors2);
+		final AlignmentErrors differences = AlignmentErrors.computeRelativeDifferences(errorsBaseline, errorsNew);
 		AlignmentErrors.writeAsCsv(differences, "pairwiseErrorDifferences.csv");
 		for (final Pair<String, String> pair : differences.getWorstPairs(10))
 			System.out.println(pair.getA() + " " + pair.getB() + " : " + differences.getPairwiseError(pair.getA(), pair.getB()));
@@ -69,10 +65,10 @@ public class StackAlignmentComparison {
 
 	protected static List<CanvasMatches> getMatchData(final ResolvedTileSpecCollection rtsc, final RenderDataClient matchDataClient) throws IOException {
 
-		final Collection<String> sectionIds = rtsc.getTileSpecs().stream().map(TileSpec::getSectionId).distinct().sorted().collect(Collectors.toList());
+		final Collection<String> sectionIds = matchDataClient.getMatchPGroupIds();
 		final List<CanvasMatches> canvasMatches = new ArrayList<>();
 
-		for (final String pGroupId : sectionIds.stream().limit(10).collect(Collectors.toList())) {
+		for (final String pGroupId : sectionIds) {
 			final List<CanvasMatches> serviceMatchList = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
 			canvasMatches.addAll(serviceMatchList);
 		}
@@ -108,6 +104,7 @@ public class StackAlignmentComparison {
 					pTileSpec.getLastTransform().getNewInstance(),
 					qTileSpec.getLastTransform().getNewInstance(),
 					match.getMatches());
+
 
 			alignmentErrors.addPairwiseError(pTileId, qTileId, vDiff);
 		}
@@ -149,12 +146,12 @@ public class StackAlignmentComparison {
 					.collect(Collectors.toList());
 		}
 
-		public static AlignmentErrors computeDifferences(final AlignmentErrors errors1, final AlignmentErrors errors2) {
+		public static AlignmentErrors computeRelativeDifferences(final AlignmentErrors baseline, final AlignmentErrors other) {
 			final AlignmentErrors differences = new AlignmentErrors();
 
-			errors1.pairToErrorMap.forEach((pair, error1) -> {
-				final double error2 = errors2.pairToErrorMap.get(pair);
-				differences.pairToErrorMap.put(pair, Math.abs(error1 - error2));
+			baseline.pairToErrorMap.forEach((pair, error1) -> {
+				final double error2 = other.pairToErrorMap.get(pair);
+				differences.pairToErrorMap.put(pair, Math.abs(error1 - error2) / error1);
 			});
 
 			return differences;
