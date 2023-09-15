@@ -102,6 +102,27 @@ public class BlockLayoutCreatorTest {
 	}
 
 	@Test
+	public void regularGridCoversEntireDomainNonoverlapping() {
+		final List<Bounds> blocks = new BlockLayoutCreator(MIN_BLOCK_SIZE)
+				.regularGrid(In.X, MIN, MAX, BLOCK_SIZE)
+				.regularGrid(In.Y, MIN, MAX, BLOCK_SIZE)
+				.regularGrid(In.Z, MIN, MAX, BLOCK_SIZE)
+				.create();
+
+		final List<Double> volumes = blocks.stream().map(BlockLayoutCreatorTest::computeVolume).collect(java.util.stream.Collectors.toList());
+		final double sideLength = MAX - MIN + 1;
+		final double totalVolume = sideLength * sideLength * sideLength;
+		assertEquals(totalVolume, volumes.stream().reduce(0.0, Double::sum), 1e-6);
+
+		final Bounds combinedBounds = blocks.stream().reduce(Bounds::union).get();
+		assertEquals(totalVolume, computeVolume(combinedBounds), 1e-6);
+	}
+
+	private static double computeVolume(final Bounds bounds) {
+		return (bounds.getDeltaX() + 1) * (bounds.getDeltaY() + 1) * (bounds.getDeltaZ() + 1);
+	}
+
+	@Test
 	public void specifyingDimensionTwiceThrowsError() {
 		try {
 			new BlockLayoutCreator(MIN_BLOCK_SIZE)
