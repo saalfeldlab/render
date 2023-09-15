@@ -55,4 +55,10 @@ public abstract class Worker <M, R, P extends BlockDataSolveParameters<M, R, P>>
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
 	public abstract ArrayList<BlockData< M, R, P>> getBlockDataList();
+
+	@Override
+	public String toString() {
+		final String blockId = blockData == null ? "null" : String.valueOf(blockData.getId());
+		return "{\"startId\": " + startId + ", \"blockId\": " + blockId + '}';
+	}
 }
