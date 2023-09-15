@@ -22,7 +22,7 @@ import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
-import org.janelia.render.client.newsolver.setup.AffineXYBlockSolverSetup;
+import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
@@ -37,13 +37,13 @@ import mpicbg.models.Model;
 
 public class DistributedAffineXYBlockSolver
 {
-	final AffineXYBlockSolverSetup cmdLineSetup;
+	final AffineBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
 	BlockCollection<?, AffineModel2D, ? extends FIBSEMAlignmentParameters<?, ?>> col;
 	BlockFactory blockFactory;
 
 	public DistributedAffineXYBlockSolver(
-			final AffineXYBlockSolverSetup cmdLineSetup,
+			final AffineBlockSolverSetup cmdLineSetup,
 			final RenderSetup renderSetup )
 	{
 		this.cmdLineSetup = cmdLineSetup;
@@ -52,7 +52,7 @@ public class DistributedAffineXYBlockSolver
 
 	public static void main( final String[] args ) throws IOException
 	{
-        final AffineXYBlockSolverSetup cmdLineSetup = new AffineXYBlockSolverSetup();
+        final AffineBlockSolverSetup cmdLineSetup = new AffineBlockSolverSetup();
 
         // Pointmatch explorer link to the used dataset
         // http://em-services-1.int.janelia.org:8080/render-ws/view/point-match-explorer.html?renderStackOwner=hess&dynamicRenderHost=renderer.int.janelia.org%3A8080&catmaidHost=renderer-catmaid.int.janelia.org%3A8000&matchOwner=hess&renderDataHost=em-services-1.int.janelia.org%3A8080&ndvizHost=renderer.int.janelia.org%3A8080&renderStackProject=wafer_52c&renderStack=v1_acquire_slab_001_trimmed&startZ=1241&endZ=1241&matchCollection=wafer_52c_v4
@@ -71,7 +71,7 @@ public class DistributedAffineXYBlockSolver
 					"--minY", "0",
 					"--maxY", "86000",
                     "--minZ", "20",
-                    "--maxZ", "21",
+                    "--maxZ", "20",
 
 					"--blockSizeX", "12000",
 					"--blockSizeY", "12000",
@@ -91,7 +91,7 @@ public class DistributedAffineXYBlockSolver
                     //"--minStitchingInliers", "35",
                     //"--stitchFirst", "", // perform stitch-first
                     "--maxNumMatches", "0", // no limit, default
-                    "--threadsWorker", "12",
+                    "--threadsWorker", "1",
                     "--threadsGlobal", "12",
                     //"--maxPlateauWidthGlobal", "50",
                     //"--maxIterationsGlobal", "10000",

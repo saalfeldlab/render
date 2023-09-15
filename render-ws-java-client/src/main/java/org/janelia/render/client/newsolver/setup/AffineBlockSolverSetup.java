@@ -22,7 +22,7 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
 
-public class AffineXYBlockSolverSetup extends CommandLineParameters
+public class AffineBlockSolverSetup extends CommandLineParameters
 {
 	private static final long serialVersionUID = 655629544594300471L;
 
@@ -70,6 +70,43 @@ public class AffineXYBlockSolverSetup extends CommandLineParameters
             required = true)
     public String stack;
 
+    //
+    // stitching align model, by TRANSLATION with tunable regularization --- with RIGID (default: 0.00)
+    //
+    @Parameter(
+            names = "--lambdaStitching",
+            description = "Lambda, used if modelTypeStitchingRegularizer is not null."
+    )
+    public Double lambdaStitching = 0.0;
+
+    @Parameter(
+            names = "--maxAllowedErrorStitching",
+            description = "Max allowed error stitching"
+    )
+    public Double maxAllowedErrorStitching = 10.0;
+
+    @Parameter(
+            names = "--maxIterationsStitching",
+            description = "Max iterations stitching"
+    )
+    public Integer maxIterationsStitching = 500;
+
+    @Parameter(
+            names = "--maxPlateauWidthStitching",
+            description = "Max plateau width stitching"
+    )
+    public Integer maxPlateauWidthStitching = 50;
+
+    @Parameter(
+            names = "--minStitchingInliers",
+            description = "how many inliers per tile pair are necessary for 'stitching first'"
+    )
+    public Integer minStitchingInliers = 25;
+
+    @Parameter(
+            names = "--stitchFirst",
+            description = "if stitching per z-layer should be performed prior to block alignment (default: false)"
+    )
     public boolean stitchFirst = false;
 
     //
@@ -171,5 +208,10 @@ public class AffineXYBlockSolverSetup extends CommandLineParameters
 						new StabilizingAffineModel2D<RigidModel2D>( new RigidModel2D() ), 0.0 );
 						//new StabilizingAffineModel2D( stitchingModel() ), 0.0 );
 						//new ConstantAffineModel2D( stitchingModel() ), 0.0 );
+	}
+
+	public InterpolatedAffineModel2D<TranslationModel2D, RigidModel2D> stitchingModel()
+	{
+		return new InterpolatedAffineModel2D<TranslationModel2D, RigidModel2D>( new TranslationModel2D(), new RigidModel2D(), lambdaStitching );
 	}
 }

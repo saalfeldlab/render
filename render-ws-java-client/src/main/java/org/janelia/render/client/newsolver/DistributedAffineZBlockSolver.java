@@ -21,7 +21,7 @@ import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
-import org.janelia.render.client.newsolver.setup.AffineZBlockSolverSetup;
+import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
@@ -39,13 +39,13 @@ import mpicbg.models.RigidModel2D;
 
 public class DistributedAffineZBlockSolver
 {
-	final AffineZBlockSolverSetup cmdLineSetup;
+	final AffineBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
 	BlockCollection<?, AffineModel2D, ? extends FIBSEMAlignmentParameters<?, ?>> col;
 	BlockFactory blockFactory;
 
 	public DistributedAffineZBlockSolver(
-			final AffineZBlockSolverSetup cmdLineSetup,
+			final AffineBlockSolverSetup cmdLineSetup,
 			final RenderSetup renderSetup )
 	{
 		this.cmdLineSetup = cmdLineSetup;
@@ -54,7 +54,7 @@ public class DistributedAffineZBlockSolver
 
 	public static void main( final String[] args ) throws IOException
 	{
-        final AffineZBlockSolverSetup cmdLineSetup = new AffineZBlockSolverSetup();
+        final AffineBlockSolverSetup cmdLineSetup = new AffineBlockSolverSetup();
 
         // TODO: remove testing hack ...
         if (args.length == 0) {

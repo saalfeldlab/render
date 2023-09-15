@@ -63,36 +63,18 @@ public class RenderSetup
 		return runParams;
 	}
 
-	public static RenderSetup setupSolve(final AffineXYBlockSolverSetup parameters) throws IOException {
+	public static RenderSetup setupSolve(final AffineBlockSolverSetup parameters) throws IOException {
 
 		parameters.initDefaultValues();
 		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
-		final ZRangeParameters layerRange = new ZRangeParameters();
-		layerRange.minZ = parameters.zRange.minZ;
-		layerRange.maxZ = parameters.zRange.maxZ;
 		final XYRangeParameters xyRange = new XYRangeParameters();
 		xyRange.minX = parameters.xyRange.minX;
 		xyRange.maxX = parameters.xyRange.maxX;
 		xyRange.minY = parameters.xyRange.minY;
 		xyRange.maxY = parameters.xyRange.maxY;
-		final String stack = parameters.stack;
-		final String targetStack = parameters.targetStack.stack;
-		final String targetOwner = parameters.targetStack.owner;
-		final String targetProject = parameters.targetStack.project;
-		final String matchOwner = parameters.matches.matchOwner;
-		final String matchCollection = parameters.matches.matchCollection;
-
-		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, xyRange, layerRange);
-	}
-
-	public static RenderSetup setupSolve(final AffineZBlockSolverSetup parameters) throws IOException {
-
-		parameters.initDefaultValues();
-		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
 		final ZRangeParameters layerRange = new ZRangeParameters();
 		layerRange.minZ = parameters.zRange.minZ;
 		layerRange.maxZ = parameters.zRange.maxZ;
-		final XYRangeParameters xyRange = new XYRangeParameters();
 		final String stack = parameters.stack;
 		final String targetStack = parameters.targetStack.stack;
 		final String targetOwner = parameters.targetStack.owner;
