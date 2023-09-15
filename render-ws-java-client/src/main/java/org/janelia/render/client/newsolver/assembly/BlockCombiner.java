@@ -45,7 +45,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
 		final Map<String, List<BlockData<?, R, ?>>> tileIdToBlocks = new HashMap<>();
 		for (final BlockData<?, R, ?> block : blockToTile.keySet()) {
-			for (final String tileId : block.rtsc().getTileIds()) {
+			for (final String tileId : block.idToNewModel().keySet()) {
 				tileIdToBlocks.computeIfAbsent(tileId, k -> new ArrayList<>()).add(block);
 			}
 		}
@@ -68,7 +68,12 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 			double maxWeight = -1.0;
 			for (final BlockData<?, R, ?> block : blocksForTile) {
 				final G globalModel = blockToG.get(block);
-				final I model = combineResultGlobal.apply(block.idToNewModel().get(tileId), globalModel);
+				final R newModel = block.idToNewModel().get(tileId);
+				// TODO: confirm this is proper way to handle, consider moving retrieval to block method and put check there
+				if (newModel == null) {
+					throw new IllegalArgumentException("failed to find new model for tile " + tileId);
+				}
+				final I model = combineResultGlobal.apply(newModel, globalModel);
 				models.add(model);
 
 				final WeightFunction weight = blockToWeightFunctions.computeIfAbsent(block, BlockData::createWeightFunction);
