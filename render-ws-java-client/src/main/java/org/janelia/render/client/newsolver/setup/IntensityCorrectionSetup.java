@@ -17,7 +17,7 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 	public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
 	@ParametersDelegate
-	public DistributedZSolveParameters distributedSolve = new DistributedZSolveParameters();
+	public DistributedSolveParameters distributedSolve = new DistributedSolveParameters();
 
 	@ParametersDelegate
 	public AlgorithmicIntensityAdjustParameters intensityAdjust = new AlgorithmicIntensityAdjustParameters();
@@ -27,6 +27,9 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 
 	@ParametersDelegate
 	public ZRangeParameters layerRange = new ZRangeParameters();
+
+	@ParametersDelegate
+	public BlockPartitionParameters blockPartition = new BlockPartitionParameters();
 
     // Parameter for testing
 	@SuppressWarnings("unused")

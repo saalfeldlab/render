@@ -314,8 +314,8 @@ public class DistributedAffineXYBlockSolver
 		final double maxY = renderSetup.maxY;
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = (int)Math.round( renderSetup.maxZ );
-		final int blockSizeX = cmdLineSetup.distributedSolve.blockSizeX;
-		final int blockSizeY = cmdLineSetup.distributedSolve.blockSizeY;
+		final int blockSizeX = cmdLineSetup.blockPartition.sizeX;
+		final int blockSizeY = cmdLineSetup.blockPartition.sizeY;
 
 		return new XYBlockFactory(minX, maxX, minY, maxY, minZ, maxZ, blockSizeX, blockSizeY);
 	}

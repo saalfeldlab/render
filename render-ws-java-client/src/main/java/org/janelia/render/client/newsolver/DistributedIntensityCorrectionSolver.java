@@ -67,11 +67,10 @@ public class DistributedIntensityCorrectionSolver {
 					"--targetStack", "v2_acquire_test_intensity_debug13",
 					"--threadsWorker", "1",
 					"--threadsGlobal", "1",
-					"--minBlockSize", "2",
-					"--blockSize", "6",
+					"--blockSizeZ", "6",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 14,503
-					"--zDistance", "1,3,5", "--minZ", "1000", "--maxZ", "1005"
+					"--zDistance", "1,3,5", "--minZ", "1000", "--maxZ", "1001"
 			};
 			cmdLineSetup.parse(testArgs);
 		} else {
@@ -283,7 +282,7 @@ public class DistributedIntensityCorrectionSolver {
 
 		final int minZ = (int) Math.round(renderSetup.minZ);
 		final int maxZ = (int) Math.round(renderSetup.maxZ);
-		final int blockSize = cmdLineSetup.distributedSolve.blockSize;
+		final int blockSize = cmdLineSetup.blockPartition.sizeZ;
 		this.blockFactory = new ZBlockFactory(minZ, maxZ, blockSize);
 
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();

@@ -79,13 +79,12 @@ public class DistributedAffineZBlockSolver
                     //"--blockOptimizerIterations", "1000,1000,500,250,250",
                     //"--blockMaxPlateauWidth", "250,250,150,100,100",
 
-                    //"--blockSize", "100",
+                    "--blockSizeZ", "100",
                     //"--minStitchingInliers", "35",
                     //"--stitchFirst", "", // perform stitch-first
                     "--maxNumMatches", "0", // no limit, default
 					//"--threadsGlobal", "60",
                     "--threadsWorker", "1",
-					"--minBlockSize", "1",
                     //"--maxPlateauWidthGlobal", "50",
                     //"--maxIterationsGlobal", "10000",
             };
@@ -257,7 +256,7 @@ public class DistributedAffineZBlockSolver
 	{
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = (int)Math.round( renderSetup.maxZ );
-		final int blockSize = cmdLineSetup.distributedSolve.blockSize;
+		final int blockSize = cmdLineSetup.blockPartition.sizeZ;
 
 		return new ZBlockFactory(minZ, maxZ, blockSize);
 	}

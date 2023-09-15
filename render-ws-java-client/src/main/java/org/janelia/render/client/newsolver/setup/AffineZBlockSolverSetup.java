@@ -46,7 +46,7 @@ public class AffineZBlockSolverSetup extends CommandLineParameters
     public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
 	@ParametersDelegate
-	public DistributedZSolveParameters distributedSolve = new DistributedZSolveParameters();
+	public DistributedSolveParameters distributedSolve = new DistributedSolveParameters();
 
 	@ParametersDelegate
 	public TargetStackParameters targetStack = new TargetStackParameters();
@@ -56,6 +56,9 @@ public class AffineZBlockSolverSetup extends CommandLineParameters
 
 	@ParametersDelegate
 	public MatchCollectionParameters matches = new MatchCollectionParameters();
+
+	@ParametersDelegate
+	public BlockPartitionParameters blockPartition = new BlockPartitionParameters();
 
     @Parameter(
             names = "--stack",
