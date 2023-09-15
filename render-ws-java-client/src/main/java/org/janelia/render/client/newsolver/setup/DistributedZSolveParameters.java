@@ -11,13 +11,13 @@ public class DistributedZSolveParameters extends DistributedSolveParameters impl
 	// Initialization parameters
 	@Parameter(
 			names = "--blockSize",
-			description = "The size of the blocks in z, which will be computed in parallel (default:500, min:3) "
+			description = "The z-size of the blocks which will be computed in parallel (default:500, min:1) "
 	)
 	public Integer blockSize = 500;
 
 	@Parameter(
 			names = "--minBlockSize",
-			description = "The minimal size of the blocks in z, which will be computed in parallel (default: 50) "
+			description = "The minimal z-size of the blocks which will be computed in parallel (default: 50) "
 	)
 	public Integer minBlockSize = 50;
 
@@ -34,10 +34,8 @@ public class DistributedZSolveParameters extends DistributedSolveParameters impl
 
 		super( maxAllowedErrorGlobal, maxIterationsGlobal, maxPlateauWidthGlobal, threadsWorker, threadsGlobal );
 
-		if (blockSize < 3)
-			throw new RuntimeException("BlockSize has to be >= 3.");
-		if (minBlockSize < 1)
-			throw new RuntimeException("MinBlockSize has to be > 0.");
+		ensurePositive(blockSize, "BlockSize");
+		ensurePositive(minBlockSize, "MinBlockSize");
 
 		this.blockSize = blockSize;
 		this.minBlockSize = minBlockSize;

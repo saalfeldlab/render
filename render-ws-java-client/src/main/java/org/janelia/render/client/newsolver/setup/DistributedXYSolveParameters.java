@@ -12,25 +12,25 @@ public class DistributedXYSolveParameters extends DistributedSolveParameters imp
 	// Initialization parameters
 	@Parameter(
 			names = "--blockSizeX",
-			description = "The size of the blocks in X, which will be computed in parallel (default:2500, min:1) "
+			description = "The x-size of the blocks which will be computed in parallel (default:25000, min:1) "
 	)
 	public Integer blockSizeX = 25000;
 
 	@Parameter(
 			names = "--minBlockSizeX",
-			description = "The minimal size of the blocks in X, which will be computed in parallel (default: 1000) "
+			description = "The minimal x-size of the blocks which will be computed in parallel (default: 1000) "
 	)
 	public Integer minBlockSizeX = 1000;
 
 	@Parameter(
 			names = "--blockSizeY",
-			description = "The size of the blocks in Y, which will be computed in parallel (default:2500, min:1) "
+			description = "The y-size of the blocks which will be computed in parallel (default:25000, min:1) "
 	)
 	public Integer blockSizeY = 25000;
 
 	@Parameter(
 			names = "--minBlockSizeY",
-			description = "The minimal size of the blocks in Y, which will be computed in parallel (default: 1000) "
+			description = "The minimal y-size of the blocks which will be computed in parallel (default: 1000) "
 	)
 	public Integer minBlockSizeY = 1000;
 
@@ -49,10 +49,10 @@ public class DistributedXYSolveParameters extends DistributedSolveParameters imp
 
 		super( maxAllowedErrorGlobal, maxIterationsGlobal, maxPlateauWidthGlobal, threadsWorker, threadsGlobal );
 
-		if (blockSizeX < 1)
-			throw new RuntimeException("BlocksizeX has to be >= 1.");
-		if (minBlockSizeX < 1)
-			throw new RuntimeException("MinBlockSizeX has to be > 0.");
+		ensurePositive(blockSizeX, "BlockSizeX");
+		ensurePositive(minBlockSizeX, "MinBlockSizeX");
+		ensurePositive(blockSizeY, "BlockSizeY");
+		ensurePositive(minBlockSizeY, "MinBlockSizeY");
 
 		this.blockSizeX = blockSizeX;
 		this.minBlockSizeX = minBlockSizeX;
