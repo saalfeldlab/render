@@ -29,7 +29,7 @@ import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
 import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
-import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
@@ -45,7 +45,7 @@ public class DistributedIntensityCorrectionSolver {
 	final IntensityCorrectionSetup cmdLineSetup;
 	final RenderSetup renderSetup;
 	BlockCollection<?, ArrayList<AffineModel1D>, ? extends FIBSEMIntensityCorrectionParameters<?>> blocks;
-	ZBlockFactory blockFactory;
+	BlockFactory blockFactory;
 
 	public DistributedIntensityCorrectionSolver(
 			final IntensityCorrectionSetup cmdLineSetup,
@@ -70,7 +70,7 @@ public class DistributedIntensityCorrectionSolver {
 					"--blockSizeZ", "6",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 14,503
-					"--zDistance", "1,3,5", "--minZ", "1000", "--maxZ", "1001"
+					"--zDistance", "0", "--minZ", "1000", "--maxZ", "1001"
 			};
 			cmdLineSetup.parse(testArgs);
 		} else {
@@ -282,8 +282,12 @@ public class DistributedIntensityCorrectionSolver {
 
 		final int minZ = (int) Math.round(renderSetup.minZ);
 		final int maxZ = (int) Math.round(renderSetup.maxZ);
-		final int blockSize = cmdLineSetup.blockPartition.sizeZ;
-		this.blockFactory = new ZBlockFactory(minZ, maxZ, blockSize);
+		// TODO: make renderSetup.minX etc. defined in every context
+		this.blockFactory = BlockFactory.fromBlocksizes(
+				0.0, 0.0,
+				0.0, 0.0,
+				minZ, maxZ,
+				cmdLineSetup.blockPartition);
 
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();
 		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col =

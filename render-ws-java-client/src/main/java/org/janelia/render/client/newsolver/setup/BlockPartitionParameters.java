@@ -3,6 +3,7 @@ package org.janelia.render.client.newsolver.setup;
 import java.io.Serializable;
 
 import com.beust.jcommander.Parameter;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 
 public class BlockPartitionParameters implements Serializable {
 

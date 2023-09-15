@@ -19,7 +19,7 @@ import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
 import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
-import org.janelia.render.client.newsolver.blockfactories.ZBlockFactory;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineZBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
@@ -42,7 +42,7 @@ public class DistributedAffineZBlockSolver
 	final AffineZBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
 	BlockCollection<?, AffineModel2D, ? extends FIBSEMAlignmentParameters<?, ?>> col;
-	ZBlockFactory blockFactory;
+	BlockFactory blockFactory;
 
 	public DistributedAffineZBlockSolver(
 			final AffineZBlockSolverSetup cmdLineSetup,
@@ -234,31 +234,28 @@ public class DistributedAffineZBlockSolver
 			final M blockModel,
 			final S stitchingModel )
 	{
-		//
 		// setup Z BlockFactory
-		//
-		final ZBlockFactory blockFactory = setupBlockFactory();
+		this.blockFactory = setupBlockFactory();
 
-		this.blockFactory = blockFactory;
-
-		//
 		// create all blocks
-		//
 		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> col =
-				setupBlockCollection( blockFactory, blockModel, stitchingModel );
+				setupBlockCollection(this.blockFactory, blockModel, stitchingModel);
 
 		this.col = col;
 
 		return col;
 	}
 
-	protected ZBlockFactory setupBlockFactory()
+	protected BlockFactory setupBlockFactory()
 	{
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = (int)Math.round( renderSetup.maxZ );
-		final int blockSize = cmdLineSetup.blockPartition.sizeZ;
-
-		return new ZBlockFactory(minZ, maxZ, blockSize);
+		// TODO: make renderSetup.minX etc. defined in every context
+		return BlockFactory.fromBlocksizes(
+				0.0, 0.0,
+				0.0, 0.0,
+				minZ, maxZ,
+				cmdLineSetup.blockPartition);
 	}
 
 	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > FIBSEMAlignmentParameters< M, S > setupSolveParameters(
@@ -292,7 +289,7 @@ public class DistributedAffineZBlockSolver
 	}
 
 	protected <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> setupBlockCollection(
-			final ZBlockFactory blockFactory,
+			final BlockFactory blockFactory,
 			final M blockModel,
 			final S stitchingModel )
 	{

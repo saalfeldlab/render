@@ -20,7 +20,6 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 
 	final int minX, maxX, minY, maxY;
 	final int minZ, maxZ;
-	final int minBlockSizeX, minBlockSizeY, minBlockSizeZ;
 	final int blockSizeX, blockSizeY, blockSizeZ;
 
 	public XYZBlockFactory(
@@ -29,10 +28,7 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 			final int minZ, final int maxZ,
 			final int blockSizeX,
 			final int blockSizeY,
-			final int blockSizeZ,
-			final int minBlockSizeX,
-			final int minBlockSizeY,
-			final int minBlockSizeZ
+			final int blockSizeZ
 	) {
 		this.minX = (int)Math.round(Math.floor(minX));
 		this.maxX = (int)Math.round(Math.ceil(maxX));
@@ -43,9 +39,6 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 		this.blockSizeX = blockSizeX;
 		this.blockSizeY = blockSizeY;
 		this.blockSizeZ = blockSizeZ;
-		this.minBlockSizeX = minBlockSizeX;
-		this.minBlockSizeY = minBlockSizeY;
-		this.minBlockSizeZ = minBlockSizeZ;
 	}
 
 	@Override

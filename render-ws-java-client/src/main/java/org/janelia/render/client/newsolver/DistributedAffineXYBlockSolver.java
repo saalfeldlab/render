@@ -20,7 +20,7 @@ import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
-import org.janelia.render.client.newsolver.blockfactories.XYBlockFactory;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineXYBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
@@ -40,7 +40,7 @@ public class DistributedAffineXYBlockSolver
 	final AffineXYBlockSolverSetup cmdLineSetup;
 	final RenderSetup renderSetup;
 	BlockCollection<?, AffineModel2D, ? extends FIBSEMAlignmentParameters<?, ?>> col;
-	XYBlockFactory blockFactory;
+	BlockFactory blockFactory;
 
 	public DistributedAffineXYBlockSolver(
 			final AffineXYBlockSolverSetup cmdLineSetup,
@@ -255,24 +255,20 @@ public class DistributedAffineXYBlockSolver
 	public <M extends Model<M> & Affine2D<M>>
 			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> setupSolve(final M blockModel)
 	{
-		//
 		// setup XY BlockFactory
-		//
-		final XYBlockFactory blockFactory = setupBlockFactory();
-		
-		this.blockFactory = blockFactory;
+		this.blockFactory = setupBlockFactory();
 		
 		//
 		// create all blocks
 		//
-		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> col = setupBlockCollection(blockFactory, blockModel);
+		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> col = setupBlockCollection(this.blockFactory, blockModel);
 		this.col = col;
 		return col;
 	}
 
 	protected <M extends Model<M> & Affine2D<M>>
 			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> setupBlockCollection(
-					final XYBlockFactory blockFactory,
+					final BlockFactory blockFactory,
 					final M blockModel )
 	{
 		//
@@ -306,7 +302,7 @@ public class DistributedAffineXYBlockSolver
 		return bc;
 	}
 
-	protected XYBlockFactory setupBlockFactory()
+	protected BlockFactory setupBlockFactory()
 	{
 		final double minX = renderSetup.minX;
 		final double maxX = renderSetup.maxX;
@@ -314,10 +310,8 @@ public class DistributedAffineXYBlockSolver
 		final double maxY = renderSetup.maxY;
 		final int minZ = (int)Math.round( renderSetup.minZ );
 		final int maxZ = (int)Math.round( renderSetup.maxZ );
-		final int blockSizeX = cmdLineSetup.blockPartition.sizeX;
-		final int blockSizeY = cmdLineSetup.blockPartition.sizeY;
 
-		return new XYBlockFactory(minX, maxX, minY, maxY, minZ, maxZ, blockSizeX, blockSizeY);
+		return BlockFactory.fromBlocksizes(minX, maxX, minY, maxY, minZ, maxZ, cmdLineSetup.blockPartition);
 	}
 
 	protected < M extends Model< M > & Affine2D< M > > FIBSEMAlignmentParameters< M, M > setupSolveParameters(

@@ -12,6 +12,7 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.render.client.newsolver.setup.BlockPartitionParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,6 +66,37 @@ public abstract class BlockFactory implements Serializable {
 
 		return new BlockCollection<>(blockDataList);
 	}
+
+	public static BlockFactory fromBlocksizes(
+			final double minX,
+			final double maxX,
+			final double minY,
+			final double maxY,
+			final int minZ,
+			final int maxZ,
+			final BlockPartitionParameters blockPartition)
+	{
+		final boolean hasXY = isDefined(blockPartition.sizeX) && isDefined(blockPartition.sizeY);
+		final boolean hasZ = isDefined(blockPartition.sizeZ);
+
+		if (!hasXY && (isDefined(blockPartition.sizeX) || isDefined(blockPartition.sizeY)))
+			throw new IllegalArgumentException("If one of the block sizes in X or Y is specified, both have to be specified.");
+
+		if (hasXY && hasZ)
+			return new XYZBlockFactory(minX, maxX, minY, maxY, minZ, maxZ, blockPartition.sizeX, blockPartition.sizeY, blockPartition.sizeZ);
+		else
+			if (hasXY)
+				return new XYBlockFactory(minX, maxX, minY, maxY, minZ, maxZ, blockPartition.sizeX, blockPartition.sizeY);
+			if (hasZ)
+				return new ZBlockFactory(minZ, maxZ, blockPartition.sizeZ);
+			else
+				throw new IllegalArgumentException("At least one of the block sizes in X/Y or Z has to be specified.");
+	}
+
+	protected static boolean isDefined(final Integer value) {
+		return value != null && value != Integer.MAX_VALUE;
+	}
+
 
 	private static final Logger LOG = LoggerFactory.getLogger(BlockFactory.class);
 }
