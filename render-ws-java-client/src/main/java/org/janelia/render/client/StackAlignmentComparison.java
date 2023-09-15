@@ -32,8 +32,8 @@ public class StackAlignmentComparison {
 	private static final String owner = "hess_wafer_53";
 	private static final String project = "cut_000_to_009";
 	private static final String matchCollection = "c000_s095_v01_match_agg2";
-	private static final String baselineStack = "c000_s095_v01_align";
-	private static final String newStack = "c000_s095_v01_align2";
+	private static final String baselineStack = "c000_s095_v01_align2";
+	private static final String newStack = "c000_s095_v01_align_test_xy_ad";
 
 	private static final List<Double> blockOptimizerLambdasRigid = Arrays.asList(1.0, 1.0, 0.9, 0.3, 0.01);
 	private static final List<Double> blockOptimizerLambdasTranslation = Arrays.asList(1.0, 0.0, 0.0, 0.0, 0.0);
@@ -59,7 +59,7 @@ public class StackAlignmentComparison {
 
 		final AlignmentErrors differences = AlignmentErrors.computeRelativeDifferences(errorsBaseline, errorsNew);
 		AlignmentErrors.writeAsCsv(differences, "pairwiseErrorDifferences.csv");
-		for (final Pair<String, String> pair : differences.getWorstPairs(10))
+		for (final Pair<String, String> pair : differences.getWorstPairs(50))
 			System.out.println(pair.getA() + " " + pair.getB() + " : " + differences.getPairwiseError(pair.getA(), pair.getB()));
 	}
 
