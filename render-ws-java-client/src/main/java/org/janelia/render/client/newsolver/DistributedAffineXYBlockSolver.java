@@ -256,11 +256,9 @@ public class DistributedAffineXYBlockSolver
 			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> setupSolve(final M blockModel)
 	{
 		// setup XY BlockFactory
-		this.blockFactory = setupBlockFactory();
+		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, cmdLineSetup.blockPartition);
 		
-		//
 		// create all blocks
-		//
 		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> col = setupBlockCollection(this.blockFactory, blockModel);
 		this.col = col;
 		return col;
@@ -300,18 +298,6 @@ public class DistributedAffineXYBlockSolver
 		LOG.info( "minTileCount=" + minTileCount + ", maxTileCount=" + maxTileCount + ", avgTileCount=" + avgTileCount );
 
 		return bc;
-	}
-
-	protected BlockFactory setupBlockFactory()
-	{
-		final double minX = renderSetup.minX;
-		final double maxX = renderSetup.maxX;
-		final double minY = renderSetup.minY;
-		final double maxY = renderSetup.maxY;
-		final int minZ = (int)Math.round( renderSetup.minZ );
-		final int maxZ = (int)Math.round( renderSetup.maxZ );
-
-		return BlockFactory.fromBlocksizes(minX, maxX, minY, maxY, minZ, maxZ, cmdLineSetup.blockPartition);
 	}
 
 	protected < M extends Model< M > & Affine2D< M > > FIBSEMAlignmentParameters< M, M > setupSolveParameters(

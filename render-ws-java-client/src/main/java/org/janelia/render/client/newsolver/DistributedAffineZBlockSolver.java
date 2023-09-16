@@ -235,7 +235,7 @@ public class DistributedAffineZBlockSolver
 			final S stitchingModel )
 	{
 		// setup Z BlockFactory
-		this.blockFactory = setupBlockFactory();
+		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, cmdLineSetup.blockPartition);
 
 		// create all blocks
 		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> col =
@@ -244,18 +244,6 @@ public class DistributedAffineZBlockSolver
 		this.col = col;
 
 		return col;
-	}
-
-	protected BlockFactory setupBlockFactory()
-	{
-		final int minZ = (int)Math.round( renderSetup.minZ );
-		final int maxZ = (int)Math.round( renderSetup.maxZ );
-		// TODO: make renderSetup.minX etc. defined in every context
-		return BlockFactory.fromBlocksizes(
-				0.0, 0.0,
-				0.0, 0.0,
-				minZ, maxZ,
-				cmdLineSetup.blockPartition);
 	}
 
 	protected < M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > FIBSEMAlignmentParameters< M, S > setupSolveParameters(

@@ -279,16 +279,7 @@ public class DistributedIntensityCorrectionSolver {
 	}
 
 	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> setupSolve() {
-
-		final int minZ = (int) Math.round(renderSetup.minZ);
-		final int maxZ = (int) Math.round(renderSetup.maxZ);
-		// TODO: make renderSetup.minX etc. defined in every context
-		this.blockFactory = BlockFactory.fromBlocksizes(
-				0.0, 0.0,
-				0.0, 0.0,
-				minZ, maxZ,
-				cmdLineSetup.blockPartition);
-
+		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, cmdLineSetup.blockPartition);
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();
 		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col =
 				blockFactory.defineBlockCollection(rtsc -> defaultSolveParams);

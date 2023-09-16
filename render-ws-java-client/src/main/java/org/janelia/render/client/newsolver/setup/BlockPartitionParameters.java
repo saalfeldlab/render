@@ -3,7 +3,6 @@ package org.janelia.render.client.newsolver.setup;
 import java.io.Serializable;
 
 import com.beust.jcommander.Parameter;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 
 public class BlockPartitionParameters implements Serializable {
 
@@ -45,5 +44,23 @@ public class BlockPartitionParameters implements Serializable {
 	protected static void ensurePositive(final Integer value, final String name) {
 		if (value < 1)
 			throw new RuntimeException(name + " has to be > 0.");
+	}
+
+	public boolean hasXY() {
+		final boolean hasX = isDefined(sizeX);
+		final boolean hasY = isDefined(sizeY);
+		if (hasX != hasY)
+			throw new RuntimeException("BlockSizeX and BlockSizeY have to be both defined or both undefined.");
+		else
+			// here: hasX == hasY
+			return hasX;
+	}
+
+	public boolean hasZ() {
+		return isDefined(sizeZ);
+	}
+
+	private static boolean isDefined(final Integer value) {
+		return value != null && value != Integer.MAX_VALUE;
 	}
 }
