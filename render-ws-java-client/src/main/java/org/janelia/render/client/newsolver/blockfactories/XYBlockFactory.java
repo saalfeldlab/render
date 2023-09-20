@@ -1,5 +1,6 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
@@ -80,6 +81,13 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 				bound.getMinX(), bound.getMaxX(),
 				bound.getMinY(), bound.getMaxY(),
 				null); // matchPattern
+	}
+
+	@Override
+	protected boolean shouldBeIncluded(final Bounds tileBounds, final Bounds blockBounds) {
+		// only keep tiles where midpoint is inside block to reduce overlap
+		final Rectangle blockXYBounds = blockBounds.toRectangle();
+		return blockXYBounds.contains(tileBounds.getCenterX(), tileBounds.getCenterY());
 	}
 
 	@Override

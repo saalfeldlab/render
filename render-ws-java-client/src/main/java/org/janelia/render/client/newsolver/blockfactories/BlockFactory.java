@@ -3,9 +3,12 @@ package org.janelia.render.client.newsolver.blockfactories;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
@@ -58,6 +61,7 @@ public abstract class BlockFactory implements Serializable {
 			if (rtsc == null || rtsc.getTileCount() == 0) {
 				LOG.info("   Loaded null tiles, skipping this block.");
 			} else {
+				pruneRtsc(rtsc, bound);
 				LOG.info("   Loaded " + rtsc.getTileIds().size() + " tiles.");
 				final BlockData<R, P> block = new BlockData<>(this, parameterProvider.create(rtsc), id, rtsc);
 				blockDataList.add(block);
@@ -67,6 +71,18 @@ public abstract class BlockFactory implements Serializable {
 
 		return new BlockCollection<>(blockDataList);
 	}
+
+	protected void pruneRtsc(final ResolvedTileSpecCollection rtsc, final Bounds bound) {
+		final Set<String> tileIdsToRemove = new HashSet<>();
+		for (final TileSpec ts : rtsc.getTileSpecs()) {
+			final Bounds tileBounds = ts.toTileBounds();
+			if (!shouldBeIncluded(tileBounds, bound))
+				tileIdsToRemove.add(ts.getTileId());
+		}
+		rtsc.removeTileSpecs(tileIdsToRemove);
+	}
+
+	protected abstract boolean shouldBeIncluded(final Bounds tileBounds, final Bounds blockBounds);
 
 	public static BlockFactory fromBlocksizes(final RenderSetup range, final BlockPartitionParameters blockPartition) {
 

@@ -56,6 +56,11 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 		return dataClient.getResolvedTilesForZRange(basicParameters.stack(), bound.getMinZ(), bound.getMaxZ());
 	}
 
+	@Override
+	protected boolean shouldBeIncluded(final Bounds tileBounds, final Bounds blockBounds) {
+		// whole layer is always included
+		return true;
+	}
 
 	@Override
 	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
