@@ -3,7 +3,6 @@ package org.janelia.render.client.newsolver;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -16,12 +15,9 @@ import org.slf4j.LoggerFactory;
 
 public class Serizalization {
 
-	public static void serialize(final List<? extends BlockData<?, ?>> allItems, final File path)
-	{
-		try
-		{
-			for (final BlockData<?, ?> data : allItems)
-			{
+	public static void serialize(final List<? extends BlockData<?, ?>> allItems, final File path) {
+		try {
+			for (final BlockData<?, ?> data : allItems) {
 				// Saving of object in a file
 				final File file = new File(path.getAbsoluteFile(), "id_" + data.getId() + ".obj");
 				final FileOutputStream fileStream = new FileOutputStream(file);
@@ -37,33 +33,25 @@ public class Serizalization {
 			}
 
 			LOG.info("SUCCESS.");
-		} catch (IOException ex) {
-			LOG.info("IOException is caught: " + ex);
-			ex.printStackTrace();
+		} catch (final IOException ex) {
+			LOG.info("IOException is caught: ", ex);
 		}
 	}
 
-	public static ArrayList<BlockData<?, ?>> deSerialize( final File path )
-	{
-		String[] files = path.list( new FilenameFilter() {
-			
-			@Override
-			public boolean accept(File dir, String name)
-			{
-				if ( name.endsWith(".obj") )
-					return true;
-				else
-					return false;
-			}
-		});
+	public static ArrayList<BlockData<?, ?>> deSerialize(final File path) {
 
-		Arrays.sort( files );
+		final String[] files = path.list((dir, name) -> name.endsWith(".obj"));
 
-		LOG.info("Found " + files.length + " serialized objects" );
+		if (files == null) {
+			LOG.info("No files found, stopping.");
+			System.exit( 0 );
+		}
+		Arrays.sort(files);
 
-		if ( files.length < 3 )
-		{
-			LOG.info("Not sufficient, stopping." );
+		LOG.info("Found " + files.length + " serialized objects");
+
+		if (files.length < 3) {
+			LOG.info("Not sufficient, stopping.");
 			System.exit( 0 );
 		}
 
@@ -72,11 +60,11 @@ public class Serizalization {
 		for (final String filename : files) {
 			try {
 				// Reading the object from a file
-				FileInputStream file = new FileInputStream(new File(path, filename));
-				ObjectInputStream in = new ObjectInputStream(file);
+				final FileInputStream file = new FileInputStream(new File(path, filename));
+				final ObjectInputStream in = new ObjectInputStream(file);
 
 				// Method for deserialization of object
-				BlockData<?, ?> solveItem = (BlockData<?, ?>) in.readObject();
+				final BlockData<?, ?> solveItem = (BlockData<?, ?>) in.readObject();
 
 				allItems.add(solveItem);
 
@@ -84,9 +72,8 @@ public class Serizalization {
 				file.close();
 
 				System.out.println("Object has been deserialized " + solveItem.getId());
-			} catch (Exception e) {
-				e.printStackTrace();
-				System.exit(0);
+			} catch (final Exception e) {
+				LOG.info("Could not read files:", e);
 			}
 		}
 
