@@ -35,14 +35,14 @@ import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 
-public class DistributedAffineXYBlockSolver
+public class DistributedAffineBlockSolver
 {
 	final AffineBlockSolverSetup solverSetup;
 	final RenderSetup renderSetup;
 	BlockCollection<?, AffineModel2D, ? extends FIBSEMAlignmentParameters<?, ?>> col;
 	BlockFactory blockFactory;
 
-	public DistributedAffineXYBlockSolver(
+	public DistributedAffineBlockSolver(
 			final AffineBlockSolverSetup solverSetup,
 			final RenderSetup renderSetup) {
 		this.solverSetup = solverSetup;
@@ -103,7 +103,7 @@ public class DistributedAffineXYBlockSolver
 		final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
-		final DistributedAffineXYBlockSolver alignmentSolver = new DistributedAffineXYBlockSolver(cmdLineSetup, renderSetup);
+		final DistributedAffineBlockSolver alignmentSolver = new DistributedAffineBlockSolver(cmdLineSetup, renderSetup);
 
 		// create all block instances
 		final BlockCollection<?, AffineModel2D, ?> blockCollection =
@@ -174,7 +174,7 @@ public class DistributedAffineXYBlockSolver
 
 	private static List<BlockData<AffineModel2D, ?>> createAndRunWorker(
 			final BlockData<AffineModel2D, ?> block,
-			final DistributedAffineXYBlockSolver alignmentSolver,
+			final DistributedAffineBlockSolver alignmentSolver,
 			final AffineBlockSolverSetup cmdLineSetup) throws NoninvertibleModelException, IOException, ExecutionException, InterruptedException {
 
 			final Worker<AffineModel2D, ?> worker = block.createWorker(
@@ -203,8 +203,8 @@ public class DistributedAffineXYBlockSolver
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
 				new BlockCombiner<>(
 						blockSolver,
-						DistributedAffineXYBlockSolver::integrateGlobalModel,
-						DistributedAffineXYBlockSolver::interpolateModels
+						DistributedAffineBlockSolver::integrateGlobalModel,
+						DistributedAffineBlockSolver::interpolateModels
 				);
 
 		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
@@ -292,5 +292,5 @@ public class DistributedAffineXYBlockSolver
 		return bc;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineXYBlockSolver.class);
+	private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineBlockSolver.class);
 }

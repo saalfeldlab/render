@@ -159,7 +159,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				java.lang.NullPointerException: Cannot invoke "org.janelia.alignment.spec.TileSpec.getZ()" because the return value of "org.janelia.alignment.spec.ResolvedTileSpecCollection.getTileSpec(String)" is null
 						at org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker.assignRegularizationModel(AffineAlignBlockWorker.java:345)
 						at org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker.run(AffineAlignBlockWorker.java:164)
-						at org.janelia.render.client.newsolver.DistributedAffineXYBlockSolver.lambda$1(DistributedAffineXYBlockSolver.java:108)
+						at org.janelia.render.client.newsolver.DistributedAffineBlockSolver.lambda$1(DistributedAffineBlockSolver.java:108)
 						at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
 						at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
 						at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
