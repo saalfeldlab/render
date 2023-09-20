@@ -1,5 +1,6 @@
 package org.janelia.render.client.newsolver.blocksolveparameters;
 
+import java.awt.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.Function;
@@ -169,19 +170,21 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 
 		for ( final TileSpec ts : blockData.rtsc().getTileSpecs() )
 		{
-			final double[] coord = new double[] { (ts.getWidth() - 1) /2.0, (ts.getHeight() - 1) /2.0 };
+			final Rectangle r = ts.toTileBounds().toRectangle();
+			final double[] coord = new double[] { r.getCenterX(), r.getCenterY() };
 
-			models.get( ts.getTileId() ).applyInPlace( coord );
+			final AffineModel2D model = models.get(ts.getTileId());
+			model.applyInPlace(coord);
 
-			c[ 0 ] += coord[ 0 ];
-			c[ 1 ] += coord[ 1 ];
-			c[ 2 ] += ts.getZ();
+			c[0] += coord[0];
+			c[1] += coord[1];
+			c[2] += ts.getZ();
 			++count;
 		}
 
-		c[ 0 ] /= (double)count;
-		c[ 1 ] /= (double)count;
-		c[ 2 ] /= (double)count;
+		c[0] /= count;
+		c[1] /= count;
+		c[2] /= count;
 
 		return c;
 	}

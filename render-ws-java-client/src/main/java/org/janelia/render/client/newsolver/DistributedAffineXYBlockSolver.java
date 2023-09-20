@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -278,24 +279,11 @@ public class DistributedAffineXYBlockSolver
 		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> bc =
 				blockFactory.defineBlockCollection( rtsc -> defaultSolveParams );
 
-		int minTileCount = Integer.MAX_VALUE;
-		int maxTileCount = Integer.MIN_VALUE;
-		double avgTileCount = 0;
-		int count = 0;
+		final IntSummaryStatistics stats = bc.allBlocks().stream()
+				.mapToInt(block -> block.rtsc().getTileCount())
+				.summaryStatistics();
 
-		for ( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, M>> block : bc.allBlocks() )
-		{
-			final int tc = block.rtsc().getTileCount();
-
-			minTileCount = Math.min( tc, minTileCount );
-			maxTileCount = Math.max( tc, maxTileCount );
-			avgTileCount += tc;
-			++count;
-		}
-
-		avgTileCount /= (double)count;
-
-		LOG.info( "minTileCount=" + minTileCount + ", maxTileCount=" + maxTileCount + ", avgTileCount=" + avgTileCount );
+		LOG.info("minTileCount={}, maxTileCount={}, avgTileCount={}", stats.getMin(), stats.getMax(), stats.getAverage());
 
 		return bc;
 	}

@@ -1,5 +1,6 @@
 package org.janelia.render.client.newsolver.blocksolveparameters;
 
+import java.awt.Rectangle;
 import java.io.Serializable;
 
 import org.janelia.alignment.spec.Bounds;
@@ -12,6 +13,8 @@ import org.janelia.render.client.newsolver.solvers.Worker;
  * @author preibischs
  *
  * @param <M> - the result model type
+ * @param <R> - the result type
+ * @param <P> - the concrete parameter type
  */
 public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolveParameters< M, R, P > > implements Serializable
 {
@@ -87,17 +90,16 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 			final TileSpec ts = blockData.rtsc().getTileSpec( tileId );
 
 			// the affine transform for the tile
-			final double[] tmp = ts.getWorldCoordinates( (ts.getWidth() - 1) /2.0, (ts.getHeight() - 1) /2.0 );
-
-			c[ 0 ] += tmp[ 0 ];
-			c[ 1 ] += tmp[ 1 ];
-			c[ 2 ] += ts.getZ();
+			final Rectangle r = ts.toTileBounds().toRectangle();
+			c[0] += r.getCenterX();
+			c[1] += r.getCenterY();
+			c[2] += ts.getZ();
 			++count;
 		}
 
-		c[ 0 ] /= (double)count;
-		c[ 1 ] /= (double)count;
-		c[ 2 ] /= (double)count;
+		c[0] /= count;
+		c[1] /= count;
+		c[2] /= count;
 
 		return c;
 	}
