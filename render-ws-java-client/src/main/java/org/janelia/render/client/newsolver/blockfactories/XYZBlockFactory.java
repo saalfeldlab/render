@@ -78,7 +78,7 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 	}
 
 	@Override
-	public WeightFunction createWeightFunction(final BlockData<?, ?, ?> block) {
+	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
 		final WeightFunction xyWeightFunction = new XYBlockFactory.XYDistanceWeightFunction(block, 0.01);
 		final WeightFunction zWeightFunction = new ZBlockFactory.ZDistanceWeightFunction(block, 0.01);
 		return (x, y, z) -> xyWeightFunction.compute(x, y, z) * zWeightFunction.compute(x, y, z);

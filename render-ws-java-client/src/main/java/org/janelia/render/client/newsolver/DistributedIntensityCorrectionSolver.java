@@ -86,7 +86,7 @@ public class DistributedIntensityCorrectionSolver {
 		// create all block instances
 		final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection = intensitySolver.setupSolve();
 
-		final ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?>> allItems =
+		final ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> allItems =
 				intensitySolver.solveBlocksUsingThreadPool(blockCollection);
 
 		final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
@@ -94,15 +94,15 @@ public class DistributedIntensityCorrectionSolver {
 		intensitySolver.saveResultsAsNeeded(finalizedItems);
 	}
 
-	public ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?>> solveBlocksUsingThreadPool(final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection) {
+	public ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> solveBlocksUsingThreadPool(final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection) {
 
 		LOG.info("solveBlocksUsingThreadPool: entry, threadsGlobal={}", cmdLineSetup.distributedSolve.threadsGlobal);
 
-		final ArrayList<Callable<List<BlockData<?, ArrayList<AffineModel1D>, ?>>>> workers = new ArrayList<>();
-		for (final BlockData<?, ArrayList<AffineModel1D>, ?> block : blockCollection.allBlocks()) {
+		final ArrayList<Callable<List<BlockData<ArrayList<AffineModel1D>, ?>>>> workers = new ArrayList<>();
+		for (final BlockData<ArrayList<AffineModel1D>, ?> block : blockCollection.allBlocks()) {
 			workers.add(() ->
 						{
-							final Worker<?, ArrayList<AffineModel1D>, ?> worker = block.createWorker(
+							final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(
 									blocks.maxId() + 1,
 									cmdLineSetup.distributedSolve.threadsWorker);
 
@@ -112,10 +112,10 @@ public class DistributedIntensityCorrectionSolver {
 						});
 		}
 
-		final ArrayList<BlockData<?, ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
+		final ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 		try {
-			for (final Future<List<BlockData<?, ArrayList<AffineModel1D>, ?>>> future : taskExecutor.invokeAll(workers))
+			for (final Future<List<BlockData<ArrayList<AffineModel1D>, ?>>> future : taskExecutor.invokeAll(workers))
 					allItems.addAll(future.get());
 		} catch (final InterruptedException | ExecutionException e) {
 			throw new RuntimeException("Failed to compute alignments", e);
@@ -132,7 +132,7 @@ public class DistributedIntensityCorrectionSolver {
 		return allItems;
 	}
 
-	public AssemblyMaps<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<?, ArrayList<AffineModel1D>, ?>> allItems) {
+	public AssemblyMaps<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {
 
 		LOG.info("assembleBlocks: entry, processing {} blocks", allItems.size());
 

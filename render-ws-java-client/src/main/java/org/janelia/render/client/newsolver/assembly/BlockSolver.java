@@ -52,13 +52,13 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 		return globalModel;
 	}
 
-	public HashMap<BlockData<?, R, ?>, Tile<G>> globalSolve(
-			final List<? extends BlockData<?, R, ?>> blocks,
+	public HashMap<BlockData<R, ?>, Tile<G>> globalSolve(
+			final List<? extends BlockData<R, ?>> blocks,
 			final AssemblyMaps<Z> am
 	) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException {
 
-		final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile = new HashMap<>();
-		for (final BlockData<?, R, ?> block : blocks) {
+		final HashMap<BlockData<R, ?>, Tile<G>> blockToTile = new HashMap<>();
+		for (final BlockData<R, ?> block : blocks) {
 			blockToTile.put(block, new Tile<>(globalModel.copy()));
 
 			final ResolvedTileSpecCollection tileSpecs = block.rtsc();
@@ -71,17 +71,17 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 		}
 
 		LOG.info("globalSolve: solving {} items", blocks.size());
-		final Set<? extends BlockData<?, R, ?>> otherBlocks = new HashSet<>(blocks);
+		final Set<? extends BlockData<R, ?>> otherBlocks = new HashSet<>(blocks);
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
-		for (final BlockData<?, R, ?> solveItemA : blocks) {
+		for (final BlockData<R, ?> solveItemA : blocks) {
 			LOG.info("globalSolve: solveItemA xy range is {}", solveItemA.boundingBox());
 			otherBlocks.remove(solveItemA);
 
 			// tilespec is identical for all overlapping blocks
 			final ResolvedTileSpecCollection tileSpecs = solveItemA.rtsc();
 
-			for (final BlockData<?, R, ?> solveItemB : otherBlocks) {
+			for (final BlockData<R, ?> solveItemB : otherBlocks) {
 				LOG.info("globalSolve: solveItemB xy range is {}",solveItemB.boundingBox());
 
 				final Set<String> commonTileIds = getCommonTileIds(solveItemA, solveItemB);
@@ -132,8 +132,8 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 	}
 
 	protected static Set<String> getCommonTileIds(
-			final BlockData<?, ?, ?> blockA,
-			final BlockData<?, ?, ?> blockB
+			final BlockData<?, ?> blockA,
+			final BlockData<?, ?> blockB
 	) {
 		final Set<String> tileIdsA = new HashSet<>(blockA.idToNewModel().keySet());
 		final Set<String> tileIdsB = blockB.idToNewModel().keySet();

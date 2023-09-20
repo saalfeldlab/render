@@ -26,11 +26,10 @@ import org.janelia.render.client.solver.SerializableValuePair;
  * 
  * @author preibischs
  *
- * @param <M> - the compute model
  * @param <R> - the result
  * @param <P> - the solve parameters
  */
-public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implements Serializable
+public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implements Serializable
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 
@@ -113,7 +112,7 @@ public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implem
 
 	public void assignUpdatedId( final int id ) { this.id = id; }
 
-	public Worker<M, R, P> createWorker( final int startId, final int threadsWorker )
+	public Worker<R, P> createWorker( final int startId, final int threadsWorker )
 	{
 		return solveTypeParameters().createWorker( this , startId, threadsWorker );
 	}
@@ -170,7 +169,7 @@ public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implem
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
-		final BlockData<?,?,?> other = (BlockData<?,?,?>) obj;
+		final BlockData<?,?> other = (BlockData<?,?>) obj;
 		return id == other.id && maxZ == other.maxZ && minZ == other.minZ && Objects.equals(rtsc, other.rtsc);
 	}
 }

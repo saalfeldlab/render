@@ -115,19 +115,19 @@ public class DistributedAffineXYBlockSolver
 		//
 		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
 
-		final ArrayList<Callable<List< BlockData<?, AffineModel2D, ?>>>> workers = new ArrayList<>();
+		final ArrayList<Callable<List<BlockData<AffineModel2D, ?>>>> workers = new ArrayList<>();
 
 		blockCollection.allBlocks().forEach( block ->
 		{
 			workers.add( () ->
 			{
-				final Worker<?, AffineModel2D, ?> worker = block.createWorker(
+				final Worker<AffineModel2D, ?> worker = block.createWorker(
 						solverSetup.col.maxId() + 1,
 						cmdLineSetup.distributedSolve.threadsWorker);
 
 				worker.run();
 
-				final ArrayList<? extends BlockData<?, AffineModel2D, ?>> blockDataList = worker.getBlockDataList();
+				final ArrayList<? extends BlockData<AffineModel2D, ?>> blockDataList = worker.getBlockDataList();
 				if (blockDataList == null) {
 					throw new IllegalStateException("no items returned for worker " + worker);
 				}
@@ -136,7 +136,7 @@ public class DistributedAffineXYBlockSolver
 			} );
 		} );
 
-		final ArrayList< BlockData<?, AffineModel2D, ?> > allItems = new ArrayList<>();
+		final ArrayList<BlockData<AffineModel2D, ?>> allItems = new ArrayList<>();
 
 		try {
 			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);

@@ -58,7 +58,7 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 
 
 	@Override
-	public WeightFunction createWeightFunction(final BlockData<?, ?, ?> block) {
+	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
 		return new ZDistanceWeightFunction(block, 0.01);
 	}
 
@@ -70,7 +70,7 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 		// regularization to make weights of minZ and maxZ > 0
 		private final double eps;
 
-		public ZDistanceWeightFunction(final BlockData<?, ?, ?> block, final double eps) {
+		public ZDistanceWeightFunction(final BlockData<?, ?> block, final double eps) {
 			this.minZ = block.minZ();
 			this.maxZ = block.maxZ();
 			this.midpoint = (maxZ + minZ) / 2.0;

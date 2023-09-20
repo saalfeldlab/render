@@ -21,7 +21,7 @@ public abstract class BlockFactory implements Serializable {
 	public abstract <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
 			final ParameterProvider< M, R, P > blockSolveParameterProvider );
 
-	public abstract WeightFunction createWeightFunction(final BlockData<?, ?, ?> block);
+	public abstract WeightFunction createWeightFunction(final BlockData<?, ?> block);
 
 	protected abstract ResolvedTileSpecCollection fetchTileSpecs(
 			final Bounds bound,
@@ -37,7 +37,7 @@ public abstract class BlockFactory implements Serializable {
 				basicParameters.owner(),
 				basicParameters.project());
 
-		final ArrayList<BlockData<M, R, P>> blockDataList = new ArrayList<>();
+		final ArrayList<BlockData<R, P>> blockDataList = new ArrayList<>();
 
 		// fetch metadata from render
 		int id = 0;
@@ -59,7 +59,7 @@ public abstract class BlockFactory implements Serializable {
 				LOG.info("   Loaded null tiles, skipping this block.");
 			} else {
 				LOG.info("   Loaded " + rtsc.getTileIds().size() + " tiles.");
-				final BlockData<M, R, P> block = new BlockData<>(this, parameterProvider.create(rtsc), id, rtsc);
+				final BlockData<R, P> block = new BlockData<>(this, parameterProvider.create(rtsc), id, rtsc);
 				blockDataList.add(block);
 				id++;
 			}

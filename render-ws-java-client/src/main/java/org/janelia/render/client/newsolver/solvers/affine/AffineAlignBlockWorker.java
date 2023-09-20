@@ -55,7 +55,7 @@ import mpicbg.models.TranslationModel2D;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
-public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> extends Worker<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>>
+public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> extends Worker<AffineModel2D, FIBSEMAlignmentParameters<M, S>>
 {
 	// attempts to stitch each section first (if the tiles are connected) and
 	// then treat them as one big, "grouped" tile in the global optimization
@@ -85,7 +85,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 	final AffineBlockDataWrapper<M, S> inputSolveItem;
 	private ArrayList<AffineBlockDataWrapper<M, S>> solveItems;
-	private ArrayList<BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>>> result;
+	private ArrayList<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> result;
 
 	// to filter matches
 	final MatchFilter matchFilter;
@@ -98,7 +98,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 	// created by SolveItemData.createWorker()
 	public AffineAlignBlockWorker(
-			final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
+			final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
 			final int startId,
 			final int numThreads )
 	{
@@ -131,7 +131,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	}
 
 	@Override
-	public ArrayList<BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>>> getBlockDataList()
+	public ArrayList<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> getBlockDataList()
 	{
 		return result;
 	}

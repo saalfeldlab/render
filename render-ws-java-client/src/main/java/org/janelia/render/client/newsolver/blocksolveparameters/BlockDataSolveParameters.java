@@ -51,7 +51,7 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 	/**
 	 * @return - the bounding box of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
 	 */
-	public Bounds boundingBox(final BlockData<M, R, P> blockData)
+	public Bounds boundingBox(final BlockData<R, P> blockData)
 	{
 		double minX = Double.MAX_VALUE;
 		double maxX = -Double.MAX_VALUE;
@@ -79,7 +79,7 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 	/**
 	 * @return - the center of mass of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
 	 */
-	public double[] centerOfMass(final BlockData<M, R, P> blockData)
+	public double[] centerOfMass(final BlockData<R, P> blockData)
 	{
 
 		final double[] c = new double[ 3 ];
@@ -104,8 +104,8 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 		return c;
 	}
 
-	public abstract Worker<M, R, P> createWorker(
-			final BlockData<M, R, P> blockData,
+	public abstract Worker<R, P> createWorker(
+			final BlockData<R, P> blockData,
 			final int startId,
 			final int threadsWorker);
 }

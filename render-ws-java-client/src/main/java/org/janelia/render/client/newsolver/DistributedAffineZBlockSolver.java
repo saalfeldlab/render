@@ -115,13 +115,13 @@ public class DistributedAffineZBlockSolver
 		//
 		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
 
-		final ArrayList<Callable<List<BlockData<?, AffineModel2D, ?>>>> workers = new ArrayList<>();
+		final ArrayList<Callable<List<BlockData<AffineModel2D, ?>>>> workers = new ArrayList<>();
 
 		blockCollection.allBlocks().forEach( block ->
 		{
 			workers.add( () ->
 			{
-				final Worker<?, AffineModel2D, ?> worker = block.createWorker(
+				final Worker<AffineModel2D, ?> worker = block.createWorker(
 						solver.col.maxId() + 1,
 						cmdLineSetup.distributedSolve.threadsWorker);
 
@@ -131,7 +131,7 @@ public class DistributedAffineZBlockSolver
 			} );
 		} );
 
-		final ArrayList<BlockData<?, AffineModel2D, ?>> allItems = new ArrayList<>();
+		final ArrayList<BlockData<AffineModel2D, ?>> allItems = new ArrayList<>();
 
 		try {
 			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
@@ -295,7 +295,7 @@ public class DistributedAffineZBlockSolver
 	{
 		final ArrayList<AffineAlignBlockWorker<M, S>> workers = new ArrayList<>();
 
-		for ( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> block : col.allBlocks() )
+		for ( final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> block : col.allBlocks() )
 		{
 			workers.add(new AffineAlignBlockWorker<>(block, col.maxId() + 1, cmdLineSetup.distributedSolve.threadsWorker));
 		}

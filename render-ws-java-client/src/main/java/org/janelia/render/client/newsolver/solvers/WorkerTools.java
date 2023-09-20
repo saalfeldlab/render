@@ -31,11 +31,11 @@ public class WorkerTools
 		return m;
 	}
 
-	public static int fixIds( final List<? extends BlockData<?, ?, ?>> allItems, final int maxId )
+	public static int fixIds( final List<? extends BlockData<?, ?>> allItems, final int maxId )
 	{
 		final HashSet<Integer> existingIds = new HashSet<>();
 
-		for ( final BlockData<?, ?, ?> item : allItems )
+		for ( final BlockData<?, ?> item : allItems )
 		{
 			final int id = item.getId();
 

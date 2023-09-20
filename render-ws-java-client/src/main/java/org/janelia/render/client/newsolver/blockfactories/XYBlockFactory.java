@@ -83,7 +83,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 	}
 
 	@Override
-	public WeightFunction createWeightFunction(final BlockData<?, ?, ?> block) {
+	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
 		// the render scale needs to be fairly small so that the entire MFOV area fits into one image
 		return new XYDistanceWeightFunction(block, 0.01);
 	}
@@ -95,7 +95,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 		private final double minX;
 		private final double minY;
 
-		public XYDistanceWeightFunction(final BlockData<?, ?, ?> block, final double resolution) {
+		public XYDistanceWeightFunction(final BlockData<?, ?> block, final double resolution) {
 			layerDistanceMaps = new HashMap<>(block.zToTileId().size());
 			this.resolution = resolution;
 

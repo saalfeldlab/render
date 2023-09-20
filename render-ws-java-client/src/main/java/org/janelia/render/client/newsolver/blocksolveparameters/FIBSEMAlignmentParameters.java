@@ -141,8 +141,8 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	public int maxPlateauWidthStitching() { return maxPlateauWidthStitching; }
 
 	@Override
-	public Worker<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> createWorker(
-			final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
+	public Worker<AffineModel2D, FIBSEMAlignmentParameters<M, S>> createWorker(
+			final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
 			final int startId,
 			final int threadsWorker)
 	{
@@ -150,7 +150,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	}
 
 	@Override
-	public double[] centerOfMass(final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData)
+	public double[] centerOfMass(final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData)
 	{
 		if (blockData.idToNewModel() == null || blockData.idToNewModel().isEmpty())
 			return super.centerOfMass( blockData );

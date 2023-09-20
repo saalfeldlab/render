@@ -34,26 +34,26 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
 	public void fuseGlobally(
 			final AssemblyMaps<Z> globalData,
-			final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile
+			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile
 	) {
-		final HashMap<BlockData<?, R, ?>, G> blockToG = new HashMap<>();
+		final HashMap<BlockData<R, ?>, G> blockToG = new HashMap<>();
 
 		blockToTile.forEach((block, tile) -> {
 			if (block != null)
 				blockToG.put(block, tile.getModel());
 		});
 
-		final Map<String, List<BlockData<?, R, ?>>> tileIdToBlocks = new HashMap<>();
-		for (final BlockData<?, R, ?> block : blockToTile.keySet()) {
+		final Map<String, List<BlockData<R, ?>>> tileIdToBlocks = new HashMap<>();
+		for (final BlockData<R, ?> block : blockToTile.keySet()) {
 			for (final String tileId : block.idToNewModel().keySet()) {
 				tileIdToBlocks.computeIfAbsent(tileId, k -> new ArrayList<>()).add(block);
 			}
 		}
 
-		final Map<BlockData<?, R, ?>, WeightFunction> blockToWeightFunctions = new HashMap<>();
-		for (final Map.Entry<String, List<BlockData<?, R, ?>>> entry : tileIdToBlocks.entrySet()) {
+		final Map<BlockData<R, ?>, WeightFunction> blockToWeightFunctions = new HashMap<>();
+		for (final Map.Entry<String, List<BlockData<R, ?>>> entry : tileIdToBlocks.entrySet()) {
 			final String tileId = entry.getKey();
-			final List<BlockData<?, R, ?>> blocksForTile = entry.getValue();
+			final List<BlockData<R, ?>> blocksForTile = entry.getValue();
 			final int[] blockIds = blocksForTile.stream().mapToInt(BlockData::getId).toArray();
 			LOG.info("tile '" + tileId + "' is in following blocks: " + Arrays.toString(blockIds));
 
@@ -66,7 +66,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 			final List<Double> weights = new ArrayList<>();
 			List<SerializableValuePair<String, Double>> error = null;
 			double maxWeight = -1.0;
-			for (final BlockData<?, R, ?> block : blocksForTile) {
+			for (final BlockData<R, ?> block : blocksForTile) {
 				final G globalModel = blockToG.get(block);
 				final R newModel = block.idToNewModel().get(tileId);
 				// TODO: confirm this is proper way to handle, consider moving retrieval to block method and put check there

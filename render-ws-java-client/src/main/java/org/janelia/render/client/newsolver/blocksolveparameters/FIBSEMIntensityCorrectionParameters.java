@@ -77,8 +77,8 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public ZDistanceParameters zDistance() { return zDistance; }
 
 	@Override
-	public Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(
-			final BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
+	public Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(
+			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
 			final int startId,
 			final int threadsWorker) {
 		try {

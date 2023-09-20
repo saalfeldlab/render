@@ -17,8 +17,8 @@ public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator
 			final TileSpec tileSpec,
 			final ArrayList<AffineModel1D> modelsA,
 			final ArrayList<AffineModel1D> modelsB,
-			final BlockData<?, ArrayList<AffineModel1D>, ?> blockContextA,
-			final BlockData<?, ArrayList<AffineModel1D>, ?> blockContextB,
+			final BlockData<ArrayList<AffineModel1D>, ?> blockContextA,
+			final BlockData<ArrayList<AffineModel1D>, ?> blockContextB,
 			final List<PointMatch> matchesAtoB) {
 
 		final int nModels = modelsA.size();

@@ -22,7 +22,7 @@ import mpicbg.models.Tile;
  */
 public class Assembler<Z, G extends Model<G>, R>
 {
-	final List<BlockData<?, R, ?>> blocks;
+	final List<BlockData<R, ?>> blocks;
 	final BlockSolver<Z, G, R> blockSolver;
 	final BlockCombiner<Z, ?, G, R> blockCombiner;
 	final Function<R, Z> converter;
@@ -34,7 +34,7 @@ public class Assembler<Z, G extends Model<G>, R>
 	 * @param converter - a converter from R to Z - for the trivial case of a single block
 	 */
 	public Assembler(
-			final List<BlockData<?, R, ?>> blocks,
+			final List<BlockData<R, ?>> blocks,
 			final BlockSolver<Z, G, R> blockSolver,
 			final BlockCombiner<Z, ?, G, R> blockCombiner,
 			final Function<R, Z> converter )
@@ -59,7 +59,7 @@ public class Assembler<Z, G extends Model<G>, R>
 
 		try {
 			// now compute the final alignment for each block
-			final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile =
+			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile =
 					blockSolver.globalSolve(blocks, am);
 
 			// now fuse blocks into a full assembly
@@ -87,7 +87,7 @@ public class Assembler<Z, G extends Model<G>, R>
 
 		final AssemblyMaps< Z > globalData = new AssemblyMaps<>();
 
-		final BlockData< ?, R, ?> solveItem = blocks.get( 0 );
+		final BlockData<R, ?> solveItem = blocks.get( 0 );
 
 		globalData.sharedTransformSpecs.addAll(solveItem.rtsc().getTransformSpecs());
 

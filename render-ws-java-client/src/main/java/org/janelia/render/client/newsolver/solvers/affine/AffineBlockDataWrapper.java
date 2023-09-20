@@ -18,7 +18,7 @@ public class AffineBlockDataWrapper<M extends Model<M> & Affine2D<M>, S extends 
 {
 	final public static int samplesPerDimension = 2;
 
-	final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData;
+	final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData;
 
 	//
 	// local only variables needed for the block solve below
@@ -51,12 +51,12 @@ public class AffineBlockDataWrapper<M extends Model<M> & Affine2D<M>, S extends 
 	// matches for error computation
 	final List< Pair< Pair< String, String>, Matches > > matches = new ArrayList<>();
 
-	public AffineBlockDataWrapper( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData )
+	public AffineBlockDataWrapper( final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData )
 	{
 		this.blockData = blockData;
 	}
 
-	public BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>>  blockData() { return blockData; }
+	public BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>  blockData() { return blockData; }
 
 	public HashMap<String, Tile< M > > idToTileMap() { return idToTileMap; }
 	public List< Pair< Pair< String, String>, Matches > > matches() { return matches; }

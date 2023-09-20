@@ -54,12 +54,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 public class AffineIntensityCorrectionBlockWorker<M>
-		extends Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> {
+		extends Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> {
 
 	private final FIBSEMIntensityCorrectionParameters<M> parameters;
 
 	public AffineIntensityCorrectionBlockWorker(
-			final BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
+			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
 			final int startId,
 			final int numThreads) throws IOException {
 
@@ -327,7 +327,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
 	@Override
-	public ArrayList<BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>>> getBlockDataList() {
+	public ArrayList<BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>>> getBlockDataList() {
 		return new ArrayList<>(List.of(blockData));
 	}
 

@@ -7,10 +7,10 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 
 public class BlockCollection<M, R, P extends BlockDataSolveParameters<M, R, P>>
 {
-	final ArrayList<BlockData< M, R, P>> blockDataList;
+	final ArrayList<BlockData<R, P>> blockDataList;
 	final int minId, maxId;
 
-	public BlockCollection( final ArrayList<BlockData<M, R, P>> blockDataList )
+	public BlockCollection( final ArrayList<BlockData<R, P>> blockDataList )
 	{
 		this.blockDataList = blockDataList;
 
@@ -21,5 +21,5 @@ public class BlockCollection<M, R, P extends BlockDataSolveParameters<M, R, P>>
 
 	public int minId() { return minId; }
 	public int maxId() { return maxId; }
-	public ArrayList< BlockData<M, R, P>> allBlocks() { return blockDataList; }
+	public ArrayList<BlockData<R, P>> allBlocks() { return blockDataList; }
 }
