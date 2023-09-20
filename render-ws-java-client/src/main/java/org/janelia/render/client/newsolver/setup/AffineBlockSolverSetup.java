@@ -1,32 +1,22 @@
 package org.janelia.render.client.newsolver.setup;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.function.Function;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
-import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
+import org.janelia.render.client.parameter.BlockOptimizerParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.StitchingParameters;
 import org.janelia.render.client.parameter.XYRangeParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
-import org.janelia.render.client.solver.SerializableValuePair;
-import org.janelia.render.client.solver.StabilizingAffineModel2D;
 
-import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
-
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.RigidModel2D;
-import mpicbg.models.TranslationModel2D;
 
 public class AffineBlockSolverSetup extends CommandLineParameters
 {
@@ -53,105 +43,30 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 	@ParametersDelegate
 	public BlockPartitionParameters blockPartition = new BlockPartitionParameters();
 
+	@ParametersDelegate
+	public StitchingParameters stitching = new StitchingParameters();
+
+	@ParametersDelegate
+	public BlockOptimizerParameters blockOptimizer = new BlockOptimizerParameters();
+
     @Parameter(
             names = "--stack",
             description = "Stack name",
             required = true)
     public String stack;
 
-    //
-    // stitching align model, by TRANSLATION with tunable regularization --- with RIGID (default: 0.00)
-    //
-    @Parameter(
-            names = "--lambdaStitching",
-            description = "Lambda, used if modelTypeStitchingRegularizer is not null."
-    )
-    public Double lambdaStitching = 0.0;
+	@Parameter(
+			names = "--stitchFirst",
+			description = "if stitching per z-layer should be performed prior to block alignment (default: false)"
+	)
 
-    @Parameter(
-            names = "--maxAllowedErrorStitching",
-            description = "Max allowed error stitching"
-    )
-    public Double maxAllowedErrorStitching = 10.0;
+	public boolean stitchFirst = false;
 
-    @Parameter(
-            names = "--maxIterationsStitching",
-            description = "Max iterations stitching"
-    )
-    public Integer maxIterationsStitching = 500;
-
-    @Parameter(
-            names = "--maxPlateauWidthStitching",
-            description = "Max plateau width stitching"
-    )
-    public Integer maxPlateauWidthStitching = 50;
-
-    @Parameter(
-            names = "--minStitchingInliers",
-            description = "how many inliers per tile pair are necessary for 'stitching first'"
-    )
-    public Integer minStitchingInliers = 25;
-
-    @Parameter(
-            names = "--stitchFirst",
-            description = "if stitching per z-layer should be performed prior to block alignment (default: false)"
-    )
-    public boolean stitchFirst = false;
-
-    //
-    // alignment of the actual blocks that is performed in parallel
-    // models are hardcoded: AFFINE, regularized with RIGID, regularized with Translation, regularized with RegularizingModel (Constant or Stabilizing)
-    // and a set of decreasing lambdas (see below)
-    //
-
-    @Parameter(
+	@Parameter(
             names = "--preAlign",
             description = "Type of pre-alignment used: NONE, TRANSLATION, RIGID. Note: if you use 'stitchFirst' you must specify TRANSLATION or RIGID (default: none)"
     )
     public PreAlign preAlign = PreAlign.NONE;
-
-    @Parameter(
-            names = "--blockOptimizerLambdasRigid",
-            description = "Explicit optimizer lambda values for the rigid regularizer, by default optimizer loops through lambdas (1.0,0.5,0.1,0.01)",
-            variableArity = true
-    )
-    public List<Double> blockOptimizerLambdasRigid = new ArrayList<>( Arrays.asList( 1.0, 0.5, 0.1, 0.01 ) );
-
-    @Parameter(
-            names = "--blockOptimizerLambdasTranslation",
-            description = "Explicit optimizer lambda values for the translation regularizer, by default optimizer loops through lambdas (1.0,0.5,0.1,0.01)",
-            variableArity = true
-    )
-    public List<Double> blockOptimizerLambdasTranslation = new ArrayList<>( Arrays.asList( 0.5, 0.0, 0.0, 0.0 ) );
-
-    @Parameter(
-            names = "--blockOptimizerLambdasRegularization",
-            description = "Explicit optimizer lambda values for the Regularizer-model, by default optimizer loops through lambdas (0.05, 0.01, 0.0, 0.0)",
-            variableArity = true
-    )
-    public List<Double> blockOptimizerLambdasRegularization = new ArrayList<>( Arrays.asList( 0.05, 0.01, 0.0, 0.0 ) );
-
-    @Parameter(
-            names = "--blockOptimizerIterations",
-            description = "Explicit num iterations for each lambda value (blockOptimizerLambdas), " +
-            			  "by default optimizer uses (1000,1000,400,200), MUST MATCH SIZE of blockOptimizerLambdas",
-            variableArity = true
-    )
-    public List<Integer> blockOptimizerIterations = new ArrayList<>( Arrays.asList( 1000, 1000, 400, 200 ) );
-
-    @Parameter(
-            names = "--blockMaxPlateauWidth",
-            description = "Explicit max plateau width block alignment for each lambda value (blockOptimizerLambdas), " +
-            			  "by default optimizer uses (2500,250,100,50), MUST MATCH SIZE of blockOptimizerLambdas",
-            variableArity = true
-    )
-    public List<Integer> blockMaxPlateauWidth = new ArrayList<>( Arrays.asList( 250, 250, 100, 50 ) );
-
-    @Parameter(
-            names = "--blockMaxAllowedError",
-            description = "Max allowed error block alignment (default: 10.0)"
-    )
-    public Double blockMaxAllowedError = 10.0;
 
     @Parameter(names = "--maxNumMatches", description = "Limit maximum number of matches in between tile pairs (default:0, no limit)")
     public int maxNumMatches = 0;
@@ -167,9 +82,7 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 	public boolean visualizeResults = false;
 
 	public void initDefaultValues() {
-		if (blockOptimizerIterations.size() != blockMaxPlateauWidth.size() ||
-				blockOptimizerIterations.size() != blockOptimizerLambdasRigid.size() ||
-				blockOptimizerLambdasTranslation.size() != blockOptimizerLambdasRigid.size())
+		if (!blockOptimizer.isConsistent())
 			throw new RuntimeException("Number of entries for blockOptimizerIterations, blockMaxPlateauWidth, blockOptimizerLambdasTranslation and blockOptimizerLambdasRigid not identical.");
 
 		// owner for matches is the same as owner for render, if not specified otherwise
@@ -193,24 +106,14 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 				blockModel.copy(),
 				(Function<Integer, S> & Serializable) z -> stitchingModel.copy(),
 				null,
-				0,
-				0,
-				0,
-				blockOptimizerLambdasRigid,
-				blockOptimizerLambdasTranslation,
-				blockOptimizerLambdasRegularization,
-				blockOptimizerIterations,
-				blockMaxPlateauWidth,
-				blockMaxAllowedError,
-				maxNumMatches,
-				maxZRangeMatches,
+				new StitchingParameters(),
+				blockOptimizer,
 				preAlign,
-				renderWeb.baseDataUrl,
-				renderWeb.owner,
-				renderWeb.project,
+				renderWeb,
 				stack,
-				matches.matchOwner,
-				matches.matchCollection);
+				matches,
+				maxNumMatches,
+				maxZRangeMatches);
 	}
 
 	public <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> FIBSEMAlignmentParameters<M, S> setupSolveParametersWithStitching(
@@ -219,24 +122,14 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 		return new FIBSEMAlignmentParameters<>(
 				blockModel.copy(),
 				(Function<Integer, S> & Serializable) z -> stitchingModel.copy(),
-				(Function< Integer, Integer > & Serializable )(z) -> minStitchingInliers,
-				maxAllowedErrorStitching,
-				maxIterationsStitching,
-				maxPlateauWidthStitching,
-				blockOptimizerLambdasRigid,
-				blockOptimizerLambdasTranslation,
-				blockOptimizerLambdasRegularization,
-				blockOptimizerIterations,
-				blockMaxPlateauWidth,
-				blockMaxAllowedError,
-				maxNumMatches,
-				maxZRangeMatches,
+				(Function< Integer, Integer > & Serializable )(z) -> stitching.minInliers,
+				stitching,
+				blockOptimizer,
 				preAlign,
-				renderWeb.baseDataUrl,
-				renderWeb.owner,
-				renderWeb.project,
+				renderWeb,
 				stack,
-				matches.matchOwner,
-				matches.matchCollection);
+				matches,
+				maxNumMatches,
+				maxZRangeMatches);
 	}
 }

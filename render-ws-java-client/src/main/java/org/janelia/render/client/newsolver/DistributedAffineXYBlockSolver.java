@@ -11,10 +11,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
-import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.RigidModel2D;
-import mpicbg.models.TranslationModel2D;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.assembly.Assembler;
@@ -30,7 +28,6 @@ import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SolveTools;
-import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,7 +106,8 @@ public class DistributedAffineXYBlockSolver
 		final DistributedAffineXYBlockSolver alignmentSolver = new DistributedAffineXYBlockSolver(cmdLineSetup, renderSetup);
 
 		// create all block instances
-		final BlockCollection<?, AffineModel2D, ?> blockCollection = alignmentSolver.setupSolve(blockModel(cmdLineSetup), stitchingModel(cmdLineSetup));
+		final BlockCollection<?, AffineModel2D, ?> blockCollection =
+				alignmentSolver.setupSolve(cmdLineSetup.blockOptimizer.getModel(), cmdLineSetup.stitching.getModel());
 
 		//
 		// multi-threaded solve
@@ -292,22 +290,6 @@ public class DistributedAffineXYBlockSolver
 		LOG.info("minTileCount={}, maxTileCount={}, avgTileCount={}", stats.getMin(), stats.getMax(), stats.getAverage());
 
 		return bc;
-	}
-
-	private static InterpolatedAffineModel2D<InterpolatedAffineModel2D<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>, TranslationModel2D>, StabilizingAffineModel2D<RigidModel2D>>
-		blockModel(final AffineBlockSolverSetup solverSetup) {
-
-		return new InterpolatedAffineModel2D<>(
-				new InterpolatedAffineModel2D<>(
-						new InterpolatedAffineModel2D<>(
-								new AffineModel2D(),
-								new RigidModel2D(), solverSetup.blockOptimizerLambdasRigid.get(0)),
-						new TranslationModel2D(), solverSetup.blockOptimizerLambdasTranslation.get(0)),
-				new StabilizingAffineModel2D<>(new RigidModel2D()), 0.0);
-	}
-
-	private static InterpolatedAffineModel2D<TranslationModel2D, RigidModel2D> stitchingModel(final AffineBlockSolverSetup solverSetup) {
-		return new InterpolatedAffineModel2D<>(new TranslationModel2D(), new RigidModel2D(), solverSetup.lambdaStitching);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineXYBlockSolver.class);
