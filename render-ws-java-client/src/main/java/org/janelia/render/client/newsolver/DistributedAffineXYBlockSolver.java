@@ -12,6 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 import mpicbg.models.InterpolatedAffineModel2D;
+import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -39,16 +40,15 @@ import mpicbg.models.Model;
 
 public class DistributedAffineXYBlockSolver
 {
-	final AffineBlockSolverSetup cmdLineSetup;
+	final AffineBlockSolverSetup solverSetup;
 	final RenderSetup renderSetup;
 	BlockCollection<?, AffineModel2D, ? extends FIBSEMAlignmentParameters<?, ?>> col;
 	BlockFactory blockFactory;
 
 	public DistributedAffineXYBlockSolver(
-			final AffineBlockSolverSetup cmdLineSetup,
-			final RenderSetup renderSetup )
-	{
-		this.cmdLineSetup = cmdLineSetup;
+			final AffineBlockSolverSetup solverSetup,
+			final RenderSetup renderSetup) {
+		this.solverSetup = solverSetup;
 		this.renderSetup = renderSetup;
 	}
 
@@ -103,13 +103,13 @@ public class DistributedAffineXYBlockSolver
         	cmdLineSetup.parse(args);
         }
 
-		final RenderSetup renderSetup = RenderSetup.setupSolve( cmdLineSetup );
+		final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
-		final DistributedAffineXYBlockSolver solverSetup = new DistributedAffineXYBlockSolver( cmdLineSetup, renderSetup );
+		final DistributedAffineXYBlockSolver alignmentSolver = new DistributedAffineXYBlockSolver(cmdLineSetup, renderSetup);
 
 		// create all block instances
-		final BlockCollection<?, AffineModel2D, ?> blockCollection = solverSetup.setupSolve(blockModel(cmdLineSetup), stitchingModel(cmdLineSetup));
+		final BlockCollection<?, AffineModel2D, ?> blockCollection = alignmentSolver.setupSolve(blockModel(cmdLineSetup), stitchingModel(cmdLineSetup));
 
 		//
 		// multi-threaded solve
@@ -118,39 +118,20 @@ public class DistributedAffineXYBlockSolver
 
 		final ArrayList<Callable<List<BlockData<AffineModel2D, ?>>>> workers = new ArrayList<>();
 
-		blockCollection.allBlocks().forEach( block ->
-		{
-			// TODO: extract?
-			workers.add( () ->
-			{
-				final Worker<AffineModel2D, ?> worker = block.createWorker(
-						solverSetup.col.maxId() + 1,
-						cmdLineSetup.distributedSolve.threadsWorker);
-
-				worker.run();
-
-				final ArrayList<? extends BlockData<AffineModel2D, ?>> blockDataList = worker.getBlockDataList();
-				if (blockDataList == null) {
-					throw new IllegalStateException("no items returned for worker " + worker);
-				}
-
-				return new ArrayList<>( blockDataList );
-			} );
-		} );
+		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block, alignmentSolver, cmdLineSetup)));
 
 		final ArrayList<BlockData<AffineModel2D, ?>> allItems = new ArrayList<>();
 
 		try {
 			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 
-			taskExecutor.invokeAll( workers ).forEach( future ->
-			{
+			taskExecutor.invokeAll(workers).forEach(future -> {
 				try {
-					allItems.addAll( future.get() );
+					allItems.addAll(future.get());
 				} catch (final InterruptedException | ExecutionException e) {
 					LOG.error("Failed to compute alignments: ", e);
 				}
-			} );
+			});
 
 			taskExecutor.shutdown();
 		} catch (final InterruptedException e) {
@@ -160,38 +141,11 @@ public class DistributedAffineXYBlockSolver
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
 		// but do keep ids that are smaller or equal to the maxId of the initial solveset
-		final int maxId = WorkerTools.fixIds( allItems, solverSetup.col.maxId() );
+		final int maxId = WorkerTools.fixIds(allItems, alignmentSolver.col.maxId());
 
 		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
 
-		final BlockSolver<AffineModel2D, RigidModel2D, AffineModel2D> blockSolver =
-				new BlockSolver<>(
-						new RigidModel2D(),
-						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
-						cmdLineSetup.distributedSolve.maxPlateauWidthGlobal,
-						cmdLineSetup.distributedSolve.maxAllowedErrorGlobal,
-						cmdLineSetup.distributedSolve.maxIterationsGlobal,
-						cmdLineSetup.distributedSolve.threadsGlobal);
-
-		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
-				new BlockCombiner<>(
-						blockSolver,
-						DistributedAffineXYBlockSolver::integrateGlobalModel,
-						DistributedAffineXYBlockSolver::interpolateModels
-				);
-
-		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
-				new Assembler<>(
-						allItems,
-						blockSolver,
-						fusion,
-						(r) -> {
-							final AffineModel2D a = new AffineModel2D();
-							a.set(r);
-							return a;
-						});
-
-		final AssemblyMaps<AffineModel2D> finalTiles = assembler.createAssembly();
+		final AssemblyMaps<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup, allItems);
 
 		// save the re-aligned part
 		LOG.info( "Saving targetstack=" + cmdLineSetup.targetStack );
@@ -218,6 +172,55 @@ public class DistributedAffineXYBlockSolver
 			LOG.info("Completing targetstack=" + cmdLineSetup.targetStack.stack);
 			SolveTools.completeStack(cmdLineSetup.targetStack.stack, runParams);
 		}
+	}
+
+	private static List<BlockData<AffineModel2D, ?>> createAndRunWorker(
+			final BlockData<AffineModel2D, ?> block,
+			final DistributedAffineXYBlockSolver alignmentSolver,
+			final AffineBlockSolverSetup cmdLineSetup) throws NoninvertibleModelException, IOException, ExecutionException, InterruptedException {
+
+			final Worker<AffineModel2D, ?> worker = block.createWorker(
+					alignmentSolver.col.maxId() + 1,
+					cmdLineSetup.distributedSolve.threadsWorker);
+
+			worker.run();
+
+			final ArrayList<? extends BlockData<AffineModel2D, ?>> blockDataList = worker.getBlockDataList();
+			if (blockDataList == null) {
+				throw new IllegalStateException("no items returned for worker " + worker);
+			}
+
+			return new ArrayList<>(blockDataList);
+	}
+
+	private static AssemblyMaps<AffineModel2D> solveAndCombineBlocks(
+			final AffineBlockSolverSetup cmdLineSetup,
+			final ArrayList<BlockData<AffineModel2D, ?>> allItems) {
+
+		final BlockSolver<AffineModel2D, RigidModel2D, AffineModel2D> blockSolver =
+				new BlockSolver<>(new RigidModel2D(),
+						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
+						cmdLineSetup.distributedSolve);
+
+		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
+				new BlockCombiner<>(
+						blockSolver,
+						DistributedAffineXYBlockSolver::integrateGlobalModel,
+						DistributedAffineXYBlockSolver::interpolateModels
+				);
+
+		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
+				new Assembler<>(
+						allItems,
+						blockSolver,
+						fusion,
+						(r) -> {
+							final AffineModel2D a = new AffineModel2D();
+							a.set(r);
+							return a;
+						});
+
+		return assembler.createAssembly();
 	}
 
 
@@ -259,7 +262,7 @@ public class DistributedAffineXYBlockSolver
 			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> setupSolve(final M blockModel, final S stitchingModel)
 	{
 		// setup XY BlockFactory
-		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, cmdLineSetup.blockPartition);
+		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, solverSetup.blockPartition);
 		
 		// create all blocks
 		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> col = setupBlockCollection(this.blockFactory, blockModel, stitchingModel);
@@ -274,10 +277,10 @@ public class DistributedAffineXYBlockSolver
 					final S stitchingModel) {
 
 		final FIBSEMAlignmentParameters<M, S> defaultSolveParams;
-		if (cmdLineSetup.stitchFirst)
-			defaultSolveParams = cmdLineSetup.setupSolveParametersWithStitching(blockModel, stitchingModel);
+		if (solverSetup.stitchFirst)
+			defaultSolveParams = solverSetup.setupSolveParametersWithStitching(blockModel, stitchingModel);
 		else
-			defaultSolveParams = cmdLineSetup.setupSolveParameters(blockModel, stitchingModel);
+			defaultSolveParams = solverSetup.setupSolveParameters(blockModel, stitchingModel);
 
 		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> bc =
 				blockFactory.defineBlockCollection(rtsc -> defaultSolveParams);

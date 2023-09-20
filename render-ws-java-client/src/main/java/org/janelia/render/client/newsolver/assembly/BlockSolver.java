@@ -12,6 +12,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreator;
+import org.janelia.render.client.newsolver.setup.DistributedSolveParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,17 +36,14 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 	public BlockSolver(
 			final G globalModel,
 			final SameTileMatchCreator<R> sameTileMatchCreator,
-			final int maxPlateauWidth,
-			final double maxAllowedError,
-			final int maxIterations,
-			final int numThreads
+			final DistributedSolveParameters parameters
 	) {
 		this.globalModel = globalModel;
 		this.sameTileMatchCreator = sameTileMatchCreator;
-		this.maxPlateauWidth = maxPlateauWidth;
-		this.maxAllowedError = maxAllowedError;
-		this.maxIterations = maxIterations;
-		this.numThreads = numThreads;
+		this.maxPlateauWidth = parameters.maxPlateauWidthGlobal;
+		this.maxAllowedError = parameters.maxAllowedErrorGlobal;
+		this.maxIterations = parameters.maxIterationsGlobal;
+		this.numThreads = parameters.threadsGlobal;
 	}
 
 	public G globalSolveModel() {

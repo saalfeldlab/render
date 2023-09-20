@@ -13,6 +13,7 @@ import java.util.concurrent.Future;
 
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
+import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.TranslationModel1D;
 
 import org.janelia.alignment.filter.FilterSpec;
@@ -42,15 +43,15 @@ import org.slf4j.LoggerFactory;
 
 
 public class DistributedIntensityCorrectionSolver {
-	final IntensityCorrectionSetup cmdLineSetup;
+	final IntensityCorrectionSetup solverSetup;
 	final RenderSetup renderSetup;
 	BlockCollection<?, ArrayList<AffineModel1D>, ? extends FIBSEMIntensityCorrectionParameters<?>> blocks;
 	BlockFactory blockFactory;
 
 	public DistributedIntensityCorrectionSolver(
-			final IntensityCorrectionSetup cmdLineSetup,
+			final IntensityCorrectionSetup solverSetup,
 			final RenderSetup renderSetup) {
-		this.cmdLineSetup = cmdLineSetup;
+		this.solverSetup = solverSetup;
 		this.renderSetup = renderSetup;
 	}
 
@@ -66,7 +67,7 @@ public class DistributedIntensityCorrectionSolver {
 					"--stack", "v2_acquire_align",
 					"--targetStack", "v2_acquire_test_intensity_debug13",
 					"--threadsWorker", "1",
-					"--threadsGlobal", "1",
+					"--threadsGlobal", "12",
 					"--blockSizeZ", "6",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 14,503
@@ -96,24 +97,13 @@ public class DistributedIntensityCorrectionSolver {
 
 	public ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> solveBlocksUsingThreadPool(final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection) {
 
-		LOG.info("solveBlocksUsingThreadPool: entry, threadsGlobal={}", cmdLineSetup.distributedSolve.threadsGlobal);
+		LOG.info("solveBlocksUsingThreadPool: entry, threadsGlobal={}", solverSetup.distributedSolve.threadsGlobal);
 
 		final ArrayList<Callable<List<BlockData<ArrayList<AffineModel1D>, ?>>>> workers = new ArrayList<>();
-		for (final BlockData<ArrayList<AffineModel1D>, ?> block : blockCollection.allBlocks()) {
-			workers.add(() ->
-						{
-							final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(
-									blocks.maxId() + 1,
-									cmdLineSetup.distributedSolve.threadsWorker);
-
-							worker.run();
-
-							return new ArrayList<>(worker.getBlockDataList());
-						});
-		}
+		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block)));
 
 		final ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
-		final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool(solverSetup.distributedSolve.threadsGlobal);
 		try {
 			for (final Future<List<BlockData<ArrayList<AffineModel1D>, ?>>> future : taskExecutor.invokeAll(workers))
 					allItems.addAll(future.get());
@@ -132,6 +122,14 @@ public class DistributedIntensityCorrectionSolver {
 		return allItems;
 	}
 
+	private ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> createAndRunWorker(final BlockData<ArrayList<AffineModel1D>, ?> block)
+			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
+
+		final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(blocks.maxId() + 1, solverSetup.distributedSolve.threadsWorker);
+		worker.run();
+		return new ArrayList<>(worker.getBlockDataList());
+	}
+
 	public AssemblyMaps<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {
 
 		LOG.info("assembleBlocks: entry, processing {} blocks", allItems.size());
@@ -140,10 +138,7 @@ public class DistributedIntensityCorrectionSolver {
 				new BlockSolver<>(
 						new TranslationModel1D(),
 						new SameTileMatchCreatorAffineIntensity(),
-						cmdLineSetup.distributedSolve.maxPlateauWidthGlobal,
-						cmdLineSetup.distributedSolve.maxAllowedErrorGlobal,
-						cmdLineSetup.distributedSolve.maxIterationsGlobal,
-						cmdLineSetup.distributedSolve.threadsGlobal);
+						solverSetup.distributedSolve);
 
 		final BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
 				new BlockCombiner<>(blockSolver,
@@ -165,17 +160,17 @@ public class DistributedIntensityCorrectionSolver {
 	public void saveResultsAsNeeded(final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems)
 			throws IOException {
 		// this adds the filters to the tile specs and pushes the data to the DB
-		final boolean saveResults = (cmdLineSetup.targetStack.stack != null);
-		final RenderDataClient renderDataClient = cmdLineSetup.renderWeb.getDataClient();
+		final boolean saveResults = (solverSetup.targetStack.stack != null);
+		final RenderDataClient renderDataClient = solverSetup.renderWeb.getDataClient();
 		if (saveResults) {
 			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.idToTileSpec.values());
 			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.idToModel;
-			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, cmdLineSetup.intensityAdjust.numCoefficients);
+			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
 			addFilters(finalizedItems.idToTileSpec, idToFilterSpec);
 			final ResolvedTileSpecCollection rtsc = finalizedItems.buildResolvedTileSpecs();
-			renderDataClient.saveResolvedTiles(rtsc, cmdLineSetup.targetStack.stack, null);
-			if (cmdLineSetup.targetStack.completeStack)
-				renderDataClient.setStackState(cmdLineSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
+			renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
+			if (solverSetup.targetStack.completeStack)
+				renderDataClient.setStackState(solverSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
 		}
 	}
 
@@ -279,7 +274,7 @@ public class DistributedIntensityCorrectionSolver {
 	}
 
 	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> setupSolve() {
-		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, cmdLineSetup.blockPartition);
+		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, solverSetup.blockPartition);
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();
 		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col =
 				blockFactory.defineBlockCollection(rtsc -> defaultSolveParams);
@@ -289,8 +284,8 @@ public class DistributedIntensityCorrectionSolver {
 	}
 
 	protected <M> FIBSEMIntensityCorrectionParameters<M> getDefaultParameters() {
-		final RenderWebServiceParameters renderWeb = cmdLineSetup.renderWeb;
-		final AlgorithmicIntensityAdjustParameters intensityAdjust = cmdLineSetup.intensityAdjust;
+		final RenderWebServiceParameters renderWeb = solverSetup.renderWeb;
+		final AlgorithmicIntensityAdjustParameters intensityAdjust = solverSetup.intensityAdjust;
 		return new FIBSEMIntensityCorrectionParameters<>(null, renderWeb, intensityAdjust);
 	}
 
