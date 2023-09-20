@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -485,8 +486,8 @@ public class SolveTools
 
 		try
 		{
-			double[] errors = computeErrors( tileConfig.getTiles() );
-			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+			DoubleSummaryStatistics errors = computeErrors( tileConfig.getTiles() );
+			LOG.info("errors: " + errors);
 
 			final Map< Tile< ? >, Integer > tileToZ = new HashMap<>();
 
@@ -500,7 +501,7 @@ public class SolveTools
 			//tileConfig.preAlign();
 			
 			errors = computeErrors( tileConfig.getTiles() );
-			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+			LOG.info("errors: " + errors);
 		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
 			LOG.info("pre-align failed: ", e);
 		}
@@ -552,26 +553,9 @@ public class SolveTools
 		return new double[] { minX, minY };
 	}
 
-	public static double[] computeErrors( final Collection< ? extends Tile< ? > > tiles )
-	{
-		double cd = 0.0;
-		double minError = Double.MAX_VALUE;
-		double maxError = 0.0;
-
-		for ( final Tile< ? > t : tiles )
-			t.update();
-		
-		for ( final Tile< ? > t : tiles )
-		{
-			t.update();
-			final double d = t.getDistance();
-			if ( d < minError ) minError = d;
-			if ( d > maxError ) maxError = d;
-			cd += d;
-		}
-		cd /= tiles.size();
-		
-		return new double[] { minError, cd, maxError };
+	public static DoubleSummaryStatistics computeErrors(final Collection<? extends Tile<?>> tiles) {
+		tiles.forEach(Tile::update);
+		return tiles.stream().mapToDouble(t -> {t.update(); return t.getDistance();}).summaryStatistics();
 	}
 
 	public static List< Tile< ? > > preAlignByLayerDistance(

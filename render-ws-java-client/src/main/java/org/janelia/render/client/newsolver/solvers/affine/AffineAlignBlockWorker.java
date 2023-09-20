@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -983,8 +984,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		}
 		
 		try {
-			double[] errors = SolveTools.computeErrors( tileConfig.getTiles() );
-			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+			DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles() );
+			LOG.info("errors: " + errors);
 
 			if ( preAlign != PreAlign.NONE )
 			{
@@ -997,7 +998,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				//tileConfig.preAlign();
 
 				errors = SolveTools.computeErrors( tileConfig.getTiles() );
-				LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+				LOG.info("errors: " + errors);
 			}
 			// TODO: else they should be in the right position
 		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
@@ -1055,8 +1056,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					numThreads );
 		}
 
-		final double[] errors = SolveTools.computeErrors(tileConfig.getTiles() );
-		LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+		final DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles() );
+		LOG.info("errors: " + errors);
 
 		//
 		// create lookup for the new models
