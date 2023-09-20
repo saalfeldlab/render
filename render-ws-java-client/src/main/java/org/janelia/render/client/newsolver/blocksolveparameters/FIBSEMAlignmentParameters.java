@@ -41,7 +41,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	final private List<Integer> blockOptimizerIterations;
 	final private List<Integer> blockMaxPlateauWidth;
 
-	final int preAlignOrdinal; // storing the ordinal of the enum for serialization purposes
+	final PreAlign preAlign; // storing the ordinal of the enum for serialization purposes
 	final private double blockMaxAllowedError;
 
 	final String matchOwner;
@@ -108,7 +108,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 		this.blockOptimizerIterations = blockOptimizerIterations;
 		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
 		this.blockMaxAllowedError = blockMaxAllowedError;
-		this.preAlignOrdinal = preAlign.ordinal();
+		this.preAlign = preAlign;
 		this.maxNumMatches = maxNumMatches;
 		this.maxZRangeMatches = maxZRangeMatches;
 		this.matchOwner = matchOwner;
@@ -129,7 +129,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	public List<Integer> blockOptimizerIterations() { return blockOptimizerIterations; }
 	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
 	public double blockMaxAllowedError() { return blockMaxAllowedError; }
-	public PreAlign preAlign() { return PreAlign.values()[ preAlignOrdinal ]; }
+	public PreAlign preAlign() { return preAlign; }
 
 	public int maxNumMatches() { return maxNumMatches; }
 	public int maxZRangeMatches() { return maxZRangeMatches; }

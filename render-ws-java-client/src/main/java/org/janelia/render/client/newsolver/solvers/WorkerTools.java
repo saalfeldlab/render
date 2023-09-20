@@ -63,12 +63,7 @@ public class WorkerTools
 
 	protected static int max( final Collection< Integer > ids )
 	{
-		int max = Integer.MIN_VALUE;
-
-		for ( final int i : ids )
-			max = Math.max( i, max );
-
-		return max;
+		return ids.stream().max(Integer::compare).orElse(Integer.MIN_VALUE);
 	}
 
 	public static class LayerDetails< M extends Model<M> >

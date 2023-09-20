@@ -1,9 +1,15 @@
 package org.janelia.render.client.newsolver.setup;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Function;
 
+import mpicbg.models.Affine2D;
+import mpicbg.models.Model;
+import org.janelia.render.client.newsolver.BlockCollection;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
@@ -25,23 +31,6 @@ import mpicbg.models.TranslationModel2D;
 public class AffineBlockSolverSetup extends CommandLineParameters
 {
 	private static final long serialVersionUID = 655629544594300471L;
-
-	public static class RangeConverter implements IStringConverter<SerializableValuePair<Integer, Integer>>
-	{
-		@Override
-		public SerializableValuePair<Integer, Integer> convert( final String value )
-		{
-			final String[] values = value.split( "-" );
-
-			int a = Integer.parseInt( values[ 0 ] );
-			int b = Integer.parseInt( values[ 1 ] );
-
-			if ( b >= a )
-				return new SerializableValuePair<>( a, b );
-			else
-				return new SerializableValuePair<>( b, a );
-		}
-	}
 
 	@ParametersDelegate
     public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
@@ -177,8 +166,12 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 			arity = 0)
 	public boolean visualizeResults = false;
 
-	public void initDefaultValues()
-	{
+	public void initDefaultValues() {
+		if (blockOptimizerIterations.size() != blockMaxPlateauWidth.size() ||
+				blockOptimizerIterations.size() != blockOptimizerLambdasRigid.size() ||
+				blockOptimizerLambdasTranslation.size() != blockOptimizerLambdasRigid.size())
+			throw new RuntimeException("Number of entries for blockOptimizerIterations, blockMaxPlateauWidth, blockOptimizerLambdasTranslation and blockOptimizerLambdasRigid not identical.");
+
 		// owner for matches is the same as owner for render, if not specified otherwise
 		if ( this.matches.matchOwner == null )
 			this.matches.matchOwner = renderWeb.owner;
@@ -190,28 +183,60 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 		// project for target is the same as project for render, if not specified otherwise
 		if ( this.targetStack.project == null )
 			this.targetStack.project = renderWeb.project;
+
 	}
 
-	public InterpolatedAffineModel2D<InterpolatedAffineModel2D< InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >, TranslationModel2D >, StabilizingAffineModel2D<RigidModel2D>> blockModel()
-	{
-		if ( this.blockOptimizerIterations.size() != this.blockMaxPlateauWidth.size() || 
-				this.blockOptimizerIterations.size() != this.blockOptimizerLambdasRigid.size() ||
-				this.blockOptimizerLambdasTranslation.size() != this.blockOptimizerLambdasRigid.size())
-			throw new RuntimeException( "Number of entries for blockOptimizerIterations, blockMaxPlateauWidth, blockOptimizerLambdasTranslation and blockOptimizerLambdasRigid not identical." );
-
-		return new InterpolatedAffineModel2D<InterpolatedAffineModel2D< InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >, TranslationModel2D >, StabilizingAffineModel2D<RigidModel2D>>(
-						new InterpolatedAffineModel2D< InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >, TranslationModel2D >(
-								new InterpolatedAffineModel2D< AffineModel2D, RigidModel2D >(
-										new AffineModel2D(),
-										new RigidModel2D(), blockOptimizerLambdasRigid.get( 0 ) ),
-								new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) ),
-						new StabilizingAffineModel2D<RigidModel2D>( new RigidModel2D() ), 0.0 );
-						//new StabilizingAffineModel2D( stitchingModel() ), 0.0 );
-						//new ConstantAffineModel2D( stitchingModel() ), 0.0 );
+	public <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> FIBSEMAlignmentParameters<M, S> setupSolveParameters(
+			final M blockModel,
+			final S stitchingModel) {
+		return new FIBSEMAlignmentParameters<>(
+				blockModel.copy(),
+				(Function<Integer, S> & Serializable) z -> stitchingModel.copy(),
+				null,
+				0,
+				0,
+				0,
+				blockOptimizerLambdasRigid,
+				blockOptimizerLambdasTranslation,
+				blockOptimizerLambdasRegularization,
+				blockOptimizerIterations,
+				blockMaxPlateauWidth,
+				blockMaxAllowedError,
+				maxNumMatches,
+				maxZRangeMatches,
+				preAlign,
+				renderWeb.baseDataUrl,
+				renderWeb.owner,
+				renderWeb.project,
+				stack,
+				matches.matchOwner,
+				matches.matchCollection);
 	}
 
-	public InterpolatedAffineModel2D<TranslationModel2D, RigidModel2D> stitchingModel()
-	{
-		return new InterpolatedAffineModel2D<TranslationModel2D, RigidModel2D>( new TranslationModel2D(), new RigidModel2D(), lambdaStitching );
+	public <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> FIBSEMAlignmentParameters<M, S> setupSolveParametersWithStitching(
+			final M blockModel,
+			final S stitchingModel) {
+		return new FIBSEMAlignmentParameters<>(
+				blockModel.copy(),
+				(Function<Integer, S> & Serializable) z -> stitchingModel.copy(),
+				(Function< Integer, Integer > & Serializable )(z) -> minStitchingInliers,
+				maxAllowedErrorStitching,
+				maxIterationsStitching,
+				maxPlateauWidthStitching,
+				blockOptimizerLambdasRigid,
+				blockOptimizerLambdasTranslation,
+				blockOptimizerLambdasRegularization,
+				blockOptimizerIterations,
+				blockMaxPlateauWidth,
+				blockMaxAllowedError,
+				maxNumMatches,
+				maxZRangeMatches,
+				preAlign,
+				renderWeb.baseDataUrl,
+				renderWeb.owner,
+				renderWeb.project,
+				stack,
+				matches.matchOwner,
+				matches.matchCollection);
 	}
 }
