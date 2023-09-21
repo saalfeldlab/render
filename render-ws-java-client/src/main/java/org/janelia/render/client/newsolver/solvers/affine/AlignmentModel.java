@@ -48,8 +48,6 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 
 		nameToWeight.forEach((name, weight) -> {
 			final Integer index = nameToIndex.get(name);
-			if (index == null)
-				throw new IllegalArgumentException("Unknown model name: " + name);
 			weights.set(index, weight);
 		});
 
