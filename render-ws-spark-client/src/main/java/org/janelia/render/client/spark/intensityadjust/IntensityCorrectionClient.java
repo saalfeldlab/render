@@ -93,11 +93,11 @@ public class IntensityCorrectionClient
             }
         }
 
-        final ArrayList<? extends BlockData<?, ArrayList<AffineModel1D>, ?>> blocks = blockCollection.allBlocks();
-        final JavaRDD<? extends BlockData<?, ArrayList<AffineModel1D>, ?>> rddBlocks = sparkContext.parallelize(blocks);
-        final JavaRDD<ArrayList<? extends BlockData<?, ArrayList<AffineModel1D>, ?>>> rddProcessedBlocks =
+        final ArrayList<? extends BlockData<ArrayList<AffineModel1D>, ?>> blocks = blockCollection.allBlocks();
+        final JavaRDD<? extends BlockData<ArrayList<AffineModel1D>, ?>> rddBlocks = sparkContext.parallelize(blocks);
+        final JavaRDD<ArrayList<? extends BlockData<ArrayList<AffineModel1D>, ?>>> rddProcessedBlocks =
                 rddBlocks.map(block -> {
-                    final Worker<?, ArrayList<AffineModel1D>, ?> worker = block.createWorker(
+                    final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(
                             hackBlockStartId,
                             threadsForSparkTasks);
                     worker.run();
@@ -106,11 +106,11 @@ public class IntensityCorrectionClient
 
         LOG.info("runWithContext: processing {} blocks", blocks.size());
 
-        final List<ArrayList<? extends BlockData<?, ArrayList<AffineModel1D>, ?>>> listOfBlockLists =
+        final List<ArrayList<? extends BlockData<ArrayList<AffineModel1D>, ?>>> listOfBlockLists =
                 rddProcessedBlocks.collect();
 
-        final List<BlockData<?, ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
-        for (final ArrayList<? extends BlockData<?, ArrayList<AffineModel1D>, ?>> blockList: listOfBlockLists) {
+        final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
+        for (final ArrayList<? extends BlockData<ArrayList<AffineModel1D>, ?>> blockList: listOfBlockLists) {
             allItems.addAll(blockList);
         }
 
