@@ -42,6 +42,11 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 		return models.size();
 	}
 
+	public Model<?> getModel(final String name) {
+		final int index = nameToIndex.get(name);
+		return models.get(index).asModel();
+	}
+
 	public void setWeights(final Map<String, Double> nameToWeight) {
 		if (!namesMatch(nameToWeight, nameToIndex))
 			throw new IllegalArgumentException("Model names do not match");
@@ -131,7 +136,6 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 		final AlignmentModel inverse = new AlignmentModel();
 		inverse.set(this);
 		inverse.models.replaceAll(AffineModel2DWrapper::wrapInverse);
-		inverse.cost = cost;
 		return inverse;
 	}
 
@@ -167,6 +171,7 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 		nameToIndex.clear();
 		nameToIndex.putAll(other.nameToIndex);
 		affine.set(other.affine);
+		cost = other.cost;
 	}
 
 	@Override
