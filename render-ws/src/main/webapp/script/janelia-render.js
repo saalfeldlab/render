@@ -642,22 +642,6 @@ JaneliaRenderServiceDataUI.prototype.getStackSummaryHtml = function(ownerUrl, st
         linksHtml = linksHtml + ' <a target="_blank" href="' + catmaidUrl + '">CATMAID</a>';
     }
 
-
-    // http://renderer-dev.int.janelia.org:8080/render-ws/view/hierarchical-data.html?renderStackOwner=flyTEM&renderStackProject=spc&renderStack=mm2_sample_rough_test_1&z=1015
-    // http://renderer-dev.int.janelia.org:8080/render-ws/view/hierarchical-data.html?renderStackOwner=flyTEM&renderStackProject=spc&renderStack=mm2_sample_rough_test_1&z=1015
-
-    // http://renderer-dev:8080/render-ws/view/hierarchical-data.html?renderStackOwner=flyTEM&renderStackProject=spc&renderStack=mm2_sample_rough_test_1&z=1015
-    // mm2_sample_rough_test_1_tier_1_warp
-
-    var warpPattern = /_tier.*_warp$/;
-    if (stackId.stack.match(warpPattern)) {
-        var roughStack = stackId.stack.substring(0, stackId.stack.search(warpPattern));
-        var warpUrl = this.util.getViewBaseUrl() + '/hierarchical-data.html?renderStackOwner=' +
-                      stackId.owner + '&renderStackProject=' + stackId.project + '&renderStack=' + roughStack +
-                      '&z=' + bounds.minZ;
-        linksHtml += '<a target="_blank" href="' + warpUrl + '">Hierarchical Data</a> ';
-    }
-
     if (this.isNdvizHostDefined()) {
         var NDVIZUrl = 'http://' + this.ndvizHost + '/render/' + this.shortbaseUrl + '/' +
                        stackId.owner + '/' + stackId.project + '/' + stackId.stack + '/';
