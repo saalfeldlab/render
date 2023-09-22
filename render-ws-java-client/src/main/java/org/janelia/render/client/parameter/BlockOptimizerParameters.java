@@ -2,15 +2,17 @@ package org.janelia.render.client.parameter;
 
 import com.beust.jcommander.Parameter;
 import mpicbg.models.AffineModel2D;
-import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
+import org.janelia.render.client.newsolver.solvers.affine.AlignmentModel;
+import org.janelia.render.client.newsolver.solvers.affine.AlignmentModel.AlignmentModelBuilder;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
 
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Parameters for optimization of distributed blocks.
@@ -66,23 +68,44 @@ public class BlockOptimizerParameters implements Serializable {
 	public Double maxAllowedError = 10.0;
 
 	public boolean isConsistent() {
-		final int n = iterations.size();
+		final int n = nRuns();
 		return n == maxPlateauWidth.size() &&
 				n == lambdasRigid.size() &&
 				n == lambdasTranslation.size() &&
 				n == lambdasRegularization.size();
 	}
 
-	public InterpolatedAffineModel2D<InterpolatedAffineModel2D<InterpolatedAffineModel2D<AffineModel2D, RigidModel2D>, TranslationModel2D>, StabilizingAffineModel2D<RigidModel2D>>
-		getModel() {
+	public AlignmentModel getModel() {
+		final AlignmentModelBuilder builder = AlignmentModel.configure()
+				.addModel("affine", new AffineModel2D())
+				.addModel("rigid", new RigidModel2D())
+				.addModel("translation", new TranslationModel2D())
+				.addModel("regularization", new StabilizingAffineModel2D<>(new RigidModel2D()));
+		return builder.build();
+	}
 
-		// TODO: there are many loose ends (only one lambda value for translation, no regularization, etc.)
-		return new InterpolatedAffineModel2D<>(
-				new InterpolatedAffineModel2D<>(
-						new InterpolatedAffineModel2D<>(
-								new AffineModel2D(),
-								new RigidModel2D(), lambdasRigid.get(0)),
-						new TranslationModel2D(), lambdasTranslation.get(0)),
-				new StabilizingAffineModel2D<>(new RigidModel2D()), 0.0);
+	public Map<String, Double> setUpZeroWeights() {
+		return Map.of(
+				"affine", 0.0,
+				"rigid", 0.0,
+				"translation", 0.0,
+				"regularization", 0.0);
+	}
+
+	public Map<String, Double> getWeightsForRun(final int i) {
+		// this translates the lambdas of the nested model to relative weights for the flat model
+		// TODO: maybe input the weights directly?
+		final double r = lambdasRigid.get(i);
+		final double t = lambdasTranslation.get(i);
+		final double reg = lambdasRegularization.get(i);
+		return Map.of(
+				"affine", (1-r) * (1-t) * (1-reg),
+				"rigid", r * (1-t) * (1-reg),
+				"translation", t * (1-reg),
+				"regularization", reg);
+	}
+
+	public int nRuns() {
+		return iterations.size();
 	}
 }

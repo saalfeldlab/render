@@ -97,6 +97,7 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	public List<Integer> blockMaxPlateauWidth() {return blockOptimizerParameters.maxPlateauWidth; }
 	public double blockMaxAllowedError() { return blockOptimizerParameters.maxAllowedError; }
 	public PreAlign preAlign() { return PreAlign.values()[preAlignOrdinal]; }
+	public BlockOptimizerParameters blockOptimizerParameters() { return blockOptimizerParameters; }
 
 	public int maxNumMatches() { return maxNumMatches; }
 	public int maxZRangeMatches() { return maxZRangeMatches; }

@@ -24,6 +24,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentP
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.newsolver.solvers.WorkerTools.LayerDetails;
+import org.janelia.render.client.parameter.BlockOptimizerParameters;
 import org.janelia.render.client.solver.ConstantAffineModel2D;
 import org.janelia.render.client.solver.Graph;
 import org.janelia.render.client.solver.SerializableValuePair;
@@ -362,14 +363,15 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final ArrayList<Integer> allZ = new ArrayList<>(zToGroupedTileList.keySet());
 		Collections.sort(allZ);
 
-		final Model<?> model = ((InterpolatedAffineModel2D<?,?>) zToGroupedTileList.get(allZ.get(0)).get(0).getModel()).getB();
+		final AlignmentModel model = (AlignmentModel) zToGroupedTileList.get(allZ.get(0)).get(0).getModel();
+		final Model<?> regularizer = model.getModel("regularization");
 
-		if (model instanceof ConstantAffineModel2D) {
+		if (regularizer instanceof ConstantAffineModel2D) {
 			// it is based on ConstantAffineModels, meaning we extract metadata and use that as regularizer
 			assignConstantAffineModel(solveItem, samplesPerDimension, allZ, zToGroupedTileList);
 			LOG.info("assignRegularizationModel: exit, {}", blockContext);
 
-		} else if (model instanceof StabilizingAffineModel2D) {
+		} else if (regularizer instanceof StabilizingAffineModel2D) {
 			// it is based on StabilizingAffineModel2Ds, meaning each image wants to sit where its corresponding one in the above layer sits
 			assignStabilizingAffineModel(solveItem, samplesPerDimension, stabilizationRadius, allZ, zToGroupedTileList);
 			LOG.info("assignRegularizationModel: exit, {}", blockContext);
@@ -427,7 +429,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					}
 				}
 
-				final ConstantAffineModel2D cModel = (ConstantAffineModel2D)((InterpolatedAffineModel2D) groupedTile.getModel()).getB();
+				final AlignmentModel model = (AlignmentModel) groupedTile.getModel();
+				final ConstantAffineModel2D<?, ?> cModel = (ConstantAffineModel2D<?, ?>) model.getModel("regularization");
 				final Model<?> regularizationModel = cModel.getModel();
 
 				try {
@@ -483,7 +486,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					LOG.info("z=" + z + " grouped tile [" + groupedTile + "] contains " + imageTiles.size() + " image tiles.");
 
 				// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
-				final List<Pair<List<PointMatch>, Tile<M>>> matchesList = new ArrayList<>();
+				final List<Pair<List<PointMatch>, ? extends Tile<?>>> matchesList = new ArrayList<>();
 
 				for (final Tile<M> imageTile : imageTiles) {
 					final String tileId = solveItem.tileToIdMap().get(imageTile);
@@ -520,9 +523,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				}
 
 				// in every iteration, update q with the current group tile transformation(s), the fit p to q for regularization
-				final StabilizingAffineModel2D cModel = (StabilizingAffineModel2D)((InterpolatedAffineModel2D) groupedTile.getModel()).getB();
-
-				cModel.setFitData(matchesList);
+				final AlignmentModel model = (AlignmentModel) groupedTile.getModel();
+				final StabilizingAffineModel2D<?> regularizationModel = (StabilizingAffineModel2D<?>) model.getModel("regularization");
+				regularizationModel.setFitData(matchesList);
 			}
 		}
 	}
@@ -893,9 +896,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	{
 		final PreAlign preAlign = solveItem.blockData().solveTypeParameters().preAlign();
 
-		final List<Double> blockOptimizerLambdasRigid = solveItem.blockData().solveTypeParameters().blockOptimizerLambdasRigid();
-		final List<Double> blockOptimizerLambdasTranslation = solveItem.blockData().solveTypeParameters().blockOptimizerLambdasTranslation();
-		final List<Double> blockOptimizerLambdasRegularization = solveItem.blockData().solveTypeParameters().blockOptimizerLambdasRegularization();
 		final List<Integer> blockOptimizerIterations = solveItem.blockData().solveTypeParameters().blockOptimizerIterations();
 		final List<Integer> blockMaxPlateauWidth = solveItem.blockData().solveTypeParameters().blockMaxPlateauWidth();
 		final double blockMaxAllowedError = blockData.solveTypeParameters().blockMaxAllowedError();
@@ -907,87 +907,41 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		LOG.info("block " + solveItem.blockData().getId() + ": run: optimizing {} tiles", solveItem.groupedTileToTiles().keySet().size() );
 
-		//final HashMap< Tile< ? >, Double > tileToDynamicLambda = SolveTools.computeMetaDataLambdas( tileConfig.getTiles(), solveItem, zRadiusRestarts, excludeFromRegularization, dynamicLambdaFactor );
-
-		if ( preAlign == PreAlign.RIGID )
-			LOG.info( "block " + solveItem.blockData().getId() + ": prealigning with rigid" );
-		else if ( preAlign == PreAlign.TRANSLATION )
-			LOG.info( "block " + solveItem.blockData().getId() + ": prealigning with translation" );
-		else
-			LOG.info( "block " + solveItem.blockData().getId() + ": NO prealignment" );
-
-		for ( final Tile< ? > tile : tileConfig.getTiles() )
-		{
-			((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( 1.0 ); // rigid vs affine
-
-			if ( preAlign == PreAlign.RIGID )
-				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( 0.0 ); // translation vs (rigid vs affine)
-			else if ( preAlign == PreAlign.TRANSLATION )
-				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( 1.0 ); // translation vs (rigid vs affine)
-
-			((InterpolatedAffineModel2D) tile.getModel()).setLambda( 0.0 ); // prealign without regularization
-		}
-		
-		try {
-			DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles() );
-			LOG.info("errors: " + errors);
-
-			if ( preAlign != PreAlign.NONE )
-			{
-				final Map< Tile< ? >, Integer > tileToZ = new HashMap<>();
-	
-				for ( final Tile< ? > tile : tileConfig.getTiles() )
-					tileToZ.put( tile, (int)Math.round( solveItem.blockData().rtsc().getTileIdToSpecMap().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) );
-	
-				SolveTools.preAlignByLayerDistance( tileConfig, tileToZ );
-				//tileConfig.preAlign();
-
-				errors = SolveTools.computeErrors( tileConfig.getTiles() );
-				LOG.info("errors: " + errors);
-			}
-			// TODO: else they should be in the right position
-		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
-			LOG.info("block " + solveItem.blockData().getId() + ": prealign failed: ", e);
+		final String preAlignModelKey;
+		if (preAlign == PreAlign.RIGID) {
+			LOG.info("block " + solveItem.blockData().getId() + ": prealigning with rigid");
+			preAlignModelKey = "rigid";
+		} else if (preAlign == PreAlign.TRANSLATION) {
+			LOG.info("block " + solveItem.blockData().getId() + ": prealigning with translation");
+			preAlignModelKey = "translation";
+		} else {
+			LOG.info("block " + solveItem.blockData().getId() + ": NO prealignment");
+			preAlignModelKey = null;
 		}
 
-		LOG.info( "block " + solveItem.blockData().getId() + ": lambda's used (rigid, translation, regularization):" );
-	
-		for ( int l = 0; l < blockOptimizerLambdasRigid.size(); ++l )
-		{
-			LOG.info( "block " + solveItem.blockData().getId() + ": l=" + 
-					blockOptimizerLambdasRigid.get( l ) + ", " +
-					blockOptimizerLambdasTranslation.get( l ) + ", " +
-					blockOptimizerLambdasRegularization.get( l ) );
+		DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles());
+		LOG.info("errors: " + errors);
+
+		if (preAlignModelKey != null) {
+			preAlign(solveItem, tileConfig, preAlignModelKey);
 		}
 
-		for ( int s = 0; s < blockOptimizerIterations.size(); ++s )
-		{
-			// TODO: has to be generic, we do not know how deep the interpolated models are at compile time
-			// TODO: so it also has to be defined by the SolveSetFactory:
-			//		blockOptimizerLambdasRigid, blockOptimizerLambdasTranslation, tileToDynamicLambda
-			//
-			//		blockOptimizerIterations
-			//		blockMaxPlateauWidth
-			//
-			//		length of all arrays needs to be equal
+		final BlockOptimizerParameters blockOptimizer = blockData.solveTypeParameters().blockOptimizerParameters();
+		for (int k = 0; k < blockOptimizerIterations.size(); ++k) {
 
-			final double lambdaRigid = blockOptimizerLambdasRigid.get( s );
-			final double lambdaTranslation = blockOptimizerLambdasTranslation.get( s );
-			final double lambdaRegularization = blockOptimizerLambdasRegularization.get( s );
+			final Map<String, Double> weights = blockOptimizer.getWeightsForRun(k);
+			LOG.info("block {}, run {}: l(rigid)={}, l(translation)={}, l(regularization)={}",
+					solveItem.blockData().getId(), k, weights.get("rigid"), weights.get("translation"), weights.get("regularization"));
 
-			for (final Tile< ? > tile : tileConfig.getTiles() )
-			{
-				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).getA()).setLambda( lambdaRigid);
-				((InterpolatedAffineModel2D)((InterpolatedAffineModel2D) tile.getModel()).getA()).setLambda( lambdaTranslation );
-				((InterpolatedAffineModel2D) tile.getModel()).setLambda( lambdaRegularization ); // dynamic
+			for (final Tile<?> tile : tileConfig.getTiles()) {
+				final AlignmentModel model = (AlignmentModel) tile.getModel();
+				model.setWeights(weights);
 			}
 
-			final int numIterations = blockOptimizerIterations.get( s );
-			final int maxPlateauWidth = blockMaxPlateauWidth.get( s );
+			final int numIterations = blockOptimizerIterations.get(k);
+			final int maxPlateauWidth = blockMaxPlateauWidth.get(k);
 
-			LOG.info( "block " + solveItem.blockData().getId() + ": l(rigid)=" + lambdaRigid + ", l(translation)=" + lambdaTranslation + ": l(regularization)=" + lambdaRegularization + ", numIterations=" + numIterations + ", maxPlateauWidth=" + maxPlateauWidth );
-
-			final ErrorStatistic observer = new ErrorStatistic( maxPlateauWidth + 1 );
+			final ErrorStatistic observer = new ErrorStatistic(maxPlateauWidth + 1);
 			final float damp = 1.0f;
 			TileUtil.optimizeConcurrently(
 					observer,
@@ -998,26 +952,24 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					tileConfig,
 					tileConfig.getTiles(),
 					tileConfig.getFixedTiles(),
-					numThreads );
+					numThreads);
 		}
 
-		final DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles() );
+		errors = SolveTools.computeErrors(tileConfig.getTiles());
 		LOG.info("errors: " + errors);
 
-		//
 		// create lookup for the new models
-		//
 		solveItem.blockData().idToNewModel().clear();
 
-		final ArrayList< String > tileIds = new ArrayList<>();
-		final HashMap< String, AffineModel2D > tileIdToGroupModel = new HashMap<>();
+		final ArrayList<String> tileIds = new ArrayList<>();
+		final HashMap<String, AffineModel2D> tileIdToGroupModel = new HashMap<>();
 
-		for ( final Tile< ? > tile : solveItem.tileToGroupedTile().keySet() )
-		{
-			final String tileId = solveItem.tileToIdMap().get( tile );
+		for (final Tile<?> tile : solveItem.tileToGroupedTile().keySet()) {
+			final String tileId = solveItem.tileToIdMap().get(tile);
 
-			tileIds.add( tileId );
-			tileIdToGroupModel.put( tileId, SolveTools.createAffine(solveItem.tileToGroupedTile().get(tile ).getModel()) );
+			tileIds.add(tileId);
+			final AlignmentModel model = (AlignmentModel) solveItem.tileToGroupedTile().get(tile).getModel();
+			tileIdToGroupModel.put(tileId, model.createAffineModel2D());
 		}
 
 		Collections.sort( tileIds );
@@ -1032,6 +984,39 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			solveItem.blockData().idToNewModel().put( tileId, affine );
 			LOG.info("block " + solveItem.blockData().getId() + ": tile {} model from grouped tile is {}", tileId, affine);
+		}
+	}
+
+	private void preAlign(
+			final AffineBlockDataWrapper<?, ?> solveItem,
+			final TileConfiguration tileConfig,
+			final String preAlignModelKey) {
+
+		final DoubleSummaryStatistics errors;
+		final BlockOptimizerParameters blockOptimizer = blockData.solveTypeParameters().blockOptimizerParameters();
+
+		for (final Tile<?> tile : tileConfig.getTiles()) {
+			final Map<String, Double> weights = blockOptimizer.setUpZeroWeights();
+			weights.put(preAlignModelKey, 1.0);
+			final AlignmentModel model = (AlignmentModel) tile.getModel();
+			model.setWeights(weights);
+		}
+
+		try {
+			final Map<Tile<?>, Integer> tileToZ = new HashMap<>();
+			for (final Tile<?> tile : tileConfig.getTiles()) {
+				final Tile<?> firstTile = solveItem.groupedTileToTiles().get(tile).get(0);
+				final String firstTileId = solveItem.tileToIdMap().get(firstTile);
+				final int z = (int) Math.round(solveItem.blockData().rtsc().getTileIdToSpecMap().get(firstTileId).getZ());
+				tileToZ.put(tile, z);
+			}
+			SolveTools.preAlignByLayerDistance(tileConfig, tileToZ);
+
+			errors = SolveTools.computeErrors(tileConfig.getTiles());
+			LOG.info("errors: " + errors);
+			// TODO: else they should be in the right position
+		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+			LOG.info("block " + solveItem.blockData().getId() + ": prealign failed: ", e);
 		}
 	}
 
