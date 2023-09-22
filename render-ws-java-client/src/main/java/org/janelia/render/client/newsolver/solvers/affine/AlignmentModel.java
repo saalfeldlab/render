@@ -134,10 +134,7 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 
 	@Override
 	public AlignmentModel createInverse() {
-		final AlignmentModel inverse = new AlignmentModel();
-		inverse.set(this);
-		inverse.models.replaceAll(AffineModel2DWrapper::wrapInverse);
-		return inverse;
+		throw new UnsupportedOperationException("Inverting an interpolated model does not make sense.");
 	}
 
 	@Override
@@ -220,10 +217,6 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 
 		public static <S extends Model<S> & Affine2D<S>> AffineModel2DWrapper<S> wrapCopy(final AffineModel2DWrapper<S> wrapper) {
 			return new AffineModel2DWrapper<S>(wrapper.asModel().copy());
-		}
-
-		public static <S extends Model<S> & Affine2D<S>> AffineModel2DWrapper<S> wrapInverse(final AffineModel2DWrapper<S> wrapper) {
-			return new AffineModel2DWrapper<S>(wrapper.asAffine2D().createInverse());
 		}
 	}
 

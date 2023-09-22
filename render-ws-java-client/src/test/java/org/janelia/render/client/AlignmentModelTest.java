@@ -35,7 +35,7 @@ public class AlignmentModelTest {
 	@BeforeClass
 	public static void setDefaultModels() {
 		affine.set(1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
-		rigid.set(0.3, 0.7, 1.0, 2.0);
+		rigid.set(1.0, 1.0, 2.0);
 		translation.set(0.1, 0.2);
 	}
 
