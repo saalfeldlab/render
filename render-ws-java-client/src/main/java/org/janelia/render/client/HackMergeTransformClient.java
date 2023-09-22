@@ -1,12 +1,15 @@
 package org.janelia.render.client;
 
-import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+
+import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.json.JsonUtils;
@@ -30,11 +33,8 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import mpicbg.models.Affine2D;
-import mpicbg.trakem2.transform.AffineModel2D;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.getAffineModelForSpec;
 
 /**
  * This client currently is a one-off hack that could be improved later to make it more generally useful.
@@ -55,6 +55,7 @@ import mpicbg.trakem2.transform.AffineModel2D;
  *
  * @author Eric Trautman
  */
+@SuppressWarnings("JavadocBlankLines")
 public class HackMergeTransformClient {
 
     public static class Parameters extends CommandLineParameters {
@@ -250,21 +251,6 @@ public class HackMergeTransformClient {
         final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
         return resolvedTiles.getTileSpecs().stream().findFirst()
                 .orElseThrow(() -> new IOException("no tiles in stack " + stack + " for z " + z));
-    }
-
-    public static AffineModel2D getAffineModelForSpec(final String context,
-                                                      final TransformSpec transformSpec) {
-        final mpicbg.models.CoordinateTransform transform = transformSpec.getNewInstance();
-        final AffineModel2D affineModel;
-        if (transform instanceof AffineModel2D) {
-            affineModel = (AffineModel2D) transform;
-        }  else if (transform instanceof Affine2D) {
-            affineModel = new AffineModel2D();
-            affineModel.set(((Affine2D<?>) transform).createAffine());
-        } else {
-            throw new IllegalArgumentException(context + " transform must implement " + Affine2D.class.getName());
-        }
-        return affineModel;
     }
 
     public void addLayerTileSpecToCollection(final ResolvedTileSpecCollection resolvedTiles,

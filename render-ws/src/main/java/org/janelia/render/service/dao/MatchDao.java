@@ -19,15 +19,18 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.MatchTrial;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.slf4j.Logger;
@@ -447,7 +450,7 @@ public class MatchDao {
         LOG.debug("saveMatches: entry, collectionId={}, matchesList.size()={}",
                   collectionId, matchesList.size());
 
-        if (matchesList.size() > 0) {
+        if (! matchesList.isEmpty()) {
 
             final MongoCollection<Document> collection =
                     matchDatabase.getCollection(collectionId.getDbCollectionName());
@@ -636,7 +639,107 @@ public class MatchDao {
         }
 
     }
-    
+
+    public void writeMatchesAndTileSpecs(final MatchCollectionId collectionId,
+                                         final ResolvedTileSpecCollection resolvedTileSpecCollection,
+                                         final OutputStream outputStream)
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+
+        LOG.debug("writeMatchesAndTileSpecs: entry, collectionId={}, tileCount={}",
+                  collectionId, resolvedTileSpecCollection.getTileCount());
+
+        if (! resolvedTileSpecCollection.hasTileSpecs()) {
+            throw new IllegalArgumentException("must specify at least one tile spec");
+        }
+
+        final ProcessTimer timer = new ProcessTimer();
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        final List<Document> queryList = buildMatchQueryListForTiles(resolvedTileSpecCollection,
+                                                                     40);
+
+        outputStream.write("{\"resolvedTileSpecs\":".getBytes());
+        JsonUtils.FAST_MAPPER.writeValue(outputStream, resolvedTileSpecCollection);
+        outputStream.write(",\"matchPairs\":[".getBytes());
+
+        // note: ignore all ordering here to make it as fast as possible, sort client side if necessary
+        int pairCount = 0;
+        for (final Document query : queryList) {
+            try (final MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
+                if (cursor.hasNext()) {
+                    outputStream.write(cursor.next().toJson().getBytes());
+                    pairCount++;
+                }
+                while (cursor.hasNext()) {
+                    outputStream.write(COMMA_WITH_NEW_LINE);
+                    outputStream.write(cursor.next().toJson().getBytes());
+                    pairCount++;
+                }
+            }
+        }
+
+        outputStream.write("]}".getBytes());
+
+        if (LOG.isDebugEnabled()) {
+            final Document firstQuery = queryList.get(0);
+            LOG.debug("writeMatchesAndTileSpecs: wrote data for {} tiles and {} pairs returned by {} queries like {}.find({},{}), elapsedSeconds={}",
+                      resolvedTileSpecCollection.getTileCount(), pairCount, queryList.size(), MongoUtil.fullName(collection),
+                      firstQuery.toJson(), EXCLUDE_MONGO_ID_KEY.toJson(), timer.getElapsedSeconds());
+        }
+    }
+
+    public static List<Document> buildMatchQueryListForTiles(final ResolvedTileSpecCollection resolvedTileSpecCollection,
+                                                             final int maxTilesPerQuery) {
+
+        // organize by sectionId since that is needed to ensure queries use index
+        final Map<String, Set<String>> sectionIdToTileIds = resolvedTileSpecCollection.buildSectionIdToTileIdsMap();
+
+        List<String> sectionIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
+        List<String> tileIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
+        final List<Document> queryList = new ArrayList<>();
+
+        for (final String sectionId: sectionIdToTileIds.keySet()) {
+
+            sectionIdsForCurrentQuery.add(sectionId);
+            final List<String> tileIdsForSection = new ArrayList<>(sectionIdToTileIds.get(sectionId));
+
+            int remainingSlots = maxTilesPerQuery - tileIdsForCurrentQuery.size();
+
+            for (int fromIndex = 0; fromIndex < tileIdsForSection.size();)  {
+
+                final int toIndex = Math.min(tileIdsForSection.size(), (fromIndex + remainingSlots));
+                tileIdsForCurrentQuery.addAll(tileIdsForSection.subList(fromIndex, toIndex));
+
+                if (tileIdsForCurrentQuery.size() == maxTilesPerQuery) {
+                    queryList.add(getPGroupAndIdInQuery(sectionIdsForCurrentQuery, tileIdsForCurrentQuery));
+
+                    sectionIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
+                    if (toIndex < tileIdsForSection.size()) {
+                        sectionIdsForCurrentQuery.add(sectionId);
+                    }
+                    tileIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
+                    remainingSlots = maxTilesPerQuery;
+                }
+
+                fromIndex = toIndex;
+            }
+        }
+
+        if (! tileIdsForCurrentQuery.isEmpty()) {
+            queryList.add(getPGroupAndIdInQuery(sectionIdsForCurrentQuery, tileIdsForCurrentQuery));
+        }
+
+        return queryList;
+    }
+
+    private static Document getPGroupAndIdInQuery(final List<String> pGroupIdList,
+                                                  final List<String> pIdList) {
+        final Document pGroupIdIn = new Document(MongoUtil.OP_IN, pGroupIdList);
+        final Document pIdIn = new Document(MongoUtil.OP_IN, pIdList);
+        return new Document("pGroupId", pGroupIdIn).append("pId", pIdIn);
+    }
+
     private MongoCollection<Document> getMatchTrialCollection() {
         return matchDatabase.getCollection(MATCH_TRIAL_COLLECTION_NAME);
     }
@@ -656,7 +759,7 @@ public class MatchDao {
         collectionIdSet.add(collectionId);
         collectionList.add(getExistingCollection(collectionId));
 
-        if ((mergeCollectionIdList != null) && (mergeCollectionIdList.size() > 0)) {
+        if ((mergeCollectionIdList != null) && (! mergeCollectionIdList.isEmpty())) {
             for (final MatchCollectionId mergeCollectionId : mergeCollectionIdList) {
                 if (collectionIdSet.add(mergeCollectionId)) {
                     collectionList.add(getExistingCollection(mergeCollectionId));
@@ -812,7 +915,7 @@ public class MatchDao {
             }
 
             CanvasMatches mergedMatches;
-            while (matchesList.size() > 0) {
+            while (! matchesList.isEmpty()) {
                 if (count > 0) {
                     outputStream.write(COMMA_WITH_NEW_LINE);
                 }
