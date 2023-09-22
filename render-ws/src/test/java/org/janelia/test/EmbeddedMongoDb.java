@@ -109,6 +109,9 @@ public class EmbeddedMongoDb {
         final long retryWaitMilliseconds = 5000;
         for (int i = 0; i < maxRetries; i++) {
             try {
+                // to see flapdoodle files on Mac: ls -al /var/folders/*/*/*/*mongo*
+                // uncomment following line if flapdoodle raises "could not run process" error after debugger exit
+                // mongoImportExecutable.stop();
                 mongoImportExecutable.start();
                 i = maxRetries; // break out of retry loop upon success
             } catch (final IOException e) {
