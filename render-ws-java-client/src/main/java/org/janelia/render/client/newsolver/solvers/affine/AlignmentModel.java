@@ -15,6 +15,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implements Model<AlignmentModel>, Affine2D<AlignmentModel> {
 
@@ -165,11 +166,14 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 	@Override
 	public void set(final AlignmentModel other) {
 		models.clear();
-		models.addAll(other.models);
+		models.addAll(other.models.stream().map(AffineModel2DWrapper::wrapCopy).collect(Collectors.toList()));
+
 		weights.clear();
 		weights.addAll(other.weights);
+
 		nameToIndex.clear();
 		nameToIndex.putAll(other.nameToIndex);
+
 		affine.set(other.affine);
 		cost = other.cost;
 	}
@@ -212,6 +216,10 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 
 		public Affine2D<T> asAffine2D() {
 			return wrappedInstance;
+		}
+
+		public static <S extends Model<S> & Affine2D<S>> AffineModel2DWrapper<S> wrapCopy(final AffineModel2DWrapper<S> wrapper) {
+			return new AffineModel2DWrapper<S>(wrapper.asModel().copy());
 		}
 
 		public static <S extends Model<S> & Affine2D<S>> AffineModel2DWrapper<S> wrapInverse(final AffineModel2DWrapper<S> wrapper) {
