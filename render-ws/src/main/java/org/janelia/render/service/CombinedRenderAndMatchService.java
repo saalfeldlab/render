@@ -100,7 +100,7 @@ public class CombinedRenderAndMatchService {
             allTileBounds.forEach(tb -> {
                 final String sectionId = tb.getSectionId();
                 if (sectionId != null) {
-                    distinctSectionIds.add(tb.getSectionId());
+                    distinctSectionIds.add(sectionId);
                     tileIdToBoundsMap.put(tb.getTileId(), tb);
                 }
             });
@@ -109,29 +109,21 @@ public class CombinedRenderAndMatchService {
             final TileIdsWithMatches tileIdsWithMatches = new TileIdsWithMatches();
 
             final int numberOfSectionIds = distinctSectionIds.size();
-            if (numberOfSectionIds > 1) {
-                final List<String> sortedSectionIds = distinctSectionIds.stream().sorted().collect(Collectors.toList());
-                for (int i = 0; i < numberOfSectionIds; i++) {
-                    final String pGroupId = sortedSectionIds.get(i);
-                    tileIdsWithMatches.addMatches(matchDao.getMatchesWithinGroup(matchCollectionId,
-                                                                                 pGroupId,
-                                                                                 true),
+            final List<String> sortedSectionIds = distinctSectionIds.stream().sorted().collect(Collectors.toList());
+            for (int i = 0; i < numberOfSectionIds; i++) {
+                final String pGroupId = sortedSectionIds.get(i);
+                tileIdsWithMatches.addMatches(matchDao.getMatchesWithinGroup(matchCollectionId,
+                                                                             pGroupId,
+                                                                             true),
+                                              layerTileIds);
+                for (int j = i + 1; j < numberOfSectionIds; j++) {
+                    final String qGroupId = sortedSectionIds.get(j);
+                    tileIdsWithMatches.addMatches(matchDao.getMatchesBetweenGroups(matchCollectionId,
+                                                                                   pGroupId,
+                                                                                   qGroupId,
+                                                                                   true),
                                                   layerTileIds);
-                    for (int j = i + 1; j < numberOfSectionIds; j++) {
-                        final String qGroupId = sortedSectionIds.get(j);
-                        tileIdsWithMatches.addMatches(matchDao.getMatchesBetweenGroups(matchCollectionId,
-                                                                                pGroupId,
-                                                                                qGroupId,
-                                                                                true),
-                                                      layerTileIds);
-                    }
                 }
-            } else {
-                distinctSectionIds.forEach(
-                        sectionId -> tileIdsWithMatches.addMatches(matchDao.getMatchesWithinGroup(matchCollectionId,
-                                                                                             sectionId,
-                                                                                             true),
-                                                                   layerTileIds));
             }
 
             final SortedConnectedCanvasIdClusters idClusters =
