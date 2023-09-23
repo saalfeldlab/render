@@ -64,6 +64,12 @@
              TODO: see if JAXB is only needed for Swagger and remove dependencies if newer Swagger doesn't need them
         -->
         <dependency>
+            <groupId>jakarta.annotation</groupId>
+            <artifactId>jakarta.annotation-api</artifactId>
+            <version>2.1.1</version>
+        </dependency>
+
+        <dependency>
             <groupId>jakarta.xml.bind</groupId>
             <artifactId>jakarta.xml.bind-api</artifactId>
             <version>2.3.3</version>

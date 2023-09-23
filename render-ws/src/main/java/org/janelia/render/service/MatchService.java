@@ -124,7 +124,6 @@ public class MatchService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = "Hierarchical APIs",
             value = "List pGroup identifiers with multiple consensus set match pairs",
             notes = "Looks for cross layer pGroupId/qGroupId combinations that have more than one match pair")
     @ApiResponses(value = {
@@ -144,7 +143,6 @@ public class MatchService {
     @GET
     @Produces(MediaType.APPLICATION_JSON)
     @ApiOperation(
-            tags = "Hierarchical APIs",
             value = "List p and q group identifiers with multiple consensus set match pairs",
             notes = "Looks for cross layer pGroupId/qGroupId combinations that have more than one match pair")
     @ApiResponses(value = {
