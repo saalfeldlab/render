@@ -40,6 +40,7 @@ import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
@@ -52,6 +53,7 @@ import static org.janelia.render.service.dao.RenderDao.MAX_TILE_SPEC_COUNT_FOR_Q
  * @author Eric Trautman
  */
 @Path("/")
+@Api(tags = {"Point Match APIs"})
 public class CombinedRenderAndMatchService {
 
     private final RenderDao renderDao;
