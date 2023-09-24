@@ -784,7 +784,7 @@ public class MatchService {
         return collectionIdList;
     }
 
-    private Response streamResponse(final StreamingOutput responseOutput) {
+    public static Response streamResponse(final StreamingOutput responseOutput) {
 
         Response response = null;
         try {

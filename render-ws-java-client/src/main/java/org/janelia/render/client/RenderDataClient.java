@@ -30,6 +30,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
@@ -1009,6 +1010,54 @@ public class RenderDataClient {
         addParameterIfDefined("matchPattern", matchPattern, uriBuilder);
         final URI uri = getUri(uriBuilder);
         return getResolvedTileSpecCollection(uri);
+    }
+
+    /**
+     * @param  stack           name of stack.
+     * @param  bounds          optional bounds values for all tiles (null to exclude bounds).
+     * @param  collectionName  name of match collection.
+     * @param  groupId         group id for all tiles (or null).
+     * @param  matchPattern    only return tiles with ids that match this pattern (null for all tiles).
+     *
+     * @return the set of resolved tiles and transforms that match the specified criteria.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public ResolvedTileSpecsWithMatchPairs getResolvedTilesWithMatchPairs(final String stack,
+                                                                          final Bounds bounds,
+                                                                          final String collectionName,
+                                                                          final String groupId,
+                                                                          final String matchPattern)
+            throws IOException {
+
+        final String baseUrlString = urls.getStackUrlString(stack);
+        final URI baseUri =  getUri(baseUrlString + "/resolvedTilesWithMatchesFrom/" + collectionName);
+
+        final URIBuilder uriBuilder = new URIBuilder(baseUri);
+        if (bounds != null) {
+            addParameterIfDefined("minX", bounds.getMinX(), uriBuilder);
+            addParameterIfDefined("maxX", bounds.getMaxX(), uriBuilder);
+            addParameterIfDefined("minY", bounds.getMinY(), uriBuilder);
+            addParameterIfDefined("maxY", bounds.getMaxY(), uriBuilder);
+            addParameterIfDefined("minZ", bounds.getMinZ(), uriBuilder);
+            addParameterIfDefined("maxZ", bounds.getMaxZ(), uriBuilder);
+        }
+        addParameterIfDefined("groupId", groupId, uriBuilder);
+        addParameterIfDefined("matchPattern", matchPattern, uriBuilder);
+
+        final URI uri = getUri(uriBuilder);
+
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<ResolvedTileSpecsWithMatchPairs> helper =
+                new JsonUtils.Helper<>(ResolvedTileSpecsWithMatchPairs.class);
+        final JsonResponseHandler<ResolvedTileSpecsWithMatchPairs> responseHandler =
+                new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getResolvedTilesWithMatchPairs: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
     }
 
     /**

@@ -201,23 +201,6 @@ public class MatchDao {
         return getMatches(collection, query, excludeMatchDetails);
     }
 
-    public List<CanvasMatches> getMatchesOutsideGroup(final MatchCollectionId collectionId,
-                                                      final String groupId,
-                                                      final boolean excludeMatchDetails)
-            throws IllegalArgumentException, ObjectNotFoundException {
-
-        LOG.debug("getMatchesOutsideGroup: entry, collectionId={}, groupId={}",
-                  collectionId, groupId);
-
-        final MongoCollection<Document> collection = getExistingCollection(collectionId);
-
-        MongoUtil.validateRequiredParameter("groupId", groupId);
-
-        final Document query = getOutsideGroupQuery(groupId);
-
-        return getMatches(collection, query, excludeMatchDetails);
-    }
-
     public List<CanvasMatches> getMatchesBetweenGroups(final MatchCollectionId collectionId,
                                                        final String pGroupId,
                                                        final String qGroupId,
@@ -691,6 +674,8 @@ public class MatchDao {
 
     public static List<Document> buildMatchQueryListForTiles(final ResolvedTileSpecCollection resolvedTileSpecCollection,
                                                              final int maxTilesPerQuery) {
+
+        // TODO: need to include qGroupId and qId to include connected p tiles outside of bounding box
 
         // organize by sectionId since that is needed to ensure queries use index
         final Map<String, Set<String>> sectionIdToTileIds = resolvedTileSpecCollection.buildSectionIdToTileIdsMap();
