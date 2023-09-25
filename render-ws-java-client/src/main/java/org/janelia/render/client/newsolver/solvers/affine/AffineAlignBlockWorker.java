@@ -182,12 +182,16 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			throws IOException {
 
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = inputSolveItem.blockData();
-		final int maxZRangeMatches =
-				blockData.solveTypeParameters().maxZRangeMatches(); // TODO: move this parameter to API query
+
+		Integer maxZDistance = blockData.solveTypeParameters().maxZRangeMatches(); // TODO: move this parameter to API query
+		if (maxZDistance < 0) {
+			maxZDistance = null;
+		}
+
 		final String matchCollectionName = matchDataClient.getProject(); // TODO: remove matchDataClient
 
-		LOG.info("assembleMatchData: entry, loading transforms and matches for block {} with {} tiles and maxZRangeMatches={}",
-				 blockData, blockData.getTileCount(), maxZRangeMatches);
+		LOG.info("assembleMatchData: entry, loading transforms and matches for block {} with {} tiles and maxZDistance={}",
+				 blockData, blockData.getTileCount(), maxZDistance);
 
 		final ResolvedTileSpecsWithMatchPairs tileSpecsWithMatchPairs =
 				renderDataClient.getResolvedTilesWithMatchPairs(renderStack,
@@ -196,7 +200,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 																null,
 																null);
 
-		tileSpecsWithMatchPairs.resolveTileSpecsAndNormalizeMatchPairs(maxZRangeMatches);
+		tileSpecsWithMatchPairs.resolveTileSpecsAndNormalizeMatchPairs(maxZDistance);
 
 		final List<CanvasMatches> matchPairs = new ArrayList<>(tileSpecsWithMatchPairs.getMatchPairCount());
 

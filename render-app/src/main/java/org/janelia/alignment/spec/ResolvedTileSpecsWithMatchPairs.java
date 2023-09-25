@@ -57,9 +57,18 @@ public class ResolvedTileSpecsWithMatchPairs
      * Resolves all tile specs for client-side usage and normalizes match pairs
      * by removing pairs that are too far from each other in z and by sorting them.
      *
-     * @param  maxZDistance  maximum integral z distance for all retained pairs.
+     * @param  maxZDistance  maximum non-negative integral z distance for all retained pairs
+     *                       (or null to accept all pairs).
+     *
+     * @throws IllegalArgumentException
+     *   if maxZDistance < 0
      */
-    public void resolveTileSpecsAndNormalizeMatchPairs(final int maxZDistance) {
+    public void resolveTileSpecsAndNormalizeMatchPairs(final Integer maxZDistance)
+            throws IllegalArgumentException {
+
+        if ((maxZDistance != null) && (maxZDistance <= 0)) {
+            throw new IllegalArgumentException("maxZDistance must be >= 0 or null");
+        }
 
         resolvedTileSpecs.resolveTileSpecs();
 
@@ -69,9 +78,13 @@ public class ResolvedTileSpecsWithMatchPairs
             final TileSpec pTileSpec = resolvedTileSpecs.getTileSpec(pair.getpId());
             final TileSpec qTileSpec = resolvedTileSpecs.getTileSpec(pair.getqId());
             if ((pTileSpec != null) && (qTileSpec != null)) {
-                final int zDistance = (int) Math.abs(pTileSpec.getZ() - qTileSpec.getZ());
-                if (zDistance <= maxZDistance) {
+                if (maxZDistance == null) {
                     normalizedMatchPairs.add(pair);
+                } else {
+                    final int zDistance = (int) Math.abs(pTileSpec.getZ() - qTileSpec.getZ());
+                    if (zDistance <= maxZDistance) {
+                        normalizedMatchPairs.add(pair);
+                    }
                 }
             }
         }
