@@ -35,6 +35,8 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 
 	private int id;
 
+	private final Bounds bounds;
+
 	// the BlockFactory that created this BlockData
 	final private BlockFactory blockFactory;
 
@@ -64,9 +66,11 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 			final BlockFactory blockFactory, // knows how it was created for assembly later?
 			final P solveTypeParameters,
 			final int id,
+			final Bounds bounds,
 			final ResolvedTileSpecCollection rtsc )
 	{
 		this.id = id;
+		this.bounds = bounds;
 		this.blockFactory = blockFactory;
 		this.solveTypeParameters = solveTypeParameters;
 		this.rtsc = rtsc;
@@ -86,6 +90,11 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	public Map<String, ArrayList<Double>> sectionIdToZMap() { return sectionIdToZMap; }
 
 	public int getId() { return id; }
+
+	public Bounds getBounds() {
+		return bounds;
+	}
+
 	public WeightFunction createWeightFunction() {
 		return blockFactory.createWeightFunction(this);
 	}
@@ -171,5 +180,14 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 			return false;
 		final BlockData<?,?> other = (BlockData<?,?>) obj;
 		return id == other.id && maxZ == other.maxZ && minZ == other.minZ && Objects.equals(rtsc, other.rtsc);
+	}
+
+	@Override
+	public String toString() {
+		return "{\"id:\" " + id + ", \"bounds\": " + bounds + '}';
+	}
+
+	public int getTileCount() {
+		return rtsc == null ? 0 : rtsc().getTileCount();
 	}
 }
