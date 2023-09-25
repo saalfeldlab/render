@@ -650,12 +650,10 @@ public class MatchDao {
         int pairCount = 0;
         for (final Document query : queryList) {
             try (final MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
-                if (cursor.hasNext()) {
-                    outputStream.write(cursor.next().toJson().getBytes());
-                    pairCount++;
-                }
                 while (cursor.hasNext()) {
-                    outputStream.write(COMMA_WITH_NEW_LINE);
+                    if (pairCount > 0) {
+                        outputStream.write(COMMA_WITH_NEW_LINE);
+                    }
                     outputStream.write(cursor.next().toJson().getBytes());
                     pairCount++;
                 }
