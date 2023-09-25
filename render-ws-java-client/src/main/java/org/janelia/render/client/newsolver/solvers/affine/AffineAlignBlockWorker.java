@@ -283,8 +283,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final int samplesPerDimension,
 			final int stabilizationRadius )
 	{
-		final String blockContext = "block " + solveItem.blockData.getId();
-		LOG.info("assignRegularizationModel: entry, {}", blockContext);
+		LOG.info("assignRegularizationModel: entry, block {}", solveItem.blockData);
 
 		final HashMap< Integer, List<Tile<M>> > zToGroupedTileList = new HashMap<>();
 
@@ -303,7 +302,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 			catch (final Exception e) {
 				final String currentTileId = solveItem.tileToIdMap().get(currentTile);
-				throw new RuntimeException("failed to to populate zToGroupedTileList for " + blockContext +
+				throw new RuntimeException("failed to to populate zToGroupedTileList for block " + solveItem.blockData +
 										   ", currentTileId is " + currentTileId, e);
 			}
 		}
@@ -316,12 +315,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		if (model instanceof ConstantAffineModel2D) {
 			// it is based on ConstantAffineModels, meaning we extract metadata and use that as regularizer
 			assignConstantAffineModel(solveItem, samplesPerDimension, allZ, zToGroupedTileList);
-			LOG.info("assignRegularizationModel: exit, {}", blockContext);
+			LOG.info("assignRegularizationModel: exit, block {}", solveItem.blockData);
 
 		} else if (model instanceof StabilizingAffineModel2D) {
 			// it is based on StabilizingAffineModel2Ds, meaning each image wants to sit where its corresponding one in the above layer sits
 			assignStabilizingAffineModel(solveItem, samplesPerDimension, stabilizationRadius, allZ, zToGroupedTileList);
-			LOG.info("assignRegularizationModel: exit, {}", blockContext);
+			LOG.info("assignRegularizationModel: exit, block {}", solveItem.blockData);
 
 		} else {
 			LOG.info( "Not using ConstantAffineModel2D for regularization. Nothing to do in assignRegularizationModel()." );
