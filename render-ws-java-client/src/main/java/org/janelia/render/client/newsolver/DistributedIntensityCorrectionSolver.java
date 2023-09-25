@@ -186,6 +186,7 @@ public class DistributedIntensityCorrectionSolver {
 		return fusedModels;
 	}
 
+	// TODO: refactor this to use 1D version of AlingmentModel if and when it exists
 	private static ArrayList<AffineModel1D> interpolateModels(final List<ArrayList<AffineModel1D>> tiledModels, final List<Double> weights) {
 		if (tiledModels.isEmpty() || tiledModels.size() != weights.size())
 			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
@@ -195,7 +196,7 @@ public class DistributedIntensityCorrectionSolver {
 
 		// normalize weights
 		final double sumWeights = weights.stream().mapToDouble(v -> v).sum();
-		final double[] w = weights.stream().mapToDouble(v -> v / sumWeights).toArray();
+		final double[] normalizedWeights = weights.stream().mapToDouble(v -> v / sumWeights).toArray();
 
 		final int nCoefficients = 2;
 		final int nModelsPerTile = tiledModels.get(0).size();
@@ -207,11 +208,12 @@ public class DistributedIntensityCorrectionSolver {
 		// extract and interpolate coefficients
 		for (int n = 0; n < tiledModels.size(); n++) {
 			final List<AffineModel1D> models = tiledModels.get(n);
+			final double w = normalizedWeights[n];
 			for (int k = 0; k < models.size(); ++k) {
 				models.get(k).toArray(c);
 				final double[] cFinal = finalCoefficients.get(k);
-				cFinal[0] += w[n] * c[0];
-				cFinal[1] += w[n] * c[1];
+				cFinal[0] += w * c[0];
+				cFinal[1] += w * c[1];
 			}
 		}
 
