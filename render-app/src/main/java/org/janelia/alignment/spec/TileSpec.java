@@ -118,6 +118,10 @@ public class TileSpec implements Serializable {
         return z;
     }
 
+    public Integer getIntegralZ() {
+        return z == null ? null : z.intValue();
+    }
+
     public void setZ(final Double z) {
         this.z = z;
     }
