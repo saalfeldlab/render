@@ -158,6 +158,7 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 	public <P extends PointMatch> void fit(final Collection<P> matches) throws NotEnoughDataPointsException, IllDefinedDataPointsException {
 		for (final AffineModel2DWrapper<?> model : models)
 			model.asModel().fit(matches);
+		interpolate();
 	}
 
 	@Override

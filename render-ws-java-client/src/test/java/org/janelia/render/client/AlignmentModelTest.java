@@ -2,8 +2,12 @@ package org.janelia.render.client;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
 import org.janelia.render.client.newsolver.solvers.affine.AlignmentModel;
@@ -11,7 +15,9 @@ import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -95,6 +101,34 @@ public class AlignmentModelTest {
 		model.setWeights(weights);
 
 		final double[] expected = arrayFromModel(rigid);
+		final double[] actual = arrayFromModel(model);
+
+		assertArrayEquals(expected, actual, delta);
+	}
+
+	@Test
+	public void fittingYieldsRightResult() {
+		final InterpolatedAffineModel2D<AffineModel2D, TranslationModel2D> interpolated = new InterpolatedAffineModel2D<>(affine.copy(), translation.copy(), 0.5);
+		final AlignmentModel model = AlignmentModel.configure()
+				.addModel("affine", affine)
+				.addModel("translation", translation).build();
+		model.setWeights(Map.of("affine", 1.0, "translation", 1.0));
+
+		final List<PointMatch> matches = new ArrayList<>();
+		matches.add(new PointMatch(new Point(new double[] { 0, 0 }), new Point(new double[] { 0, 0.1 })));
+		matches.add(new PointMatch(new Point(new double[] { 0, 1 }), new Point(new double[] { 0.1, 1 })));
+		matches.add(new PointMatch(new Point(new double[] { 1, 0 }), new Point(new double[] { 1, 0 })));
+		matches.add(new PointMatch(new Point(new double[] { 1, 1 }), new Point(new double[] { 1, 1.1 })));
+		matches.add(new PointMatch(new Point(new double[] { 0.5, 0.5 }), new Point(new double[] { 0.5, 0.5 })));
+
+		try {
+			interpolated.fit(matches);
+			model.fit(matches);
+		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+			fail(e.getMessage());
+		}
+
+		final double[] expected = arrayFromModel(interpolated);
 		final double[] actual = arrayFromModel(model);
 
 		assertArrayEquals(expected, actual, delta);
