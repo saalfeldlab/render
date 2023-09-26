@@ -200,7 +200,11 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 																null,
 																null);
 
-		tileSpecsWithMatchPairs.resolveTileSpecsAndNormalizeMatchPairs(maxZDistance);
+		// block tileIds are filtered by center point during BlockFactory.defineBlockCollection process
+		// (more specifically by BlockFactory.pruneRtsc), so apply the same filtering to retrieved tile and match data
+		final Set<String> tileIdsToKeep = new HashSet<>(blockData.rtsc().getTileIds());
+		tileSpecsWithMatchPairs.resolveTileSpecsAndNormalizeMatchPairs(tileIdsToKeep,
+																	   maxZDistance);
 
 		final List<CanvasMatches> matchPairs = new ArrayList<>(tileSpecsWithMatchPairs.getMatchPairCount());
 
@@ -1101,5 +1105,5 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		return graphs;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
+	private static final Logger LOG = LoggerFactory.getLogger(AffineAlignBlockWorker.class);
 }

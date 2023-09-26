@@ -6,7 +6,9 @@ import java.io.Reader;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
@@ -57,17 +59,44 @@ public class ResolvedTileSpecsWithMatchPairs
      * Resolves all tile specs for client-side usage and normalizes match pairs
      * by removing pairs that are too far from each other in z and by sorting them.
      *
-     * @param  maxZDistance  maximum non-negative integral z distance for all retained pairs
-     *                       (or null to accept all pairs).
+     * @param  tileIdsToKeep  set of tileIds to retain in the collection (or null to retain all tiles).
+     *                        Match pairs for any removed tiles will also be removed.
+     * @param  maxZDistance   maximum non-negative integral z distance for all retained pairs
+     *                        (or null to accept all pairs).
      *
      * @throws IllegalArgumentException
      *   if maxZDistance < 0
      */
-    public void resolveTileSpecsAndNormalizeMatchPairs(final Integer maxZDistance)
+    public void resolveTileSpecsAndNormalizeMatchPairs(final Set<String> tileIdsToKeep,
+                                                       final Integer maxZDistance)
             throws IllegalArgumentException {
+
+        final Integer numberOfTilesToKeep = tileIdsToKeep == null ? null : tileIdsToKeep.size();
+
+        LOG.info("resolveTileSpecsAndNormalizeMatchPairs: entry, normalizing {} tiles and {} pairs with {} tileIdsToKeep and maxZDistance {}",
+                 resolvedTileSpecs.getTileCount(), matchPairs.size(), numberOfTilesToKeep, maxZDistance);
 
         if ((maxZDistance != null) && (maxZDistance <= 0)) {
             throw new IllegalArgumentException("maxZDistance must be >= 0 or null");
+        }
+
+        if (tileIdsToKeep != null) {
+
+            // track and log removal info if debugging
+            final boolean isDebugEnabled = LOG.isDebugEnabled();
+            final Set<String> beforeTileIds = isDebugEnabled ? new HashSet<>(resolvedTileSpecs.getTileIds()) : null;
+
+            resolvedTileSpecs.removeDifferentTileSpecs(tileIdsToKeep);
+
+            if (isDebugEnabled) {
+                final Set<String> afterTileIds = resolvedTileSpecs.getTileIds();
+                final int removalCount = beforeTileIds.size() - afterTileIds.size();
+                if (removalCount > 0) {
+                    beforeTileIds.removeAll(afterTileIds);
+                    LOG.debug("resolveTileSpecsAndNormalizeMatchPairs: removed {} tiles including {}",
+                              removalCount, beforeTileIds.iterator().next());
+                }
+            }
         }
 
         resolvedTileSpecs.resolveTileSpecs();
