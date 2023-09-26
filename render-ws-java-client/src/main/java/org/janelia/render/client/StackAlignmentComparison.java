@@ -24,6 +24,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
 
 public class StackAlignmentComparison {
@@ -52,7 +53,7 @@ public class StackAlignmentComparison {
 
 		final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTilesForZRange(baselineStack, null, null);
 		final ResolvedTileSpecCollection rtscNew = renderClient.getResolvedTilesForZRange(newStack, null, null);
-		final List<CanvasMatches> canvasMatches = getMatchData(rtscBaseline, matchClient);
+		final List<CanvasMatches> canvasMatches = getMatchData(matchClient);
 
 		final AlignmentErrors errorsBaseline = computeSolveItemErrors(rtscBaseline, canvasMatches);
 		final AlignmentErrors errorsNew = computeSolveItemErrors(rtscNew, canvasMatches);
@@ -63,7 +64,7 @@ public class StackAlignmentComparison {
 			System.out.println(pair.getA() + " " + pair.getB() + " : " + differences.getPairwiseError(pair.getA(), pair.getB()));
 	}
 
-	protected static List<CanvasMatches> getMatchData(final ResolvedTileSpecCollection rtsc, final RenderDataClient matchDataClient) throws IOException {
+	protected static List<CanvasMatches> getMatchData(final RenderDataClient matchDataClient) throws IOException {
 
 		final Collection<String> sectionIds = matchDataClient.getMatchPGroupIds();
 		final List<CanvasMatches> canvasMatches = new ArrayList<>();
@@ -135,10 +136,6 @@ public class StackAlignmentComparison {
 				return pairToErrorMap.get(new SerializableValuePair<>(otherTileId, tileId));
 		}
 
-		public int number() {
-			return pairToErrorMap.size();
-		}
-
 		public List<Pair<String, String>> getWorstPairs(final int n) {
 			return pairToErrorMap.keySet().stream()
 					.sorted((p1, p2) -> Double.compare(pairToErrorMap.get(p2), pairToErrorMap.get(p1)))
@@ -147,11 +144,19 @@ public class StackAlignmentComparison {
 		}
 
 		public static AlignmentErrors computeRelativeDifferences(final AlignmentErrors baseline, final AlignmentErrors other) {
+			return computeDifferences(baseline, other, (error1, error2) -> Math.abs(error1 - error2) / error1);
+		}
+
+		public static AlignmentErrors computeAbsoluteDifferences(final AlignmentErrors baseline, final AlignmentErrors other) {
+			return computeDifferences(baseline, other, (error1, error2) -> Math.abs(error1 - error2));
+		}
+
+		public static AlignmentErrors computeDifferences(final AlignmentErrors baseline, final AlignmentErrors other, final DoubleBinaryOperator comparisonMetric) {
 			final AlignmentErrors differences = new AlignmentErrors();
 
 			baseline.pairToErrorMap.forEach((pair, error1) -> {
 				final double error2 = other.pairToErrorMap.get(pair);
-				differences.pairToErrorMap.put(pair, Math.abs(error1 - error2) / error1);
+				differences.pairToErrorMap.put(pair, comparisonMetric.applyAsDouble(error1, error2));
 			});
 
 			return differences;
