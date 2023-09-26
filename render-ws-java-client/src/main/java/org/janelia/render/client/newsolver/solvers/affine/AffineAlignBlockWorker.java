@@ -98,27 +98,25 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	{
 		super( startId, blockData, numThreads );
 
-		this.matchDataClient =
-				new RenderDataClient(
-						blockData.solveTypeParameters().baseDataUrl(),
-						blockData.solveTypeParameters().matchOwner(),
-						blockData.solveTypeParameters().matchCollection() );
+		final FIBSEMAlignmentParameters<M, S> parameters = blockData.solveTypeParameters();
+		this.matchDataClient = new RenderDataClient(parameters.baseDataUrl(),
+													parameters.matchOwner(),
+													parameters.matchCollection());
 
 		this.inputSolveItem = new AffineBlockDataWrapper<>( blockData );
 
-		if ( blockData.solveTypeParameters().maxNumMatches() <= 0 )
+		if (parameters.maxNumMatches() <= 0)
 			this.matchFilter = new NoMatchFilter();
 		else
-			this.matchFilter = new RandomMaxAmountFilter( blockData.solveTypeParameters().maxNumMatches() );
+			this.matchFilter = new RandomMaxAmountFilter(parameters.maxNumMatches());
 
 		// used locally
-		this.stitchFirst = blockData.solveTypeParameters().minStitchingInliersSupplier() != null;
+		this.stitchFirst = (parameters.minStitchingInliersSupplier() != null);
 		this.pairs = new ArrayList<>();
 		this.zToPairs = new HashMap<>();
 
 		// NOTE: if you choose to stitch first, you need to pre-align, otherwise, it's OK to use the initial alignment for each tile
-		if ( stitchFirst && inputSolveItem.blockData().solveTypeParameters().preAlign() == PreAlign.NONE )
-		{
+		if (stitchFirst && parameters.preAlign() == PreAlign.NONE) {
 			LOG.error("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
 			throw new RuntimeException("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
 		}
@@ -146,7 +144,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		final List<AffineBlockDataWrapper<M, S>> solveItems = splitSolveItem(inputSolveItem, startId);
 
-		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
+		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
 		{
 				/*
 				java.lang.NullPointerException: Cannot invoke "org.janelia.alignment.spec.TileSpec.getZ()" because the return value of "org.janelia.alignment.spec.ResolvedTileSpecCollection.getTileSpec(String)" is null
@@ -165,12 +163,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			solve( solveItem, numThreads );
 		}
 
-		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
+		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
 			computeSolveItemErrors( solveItem, canvasMatches );
 
 		// clean up
 		this.result = new ArrayList<>();
-		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
+		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
 		{
 			result.add( solveItem.blockData() );
 			solveItem.matches().clear();
