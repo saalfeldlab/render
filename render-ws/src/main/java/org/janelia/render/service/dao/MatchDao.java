@@ -640,7 +640,7 @@ public class MatchDao {
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
 
         final List<Document> queryList = buildMatchQueryListForTiles(resolvedTileSpecCollection,
-                                                                     40);
+                                                                     80); // TODO: profile this to determine optimal maxTilesPerQuery value
 
         outputStream.write("{\"resolvedTileSpecs\":".getBytes());
         JsonUtils.FAST_MAPPER.writeValue(outputStream, resolvedTileSpecCollection);
@@ -673,8 +673,6 @@ public class MatchDao {
     public static List<Document> buildMatchQueryListForTiles(final ResolvedTileSpecCollection resolvedTileSpecCollection,
                                                              final int maxTilesPerQuery) {
 
-        // TODO: need to include qGroupId and qId to include connected p tiles outside of bounding box
-
         // organize by sectionId since that is needed to ensure queries use index
         final Map<String, Set<String>> sectionIdToTileIds = resolvedTileSpecCollection.buildSectionIdToTileIdsMap();
 
@@ -695,7 +693,10 @@ public class MatchDao {
                 tileIdsForCurrentQuery.addAll(tileIdsForSection.subList(fromIndex, toIndex));
 
                 if (tileIdsForCurrentQuery.size() == maxTilesPerQuery) {
-                    queryList.add(getPGroupAndIdInQuery(sectionIdsForCurrentQuery, tileIdsForCurrentQuery));
+
+                    addGroupAndIdInQueriesToList(sectionIdsForCurrentQuery,
+                                                 tileIdsForCurrentQuery,
+                                                 queryList);
 
                     sectionIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
                     if (toIndex < tileIdsForSection.size()) {
@@ -710,17 +711,29 @@ public class MatchDao {
         }
 
         if (! tileIdsForCurrentQuery.isEmpty()) {
-            queryList.add(getPGroupAndIdInQuery(sectionIdsForCurrentQuery, tileIdsForCurrentQuery));
+            addGroupAndIdInQueriesToList(sectionIdsForCurrentQuery,
+                                         tileIdsForCurrentQuery,
+                                         queryList);
         }
 
         return queryList;
     }
 
-    private static Document getPGroupAndIdInQuery(final List<String> pGroupIdList,
-                                                  final List<String> pIdList) {
-        final Document pGroupIdIn = new Document(MongoUtil.OP_IN, pGroupIdList);
-        final Document pIdIn = new Document(MongoUtil.OP_IN, pIdList);
-        return new Document("pGroupId", pGroupIdIn).append("pId", pIdIn);
+    private static void addGroupAndIdInQueriesToList(final List<String> groupIdList,
+                                                     final List<String> idList,
+                                                     final List<Document> queryList) {
+        queryList.add(getGroupAndIdInQuery(groupIdList, idList, "p"));
+        queryList.add(getGroupAndIdInQuery(groupIdList, idList, "q"));
+    }
+
+    private static Document getGroupAndIdInQuery(final List<String> groupIdList,
+                                                 final List<String> idList,
+                                                 final String pOrQPrefix) {
+        final String groupIdKey = pOrQPrefix + "GroupId";
+        final String idKey = pOrQPrefix + "Id";
+        final Document pGroupIdIn = new Document(MongoUtil.OP_IN, groupIdList);
+        final Document pIdIn = new Document(MongoUtil.OP_IN, idList);
+        return new Document(groupIdKey, pGroupIdIn).append(idKey, pIdIn);
     }
 
     private MongoCollection<Document> getMatchTrialCollection() {
@@ -1094,7 +1107,8 @@ public class MatchDao {
                                       "qId", 1),
                               MATCH_A_OPTIONS);
         MongoUtil.createIndex(collection,
-                              new Document("qGroupId", 1),
+                              new Document("qGroupId", 1).append(
+                                      "qId", 1),
                               MATCH_B_OPTIONS);
     }
 
