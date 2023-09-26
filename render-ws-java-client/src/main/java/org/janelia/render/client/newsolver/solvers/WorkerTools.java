@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import mpicbg.models.CoordinateTransform;
 import org.janelia.alignment.match.Matches;
@@ -20,6 +21,8 @@ import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class WorkerTools
 {
@@ -125,4 +128,74 @@ public class WorkerTools
 				10);
 	}
 
+	/**
+	 * Adaptation of {@link Tile#traceConnectedGraph} that avoids StackOverflowError from
+	 * too much recursion when dealing with larger connected graphs.
+	 */
+	@SuppressWarnings("JavadocReference")
+	private static void safelyTraceConnectedGraph(final Tile<?> forTile,
+			final Set<Tile<?>> graph,
+			final Set<Tile<?>> deferredTiles,
+			final int recursionDepth) {
+		final int maxRecursionDepth = 500;
+
+		graph.add(forTile);
+
+		for (final Tile<?> t : forTile.getConnectedTiles()) {
+			if (! (graph.contains(t) || deferredTiles.contains(t))) {
+				if (recursionDepth < maxRecursionDepth) {
+					safelyTraceConnectedGraph(t, graph, deferredTiles, recursionDepth + 1);
+				} else {
+					deferredTiles.add(t);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Adaptation of {@link Tile#identifyConnectedGraphs} that avoids StackOverflowError from
+	 * too much recursion when dealing with larger connected graphs.
+	 */
+	public static ArrayList<Set<Tile<?>>> safelyIdentifyConnectedGraphs(final Collection<Tile<?>> tiles) {
+
+		LOG.info("safelyIdentifyConnectedGraphs: entry, checking {} tiles", tiles.size());
+
+		final ArrayList<Set<Tile<?>>> graphs = new ArrayList<>();
+		int numInspectedTiles = 0;
+		A:		for (final Tile<?> tile : tiles)
+		{
+			for (final Set<Tile<?>> knownGraph : graphs) {
+				if (knownGraph.contains(tile)) {
+					continue A;
+				}
+			}
+
+			final Set<Tile<?>> currentGraph = new HashSet<>();
+			final Set< Tile< ? > > deferredTiles = new HashSet<>();
+			safelyTraceConnectedGraph(tile, currentGraph, deferredTiles, 0);
+
+			while (!deferredTiles.isEmpty()) {
+				LOG.info("safelyIdentifyConnectedGraphs: {} max recursion deferred tiles, current graph size is {}",
+						 deferredTiles.size(), currentGraph.size());
+				final List<Tile<?>> toDoList = new ArrayList<>(deferredTiles);
+				deferredTiles.clear();
+				for (final Tile<?> toDoTile : toDoList) {
+					safelyTraceConnectedGraph(toDoTile, currentGraph, deferredTiles, 0);
+				}
+			}
+
+			numInspectedTiles += currentGraph.size();
+			graphs.add(currentGraph);
+
+			if (numInspectedTiles == tiles.size()) {
+				break;
+			}
+		}
+
+		LOG.info("safelyIdentifyConnectedGraphs: returning {} graph(s)", graphs.size());
+
+		return graphs;
+	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(WorkerTools.class);
 }
