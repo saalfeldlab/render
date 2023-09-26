@@ -56,8 +56,8 @@ public class ResolvedTileSpecsWithMatchPairs
     }
 
     /**
-     * Resolves all tile specs for client-side usage and normalizes match pairs
-     * by removing pairs that are too far from each other in z and by sorting them.
+     * Normalizes this collection using the specified parameters by resolving all tile specs for client-side usage,
+     * filtering out unwanted tiles, removing match pairs that are too far from each other in z, and sorting pairs.
      *
      * @param  tileIdsToKeep  set of tileIds to retain in the collection (or null to retain all tiles).
      *                        Match pairs for any removed tiles will also be removed.
@@ -67,19 +67,20 @@ public class ResolvedTileSpecsWithMatchPairs
      * @throws IllegalArgumentException
      *   if maxZDistance < 0
      */
-    public void resolveTileSpecsAndNormalizeMatchPairs(final Set<String> tileIdsToKeep,
-                                                       final Integer maxZDistance)
+    public void normalize(final Set<String> tileIdsToKeep,
+                          final Integer maxZDistance)
             throws IllegalArgumentException {
 
         final Integer numberOfTilesToKeep = tileIdsToKeep == null ? null : tileIdsToKeep.size();
 
-        LOG.info("resolveTileSpecsAndNormalizeMatchPairs: entry, normalizing {} tiles and {} pairs with {} tileIdsToKeep and maxZDistance {}",
+        LOG.info("normalize: entry, process {} tiles and {} pairs with {} tileIdsToKeep and maxZDistance {}",
                  resolvedTileSpecs.getTileCount(), matchPairs.size(), numberOfTilesToKeep, maxZDistance);
 
         if ((maxZDistance != null) && (maxZDistance <= 0)) {
             throw new IllegalArgumentException("maxZDistance must be >= 0 or null");
         }
 
+        // remove unwanted tiles (which will later cause associated math pairs to be removed)
         if (tileIdsToKeep != null) {
 
             // track and log removal info if debugging
@@ -93,13 +94,16 @@ public class ResolvedTileSpecsWithMatchPairs
                 final int removalCount = beforeTileIds.size() - afterTileIds.size();
                 if (removalCount > 0) {
                     beforeTileIds.removeAll(afterTileIds);
-                    LOG.debug("resolveTileSpecsAndNormalizeMatchPairs: removed {} tiles including {}",
+                    LOG.debug("normalize: removed {} tiles including {}",
                               removalCount, beforeTileIds.iterator().next());
                 }
             }
         }
 
         resolvedTileSpecs.resolveTileSpecs();
+
+        // remove match pairs that are too far away in z or do not have both tile specs in this collection
+        // TODO: keep track of or return removed match pairs in case solver needs to pull adjacent tiles later
 
         final List<CanvasMatches> normalizedMatchPairs = new ArrayList<>(matchPairs.size());
 
@@ -118,7 +122,7 @@ public class ResolvedTileSpecsWithMatchPairs
             }
         }
 
-        // data from web service is not sorted, so sort it here
+        // pairs from web service are not sorted, so sort here to make usage loops more intuitive
         Collections.sort(normalizedMatchPairs);
 
         final String countMsg = normalizedMatchPairs.size() < matchPairs.size() ? "was reduced to" : "remained as";
