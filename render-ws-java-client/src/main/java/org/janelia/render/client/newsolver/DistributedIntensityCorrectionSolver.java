@@ -163,10 +163,10 @@ public class DistributedIntensityCorrectionSolver {
 		final boolean saveResults = (solverSetup.targetStack.stack != null);
 		final RenderDataClient renderDataClient = solverSetup.renderWeb.getDataClient();
 		if (saveResults) {
-			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.idToTileSpec.values());
+			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.getIdToTileSpec().values());
 			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.idToModel;
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
-			addFilters(finalizedItems.idToTileSpec, idToFilterSpec);
+			addFilters(finalizedItems.getIdToTileSpec(), idToFilterSpec);
 			final ResolvedTileSpecCollection rtsc = finalizedItems.buildResolvedTileSpecs();
 			renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
 			if (solverSetup.targetStack.completeStack)

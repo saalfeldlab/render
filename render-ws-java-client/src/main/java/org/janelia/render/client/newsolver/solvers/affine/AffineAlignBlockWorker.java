@@ -204,6 +204,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		// (more specifically by BlockFactory.pruneRtsc), so apply the same filtering to retrieved tile and match data
 		final Set<String> tileIdsToKeep = new HashSet<>(blockData.rtsc().getTileIds());
 		tileSpecsWithMatchPairs.normalize(tileIdsToKeep, maxZDistance);
+		blockData.getResults().addTileSpecs(tileSpecsWithMatchPairs.getResolvedTileSpecs().getTileSpecs());
 
 		final List<CanvasMatches> matchPairs = new ArrayList<>(tileSpecsWithMatchPairs.getMatchPairCount());
 
@@ -229,9 +230,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			final int pZ = pTileSpec.getIntegerZ();
 			final int qZ = qTileSpec.getIntegerZ();
-
-			blockData.zToTileId().computeIfAbsent(pZ, k -> new HashSet<>()).add(pId);
-			blockData.zToTileId().computeIfAbsent(qZ, k -> new HashSet<>()).add(qId);
 
 			// if the pair is from the same layer we remember the current index in the pairs list for stitching
 			if (pZ == qZ) {
@@ -524,7 +522,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		// combine tiles per layer that are be stitched first, but iterate over all z's 
 		// (also those only consisting of single tiles, they are connected in z though)
-		final ArrayList<Integer> zList = new ArrayList<>(blockData.zToTileId().keySet());
+		final ArrayList<Integer> zList = new ArrayList<>(blockData.getResults().getZLayerTileIds().keySet());
 		Collections.sort( zList );
 
 		for ( final int z : zList )
@@ -590,7 +588,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 
 			// add all missing TileIds as unconnected Tiles
-			for (final String tileId : blockData.zToTileId().get(z))
+			for (final String tileId : blockData.getResults().getZLayerTileIds().get(z))
 				if ( !idTotile.containsKey( tileId ) )
 				{
 					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, unconnected tileId {}", blockData, tileId);
@@ -800,8 +798,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				//		solveItem.restarts().add( z );
 
 				// used for global solve outside
+				final List<TileSpec> tileSpecs = new ArrayList<>();
 				for (int z = newBlockData.minZ(); z <= newBlockData.maxZ(); ++z) {
-					final HashSet< String > allTilesPerZ = blockData.zToTileId().get(z );
+					final HashSet<String> allTilesPerZ = blockData.getResults().getZLayerTileIds().get(z);
 
 					if ( allTilesPerZ == null )
 						continue;
@@ -820,9 +819,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						System.exit(0);
 					}
 
-					newBlockData.zToTileId().put(z, myTilesPerZ);
+					tileSpecs.addAll(myTilesPerZ.stream().map(newRTSC::getTileSpec).collect(Collectors.toList()));
 				}
 
+				newBlockData.getResults().addTileSpecs(tileSpecs);
 				solveItems.add( solveItem );
 			}
 		}

@@ -4,7 +4,9 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,9 +73,6 @@ public class Assembler<Z, G extends Model<G>, R>
 		return am;
 	}
 
-	//public abstract void globalSolve();
-	//public abstract void assemble();
-
 	protected boolean isTrivialCase() {
 		return blocks.size() == 1;
 	}
@@ -91,21 +90,19 @@ public class Assembler<Z, G extends Model<G>, R>
 
 		globalData.sharedTransformSpecs.addAll(solveItem.rtsc().getTransformSpecs());
 
+		// TODO: why does this iterate over z values?
 		for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
 		{
 			// there is no overlap with any other solveItem (should be beginning or end of the entire stack)
-			final HashSet< String > tileIds = solveItem.zToTileId().get( z );
+			final HashSet<String> tileIds = solveItem.getResults().getZLayerTileIds().get(z);
 
 			// if there are none, we continue with the next
 			if (tileIds.isEmpty())
 				continue;
 
-			globalData.zToTileId.putIfAbsent(z, new HashSet<>());
-
-			for ( final String tileId : tileIds )
-			{
-				globalData.zToTileId.get(z).add(tileId);
-				globalData.idToTileSpec.put(tileId, solveItem.rtsc().getTileSpec(tileId));
+			final List<TileSpec> tileSpecs = tileIds.stream().map(id -> solveItem.rtsc().getTileSpec(id)).collect(Collectors.toList());
+			globalData.addTileSpecs(tileSpecs);
+			for (final String tileId : tileIds) {
 				globalData.idToModel.put(tileId, converter.apply(solveItem.idToNewModel().get(tileId)));
 			}
 		}

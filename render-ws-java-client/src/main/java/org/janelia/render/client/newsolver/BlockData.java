@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -76,7 +75,7 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 		this.rtsc = rtsc;
 
 		this.sectionIdToZMap = new HashMap<>();
-		localData.idToTileSpec.putAll(rtsc.getTileIdToSpecMap());
+		localData.addTileSpecs(rtsc.getTileSpecs());
 		localData.sharedTransformSpecs.addAll(rtsc.getTransformSpecs());
 
 		// TODO: trautmane
@@ -117,7 +116,7 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	public HashMap<String, List<SerializableValuePair<String, Double>>> idToBlockErrorMap() { return localData.idToErrorMap; }
 	public HashMap<String, ArrayList<Double>> idToAverages() { return idToAverages; }
 
-	public HashMap<Integer, HashSet<String>> zToTileId() { return localData.zToTileId; }
+	public ResultContainer<R> getResults() { return localData; }
 
 	public void assignUpdatedId( final int id ) { this.id = id; }
 

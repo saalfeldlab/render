@@ -73,12 +73,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 		final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(blockData.rtsc());
-
-		for (final MinimalTileSpecWrapper wrappedTile : wrappedTiles) {
-			final String tileId = wrappedTile.getTileId();
-			final int z = (int) Math.round(wrappedTile.getZ());
-			blockData.zToTileId().computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
-		}
+		blockData.getResults().addTileSpecs(blockData.rtsc().getTileSpecs());
 
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
 

@@ -52,20 +52,13 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 
 	public HashMap<BlockData<R, ?>, Tile<G>> globalSolve(
 			final List<? extends BlockData<R, ?>> blocks,
-			final ResultContainer<Z> am
+			final ResultContainer<Z> globalResults
 	) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException {
 
 		final HashMap<BlockData<R, ?>, Tile<G>> blockToTile = new HashMap<>();
 		for (final BlockData<R, ?> block : blocks) {
 			blockToTile.put(block, new Tile<>(globalModel.copy()));
-
-			final ResolvedTileSpecCollection tileSpecs = block.rtsc();
-			for (final String tileId : tileSpecs.getTileIds()) {
-				final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
-				final Integer z = tileSpec.getZ().intValue();
-				am.idToTileSpec.put(tileId, tileSpec);
-				am.zToTileId.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
-			}
+			globalResults.addTileSpecs(block.rtsc().getTileSpecs());
 		}
 
 		LOG.info("globalSolve: solving {} items", blocks.size());
@@ -87,7 +80,6 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 
 				for (final String tileId : commonTileIds) {
 					final TileSpec tileSpecAB = tileSpecs.getTileSpec(tileId);
-					am.idToTileSpec.put(tileId, tileSpecAB);
 
 					final R modelA = solveItemA.idToNewModel().get(tileId);
 					final R modelB = solveItemB.idToNewModel().get(tileId);
