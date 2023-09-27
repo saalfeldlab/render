@@ -13,7 +13,7 @@ import org.apache.commons.lang.math.IntRange;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
@@ -55,7 +55,7 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	//
 	// below are the results that the worker has to fill up
 	//
-	final private AssemblyMaps<R> localData = new AssemblyMaps<>();
+	final private ResultContainer<R> localData = new ResultContainer<>();
 
 	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
 	// coefficient-tile intensity average for global intensity-correction

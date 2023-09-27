@@ -33,7 +33,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 	}
 
 	public void fuseGlobally(
-			final AssemblyMaps<Z> globalData,
+			final ResultContainer<Z> globalData,
 			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile
 	) {
 		final HashMap<BlockData<R, ?>, G> blockToG = new HashMap<>();

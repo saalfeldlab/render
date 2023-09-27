@@ -17,7 +17,7 @@ import mpicbg.models.RigidModel2D;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.assembly.Assembler;
-import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
@@ -151,7 +151,7 @@ public class DistributedAffineBlockSolver
 			throw new IllegalStateException("no blocks were computed, something is wrong");
 		}
 
-		final AssemblyMaps<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup, allItems);
+		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup, allItems);
 
 		// save the re-aligned part
 		LOG.info( "Saving targetstack=" + cmdLineSetup.targetStack );
@@ -199,7 +199,7 @@ public class DistributedAffineBlockSolver
 			return new ArrayList<>(blockDataList);
 	}
 
-	private static AssemblyMaps<AffineModel2D> solveAndCombineBlocks(
+	private static ResultContainer<AffineModel2D> solveAndCombineBlocks(
 			final AffineBlockSolverSetup cmdLineSetup,
 			final ArrayList<BlockData<AffineModel2D, ?>> allItems) {
 

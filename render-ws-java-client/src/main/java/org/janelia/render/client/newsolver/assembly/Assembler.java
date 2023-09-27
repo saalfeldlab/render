@@ -45,14 +45,14 @@ public class Assembler<Z, G extends Model<G>, R>
 		this.converter = converter;
 	}
 
-	public AssemblyMaps< Z > createAssembly()
+	public ResultContainer< Z > createAssembly()
 	{
 		// the trivial case of a single block, would crash with the code below
 		if (isTrivialCase()) {
 			return buildTrivialAssembly();
 		}
 
-		final AssemblyMaps<Z> am = new AssemblyMaps<>();
+		final ResultContainer<Z> am = new ResultContainer<>();
 
 		// add shared transforms to assembly so that they can be used later when building resolved tile spec collections
 		blocks.forEach(block -> am.sharedTransformSpecs.addAll(block.rtsc().getTransformSpecs()));
@@ -81,11 +81,11 @@ public class Assembler<Z, G extends Model<G>, R>
 	/**
 	 * @return - the result of the trivial case
 	 */
-	private AssemblyMaps< Z > buildTrivialAssembly()
+	private ResultContainer< Z > buildTrivialAssembly()
 	{
 		LOG.info("buildTrivialAssembly: entry, only a single block, no solve across blocks necessary.");
 
-		final AssemblyMaps< Z > globalData = new AssemblyMaps<>();
+		final ResultContainer< Z > globalData = new ResultContainer<>();
 
 		final BlockData<R, ?> solveItem = blocks.get( 0 );
 

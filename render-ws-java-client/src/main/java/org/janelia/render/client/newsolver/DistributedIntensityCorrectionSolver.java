@@ -26,7 +26,7 @@ import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.newsolver.assembly.Assembler;
-import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.BlockSolver;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
@@ -90,7 +90,7 @@ public class DistributedIntensityCorrectionSolver {
 		final ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> allItems =
 				intensitySolver.solveBlocksUsingThreadPool(blockCollection);
 
-		final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
+		final ResultContainer<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
 
 		intensitySolver.saveResultsAsNeeded(finalizedItems);
 	}
@@ -130,7 +130,7 @@ public class DistributedIntensityCorrectionSolver {
 		return new ArrayList<>(worker.getBlockDataList());
 	}
 
-	public AssemblyMaps<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {
+	public ResultContainer<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {
 
 		LOG.info("assembleBlocks: entry, processing {} blocks", allItems.size());
 
@@ -157,7 +157,7 @@ public class DistributedIntensityCorrectionSolver {
 		return assembler.createAssembly();
 	}
 
-	public void saveResultsAsNeeded(final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems)
+	public void saveResultsAsNeeded(final ResultContainer<ArrayList<AffineModel1D>> finalizedItems)
 			throws IOException {
 		// this adds the filters to the tile specs and pushes the data to the DB
 		final boolean saveResults = (solverSetup.targetStack.stack != null);

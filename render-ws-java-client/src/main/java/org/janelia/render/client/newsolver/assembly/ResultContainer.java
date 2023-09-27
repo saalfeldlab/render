@@ -12,8 +12,8 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.client.solver.SerializableValuePair;
 
-public class AssemblyMaps< M > implements Serializable
-{
+public class ResultContainer<M> implements Serializable {
+
 	final public HashMap<String, M> idToModel = new HashMap<>();
 	final public HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
 	final public HashMap<Integer, HashSet<String>> zToTileId = new HashMap<>();
@@ -31,8 +31,7 @@ public class AssemblyMaps< M > implements Serializable
 	 * @return collection built from this assembly's shared transforms and the specified tile specs.
 	 */
 	public ResolvedTileSpecCollection buildResolvedTileSpecs(final Collection<TileSpec> tileSpecs) {
-		final ResolvedTileSpecCollection rtsc = new ResolvedTileSpecCollection(sharedTransformSpecs,
-																			   tileSpecs);
+		final ResolvedTileSpecCollection rtsc = new ResolvedTileSpecCollection(sharedTransformSpecs, tileSpecs);
 		rtsc.removeUnreferencedTransforms();
 		return rtsc;
 	}

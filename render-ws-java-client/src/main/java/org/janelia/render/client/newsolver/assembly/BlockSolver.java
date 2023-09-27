@@ -52,7 +52,7 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 
 	public HashMap<BlockData<R, ?>, Tile<G>> globalSolve(
 			final List<? extends BlockData<R, ?>> blocks,
-			final AssemblyMaps<Z> am
+			final ResultContainer<Z> am
 	) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException {
 
 		final HashMap<BlockData<R, ?>, Tile<G>> blockToTile = new HashMap<>();
