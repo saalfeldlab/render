@@ -114,8 +114,7 @@ public class ResolvedTileSpecsWithMatchPairs
                 if (maxZDistance == null) {
                     normalizedMatchPairs.add(pair);
                 } else {
-                    final int zDistance = (int) Math.abs(pTileSpec.getZ() - qTileSpec.getZ());
-                    if (zDistance <= maxZDistance) {
+                    if (pTileSpec.zDistanceFrom(qTileSpec) <= maxZDistance) {
                         normalizedMatchPairs.add(pair);
                     }
                 }

@@ -227,8 +227,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					)
 			);//CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()) ) );
 
-			final int pZ = pTileSpec.getIntegralZ();
-			final int qZ = qTileSpec.getIntegralZ();
+			final int pZ = pTileSpec.getIntegerZ();
+			final int qZ = qTileSpec.getIntegerZ();
 
 			blockData.zToTileId().computeIfAbsent(pZ, k -> new HashSet<>()).add(pId);
 			blockData.zToTileId().computeIfAbsent(qZ, k -> new HashSet<>()).add(qId);
