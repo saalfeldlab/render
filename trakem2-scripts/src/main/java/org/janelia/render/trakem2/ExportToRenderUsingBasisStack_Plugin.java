@@ -192,7 +192,7 @@ public class ExportToRenderUsingBasisStack_Plugin
 
             final ResolvedTileSpecCollection resolvedTiles = zToTilesMap.get(basisZ);
             final Set<String> tileIdSet = zToTileIdSetMap.get(basisZ);
-            resolvedTiles.removeDifferentTileSpecs(tileIdSet);
+            resolvedTiles.retainTileSpecs(tileIdSet);
 
             Utils.log("exportPatches: updating bounding boxes for z " + basisZ);
             resolvedTiles.recalculateBoundingBoxes();

@@ -156,8 +156,8 @@ public class WarpTransformClient
                             alignDataClient.getResolvedTiles(parameters.warp.alignStack, z);
 
                     if (parameters.warp.excludeTilesNotInBothStacks) {
-                        montageTiles.removeDifferentTileSpecs(alignTiles.getTileIds());
-                        alignTiles.removeDifferentTileSpecs(montageTiles.getTileIds());
+                        montageTiles.retainTileSpecs(alignTiles.getTileIds());
+                        alignTiles.retainTileSpecs(montageTiles.getTileIds());
                     }
 
                     if (parameters.tileCluster.isDefined()) {

@@ -87,7 +87,7 @@ public class ResolvedTileSpecsWithMatchPairs
             final boolean isDebugEnabled = LOG.isDebugEnabled();
             final Set<String> beforeTileIds = isDebugEnabled ? new HashSet<>(resolvedTileSpecs.getTileIds()) : null;
 
-            resolvedTileSpecs.removeDifferentTileSpecs(tileIdsToKeep);
+            resolvedTileSpecs.retainTileSpecs(tileIdsToKeep);
 
             if (isDebugEnabled) {
                 final Set<String> afterTileIds = resolvedTileSpecs.getTileIds();

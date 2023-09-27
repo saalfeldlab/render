@@ -435,9 +435,9 @@ public class ResolvedTileSpecCollection implements Serializable {
     /**
      * Removes any tile specs not identified in the provided set from this collection.
      *
-     * @param  tileIdsToKeep  identifies which tile specs should be kept.
+     * @param  tileIdsToKeep  identifies which tile specs should be retained.
      */
-    public void removeDifferentTileSpecs(final Set<String> tileIdsToKeep) {
+    public void retainTileSpecs(final Set<String> tileIdsToKeep) {
         removeTileSpecs(tileIdsToKeep, false);
     }
 
