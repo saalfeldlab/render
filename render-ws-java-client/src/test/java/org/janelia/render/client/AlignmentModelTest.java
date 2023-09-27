@@ -107,7 +107,7 @@ public class AlignmentModelTest {
 	}
 
 	@Test
-	public void fittingYieldsRightResult() {
+	public void fittingYieldsRightResult() throws NotEnoughDataPointsException, IllDefinedDataPointsException {
 		final InterpolatedAffineModel2D<AffineModel2D, TranslationModel2D> interpolated = new InterpolatedAffineModel2D<>(affine.copy(), translation.copy(), 0.5);
 		final AlignmentModel model = AlignmentModel.configure()
 				.addModel("affine", affine)
@@ -121,12 +121,8 @@ public class AlignmentModelTest {
 		matches.add(new PointMatch(new Point(new double[] { 1, 1 }), new Point(new double[] { 1, 1.1 })));
 		matches.add(new PointMatch(new Point(new double[] { 0.5, 0.5 }), new Point(new double[] { 0.5, 0.5 })));
 
-		try {
-			interpolated.fit(matches);
-			model.fit(matches);
-		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
-			fail(e.getMessage());
-		}
+		interpolated.fit(matches);
+		model.fit(matches);
 
 		final double[] expected = arrayFromModel(interpolated);
 		final double[] actual = arrayFromModel(model);

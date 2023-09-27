@@ -77,19 +77,19 @@ public class BlockOptimizerParameters implements Serializable {
 
 	public AlignmentModel getModel() {
 		final AlignmentModelBuilder builder = AlignmentModel.configure()
-				.addModel("affine", new AffineModel2D())
-				.addModel("rigid", new RigidModel2D())
-				.addModel("translation", new TranslationModel2D())
-				.addModel("regularization", new StabilizingAffineModel2D<>(new RigidModel2D()));
+				.addModel(AlignmentModelType.AFFINE.name(), new AffineModel2D())
+				.addModel(AlignmentModelType.RIGID.name(), new RigidModel2D())
+				.addModel(AlignmentModelType.TRANSLATION.name(), new TranslationModel2D())
+				.addModel(AlignmentModelType.REGULARIZATION.name(), new StabilizingAffineModel2D<>(new RigidModel2D()));
 		return builder.build();
 	}
 
 	public Map<String, Double> setUpZeroWeights() {
 		return Map.of(
-				"affine", 0.0,
-				"rigid", 0.0,
-				"translation", 0.0,
-				"regularization", 0.0);
+				AlignmentModelType.AFFINE.name(), 0.0,
+				AlignmentModelType.RIGID.name(), 0.0,
+				AlignmentModelType.TRANSLATION.name(), 0.0,
+				AlignmentModelType.REGULARIZATION.name(), 0.0);
 	}
 
 	public Map<String, Double> getWeightsForRun(final int i) {
@@ -99,13 +99,20 @@ public class BlockOptimizerParameters implements Serializable {
 		final double t = lambdasTranslation.get(i);
 		final double reg = lambdasRegularization.get(i);
 		return Map.of(
-				"affine", (1-r) * (1-t) * (1-reg),
-				"rigid", r * (1-t) * (1-reg),
-				"translation", t * (1-reg),
-				"regularization", reg);
+				AlignmentModelType.AFFINE.name(), (1-r) * (1-t) * (1-reg),
+				AlignmentModelType.RIGID.name(), r * (1-t) * (1-reg),
+				AlignmentModelType.TRANSLATION.name(), t * (1-reg),
+				AlignmentModelType.REGULARIZATION.name(), reg);
 	}
 
 	public int nRuns() {
 		return iterations.size();
+	}
+
+	public static enum AlignmentModelType {
+		AFFINE,
+		RIGID,
+		TRANSLATION,
+		REGULARIZATION;
 	}
 }
