@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockData;
@@ -77,15 +78,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	// filled in assembleMatchData()
 	final HashMap< Integer, List< Integer > > zToPairs;
 
-	// only for dynamic lambda stuff that we never used
-	//final Set<Integer> excludeFromRegularization;
-
-	//final List<Double> blockOptimizerLambdasRigid, blockOptimizerLambdasTranslation;
-	//final List<Integer> blockOptimizerIterations, blockMaxPlateauWidth;
-	//final double blockMaxAllowedError;
-
 	final AffineBlockDataWrapper<M, S> inputSolveItem;
-	private ArrayList<AffineBlockDataWrapper<M, S>> solveItems;
 	private ArrayList<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> result;
 
 	// to filter matches
@@ -94,8 +87,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	// if stitching first should be done
 	final boolean stitchFirst;
 
-	// for error computation (local)
-	ArrayList< CanvasMatches > canvasMatches;
 
 	// created by SolveItemData.createWorker()
 	public AffineAlignBlockWorker(
@@ -140,8 +131,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
 	{
-		// TODO: trautmane
-		this.canvasMatches = assembleMatchData( inputSolveItem, matchFilter, matchDataClient, renderDataClient, renderStack, pairs, zToPairs );
+		// for error computation (local)
+		final List<CanvasMatches> canvasMatches = assembleMatchData();
 
 		// minStitchingInliersSupplier:
 		// how many stitching inliers are needed to stitch first
@@ -151,7 +142,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		connectGroupedTiles( pairs, inputSolveItem );
 
-		this.solveItems = splitSolveItem( inputSolveItem, startId );
+		final List<AffineBlockDataWrapper<M, S>> solveItems = splitSolveItem(inputSolveItem, startId);
 
 		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
 		{
@@ -185,115 +176,75 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			solveItem.groupedTileToTiles().clear();
 			solveItem.idToTileMap().clear();
 		}
-		this.solveItems.clear();
-		this.solveItems = null;
-		// TODO: find out why gc call was here - usually a sign of hiding some larger problem
-		// System.gc();
 	}
 
-	protected ArrayList< CanvasMatches > assembleMatchData(
-			final AffineBlockDataWrapper<M, S> inputSolveItem,
-			final MatchFilter matchFilter,
-			final RenderDataClient matchDataClient,
-			final RenderDataClient renderDataClient,
-			final String renderStack,
-			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
-			final HashMap< Integer, List< Integer > > zToPairs ) throws IOException
-	{
-		final Map<String, ArrayList<Double>> sectionIdToZMap = inputSolveItem.blockData().sectionIdToZMap();
-		final int minZ = inputSolveItem.blockData().minZ();
-		final int maxZ = inputSolveItem.blockData().maxZ();
-		final int maxZRangeMatches = inputSolveItem.blockData().solveTypeParameters().maxZRangeMatches();
+	private List<CanvasMatches> assembleMatchData()
+			throws IOException {
 
-		final ArrayList< CanvasMatches > canvasMatches = new ArrayList<>();
-		final Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap = new HashMap<>();
+		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = inputSolveItem.blockData();
 
-		LOG.info( "block " + inputSolveItem.blockData().getId() + ": Loading transforms and matches for " + inputSolveItem.blockData().rtsc().getTileCount() + " tiles, from " + minZ + " to layer " + maxZ );
-
-		if ( maxZRangeMatches >= 0 )
-			LOG.info( "block " + inputSolveItem.blockData().getId() + ": WARNING! max z range for matching is " + maxZRangeMatches );
-
-		// sort sectionIds
-		final ArrayList< String > sortedSectionIds = new ArrayList<>( sectionIdToZMap.keySet() );
-		sortedSectionIds.sort((s1, s2) -> Double.compare(Double.parseDouble(s1), Double.parseDouble(s2)));
-
-		for ( final String pGroupId : sortedSectionIds )
-		{
-			LOG.info("block {}: run: connecting tiles with pGroupId {}", // e.g. 1226.0
-					 inputSolveItem.blockData().getId(), pGroupId);
-
-			// TODO: I think this fetches all matches of a z layer, not only for our TileSpecs (inputSolveItem.blockData().rtsc())
-			// TODO: @trautmane -- this is quite inefficient, this fetches way to many matches per z-layer
-			// TODO: for now I will throw those away that we don't need (the majority), but this does not scale well when xy size increases further
-			// TODO: it is also quite slow already now
-			final List<CanvasMatches> serviceMatchList = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
-
-			for (final CanvasMatches match : serviceMatchList)
-			{
-				final String pId = match.getpId();
-
-				// this match is not part of our solve
-				// TODO: do not load those in the first place
-				if ( !inputSolveItem.blockData().rtsc().getTileIds().contains( pId ) )
-					continue;
-
-				final TileSpec pTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, renderStack, pGroupId, pId);
-
-				final String qGroupId = match.getqGroupId();
-				final String qId = match.getqId();
-				final TileSpec qTileSpec = SolveTools.getTileSpec(sectionIdToZMap, zToTileSpecsMap, renderDataClient, renderStack, qGroupId, qId);
-
-				if ((pTileSpec == null) || (qTileSpec == null))
-				{
-					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because one or both tiles are missing from stack {}", pId, qId, renderStack );
-					continue;
-				}
-
-				// if any of the matches is outside the set of tiles of this Block we ignore them
-				if ( !inputSolveItem.blockData().rtsc().getTileIds().contains( qTileSpec.getTileId() ) )
-				{
-					// commented because it is too many outputs
-					//LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range {}", pId, qId, renderStack);
-					continue;
-				}
-	
-				// if any of the matches is outside the range we ignore them
-				if ( pTileSpec.getZ() < minZ || pTileSpec.getZ() > maxZ || qTileSpec.getZ() < minZ || qTileSpec.getZ() > maxZ )
-				{
-					LOG.info("block " + inputSolveItem.blockData().getId() + ": run: ignoring pair ({}, {}) because it is out of range in z - THIS CANNOT HAPPEN. STOPPING. {}", pId, qId, renderStack);
-					System.exit( 0 );
-				}
-
-				// max range
-				if ( maxZRangeMatches >= 0 && Math.abs( pTileSpec.getZ() - qTileSpec.getZ() ) > maxZRangeMatches )
-					continue;
-
-				final Tile<M> p = getOrBuildTile(pId, pTileSpec);
-				final Tile<M> q = getOrBuildTile(qId, qTileSpec);
-
-				// remember the entries, need to perform section-based stitching before running global optimization
-				pairs.add( new ValuePair<>( new ValuePair<>( p, q ), matchFilter.filter( match.getMatches(), pTileSpec, qTileSpec ) ) );//CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()) ) );
-
-				final int pZ = (int)Math.round( pTileSpec.getZ() );
-				final int qZ = (int)Math.round( qTileSpec.getZ() );
-
-				inputSolveItem.blockData().zToTileId().computeIfAbsent(pZ, k -> new HashSet<>()).add(pId);
-				inputSolveItem.blockData().zToTileId().computeIfAbsent(qZ, k -> new HashSet<>()).add(qId);
-
-				// if the pair is from the same layer we remember the current index in the pairs list for stitching
-				if ( pZ == qZ )
-				{
-					zToPairs.computeIfAbsent(pZ, k -> new ArrayList<>()).add(pairs.size() - 1);
-				}
-
-				// for error computation
-				canvasMatches.add( match );
-
-				//LOG.info("block " + inputSolveItem.blockData().getId() + ": run: linking pair ({}, {}) ", pId, qId  );
-			}
+		Integer maxZDistance = blockData.solveTypeParameters().maxZRangeMatches(); // TODO: move this parameter to API query
+		if (maxZDistance < 0) {
+			maxZDistance = null;
 		}
 
-		return canvasMatches;
+		final String matchCollectionName = matchDataClient.getProject(); // TODO: remove matchDataClient
+
+		LOG.info("assembleMatchData: entry, loading transforms and matches for block {} with {} tiles and maxZDistance={}",
+				 blockData, blockData.getTileCount(), maxZDistance);
+
+		final ResolvedTileSpecsWithMatchPairs tileSpecsWithMatchPairs =
+				renderDataClient.getResolvedTilesWithMatchPairs(renderStack,
+																blockData.getBounds(),
+																matchCollectionName,
+																null,
+																null);
+
+		// block tileIds are filtered by center point during BlockFactory.defineBlockCollection process
+		// (more specifically by BlockFactory.pruneRtsc), so apply the same filtering to retrieved tile and match data
+		final Set<String> tileIdsToKeep = new HashSet<>(blockData.rtsc().getTileIds());
+		tileSpecsWithMatchPairs.normalize(tileIdsToKeep, maxZDistance);
+
+		final List<CanvasMatches> matchPairs = new ArrayList<>(tileSpecsWithMatchPairs.getMatchPairCount());
+
+		for (final CanvasMatches pair : tileSpecsWithMatchPairs.getMatchPairs()) {
+
+			final String pId = pair.getpId();
+			final TileSpec pTileSpec = tileSpecsWithMatchPairs.getTileSpec(pId);
+			final Tile<M> p = getOrBuildTile(pId, pTileSpec);
+
+			final String qId = pair.getqId();
+			final TileSpec qTileSpec = tileSpecsWithMatchPairs.getTileSpec(qId);
+			final Tile<M> q = getOrBuildTile(qId, qTileSpec);
+
+			// remember the entries, need to perform section-based stitching before running global optimization
+			pairs.add(
+					new ValuePair<>(
+							new ValuePair<>(p, q),
+							matchFilter.filter(pair.getMatches(),
+											   pTileSpec,
+											   qTileSpec)
+					)
+			);//CanvasMatchResult.convertMatchesToPointMatchList(match.getMatches()) ) );
+
+			final int pZ = pTileSpec.getIntegerZ();
+			final int qZ = qTileSpec.getIntegerZ();
+
+			blockData.zToTileId().computeIfAbsent(pZ, k -> new HashSet<>()).add(pId);
+			blockData.zToTileId().computeIfAbsent(qZ, k -> new HashSet<>()).add(qId);
+
+			// if the pair is from the same layer we remember the current index in the pairs list for stitching
+			if (pZ == qZ) {
+				zToPairs.computeIfAbsent(pZ, k -> new ArrayList<>()).add(pairs.size() - 1);
+			}
+
+			// for error computation
+			matchPairs.add(pair);
+
+			//LOG.info("block " + blockData.getId() + ": run: linking pair ({}, {}) ", pId, qId  );
+		}
+
+		return matchPairs;
 	}
 
 	protected Tile<M> getOrBuildTile( final String id, final TileSpec tileSpec )
@@ -329,13 +280,13 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	 * @param samplesPerDimension - for creating fake matches using ConstantAffineModel2D or StabilizingAffineModel2D
 	 * @param stabilizationRadius - the radius in z that is used for stabilization using StabilizingAffineModel2D
 	 */
+	@SuppressWarnings("SameParameterValue")
 	protected boolean assignRegularizationModel(
 			final AffineBlockDataWrapper<M, S> solveItem,
 			final int samplesPerDimension,
 			final int stabilizationRadius )
 	{
-		final String blockContext = "block " + solveItem.blockData.getId();
-		LOG.info("assignRegularizationModel: entry, {}", blockContext);
+		LOG.info("assignRegularizationModel: entry, block {}", solveItem.blockData);
 
 		final HashMap< Integer, List<Tile<M>> > zToGroupedTileList = new HashMap<>();
 
@@ -354,7 +305,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 			catch (final Exception e) {
 				final String currentTileId = solveItem.tileToIdMap().get(currentTile);
-				throw new RuntimeException("failed to to populate zToGroupedTileList for " + blockContext +
+				throw new RuntimeException("failed to to populate zToGroupedTileList for block " + solveItem.blockData +
 										   ", currentTileId is " + currentTileId, e);
 			}
 		}
@@ -367,12 +318,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		if (model instanceof ConstantAffineModel2D) {
 			// it is based on ConstantAffineModels, meaning we extract metadata and use that as regularizer
 			assignConstantAffineModel(solveItem, samplesPerDimension, allZ, zToGroupedTileList);
-			LOG.info("assignRegularizationModel: exit, {}", blockContext);
+			LOG.info("assignRegularizationModel: exit, block {}", solveItem.blockData);
 
 		} else if (model instanceof StabilizingAffineModel2D) {
 			// it is based on StabilizingAffineModel2Ds, meaning each image wants to sit where its corresponding one in the above layer sits
 			assignStabilizingAffineModel(solveItem, samplesPerDimension, stabilizationRadius, allZ, zToGroupedTileList);
-			LOG.info("assignRegularizationModel: exit, {}", blockContext);
+			LOG.info("assignRegularizationModel: exit, block {}", solveItem.blockData);
 
 		} else {
 			LOG.info( "Not using ConstantAffineModel2D for regularization. Nothing to do in assignRegularizationModel()." );
@@ -822,6 +773,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 										inputSolveItem.blockData().blockFactory(), // no copy necessary
 										inputSolveItem.blockData().solveTypeParameters(), // no copy necessary
 										id,
+										inputSolveItem.blockData().getBounds(),
 										newRTSC ) );
 
 				++id;
@@ -1036,9 +988,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	}
 
 	// note: these are local errors of a single block only
-	protected void computeSolveItemErrors( final AffineBlockDataWrapper<M, S> solveItem, final ArrayList< CanvasMatches > canvasMatches )
-	{
-		LOG.info( "Computing per-block errors for " + solveItem.blockData().rtsc().getTileCount() + " tiles using " + canvasMatches.size() + " pairs of images ..." );
+	private void computeSolveItemErrors(final AffineBlockDataWrapper<M, S> solveItem,
+										final List<CanvasMatches> canvasMatches) {
+
+		LOG.info("computeSolveItemErrors: entry, computing per-block errors for {} tiles using {} pairs of images ...",
+				 solveItem.blockData().rtsc().getTileCount(),
+				 canvasMatches.size());
 
 		// for local fits
 		final Model< ? > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
@@ -1149,5 +1104,5 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		return graphs;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
+	private static final Logger LOG = LoggerFactory.getLogger(AffineAlignBlockWorker.class);
 }

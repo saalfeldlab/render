@@ -57,6 +57,7 @@ public class RenderDao {
 
     public static final String RENDER_DB_NAME = "render";
     public static final String STACK_META_DATA_COLLECTION_NAME = "admin__stack_meta_data";
+    public static final int MAX_TILE_SPEC_COUNT_FOR_QUERIES = 100000;
 
     public static RenderDao build()
             throws UnknownHostException {
@@ -144,7 +145,7 @@ public class RenderDao {
 
         if (tileIdPattern != null) {
             final List<TileSpec> tileSpecList = renderParameters.getTileSpecs();
-            if (tileSpecList.size() > 0) {
+            if (! tileSpecList.isEmpty()) {
                 Bounds filteredBounds = tileSpecList.get(0).toTileBounds();
                 for (int i = 1; i < tileSpecList.size(); i++) {
                     filteredBounds = filteredBounds.union(tileSpecList.get(i).toTileBounds());
@@ -584,11 +585,11 @@ public class RenderDao {
         final Collection<TransformSpec> transformSpecs = resolvedTileSpecs.getTransformSpecs();
         final Collection<TileSpec> tileSpecs = resolvedTileSpecs.getTileSpecs();
 
-        if (transformSpecs.size() > 0) {
+        if (! transformSpecs.isEmpty()) {
             saveResolvedTransforms(stackId, transformSpecs);
         }
 
-        if (tileSpecs.size() > 0) {
+        if (! tileSpecs.isEmpty()) {
 
             final MongoCollection<Document> tileCollection = getTileCollection(stackId);
 
@@ -1511,7 +1512,7 @@ public class RenderDao {
         }
 
         final Document filterQuery = new Document();
-        if ((zValues != null) && (zValues.size() > 0)) {
+        if ((zValues != null) && (! zValues.isEmpty())) {
             final BasicDBList list = new BasicDBList();
             list.addAll(zValues);
             final Document zFilter = new Document(MongoUtil.OP_IN, list);
@@ -1798,7 +1799,7 @@ public class RenderDao {
             }
         }
 
-        if (list.size() == 0) {
+        if (list.isEmpty()) {
             throwExceptionIfStackIsMissing(stackId);
         }
 
@@ -1865,7 +1866,7 @@ public class RenderDao {
                 }
             }
 
-            if (newlyUnresolvedSpecIds.size() > 0) {
+            if (! newlyUnresolvedSpecIds.isEmpty()) {
                 getDataForTransformSpecReferences(transformCollection,
                                                   newlyUnresolvedSpecIds,
                                                   resolvedIdToSpecMap,
@@ -1891,7 +1892,7 @@ public class RenderDao {
             TileSpec tileSpec;
             int count = 0;
             while (cursor.hasNext()) {
-                if (count > 100000) {
+                if (count > MAX_TILE_SPEC_COUNT_FOR_QUERIES) {
                     throw new IllegalArgumentException("query too broad, over " + count + " tiles match " + tileQuery);
                 }
                 document = cursor.next();
@@ -2002,7 +2003,7 @@ public class RenderDao {
 
         final Set<String> unresolvedTransformSpecIds = transformSpec.getUnresolvedIds();
 
-        if (unresolvedTransformSpecIds.size() > 0) {
+        if (! unresolvedTransformSpecIds.isEmpty()) {
             final MongoCollection<Document> transformCollection = getTransformCollection(stackId);
             final List<TransformSpec> transformSpecList = getTransformSpecs(transformCollection,
                                                                             unresolvedTransformSpecIds);
@@ -2141,7 +2142,7 @@ public class RenderDao {
             toCount = toCollection.countDocuments();
 
             // if nothing was filtered, verify that all documents got copied
-            if (filterQuery.keySet().size() == 0) {
+            if (filterQuery.keySet().isEmpty()) {
                 if (toCount != fromCount) {
                     throw new IllegalStateException("only inserted " + toCount + " out of " + fromCount + " documents");
                 }

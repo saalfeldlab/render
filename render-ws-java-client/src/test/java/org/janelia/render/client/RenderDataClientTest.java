@@ -2,7 +2,9 @@ package org.janelia.render.client;
 
 import java.util.List;
 
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -13,7 +15,6 @@ import org.junit.Test;
 
 /**
  * Tests the {@link RenderDataClient} class.
- *
  * All tests are "ignored" because of the dependency on a real web server.
  * They can be configured to run as needed in specific environments.
  *
@@ -28,9 +29,11 @@ public class RenderDataClientTest {
 
     @Before
     public void setup() {
-        renderDataClient = new RenderDataClient("http://renderer-dev:8080/render-ws/v1", "flyTEM", "FAFB00");
-        stack = "v14_align_tps_20170818";
-        z = 3451.0;
+        renderDataClient = new RenderDataClient("http://renderer-dev:8080/render-ws/v1",
+                                                "hess_wafer_53",
+                                                "cut_000_to_009");
+        stack = "c000_s095_v01";
+        z = 1.0;
     }
 
     @Test
@@ -82,6 +85,24 @@ public class RenderDataClientTest {
         Assert.assertNotNull("null resolvedTiles", resolvedTiles);
 
         Assert.assertTrue("not enough tiles", resolvedTiles.getTileCount() > 100);
+    }
+
+    @Test
+    public void testGetResolvedTileSpecsWithMatchPairs()
+            throws Exception {
+
+        final Bounds bounds = new Bounds(66001.0,   30668.0, 1.0,
+                                         78000.0,   43001.0, 36.0);
+        final String matchCollectionName = "c000_s095_v01_match_agg2";
+
+        final ResolvedTileSpecsWithMatchPairs tileSpecsWithMatchPairs =
+                renderDataClient.getResolvedTilesWithMatchPairs(stack,
+                                                                bounds,
+                                                                matchCollectionName,
+                                                                null,
+                                                                null);
+
+        Assert.assertNotNull("null result", tileSpecsWithMatchPairs);
     }
 
 }

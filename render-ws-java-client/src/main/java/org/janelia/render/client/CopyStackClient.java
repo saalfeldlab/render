@@ -334,7 +334,7 @@ public class CopyStackClient {
 
         if (parameters.layerBounds.minX != null) {
             final Set<String> tileIdsToKeep = getIdsForTilesInBox(z);
-            sourceCollection.removeDifferentTileSpecs(tileIdsToKeep);
+            sourceCollection.retainTileSpecs(tileIdsToKeep);
         }
 
         if (parameters.replaceLastTransformWithStage) {
@@ -394,7 +394,7 @@ public class CopyStackClient {
 
         if (tileIdsToKeep.size() > 0) {
             final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
-            sourceCollection.removeDifferentTileSpecs(tileIdsToKeep);
+            sourceCollection.retainTileSpecs(tileIdsToKeep);
             final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
             LOG.info("copyLayer: removed {} tiles not found in {}", numberOfTilesRemoved, filterStack);
         }
@@ -426,7 +426,7 @@ public class CopyStackClient {
 
         if (parameters.includedTileIdsJson != null) {
             final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
-            sourceCollection.removeDifferentTileSpecs(parameters.getIncludedTileIdsSet());
+            sourceCollection.retainTileSpecs(parameters.getIncludedTileIdsSet());
             final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
             if (numberOfTilesRemoved > 0) {
                 LOG.info("copyLayer: removed {} tiles that were not explicitly included", numberOfTilesRemoved);

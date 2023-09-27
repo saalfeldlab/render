@@ -325,7 +325,7 @@ public class TransformSectionClient {
                         TileBounds::getTileId).collect(Collectors.toList()));
 
         if (tileBoundsList.size() > tileIdsToKeep.size()) {
-            tiles.removeDifferentTileSpecs(tileIdsToKeep);
+            tiles.retainTileSpecs(tileIdsToKeep);
             LOG.info("removeTilesOutsideBox: removed {} tiles outside of bounding box",
                      (tileBoundsList.size() - tileIdsToKeep.size()));
 

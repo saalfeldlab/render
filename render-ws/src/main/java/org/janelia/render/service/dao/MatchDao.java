@@ -201,23 +201,6 @@ public class MatchDao {
         return getMatches(collection, query, excludeMatchDetails);
     }
 
-    public List<CanvasMatches> getMatchesOutsideGroup(final MatchCollectionId collectionId,
-                                                      final String groupId,
-                                                      final boolean excludeMatchDetails)
-            throws IllegalArgumentException, ObjectNotFoundException {
-
-        LOG.debug("getMatchesOutsideGroup: entry, collectionId={}, groupId={}",
-                  collectionId, groupId);
-
-        final MongoCollection<Document> collection = getExistingCollection(collectionId);
-
-        MongoUtil.validateRequiredParameter("groupId", groupId);
-
-        final Document query = getOutsideGroupQuery(groupId);
-
-        return getMatches(collection, query, excludeMatchDetails);
-    }
-
     public List<CanvasMatches> getMatchesBetweenGroups(final MatchCollectionId collectionId,
                                                        final String pGroupId,
                                                        final String qGroupId,
@@ -654,10 +637,27 @@ public class MatchDao {
 
         final ProcessTimer timer = new ProcessTimer();
 
+        // TODO: consider reducing pairs by supporting flag indicating only pairs with both tiles in collection should be returned
+
+        // Need to research whether process to exclude "edge" pairs would cost more than using current process
+        // and simply filtering out unwanted data client side.
+
+        // Review of dev logs during initial testing revealed some unexpected results:
+        // - Write times were similar for pId only (1081 tiles, 5869 pairs) and pId+qId (1081 tiles, 12111 pairs)
+        //   indicating rate limiting component may be client-side.
+        // - Write times varied widely (9 seconds vs. 28 seconds) for same query indicating rate limiting component
+        //   may be client-side or (surprisingly) may not be strongly tied to pair data size.
+
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
 
+        // TODO: determine optimal maxTilesPerQuery value
+
+        // Mongodb docs ( https://www.mongodb.com/docs/manual/reference/operator/query/in/ ) state:
+        //   ... limit the number of parameters passed to the $in operator to tens of values.
+        final int maxTilesPerQuery = 80;
+
         final List<Document> queryList = buildMatchQueryListForTiles(resolvedTileSpecCollection,
-                                                                     40);
+                                                                     maxTilesPerQuery);
 
         outputStream.write("{\"resolvedTileSpecs\":".getBytes());
         JsonUtils.FAST_MAPPER.writeValue(outputStream, resolvedTileSpecCollection);
@@ -667,12 +667,10 @@ public class MatchDao {
         int pairCount = 0;
         for (final Document query : queryList) {
             try (final MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
-                if (cursor.hasNext()) {
-                    outputStream.write(cursor.next().toJson().getBytes());
-                    pairCount++;
-                }
                 while (cursor.hasNext()) {
-                    outputStream.write(COMMA_WITH_NEW_LINE);
+                    if (pairCount > 0) {
+                        outputStream.write(COMMA_WITH_NEW_LINE);
+                    }
                     outputStream.write(cursor.next().toJson().getBytes());
                     pairCount++;
                 }
@@ -712,7 +710,10 @@ public class MatchDao {
                 tileIdsForCurrentQuery.addAll(tileIdsForSection.subList(fromIndex, toIndex));
 
                 if (tileIdsForCurrentQuery.size() == maxTilesPerQuery) {
-                    queryList.add(getPGroupAndIdInQuery(sectionIdsForCurrentQuery, tileIdsForCurrentQuery));
+
+                    addGroupAndIdInQueriesToList(sectionIdsForCurrentQuery,
+                                                 tileIdsForCurrentQuery,
+                                                 queryList);
 
                     sectionIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
                     if (toIndex < tileIdsForSection.size()) {
@@ -727,17 +728,29 @@ public class MatchDao {
         }
 
         if (! tileIdsForCurrentQuery.isEmpty()) {
-            queryList.add(getPGroupAndIdInQuery(sectionIdsForCurrentQuery, tileIdsForCurrentQuery));
+            addGroupAndIdInQueriesToList(sectionIdsForCurrentQuery,
+                                         tileIdsForCurrentQuery,
+                                         queryList);
         }
 
         return queryList;
     }
 
-    private static Document getPGroupAndIdInQuery(final List<String> pGroupIdList,
-                                                  final List<String> pIdList) {
-        final Document pGroupIdIn = new Document(MongoUtil.OP_IN, pGroupIdList);
-        final Document pIdIn = new Document(MongoUtil.OP_IN, pIdList);
-        return new Document("pGroupId", pGroupIdIn).append("pId", pIdIn);
+    private static void addGroupAndIdInQueriesToList(final List<String> groupIdList,
+                                                     final List<String> idList,
+                                                     final List<Document> queryList) {
+        queryList.add(getGroupAndIdInQuery(groupIdList, idList, "p"));
+        queryList.add(getGroupAndIdInQuery(groupIdList, idList, "q"));
+    }
+
+    private static Document getGroupAndIdInQuery(final List<String> groupIdList,
+                                                 final List<String> idList,
+                                                 final String pOrQPrefix) {
+        final String groupIdKey = pOrQPrefix + "GroupId";
+        final String idKey = pOrQPrefix + "Id";
+        final Document pGroupIdIn = new Document(MongoUtil.OP_IN, groupIdList);
+        final Document pIdIn = new Document(MongoUtil.OP_IN, idList);
+        return new Document(groupIdKey, pGroupIdIn).append(idKey, pIdIn);
     }
 
     private MongoCollection<Document> getMatchTrialCollection() {
@@ -1111,7 +1124,8 @@ public class MatchDao {
                                       "qId", 1),
                               MATCH_A_OPTIONS);
         MongoUtil.createIndex(collection,
-                              new Document("qGroupId", 1),
+                              new Document("qGroupId", 1).append(
+                                      "qId", 1),
                               MATCH_B_OPTIONS);
     }
 

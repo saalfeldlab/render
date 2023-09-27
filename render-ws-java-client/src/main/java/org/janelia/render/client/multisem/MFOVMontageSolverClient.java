@@ -163,7 +163,7 @@ public class MFOVMontageSolverClient {
                     .map(TileSpec::getTileId)
                     .filter(id -> mFOVSet.contains(Utilities.getMFOVForTileId(id)))
                     .collect(Collectors.toSet());
-            resolvedTiles.removeDifferentTileSpecs(tileIdsToKeep);
+            resolvedTiles.retainTileSpecs(tileIdsToKeep);
             resolvedTiles.resolveTileSpecs();
 
             final Map<String, Set<String>> mFOVToTileIdMap = new HashMap<>();

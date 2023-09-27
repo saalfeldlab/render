@@ -118,6 +118,20 @@ public class TileSpec implements Serializable {
         return z;
     }
 
+    @JsonIgnore
+    public Integer getIntegerZ() {
+        return z == null ? null : z.intValue();
+    }
+
+
+    /**
+     * @return absolute difference between this tile's integer z and the specified tile's integer z.
+     */
+    @JsonIgnore
+    public int zDistanceFrom(final TileSpec that) {
+        return Math.abs(this.getIntegerZ() - that.getIntegerZ());
+    }
+
     public void setZ(final Double z) {
         this.z = z;
     }

@@ -52,6 +52,7 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
+import static org.janelia.render.service.dao.RenderDao.MAX_TILE_SPEC_COUNT_FOR_QUERIES;
 
 /**
  * APIs for accessing tile and transform data stored in the Render service database.
@@ -170,7 +171,7 @@ public class RenderDataService {
         try {
             final StackId stackId = new StackId(owner, project, stack);
             list = renderDao.getZValues(stackId, minZ, maxZ);
-            if (list.size() == 0) {
+            if (list.isEmpty()) {
                 // if no z values were found, make sure stack exists ...
                 getStackMetaData(stackId);
             }
@@ -499,7 +500,7 @@ public class RenderDataService {
             tags = "Section Data APIs",
             value = "Get raw tile and transform specs for section with specified z")
     @ApiResponses(value = {
-            @ApiResponse(code = 400, message = "too many (> 50,000) tiles in section"),
+            @ApiResponse(code = 400, message = "too many (> " + MAX_TILE_SPEC_COUNT_FOR_QUERIES + ") tiles in section"),
             @ApiResponse(code = 404, message = "no tile specs found"),
     })
     public ResolvedTileSpecCollection getResolvedTiles(@PathParam("owner") final String owner,
@@ -528,7 +529,7 @@ public class RenderDataService {
             tags = "Stack Data APIs",
             value = "Get raw tile and transform specs for specified group or bounding box")
     @ApiResponses(value = {
-            @ApiResponse(code = 400, message = "too many (> 50,000) matching tiles found"),
+            @ApiResponse(code = 400, message = "too many (> " + MAX_TILE_SPEC_COUNT_FOR_QUERIES + ") matching tiles found"),
             @ApiResponse(code = 404, message = "no tile specs found"),
     })
     public ResolvedTileSpecCollection getResolvedTiles(@PathParam("owner") final String owner,

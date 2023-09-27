@@ -18,6 +18,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.UriInfo;
 
 import mpicbg.models.PointMatch;
@@ -27,6 +29,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.match.TileIdsWithMatches;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
@@ -37,9 +40,12 @@ import org.janelia.render.service.util.RenderServiceUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+
+import static org.janelia.render.service.dao.RenderDao.MAX_TILE_SPEC_COUNT_FOR_QUERIES;
 
 /**
  * APIs that pull data from both the render and match databases.
@@ -47,21 +53,70 @@ import io.swagger.annotations.ApiResponses;
  * @author Eric Trautman
  */
 @Path("/")
+@Api(tags = {"Point Match APIs"})
 public class CombinedRenderAndMatchService {
 
     private final RenderDao renderDao;
+    private final RenderDataService renderDataService;
     private final MatchDao matchDao;
 
     @SuppressWarnings("UnusedDeclaration")
     public CombinedRenderAndMatchService()
             throws UnknownHostException {
-        this(RenderDao.build(), MatchDao.build());
+        this(RenderDao.build(), new RenderDataService(), MatchDao.build());
     }
 
     private CombinedRenderAndMatchService(final RenderDao renderDao,
+                                          final RenderDataService renderDataService,
                                           final MatchDao matchDao) {
         this.renderDao = renderDao;
+        this.renderDataService = renderDataService;
         this.matchDao = matchDao;
+    }
+
+    @Path("v1/owner/{owner}/project/{project}/stack/{stack}/resolvedTilesWithMatchesFrom/{matchCollection}")
+    @GET
+    @Produces(MediaType.APPLICATION_JSON)
+    @ApiOperation(
+            tags = {"Stack Data APIs", "Point Match APIs"},
+            value = "Get raw tile and transform specs for specified group or bounding box " +
+                    "along with the point matches for those tiles")
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "too many (> " + MAX_TILE_SPEC_COUNT_FOR_QUERIES + ") matching tiles found"),
+            @ApiResponse(code = 404, message = "no tile specs found"),
+    })
+    public Response getResolvedTilesWithMatches(@PathParam("owner") final String owner,
+                                                @PathParam("project") final String project,
+                                                @PathParam("stack") final String stack,
+                                                @PathParam("matchCollection") final String matchCollection,
+                                                @QueryParam("minZ") final Double minZ,
+                                                @QueryParam("maxZ") final Double maxZ,
+                                                @QueryParam("groupId") final String groupId,
+                                                @QueryParam("minX") final Double minX,
+                                                @QueryParam("maxX") final Double maxX,
+                                                @QueryParam("minY") final Double minY,
+                                                @QueryParam("maxY") final Double maxY,
+                                                @QueryParam("matchPattern") final String matchPattern) {
+
+        LOG.info("getResolvedTilesWithMatches: entry, owner={}, project={}, stack={}, matchCollection={}, minZ={}, maxZ={}, groupId={}, minX={}, maxX={}, minY={}, maxY={}, matchPattern={}",
+                 owner, project, stack, matchCollection, minZ, maxZ, groupId, minX, maxX, minY, maxY, matchPattern);
+
+        final MatchCollectionId collectionId = MatchService.getCollectionId(owner, matchCollection);
+        final ResolvedTileSpecCollection resolvedTiles = renderDataService.getResolvedTiles(owner,
+                                                                                            project,
+                                                                                            stack,
+                                                                                            minZ,
+                                                                                            maxZ,
+                                                                                            groupId,
+                                                                                            minX,
+                                                                                            maxX,
+                                                                                            minY,
+                                                                                            maxY,
+                                                                                            matchPattern);
+        final StreamingOutput responseOutput =
+                output -> matchDao.writeMatchesAndTileSpecs(collectionId, resolvedTiles, output);
+
+        return MatchService.streamResponse(responseOutput);
     }
 
     @Path("v1/owner/{owner}/project/{project}/stack/{stack}/z/{z}/clusteredTileBoundsForCollection/{matchCollection}")
