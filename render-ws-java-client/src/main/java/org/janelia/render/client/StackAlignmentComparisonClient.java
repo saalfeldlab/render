@@ -27,7 +27,11 @@ import java.util.Map;
 import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
 
-public class StackAlignmentComparison {
+// TODO: make this into a full fledged command line tool
+//       * add command line arguments
+//       * break up computation and save into z-layers (could cause problems for larger stacks)
+//       * switch output format to json (see FileUtil.saveJsonFile)
+public class StackAlignmentComparisonClient {
 
 	private static final String baseDataUrl = "http://em-services-1.int.janelia.org:8080/render-ws/v1";
 	private static final String owner = "hess_wafer_53";
@@ -60,8 +64,13 @@ public class StackAlignmentComparison {
 
 		final AlignmentErrors differences = AlignmentErrors.computeRelativeDifferences(errorsBaseline, errorsNew);
 		AlignmentErrors.writeAsCsv(differences, "pairwiseErrorDifferences.csv");
-		for (final Pair<String, String> pair : differences.getWorstPairs(50))
-			System.out.println(pair.getA() + " " + pair.getB() + " : " + differences.getPairwiseError(pair.getA(), pair.getB()));
+
+		LOG.info("Worst pairs:");
+		int n = 0;
+		for (final Pair<String, String> pair : differences.getWorstPairs(50)) {
+			n++;
+			LOG.info("{}: {}-{} : {}", n, pair.getA(), pair.getB(), differences.getPairwiseError(pair.getA(), pair.getB()));
+		}
 	}
 
 	protected static List<CanvasMatches> getMatchData(final RenderDataClient matchDataClient) throws IOException {
@@ -77,8 +86,9 @@ public class StackAlignmentComparison {
 		return canvasMatches;
 	}
 
+	// TODO: move this to its own class to make space for persisting the data (json, web service, etc.)
 	private static AlignmentErrors computeSolveItemErrors(final ResolvedTileSpecCollection rtsc, final List<CanvasMatches> canvasMatches) {
-		LOG.info("Computing per-block errors for " + rtsc.getTileCount() + " tiles using " + canvasMatches.size() + " pairs of images ...");
+		LOG.info("Computing per-block errors for {} tiles using {} pairs of images ...", rtsc.getTileCount(), canvasMatches.size());
 
 		// for local fits
 		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
@@ -87,7 +97,8 @@ public class StackAlignmentComparison {
 		int n = 0;
 		final int N = canvasMatches.size();
 		for (final CanvasMatches match : canvasMatches) {
-			LOG.info("Processing match {} / {}", ++n, N);
+			n++;
+			LOG.info("Processing match {} / {}", n, N);
 			final String pTileId = match.getpId();
 			final String qTileId = match.getqId();
 
@@ -175,5 +186,5 @@ public class StackAlignmentComparison {
 		}
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(StackAlignmentComparison.class);
+	private static final Logger LOG = LoggerFactory.getLogger(StackAlignmentComparisonClient.class);
 }
