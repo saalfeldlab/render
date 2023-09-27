@@ -637,10 +637,27 @@ public class MatchDao {
 
         final ProcessTimer timer = new ProcessTimer();
 
+        // TODO: consider reducing pairs by supporting flag indicating only pairs with both tiles in collection should be returned
+
+        // Need to research whether process to exclude "edge" pairs would cost more than using current process
+        // and simply filtering out unwanted data client side.
+
+        // Review of dev logs during initial testing revealed some unexpected results:
+        // - Write times were similar for pId only (1081 tiles, 5869 pairs) and pId+qId (1081 tiles, 12111 pairs)
+        //   indicating rate limiting component may be client-side.
+        // - Write times varied widely (9 seconds vs. 28 seconds) for same query indicating rate limiting component
+        //   may be client-side or (surprisingly) may not be strongly tied to pair data size.
+
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
 
+        // TODO: determine optimal maxTilesPerQuery value
+
+        // Mongodb docs ( https://www.mongodb.com/docs/manual/reference/operator/query/in/ ) state:
+        //   ... limit the number of parameters passed to the $in operator to tens of values.
+        final int maxTilesPerQuery = 80;
+
         final List<Document> queryList = buildMatchQueryListForTiles(resolvedTileSpecCollection,
-                                                                     80); // TODO: profile this to determine optimal maxTilesPerQuery value
+                                                                     maxTilesPerQuery);
 
         outputStream.write("{\"resolvedTileSpecs\":".getBytes());
         JsonUtils.FAST_MAPPER.writeValue(outputStream, resolvedTileSpecCollection);
