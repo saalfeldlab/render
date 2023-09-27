@@ -80,7 +80,7 @@ public class ResolvedTileSpecsWithMatchPairs
             throw new IllegalArgumentException("maxZDistance must be >= 0 or null");
         }
 
-        // remove unwanted tiles (which will later cause associated math pairs to be removed)
+        // remove unwanted tiles (which will later cause associated match pairs to be removed)
         if (tileIdsToKeep != null) {
 
             // track and log removal info if debugging
