@@ -125,8 +125,7 @@ public class DistributedAffineBlockSolver
 		final ArrayList<BlockData<AffineModel2D, ?>> allItems = new ArrayList<>();
 		final List<Throwable> workerExceptions = new ArrayList<>();
 
-			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
-
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
 		taskExecutor.invokeAll(workers).forEach(future -> {
 			try {
 				allItems.addAll(future.get());
