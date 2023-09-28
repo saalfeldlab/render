@@ -199,12 +199,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 																matchCollectionName,
 																null,
 																null);
+		// TODO: only pull rtsc once and initialize result after that (currently done in BlockData constructor)
 
 		// block tileIds are filtered by center point during BlockFactory.defineBlockCollection process
 		// (more specifically by BlockFactory.pruneRtsc), so apply the same filtering to retrieved tile and match data
 		final Set<String> tileIdsToKeep = new HashSet<>(blockData.rtsc().getTileIds());
 		tileSpecsWithMatchPairs.normalize(tileIdsToKeep, maxZDistance);
-		blockData.getResults().addTileSpecs(tileSpecsWithMatchPairs.getResolvedTileSpecs().getTileSpecs());
 
 		final List<CanvasMatches> matchPairs = new ArrayList<>(tileSpecsWithMatchPairs.getMatchPairCount());
 
@@ -780,7 +780,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.idToTileMap().put( tileId, t );
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-						//solveItem.idToTileSpec().put(tileId, inputSolveItem.blockData().idToTileSpec().get(tileId)); // now done initially
 						newBlockData.getResults().recordModel(tileId, blockData.getResults().getIdToModel().get(tileId));
 
 						solveItem.idToStitchingModel().put(tileId, inputSolveItem.idToStitchingModel().get(tileId));
@@ -792,38 +791,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					}
 				}
 
-				// add the restart lookup
-				//for ( final int z : inputSolveItem.restarts() )
-				//	if ( z >= solveItem.blockData().minZ() && z <= solveItem.blockData().maxZ() )
-				//		solveItem.restarts().add( z );
-
-				// used for global solve outside
-				final List<TileSpec> tileSpecs = new ArrayList<>();
-				for (int z = newBlockData.minZ(); z <= newBlockData.maxZ(); ++z) {
-					final HashSet<String> allTilesPerZ = blockData.getResults().getZLayerTileIds().get(z);
-
-					if ( allTilesPerZ == null )
-						continue;
-
-					final HashSet< String > myTilesPerZ = new HashSet<>();
-
-					for ( final String tileId : allTilesPerZ )
-					{
-						if ( solveItem.idToTileMap().containsKey( tileId ) )
-							myTilesPerZ.add( tileId );
-					}
-					
-					if (myTilesPerZ.isEmpty())
-					{
-						LOG.info("splitSolveItem: block {}: ERROR: z={} of new graph has 0 tileIds, the must not happen, this is a bug.", newBlockData, z);
-						System.exit(0);
-					}
-
-					tileSpecs.addAll(myTilesPerZ.stream().map(newRTSC::getTileSpec).collect(Collectors.toList()));
-				}
-
-				newBlockData.getResults().addTileSpecs(tileSpecs);
-				solveItems.add( solveItem );
+				solveItems.add(solveItem);
 			}
 		}
 		return solveItems;

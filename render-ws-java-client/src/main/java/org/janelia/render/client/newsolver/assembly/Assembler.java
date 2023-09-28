@@ -1,11 +1,16 @@
 package org.janelia.render.client.newsolver.assembly;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.slf4j.Logger;
@@ -50,15 +55,13 @@ public class Assembler<Z, G extends Model<G>, R>
 			return buildTrivialAssembly(blocks.get(0));
 		}
 
-		final ResultContainer<Z> results = new ResultContainer<>();
-
-		// add shared transforms to assembly so that they can be used later when building resolved tile spec collections
-		blocks.forEach(block -> results.addSharedTransforms(block.rtsc().getTransformSpecs()));
+		final ResolvedTileSpecCollection cumulativeRtsc = mergeResolvedTileSpecCollections(blocks.stream().map(BlockData::rtsc).collect(Collectors.toList()));
+		final ResultContainer<Z> results = new ResultContainer<>(cumulativeRtsc);
 
 		try {
 			// now compute the final alignment for each block
 			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile =
-					blockSolver.globalSolve(blocks, results);
+					blockSolver.globalSolve(blocks);
 
 			// now fuse blocks into a full assembly
 			blockCombiner.fuseGlobally(results, blockToTile);
@@ -69,6 +72,18 @@ public class Assembler<Z, G extends Model<G>, R>
 		return results;
 	}
 
+	private static ResolvedTileSpecCollection mergeResolvedTileSpecCollections(final List<ResolvedTileSpecCollection> collections) {
+		final Iterator<ResolvedTileSpecCollection> it = collections.iterator();
+		final ResolvedTileSpecCollection first = it.next();
+
+		final ResolvedTileSpecCollection cumulativeRtsc = new ResolvedTileSpecCollection(first.getTransformSpecs(), first.getTileSpecs());
+		while (it.hasNext()) {
+			cumulativeRtsc.merge(it.next());
+		}
+
+		return cumulativeRtsc;
+	}
+
 	protected boolean isTrivialCase(final List<BlockData<R, ?>> blocks) {
 		return blocks.size() == 1;
 	}
@@ -77,30 +92,12 @@ public class Assembler<Z, G extends Model<G>, R>
 	 * @return - the result of the trivial case
 	 */
 	private ResultContainer<Z> buildTrivialAssembly(final BlockData<R, ?> block) {
-
 		LOG.info("buildTrivialAssembly: entry, only a single block, no solve across blocks necessary.");
 
-		final ResultContainer<Z> globalData = new ResultContainer<>();
-
-		globalData.addSharedTransforms(block.rtsc().getTransformSpecs());
-
-		// TODO: why does this iterate over z values?
-		for ( int z = block.minZ(); z <= block.maxZ(); ++z )
-		{
-			// there is no overlap with any other solveItem (should be beginning or end of the entire stack)
-			final HashSet<String> tileIds = block.getResults().getZLayerTileIds().get(z);
-
-			// if there are none, we continue with the next
-			if (tileIds.isEmpty())
-				continue;
-
-			final List<TileSpec> tileSpecs = tileIds.stream().map(id -> block.rtsc().getTileSpec(id)).collect(Collectors.toList());
-			globalData.addTileSpecs(tileSpecs);
-			for (final String tileId : tileIds) {
-				globalData.recordModel(tileId, converter.apply(block.getResults().getIdToModel().get(tileId)));
-			}
+		final ResultContainer<Z> globalData = new ResultContainer<>(block.rtsc());
+		for (final String tileId : block.rtsc().getTileIds()) {
+			globalData.recordModel(tileId, converter.apply(block.getResults().getIdToModel().get(tileId)));
 		}
-
 		return globalData;
 	}
 

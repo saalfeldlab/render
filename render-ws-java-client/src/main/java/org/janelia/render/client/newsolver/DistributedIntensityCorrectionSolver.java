@@ -61,7 +61,7 @@ public class DistributedIntensityCorrectionSolver {
 		// TODO: remove testing hack ...
 		if (args.length == 0) {
 			final String[] testArgs = {
-					"--baseDataUrl", "http://render-dev.int.janelia.org:8080/render-ws/v1",
+					"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
 					"--owner", "cellmap",
 					"--project", "jrc_mus_thymus_1",
 					"--stack", "v2_acquire_align",
@@ -167,7 +167,7 @@ public class DistributedIntensityCorrectionSolver {
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.getIdToModel();
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
 			addFilters(finalizedItems.getIdToTileSpec(), idToFilterSpec);
-			final ResolvedTileSpecCollection rtsc = finalizedItems.buildResolvedTileSpecs();
+			final ResolvedTileSpecCollection rtsc = finalizedItems.getResolvedTileSpecs();
 			renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
 			if (solverSetup.targetStack.completeStack)
 				renderDataClient.setStackState(solverSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);

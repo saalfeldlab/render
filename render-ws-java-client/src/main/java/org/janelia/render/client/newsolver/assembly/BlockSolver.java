@@ -51,14 +51,12 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 	}
 
 	public HashMap<BlockData<R, ?>, Tile<G>> globalSolve(
-			final List<? extends BlockData<R, ?>> blocks,
-			final ResultContainer<Z> globalResults
+			final List<? extends BlockData<R, ?>> blocks
 	) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException {
 
 		final HashMap<BlockData<R, ?>, Tile<G>> blockToTile = new HashMap<>();
 		for (final BlockData<R, ?> block : blocks) {
 			blockToTile.put(block, new Tile<>(globalModel.copy()));
-			globalResults.addTileSpecs(block.rtsc().getTileSpecs());
 		}
 
 		LOG.info("globalSolve: solving {} items", blocks.size());

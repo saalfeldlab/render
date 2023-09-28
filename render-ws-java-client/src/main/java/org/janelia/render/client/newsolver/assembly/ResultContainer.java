@@ -17,16 +17,17 @@ import org.janelia.render.client.solver.SerializableValuePair;
 public class ResultContainer<M> implements Serializable {
 
 	final private HashMap<String, M> idToModel = new HashMap<>();
-	final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
 	final private HashMap<Integer, HashSet<String>> zToTileId = new HashMap<>();
 	final private HashMap<String, List<SerializableValuePair<String, Double>>> idToErrorMap = new HashMap<>();
 	final private Set<TransformSpec> sharedTransformSpecs = new HashSet<>();
+	final private ResolvedTileSpecCollection rtsc;
 
-	public void addTileSpecs(final Collection<TileSpec> tileSpecs) {
-		for (final TileSpec tileSpec : tileSpecs) {
+
+	public ResultContainer(final ResolvedTileSpecCollection rtsc) {
+		this.rtsc = rtsc;
+		for (final TileSpec tileSpec : rtsc.getTileSpecs()) {
 			final String tileId = tileSpec.getTileId();
 			final Integer z = tileSpec.getZ().intValue();
-			idToTileSpec.put(tileId, tileSpec);
 			zToTileId.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
 		}
 	}
@@ -51,7 +52,7 @@ public class ResultContainer<M> implements Serializable {
 	}
 
 	public Map<String, TileSpec> getIdToTileSpec() {
-		return idToTileSpec;
+		return rtsc.getTileIdToSpecMap();
 	}
 
 	public Map<Integer, HashSet<String>> getZLayerTileIds() {
@@ -71,18 +72,9 @@ public class ResultContainer<M> implements Serializable {
 	}
 
 	/**
-	 * @return collection built from this assembly's shared transforms and tile specs.
+	 * @return collection held by this results container.
 	 */
-	public ResolvedTileSpecCollection buildResolvedTileSpecs() {
-		return buildResolvedTileSpecs(idToTileSpec.values());
-	}
-
-	/**
-	 * @return collection built from this assembly's shared transforms and the specified tile specs.
-	 */
-	public ResolvedTileSpecCollection buildResolvedTileSpecs(final Collection<TileSpec> tileSpecs) {
-		final ResolvedTileSpecCollection rtsc = new ResolvedTileSpecCollection(sharedTransformSpecs, tileSpecs);
-		rtsc.removeUnreferencedTransforms();
+	public ResolvedTileSpecCollection getResolvedTileSpecs() {
 		return rtsc;
 	}
 }
