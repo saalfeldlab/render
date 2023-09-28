@@ -45,7 +45,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
 		final Map<String, List<BlockData<R, ?>>> tileIdToBlocks = new HashMap<>();
 		for (final BlockData<R, ?> block : blockToTile.keySet()) {
-			for (final String tileId : block.idToNewModel().keySet()) {
+			for (final String tileId : block.getResults().getIdToModel().keySet()) {
 				tileIdToBlocks.computeIfAbsent(tileId, k -> new ArrayList<>()).add(block);
 			}
 		}
@@ -57,7 +57,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 			final int[] blockIds = blocksForTile.stream().mapToInt(BlockData::getId).toArray();
 			LOG.info("tile '" + tileId + "' is in following blocks: " + Arrays.toString(blockIds));
 
-			// all tilespecs are identical for all overlapping blocks
+			// all tileSpecs are identical for all overlapping blocks
 			final TileSpec tile = blocksForTile.get(0).rtsc().getTileSpec(tileId);
 			final double[] midpointXY = tile.getWorldCoordinates((tile.getWidth() - 1) / 2.0, (tile.getHeight() - 1) / 2.0);
 			final double z = tile.getZ();
@@ -68,7 +68,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 			double maxWeight = -1.0;
 			for (final BlockData<R, ?> block : blocksForTile) {
 				final G globalModel = blockToG.get(block);
-				final R newModel = block.idToNewModel().get(tileId);
+				final R newModel = block.getResults().getIdToModel().get(tileId);
 				// TODO: confirm this is proper way to handle, consider moving retrieval to block method and put check there
 				if (newModel == null) {
 					throw new IllegalArgumentException("failed to find new model for tile " + tileId);
@@ -83,15 +83,15 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 				// TODO: proper error computation using the matches that are now stored in the SolveItemData object
 				if (w > maxWeight) {
 					maxWeight = w;
-					error = block.idToBlockErrorMap().get(tileId);
+					error = block.getResults().getIdToErrorMap().get(tileId);
 				}
 			}
 
 			final List<Double> normalizedWeights = normalize(weights);
 			LOG.info("tile '" + tileId + "', models are fused following weights: " + Arrays.toString(normalizedWeights.toArray()));
 			final Z tileModel = fusion.apply(models, normalizedWeights);
-			globalData.idToModel.put(tileId, tileModel);
-			globalData.idToErrorMap.put(tileId, error);
+			globalData.recordModel(tileId, tileModel);
+			globalData.recordAllErrors(tileId, error);
 		}
 	}
 

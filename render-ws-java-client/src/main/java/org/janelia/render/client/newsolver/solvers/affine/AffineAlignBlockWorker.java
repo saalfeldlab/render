@@ -20,6 +20,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -29,7 +30,6 @@ import org.janelia.render.client.parameter.BlockOptimizerParameters;
 import org.janelia.render.client.parameter.BlockOptimizerParameters.AlignmentModelType;
 import org.janelia.render.client.solver.ConstantAffineModel2D;
 import org.janelia.render.client.solver.Graph;
-import org.janelia.render.client.solver.SerializableValuePair;
 import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.janelia.render.client.solver.matchfilter.MatchFilter;
@@ -781,7 +781,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
 						//solveItem.idToTileSpec().put(tileId, inputSolveItem.blockData().idToTileSpec().get(tileId)); // now done initially
-						newBlockData.idToNewModel().put(tileId, blockData.idToNewModel().get(tileId));
+						newBlockData.getResults().recordModel(tileId, blockData.getResults().getIdToModel().get(tileId));
 
 						solveItem.idToStitchingModel().put(tileId, inputSolveItem.idToStitchingModel().get(tileId));
 
@@ -890,7 +890,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		}
 
 		// create lookup for the new models
-		blockData.idToNewModel().clear();
+		// TODO: this seems strange, investigate!
+		blockData.getResults().getIdToModel().clear();
 
 		final ArrayList<String> tileIds = new ArrayList<>();
 		final HashMap<String, AffineModel2D> tileIdToGroupModel = new HashMap<>();
@@ -913,7 +914,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			LOG.info("solve: block {}: grouped model for tile {} is {}", blockData, tileId, tileIdToGroupModel.get(tileId));
 
-			blockData.idToNewModel().put(tileId, affine);
+			blockData.getResults().recordModel(tileId, affine);
 			LOG.info("solve: block {}: tile {} model from grouped tile is {}", blockData, tileId, affine);
 		}
 	}
@@ -962,33 +963,30 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		// for local fits
 		final Model< ? > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
 
-		for ( final CanvasMatches match : canvasMatches )
-		{
+		final ResultContainer<AffineModel2D> results = blockData.getResults();
+
+		for (final CanvasMatches match : canvasMatches) {
+
 			final String pTileId = match.getpId();
 			final String qTileId = match.getqId();
 
-			final TileSpec pTileSpec = blockData.rtsc().getTileSpec(pTileId );
-			final TileSpec qTileSpec = blockData.rtsc().getTileSpec(qTileId );
+			final TileSpec pTileSpec = blockData.rtsc().getTileSpec(pTileId);
+			final TileSpec qTileSpec = blockData.rtsc().getTileSpec(qTileId);
 
 			// it is from a different solveitem
-			if ( pTileSpec == null || qTileSpec == null )
+			if (pTileSpec == null || qTileSpec == null)
 				continue;
 
 			final double vDiff = WorkerTools.computeAlignmentError(
 					crossLayerModel,
-					blockData.solveTypeParameters().stitchingSolveModelInstance((int)Math.round(pTileSpec.getZ() ) ),
+					blockData.solveTypeParameters().stitchingSolveModelInstance(pTileSpec.getZ().intValue()),
 					pTileSpec,
 					qTileSpec,
-					blockData.idToNewModel().get(pTileId ),
-					blockData.idToNewModel().get(qTileId ),
-					match.getMatches() );
+					results.getIdToModel().get(pTileId),
+					results.getIdToModel().get(qTileId),
+					match.getMatches());
 
-			blockData.idToBlockErrorMap()
-					.computeIfAbsent(pTileId, k -> new ArrayList<>())
-					.add(new SerializableValuePair<>(qTileId, vDiff));
-			blockData.idToBlockErrorMap()
-					.computeIfAbsent(qTileId, k -> new ArrayList<>())
-					.add(new SerializableValuePair<>(pTileId, vDiff));
+			results.recordPairwiseTileError(pTileId, qTileId, vDiff);
 		}
 
 		LOG.info("computeSolveItemErrors, exit");

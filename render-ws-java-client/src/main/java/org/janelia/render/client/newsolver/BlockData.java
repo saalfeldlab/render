@@ -4,7 +4,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -17,7 +16,6 @@ import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.solver.SerializableValuePair;
 
 /**
  * Should contain only geometric data, nothing specific to the type of solve
@@ -54,7 +52,7 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	//
 	// below are the results that the worker has to fill up
 	//
-	final private ResultContainer<R> localData = new ResultContainer<>();
+	final private ResultContainer<R> localResults = new ResultContainer<>();
 
 	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
 	// coefficient-tile intensity average for global intensity-correction
@@ -75,8 +73,8 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 		this.rtsc = rtsc;
 
 		this.sectionIdToZMap = new HashMap<>();
-		localData.addTileSpecs(rtsc.getTileSpecs());
-		localData.sharedTransformSpecs.addAll(rtsc.getTransformSpecs());
+		localResults.addTileSpecs(rtsc.getTileSpecs());
+		localResults.addSharedTransforms(rtsc.getTransformSpecs());
 
 		// TODO: trautmane
 		final IntRange zRange = fetchRenderDetails( rtsc.getTileSpecs(), sectionIdToZMap );
@@ -112,11 +110,9 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	public BlockFactory blockFactory() { return blockFactory; }
 
 	public ResolvedTileSpecCollection rtsc() { return rtsc; }
-	public HashMap<String, R> idToNewModel() { return localData.idToModel; }
-	public HashMap<String, List<SerializableValuePair<String, Double>>> idToBlockErrorMap() { return localData.idToErrorMap; }
 	public HashMap<String, ArrayList<Double>> idToAverages() { return idToAverages; }
 
-	public ResultContainer<R> getResults() { return localData; }
+	public ResultContainer<R> getResults() { return localResults; }
 
 	public void assignUpdatedId( final int id ) { this.id = id; }
 

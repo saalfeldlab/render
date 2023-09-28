@@ -54,23 +54,23 @@ public class Assembler<Z, G extends Model<G>, R>
 			return buildTrivialAssembly();
 		}
 
-		final ResultContainer<Z> am = new ResultContainer<>();
+		final ResultContainer<Z> results = new ResultContainer<>();
 
 		// add shared transforms to assembly so that they can be used later when building resolved tile spec collections
-		blocks.forEach(block -> am.sharedTransformSpecs.addAll(block.rtsc().getTransformSpecs()));
+		blocks.forEach(block -> results.addSharedTransforms(block.rtsc().getTransformSpecs()));
 
 		try {
 			// now compute the final alignment for each block
 			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile =
-					blockSolver.globalSolve(blocks, am);
+					blockSolver.globalSolve(blocks, results);
 
 			// now fuse blocks into a full assembly
-			blockCombiner.fuseGlobally(am, blockToTile);
+			blockCombiner.fuseGlobally(results, blockToTile);
 		} catch (final Exception e) {
 			throw new RuntimeException("failed assembly", e);
 		}
 
-		return am;
+		return results;
 	}
 
 	protected boolean isTrivialCase() {
@@ -88,7 +88,7 @@ public class Assembler<Z, G extends Model<G>, R>
 
 		final BlockData<R, ?> solveItem = blocks.get( 0 );
 
-		globalData.sharedTransformSpecs.addAll(solveItem.rtsc().getTransformSpecs());
+		globalData.addSharedTransforms(solveItem.rtsc().getTransformSpecs());
 
 		// TODO: why does this iterate over z values?
 		for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
@@ -103,7 +103,7 @@ public class Assembler<Z, G extends Model<G>, R>
 			final List<TileSpec> tileSpecs = tileIds.stream().map(id -> solveItem.rtsc().getTileSpec(id)).collect(Collectors.toList());
 			globalData.addTileSpecs(tileSpecs);
 			for (final String tileId : tileIds) {
-				globalData.idToModel.put(tileId, converter.apply(solveItem.idToNewModel().get(tileId)));
+				globalData.recordModel(tileId, converter.apply(solveItem.getResults().getIdToModel().get(tileId)));
 			}
 		}
 

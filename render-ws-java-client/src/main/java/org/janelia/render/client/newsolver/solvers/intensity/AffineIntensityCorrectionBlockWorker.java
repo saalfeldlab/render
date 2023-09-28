@@ -86,7 +86,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				final AffineModel1D model = ((InterpolatedAffineModel1D<?, ?>) tile.getModel()).createAffineModel1D();
 				models.add(model);
 			});
-			blockData.idToNewModel().put(tileId, models);
+			blockData.getResults().recordModel(tileId, models);
 		});
 
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());
@@ -234,7 +234,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			}).average().orElse(Double.MAX_VALUE);
 			final List<SerializableValuePair<String, Double>> errorList = new ArrayList<>();
 			errorList.add(new SerializableValuePair<>(tileId, error));
-			blockData.idToBlockErrorMap().put(tileId, errorList);
+			blockData.getResults().recordAllErrors(tileId, errorList);
 		});
 
 		LOG.info("solveForGlobalCoefficients: exit, returning intensity coefficients for {} tiles", coefficientTiles.size());

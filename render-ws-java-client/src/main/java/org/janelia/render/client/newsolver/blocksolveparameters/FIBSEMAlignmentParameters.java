@@ -1,8 +1,8 @@
 package org.janelia.render.client.newsolver.blocksolveparameters;
 
-import java.awt.*;
-import java.util.HashMap;
+import java.awt.Rectangle;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 
 import org.janelia.alignment.spec.TileSpec;
@@ -120,18 +120,17 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	@Override
 	public double[] centerOfMass(final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData)
 	{
-		if (blockData.idToNewModel() == null || blockData.idToNewModel().isEmpty())
-			return super.centerOfMass( blockData );
+		if (blockData.getResults().getIdToModel() == null || blockData.getResults().getIdToModel().isEmpty())
+			return super.centerOfMass(blockData);
 
 		// check that all TileSpecs are part of the idToNewModel map
-		for ( final TileSpec ts : blockData.rtsc().getTileSpecs() )
-			if ( !blockData.idToNewModel().containsKey( ts.getTileId() ) )
-			{
-				LOG.info( "WARNING: a TileSpec is not part of the idToNewModel() - that should not happen." );
-				return super.centerOfMass( blockData );
+		for (final TileSpec ts : blockData.rtsc().getTileSpecs())
+			if (!blockData.getResults().getIdToModel().containsKey(ts.getTileId())) {
+				LOG.info("WARNING: a TileSpec is not part of the idToNewModel() - that should not happen.");
+				return super.centerOfMass(blockData);
 			}
 
-		final HashMap<String, AffineModel2D> models = blockData.idToNewModel();
+		final Map<String, AffineModel2D> models = blockData.getResults().getIdToModel();
 
 		final double[] c = new double[ 3 ];
 		int count = 0;

@@ -164,7 +164,7 @@ public class DistributedIntensityCorrectionSolver {
 		final RenderDataClient renderDataClient = solverSetup.renderWeb.getDataClient();
 		if (saveResults) {
 			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.getIdToTileSpec().values());
-			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.idToModel;
+			final Map<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.getIdToModel();
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
 			addFilters(finalizedItems.getIdToTileSpec(), idToFilterSpec);
 			final ResolvedTileSpecCollection rtsc = finalizedItems.buildResolvedTileSpecs();
@@ -228,7 +228,7 @@ public class DistributedIntensityCorrectionSolver {
 
 	private static Map<String, FilterSpec> convertCoefficientsToFilter(
 			final List<TileSpec> tiles,
-			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles,
+			final Map<String, ArrayList<AffineModel1D>> coefficientTiles,
 			final int numCoefficients) {
 
 		final ArrayList<OnTheFlyIntensity> corrected = convertModelsToOtfIntensities(tiles, numCoefficients, coefficientTiles);

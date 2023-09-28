@@ -81,8 +81,8 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 				for (final String tileId : commonTileIds) {
 					final TileSpec tileSpecAB = tileSpecs.getTileSpec(tileId);
 
-					final R modelA = solveItemA.idToNewModel().get(tileId);
-					final R modelB = solveItemB.idToNewModel().get(tileId);
+					final R modelA = solveItemA.getResults().getIdToModel().get(tileId);
+					final R modelB = solveItemB.getResults().getIdToModel().get(tileId);
 					if (modelA == null)  {
 						throw new IllegalArgumentException("model A is missing for tile " + tileId);
 					} else if (modelB == null)  {
@@ -125,8 +125,8 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 			final BlockData<?, ?> blockA,
 			final BlockData<?, ?> blockB
 	) {
-		final Set<String> tileIdsA = new HashSet<>(blockA.idToNewModel().keySet());
-		final Set<String> tileIdsB = blockB.idToNewModel().keySet();
+		final Set<String> tileIdsA = new HashSet<>(blockA.getResults().getIdToModel().keySet());
+		final Set<String> tileIdsB = blockB.getResults().getIdToModel().keySet();
 		tileIdsA.retainAll(tileIdsB);
 		return tileIdsA;
 	}
