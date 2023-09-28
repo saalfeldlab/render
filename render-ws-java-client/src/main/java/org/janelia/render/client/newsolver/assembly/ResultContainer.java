@@ -2,16 +2,13 @@ package org.janelia.render.client.newsolver.assembly;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.render.client.solver.SerializableValuePair;
 
 public class ResultContainer<M> implements Serializable {
@@ -19,7 +16,6 @@ public class ResultContainer<M> implements Serializable {
 	final private HashMap<String, M> idToModel = new HashMap<>();
 	final private HashMap<Integer, HashSet<String>> zToTileId = new HashMap<>();
 	final private HashMap<String, List<SerializableValuePair<String, Double>>> idToErrorMap = new HashMap<>();
-	final private Set<TransformSpec> sharedTransformSpecs = new HashSet<>();
 	final private ResolvedTileSpecCollection rtsc;
 
 
@@ -47,14 +43,6 @@ public class ResultContainer<M> implements Serializable {
 		idToModel.put(tileId, model);
 	}
 
-	public void addSharedTransforms(final Collection<TransformSpec> transformSpecs) {
-		sharedTransformSpecs.addAll(transformSpecs);
-	}
-
-	public Map<String, TileSpec> getIdToTileSpec() {
-		return rtsc.getTileIdToSpecMap();
-	}
-
 	public Map<Integer, HashSet<String>> getZLayerTileIds() {
 		return zToTileId;
 	}
@@ -65,10 +53,6 @@ public class ResultContainer<M> implements Serializable {
 
 	public Map<String, List<SerializableValuePair<String, Double>>> getIdToErrorMap() {
 		return idToErrorMap;
-	}
-
-	public Set<TransformSpec> getSharedTransformSpecs() {
-		return sharedTransformSpecs;
 	}
 
 	/**

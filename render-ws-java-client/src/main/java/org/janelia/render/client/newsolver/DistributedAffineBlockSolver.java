@@ -155,7 +155,7 @@ public class DistributedAffineBlockSolver
 
 		// save the re-aligned part
 		LOG.info( "Saving targetstack=" + cmdLineSetup.targetStack );
-		final List<Double> zToSave = finalTiles.getIdToTileSpec().values().stream()
+		final List<Double> zToSave = finalTiles.getResolvedTileSpecs().getTileSpecs().stream()
 				.map(TileSpec::getZ)
 				.distinct()
 				.sorted()

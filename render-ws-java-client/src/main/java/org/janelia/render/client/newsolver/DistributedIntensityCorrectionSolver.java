@@ -160,11 +160,11 @@ public class DistributedIntensityCorrectionSolver {
 		final boolean saveResults = (solverSetup.targetStack.stack != null);
 		final RenderDataClient renderDataClient = solverSetup.renderWeb.getDataClient();
 		if (saveResults) {
-			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.getIdToTileSpec().values());
+			final ResolvedTileSpecCollection rtsc = finalizedItems.getResolvedTileSpecs();
+			final List<TileSpec> tileSpecs = new ArrayList<>(rtsc.getTileSpecs());
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.getIdToModel();
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
-			addFilters(finalizedItems.getIdToTileSpec(), idToFilterSpec);
-			final ResolvedTileSpecCollection rtsc = finalizedItems.getResolvedTileSpecs();
+			addFilters(rtsc, idToFilterSpec);
 			renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
 			if (solverSetup.targetStack.completeStack)
 				renderDataClient.setStackState(solverSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
@@ -263,10 +263,10 @@ public class DistributedIntensityCorrectionSolver {
 		return correctedOnTheFly;
 	}
 
-	private static void addFilters(final Map<String, TileSpec> idToTileSpec,
+	private static void addFilters(final ResolvedTileSpecCollection rtsc,
 								   final Map<String, FilterSpec> idToFilterSpec) {
 		idToFilterSpec.forEach((tileId, filterSpec) -> {
-			final TileSpec tileSpec = idToTileSpec.get(tileId);
+			final TileSpec tileSpec = rtsc.getTileSpec(tileId);
 			tileSpec.setFilterSpec(filterSpec);
 			tileSpec.convertSingleChannelSpecToLegacyForm();
 		});
