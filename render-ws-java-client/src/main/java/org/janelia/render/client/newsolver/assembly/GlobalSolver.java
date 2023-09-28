@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
-public class BlockSolver<Z, G extends Model<G>, R> {
+public class GlobalSolver<G extends Model<G>, R> {
 
 	final private G globalModel;
 	final private SameTileMatchCreator<R> sameTileMatchCreator;
@@ -33,7 +33,7 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 	final private int maxIterations;
 	final private int numThreads;
 
-	public BlockSolver(
+	public GlobalSolver(
 			final G globalModel,
 			final SameTileMatchCreator<R> sameTileMatchCreator,
 			final DistributedSolveParameters parameters
@@ -129,5 +129,5 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 		return tileIdsA;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(BlockSolver.class);
+	private static final Logger LOG = LoggerFactory.getLogger(GlobalSolver.class);
 }

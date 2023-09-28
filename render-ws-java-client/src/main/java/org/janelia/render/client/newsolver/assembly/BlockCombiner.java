@@ -18,16 +18,13 @@ import java.util.stream.Collectors;
 
 public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
-	final BlockSolver<Z, G, R> solver;
 	final BiFunction<R, G, I> combineResultGlobal;
 	final BiFunction<List<I>, List<Double>, Z> fusion;
 
 	public BlockCombiner(
-			final BlockSolver<Z, G, R> solver,
 			final BiFunction<R, G, I> combineResultGlobal,
 			final BiFunction<List<I>, List<Double>, Z> fusion
 	) {
-		this.solver = solver;
 		this.combineResultGlobal = combineResultGlobal;
 		this.fusion = fusion;
 	}

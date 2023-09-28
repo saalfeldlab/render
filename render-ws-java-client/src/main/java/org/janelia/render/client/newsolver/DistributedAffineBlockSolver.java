@@ -19,7 +19,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.assembly.Assembler;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
-import org.janelia.render.client.newsolver.assembly.BlockSolver;
+import org.janelia.render.client.newsolver.assembly.GlobalSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
@@ -203,24 +203,20 @@ public class DistributedAffineBlockSolver
 			final AffineBlockSolverSetup cmdLineSetup,
 			final ArrayList<BlockData<AffineModel2D, ?>> allItems) {
 
-		final BlockSolver<AffineModel2D, RigidModel2D, AffineModel2D> blockSolver =
-				new BlockSolver<>(new RigidModel2D(),
-						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
-						cmdLineSetup.distributedSolve);
-
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
-				new BlockCombiner<>(
-						blockSolver,
-						DistributedAffineBlockSolver::integrateGlobalModel,
-						DistributedAffineBlockSolver::interpolateModels
-				);
+				new BlockCombiner<>(DistributedAffineBlockSolver::integrateGlobalModel,
+									DistributedAffineBlockSolver::interpolateModels);
+
+		final GlobalSolver<RigidModel2D, AffineModel2D> globalSolver =
+				new GlobalSolver<>(new RigidModel2D(),
+								   new SameTileMatchCreatorAffine2D<AffineModel2D>(),
+								   cmdLineSetup.distributedSolve);
 
 		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
-				new Assembler<>(blockSolver, fusion, (r) -> {
+				new Assembler<>(globalSolver, fusion, (r) -> {
 							final AffineModel2D a = new AffineModel2D();
 							a.set(r);
-							return a;
-						});
+							return a;});
 
 		return assembler.createAssembly(allItems);
 	}

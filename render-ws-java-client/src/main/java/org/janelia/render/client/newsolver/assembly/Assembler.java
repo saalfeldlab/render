@@ -1,17 +1,12 @@
 package org.janelia.render.client.newsolver.assembly;
 
-import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,21 +24,21 @@ import mpicbg.models.Tile;
  */
 public class Assembler<Z, G extends Model<G>, R>
 {
-	final BlockSolver<Z, G, R> blockSolver;
+	final GlobalSolver<G, R> globalSolver;
 	final BlockCombiner<Z, ?, G, R> blockCombiner;
 	final Function<R, Z> converter;
 
 	/**
-	 * @param blockSolver - solver to use for the final assembly
+	 * @param globalSolver - solver to use for the final assembly
 	 * @param blockCombiner - fusion to use for the final assembly
 	 * @param converter - a converter from R to Z - for the trivial case of a single block
 	 */
 	public Assembler(
-			final BlockSolver<Z, G, R> blockSolver,
+			final GlobalSolver<G, R> globalSolver,
 			final BlockCombiner<Z, ?, G, R> blockCombiner,
 			final Function<R, Z> converter )
 	{
-		this.blockSolver = blockSolver;
+		this.globalSolver = globalSolver;
 		this.blockCombiner = blockCombiner;
 		this.converter = converter;
 	}
@@ -61,7 +56,7 @@ public class Assembler<Z, G extends Model<G>, R>
 		try {
 			// now compute the final alignment for each block
 			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile =
-					blockSolver.globalSolve(blocks);
+					globalSolver.globalSolve(blocks);
 
 			// now fuse blocks into a full assembly
 			blockCombiner.fuseGlobally(results, blockToTile);

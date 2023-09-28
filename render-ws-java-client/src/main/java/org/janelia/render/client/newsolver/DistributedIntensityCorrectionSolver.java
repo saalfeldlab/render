@@ -27,7 +27,7 @@ import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.newsolver.assembly.Assembler;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
-import org.janelia.render.client.newsolver.assembly.BlockSolver;
+import org.janelia.render.client.newsolver.assembly.GlobalSolver;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
@@ -134,23 +134,20 @@ public class DistributedIntensityCorrectionSolver {
 
 		LOG.info("assembleBlocks: entry, processing {} blocks", allItems.size());
 
-		final BlockSolver<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> blockSolver =
-				new BlockSolver<>(
-						new TranslationModel1D(),
-						new SameTileMatchCreatorAffineIntensity(),
-						solverSetup.distributedSolve);
-
 		final BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
-				new BlockCombiner<>(blockSolver,
-									DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
+				new BlockCombiner<>(DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
 									DistributedIntensityCorrectionSolver::interpolateModels);
 
+		final GlobalSolver<TranslationModel1D, ArrayList<AffineModel1D>> globalSolver =
+				new GlobalSolver<>(new TranslationModel1D(),
+								   new SameTileMatchCreatorAffineIntensity(),
+								   solverSetup.distributedSolve);
+
 		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> assembler =
-				new Assembler<>(blockSolver, fusion, r -> {
+				new Assembler<>(globalSolver, fusion, r -> {
 					final ArrayList<AffineModel1D> rCopy = new ArrayList<>(r.size());
 					r.forEach(model -> rCopy.add(model.copy()));
-					return rCopy;
-				});
+					return rCopy;});
 
 		LOG.info("assembleBlocks: exit");
 
