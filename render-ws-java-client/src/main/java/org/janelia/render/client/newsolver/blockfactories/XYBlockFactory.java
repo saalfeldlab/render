@@ -21,6 +21,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
@@ -104,17 +105,18 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 		private final double minY;
 
 		public XYDistanceWeightFunction(final BlockData<?, ?> block, final double resolution) {
-			layerDistanceMaps = new HashMap<>(block.getResults().getZLayerTileIds().size());
+			final ResultContainer<?> results = block.getResults();
+			layerDistanceMaps = new HashMap<>(results.getZLayers().size());
 			this.resolution = resolution;
 
 			final Bounds stackBounds = block.boundingBox();
 			minX = stackBounds.getMinX();
 			minY = stackBounds.getMinY();
 
-			block.getResults().getZLayerTileIds().forEach((z, layerIds) -> {
-				final List<TileSpec> layerTiles = layerIds.stream()
+			results.getZLayers().forEach(z -> {
+				final List<TileSpec> layerTiles = results.getTileIdsForZLayer(z).stream()
 						// .sorted() // to be consistent with the render order of the web service
-						.map(block.rtsc()::getTileSpec)
+						.map(results.getResolvedTileSpecs()::getTileSpec)
 						.collect(Collectors.toList());
 				layerDistanceMaps.put(z, createLayerDistanceMap(layerTiles, resolution, stackBounds));
 			});

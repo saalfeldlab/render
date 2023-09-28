@@ -79,8 +79,8 @@ public class GlobalSolver<G extends Model<G>, R> {
 				for (final String tileId : commonTileIds) {
 					final TileSpec tileSpecAB = tileSpecs.getTileSpec(tileId);
 
-					final R modelA = solveItemA.getResults().getIdToModel().get(tileId);
-					final R modelB = solveItemB.getResults().getIdToModel().get(tileId);
+					final R modelA = solveItemA.getResults().getModelFor(tileId);
+					final R modelB = solveItemB.getResults().getModelFor(tileId);
 					if (modelA == null)  {
 						throw new IllegalArgumentException("model A is missing for tile " + tileId);
 					} else if (modelB == null)  {
@@ -123,8 +123,8 @@ public class GlobalSolver<G extends Model<G>, R> {
 			final BlockData<?, ?> blockA,
 			final BlockData<?, ?> blockB
 	) {
-		final Set<String> tileIdsA = new HashSet<>(blockA.getResults().getIdToModel().keySet());
-		final Set<String> tileIdsB = blockB.getResults().getIdToModel().keySet();
+		final Set<String> tileIdsA = new HashSet<>(blockA.getResults().getTileIds());
+		final Set<String> tileIdsB = blockB.getResults().getTileIds();
 		tileIdsA.retainAll(tileIdsB);
 		return tileIdsA;
 	}

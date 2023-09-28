@@ -173,7 +173,7 @@ public class DistributedAffineBlockSolver
 		runParams.maxZ = zToSave.get(zToSave.size() - 1);
 		LOG.info("Saving from " + runParams.minZ + " to " + runParams.maxZ);
 
-		SolveTools.saveTargetStackTiles(cmdLineSetup.stack, cmdLineSetup.targetStack.stack, runParams, finalTiles.getIdToModel(), null, zToSave, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
+		SolveTools.saveTargetStackTiles(cmdLineSetup.stack, cmdLineSetup.targetStack.stack, runParams, finalTiles.getModelMap(), null, zToSave, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
 		if (cmdLineSetup.targetStack.completeStack) {
 			LOG.info("Completing targetstack=" + cmdLineSetup.targetStack.stack);
 			SolveTools.completeStack(cmdLineSetup.targetStack.stack, runParams);

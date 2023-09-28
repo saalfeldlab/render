@@ -91,7 +91,7 @@ public class Assembler<Z, G extends Model<G>, R>
 
 		final ResultContainer<Z> globalData = new ResultContainer<>(block.rtsc());
 		for (final String tileId : block.rtsc().getTileIds()) {
-			globalData.recordModel(tileId, converter.apply(block.getResults().getIdToModel().get(tileId)));
+			globalData.recordModel(tileId, converter.apply(block.getResults().getModelFor(tileId)));
 		}
 		return globalData;
 	}

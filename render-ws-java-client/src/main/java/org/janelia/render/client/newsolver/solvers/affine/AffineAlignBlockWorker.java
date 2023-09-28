@@ -522,7 +522,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		// combine tiles per layer that are be stitched first, but iterate over all z's 
 		// (also those only consisting of single tiles, they are connected in z though)
-		final ArrayList<Integer> zList = new ArrayList<>(blockData.getResults().getZLayerTileIds().keySet());
+		final ArrayList<Integer> zList = new ArrayList<>(blockData.getResults().getZLayers());
 		Collections.sort( zList );
 
 		for ( final int z : zList )
@@ -588,7 +588,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 
 			// add all missing TileIds as unconnected Tiles
-			for (final String tileId : blockData.getResults().getZLayerTileIds().get(z))
+			for (final String tileId : blockData.getResults().getTileIdsForZLayer(z))
 				if ( !idTotile.containsKey( tileId ) )
 				{
 					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, unconnected tileId {}", blockData, tileId);
@@ -780,7 +780,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.idToTileMap().put( tileId, t );
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-						newBlockData.getResults().recordModel(tileId, blockData.getResults().getIdToModel().get(tileId));
+						newBlockData.getResults().recordModel(tileId, blockData.getResults().getModelFor(tileId));
 
 						solveItem.idToStitchingModel().put(tileId, inputSolveItem.idToStitchingModel().get(tileId));
 
@@ -856,10 +856,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles());
 			LOG.info("solve: errors: {}", errors);
 		}
-
-		// create lookup for the new models
-		// TODO: this seems strange, investigate!
-		blockData.getResults().getIdToModel().clear();
 
 		final ArrayList<String> tileIds = new ArrayList<>();
 		final HashMap<String, AffineModel2D> tileIdToGroupModel = new HashMap<>();
@@ -950,8 +946,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					blockData.solveTypeParameters().stitchingSolveModelInstance(pTileSpec.getZ().intValue()),
 					pTileSpec,
 					qTileSpec,
-					results.getIdToModel().get(pTileId),
-					results.getIdToModel().get(qTileId),
+					results.getModelFor(pTileId),
+					results.getModelFor(qTileId),
 					match.getMatches());
 
 			results.recordPairwiseTileError(pTileId, qTileId, vDiff);

@@ -4,7 +4,6 @@ import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.solver.SerializableValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +41,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
 		final Map<String, List<BlockData<R, ?>>> tileIdToBlocks = new HashMap<>();
 		for (final BlockData<R, ?> block : blockToTile.keySet()) {
-			for (final String tileId : block.getResults().getIdToModel().keySet()) {
+			for (final String tileId : block.getResults().getTileIds()) {
 				tileIdToBlocks.computeIfAbsent(tileId, k -> new ArrayList<>()).add(block);
 			}
 		}
@@ -61,11 +60,11 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
 			final List<I> models = new ArrayList<>();
 			final List<Double> weights = new ArrayList<>();
-			List<SerializableValuePair<String, Double>> error = null;
+			Map<String, Double> error = null;
 			double maxWeight = -1.0;
 			for (final BlockData<R, ?> block : blocksForTile) {
 				final G globalModel = blockToG.get(block);
-				final R newModel = block.getResults().getIdToModel().get(tileId);
+				final R newModel = block.getResults().getModelFor(tileId);
 				// TODO: confirm this is proper way to handle, consider moving retrieval to block method and put check there
 				if (newModel == null) {
 					throw new IllegalArgumentException("failed to find new model for tile " + tileId);
@@ -80,7 +79,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 				// TODO: proper error computation using the matches that are now stored in the SolveItemData object
 				if (w > maxWeight) {
 					maxWeight = w;
-					error = block.getResults().getIdToErrorMap().get(tileId);
+					error = block.getResults().getErrorMapFor(tileId);
 				}
 			}
 

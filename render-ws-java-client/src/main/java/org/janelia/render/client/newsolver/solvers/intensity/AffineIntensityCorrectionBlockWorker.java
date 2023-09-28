@@ -36,7 +36,6 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.parameter.ZDistanceParameters;
-import org.janelia.render.client.solver.SerializableValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,6 +46,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -231,9 +231,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				t.updateCost();
 				return t.getDistance();
 			}).average().orElse(Double.MAX_VALUE);
-			final List<SerializableValuePair<String, Double>> errorList = new ArrayList<>();
-			errorList.add(new SerializableValuePair<>(tileId, error));
-			blockData.getResults().recordAllErrors(tileId, errorList);
+			final Map<String, Double> errorMap = new HashMap<>();
+			errorMap.put(tileId, error);
+			blockData.getResults().recordAllErrors(tileId, errorMap);
 		});
 
 		LOG.info("solveForGlobalCoefficients: exit, returning intensity coefficients for {} tiles", coefficientTiles.size());
