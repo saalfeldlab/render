@@ -63,7 +63,7 @@ public class DistributedAffineBlockSolver
         // http://em-services-1.int.janelia.org:8080/render-ws/view/stacks.html?renderStackOwner=hess&renderStackProject=wafer_52c&dynamicRenderHost=renderer.int.janelia.org%3A8080&catmaidHost=renderer-catmaid.int.janelia.org%3A8000&undefined=v1_acquire_slab_001_trimmed_test
         if (args.length == 0) {
             final String[] testArgs = {
-                    "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+                    "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                     "--owner", "hess_wafer_53",
                     "--project", "cut_000_to_009",
                     "--matchCollection", "c000_s095_v01_match",
@@ -145,7 +145,11 @@ public class DistributedAffineBlockSolver
 		// but do keep ids that are smaller or equal to the maxId of the initial solveset
 		final int maxId = WorkerTools.fixIds(allItems, alignmentSolver.col.maxId());
 
-		LOG.info( "computed " + allItems.size() + " blocks, maxId=" + maxId);
+		LOG.info("main: computed {} blocks, maxId={}", allItems.size(), maxId);
+
+		if (allItems.isEmpty()) {
+			throw new IllegalStateException("no blocks were computed, something is wrong");
+		}
 
 		final AssemblyMaps<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup, allItems);
 
