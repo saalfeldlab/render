@@ -61,7 +61,7 @@ public class DistributedIntensityCorrectionSolver {
 		// TODO: remove testing hack ...
 		if (args.length == 0) {
 			final String[] testArgs = {
-					"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+					"--baseDataUrl", "http://render-dev.int.janelia.org:8080/render-ws/v1",
 					"--owner", "cellmap",
 					"--project", "jrc_mus_thymus_1",
 					"--stack", "v2_acquire_align",
@@ -146,7 +146,7 @@ public class DistributedIntensityCorrectionSolver {
 									DistributedIntensityCorrectionSolver::interpolateModels);
 
 		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> assembler =
-				new Assembler<>(allItems, blockSolver, fusion, r -> {
+				new Assembler<>(blockSolver, fusion, r -> {
 					final ArrayList<AffineModel1D> rCopy = new ArrayList<>(r.size());
 					r.forEach(model -> rCopy.add(model.copy()));
 					return rCopy;
@@ -154,7 +154,7 @@ public class DistributedIntensityCorrectionSolver {
 
 		LOG.info("assembleBlocks: exit");
 
-		return assembler.createAssembly();
+		return assembler.createAssembly(allItems);
 	}
 
 	public void saveResultsAsNeeded(final ResultContainer<ArrayList<AffineModel1D>> finalizedItems)

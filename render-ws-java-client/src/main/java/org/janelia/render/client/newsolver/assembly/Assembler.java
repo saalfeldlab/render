@@ -24,34 +24,30 @@ import mpicbg.models.Tile;
  */
 public class Assembler<Z, G extends Model<G>, R>
 {
-	final List<BlockData<R, ?>> blocks;
 	final BlockSolver<Z, G, R> blockSolver;
 	final BlockCombiner<Z, ?, G, R> blockCombiner;
 	final Function<R, Z> converter;
 
 	/**
-	 * @param blocks - all individually computed blocks
 	 * @param blockSolver - solver to use for the final assembly
 	 * @param blockCombiner - fusion to use for the final assembly
 	 * @param converter - a converter from R to Z - for the trivial case of a single block
 	 */
 	public Assembler(
-			final List<BlockData<R, ?>> blocks,
 			final BlockSolver<Z, G, R> blockSolver,
 			final BlockCombiner<Z, ?, G, R> blockCombiner,
 			final Function<R, Z> converter )
 	{
-		this.blocks = blocks;
 		this.blockSolver = blockSolver;
 		this.blockCombiner = blockCombiner;
 		this.converter = converter;
 	}
 
-	public ResultContainer< Z > createAssembly()
-	{
+	public ResultContainer<Z> createAssembly(final List<BlockData<R, ?>> blocks) {
+
 		// the trivial case of a single block, would crash with the code below
-		if (isTrivialCase()) {
-			return buildTrivialAssembly();
+		if (isTrivialCase(blocks)) {
+			return buildTrivialAssembly(blocks.get(0));
 		}
 
 		final ResultContainer<Z> results = new ResultContainer<>();
@@ -73,37 +69,35 @@ public class Assembler<Z, G extends Model<G>, R>
 		return results;
 	}
 
-	protected boolean isTrivialCase() {
+	protected boolean isTrivialCase(final List<BlockData<R, ?>> blocks) {
 		return blocks.size() == 1;
 	}
 
 	/**
 	 * @return - the result of the trivial case
 	 */
-	private ResultContainer< Z > buildTrivialAssembly()
-	{
+	private ResultContainer<Z> buildTrivialAssembly(final BlockData<R, ?> block) {
+
 		LOG.info("buildTrivialAssembly: entry, only a single block, no solve across blocks necessary.");
 
-		final ResultContainer< Z > globalData = new ResultContainer<>();
+		final ResultContainer<Z> globalData = new ResultContainer<>();
 
-		final BlockData<R, ?> solveItem = blocks.get( 0 );
-
-		globalData.addSharedTransforms(solveItem.rtsc().getTransformSpecs());
+		globalData.addSharedTransforms(block.rtsc().getTransformSpecs());
 
 		// TODO: why does this iterate over z values?
-		for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
+		for ( int z = block.minZ(); z <= block.maxZ(); ++z )
 		{
 			// there is no overlap with any other solveItem (should be beginning or end of the entire stack)
-			final HashSet<String> tileIds = solveItem.getResults().getZLayerTileIds().get(z);
+			final HashSet<String> tileIds = block.getResults().getZLayerTileIds().get(z);
 
 			// if there are none, we continue with the next
 			if (tileIds.isEmpty())
 				continue;
 
-			final List<TileSpec> tileSpecs = tileIds.stream().map(id -> solveItem.rtsc().getTileSpec(id)).collect(Collectors.toList());
+			final List<TileSpec> tileSpecs = tileIds.stream().map(id -> block.rtsc().getTileSpec(id)).collect(Collectors.toList());
 			globalData.addTileSpecs(tileSpecs);
 			for (final String tileId : tileIds) {
-				globalData.recordModel(tileId, converter.apply(solveItem.getResults().getIdToModel().get(tileId)));
+				globalData.recordModel(tileId, converter.apply(block.getResults().getIdToModel().get(tileId)));
 			}
 		}
 

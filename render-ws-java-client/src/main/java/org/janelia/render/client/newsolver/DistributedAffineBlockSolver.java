@@ -216,17 +216,13 @@ public class DistributedAffineBlockSolver
 				);
 
 		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
-				new Assembler<>(
-						allItems,
-						blockSolver,
-						fusion,
-						(r) -> {
+				new Assembler<>(blockSolver, fusion, (r) -> {
 							final AffineModel2D a = new AffineModel2D();
 							a.set(r);
 							return a;
 						});
 
-		return assembler.createAssembly();
+		return assembler.createAssembly(allItems);
 	}
 
 
