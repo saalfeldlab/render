@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IntSummaryStatistics;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -26,6 +27,7 @@ import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
+import org.janelia.render.client.newsolver.solvers.affine.AlignmentModel;
 import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
@@ -34,6 +36,8 @@ import org.slf4j.LoggerFactory;
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
+
+import static org.janelia.render.client.newsolver.solvers.affine.AlignmentModel.AlignmentModelBuilder;
 
 public class DistributedAffineBlockSolver
 {
@@ -236,24 +240,17 @@ public class DistributedAffineBlockSolver
 		if (models.size() == 1)
 			return models.get(0);
 
-		// normalize weights
-		final double sumWeights = weights.stream().mapToDouble(v -> v).sum();
-		final double[] w = weights.stream().mapToDouble(v -> v / sumWeights).toArray();
-
-		final int nCoefficients = 6;
-		final double[] c = new double[nCoefficients];
-		final double[] cFinal = new double[nCoefficients];
-
-		// extract and interpolate coefficients
-		for (int k = 0; k < models.size(); ++k) {
-			models.get(k).toArray(c);
-			for (int i = 0; i < nCoefficients; ++i)
-				cFinal[i] += w[k] * c[i];
+		final AlignmentModelBuilder builder = new AlignmentModelBuilder();
+		final Map<String, Double> weightMap = new HashMap<>();
+		for (int i = 0; i < models.size(); i++) {
+			final String name = "model" + i;
+			builder.addModel(name, models.get(i));
+			weightMap.put(name, weights.get(i));
 		}
 
-		final AffineModel2D interpolatedModel = new AffineModel2D();
-		interpolatedModel.set(cFinal[0], cFinal[1], cFinal[2], cFinal[3], cFinal[4], cFinal[5]);
-		return interpolatedModel;
+		final AlignmentModel model = builder.build();
+		model.setWeights(weightMap);
+		return model.createAffineModel2D();
 	}
 
 	protected <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
