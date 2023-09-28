@@ -32,6 +32,7 @@ import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApp
  *
  * @author Eric Trautman
  */
+@SuppressWarnings("JavadocBlankLines")
 public class ResolvedTileSpecCollection implements Serializable {
 
     public enum TransformApplicationMethod {
@@ -434,9 +435,9 @@ public class ResolvedTileSpecCollection implements Serializable {
     /**
      * Removes any tile specs not identified in the provided set from this collection.
      *
-     * @param  tileIdsToKeep  identifies which tile specs should be kept.
+     * @param  tileIdsToKeep  identifies which tile specs should be retained.
      */
-    public void removeDifferentTileSpecs(final Set<String> tileIdsToKeep) {
+    public void retainTileSpecs(final Set<String> tileIdsToKeep) {
         removeTileSpecs(tileIdsToKeep, false);
     }
 
@@ -469,24 +470,11 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
-     * Removes the specified tile spec from this collection if it is invalid.
-     *
-     * @param  tileSpec  tile spec to validate.
-     */
-    public void removeTileSpecIfInvalid(final TileSpec tileSpec) {
-        if (tileSpecValidator != null) {
-            if (isTileInvalid(tileSpec)) {
-                tileIdToSpecMap.remove(tileSpec.getTileId());
-            }
-        }
-    }
-
-    /**
      * Removes any shared transforms that are not referenced by tile specs.
      */
     public void removeUnreferencedTransforms() {
 
-        if (transformIdToSpecMap.size() > 0) {
+        if (! transformIdToSpecMap.isEmpty()) {
 
             final Set<String> referencedTransformIds = new HashSet<>();
             for (final TileSpec tileSpec : tileIdToSpecMap.values()) {
@@ -527,7 +515,7 @@ public class ResolvedTileSpecCollection implements Serializable {
      * @return true if this collection has at least one tile spec; otherwise false.
      */
     public boolean hasTileSpecs() {
-        return tileIdToSpecMap.size() > 0;
+        return ! tileIdToSpecMap.isEmpty();
     }
 
     /**
@@ -539,6 +527,17 @@ public class ResolvedTileSpecCollection implements Serializable {
     public void resolveTileSpecs()
             throws IllegalArgumentException {
         tileIdToSpecMap.values().forEach(this::resolveTileSpec);
+    }
+
+    public Map<String, Set<String>> buildSectionIdToTileIdsMap() {
+        final Map<String, Set<String>> sectionIdToTileIds = new HashMap<>();
+        for (final TileSpec tileSpec : getTileSpecs()) {
+            final String sectionId = tileSpec.getSectionId();
+            final Set<String> tileIdsForSection = sectionIdToTileIds.computeIfAbsent(sectionId,
+                                                                                      sId -> new HashSet<>());
+            tileIdsForSection.add(tileSpec.getTileId());
+        }
+        return sectionIdToTileIds;
     }
 
     @Override
@@ -634,15 +633,15 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     @JsonIgnore
-    private AffineModel2D getAffineModelForSpec(final String context,
-                                                final TransformSpec transformSpec) {
+    public static AffineModel2D getAffineModelForSpec(final String context,
+                                                      final TransformSpec transformSpec) {
         final CoordinateTransform transform = transformSpec.buildInstance();
         final AffineModel2D affineModel;
         if (transform instanceof AffineModel2D) {
             affineModel = (AffineModel2D) transform;
         }  else if (transform instanceof Affine2D) {
             affineModel = new AffineModel2D();
-            affineModel.set(((Affine2D) transform).createAffine());
+            affineModel.set(((Affine2D<?>) transform).createAffine());
         } else {
             throw new IllegalArgumentException(context + " transform must implement " + Affine2D.class.getName());
         }

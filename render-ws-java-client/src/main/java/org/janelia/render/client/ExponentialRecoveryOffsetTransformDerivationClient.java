@@ -340,7 +340,7 @@ public class ExponentialRecoveryOffsetTransformDerivationClient
             resolvedTilesForLayer.addTransformSpecToTile(tileId,
                                                          transformSpec,
                                                          parameters.transformApplicationMethod);
-            resolvedTilesForLayer.removeDifferentTileSpecs(Collections.singleton(tileId));
+            resolvedTilesForLayer.retainTileSpecs(Collections.singleton(tileId));
             updatedCollection.merge(resolvedTilesForLayer);
         }
 

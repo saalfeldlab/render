@@ -29,19 +29,17 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.stack.HierarchicalStack;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.spec.stack.StackVersion;
-import org.janelia.alignment.transform.ConsensusWarpFieldBuilder;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.request.WaitingRetryHandler;
@@ -695,33 +693,6 @@ public class RenderDataClient {
     }
 
     /**
-     * Updates the hierarchical data for the specified stack.
-     *
-     * @param  stack             stack to change.
-     * @param  hierarchicalData  hierarchical data to save.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public void setHierarchicalData(final String stack,
-                                    final HierarchicalStack hierarchicalData)
-            throws IOException {
-
-        final String json = hierarchicalData.toJson();
-        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
-        final URI uri = getUri(urls.getStackUrlString(stack) + "/hierarchicalData");
-        final String requestContext = "PUT " + uri;
-        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
-
-        final HttpPut httpPut = new HttpPut(uri);
-        httpPut.setEntity(stringEntity);
-
-        LOG.info("setHierarchicalData: submitting {}", requestContext);
-
-        httpClient.execute(httpPut, responseHandler);
-    }
-
-    /**
      * Deletes the specified stack or a layer of the specified stack.
      *
      * @param  stack  stack to delete.
@@ -772,20 +743,6 @@ public class RenderDataClient {
         LOG.info("deleteStackSection: submitting {}", requestContext);
 
         httpClient.execute(httpDelete, responseHandler);
-    }
-
-    /**
-     * Deletes all stacks in this client's project.
-     * BE CAREFUL with this!
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public void deleteAllStacksInProject()
-            throws IOException {
-        for (final StackId stackId : getProjectStacks()) {
-            deleteStack(stackId.getStack(), null);
-        }
     }
 
     /**
@@ -1056,6 +1013,54 @@ public class RenderDataClient {
     }
 
     /**
+     * @param  stack           name of stack.
+     * @param  bounds          optional bounds values for all tiles (null to exclude bounds).
+     * @param  collectionName  name of match collection.
+     * @param  groupId         group id for all tiles (or null).
+     * @param  matchPattern    only return tiles with ids that match this pattern (null for all tiles).
+     *
+     * @return the set of resolved tiles and transforms that match the specified criteria.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public ResolvedTileSpecsWithMatchPairs getResolvedTilesWithMatchPairs(final String stack,
+                                                                          final Bounds bounds,
+                                                                          final String collectionName,
+                                                                          final String groupId,
+                                                                          final String matchPattern)
+            throws IOException {
+
+        final String baseUrlString = urls.getStackUrlString(stack);
+        final URI baseUri =  getUri(baseUrlString + "/resolvedTilesWithMatchesFrom/" + collectionName);
+
+        final URIBuilder uriBuilder = new URIBuilder(baseUri);
+        if (bounds != null) {
+            addParameterIfDefined("minX", bounds.getMinX(), uriBuilder);
+            addParameterIfDefined("maxX", bounds.getMaxX(), uriBuilder);
+            addParameterIfDefined("minY", bounds.getMinY(), uriBuilder);
+            addParameterIfDefined("maxY", bounds.getMaxY(), uriBuilder);
+            addParameterIfDefined("minZ", bounds.getMinZ(), uriBuilder);
+            addParameterIfDefined("maxZ", bounds.getMaxZ(), uriBuilder);
+        }
+        addParameterIfDefined("groupId", groupId, uriBuilder);
+        addParameterIfDefined("matchPattern", matchPattern, uriBuilder);
+
+        final URI uri = getUri(uriBuilder);
+
+        final HttpGet httpGet = new HttpGet(uri);
+        final String requestContext = "GET " + uri;
+        final JsonUtils.Helper<ResolvedTileSpecsWithMatchPairs> helper =
+                new JsonUtils.Helper<>(ResolvedTileSpecsWithMatchPairs.class);
+        final JsonResponseHandler<ResolvedTileSpecsWithMatchPairs> responseHandler =
+                new JsonResponseHandler<>(requestContext, helper);
+
+        LOG.info("getResolvedTilesWithMatchPairs: submitting {}", requestContext);
+
+        return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
      * Saves the specified collection.
      *
      * @param  resolvedTiles  collection of tile and transform specs to save.
@@ -1120,18 +1125,6 @@ public class RenderDataClient {
     }
 
     /**
-     * @return list of pGroup identifiers with multiple consensus set match pairs.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public List<String> getMatchMultiConsensusPGroupIds()
-            throws IOException {
-        final URI uri = getUri(urls.getMatchMultiConsensusPGroupIdsUrlString());
-        return submitGetForStringArray("getMatchMultiConsensusPGroupIds", uri);
-    }
-
-    /**
      *
      * @param pGroupId  first tile's section id.
      * @param pId       first tile's id.
@@ -1182,38 +1175,6 @@ public class RenderDataClient {
                           excludeMatchDetails);
     }
 
-    /**
-     * @param  groupId      groupId (usually the section id).
-     *
-     * @return list of canvas matches between the specified groupId
-     *         and all other canvases that have a different groupId.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public List<CanvasMatches> getMatchesOutsideGroup(final String groupId)
-            throws IOException {
-        return getMatchesOutsideGroup(groupId, false);
-    }
-
-    /**
-     * @param  groupId              groupId (usually the section id).
-     * @param  excludeMatchDetails  if true, only retrieve pair identifiers and exclude detailed match points.
-     *
-     * @return list of canvas matches between the specified groupId
-     *         and all other canvases that have a different groupId.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public List<CanvasMatches> getMatchesOutsideGroup(final String groupId,
-                                                      final boolean excludeMatchDetails)
-            throws IOException {
-
-        return getMatches("getMatchesOutsideGroup",
-                          urls.getMatchesOutsideGroupUrlString(groupId),
-                          excludeMatchDetails);
-    }
 
     /**
      * @param  groupId      groupId (usually the section id).
@@ -1269,28 +1230,6 @@ public class RenderDataClient {
         return getMatches("getMatchesBetweenGroups",
                           urlString,
                           excludeMatchDetails);
-    }
-
-    /**
-     * Deletes matches between the specified group id and all other canvases that have a different groupId.
-     *
-     * @param  groupId      groupId (usually the section id).
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public void deleteMatchesOutsideGroup(final String groupId)
-            throws IOException {
-
-        final URI uri = getUri(urls.getMatchesOutsideGroupUrlString(groupId));
-        final String requestContext = "DELETE " + uri;
-        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
-
-        final HttpDelete httpDelete = new HttpDelete(uri);
-
-        LOG.info("deleteMatchesOutsideGroup: submitting {}", requestContext);
-
-        httpClient.execute(httpDelete, responseHandler);
     }
 
     /**
@@ -1424,31 +1363,6 @@ public class RenderDataClient {
         LOG.info("getTileIdsForCoordinates: submitting {}", requestContext);
 
         return httpClient.execute(httpPut, responseHandler);
-    }
-
-    /**
-     * @param  z                     z value for layer.
-     * @param  consensusBuildMethod  build method for consensus set alignments.
-     *
-     * @return affine warp field transform spec for the specified layer.
-     *
-     * @throws IOException
-     *   if the request fails for any reason.
-     */
-    public LeafTransformSpec getAffineWarpFieldTransform(final Double z,
-                                                         final ConsensusWarpFieldBuilder.BuildMethod consensusBuildMethod)
-            throws IOException {
-
-        final URI uri = getUri(urls.getOwnerUrlString() + "/project/" + project + "/z/" + z +
-                               "/affineWarpFieldTransform?consensusBuildMethod=" + consensusBuildMethod);
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final JsonUtils.Helper<LeafTransformSpec> helper = new JsonUtils.Helper<>(LeafTransformSpec.class);
-        final JsonResponseHandler<LeafTransformSpec> responseHandler = new JsonResponseHandler<>(requestContext, helper);
-
-        LOG.info("getAffineWarpFieldTransform: submitting {}", requestContext);
-
-        return httpClient.execute(httpGet, responseHandler);
     }
 
     /**
@@ -1588,6 +1502,7 @@ public class RenderDataClient {
         return httpClient.execute(httpGet, responseHandler);
     }
 
+    @SuppressWarnings("SameParameterValue")
     private List<String> submitGetForStringArray(final String logContext,
                                                  final URI uri)
             throws IOException {

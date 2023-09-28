@@ -292,7 +292,7 @@ public class SectionUpdateClient {
                             "), max (" + parameters.maxX + ", " + parameters.maxY + ")");
                 }
 
-                resolvedTiles.removeDifferentTileSpecs(updateTileIds);
+                resolvedTiles.retainTileSpecs(updateTileIds);
 
             } else if (sectionIdSet != null) {
 
@@ -307,7 +307,7 @@ public class SectionUpdateClient {
                             "no tile specs exist in stack " + stack + " with sectionId(s) " + sectionIdSet);
                 }
 
-                resolvedTiles.removeDifferentTileSpecs(updateTileIds);
+                resolvedTiles.retainTileSpecs(updateTileIds);
 
             }
 
