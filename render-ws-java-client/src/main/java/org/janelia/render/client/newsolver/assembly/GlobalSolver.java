@@ -46,10 +46,6 @@ public class GlobalSolver<G extends Model<G>, R> {
 		this.numThreads = parameters.threadsGlobal;
 	}
 
-	public G globalSolveModel() {
-		return globalModel;
-	}
-
 	public HashMap<BlockData<R, ?>, Tile<G>> globalSolve(
 			final List<? extends BlockData<R, ?>> blocks
 	) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException {
@@ -98,12 +94,12 @@ public class GlobalSolver<G extends Model<G>, R> {
 			}
 		}
 
-		LOG.info("launching Pre-Align, tileConfigBlocks has {} tiles and {} fixed tiles",
+		LOG.info("globalSolve: launching Pre-Align, tileConfigBlocks has {} tiles and {} fixed tiles",
 				  tileConfigBlocks.getTiles().size(), tileConfigBlocks.getFixedTiles().size());
 
 		tileConfigBlocks.preAlign();
 
-		LOG.info("Optimizing ... ");
+		LOG.info("globalSolve: Optimizing ... ");
 		final float damp = 1.0f;
 		TileUtil.optimizeConcurrently(
 				new ErrorStatistic(maxPlateauWidth + 1),

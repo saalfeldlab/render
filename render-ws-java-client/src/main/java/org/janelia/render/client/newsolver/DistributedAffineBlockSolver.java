@@ -53,8 +53,8 @@ public class DistributedAffineBlockSolver
 		this.renderSetup = renderSetup;
 	}
 
-	public static void main( final String[] args ) throws IOException
-	{
+	public static void main(final String[] args)
+			throws IOException, InterruptedException {
         final AffineBlockSolverSetup cmdLineSetup = new AffineBlockSolverSetup();
 
         // Pointmatch explorer link to the used dataset
@@ -116,29 +116,31 @@ public class DistributedAffineBlockSolver
 		//
 		// multi-threaded solve
 		//
-		LOG.info("Multithreading with thread num=" + cmdLineSetup.distributedSolve.threadsGlobal);
+		LOG.info("main: multithreading with {} threads", cmdLineSetup.distributedSolve.threadsGlobal);
 
 		final ArrayList<Callable<List<BlockData<AffineModel2D, ?>>>> workers = new ArrayList<>();
 
 		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block, alignmentSolver, cmdLineSetup)));
 
 		final ArrayList<BlockData<AffineModel2D, ?>> allItems = new ArrayList<>();
+		final List<Throwable> workerExceptions = new ArrayList<>();
 
-		try {
-			final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
+		final ExecutorService taskExecutor = Executors.newFixedThreadPool(cmdLineSetup.distributedSolve.threadsGlobal);
+		taskExecutor.invokeAll(workers).forEach(future -> {
+			try {
+				allItems.addAll(future.get());
+			} catch (final Throwable t) {
+				LOG.error("main: worker failed to compute alignment", t);
+				workerExceptions.add(t);
+			}
+		});
 
-			taskExecutor.invokeAll(workers).forEach(future -> {
-				try {
-					allItems.addAll(future.get());
-				} catch (final InterruptedException | ExecutionException e) {
-					LOG.error("Failed to compute alignments: ", e);
-				}
-			});
+		taskExecutor.shutdown();
 
-			taskExecutor.shutdown();
-		} catch (final InterruptedException e) {
-			LOG.error("Failed to compute alignments: ", e);
-			return;
+		if (! workerExceptions.isEmpty()) {
+			throw new IllegalStateException(workerExceptions.size() + " out of " + workers.size() + " workers failed");
+		} else if (allItems.isEmpty()) {
+			throw new IllegalStateException("no blocks were computed, something is wrong");
 		}
 
 		// avoid duplicate id assigned while splitting solveitems in the workers
@@ -147,14 +149,10 @@ public class DistributedAffineBlockSolver
 
 		LOG.info("main: computed {} blocks, maxId={}", allItems.size(), maxId);
 
-		if (allItems.isEmpty()) {
-			throw new IllegalStateException("no blocks were computed, something is wrong");
-		}
-
 		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup, allItems);
 
 		// save the re-aligned part
-		LOG.info( "Saving targetstack=" + cmdLineSetup.targetStack );
+        LOG.info("main: saving target stack {}", cmdLineSetup.targetStack);
 		final List<Double> zToSave = finalTiles.getResolvedTileSpecs().getTileSpecs().stream()
 				.map(TileSpec::getZ)
 				.distinct()
@@ -171,11 +169,11 @@ public class DistributedAffineBlockSolver
 		runParams.zToTileSpecsMap = new HashMap<>();
 		runParams.minZ = zToSave.get(0);
 		runParams.maxZ = zToSave.get(zToSave.size() - 1);
-		LOG.info("Saving from " + runParams.minZ + " to " + runParams.maxZ);
+		LOG.info("main: saving from {} to {}", runParams.minZ, runParams.maxZ);
 
 		SolveTools.saveTargetStackTiles(cmdLineSetup.stack, cmdLineSetup.targetStack.stack, runParams, finalTiles.getModelMap(), null, zToSave, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
 		if (cmdLineSetup.targetStack.completeStack) {
-			LOG.info("Completing targetstack=" + cmdLineSetup.targetStack.stack);
+			LOG.info("main: completing target stack {}", cmdLineSetup.targetStack.stack);
 			SolveTools.completeStack(cmdLineSetup.targetStack.stack, runParams);
 		}
 	}
