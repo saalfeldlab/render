@@ -27,6 +27,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final double renderScale;
 	private final int numCoefficients;
 	private final ZDistanceParameters zDistance;
+	private final boolean preEquilibrateIntensity;
 
 	public FIBSEMIntensityCorrectionParameters(
 			final M blockSolveModel,
@@ -43,7 +44,8 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			 intensityAdjust.lambda2,
 			 intensityAdjust.renderScale,
 			 intensityAdjust.numCoefficients,
-			 intensityAdjust.zDistance);
+			 intensityAdjust.zDistance,
+			 intensityAdjust.preEquilibrateIntensity);
 	}
 
 	public FIBSEMIntensityCorrectionParameters(
@@ -57,7 +59,8 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final double lambdaIdentity,
 			final double renderScale,
 			final int numCoefficients,
-			final ZDistanceParameters zDistance) {
+			final ZDistanceParameters zDistance,
+			final boolean preEquilibrateIntensity) {
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
@@ -67,6 +70,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.renderScale = renderScale;
 		this.numCoefficients = numCoefficients;
 		this.zDistance = zDistance;
+		this.preEquilibrateIntensity = preEquilibrateIntensity;
 	}
 
 	public long maxNumberOfCachedPixels() { return maxNumberOfCachedPixels; }
@@ -75,6 +79,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public double renderScale() { return renderScale; }
 	public int numCoefficients() { return numCoefficients; }
 	public ZDistanceParameters zDistance() { return zDistance; }
+	public boolean preEquilibrateIntensity() { return preEquilibrateIntensity; }
 
 	@Override
 	public Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(

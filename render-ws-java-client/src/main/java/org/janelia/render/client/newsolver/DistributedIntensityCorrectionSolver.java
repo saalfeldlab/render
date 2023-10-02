@@ -71,7 +71,8 @@ public class DistributedIntensityCorrectionSolver {
 					"--blockSizeZ", "6",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 14,503
-					"--zDistance", "0", "--minZ", "1000", "--maxZ", "1001"
+					"--zDistance", "0", "--minZ", "1245", "--maxZ", "1246",
+					"--preEquilibrateIntensity"
 			};
 			cmdLineSetup.parse(testArgs);
 		} else {

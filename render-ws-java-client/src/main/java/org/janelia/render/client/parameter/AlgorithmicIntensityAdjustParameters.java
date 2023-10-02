@@ -53,6 +53,13 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
 
+	@Parameter(
+			names = "--preEquilibrateIntensity",
+			description = "Apply translation to every coefficient tile to make the mean intensity equal to this value (default: null)",
+			arity = 0)
+	public boolean preEquilibrateIntensity = false;
+
+
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();
 	}

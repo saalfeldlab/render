@@ -6,8 +6,10 @@ import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IdentityModel;
+import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
@@ -57,6 +59,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		extends Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> {
 
 	private final FIBSEMIntensityCorrectionParameters<M> parameters;
+	private static final int ITERATIONS = 2000;
 
 	public AffineIntensityCorrectionBlockWorker(
 			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
@@ -106,11 +109,40 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				: new ImageProcessorCache(parameters.maxNumberOfCachedPixels(), true, false);
 
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = splitIntoCoefficientTiles(tiles, imageProcessorCache);
-		
-		final int iterations = 2000;
-		solveForGlobalCoefficients(coefficientTiles, iterations);
+
+		solveForGlobalCoefficients(coefficientTiles, ITERATIONS);
 
 		return coefficientTiles;
+	}
+
+	private void equilibrateIntensities(
+			final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
+			final double targetIntensity) {
+
+		LOG.info("equilibrateIntensities: entry, shifting intensity to make average equal to {}", targetIntensity);
+
+		final TranslationModel1D translation = new TranslationModel1D();
+
+		coefficientTiles.forEach((tileId, tiles) -> {
+			final List<Double> averages = blockData.idToAverages().get(tileId);
+
+			for (int i = 0; i < averages.size(); i++) {
+				final double average = averages.get(i);
+				final Tile<?> tile = tiles.get(i);
+				translation.set(targetIntensity - average);
+				tile.getMatches().forEach(m -> m.apply(translation));
+			}
+		});
+
+		coefficientTiles.forEach((tileId, tiles) -> {
+			for (final Tile<?> tile : tiles) {
+				try {
+					tile.fitModel();
+				} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+					throw new RuntimeException(e);
+				}
+			}
+		});
 	}
 
 	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> splitIntoCoefficientTiles(
@@ -217,6 +249,11 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		/* optimize */
 		final TileConfiguration tc = new TileConfiguration();
 		coefficientTiles.values().forEach(tc::addTiles);
+
+		if (blockData.solveTypeParameters().preEquilibrateIntensity()) {
+			final double targetIntensity = 0.5;
+			equilibrateIntensities(coefficientTiles, targetIntensity);
+		}
 
 		LOG.info("solveForGlobalCoefficients: optimizing {} tiles with {} threads", tc.getTiles().size(), numThreads);
 		try {
