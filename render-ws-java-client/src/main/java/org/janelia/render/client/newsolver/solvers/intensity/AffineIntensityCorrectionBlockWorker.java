@@ -6,10 +6,8 @@ import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IdentityModel;
-import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.NoninvertibleModelException;
-import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
@@ -41,7 +39,7 @@ import org.janelia.render.client.parameter.ZDistanceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.*;
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -121,26 +119,16 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		LOG.info("equilibrateIntensities: entry, shifting intensity to make average equal to {}", targetIntensity);
 
-		final TranslationModel1D translation = new TranslationModel1D();
+		final AffineModel1D affine = new AffineModel1D();
 
 		coefficientTiles.forEach((tileId, tiles) -> {
 			final List<Double> averages = blockData.idToAverages().get(tileId);
 
 			for (int i = 0; i < averages.size(); i++) {
 				final double average = averages.get(i);
-				final Tile<?> tile = tiles.get(i);
-				translation.set(targetIntensity - average);
-				tile.getMatches().forEach(m -> m.apply(translation));
-			}
-		});
-
-		coefficientTiles.forEach((tileId, tiles) -> {
-			for (final Tile<?> tile : tiles) {
-				try {
-					tile.fitModel();
-				} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
-					throw new RuntimeException(e);
-				}
+				final InterpolatedAffineModel1D<?, ?> model = (InterpolatedAffineModel1D<?, ?>) tiles.get(i).getModel();
+				affine.set(1.0, targetIntensity - average);
+				model.concatenate(affine);
 			}
 		});
 	}
