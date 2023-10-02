@@ -92,12 +92,12 @@ public class Bounds implements Serializable {
 
     @JsonIgnore
     public int getX() {
-        return (int) Math.floor(minX);
+        return minX.intValue();
     }
 
     @JsonIgnore
     public int getY() {
-        return (int) Math.ceil(minY);
+        return minY.intValue();
     }
 
     @JsonIgnore
