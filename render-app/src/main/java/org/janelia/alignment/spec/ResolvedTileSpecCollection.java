@@ -540,6 +540,16 @@ public class ResolvedTileSpecCollection implements Serializable {
         return sectionIdToTileIds;
     }
 
+    /**
+     * @return bounds built from the union of the bounds of all tiles in this collection
+     *         (or null if this collection does not have any tiles).
+     */
+    public Bounds toBounds() {
+        final Collection<TileSpec> tileSpecs = tileIdToSpecMap.values();
+        final Bounds identity = tileSpecs.isEmpty() ? null : tileSpecs.iterator().next().toTileBounds();
+        return tileSpecs.stream().map(ts -> (Bounds) ts.toTileBounds()).reduce(identity, Bounds::union);
+    }
+
     @Override
     public String toString() {
         return "{transformCount: " + getTransformCount() +
