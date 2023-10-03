@@ -1,5 +1,8 @@
 package org.janelia.render.client.newsolver.solvers.affine;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,8 +17,23 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.ErrorStatistic;
+import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.InterpolatedAffineModel2D;
+import mpicbg.models.Model;
+import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
+import mpicbg.models.RigidModel2D;
+import mpicbg.models.Tile;
+import mpicbg.models.TileConfiguration;
+import mpicbg.models.TileUtil;
+import mpicbg.models.TranslationModel2D;
+
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
@@ -39,23 +57,6 @@ import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.ErrorStatistic;
-import mpicbg.models.IllDefinedDataPointsException;
-import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.Model;
-import mpicbg.models.NoninvertibleModelException;
-import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
-import mpicbg.models.RigidModel2D;
-import mpicbg.models.Tile;
-import mpicbg.models.TileConfiguration;
-import mpicbg.models.TileUtil;
-import mpicbg.models.TranslationModel2D;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -746,28 +747,19 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 				// re-assemble allTileIds and idToTileSpec
 				// update all the maps
-				final ResolvedTileSpecCollection originalRTSC = blockData.rtsc();
-				final List<TileSpec> groupedTileSpecList = subgraph.stream()
+				final Set<String> groupedTileIds = subgraph.stream()
 						.map(groupedTile -> inputSolveItem.groupedTileToTiles().get(groupedTile))
 						.flatMap(Collection::stream)
 						.map(tile -> inputSolveItem.tileToIdMap().get(tile))
-						.map(originalRTSC::getTileSpec)
-						.collect(Collectors.toList());
+						.collect(Collectors.toSet());
 
-				final ResolvedTileSpecCollection newRTSC =
-						new ResolvedTileSpecCollection(originalRTSC.getTransformSpecs(),
-													   groupedTileSpecList);
-
-				final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> newBlockData = new BlockData<>(blockData.blockFactory(), // no copy necessary
-																											   blockData.solveTypeParameters(), // no copy necessary
-																											   id,
-																											   blockData.getFactoryBounds(),
-																											   newRTSC);
-				final AffineBlockDataWrapper<M, S> solveItem = new AffineBlockDataWrapper<>(newBlockData);
+				final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> splitBlockData =
+						blockData.buildSplitBlock(id, groupedTileIds);
+				final AffineBlockDataWrapper<M, S> solveItem = new AffineBlockDataWrapper<>(splitBlockData);
 
 				++id;
 
-				LOG.info("splitSolveItem: newBlockData={}, (old) blockData={}", newBlockData, blockData);
+				LOG.info("splitSolveItem: splitBlockData={}, blockData={}", splitBlockData, blockData);
 
 				// update all the maps
 				for ( final Tile< ? > groupedTile : subgraph )
@@ -779,7 +771,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.idToTileMap().put( tileId, t );
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-						newBlockData.getResults().recordModel(tileId, blockData.getResults().getModelFor(tileId));
+						splitBlockData.getResults().recordModel(tileId, blockData.getResults().getModelFor(tileId));
 
 						solveItem.idToStitchingModel().put(tileId, inputSolveItem.idToStitchingModel().get(tileId));
 

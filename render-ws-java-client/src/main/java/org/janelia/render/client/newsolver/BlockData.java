@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver;
 
 import java.io.Serializable;
 import java.util.Objects;
+import java.util.Set;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -86,7 +87,15 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	public Bounds boundingBox() { return solveTypeParameters().boundingBox(this); }
 
 	public P solveTypeParameters() { return solveTypeParameters; }
-	public BlockFactory blockFactory() { return blockFactory; }
+
+	public BlockData<R, P> buildSplitBlock(final int withId,
+										   final Set<String> withTileIds) {
+		return new BlockData<>(this.blockFactory,
+							   this.solveTypeParameters,
+							   withId,
+							   this.factoryBounds,
+							   rtsc().copyAndRetainTileSpecs(withTileIds));
+	}
 
 	public ResolvedTileSpecCollection rtsc() { return localResults.getResolvedTileSpecs(); }
 

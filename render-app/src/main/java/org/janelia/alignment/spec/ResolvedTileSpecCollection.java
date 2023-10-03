@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.CoordinateTransform;
@@ -439,6 +440,18 @@ public class ResolvedTileSpecCollection implements Serializable {
      */
     public void retainTileSpecs(final Set<String> tileIdsToKeep) {
         removeTileSpecs(tileIdsToKeep, false);
+    }
+
+    /**
+     * @return a copy of this collection that only contains tile specs with ids contained in tileIdsToKeep.
+     */
+    public ResolvedTileSpecCollection copyAndRetainTileSpecs(final Set<String> tileIdsToKeep) {
+        final List<TileSpec> tileSpecsToKeep = this.tileIdToSpecMap.values().stream()
+                .filter(ts -> tileIdsToKeep.contains(ts.getTileId())).collect(Collectors.toList());
+        final ResolvedTileSpecCollection copy = new ResolvedTileSpecCollection(getTransformSpecs(),
+                                                                               tileSpecsToKeep);
+        copy.removeUnreferencedTransforms();
+        return copy;
     }
 
     /**
