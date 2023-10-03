@@ -151,7 +151,7 @@ public class DistributedIntensityCorrectionSolver {
 
 		LOG.info("assembleBlocks: exit");
 
-		return assembler.createAssembly(allItems);
+		return assembler.createAssembly(allItems, blockFactory);
 	}
 
 	public void saveResultsAsNeeded(final ResultContainer<ArrayList<AffineModel1D>> finalizedItems)

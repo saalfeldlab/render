@@ -7,8 +7,6 @@ import java.util.Set;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
-import org.janelia.render.client.newsolver.assembly.WeightFunction;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 
@@ -33,9 +31,6 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	/** The smallest bounds containing the union of the bounds of all tiles within this block. */
 	private final Bounds populatedBounds;
 
-	// the BlockFactory that created this BlockData
-	final private BlockFactory blockFactory;
-
 	// contains solve-specific parameters and models
 	final private P solveTypeParameters;
 
@@ -44,18 +39,13 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	//
 	final private ResultContainer<R> localResults;
 
-	// TODO: replace BlockFactory argument by WeightFunction?
-	public BlockData(
-			final BlockFactory blockFactory, // knows how it was created for assembly later?
-			final P solveTypeParameters,
-			final int id,
-			final Bounds factoryBounds,
-			final ResolvedTileSpecCollection rtsc)
-	{
+	public BlockData(final P solveTypeParameters,
+					 final int id,
+					 final Bounds factoryBounds,
+					 final ResolvedTileSpecCollection rtsc) {
 		this.id = id;
 		this.factoryBounds = factoryBounds;
 		this.populatedBounds = rtsc.toBounds();
-		this.blockFactory = blockFactory;
 		this.solveTypeParameters = solveTypeParameters;
 
 		localResults = new ResultContainer<>(rtsc);
@@ -77,16 +67,11 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 		return populatedBounds;
 	}
 
-	public WeightFunction createWeightFunction() {
-		return blockFactory.createWeightFunction(this);
-	}
-
 	public P solveTypeParameters() { return solveTypeParameters; }
 
 	public BlockData<R, P> buildSplitBlock(final int withId,
 										   final Set<String> withTileIds) {
-		return new BlockData<>(this.blockFactory,
-							   this.solveTypeParameters,
+		return new BlockData<>(this.solveTypeParameters,
 							   withId,
 							   this.factoryBounds,
 							   rtsc().copyAndRetainTileSpecs(withTileIds));

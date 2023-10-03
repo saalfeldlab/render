@@ -63,8 +63,7 @@ public abstract class BlockFactory implements Serializable {
 			} else {
 				pruneRtsc(rtsc, bound);
 				LOG.info("   Loaded " + rtsc.getTileIds().size() + " tiles.");
-				final BlockData<R, P> block = new BlockData<>(this,
-															  parameterProvider.create(rtsc),
+				final BlockData<R, P> block = new BlockData<>(parameterProvider.create(rtsc),
 															  id,
 															  bound,
 															  rtsc);

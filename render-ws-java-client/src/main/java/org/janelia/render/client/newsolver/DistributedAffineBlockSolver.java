@@ -149,7 +149,9 @@ public class DistributedAffineBlockSolver
 
 		LOG.info("main: computed {} blocks, maxId={}", allItems.size(), maxId);
 
-		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup, allItems);
+		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup,
+																				allItems,
+																				alignmentSolver.blockFactory);
 
 		// save the re-aligned part
         LOG.info("main: saving target stack {}", cmdLineSetup.targetStack);
@@ -199,7 +201,8 @@ public class DistributedAffineBlockSolver
 
 	private static ResultContainer<AffineModel2D> solveAndCombineBlocks(
 			final AffineBlockSolverSetup cmdLineSetup,
-			final ArrayList<BlockData<AffineModel2D, ?>> allItems) {
+			final ArrayList<BlockData<AffineModel2D, ?>> allItems,
+			final BlockFactory blockFactory) {
 
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
 				new BlockCombiner<>(DistributedAffineBlockSolver::integrateGlobalModel,
@@ -216,7 +219,7 @@ public class DistributedAffineBlockSolver
 							a.set(r);
 							return a;});
 
-		return assembler.createAssembly(allItems);
+		return assembler.createAssembly(allItems, blockFactory);
 	}
 
 

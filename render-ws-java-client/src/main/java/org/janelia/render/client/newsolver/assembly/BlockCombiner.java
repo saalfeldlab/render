@@ -4,6 +4,7 @@ import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,8 +31,8 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
 	public void fuseGlobally(
 			final ResultContainer<Z> globalData,
-			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile
-	) {
+			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile,
+			final BlockFactory blockFactory) {
 		final HashMap<BlockData<R, ?>, G> blockToG = new HashMap<>();
 
 		blockToTile.forEach((block, tile) -> {
@@ -72,7 +73,8 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 				final I model = combineResultGlobal.apply(newModel, globalModel);
 				models.add(model);
 
-				final WeightFunction weight = blockToWeightFunctions.computeIfAbsent(block, BlockData::createWeightFunction);
+				final WeightFunction weight = blockToWeightFunctions.computeIfAbsent(block,
+																					 blockFactory::createWeightFunction);
 				final double w = weight.compute(midpointXY[0], midpointXY[1], z);
 				weights.add(w);
 

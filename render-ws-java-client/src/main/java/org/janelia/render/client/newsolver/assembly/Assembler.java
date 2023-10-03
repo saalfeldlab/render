@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,8 @@ public class Assembler<Z, G extends Model<G>, R>
 		this.converter = converter;
 	}
 
-	public ResultContainer<Z> createAssembly(final List<BlockData<R, ?>> blocks) {
+	public ResultContainer<Z> createAssembly(final List<BlockData<R, ?>> blocks,
+											 final BlockFactory blockFactory) {
 
 		// the trivial case of a single block, would crash with the code below
 		if (isTrivialCase(blocks)) {
@@ -59,7 +61,7 @@ public class Assembler<Z, G extends Model<G>, R>
 					globalSolver.globalSolve(blocks);
 
 			// now fuse blocks into a full assembly
-			blockCombiner.fuseGlobally(results, blockToTile);
+			blockCombiner.fuseGlobally(results, blockToTile, blockFactory);
 		} catch (final Exception e) {
 			throw new RuntimeException("failed assembly", e);
 		}
