@@ -60,14 +60,14 @@ public class GlobalSolver<G extends Model<G>, R> {
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
 		for (final BlockData<R, ?> solveItemA : blocks) {
-			LOG.info("globalSolve: solveItemA xy range is {}", solveItemA.boundingBox());
+			LOG.info("globalSolve: solveItemA xy range is {}", solveItemA.getPopulatedBounds());
 			otherBlocks.remove(solveItemA);
 
 			// tilespec is identical for all overlapping blocks
 			final ResolvedTileSpecCollection tileSpecs = solveItemA.rtsc();
 
 			for (final BlockData<R, ?> solveItemB : otherBlocks) {
-				LOG.info("globalSolve: solveItemB xy range is {}",solveItemB.boundingBox());
+				LOG.info("globalSolve: solveItemB xy range is {}", solveItemB.getPopulatedBounds());
 
 				final Set<String> commonTileIds = getCommonTileIds(solveItemA, solveItemB);
 				final List<PointMatch> matchesAtoB = new ArrayList<>();

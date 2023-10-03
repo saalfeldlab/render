@@ -109,7 +109,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			layerDistanceMaps = new HashMap<>(results.getZLayers().size());
 			this.resolution = resolution;
 
-			final Bounds stackBounds = block.boundingBox();
+			final Bounds stackBounds = block.getPopulatedBounds();
 			minX = stackBounds.getMinX();
 			minY = stackBounds.getMinY();
 

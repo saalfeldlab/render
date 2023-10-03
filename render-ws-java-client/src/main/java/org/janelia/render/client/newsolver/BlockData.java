@@ -81,11 +81,6 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 		return blockFactory.createWeightFunction(this);
 	}
 
-	/**
-	 * @return - the bounding box of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
-	 */
-	public Bounds boundingBox() { return solveTypeParameters().boundingBox(this); }
-
 	public P solveTypeParameters() { return solveTypeParameters; }
 
 	public BlockData<R, P> buildSplitBlock(final int withId,
