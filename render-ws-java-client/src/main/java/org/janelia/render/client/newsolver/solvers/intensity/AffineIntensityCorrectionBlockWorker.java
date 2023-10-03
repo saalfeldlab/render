@@ -113,26 +113,6 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return coefficientTiles;
 	}
 
-	private void equilibrateIntensities(
-			final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
-			final double targetIntensity) {
-
-		LOG.info("equilibrateIntensities: entry, shifting intensity to make average equal to {}", targetIntensity);
-
-		final AffineModel1D affine = new AffineModel1D();
-
-		coefficientTiles.forEach((tileId, tiles) -> {
-			final List<Double> averages = blockData.idToAverages().get(tileId);
-
-			for (int i = 0; i < averages.size(); i++) {
-				final double average = averages.get(i);
-				final InterpolatedAffineModel1D<?, ?> model = (InterpolatedAffineModel1D<?, ?>) tiles.get(i).getModel();
-				affine.set(1.0, targetIntensity - average);
-				model.concatenate(affine);
-			}
-		});
-	}
-
 	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> splitIntoCoefficientTiles(
 			final List<MinimalTileSpecWrapper> tiles,
 			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException {
@@ -238,11 +218,6 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		final TileConfiguration tc = new TileConfiguration();
 		coefficientTiles.values().forEach(tc::addTiles);
 
-		if (blockData.solveTypeParameters().preEquilibrateIntensity()) {
-			final double targetIntensity = 0.5;
-			equilibrateIntensities(coefficientTiles, targetIntensity);
-		}
-
 		LOG.info("solveForGlobalCoefficients: optimizing {} tiles with {} threads", tc.getTiles().size(), numThreads);
 		try {
 			TileUtil.optimizeConcurrently(new ErrorStatistic(iterations + 1), 0.01f, iterations, iterations, 0.75f, tc, tc.getTiles(), tc.getFixedTiles(), 1);
@@ -266,21 +241,24 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private void connectTilesWithinPatches(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
 		final Collection<TileSpec> allTiles = blockData.rtsc().getTileSpecs();
-
+		final boolean equilibrateIntensities = blockData.solveTypeParameters().equilibrateIntensities();
 
 		for (final TileSpec p : allTiles) {
-			final ArrayList<? extends Tile<?>> coefficientTile = coefficientTiles.get(p.getTileId());
+			final List<? extends Tile<?>> coefficientTile = coefficientTiles.get(p.getTileId());
+			final List<Double> averages = blockData.idToAverages().get(p.getTileId());
 			for (int i = 1; i < parameters.numCoefficients(); ++i) {
 				for (int j = 0; j < parameters.numCoefficients(); ++j) {
-					// connect left to right
 					final int left = getLinearIndex(i-1, j, parameters.numCoefficients());
 					final int right = getLinearIndex(i, j, parameters.numCoefficients());
-					identityConnect(coefficientTile.get(right), coefficientTile.get(left));
-
-					// connect top to bottom
 					final int top = getLinearIndex(j, i, parameters.numCoefficients());
 					final int bot = getLinearIndex(j, i-1, parameters.numCoefficients());
+
+					identityConnect(coefficientTile.get(right), coefficientTile.get(left));
 					identityConnect(coefficientTile.get(top), coefficientTile.get(bot));
+					if (equilibrateIntensities) {
+						connectAverages(coefficientTile.get(right), averages.get(right), coefficientTile.get(left), averages.get(left));
+						connectAverages(coefficientTile.get(top), averages.get(top), coefficientTile.get(bot), averages.get(bot));
+					}
 				}
 			}
 		}
@@ -291,6 +269,13 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	 */
 	private int getLinearIndex(final int x, final int y, final int n) {
 		return y * n + x;
+	}
+
+	private void connectAverages(final Tile<?> t1, final Double p1, final Tile<?> t2, final Double p2) {
+		final double weight = 2.0;
+		final List<PointMatch> matches = new ArrayList<>();
+		matches.add(new PointMatch(new Point(new double[] { p1 }), new Point(new double[] { p2 }), weight));
+		t1.connect(t2, matches);
 	}
 
 	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2) {

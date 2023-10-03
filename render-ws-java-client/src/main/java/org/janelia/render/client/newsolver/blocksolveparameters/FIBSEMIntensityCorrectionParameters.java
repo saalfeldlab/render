@@ -79,7 +79,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public double renderScale() { return renderScale; }
 	public int numCoefficients() { return numCoefficients; }
 	public ZDistanceParameters zDistance() { return zDistance; }
-	public boolean preEquilibrateIntensity() { return preEquilibrateIntensity; }
+	public boolean equilibrateIntensities() { return preEquilibrateIntensity; }
 
 	@Override
 	public Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(
