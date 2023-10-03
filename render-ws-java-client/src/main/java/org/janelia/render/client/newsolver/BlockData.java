@@ -1,8 +1,6 @@
 package org.janelia.render.client.newsolver;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Objects;
 
 import org.janelia.alignment.spec.Bounds;
@@ -44,10 +42,6 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	// below are the results that the worker has to fill up
 	//
 	final private ResultContainer<R> localResults;
-
-	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
-	// coefficient-tile intensity average for global intensity-correction
-	final HashMap<String, ArrayList<Double>> idToAverages = new HashMap<>();
 
 	// TODO: replace BlockFactory argument by WeightFunction?
 	public BlockData(
@@ -95,7 +89,6 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	public BlockFactory blockFactory() { return blockFactory; }
 
 	public ResolvedTileSpecCollection rtsc() { return localResults.getResolvedTileSpecs(); }
-	public HashMap<String, ArrayList<Double>> idToAverages() { return idToAverages; }
 
 	public ResultContainer<R> getResults() { return localResults; }
 

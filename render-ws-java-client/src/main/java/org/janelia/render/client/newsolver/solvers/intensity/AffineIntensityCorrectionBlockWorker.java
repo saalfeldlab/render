@@ -33,6 +33,7 @@ import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
 import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduceFilter;
 import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.parameter.ZDistanceParameters;
@@ -150,8 +151,11 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		for (final MinimalTileSpecWrapper tile : tiles)
 			averageComputations.add(exec.submit(() -> computeAverages(tile, parameters.numCoefficients(), parameters.renderScale(), meshResolution, imageProcessorCache)));
 
-		for (final Future<Pair<String, ArrayList<Double>>> average : averageComputations)
-			blockData.idToAverages().put(average.get().getA(), average.get().getB());
+		final ResultContainer<ArrayList<AffineModel1D>> results = blockData.getResults();
+		for (final Future<Pair<String, ArrayList<Double>>> average : averageComputations) {
+			results.recordAverages(average.get().getA(),
+								   average.get().getB());
+		}
 
 		exec.shutdown();
 		LOG.info("splitIntoCoefficientTiles: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());

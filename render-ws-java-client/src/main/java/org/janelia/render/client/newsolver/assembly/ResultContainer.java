@@ -4,6 +4,7 @@ import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -15,6 +16,11 @@ public class ResultContainer<M> implements Serializable {
 	final private Map<String, M> idToModel = new HashMap<>();
 	final private Map<Integer, Set<String>> zToTileId = new HashMap<>();
 	final private Map<String, Map<String, Double>> idToErrorMap = new HashMap<>();
+
+	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
+	// coefficient-tile intensity average for global intensity-correction
+	private final HashMap<String, List<Double>> idToAverages = new HashMap<>();
+
 	final private ResolvedTileSpecCollection rtsc;
 
 
@@ -42,6 +48,11 @@ public class ResultContainer<M> implements Serializable {
 		idToModel.put(tileId, model);
 	}
 
+	public void recordAverages(final String tileId,
+							   final List<Double> averages) {
+		idToAverages.put(tileId, averages);
+	}
+
 	public Set<String> getTileIds() {
 		return rtsc.getTileIds();
 	}
@@ -64,6 +75,10 @@ public class ResultContainer<M> implements Serializable {
 
 	public Map<String, Double> getErrorMapFor(final String tileId) {
 		return idToErrorMap.get(tileId);
+	}
+
+	public List<Double> getAveragesFor(final String tileId) {
+		return idToAverages.get(tileId);
 	}
 
 	/**
