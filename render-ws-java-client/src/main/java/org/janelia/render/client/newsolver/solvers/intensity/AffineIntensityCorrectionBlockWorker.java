@@ -77,7 +77,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
 
 		if (coefficientTiles == null)
-			throw new RuntimeException("AffineIntensityCorrectionBlockWorker: no coefficient tiles were computed");
+			throw new RuntimeException("AffineIntensityCorrectionBlockWorker: no coefficient tiles were computed for block " + blockData);
 
 		coefficientTiles.forEach((tileId, tiles) -> {
 			final ArrayList<AffineModel1D> models = new ArrayList<>();
@@ -88,7 +88,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			blockData.getResults().recordModel(tileId, models);
 		});
 
-		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());
+		LOG.info("AffineIntensityCorrectionBlockWorker: exit, blockData={}", blockData);
 	}
 
 	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<MinimalTileSpecWrapper> tiles) throws ExecutionException, InterruptedException {
@@ -211,7 +211,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return new FinalRealInterval(p1min, p1max);
 	}
 
-	private void solveForGlobalCoefficients(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles, final int iterations) {
+	@SuppressWarnings("SameParameterValue")
+	private void solveForGlobalCoefficients(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
+											final int iterations) {
 		connectTilesWithinPatches(coefficientTiles);
 
 		/* optimize */
@@ -401,7 +403,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			 * iterate over all pixels and feed matches into the match
 			 * matrix
 			 */
-			int label1 = 0, label2 = 0;
+			int label1, label2 = 0;
 			float weight1 = 0, weight2 = 0;
 			for (int i = 0; i < n; ++i) {
 				// lazily check if it pays to create a match

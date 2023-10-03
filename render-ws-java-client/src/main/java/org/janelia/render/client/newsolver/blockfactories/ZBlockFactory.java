@@ -76,8 +76,9 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 		private final double eps;
 
 		public ZDistanceWeightFunction(final BlockData<?, ?> block, final double eps) {
-			this.minZ = block.minZ();
-			this.maxZ = block.maxZ();
+			final Bounds populatedBlockBounds = block.getPopulatedBounds();
+			this.minZ = populatedBlockBounds.getMinZ();
+			this.maxZ = populatedBlockBounds.getMaxZ();
 			this.midpoint = (maxZ + minZ) / 2.0;
 			this.eps = eps;
 		}

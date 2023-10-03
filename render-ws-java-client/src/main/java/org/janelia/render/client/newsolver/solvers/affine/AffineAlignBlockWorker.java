@@ -195,7 +195,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		final ResolvedTileSpecsWithMatchPairs tileSpecsWithMatchPairs =
 				renderDataClient.getResolvedTilesWithMatchPairs(renderStack,
-																blockData.getBounds(),
+																blockData.getFactoryBounds(),
 																matchCollectionName,
 																null,
 																null);
@@ -761,14 +761,13 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> newBlockData = new BlockData<>(blockData.blockFactory(), // no copy necessary
 																											   blockData.solveTypeParameters(), // no copy necessary
 																											   id,
-																											   blockData.getBounds(),
+																											   blockData.getFactoryBounds(),
 																											   newRTSC);
 				final AffineBlockDataWrapper<M, S> solveItem = new AffineBlockDataWrapper<>(newBlockData);
 
 				++id;
 
-				LOG.info("splitSolveItem: block {}: old graph id={}, new graph id={}", newBlockData, blockData.getId(), newBlockData.getId());
-				LOG.info("splitSolveItem: block {}: min: {} > max: {}", newBlockData, newBlockData.minZ(), newBlockData.maxZ());
+				LOG.info("splitSolveItem: newBlockData={}, (old) blockData={}", newBlockData, blockData);
 
 				// update all the maps
 				for ( final Tile< ? > groupedTile : subgraph )
