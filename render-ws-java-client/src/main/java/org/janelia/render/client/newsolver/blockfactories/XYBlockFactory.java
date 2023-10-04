@@ -1,5 +1,9 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
+import ij.plugin.filter.EDM;
+import ij.process.ByteProcessor;
+import ij.process.FloatProcessor;
+
 import java.awt.Rectangle;
 import java.io.IOException;
 import java.io.Serializable;
@@ -8,10 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import ij.process.ByteProcessor;
-import ij.process.FloatProcessor;
-import ij.plugin.filter.EDM;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.spec.Bounds;
@@ -24,6 +26,8 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
@@ -115,7 +119,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 
 			results.getMatchedZLayers().forEach(z -> {
 				final List<TileSpec> layerTiles = results.getMatchedTileIdsForZLayer(z).stream()
-						// .sorted() // to be consistent with the render order of the web service
+						.sorted() // to be consistent with the render order of the web service and make logs consistent
 						.map(results.getResolvedTileSpecs()::getTileSpec)
 						.collect(Collectors.toList());
 				layerDistanceMaps.put(z, createLayerDistanceMap(layerTiles, resolution, stackBounds));
@@ -123,6 +127,9 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 		}
 
 		public static FloatProcessor createLayerDistanceMap(final List<TileSpec> layerTiles, final double resolution, final Bounds bounds) {
+
+			final String firstTileId = layerTiles.isEmpty() ? null : layerTiles.get(0).getTileId();
+			LOG.info("createLayerDistanceMap: entry, firstTileId={}", firstTileId);
 
 			layerTiles.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));
 
@@ -150,7 +157,14 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			final double yLocal = (y - minY) * resolution;
 
 			final FloatProcessor distanceMap = layerDistanceMaps.get((int)z);
+			if (distanceMap == null) {
+				final List<Integer> mappedZs = layerDistanceMaps.keySet().stream().sorted().collect(Collectors.toList());
+				throw new IllegalStateException("failed to find distanceMap for z " + z + ", maps exist for z values " + mappedZs);
+			}
+			
 			return distanceMap.getInterpolatedValue(xLocal, yLocal);
 		}
 	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(XYBlockFactory.class);
 }
