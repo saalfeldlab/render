@@ -120,7 +120,7 @@ public class DistributedAffineBlockSolver
 
 		final ArrayList<Callable<List<BlockData<AffineModel2D, ?>>>> workers = new ArrayList<>();
 
-		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block, alignmentSolver, cmdLineSetup)));
+		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block, cmdLineSetup)));
 
 		final ArrayList<BlockData<AffineModel2D, ?>> allItems = new ArrayList<>();
 		final List<Throwable> workerExceptions = new ArrayList<>();
@@ -143,11 +143,7 @@ public class DistributedAffineBlockSolver
 			throw new IllegalStateException("no blocks were computed, something is wrong");
 		}
 
-		// avoid duplicate id assigned while splitting solveitems in the workers
-		// but do keep ids that are smaller or equal to the maxId of the initial solveset
-		final int maxId = WorkerTools.fixIds(allItems, alignmentSolver.col.maxId());
-
-		LOG.info("main: computed {} blocks, maxId={}", allItems.size(), maxId);
+		LOG.info("main: computed {} blocks", allItems.size());
 
 		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup,
 																				allItems,
@@ -182,12 +178,9 @@ public class DistributedAffineBlockSolver
 
 	private static List<BlockData<AffineModel2D, ?>> createAndRunWorker(
 			final BlockData<AffineModel2D, ?> block,
-			final DistributedAffineBlockSolver alignmentSolver,
 			final AffineBlockSolverSetup cmdLineSetup) throws NoninvertibleModelException, IOException, ExecutionException, InterruptedException {
 
-			final Worker<AffineModel2D, ?> worker = block.createWorker(
-					alignmentSolver.col.maxId() + 1,
-					cmdLineSetup.distributedSolve.threadsWorker);
+			final Worker<AffineModel2D, ?> worker = block.createWorker(cmdLineSetup.distributedSolve.threadsWorker);
 
 			worker.run();
 

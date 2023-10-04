@@ -94,10 +94,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	// created by SolveItemData.createWorker()
 	public AffineAlignBlockWorker(
 			final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
-			final int startId,
 			final int numThreads )
 	{
-		super( startId, blockData, numThreads );
+		super(blockData, numThreads);
 
 		final FIBSEMAlignmentParameters<M, S> parameters = blockData.solveTypeParameters();
 		this.matchDataClient = new RenderDataClient(parameters.baseDataUrl(),
@@ -143,7 +142,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		connectGroupedTiles(pairs, inputSolveItem);
 
-		final List<AffineBlockDataWrapper<M, S>> solveItems = splitSolveItem(inputSolveItem, startId);
+		final List<AffineBlockDataWrapper<M, S>> solveItems = splitSolveItem(inputSolveItem);
 
 		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
 		{
@@ -699,7 +698,11 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				else
 				{
 					final String tileId = tileToId.get( set.iterator().next() );
-					solveItem.idToStitchingModel().put( tileId, solveItem.idToPreviousModel().get( tileId ).copy() );
+					final AffineModel2D previousModel = solveItem.idToPreviousModel().get(tileId);
+					if (previousModel == null) {
+						throw new IllegalStateException("failed to find previous model for tile " + tileId + " in block " + blockData);
+					}
+					solveItem.idToStitchingModel().put( tileId, previousModel.copy());
 
 					// assign the original tile (we made a new one for stitching with a different model) to its grouped tile
 					solveItem.tileToGroupedTile().put( solveItem.idToTileMap().get( tileId ), groupedTile );
@@ -713,11 +716,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		}
 	}
 
-	protected ArrayList<AffineBlockDataWrapper<M, S>> splitSolveItem(final AffineBlockDataWrapper<M, S> inputSolveItem, final int startId)
+	protected ArrayList<AffineBlockDataWrapper<M, S>> splitSolveItem(final AffineBlockDataWrapper<M, S> inputSolveItem)
 	{
-		// assigning new id's to the solve items (they collide for now with other workers, fix upon merging)
-		int id = startId + 1;
-
 		final ArrayList<AffineBlockDataWrapper<M, S>> solveItems = new ArrayList<>();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
@@ -754,10 +754,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						.collect(Collectors.toSet());
 
 				final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> splitBlockData =
-						blockData.buildSplitBlock(id, groupedTileIds);
+						blockData.buildSplitBlock(groupedTileIds);
 				final AffineBlockDataWrapper<M, S> solveItem = new AffineBlockDataWrapper<>(splitBlockData);
-
-				++id;
 
 				LOG.info("splitSolveItem: splitBlockData={}, blockData={}", splitBlockData, blockData);
 
@@ -819,7 +817,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			final Map<String, Double> weights = blockOptimizer.getWeightsForRun(k);
 			LOG.info("solve: block {}, run {}: l(rigid)={}, l(translation)={}, l(regularization)={}",
-					solveItem.blockData().getId(), k, weights.get(AlignmentModelType.RIGID.name()), weights.get(AlignmentModelType.TRANSLATION.name()), weights.get(AlignmentModelType.REGULARIZATION.name()));
+					solveItem.blockData(), k, weights.get(AlignmentModelType.RIGID.name()), weights.get(AlignmentModelType.TRANSLATION.name()), weights.get(AlignmentModelType.REGULARIZATION.name()));
 
 			for (final Tile<?> tile : tileConfig.getTiles()) {
 				final AlignmentModel model = (AlignmentModel) tile.getModel();

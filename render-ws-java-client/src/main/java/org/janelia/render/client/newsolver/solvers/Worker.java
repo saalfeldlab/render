@@ -19,21 +19,14 @@ import mpicbg.models.NoninvertibleModelException;
  */
 public abstract class Worker <R, P extends BlockDataSolveParameters<?, R, P>>
 {
-	// for assigning new id's when splitting BlockData
-	final protected int startId;
-
 	final protected BlockData<R, P> blockData;
 	final protected RenderDataClient renderDataClient;
 	final protected String renderStack;
 
 	final protected int numThreads;
 
-	public Worker(
-			final int startId,
-			final BlockData<R, P> blockData,
-			final int numThreads )
-	{
-		this.startId = startId;
+	public Worker(final BlockData<R, P> blockData,
+				  final int numThreads) {
 		this.blockData = blockData;
 		this.renderDataClient =
 				new RenderDataClient(
@@ -57,7 +50,6 @@ public abstract class Worker <R, P extends BlockDataSolveParameters<?, R, P>>
 
 	@Override
 	public String toString() {
-		final String blockId = blockData == null ? "null" : String.valueOf(blockData.getId());
-		return "{\"startId\": " + startId + ", \"blockId\": " + blockId + '}';
+		return "worker for block " + blockData;
 	}
 }

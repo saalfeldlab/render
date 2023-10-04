@@ -61,10 +61,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	public AffineIntensityCorrectionBlockWorker(
 			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
-			final int startId,
 			final int numThreads) throws IOException {
 
-		super(startId, blockData, numThreads);
+		super(blockData, numThreads);
 		parameters = blockData.solveTypeParameters();
 	}
 

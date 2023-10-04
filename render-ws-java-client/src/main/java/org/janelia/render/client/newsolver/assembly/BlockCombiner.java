@@ -51,8 +51,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 		for (final Map.Entry<String, List<BlockData<R, ?>>> entry : tileIdToBlocks.entrySet()) {
 			final String tileId = entry.getKey();
 			final List<BlockData<R, ?>> blocksForTile = entry.getValue();
-			final int[] blockIds = blocksForTile.stream().mapToInt(BlockData::getId).toArray();
-			LOG.info("tile '" + tileId + "' is in following blocks: " + Arrays.toString(blockIds));
+			// LOG.debug("fuseGlobally: tile '{}' is in following blocks: {}", tileId, blocksForTile);
 
 			// all tileSpecs are identical for all overlapping blocks
 			final TileSpec tile = blocksForTile.get(0).rtsc().getTileSpec(tileId);

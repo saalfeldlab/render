@@ -43,9 +43,8 @@ public abstract class BlockFactory implements Serializable {
 		final ArrayList<BlockData<R, P>> blockDataList = new ArrayList<>();
 
 		// fetch metadata from render
-		int id = 0;
 		for (final Bounds bound : blockLayout) {
-			LOG.info("Try to load block " + id + ": " + bound);
+			LOG.info("blockCollectionFromLayout: load block for {}", bound);
 			ResolvedTileSpecCollection rtsc;
 
 			try {
@@ -59,16 +58,14 @@ public abstract class BlockFactory implements Serializable {
 			}
 
 			if (rtsc == null || rtsc.getTileCount() == 0) {
-				LOG.info("   Loaded null tiles, skipping this block.");
+				LOG.info("blockCollectionFromLayout: no tiles found, skipping this block");
 			} else {
 				pruneRtsc(rtsc, bound);
-				LOG.info("   Loaded " + rtsc.getTileIds().size() + " tiles.");
+				LOG.info("blockCollectionFromLayout: loaded {} tiles", rtsc.getTileCount());
 				final BlockData<R, P> block = new BlockData<>(parameterProvider.create(rtsc),
-															  id,
 															  bound,
 															  rtsc);
 				blockDataList.add(block);
-				id++;
 			}
 		}
 

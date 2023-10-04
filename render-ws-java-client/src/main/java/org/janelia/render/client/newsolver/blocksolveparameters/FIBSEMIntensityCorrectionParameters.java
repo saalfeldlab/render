@@ -79,10 +79,9 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	@Override
 	public Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(
 			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
-			final int startId,
 			final int threadsWorker) {
 		try {
-			return new AffineIntensityCorrectionBlockWorker<>(blockData, startId, threadsWorker);
+			return new AffineIntensityCorrectionBlockWorker<>(blockData, threadsWorker);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}

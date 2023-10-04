@@ -76,6 +76,5 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 
 	public abstract Worker<R, P> createWorker(
 			final BlockData<R, P> blockData,
-			final int startId,
 			final int threadsWorker);
 }

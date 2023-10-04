@@ -1,7 +1,6 @@
 package org.janelia.render.client.newsolver;
 
 import java.io.Serializable;
-import java.util.Objects;
 import java.util.Set;
 
 import org.janelia.alignment.spec.Bounds;
@@ -23,8 +22,6 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 
-	private int id;
-
 	/** The bounds of this block as assigned by its factory. */
 	private final Bounds factoryBounds;
 
@@ -40,18 +37,14 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	final private ResultContainer<R> localResults;
 
 	public BlockData(final P solveTypeParameters,
-					 final int id,
 					 final Bounds factoryBounds,
 					 final ResolvedTileSpecCollection rtsc) {
-		this.id = id;
 		this.factoryBounds = factoryBounds;
 		this.populatedBounds = rtsc.toBounds();
 		this.solveTypeParameters = solveTypeParameters;
 
 		localResults = new ResultContainer<>(rtsc);
 	}
-
-	public int getId() { return id; }
 
 	/**
 	 * @return the bounds of this block as assigned by its factory.
@@ -69,10 +62,8 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 
 	public P solveTypeParameters() { return solveTypeParameters; }
 
-	public BlockData<R, P> buildSplitBlock(final int withId,
-										   final Set<String> withTileIds) {
+	public BlockData<R, P> buildSplitBlock(final Set<String> withTileIds) {
 		return new BlockData<>(this.solveTypeParameters,
-							   withId,
 							   this.factoryBounds,
 							   rtsc().copyAndRetainTileSpecs(withTileIds));
 	}
@@ -81,35 +72,14 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 
 	public ResultContainer<R> getResults() { return localResults; }
 
-	public void assignUpdatedId( final int id ) { this.id = id; }
-
-	public Worker<R, P> createWorker( final int startId, final int threadsWorker )
-	{
-		return solveTypeParameters().createWorker( this , startId, threadsWorker );
+	public Worker<R, P> createWorker(final int threadsWorker) {
+		return solveTypeParameters().createWorker( this , threadsWorker );
 	}
-
-	@Override
-	public int hashCode() {
-		return Objects.hash(id, factoryBounds);
-	}
-
-	@Override
-	public boolean equals(final Object obj) {
-		if (this == obj) {
-			return true;
-		} else if (obj == null || getClass() != obj.getClass()) {
-			return false;
-		}
-		final BlockData<?, ?> that = (BlockData<?, ?>) obj;
-		if (this.id != that.id) {
-			return false;
-		}
-        return Objects.equals(this.factoryBounds, that.factoryBounds);
-    }
-
+	
 	@Override
 	public String toString() {
-		return "{\"id:\" " + id + ", \"factoryBounds\": " + factoryBounds + '}';
+		// include hash code in toString so that to help differentiate between split blocks in logs
+		return factoryBounds + "@" + Integer.toHexString(hashCode());
 	}
 
 	public int getTileCount() {

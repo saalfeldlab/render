@@ -110,10 +110,9 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	@Override
 	public Worker<AffineModel2D, FIBSEMAlignmentParameters<M, S>> createWorker(
 			final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
-			final int startId,
 			final int threadsWorker)
 	{
-		return new AffineAlignBlockWorker<>( blockData, startId, threadsWorker );
+		return new AffineAlignBlockWorker<>(blockData, threadsWorker);
 	}
 
 	@Override
