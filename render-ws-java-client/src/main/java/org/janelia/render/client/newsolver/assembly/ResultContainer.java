@@ -9,12 +9,11 @@ import java.util.Map;
 import java.util.Set;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
 
 public class ResultContainer<M> implements Serializable {
 
 	final private Map<String, M> idToModel = new HashMap<>();
-	final private Map<Integer, Set<String>> zToTileId = new HashMap<>();
+	final private Map<Integer, Set<String>> zToMatchedTileIds = new HashMap<>();
 	final private Map<String, Map<String, Double>> idToErrorMap = new HashMap<>();
 
 	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
@@ -26,11 +25,12 @@ public class ResultContainer<M> implements Serializable {
 
 	public ResultContainer(final ResolvedTileSpecCollection rtsc) {
 		this.rtsc = rtsc;
-		for (final TileSpec tileSpec : rtsc.getTileSpecs()) {
-			final String tileId = tileSpec.getTileId();
-			final Integer z = tileSpec.getZ().intValue();
-			zToTileId.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
-		}
+	}
+
+	public void recordMatchedTile(final int integerZ,
+								  final String tileId) {
+		final Set<String> matchedTileIdsForZ = zToMatchedTileIds.computeIfAbsent(integerZ, k -> new HashSet<>());
+		matchedTileIdsForZ.add(tileId);
 	}
 
 	public void recordAllErrors(final String tileId, final Map<String, Double> errorMap) {
@@ -57,12 +57,12 @@ public class ResultContainer<M> implements Serializable {
 		return rtsc.getTileIds();
 	}
 
-	public Set<String> getTileIdsForZLayer(final int z) {
-		return zToTileId.get(z);
+	public Set<String> getMatchedTileIdsForZLayer(final int z) {
+		return zToMatchedTileIds.get(z);
 	}
 
-	public Collection<Integer> getZLayers() {
-		return zToTileId.keySet();
+	public Collection<Integer> getMatchedZLayers() {
+		return zToMatchedTileIds.keySet();
 	}
 
 	public M getModelFor(final String tileId) {

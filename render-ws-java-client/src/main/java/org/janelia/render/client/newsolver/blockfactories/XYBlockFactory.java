@@ -106,15 +106,15 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 
 		public XYDistanceWeightFunction(final BlockData<?, ?> block, final double resolution) {
 			final ResultContainer<?> results = block.getResults();
-			layerDistanceMaps = new HashMap<>(results.getZLayers().size());
+			layerDistanceMaps = new HashMap<>(results.getMatchedZLayers().size());
 			this.resolution = resolution;
 
 			final Bounds stackBounds = block.getPopulatedBounds();
 			minX = stackBounds.getMinX();
 			minY = stackBounds.getMinY();
 
-			results.getZLayers().forEach(z -> {
-				final List<TileSpec> layerTiles = results.getTileIdsForZLayer(z).stream()
+			results.getMatchedZLayers().forEach(z -> {
+				final List<TileSpec> layerTiles = results.getMatchedTileIdsForZLayer(z).stream()
 						// .sorted() // to be consistent with the render order of the web service
 						.map(results.getResolvedTileSpecs()::getTileSpec)
 						.collect(Collectors.toList());

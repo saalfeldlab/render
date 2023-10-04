@@ -182,6 +182,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			throws IOException {
 
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = inputSolveItem.blockData();
+		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 
 		Integer maxZDistance = blockData.solveTypeParameters().maxZRangeMatches(); // TODO: move this parameter to API query
 		if (maxZDistance < 0) {
@@ -230,6 +231,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			final int pZ = pTileSpec.getIntegerZ();
 			final int qZ = qTileSpec.getIntegerZ();
+
+			blockResults.recordMatchedTile(pZ, pId);
+			blockResults.recordMatchedTile(qZ, qId);
 
 			// if the pair is from the same layer we remember the current index in the pairs list for stitching
 			if (pZ == qZ) {
@@ -515,6 +519,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final int numThreads)
 	{
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 		final int maxPlateauWidthStitching = blockData.solveTypeParameters().maxPlateauWidthStitching();
 		final double maxAllowedErrorStitching = blockData.solveTypeParameters().maxAllowedErrorStitching();
 		final int maxIterationsStitching = blockData.solveTypeParameters().maxIterationsStitching();
@@ -522,7 +527,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		// combine tiles per layer that are be stitched first, but iterate over all z's 
 		// (also those only consisting of single tiles, they are connected in z though)
-		final ArrayList<Integer> zList = new ArrayList<>(blockData.getResults().getZLayers());
+		final ArrayList<Integer> zList = new ArrayList<>(blockResults.getMatchedZLayers());
 		Collections.sort( zList );
 
 		for ( final int z : zList )
@@ -588,7 +593,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 
 			// add all missing TileIds as unconnected Tiles
-			for (final String tileId : blockData.getResults().getTileIdsForZLayer(z))
+			for (final String tileId : blockResults.getMatchedTileIdsForZLayer(z))
 				if ( !idTotile.containsKey( tileId ) )
 				{
 					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, unconnected tileId {}", blockData, tileId);
@@ -724,6 +729,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final ArrayList<Set<Tile<?>>> graphs = WorkerTools.safelyIdentifyConnectedGraphs(new HashSet<>(inputSolveItem.tileToGroupedTile().values()));
 
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = inputSolveItem.blockData();
+		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 		LOG.info("splitSolveItem: block {}: Graph consists of {} subgraphs.", blockData, graphs.size());
 
 		if (graphs.isEmpty())
@@ -769,7 +775,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.idToTileMap().put( tileId, t );
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-						splitBlockData.getResults().recordModel(tileId, blockData.getResults().getModelFor(tileId));
+						splitBlockData.getResults().recordModel(tileId, blockResults.getModelFor(tileId));
 
 						solveItem.idToStitchingModel().put(tileId, inputSolveItem.idToStitchingModel().get(tileId));
 
@@ -791,6 +797,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final int numThreads ) throws InterruptedException, ExecutionException
 	{
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 		final PreAlign preAlign = blockData.solveTypeParameters().preAlign();
 
 		final List<Integer> blockOptimizerIterations = blockData.solveTypeParameters().blockOptimizerIterations();
@@ -867,7 +874,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			LOG.info("solve: block {}: grouped model for tile {} is {}", blockData, tileId, tileIdToGroupModel.get(tileId));
 
-			blockData.getResults().recordModel(tileId, affine);
+			blockResults.recordModel(tileId, affine);
 			LOG.info("solve: block {}: tile {} model from grouped tile is {}", blockData, tileId, affine);
 		}
 	}
@@ -916,7 +923,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		// for local fits
 		final Model< ? > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
 
-		final ResultContainer<AffineModel2D> results = blockData.getResults();
+		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 
 		for (final CanvasMatches match : canvasMatches) {
 
@@ -935,11 +942,11 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					blockData.solveTypeParameters().stitchingSolveModelInstance(pTileSpec.getZ().intValue()),
 					pTileSpec,
 					qTileSpec,
-					results.getModelFor(pTileId),
-					results.getModelFor(qTileId),
+					blockResults.getModelFor(pTileId),
+					blockResults.getModelFor(qTileId),
 					match.getMatches());
 
-			results.recordPairwiseTileError(pTileId, qTileId, vDiff);
+			blockResults.recordPairwiseTileError(pTileId, qTileId, vDiff);
 		}
 
 		LOG.info("computeSolveItemErrors, exit");
