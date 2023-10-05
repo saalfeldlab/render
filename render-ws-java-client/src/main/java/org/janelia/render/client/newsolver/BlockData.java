@@ -39,11 +39,17 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	public BlockData(final P solveTypeParameters,
 					 final Bounds factoryBounds,
 					 final ResolvedTileSpecCollection rtsc) {
-		this.factoryBounds = factoryBounds;
-		this.populatedBounds = rtsc.toBounds();
-		this.solveTypeParameters = solveTypeParameters;
+		this(factoryBounds, solveTypeParameters, rtsc.toBounds(), new ResultContainer<>(rtsc));
+	}
 
-		localResults = new ResultContainer<>(rtsc);
+	private BlockData(final Bounds factoryBounds,
+					  final P solveTypeParameters,
+					  final Bounds populatedBounds,
+					  final ResultContainer<R> localResults) {
+		this.factoryBounds = factoryBounds;
+		this.populatedBounds = populatedBounds;
+		this.solveTypeParameters = solveTypeParameters;
+		this.localResults = localResults;
 	}
 
 	/**
@@ -63,9 +69,12 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	public P solveTypeParameters() { return solveTypeParameters; }
 
 	public BlockData<R, P> buildSplitBlock(final Set<String> withTileIds) {
-		return new BlockData<>(this.solveTypeParameters,
-							   this.factoryBounds,
-							   rtsc().copyAndRetainTileSpecs(withTileIds));
+		final ResultContainer<R> splitResults = this.localResults.buildSplitResult(withTileIds);
+		final Bounds splitPopulatedBounds = splitResults.getResolvedTileSpecs().toBounds();
+		return new BlockData<>(this.factoryBounds,
+							   this.solveTypeParameters,
+							   splitPopulatedBounds,
+							   splitResults);
 	}
 
 	public ResolvedTileSpecCollection rtsc() { return localResults.getResolvedTileSpecs(); }
@@ -78,8 +87,16 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	
 	@Override
 	public String toString() {
-		// include hash code in toString so that to help differentiate between split blocks in logs
+		// include hash code in toString to help differentiate between split blocks in logs
 		return factoryBounds + "@" + Integer.toHexString(hashCode());
+	}
+
+	public String toDetailsString() {
+		return "{\"hashCode\": \"" + Integer.toHexString(hashCode()) +
+			   "\", \"factoryBounds\": " + factoryBounds +
+			   ", \"populatedBounds\": " + populatedBounds +
+			   "\", \"localResults\": " + localResults.toDetailsString() +
+			   ", \"solveTypeParametersClass\": \"" + solveTypeParameters.getClass() + '}';
 	}
 
 	public int getTileCount() {

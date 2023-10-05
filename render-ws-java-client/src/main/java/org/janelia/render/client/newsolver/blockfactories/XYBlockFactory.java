@@ -7,6 +7,7 @@ import ij.process.FloatProcessor;
 import java.awt.Rectangle;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -117,7 +118,15 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			minX = stackBounds.getMinX();
 			minY = stackBounds.getMinY();
 
-			results.getMatchedZLayers().forEach(z -> {
+			final Collection<Integer> matchedZLayers = results.getMatchedZLayers();
+			if (matchedZLayers.isEmpty()) {
+				final List<String> tileIds = results.getTileIds().stream().sorted().collect(Collectors.toList());
+				LOG.warn("XYDistanceWeightFunction ctor: block {} results with no matchedZLayers has {} tileIds: {}",
+						 block, tileIds.size(), tileIds);
+				throw new IllegalStateException("block " + block + " has no matched z layers");
+			}
+
+			matchedZLayers.forEach(z -> {
 				final List<TileSpec> layerTiles = results.getMatchedTileIdsForZLayer(z).stream()
 						.sorted() // to be consistent with the render order of the web service and make logs consistent
 						.map(results.getResolvedTileSpecs()::getTileSpec)

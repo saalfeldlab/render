@@ -244,6 +244,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			matchPairs.add(pair);
 		}
 
+		final List<String> unmatchedTileIds = blockResults.findAndRemoveUnmatchedTiles().stream().sorted().collect(Collectors.toList());
+		if (! unmatchedTileIds.isEmpty()) {
+			LOG.warn("assembleMatchData: removed {} unmatched tiles from block {}, removed tileIds are: {}",
+					 unmatchedTileIds.size(), blockData, unmatchedTileIds);
+		}
+
 		return matchPairs;
 	}
 
@@ -729,7 +735,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final ArrayList<Set<Tile<?>>> graphs = WorkerTools.safelyIdentifyConnectedGraphs(new HashSet<>(inputSolveItem.tileToGroupedTile().values()));
 
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = inputSolveItem.blockData();
-		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 		LOG.info("splitSolveItem: block {}: Graph consists of {} subgraphs.", blockData, graphs.size());
 
 		if (graphs.isEmpty())
@@ -744,6 +749,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		}
 		else
 		{
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("splitSolveItem: parent block details are {}", blockData.toDetailsString());
+			}
+
 			int graphCount = 0;
 
 			for ( final Set< Tile< ? > > subgraph : graphs ) // TODO: type sets properly
@@ -763,7 +772,11 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						blockData.buildSplitBlock(groupedTileIds);
 				final AffineBlockDataWrapper<M, S> solveItem = new AffineBlockDataWrapper<>(splitBlockData);
 
-				LOG.info("splitSolveItem: splitBlockData={}, blockData={}", splitBlockData, blockData);
+				LOG.info("splitSolveItem: splitBlockData={}, parentBlockData={}", splitBlockData, blockData);
+
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("splitSolveItem: split block details are {}", splitBlockData.toDetailsString());
+				}
 
 				// update all the maps
 				for ( final Tile< ? > groupedTile : subgraph )
@@ -775,8 +788,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.idToTileMap().put( tileId, t );
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-						splitBlockData.getResults().recordModel(tileId, blockResults.getModelFor(tileId));
-
 						solveItem.idToStitchingModel().put(tileId, inputSolveItem.idToStitchingModel().get(tileId));
 
 						final Tile< M > groupedTileCast = inputSolveItem.tileToGroupedTile().get( t );
@@ -949,8 +960,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			blockResults.recordPairwiseTileError(pTileId, qTileId, vDiff);
 		}
 
-		LOG.info("computeSolveItemErrors, exit");
+		LOG.info("computeSolveItemErrors: exit");
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
+	private static final Logger LOG = LoggerFactory.getLogger(AffineAlignBlockWorker.class);
 }
