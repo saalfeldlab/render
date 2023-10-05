@@ -41,13 +41,14 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 		});
 
 		final Map<String, List<BlockData<R, ?>>> tileIdToBlocks = new HashMap<>();
+		final Map<BlockData<R, ?>, WeightFunction> blockToWeightFunctions = new HashMap<>();
 		for (final BlockData<R, ?> block : blockToTile.keySet()) {
 			for (final String tileId : block.getResults().getTileIds()) {
 				tileIdToBlocks.computeIfAbsent(tileId, k -> new ArrayList<>()).add(block);
 			}
+			blockToWeightFunctions.put(block, blockFactory.createWeightFunction(block));
 		}
 
-		final Map<BlockData<R, ?>, WeightFunction> blockToWeightFunctions = new HashMap<>();
 		for (final Map.Entry<String, List<BlockData<R, ?>>> entry : tileIdToBlocks.entrySet()) {
 			final String tileId = entry.getKey();
 			final List<BlockData<R, ?>> blocksForTile = entry.getValue();
@@ -67,13 +68,15 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 				final R newModel = block.getResults().getModelFor(tileId);
 				// TODO: confirm this is proper way to handle, consider moving retrieval to block method and put check there
 				if (newModel == null) {
-					throw new IllegalArgumentException("failed to find new model for tile " + tileId);
+					throw new IllegalStateException("failed to find new model for tile " + tileId + " in block " + block);
 				}
 				final I model = combineResultGlobal.apply(newModel, globalModel);
 				models.add(model);
 
-				final WeightFunction weight = blockToWeightFunctions.computeIfAbsent(block,
-																					 blockFactory::createWeightFunction);
+				final WeightFunction weight = blockToWeightFunctions.get(block);
+				if (weight == null) {
+					throw new IllegalStateException("failed to find weight function for block " + block + " associated with tileId " + tileId);
+				}
 				final double w = weight.compute(midpointXY[0], midpointXY[1], z);
 				weights.add(w);
 
@@ -85,7 +88,8 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 			}
 
 			final List<Double> normalizedWeights = normalize(weights);
-			LOG.info("tile '" + tileId + "', models are fused following weights: " + Arrays.toString(normalizedWeights.toArray()));
+			LOG.debug("fuseGlobally: tile '{}' models are fused following weights: {}",
+					  tileId, Arrays.toString(normalizedWeights.toArray()));
 			final Z tileModel = fusion.apply(models, normalizedWeights);
 			globalData.recordModel(tileId, tileModel);
 			globalData.recordAllErrors(tileId, error);
