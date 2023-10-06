@@ -11,8 +11,7 @@ import org.janelia.render.client.newsolver.solvers.Worker;
 
 /**
  * Should contain only geometric data, nothing specific to the type of solve
- * Will need to add this parameter object later rather than extending the class I think
- * 
+ *
  * @author preibischs
  *
  * @param <R> - the result
@@ -22,58 +21,57 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 
-	/** The bounds of this block as assigned by its factory. */
-	private final Bounds factoryBounds;
+	/**
+	 * The original bounds of this block (as assigned by its factory) which likely differs from the bounds
+	 * of all tiles in the block ( see {@link #getPopulatedBounds()} ).  Blocks that get split based upon
+	 * tile connectivity will have the same originalBounds, but different populatedBounds.
+	 */
+	private final Bounds originalBounds;
 
-	/** The smallest bounds containing the union of the bounds of all tiles within this block. */
-	private final Bounds populatedBounds;
+	/** Solve-specific parameters and models. */
+	private final P solveTypeParameters;
 
-	// contains solve-specific parameters and models
-	final private P solveTypeParameters;
-
-	//
-	// below are the results that the worker has to fill up
-	//
-	final private ResultContainer<R> localResults;
+	/** Results populated by worker. */
+	private final ResultContainer<R> localResults;
 
 	public BlockData(final P solveTypeParameters,
-					 final Bounds factoryBounds,
+					 final Bounds originalBounds,
 					 final ResolvedTileSpecCollection rtsc) {
-		this(factoryBounds, solveTypeParameters, rtsc.toBounds(), new ResultContainer<>(rtsc));
+		this(originalBounds, solveTypeParameters, new ResultContainer<>(rtsc));
 	}
 
-	private BlockData(final Bounds factoryBounds,
+	private BlockData(final Bounds originalBounds,
 					  final P solveTypeParameters,
-					  final Bounds populatedBounds,
 					  final ResultContainer<R> localResults) {
-		this.factoryBounds = factoryBounds;
-		this.populatedBounds = populatedBounds;
+		this.originalBounds = originalBounds;
 		this.solveTypeParameters = solveTypeParameters;
 		this.localResults = localResults;
 	}
 
 	/**
-	 * @return the bounds of this block as assigned by its factory.
+	 * @return the original bounds of this block (as assigned by its factory).
 	 */
-	public Bounds getFactoryBounds() {
-		return factoryBounds;
+	public Bounds getOriginalBounds() {
+		return originalBounds;
 	}
 
 	/**
 	 * @return the smallest bounds containing the union of the bounds of all tiles within this block.
+	 *         This is dynamically calculated, so call once and save if you need to use it repeatedly.
 	 */
 	public Bounds getPopulatedBounds() {
-		return populatedBounds;
+		return rtsc().toBounds();
 	}
 
 	public P solveTypeParameters() { return solveTypeParameters; }
 
+	/**
+	 * @return a copy of this block that only contains data for the specified tileIds.
+	 */
 	public BlockData<R, P> buildSplitBlock(final Set<String> withTileIds) {
 		final ResultContainer<R> splitResults = this.localResults.buildSplitResult(withTileIds);
-		final Bounds splitPopulatedBounds = splitResults.getResolvedTileSpecs().toBounds();
-		return new BlockData<>(this.factoryBounds,
+		return new BlockData<>(this.originalBounds,
 							   this.solveTypeParameters,
-							   splitPopulatedBounds,
 							   splitResults);
 	}
 
@@ -88,13 +86,12 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	@Override
 	public String toString() {
 		// include hash code in toString to help differentiate between split blocks in logs
-		return factoryBounds + "@" + Integer.toHexString(hashCode());
+		return originalBounds + "@" + Integer.toHexString(hashCode());
 	}
 
 	public String toDetailsString() {
 		return "{\"hashCode\": \"" + Integer.toHexString(hashCode()) +
-			   "\", \"factoryBounds\": " + factoryBounds +
-			   ", \"populatedBounds\": " + populatedBounds +
+			   "\", \"originalBounds\": " + originalBounds +
 			   "\", \"localResults\": " + localResults.toDetailsString() +
 			   ", \"solveTypeParametersClass\": \"" + solveTypeParameters.getClass() + '}';
 	}

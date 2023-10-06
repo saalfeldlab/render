@@ -196,7 +196,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		final ResolvedTileSpecsWithMatchPairs tileSpecsWithMatchPairs =
 				renderDataClient.getResolvedTilesWithMatchPairs(renderStack,
-																blockData.getFactoryBounds(),
+																blockData.getOriginalBounds(),
 																matchCollectionName,
 																null,
 																null);
