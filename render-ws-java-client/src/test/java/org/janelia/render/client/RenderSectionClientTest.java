@@ -23,20 +23,21 @@ public class RenderSectionClientTest {
         try {
             final String[] testArgs = {
                     "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "Z0720_07m_VNC",
-                    "--project", "Sec06",
+                    "--owner", "cellmap",
+                    "--project", "jrc_mus_thymus_1",
                     "--stack", "v1_acquire",
 //                    "--resolutionUnit", "nm",
                     "--rootDirectory", "/Users/trautmane/Desktop/scape_test",
                     "--scale", "0.1",
                     "--format", "tif",
-                    "1000", "1001"
+                    "--convertToGray",
+                    "1000"
                     };
 
             RenderSectionClient.main(testArgs);
 
         } catch (final Throwable t) {
-            t.printStackTrace();
+            throw new RuntimeException("caught exception", t);
         }
     }
 

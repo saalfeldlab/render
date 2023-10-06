@@ -12,6 +12,7 @@ import org.janelia.alignment.match.ModelType;
  *
  * @author Eric Trautman
  */
+@SuppressWarnings("DeprecatedIsStillUsed")
 public class MatchDerivationParameters implements Serializable {
 
     public MatchDerivationParameters() {
@@ -91,8 +92,14 @@ public class MatchDerivationParameters implements Serializable {
     public Float matchMaxEpsilonFullScale;
 
     public Float getMatchMaxEpsilonForRenderScale(final Double renderScale) {
-        return matchMaxEpsilonFullScale != null ?
-               matchMaxEpsilonFullScale * renderScale.floatValue() : matchMaxEpsilon;
+        final Float maxEpsilon;
+        if (matchMaxEpsilonFullScale == null) {
+            maxEpsilon = matchMaxEpsilon;
+        } else {
+            final float floatScale = renderScale.floatValue();
+            maxEpsilon = matchMaxEpsilonFullScale * floatScale;
+        }
+        return maxEpsilon;
     }
 
     @Parameter(
@@ -138,7 +145,9 @@ public class MatchDerivationParameters implements Serializable {
     )
     public Double matchMinCoveragePercentage;
 
-    public void validateAndSetDefaults(final String context) {
+    public void validateAndSetDefaults(final String context)
+            throws IllegalArgumentException {
+
         this.setDefaults();
 
         if (this.matchRegularizerModelType == null) {
@@ -151,6 +160,12 @@ public class MatchDerivationParameters implements Serializable {
                 throw new IllegalArgumentException(
                         context +
                         " matchInterpolatedModelLambda must be defined since matchRegularizerModelType is defined");
+        }
+
+        if ((this.matchMaxEpsilonFullScale == null) && (this.matchMaxEpsilon == null)) {
+            throw new IllegalArgumentException(
+                    context +
+                    " matchMaxEpsilonFullScale must be defined");
         }
 
     }
