@@ -6,6 +6,7 @@ import java.util.Set;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
+import org.janelia.render.client.newsolver.blockfactories.BlockTileBoundsFilter;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 
@@ -31,20 +32,25 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	/** Solve-specific parameters and models. */
 	private final P solveTypeParameters;
 
+	/** Identifies which tiles within this block should be processed. */
+	private final BlockTileBoundsFilter blockTileBoundsFilter;
+
 	/** Results populated by worker. */
 	private final ResultContainer<R> localResults;
 
 	public BlockData(final P solveTypeParameters,
 					 final Bounds originalBounds,
-					 final ResolvedTileSpecCollection rtsc) {
-		this(originalBounds, solveTypeParameters, new ResultContainer<>(rtsc));
+					 final BlockTileBoundsFilter blockTileBoundsFilter) {
+		this(originalBounds, solveTypeParameters, blockTileBoundsFilter, new ResultContainer<>());
 	}
 
 	private BlockData(final Bounds originalBounds,
 					  final P solveTypeParameters,
+					  final BlockTileBoundsFilter blockTileBoundsFilter,
 					  final ResultContainer<R> localResults) {
 		this.originalBounds = originalBounds;
 		this.solveTypeParameters = solveTypeParameters;
+		this.blockTileBoundsFilter = blockTileBoundsFilter;
 		this.localResults = localResults;
 	}
 
@@ -65,6 +71,10 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 
 	public P solveTypeParameters() { return solveTypeParameters; }
 
+	public BlockTileBoundsFilter getBlockTileBoundsFilter() {
+		return blockTileBoundsFilter;
+	}
+
 	/**
 	 * @return a copy of this block that only contains data for the specified tileIds.
 	 */
@@ -72,6 +82,7 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 		final ResultContainer<R> splitResults = this.localResults.buildSplitResult(withTileIds);
 		return new BlockData<>(this.originalBounds,
 							   this.solveTypeParameters,
+							   this.blockTileBoundsFilter,
 							   splitResults);
 	}
 
@@ -96,7 +107,4 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 			   ", \"solveTypeParametersClass\": \"" + solveTypeParameters.getClass() + '}';
 	}
 
-	public int getTileCount() {
-		return localResults.getResolvedTileSpecs().getTileCount();
-	}
 }

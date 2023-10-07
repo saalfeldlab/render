@@ -4,8 +4,6 @@ import ij.plugin.filter.EDM;
 import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
 
-import java.awt.Rectangle;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.HashMap;
@@ -18,10 +16,8 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
@@ -75,25 +71,8 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 	}
 
 	@Override
-	protected ResolvedTileSpecCollection fetchTileSpecs(
-			final Bounds bound,
-			final RenderDataClient dataClient,
-			final BlockDataSolveParameters<?, ?, ?> basicParameters) throws IOException {
-
-		return dataClient.getResolvedTiles(
-				basicParameters.stack(),
-				bound.getMinZ(), bound.getMaxZ(),
-				null, // groupId,
-				bound.getMinX(), bound.getMaxX(),
-				bound.getMinY(), bound.getMaxY(),
-				null); // matchPattern
-	}
-
-	@Override
-	protected boolean shouldBeIncluded(final Bounds tileBounds, final Bounds blockBounds) {
-		// only keep tiles where midpoint is inside block to reduce overlap
-		final Rectangle blockXYBounds = blockBounds.toRectangle();
-		return blockXYBounds.contains(tileBounds.getCenterX(), tileBounds.getCenterY());
+	protected BlockTileBoundsFilter getBlockTileFilter() {
+		return BlockTileBoundsFilter.XY_MIDPOINT;
 	}
 
 	@Override

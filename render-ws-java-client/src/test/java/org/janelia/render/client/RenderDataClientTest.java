@@ -100,7 +100,8 @@ public class RenderDataClientTest {
                                                                 bounds,
                                                                 matchCollectionName,
                                                                 null,
-                                                                null);
+                                                                null,
+                                                                false);
 
         Assert.assertNotNull("null result", tileSpecsWithMatchPairs);
     }

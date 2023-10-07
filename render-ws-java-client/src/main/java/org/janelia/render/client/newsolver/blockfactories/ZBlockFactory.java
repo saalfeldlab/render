@@ -1,12 +1,9 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
@@ -48,18 +45,8 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 	}
 
 	@Override
-	protected ResolvedTileSpecCollection fetchTileSpecs(
-			final Bounds bound,
-			final RenderDataClient dataClient,
-			final BlockDataSolveParameters<?, ?, ?> basicParameters) throws IOException {
-
-		return dataClient.getResolvedTilesForZRange(basicParameters.stack(), bound.getMinZ(), bound.getMaxZ());
-	}
-
-	@Override
-	protected boolean shouldBeIncluded(final Bounds tileBounds, final Bounds blockBounds) {
-		// whole layer is always included
-		return true;
+	protected BlockTileBoundsFilter getBlockTileFilter() {
+		return BlockTileBoundsFilter.INCLUDE_ALL;  // whole layer is always included
 	}
 
 	@Override

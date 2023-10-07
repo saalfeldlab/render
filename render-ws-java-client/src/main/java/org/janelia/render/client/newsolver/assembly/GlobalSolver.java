@@ -61,6 +61,8 @@ public class GlobalSolver<G extends Model<G>, R> {
 
 		for (final BlockData<R, ?> solveItemA : blocks) {
 			LOG.info("globalSolve: solveItemA is {}", solveItemA);
+
+			final ResultContainer<R> resultsA = solveItemA.getResults();
 			otherBlocks.remove(solveItemA);
 
 			// tilespec is identical for all overlapping blocks
@@ -69,18 +71,21 @@ public class GlobalSolver<G extends Model<G>, R> {
 			for (final BlockData<R, ?> solveItemB : otherBlocks) {
 				LOG.info("globalSolve: solveItemB is {}", solveItemB);
 
+				final ResultContainer<R> resultsB = solveItemB.getResults();
 				final Set<String> commonTileIds = getCommonTileIds(solveItemA, solveItemB);
 				final List<PointMatch> matchesAtoB = new ArrayList<>();
 
 				for (final String tileId : commonTileIds) {
 					final TileSpec tileSpecAB = tileSpecs.getTileSpec(tileId);
 
-					final R modelA = solveItemA.getResults().getModelFor(tileId);
-					final R modelB = solveItemB.getResults().getModelFor(tileId);
+					final R modelA = resultsA.getModelFor(tileId);
+					final R modelB = resultsB.getModelFor(tileId);
 					if (modelA == null)  {
-						throw new IllegalArgumentException("model A is missing for tile " + tileId);
+						throw new IllegalArgumentException("model A is missing for tile " + tileId + " in block " +
+														   solveItemA.toDetailsString());
 					} else if (modelB == null)  {
-						throw new IllegalArgumentException("model B is missing for tile " + tileId);
+						throw new IllegalArgumentException("model B is missing for tile " + tileId + " in block " +
+														   solveItemB.toDetailsString());
 					}
 					sameTileMatchCreator.addMatches(tileSpecAB, modelA, modelB, solveItemA, solveItemB, matchesAtoB);
 				}

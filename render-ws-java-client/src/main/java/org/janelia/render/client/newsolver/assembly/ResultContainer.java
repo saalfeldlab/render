@@ -14,19 +14,39 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 
 public class ResultContainer<M> implements Serializable {
 
-	final private Map<String, M> idToModel = new HashMap<>();
-	final private Map<Integer, Set<String>> zToMatchedTileIds = new HashMap<>();
-	final private Map<String, Map<String, Double>> idToErrorMap = new HashMap<>();
+	private ResolvedTileSpecCollection rtsc;
+	private final Map<String, M> idToModel;
+	private final Map<Integer, Set<String>> zToMatchedTileIds;
+	private final Map<String, Map<String, Double>> idToErrorMap;
 
 	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
 	// coefficient-tile intensity average for global intensity-correction
-	private final HashMap<String, List<Double>> idToAverages = new HashMap<>();
+	private final HashMap<String, List<Double>> idToAverages;
 
-	final private ResolvedTileSpecCollection rtsc;
+	public ResultContainer() {
+		this.rtsc = null;
+		this.idToModel = new HashMap<>();
+		this.zToMatchedTileIds = new HashMap<>();
+		this.idToErrorMap = new HashMap<>();
+		this.idToAverages = new HashMap<>();
+	}
 
-
-	public ResultContainer(final ResolvedTileSpecCollection rtsc) {
+	/**
+	 * Initialize this result with the specified tile spec collection.
+	 */
+	public void init(final ResolvedTileSpecCollection rtsc) {
 		this.rtsc = rtsc;
+		this.idToModel.clear();
+		this.zToMatchedTileIds.clear();
+		this.idToErrorMap.clear();
+		this.idToAverages.clear();
+	}
+
+	/**
+	 * @return true if this result has a tile spec collection with tiles.
+	 */
+	public boolean isPopulated() {
+		return (rtsc != null) && rtsc.hasTileSpecs();
 	}
 
 	/**
@@ -34,8 +54,12 @@ public class ResultContainer<M> implements Serializable {
 	 */
 	public ResultContainer<M> buildSplitResult(final Set<String> withTileIds) {
 
-		final ResultContainer<M> splitResult =
-				new ResultContainer<>(this.rtsc.copyAndRetainTileSpecs(withTileIds));
+		if (! this.isPopulated()) {
+			throw new IllegalStateException("attempted to split unpopulated results, init() call was probably never made");
+		}
+
+		final ResultContainer<M> splitResult = new ResultContainer<>();
+		splitResult.init(this.rtsc.copyAndRetainTileSpecs(withTileIds));
 
 		// typically results are split before the tileId maps are populated,
 		// so don't waste time splitting the maps if there is nothing in them
@@ -118,7 +142,7 @@ public class ResultContainer<M> implements Serializable {
 	}
 
 	public Set<String> getTileIds() {
-		return rtsc.getTileIds();
+		return rtsc == null ? new HashSet<>() : rtsc.getTileIds();
 	}
 
 	public Set<String> getMatchedTileIdsForZLayer(final int z) {
@@ -153,7 +177,8 @@ public class ResultContainer<M> implements Serializable {
 	}
 
 	public String toDetailsString() {
-		return "{\"tileCount\": " + rtsc.getTileCount() +
+		final int tileCount = rtsc == null ? 0 : rtsc.getTileCount();
+		return "{\"tileCount\": " + tileCount +
 			   ", \"zToMatchedTileIdsSize\": " + zToMatchedTileIds.size() +
 			   ", \"idToModelSize\": " + idToModel.size() +
 			   ", \"idToErrorMapSize\": " + idToErrorMap.size() +

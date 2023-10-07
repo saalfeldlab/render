@@ -1,6 +1,7 @@
 package org.janelia.render.client.response;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -21,7 +22,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-class BaseResponseHandler {
+public class BaseResponseHandler {
 
     private static final String TEXT_PLAIN_MIME_TYPE = ContentType.TEXT_PLAIN.getMimeType();
     static final String JSON_MIME_TYPE = ContentType.APPLICATION_JSON.getMimeType();
@@ -34,6 +35,7 @@ class BaseResponseHandler {
     /**
      * @param  requestContext  context (e.g. "PUT http://janelia.org") for use in error messages.
      */
+    @SuppressWarnings("JavadocLinkAsPlainText")
     BaseResponseHandler(final String requestContext) {
         this.requestContext = requestContext;
     }
@@ -59,7 +61,7 @@ class BaseResponseHandler {
         if (contentTypeHeader != null) {
             final String contentTypeValue = contentTypeHeader.getValue();
             if ((contentTypeValue != null) && contentTypeValue.startsWith(TEXT_PLAIN_MIME_TYPE)) {
-                text = IOUtils.toString(entity.getContent());
+                text = IOUtils.toString(entity.getContent(), Charset.defaultCharset());
             }
         }
 
@@ -91,11 +93,15 @@ class BaseResponseHandler {
             } catch (final Throwable t) {
                 LOG.warn("failed to parse entity content for error response, ignoring parse failure", t);
             }
-            throw new ClientProtocolException("HTTP status " + statusCode + " with body\n\n  " + responseBodyText +
-                                              "\n\nreturned for\n\n  " + requestContext + "\n");
+            throw new ClientProtocolException(buildHttpStatusMessagePrefix(statusCode) + " with body\n\n  " +
+                                              responseBodyText + "\n\nreturned for\n\n  " + requestContext + "\n");
         }
 
         return entity;
+    }
+
+    public static String buildHttpStatusMessagePrefix(final int statusCode) {
+        return "HTTP status " + statusCode;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(BaseResponseHandler.class);

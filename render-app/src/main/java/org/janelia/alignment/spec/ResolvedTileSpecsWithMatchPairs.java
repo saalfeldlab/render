@@ -52,7 +52,7 @@ public class ResolvedTileSpecsWithMatchPairs
 
     @JsonIgnore
     public int getMatchPairCount() {
-        return matchPairs.size();
+        return matchPairs == null ? 0 : matchPairs.size();
     }
 
     /**

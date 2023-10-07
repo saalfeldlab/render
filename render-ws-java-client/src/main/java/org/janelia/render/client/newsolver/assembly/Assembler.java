@@ -53,7 +53,8 @@ public class Assembler<Z, G extends Model<G>, R>
 		}
 
 		final ResolvedTileSpecCollection cumulativeRtsc = mergeResolvedTileSpecCollections(blocks.stream().map(BlockData::rtsc).collect(Collectors.toList()));
-		final ResultContainer<Z> results = new ResultContainer<>(cumulativeRtsc);
+		final ResultContainer<Z> results = new ResultContainer<>();
+		results.init(cumulativeRtsc);
 
 		try {
 			// now compute the final alignment for each block
@@ -91,7 +92,8 @@ public class Assembler<Z, G extends Model<G>, R>
 	private ResultContainer<Z> buildTrivialAssembly(final BlockData<R, ?> block) {
 		LOG.info("buildTrivialAssembly: entry, only a single block, no solve across blocks necessary.");
 
-		final ResultContainer<Z> globalData = new ResultContainer<>(block.rtsc());
+		final ResultContainer<Z> globalData = new ResultContainer<>();
+		globalData.init(block.rtsc());
 		for (final String tileId : block.rtsc().getTileIds()) {
 			globalData.recordModel(tileId, converter.apply(block.getResults().getModelFor(tileId)));
 		}
