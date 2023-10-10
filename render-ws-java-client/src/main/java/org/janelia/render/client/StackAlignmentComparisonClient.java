@@ -40,6 +40,9 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 	private String baselineStack;
 	@Parameter(names = "--otherStack", description = "Stack to compare to baseline", required = true)
 	private String otherStack;
+	@Parameter(names = "--differenceMetric", description = "Metric to use for comparing errors (default: RELATIVE)")
+	private final DifferenceMetric differenceMetric = DifferenceMetric.RELATIVE;
+
 
 	private static final List<Double> blockOptimizerLambdasRigid = Arrays.asList(1.0, 1.0, 0.9, 0.3, 0.01);
 	private static final List<Double> blockOptimizerLambdasTranslation = Arrays.asList(1.0, 0.0, 0.0, 0.0, 0.0);
@@ -60,7 +63,8 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 					"--project", "cut_000_to_009",
 					"--matchCollection", "c000_s095_v01_match_agg2",
 					"--baselineStack", "c000_s095_v01_align2",
-					"--otherStack", "c000_s095_v01_align_test_xy_ad"
+					"--otherStack", "c000_s095_v01_align_test_xy_ad",
+					"--differenceMetric", "RELATIVE"
 			};
 			client.parse(testArgs);
 		} else {
@@ -84,7 +88,7 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 			errorsOther.absorb(computeSolveItemErrors(rtscOther, canvasMatchesForZ));
 		}
 
-		final AlignmentErrors differences = AlignmentErrors.computeRelativeDifferences(errorsBaseline, errorsOther);
+		final AlignmentErrors differences = AlignmentErrors.computeDifferences(errorsBaseline, errorsOther, client.differenceMetric.metricFunction);
 		AlignmentErrors.writeToFile(differences, "pairwiseErrorDifferences.json");
 
 		LOG.info("Worst pairs:");
@@ -147,6 +151,18 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 		return alignmentErrors;
 	}
 
+
+	public enum DifferenceMetric {
+		RELATIVE((a, b) -> Math.abs(a - b) / a),
+		ABSOLUTE((a, b) -> Math.abs(a - b));
+
+		public final DoubleBinaryOperator metricFunction;
+
+		DifferenceMetric(final DoubleBinaryOperator metricFunction) {
+			this.metricFunction = metricFunction;
+		}
+	}
+
 	private static class AlignmentErrors {
 		private final List<OrderedCanvasIdPairWithValue> pairwiseErrors = new ArrayList<>();
 
@@ -163,14 +179,6 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 					.sorted((p1, p2) -> Double.compare(p2.getValue(), p1.getValue()))
 					.limit(n)
 					.collect(Collectors.toList());
-		}
-
-		public static AlignmentErrors computeRelativeDifferences(final AlignmentErrors baseline, final AlignmentErrors other) {
-			return computeDifferences(baseline, other, (error1, error2) -> Math.abs(error1 - error2) / error1);
-		}
-
-		public static AlignmentErrors computeAbsoluteDifferences(final AlignmentErrors baseline, final AlignmentErrors other) {
-			return computeDifferences(baseline, other, (error1, error2) -> Math.abs(error1 - error2));
 		}
 
 		public static AlignmentErrors computeDifferences(final AlignmentErrors baseline, final AlignmentErrors other, final DoubleBinaryOperator comparisonMetric) {
