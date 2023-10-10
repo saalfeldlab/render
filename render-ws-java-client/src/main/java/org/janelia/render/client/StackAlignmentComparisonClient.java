@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
@@ -10,6 +12,9 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
+import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCollectionParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.slf4j.Logger;
@@ -28,17 +33,18 @@ import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
 
 // TODO: make this into a full fledged command line tool
-//       * add command line arguments
 //       * break up computation and save into z-layers (could cause problems for larger stacks)
 //       * switch output format to json (see FileUtil.saveJsonFile)
-public class StackAlignmentComparisonClient {
+public class StackAlignmentComparisonClient extends CommandLineParameters {
 
-	private static final String baseDataUrl = "http://em-services-1.int.janelia.org:8080/render-ws/v1";
-	private static final String owner = "hess_wafer_53";
-	private static final String project = "cut_000_to_009";
-	private static final String matchCollection = "c000_s095_v01_match_agg2";
-	private static final String baselineStack = "c000_s095_v01_align2";
-	private static final String newStack = "c000_s095_v01_align_test_xy_ad";
+	@ParametersDelegate
+	private final RenderWebServiceParameters renderParams = new RenderWebServiceParameters();
+	@ParametersDelegate
+	private final MatchCollectionParameters matchParams = new MatchCollectionParameters();
+	@Parameter(names = "--baselineStack", description = "Stack to use as baseline", required = true)
+	private String baselineStack;
+	@Parameter(names = "--otherStack", description = "Stack to compare to baseline", required = true)
+	private String otherStack;
 
 	private static final List<Double> blockOptimizerLambdasRigid = Arrays.asList(1.0, 1.0, 0.9, 0.3, 0.01);
 	private static final List<Double> blockOptimizerLambdasTranslation = Arrays.asList(1.0, 0.0, 0.0, 0.0, 0.0);
@@ -51,12 +57,27 @@ public class StackAlignmentComparisonClient {
 			new StabilizingAffineModel2D<>(new RigidModel2D()), 0.0).createAffineModel2D();
 
 	public static void main(final String[] args) throws Exception {
-		// data clients (and z values) should be the same for both stacks
-		final RenderDataClient renderClient = new RenderDataClient(baseDataUrl, owner, project);
-		final RenderDataClient matchClient = new RenderDataClient(baseDataUrl, owner, matchCollection);
+		final StackAlignmentComparisonClient client = new StackAlignmentComparisonClient();
+		if (args.length == 0) {
+			final String[] testArgs = {
+					"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+					"--owner", "hess_wafer_53",
+					"--project", "cut_000_to_009",
+					"--matchCollection", "c000_s095_v01_match_agg2",
+					"--baselineStack", "c000_s095_v01_align2",
+					"--otherStack", "c000_s095_v01_align_test_xy_ad"
+			};
+			client.parse(testArgs);
+		} else {
+			client.parse(args);
+		}
 
-		final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTilesForZRange(baselineStack, null, null);
-		final ResolvedTileSpecCollection rtscNew = renderClient.getResolvedTilesForZRange(newStack, null, null);
+		// data clients (and z values) should be the same for both stacks
+		final RenderDataClient renderClient = client.renderParams.getDataClient();
+		final RenderDataClient matchClient = client.matchParams.getMatchDataClient(renderClient.getBaseDataUrl(), renderClient.getOwner());
+
+		final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTilesForZRange(client.baselineStack, null, null);
+		final ResolvedTileSpecCollection rtscNew = renderClient.getResolvedTilesForZRange(client.otherStack, null, null);
 		final List<CanvasMatches> canvasMatches = getMatchData(matchClient);
 
 		final AlignmentErrors errorsBaseline = computeSolveItemErrors(rtscBaseline, canvasMatches);
