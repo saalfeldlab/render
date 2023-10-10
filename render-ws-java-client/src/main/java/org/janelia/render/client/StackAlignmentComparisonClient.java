@@ -12,6 +12,7 @@ import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.OrderedCanvasIdPairWithValue;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
@@ -20,8 +21,6 @@ import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,9 +30,6 @@ import java.util.Set;
 import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
 
-// TODO: make this into a full fledged command line tool
-//       * break up computation and save into z-layers (could cause problems for larger stacks)
-//       * switch output format to json (see FileUtil.saveJsonFile)
 public class StackAlignmentComparisonClient extends CommandLineParameters {
 
 	@ParametersDelegate
@@ -75,15 +71,21 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 		final RenderDataClient renderClient = client.renderParams.getDataClient();
 		final RenderDataClient matchClient = client.matchParams.getMatchDataClient(renderClient.getBaseDataUrl(), renderClient.getOwner());
 
-		final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTilesForZRange(client.baselineStack, null, null);
-		final ResolvedTileSpecCollection rtscNew = renderClient.getResolvedTilesForZRange(client.otherStack, null, null);
-		final List<CanvasMatches> canvasMatches = getMatchData(matchClient, rtscBaseline);
+		final List<Double> zValues = renderClient.getStackZValues(client.baselineStack);
+		final AlignmentErrors errorsBaseline = new AlignmentErrors();
+		final AlignmentErrors errorsOther = new AlignmentErrors();
 
-		final AlignmentErrors errorsBaseline = computeSolveItemErrors(rtscBaseline, canvasMatches);
-		final AlignmentErrors errorsNew = computeSolveItemErrors(rtscNew, canvasMatches);
+		for (final Double z : zValues) {
+			final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTiles(client.baselineStack, z);
+			final ResolvedTileSpecCollection rtscOther = renderClient.getResolvedTiles(client.otherStack, z);
+			final List<CanvasMatches> canvasMatchesForZ = getMatchData(matchClient, rtscBaseline);
 
-		final AlignmentErrors differences = AlignmentErrors.computeRelativeDifferences(errorsBaseline, errorsNew);
-		AlignmentErrors.writeAsCsv(differences, "pairwiseErrorDifferences.csv");
+			errorsBaseline.absorb(computeSolveItemErrors(rtscBaseline, canvasMatchesForZ));
+			errorsOther.absorb(computeSolveItemErrors(rtscOther, canvasMatchesForZ));
+		}
+
+		final AlignmentErrors differences = AlignmentErrors.computeRelativeDifferences(errorsBaseline, errorsOther);
+		AlignmentErrors.writeToFile(differences, "pairwiseErrorDifferences.json");
 
 		LOG.info("Worst pairs:");
 		int n = 0;
@@ -152,6 +154,10 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 			pairwiseErrors.add(new OrderedCanvasIdPairWithValue(pair, error));
 		}
 
+		public void absorb(final AlignmentErrors other) {
+			pairwiseErrors.addAll(other.pairwiseErrors);
+		}
+
 		public List<OrderedCanvasIdPairWithValue> getWorstPairs(final int n) {
 			return pairwiseErrors.stream()
 					.sorted((p1, p2) -> Double.compare(p2.getValue(), p1.getValue()))
@@ -181,16 +187,8 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 			return differences;
 		}
 
-		public static void writeAsCsv(final AlignmentErrors errors, final String filename) throws IOException {
-			final File file = new File(filename);
-			try (final FileWriter writer = new FileWriter(file)) {
-				for (final OrderedCanvasIdPairWithValue pairWithError : errors.pairwiseErrors) {
-					final String pTileId = pairWithError.getP().getId();
-					final String qTileId = pairWithError.getQ().getId();
-					final double error = pairWithError.getValue();
-					writer.write(pTileId + "," + qTileId + "," + error + "\n");
-				}
-			}
+		public static void writeToFile(final AlignmentErrors errors, final String filename) throws IOException {
+			FileUtil.saveJsonFile(filename, errors.pairwiseErrors);
 		}
 	}
 
