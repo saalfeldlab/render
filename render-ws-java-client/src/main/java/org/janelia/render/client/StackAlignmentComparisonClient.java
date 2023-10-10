@@ -7,15 +7,15 @@ import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
-import net.imglib2.util.Pair;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.OrderedCanvasIdPair;
+import org.janelia.alignment.match.OrderedCanvasIdPairWithValue;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.janelia.render.client.solver.SerializableValuePair;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,10 +25,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
 
@@ -78,7 +77,7 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 
 		final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTilesForZRange(client.baselineStack, null, null);
 		final ResolvedTileSpecCollection rtscNew = renderClient.getResolvedTilesForZRange(client.otherStack, null, null);
-		final List<CanvasMatches> canvasMatches = getMatchData(matchClient);
+		final List<CanvasMatches> canvasMatches = getMatchData(matchClient, rtscBaseline);
 
 		final AlignmentErrors errorsBaseline = computeSolveItemErrors(rtscBaseline, canvasMatches);
 		final AlignmentErrors errorsNew = computeSolveItemErrors(rtscNew, canvasMatches);
@@ -88,19 +87,19 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 
 		LOG.info("Worst pairs:");
 		int n = 0;
-		for (final Pair<String, String> pair : differences.getWorstPairs(50)) {
+		for (final OrderedCanvasIdPairWithValue pairWithError : differences.getWorstPairs(50)) {
 			n++;
-			LOG.info("{}: {}-{} : {}", n, pair.getA(), pair.getB(), differences.getPairwiseError(pair.getA(), pair.getB()));
+			LOG.info("{}: {}-{} : {}", n, pairWithError.getP(), pairWithError.getQ(), pairWithError.getValue());
 		}
 	}
 
-	protected static List<CanvasMatches> getMatchData(final RenderDataClient matchDataClient) throws IOException {
+	protected static List<CanvasMatches> getMatchData(final RenderDataClient matchDataClient, final ResolvedTileSpecCollection rtsc) throws IOException {
 
-		final Collection<String> sectionIds = matchDataClient.getMatchPGroupIds();
+		final Set<String> sectionIds = rtsc.getTileSpecs().stream().map(TileSpec::getSectionId).collect(Collectors.toSet());
 		final List<CanvasMatches> canvasMatches = new ArrayList<>();
 
-		for (final String pGroupId : sectionIds) {
-			final List<CanvasMatches> serviceMatchList = matchDataClient.getMatchesWithPGroupId(pGroupId, false);
+		for (final String groupId : sectionIds) {
+			final List<CanvasMatches> serviceMatchList = matchDataClient.getMatchesWithPGroupId(groupId, false);
 			canvasMatches.addAll(serviceMatchList);
 		}
 
@@ -138,8 +137,8 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 					qTileSpec.getLastTransform().getNewInstance(),
 					match.getMatches());
 
-
-			alignmentErrors.addPairwiseError(pTileId, qTileId, vDiff);
+			final OrderedCanvasIdPair pair = match.toOrderedPair();
+			alignmentErrors.addError(pair, vDiff);
 		}
 
 		LOG.info("computeSolveItemErrors, exit");
@@ -147,30 +146,15 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 	}
 
 	private static class AlignmentErrors {
-		private final Map<Pair<String, String>, Double> pairToErrorMap = new HashMap<>();
+		private final List<OrderedCanvasIdPairWithValue> pairwiseErrors = new ArrayList<>();
 
-		public void addPairwiseError(final String tileId, final String otherTileId, final double error) {
-			// store pair only once by sorting the pairs in ascending order
-			if (tileId.compareTo(otherTileId) < 0)
-				addError(tileId, otherTileId, error);
-			else
-				addError(otherTileId, tileId, error);
+		public void addError(final OrderedCanvasIdPair pair, final double error) {
+			pairwiseErrors.add(new OrderedCanvasIdPairWithValue(pair, error));
 		}
 
-		private void addError(final String tileId, final String otherTileId, final double error) {
-			pairToErrorMap.put(new SerializableValuePair<>(tileId, otherTileId), error);
-		}
-
-		private double getPairwiseError(final String tileId, final String otherTileId) {
-			if (tileId.compareTo(otherTileId) < 0)
-				return pairToErrorMap.get(new SerializableValuePair<>(tileId, otherTileId));
-			else
-				return pairToErrorMap.get(new SerializableValuePair<>(otherTileId, tileId));
-		}
-
-		public List<Pair<String, String>> getWorstPairs(final int n) {
-			return pairToErrorMap.keySet().stream()
-					.sorted((p1, p2) -> Double.compare(pairToErrorMap.get(p2), pairToErrorMap.get(p1)))
+		public List<OrderedCanvasIdPairWithValue> getWorstPairs(final int n) {
+			return pairwiseErrors.stream()
+					.sorted((p1, p2) -> Double.compare(p2.getValue(), p1.getValue()))
 					.limit(n)
 					.collect(Collectors.toList());
 		}
@@ -185,10 +169,13 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 
 		public static AlignmentErrors computeDifferences(final AlignmentErrors baseline, final AlignmentErrors other, final DoubleBinaryOperator comparisonMetric) {
 			final AlignmentErrors differences = new AlignmentErrors();
+			final Map<OrderedCanvasIdPair, Double> errorLookup = other.pairwiseErrors.stream()
+					.collect(Collectors.toMap(OrderedCanvasIdPairWithValue::getPair, OrderedCanvasIdPairWithValue::getValue));
 
-			baseline.pairToErrorMap.forEach((pair, error1) -> {
-				final double error2 = other.pairToErrorMap.get(pair);
-				differences.pairToErrorMap.put(pair, comparisonMetric.applyAsDouble(error1, error2));
+			baseline.pairwiseErrors.forEach(pairWithValue -> {
+				final double otherError = errorLookup.get(pairWithValue.getPair());
+				final double errorDifference = comparisonMetric.applyAsDouble(pairWithValue.getValue(), otherError);
+				differences.addError(pairWithValue.getPair(), errorDifference);
 			});
 
 			return differences;
@@ -197,10 +184,10 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 		public static void writeAsCsv(final AlignmentErrors errors, final String filename) throws IOException {
 			final File file = new File(filename);
 			try (final FileWriter writer = new FileWriter(file)) {
-				for (final Map.Entry<Pair<String, String>, Double> entry : errors.pairToErrorMap.entrySet()) {
-					final String pTileId = entry.getKey().getA();
-					final String qTileId = entry.getKey().getB();
-					final double error = entry.getValue();
+				for (final OrderedCanvasIdPairWithValue pairWithError : errors.pairwiseErrors) {
+					final String pTileId = pairWithError.getP().getId();
+					final String qTileId = pairWithError.getQ().getId();
+					final double error = pairWithError.getValue();
 					writer.write(pTileId + "," + qTileId + "," + error + "\n");
 				}
 			}

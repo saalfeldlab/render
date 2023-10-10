@@ -298,6 +298,12 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         }
     }
 
+    public OrderedCanvasIdPair toOrderedPair() {
+        final CanvasId p = new CanvasId(pGroupId, pId);
+        final CanvasId q = new CanvasId(qGroupId, qId);
+        return new OrderedCanvasIdPair(p, q, null);
+    }
+
     public static CanvasMatches fromJson(final String json) {
         return JSON_HELPER.fromJson(json);
     }
