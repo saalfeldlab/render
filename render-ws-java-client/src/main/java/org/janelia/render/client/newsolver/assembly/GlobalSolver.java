@@ -59,6 +59,8 @@ public class GlobalSolver<G extends Model<G>, R> {
 		final Set<? extends BlockData<R, ?>> otherBlocks = new HashSet<>(blocks);
 		final TileConfiguration tileConfigBlocks = new TileConfiguration();
 
+		final Set<BlockData<R, ?>> matchedSolveItems = new HashSet<>();
+
 		for (final BlockData<R, ?> solveItemA : blocks) {
 			LOG.info("globalSolve: solveItemA is {}", solveItemA);
 
@@ -80,22 +82,37 @@ public class GlobalSolver<G extends Model<G>, R> {
 
 					final R modelA = resultsA.getModelFor(tileId);
 					final R modelB = resultsB.getModelFor(tileId);
-					if (modelA == null)  {
+					if (modelA == null) {
 						throw new IllegalArgumentException("model A is missing for tile " + tileId + " in block " +
 														   solveItemA.toDetailsString());
-					} else if (modelB == null)  {
+					} else if (modelB == null) {
 						throw new IllegalArgumentException("model B is missing for tile " + tileId + " in block " +
 														   solveItemB.toDetailsString());
 					}
 					sameTileMatchCreator.addMatches(tileSpecAB, modelA, modelB, solveItemA, solveItemB, matchesAtoB);
 				}
 
-				// connect global tiles and mark for optimization
-				final Tile<G> tileA = blockToTile.get(solveItemA);
-				final Tile<G> tileB = blockToTile.get(solveItemB);
-				tileA.connect(tileB, matchesAtoB);
-				tileConfigBlocks.addTile(tileA);
-				tileConfigBlocks.addTile(tileB);
+				if (! matchesAtoB.isEmpty()) {
+
+					LOG.info("globalSolve: found {} commonTileIds and {} matches between {} and {}",
+							 commonTileIds.size(), matchesAtoB.size(), solveItemA, solveItemB);
+
+					matchedSolveItems.add(solveItemA);
+					matchedSolveItems.add(solveItemB);
+
+					// connect global tiles and mark for optimization
+					final Tile<G> tileA = blockToTile.get(solveItemA);
+					final Tile<G> tileB = blockToTile.get(solveItemB);
+					tileA.connect(tileB, matchesAtoB);
+					tileConfigBlocks.addTile(tileA);
+					tileConfigBlocks.addTile(tileB);
+				}
+			}
+		}
+
+		for (final BlockData<R, ?> block : blocks) {
+			if (! matchedSolveItems.contains(block)) {
+				LOG.warn("globalSolve: block {} was not matched with any other blocks", block);
 			}
 		}
 

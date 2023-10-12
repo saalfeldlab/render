@@ -5,6 +5,7 @@ import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.newsolver.BlockCollection;
@@ -89,6 +91,9 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 		private final double minY;
 
 		public XYDistanceWeightFunction(final BlockData<?, ?> block, final double resolution) {
+
+			LOG.info("XYDistanceWeightFunction ctor: entry, block {}", block.toDetailsString());
+
 			final ResultContainer<?> results = block.getResults();
 			layerDistanceMaps = new HashMap<>(results.getMatchedZLayers().size());
 			this.resolution = resolution;
@@ -105,12 +110,28 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 				throw new IllegalStateException("block " + block + " has no matched z layers");
 			}
 
+			final ResolvedTileSpecCollection rtsc = results.getResolvedTileSpecs();
 			matchedZLayers.forEach(z -> {
-				final List<TileSpec> layerTiles = results.getMatchedTileIdsForZLayer(z).stream()
-						.sorted() // to be consistent with the render order of the web service and make logs consistent
-						.map(results.getResolvedTileSpecs()::getTileSpec)
-						.collect(Collectors.toList());
-				layerDistanceMaps.put(z, createLayerDistanceMap(layerTiles, resolution, stackBounds));
+				int foundTileCount = 0;
+				int missingTileCount = 0;
+				final List<TileSpec> layerTiles = new ArrayList<>();
+				for (final String tileId: results.getMatchedTileIdsForZLayer(z)) {
+					final TileSpec tileSpec = rtsc.getTileSpec(tileId);
+					if (tileSpec == null) {
+						missingTileCount++;
+					} else {
+						foundTileCount++;
+						layerTiles.add(tileSpec);
+					}
+				}
+				if (layerTiles.isEmpty()) {
+					LOG.info("XYDistanceWeightFunction ctor: no tiles found for z {} in {}", z, block.toDetailsString());
+				} else {
+					layerDistanceMaps.put(z, createLayerDistanceMap(layerTiles, resolution, stackBounds));
+				}
+
+				LOG.info("XYDistanceWeightFunction ctor: {} found tiles and {} missing tiles for z {} in {}",
+						 foundTileCount, missingTileCount, z, block.toDetailsString());
 			});
 		}
 
