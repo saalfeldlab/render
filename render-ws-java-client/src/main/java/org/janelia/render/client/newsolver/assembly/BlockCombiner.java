@@ -49,7 +49,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 				tileIdToBlocks.computeIfAbsent(tileId, k -> new ArrayList<>()).add(block);
 			}
 			if (blockTileIds.isEmpty()) {
-				LOG.info("fuseGlobally: ignoring block {} because it has no tiles", block.toDetailsString());
+				throw new IllegalStateException("no tiles in block " +  block.toDetailsString());
 			} else {
 				blockToWeightFunctions.put(block, blockFactory.createWeightFunction(block));
 			}
