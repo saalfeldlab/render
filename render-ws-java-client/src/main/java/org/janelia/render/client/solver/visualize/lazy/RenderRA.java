@@ -55,7 +55,6 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 
 	final long minZ, maxZ;
 	final double scale;
-	final boolean renderLocal;
 
 	public RenderRA(
 			final String baseUrl,
@@ -67,8 +66,7 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 			final ImageProcessorCache ipCache,
 			final long[] min,
 			final T type,
-			final double scale,
-			final boolean renderLocal)
+			final double scale )
 	{
 		this.baseUrl = baseUrl;
 		this.owner = owner;
@@ -80,7 +78,6 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 		this.scale = scale;
 		this.minZ = minZ;
 		this.maxZ = maxZ;
-		this.renderLocal = renderLocal;
 	}
 
 	// Note: the output RAI typically sits at 0,0...0 because it usually is a CachedCellImage
@@ -123,12 +120,7 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 
 	protected void update( final RandomAccessibleInterval<T> output, final int x, final int y, final int z, final int w, final int h )
 	{
-		final ImageProcessorWithMasks ipm;
-		if (renderLocal) {
-			ipm = RenderTools.renderImage(ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, false);
-		} else {
-			ipm = RenderTools.renderRemoteImage(ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, false);
-		}
+		ImageProcessorWithMasks ipm = RenderTools.renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, false );
 
 		if ( ipm == null ) // if the requested block contains no images, null will be returned
 		{

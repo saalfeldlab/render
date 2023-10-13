@@ -317,8 +317,7 @@ public class RenderTools
 							min,
 							new FloatType(),
 							1.0/downsampling,
-							zToTransform,
-							false) :
+							zToTransform) :
 					new RenderRA<>(baseUrl,
 							owner,
 							project,
@@ -328,8 +327,7 @@ public class RenderTools
 							ipCache,
 							min,
 							new FloatType(),
-							1.0/downsampling,
-								   false);
+							1.0/downsampling);
 
 			// blockSize should be power-of-2 and at least the minimal downsampling
 			final int blockSizeXY = 4096; //Math.max( 64, ds[ ds.length - 1 ] ); // does that make sense?
