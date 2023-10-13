@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.newsolver;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -14,6 +14,8 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.FileUtil;
+import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
@@ -44,10 +46,7 @@ public class StackAlignmentComparisonClient {
 		@Parameter(names = "--differenceMetric", description = "Metric to use for comparing errors (default: RELATIVE)")
 		private DifferenceMetric differenceMetric = DifferenceMetric.RELATIVE;
 		@Parameter(names = "--fileName", description = "Name of file to write pairwise errors to (default: pairwiseErrors.json)")
-		private String fileName = "pairwiseErrors.json";
-
-		public Parameters() {
-		}
+		private String fileName = "pairwiseErrors.json.gz";
 	}
 
 
@@ -68,19 +67,7 @@ public class StackAlignmentComparisonClient {
 	}
 
 	public static void main(final String[] args) throws Exception {
-		final String[] nonEmptyArgs = (args.length != 0) ? args :
-				new String[]{
-						"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-						"--owner", "hess_wafer_53",
-						"--project", "cut_000_to_009",
-						"--matchCollection", "c000_s095_v01_match_agg2",
-						"--baselineStack", "c000_s095_v01_align2",
-						"--otherStack", "c000_s095_v01_align_test_xy_ad",
-						"--differenceMetric", "RELATIVE",
-						"--fileName", "pairwiseErrorDifferences.json"
-				};
-
-		final ClientRunner clientRunner = new ClientRunner(nonEmptyArgs) {
+		final ClientRunner clientRunner = new ClientRunner(args) {
 			@Override
 			public void runClient(final String[] args) throws Exception {
 
