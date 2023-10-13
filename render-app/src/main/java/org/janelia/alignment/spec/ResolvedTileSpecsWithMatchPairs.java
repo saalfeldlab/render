@@ -4,11 +4,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Reader;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
@@ -97,26 +96,25 @@ public class ResolvedTileSpecsWithMatchPairs
         resolvedTileSpecs.resolveTileSpecs();
 
         // remove match pairs that are too far away in z or do not have both tile specs in this collection
-        // TODO: keep track of or return removed match pairs in case solver needs to pull adjacent tiles later
-
-        final List<CanvasMatches> normalizedMatchPairs = new ArrayList<>(matchPairs.size());
+        final Set<CanvasMatches> distinctCoreMatchPairs = new HashSet<>(matchPairs.size());
 
         for (final CanvasMatches pair : matchPairs) {
             final TileSpec pTileSpec = resolvedTileSpecs.getTileSpec(pair.getpId());
             final TileSpec qTileSpec = resolvedTileSpecs.getTileSpec(pair.getqId());
             if ((pTileSpec != null) && (qTileSpec != null)) {
                 if (maxZDistance == null) {
-                    normalizedMatchPairs.add(pair);
+                    distinctCoreMatchPairs.add(pair);
                 } else {
                     if (pTileSpec.zDistanceFrom(qTileSpec) <= maxZDistance) {
-                        normalizedMatchPairs.add(pair);
+                        distinctCoreMatchPairs.add(pair);
                     }
                 }
             }
         }
 
         // pairs from web service are not sorted, so sort here to make usage loops more intuitive
-        Collections.sort(normalizedMatchPairs);
+        final List<CanvasMatches> normalizedMatchPairs =
+                distinctCoreMatchPairs.stream().sorted().collect(Collectors.toList());
 
         final String countMsg = normalizedMatchPairs.size() < matchPairs.size() ? "was reduced to" : "remained as";
         LOG.info("resolveTileSpecsAndNormalizeMatchPairs: with maxZDistance {} match pair count of {} {} {}",
