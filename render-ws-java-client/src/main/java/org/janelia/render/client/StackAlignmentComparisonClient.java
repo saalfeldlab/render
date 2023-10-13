@@ -30,18 +30,23 @@ import java.util.Set;
 import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
 
-public class StackAlignmentComparisonClient extends CommandLineParameters {
+public class StackAlignmentComparisonClient {
 
-	@ParametersDelegate
-	private final RenderWebServiceParameters renderParams = new RenderWebServiceParameters();
-	@ParametersDelegate
-	private final MatchCollectionParameters matchParams = new MatchCollectionParameters();
-	@Parameter(names = "--baselineStack", description = "Stack to use as baseline", required = true)
-	private String baselineStack;
-	@Parameter(names = "--otherStack", description = "Stack to compare to baseline", required = true)
-	private String otherStack;
-	@Parameter(names = "--differenceMetric", description = "Metric to use for comparing errors (default: RELATIVE)")
-	private final DifferenceMetric differenceMetric = DifferenceMetric.RELATIVE;
+	public static class Parameters extends CommandLineParameters {
+		@ParametersDelegate
+		private final RenderWebServiceParameters renderParams = new RenderWebServiceParameters();
+		@ParametersDelegate
+		private final MatchCollectionParameters matchParams = new MatchCollectionParameters();
+		@Parameter(names = "--baselineStack", description = "Stack to use as baseline", required = true)
+		private String baselineStack;
+		@Parameter(names = "--otherStack", description = "Stack to compare to baseline", required = true)
+		private String otherStack;
+		@Parameter(names = "--differenceMetric", description = "Metric to use for comparing errors (default: RELATIVE)")
+		private DifferenceMetric differenceMetric = DifferenceMetric.RELATIVE;
+
+		public Parameters() {
+		}
+	}
 
 
 	private static final List<Double> blockOptimizerLambdasRigid = Arrays.asList(1.0, 1.0, 0.9, 0.3, 0.01);
@@ -54,41 +59,59 @@ public class StackAlignmentComparisonClient extends CommandLineParameters {
 					new TranslationModel2D(), blockOptimizerLambdasTranslation.get(0)),
 			new StabilizingAffineModel2D<>(new RigidModel2D()), 0.0).createAffineModel2D();
 
+	private final Parameters params;
+
+	public StackAlignmentComparisonClient(final Parameters params) {
+		this.params = params;
+	}
+
 	public static void main(final String[] args) throws Exception {
-		final StackAlignmentComparisonClient client = new StackAlignmentComparisonClient();
-		if (args.length == 0) {
-			final String[] testArgs = {
-					"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-					"--owner", "hess_wafer_53",
-					"--project", "cut_000_to_009",
-					"--matchCollection", "c000_s095_v01_match_agg2",
-					"--baselineStack", "c000_s095_v01_align2",
-					"--otherStack", "c000_s095_v01_align_test_xy_ad",
-					"--differenceMetric", "RELATIVE"
-			};
-			client.parse(testArgs);
-		} else {
-			client.parse(args);
-		}
+		final String[] nonEmptyArgs = (args.length != 0) ? args :
+				new String[]{
+						"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+						"--owner", "hess_wafer_53",
+						"--project", "cut_000_to_009",
+						"--matchCollection", "c000_s095_v01_match_agg2",
+						"--baselineStack", "c000_s095_v01_align2",
+						"--otherStack", "c000_s095_v01_align_test_xy_ad",
+						"--differenceMetric", "RELATIVE"
+				};
+
+		final ClientRunner clientRunner = new ClientRunner(nonEmptyArgs) {
+			@Override
+			public void runClient(final String[] args) throws Exception {
+
+				final Parameters parameters = new Parameters();
+				parameters.parse(args);
+				LOG.info("runClient: entry, parameters={}", parameters);
+
+				final StackAlignmentComparisonClient client = new StackAlignmentComparisonClient(parameters);
+				client.fetchAndCompareStacks();
+			}
+		};
+		clientRunner.run();
+	}
+
+	public void fetchAndCompareStacks() throws IOException {
 
 		// data clients (and z values) should be the same for both stacks
-		final RenderDataClient renderClient = client.renderParams.getDataClient();
-		final RenderDataClient matchClient = client.matchParams.getMatchDataClient(renderClient.getBaseDataUrl(), renderClient.getOwner());
+		final RenderDataClient renderClient = params.renderParams.getDataClient();
+		final RenderDataClient matchClient = params.matchParams.getMatchDataClient(renderClient.getBaseDataUrl(), renderClient.getOwner());
 
-		final List<Double> zValues = renderClient.getStackZValues(client.baselineStack);
+		final List<Double> zValues = renderClient.getStackZValues(params.baselineStack);
 		final AlignmentErrors errorsBaseline = new AlignmentErrors();
 		final AlignmentErrors errorsOther = new AlignmentErrors();
 
 		for (final Double z : zValues) {
-			final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTiles(client.baselineStack, z);
-			final ResolvedTileSpecCollection rtscOther = renderClient.getResolvedTiles(client.otherStack, z);
+			final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTiles(params.baselineStack, z);
+			final ResolvedTileSpecCollection rtscOther = renderClient.getResolvedTiles(params.otherStack, z);
 			final List<CanvasMatches> canvasMatchesForZ = getMatchData(matchClient, rtscBaseline);
 
 			errorsBaseline.absorb(computeSolveItemErrors(rtscBaseline, canvasMatchesForZ));
 			errorsOther.absorb(computeSolveItemErrors(rtscOther, canvasMatchesForZ));
 		}
 
-		final AlignmentErrors differences = AlignmentErrors.computeDifferences(errorsBaseline, errorsOther, client.differenceMetric.metricFunction);
+		final AlignmentErrors differences = AlignmentErrors.computeDifferences(errorsBaseline, errorsOther, params.differenceMetric.metricFunction);
 		AlignmentErrors.writeToFile(differences, "pairwiseErrorDifferences.json");
 
 		LOG.info("Worst pairs:");
