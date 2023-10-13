@@ -1,15 +1,12 @@
 package org.janelia.render.client.newsolver;
 
-import org.janelia.render.client.PointMatchClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
-import java.io.File;
-
 /**
- * Tests the {@link PointMatchClient} class.
+ * Tests the {@link StackAlignmentComparisonClient} class.
  *
- * @author Eric Trautman
+ * @author Michael Innerberger
  */
 @SuppressWarnings("SameParameterValue")
 public class StackAlignmentComparisonClientTest {

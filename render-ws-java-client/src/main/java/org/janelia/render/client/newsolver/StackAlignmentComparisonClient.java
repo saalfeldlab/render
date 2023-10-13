@@ -86,22 +86,21 @@ public class StackAlignmentComparisonClient {
 
 		// data clients (and z values) should be the same for both stacks
 		final RenderDataClient renderClient = params.renderParams.getDataClient();
-
+		final Bounds baselineBounds = renderClient.getStackMetaData(params.baselineStack).getStats().getStackBounds();
+		final Bounds otherBounds = renderClient.getStackMetaData(params.otherStack).getStats().getStackBounds();
 		final List<Double> zValues = renderClient.getStackZValues(params.baselineStack);
-		final AlignmentErrors errorsBaseline = new AlignmentErrors();
-		final AlignmentErrors errorsOther = new AlignmentErrors();
+		final AlignmentErrors differences = new AlignmentErrors();
 
 		for (final Double z : zValues) {
-			final Bounds layerBounds = renderClient.getLayerBounds(params.baselineStack, z);
+			final ResolvedTileSpecsWithMatchPairs baseline = getResolvedTilesWithMatchPairsForZ(renderClient, params.baselineStack, baselineBounds, z);
+			final AlignmentErrors errorsBaseline = computeSolveItemErrors(baseline, z);
 
-			final ResolvedTileSpecsWithMatchPairs baseline = renderClient.getResolvedTilesWithMatchPairs(params.baselineStack, layerBounds, params.matchParams.matchCollection, null, null, false);
-			errorsBaseline.absorb(computeSolveItemErrors(baseline, z));
+			final ResolvedTileSpecsWithMatchPairs other = getResolvedTilesWithMatchPairsForZ(renderClient, params.otherStack, otherBounds, z);
+			final AlignmentErrors errorsOther = computeSolveItemErrors(other, z);
 
-			final ResolvedTileSpecsWithMatchPairs other = renderClient.getResolvedTilesWithMatchPairs(params.otherStack, layerBounds, params.matchParams.matchCollection, null, null, false);
-			errorsOther.absorb(computeSolveItemErrors(other, z));
+			differences.absorb(AlignmentErrors.computeDifferences(errorsBaseline, errorsOther, params.differenceMetric.metricFunction));
 		}
 
-		final AlignmentErrors differences = AlignmentErrors.computeDifferences(errorsBaseline, errorsOther, params.differenceMetric.metricFunction);
 		AlignmentErrors.writeToFile(differences, params.fileName);
 
 		LOG.info("Worst pairs:");
@@ -110,6 +109,14 @@ public class StackAlignmentComparisonClient {
 			n++;
 			LOG.info("{}: {}-{} : {}", n, pairWithError.getP(), pairWithError.getQ(), pairWithError.getValue());
 		}
+	}
+
+	private ResolvedTileSpecsWithMatchPairs getResolvedTilesWithMatchPairsForZ(
+			final RenderDataClient renderClient,
+			final String stackName,
+			final Bounds stackBounds,
+			final Double z) throws IOException {
+		return renderClient.getResolvedTilesWithMatchPairs(stackName, stackBounds.withZ(z), params.matchParams.matchCollection, null, null, false);
 	}
 
 	private static AlignmentErrors computeSolveItemErrors(final ResolvedTileSpecsWithMatchPairs tilesAndMatches, final Double currentZ) {
