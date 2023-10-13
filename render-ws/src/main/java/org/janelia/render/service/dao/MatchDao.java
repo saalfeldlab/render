@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -379,7 +380,7 @@ public class MatchDao {
             throws IllegalArgumentException, ObjectNotFoundException {
 
         LOG.debug("removeMatchesBetweenGroups: entry, collectionId={}, pGroupId={}, qGroupId={}",
-                  collectionId, pGroupId,  qGroupId);
+                  collectionId, pGroupId, qGroupId);
 
         validateRequiredGroupIds(pGroupId, qGroupId);
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
@@ -626,6 +627,19 @@ public class MatchDao {
     public void writeMatchesAndTileSpecs(final MatchCollectionId collectionId,
                                          final ResolvedTileSpecCollection resolvedTileSpecCollection,
                                          final OutputStream outputStream)
+            throws IOException {
+
+        // TODO: determine optimal maxTilesPerQuery value
+        // Mongodb docs ( https://www.mongodb.com/docs/manual/reference/operator/query/in/ ) state:
+        //   ... limit the number of parameters passed to the $in operator to tens of values.
+        final int maxTilesPerQuery = 80;
+        writeMatchesAndTileSpecs(collectionId, resolvedTileSpecCollection, outputStream, maxTilesPerQuery);
+    }
+
+    public void writeMatchesAndTileSpecs(final MatchCollectionId collectionId,
+                                         final ResolvedTileSpecCollection resolvedTileSpecCollection,
+                                         final OutputStream outputStream,
+                                         final int maxTilesPerQuery)
             throws IllegalArgumentException, IOException, ObjectNotFoundException {
 
         LOG.debug("writeMatchesAndTileSpecs: entry, collectionId={}, tileCount={}",
@@ -649,12 +663,6 @@ public class MatchDao {
         //   may be client-side or (surprisingly) may not be strongly tied to pair data size.
 
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
-
-        // TODO: determine optimal maxTilesPerQuery value
-
-        // Mongodb docs ( https://www.mongodb.com/docs/manual/reference/operator/query/in/ ) state:
-        //   ... limit the number of parameters passed to the $in operator to tens of values.
-        final int maxTilesPerQuery = 80;
 
         final List<Document> queryList = buildMatchQueryListForTiles(resolvedTileSpecCollection,
                                                                      maxTilesPerQuery);
@@ -739,8 +747,10 @@ public class MatchDao {
     private static void addGroupAndIdInQueriesToList(final List<String> groupIdList,
                                                      final List<String> idList,
                                                      final List<Document> queryList) {
-        queryList.add(getGroupAndIdInQuery(groupIdList, idList, "p"));
-        queryList.add(getGroupAndIdInQuery(groupIdList, idList, "q"));
+        final Document pQuery = getGroupAndIdInQuery(groupIdList, idList, "p");
+        final Document qQuery = getGroupAndIdInQuery(groupIdList, idList, "q");
+
+        queryList.add(new Document(MongoUtil.OP_OR, Arrays.asList(pQuery, qQuery)));
     }
 
     private static Document getGroupAndIdInQuery(final List<String> groupIdList,

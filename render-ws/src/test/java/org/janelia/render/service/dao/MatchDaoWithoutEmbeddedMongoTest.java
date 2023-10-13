@@ -35,7 +35,7 @@ public class MatchDaoWithoutEmbeddedMongoTest {
 
         final List<Document> queryList = MatchDao.buildMatchQueryListForTiles(tileSpecs,
                                                                               4);
-        Assert.assertEquals("invalid number of queries", 8, queryList.size());
+        Assert.assertEquals("invalid number of queries", 4, queryList.size());
 
         LOG.info("testBuildMatchQueryListForTiles: queryList is {}", queryList);
     }
