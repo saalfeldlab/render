@@ -43,6 +43,8 @@ public class StackAlignmentComparisonClient {
 		private String otherStack;
 		@Parameter(names = "--differenceMetric", description = "Metric to use for comparing errors (default: RELATIVE)")
 		private DifferenceMetric differenceMetric = DifferenceMetric.RELATIVE;
+		@Parameter(names = "--fileName", description = "Name of file to write pairwise errors to (default: pairwiseErrors.json)")
+		private String fileName = "pairwiseErrors.json";
 
 		public Parameters() {
 		}
@@ -74,7 +76,8 @@ public class StackAlignmentComparisonClient {
 						"--matchCollection", "c000_s095_v01_match_agg2",
 						"--baselineStack", "c000_s095_v01_align2",
 						"--otherStack", "c000_s095_v01_align_test_xy_ad",
-						"--differenceMetric", "RELATIVE"
+						"--differenceMetric", "RELATIVE",
+						"--fileName", "pairwiseErrorDifferences.json"
 				};
 
 		final ClientRunner clientRunner = new ClientRunner(nonEmptyArgs) {
@@ -109,10 +112,11 @@ public class StackAlignmentComparisonClient {
 
 			errorsBaseline.absorb(computeSolveItemErrors(rtscBaseline, canvasMatchesForZ));
 			errorsOther.absorb(computeSolveItemErrors(rtscOther, canvasMatchesForZ));
+			break;
 		}
 
 		final AlignmentErrors differences = AlignmentErrors.computeDifferences(errorsBaseline, errorsOther, params.differenceMetric.metricFunction);
-		AlignmentErrors.writeToFile(differences, "pairwiseErrorDifferences.json");
+		AlignmentErrors.writeToFile(differences, params.fileName);
 
 		LOG.info("Worst pairs:");
 		int n = 0;
