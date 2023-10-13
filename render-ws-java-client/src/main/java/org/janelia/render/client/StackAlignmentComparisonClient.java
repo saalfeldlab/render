@@ -10,7 +10,8 @@ import mpicbg.models.TranslationModel2D;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.OrderedCanvasIdPairWithValue;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
@@ -26,7 +27,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
 
@@ -99,20 +99,19 @@ public class StackAlignmentComparisonClient {
 
 		// data clients (and z values) should be the same for both stacks
 		final RenderDataClient renderClient = params.renderParams.getDataClient();
-		final RenderDataClient matchClient = params.matchParams.getMatchDataClient(renderClient.getBaseDataUrl(), renderClient.getOwner());
 
 		final List<Double> zValues = renderClient.getStackZValues(params.baselineStack);
 		final AlignmentErrors errorsBaseline = new AlignmentErrors();
 		final AlignmentErrors errorsOther = new AlignmentErrors();
 
 		for (final Double z : zValues) {
-			final ResolvedTileSpecCollection rtscBaseline = renderClient.getResolvedTiles(params.baselineStack, z);
-			final ResolvedTileSpecCollection rtscOther = renderClient.getResolvedTiles(params.otherStack, z);
-			final List<CanvasMatches> canvasMatchesForZ = getMatchData(matchClient, rtscBaseline);
+			final Bounds layerBounds = renderClient.getLayerBounds(params.baselineStack, z);
 
-			errorsBaseline.absorb(computeSolveItemErrors(rtscBaseline, canvasMatchesForZ));
-			errorsOther.absorb(computeSolveItemErrors(rtscOther, canvasMatchesForZ));
-			break;
+			final ResolvedTileSpecsWithMatchPairs baseline = renderClient.getResolvedTilesWithMatchPairs(params.baselineStack, layerBounds, params.matchParams.matchCollection, null, null, false);
+			errorsBaseline.absorb(computeSolveItemErrors(baseline, z));
+
+			final ResolvedTileSpecsWithMatchPairs other = renderClient.getResolvedTilesWithMatchPairs(params.otherStack, layerBounds, params.matchParams.matchCollection, null, null, false);
+			errorsOther.absorb(computeSolveItemErrors(other, z));
 		}
 
 		final AlignmentErrors differences = AlignmentErrors.computeDifferences(errorsBaseline, errorsOther, params.differenceMetric.metricFunction);
@@ -126,39 +125,27 @@ public class StackAlignmentComparisonClient {
 		}
 	}
 
-	protected static List<CanvasMatches> getMatchData(final RenderDataClient matchDataClient, final ResolvedTileSpecCollection rtsc) throws IOException {
-
-		final Set<String> sectionIds = rtsc.getTileSpecs().stream().map(TileSpec::getSectionId).collect(Collectors.toSet());
-		final List<CanvasMatches> canvasMatches = new ArrayList<>();
-
-		for (final String groupId : sectionIds) {
-			final List<CanvasMatches> serviceMatchList = matchDataClient.getMatchesWithPGroupId(groupId, false);
-			canvasMatches.addAll(serviceMatchList);
-		}
-
-		return canvasMatches;
-	}
-
-	// TODO: move this to its own class to make space for persisting the data (json, web service, etc.)
-	private static AlignmentErrors computeSolveItemErrors(final ResolvedTileSpecCollection rtsc, final List<CanvasMatches> canvasMatches) {
-		LOG.info("Computing per-block errors for {} tiles using {} pairs of images ...", rtsc.getTileCount(), canvasMatches.size());
+	private static AlignmentErrors computeSolveItemErrors(final ResolvedTileSpecsWithMatchPairs tilesAndMatches, final Double currentZ) {
+		LOG.info("Computing per-block errors for {} tiles using {} pairs of images ...",
+				 tilesAndMatches.getResolvedTileSpecs().getTileCount(), tilesAndMatches.getMatchPairCount());
 
 		// for local fits
 		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
 		final AlignmentErrors alignmentErrors = new AlignmentErrors();
 
-		int n = 0;
-		final int N = canvasMatches.size();
-		for (final CanvasMatches match : canvasMatches) {
-			n++;
-			LOG.info("Processing match {} / {}", n, N);
+		for (final CanvasMatches match : tilesAndMatches.getMatchPairs()) {
 			final String pTileId = match.getpId();
 			final String qTileId = match.getqId();
 
-			final TileSpec pTileSpec = rtsc.getTileSpec(pTileId);
-			final TileSpec qTileSpec = rtsc.getTileSpec(qTileId);
+			final TileSpec pTileSpec = tilesAndMatches.getTileSpec(pTileId);
+			final TileSpec qTileSpec = tilesAndMatches.getTileSpec(qTileId);
 
+			// tile specs can be missing, e.g., due to re-acquisition
 			if (pTileSpec == null || qTileSpec == null)
+				continue;
+
+			// make sure to record every pair only once by only considering "forward" matches in z
+			if ((pTileSpec.getZ() < currentZ) || (qTileSpec.getZ() < currentZ))
 				continue;
 
 			final double vDiff = WorkerTools.computeAlignmentError(
