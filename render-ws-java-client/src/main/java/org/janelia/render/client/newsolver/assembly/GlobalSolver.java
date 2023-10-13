@@ -112,7 +112,7 @@ public class GlobalSolver<G extends Model<G>, R> {
 
 		for (final BlockData<R, ?> block : blocks) {
 			if (! matchedSolveItems.contains(block)) {
-				throw new IllegalStateException("no other blocks are matched with " + block.toDetailsString());
+				LOG.warn("globalSolve: block {} was not matched with any other blocks", block);
 			}
 		}
 

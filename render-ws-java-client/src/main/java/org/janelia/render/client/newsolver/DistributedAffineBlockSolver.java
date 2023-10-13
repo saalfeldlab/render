@@ -142,8 +142,6 @@ public class DistributedAffineBlockSolver
 			throw new IllegalStateException("no blocks were computed, something is wrong");
 		}
 
-		// TODO: remove blocks that have no tiles?
-
 		LOG.info("main: computed {} blocks", allItems.size());
 
 		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup,

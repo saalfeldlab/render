@@ -80,7 +80,6 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 	@Override
 	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
 		// the render scale needs to be fairly small so that the entire MFOV area fits into one image
-		// TODO: @minnerbe to consider parameterizing scale (so can be set based upon stack bounds)
 		return new XYDistanceWeightFunction(block, 0.01);
 	}
 
@@ -149,7 +148,6 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			renderParameters.addTileSpecs(layerTiles);
 			renderParameters.initializeDerivedValues();
 
-			// TODO: figure out if/how to parameterize cache size
 			// render the layer into an 8-bit mask: 0=background (no tiles), everything else is foreground (tiles)
 			final long pixelsToCache = 100_000_000L;
 			final ImageProcessorCache ipCache = new ImageProcessorCache(pixelsToCache, false, false);

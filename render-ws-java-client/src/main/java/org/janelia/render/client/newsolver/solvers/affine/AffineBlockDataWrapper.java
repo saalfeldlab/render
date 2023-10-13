@@ -83,17 +83,22 @@ public class AffineBlockDataWrapper<M extends Model<M> & Affine2D<M>, S extends 
 				 tileToGroupedTile.size(),
 				 rtsc.getTileCount());
 
-		idToTileMap.entrySet().stream()
-				.filter(e -> ! tileIdsToKeep.contains(e.getKey()))
-				.forEach(e -> {
-					final String tileId = e.getKey();
-					idToTileMap.remove(tileId);
-					idToStitchingModel.remove(tileId);
-					idToPreviousModel.remove(tileId);
-					final Tile<M> tile = e.getValue();
-					tileToIdMap.remove(tile);
-					tileToGroupedTile.remove(tile);
-				});
+		final List<Map.Entry<String, Tile<M>>> entriesToRemove = new ArrayList<>();
+		idToTileMap.entrySet().forEach(e -> {
+			if (! tileIdsToKeep.contains(e.getKey())) {
+				entriesToRemove.add(e);
+			}
+		});
+
+		entriesToRemove.forEach(e ->{
+			final String tileId = e.getKey();
+			idToTileMap.remove(tileId);
+			idToStitchingModel.remove(tileId);
+			idToPreviousModel.remove(tileId);
+			final Tile<M> tile = e.getValue();
+			tileToIdMap.remove(tile);
+			tileToGroupedTile.remove(tile);
+		});
 
 		rtsc.retainTileSpecs(tileIdsToKeep);
 

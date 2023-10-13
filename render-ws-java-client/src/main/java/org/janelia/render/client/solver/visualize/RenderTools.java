@@ -1,8 +1,5 @@
 package org.janelia.render.client.solver.visualize;
 
-import ij.ImagePlus;
-import ij.process.ImageProcessor;
-
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -12,8 +9,6 @@ import java.util.function.Function;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
-import org.janelia.alignment.loader.ImageJDefaultLoader;
-import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -183,39 +178,6 @@ public class RenderTools
 		return Renderer.renderImageProcessorWithMasks( renderParameters, ipCache );
 	}
 
-	public static ImageProcessorWithMasks renderRemoteImage(final ImageProcessorCache ipCache,
-															final String baseUrl,
-															final String owner,
-															final String project,
-															final String stack,
-															final long x,
-															final long y,
-															final long z,
-															final long w,
-															final long h,
-															final double scale,
-															final boolean filter) {
-		final String boxUrlString = String.format(boundingBoxFormat,
-												  baseUrl,
-												  owner,
-												  project,
-												  stack,
-												  z, // full res coordinates
-												  x, // full res coordinates
-												  y, // full res coordinates
-												  w, // full res coordinates
-												  h, // full res coordinates
-												  scale);
-		final String boxJpegImageUrlString = boxUrlString + "/jpeg-image?filter=" + filter + "&ijHack=box.jpg";
-		final ImageProcessor ip = ipCache.get(boxJpegImageUrlString,
-											  0,
-											  false,
-											  false,
-											  ImageLoader.LoaderType.IMAGEJ_DEFAULT,
-											  null);
-		return new ImageProcessorWithMasks(ip, null, null);
-	}
-
 	public static BdvStackSource< ? > renderMultiRes(
 			final ImageProcessorCache globalIpCache,
 			final String baseUrl,
@@ -317,8 +279,7 @@ public class RenderTools
 							min,
 							new FloatType(),
 							1.0/downsampling,
-							zToTransform,
-							false) :
+							zToTransform ) :
 					new RenderRA<>(baseUrl,
 							owner,
 							project,
@@ -328,11 +289,10 @@ public class RenderTools
 							ipCache,
 							min,
 							new FloatType(),
-							1.0/downsampling,
-								   false);
+							1.0/downsampling );
 
 			// blockSize should be power-of-2 and at least the minimal downsampling
-			final int blockSizeXY = 4096; //Math.max( 64, ds[ ds.length - 1 ] ); // does that make sense?
+			final int blockSizeXY = Math.max( 64, ds[ ds.length - 1 ] ); // does that make sense?
 			final int[] blockSize = new int[] { blockSizeXY, blockSizeXY, 1 };
 
 			// TODO: return it for invalidation
@@ -389,11 +349,11 @@ public class RenderTools
 
 	public static void main(final String[] args) throws IOException
 	{
-		final String baseUrl = "http://renderer.int.janelia.org:8080/render-ws/v1";
+		final String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
 
-		final String owner = args.length < 1 ? "hess_wafer_53" : args[0];
-		final String project = args.length < 2 ? "cut_000_to_009" : args[1];
-		final String stack = args.length < 3 ? "c000_s095_v01" : args[2];
+		final String owner = args.length < 1 ? "Z0720_07m_BR" : args[0];
+		final String project = args.length < 2 ? "Sec24" : args[1];
+		final String stack = args.length < 3 ? "v5_acquire_trimmed" : args[2];
 
 		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
 		
@@ -453,10 +413,5 @@ public class RenderTools
 				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads );
 		
 		img.setDisplayRange( 0, 256 );
-
-		final AffineTransform3D transform3d = new AffineTransform3D();
-		final Bounds stackBounds = meta.getStats().getStackBounds();
-		transform3d.translate(stackBounds.getMinX(), stackBounds.getMinY(), stackBounds.getMinZ());
-		img.getBdvHandle().getManualTransformEditor().transformChanged(transform3d);
 	}
 }

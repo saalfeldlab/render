@@ -43,10 +43,9 @@ public class UpdatingRenderRA<T extends RealType<T> & NativeType<T>> extends Ren
 			final long[] min,
 			final T type,
 			final double scale,
-			final Function< Integer, AffineTransform2D > zToTransform,
-			final boolean renderLocal)
+			final Function< Integer, AffineTransform2D > zToTransform )
 	{
-		super(baseUrl, owner, project, stack, minZ, maxZ, ipCache, min, type, scale, renderLocal);
+		super(baseUrl, owner, project, stack, minZ, maxZ, ipCache, min, type, scale);
 
 		this.zToTransform = zToTransform;
 	}
