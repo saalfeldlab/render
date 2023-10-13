@@ -126,8 +126,8 @@ public class StackAlignmentComparisonClient {
 	}
 
 	private static AlignmentErrors computeSolveItemErrors(final ResolvedTileSpecsWithMatchPairs tilesAndMatches, final Double currentZ) {
-		LOG.info("Computing per-block errors for {} tiles using {} pairs of images ...",
-				 tilesAndMatches.getResolvedTileSpecs().getTileCount(), tilesAndMatches.getMatchPairCount());
+		LOG.info("Computing errors for {} tiles using {} pairs of images centered in z-layer {}...",
+				 tilesAndMatches.getResolvedTileSpecs().getTileCount(), tilesAndMatches.getMatchPairCount(), currentZ);
 
 		// for local fits
 		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
