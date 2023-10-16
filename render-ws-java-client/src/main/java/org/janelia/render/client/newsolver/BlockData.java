@@ -66,7 +66,16 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	 *         This is dynamically calculated, so call once and save if you need to use it repeatedly.
 	 */
 	public Bounds getPopulatedBounds() {
-		return rtsc().toBounds();
+		final ResolvedTileSpecCollection resolvedTiles = rtsc();
+		if (resolvedTiles == null) {
+			throw new IllegalStateException("localResults.getResolvedTileSpecs is null for block " + this.toDetailsString());
+		}
+		final Bounds populatedBounds = resolvedTiles.toBounds();
+		if (populatedBounds == null) {
+			throw new IllegalStateException("cannot derive populated bounds for block " + this.toDetailsString() +
+											" because it has no tiles");
+		}
+		return populatedBounds;
 	}
 
 	public P solveTypeParameters() { return solveTypeParameters; }

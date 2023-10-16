@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +35,7 @@ import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
 
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
@@ -91,6 +93,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	// if stitching first should be done
 	final boolean stitchFirst;
 
+	// ids of tile specs whose results should be included in this block (as defined by filter)
+	final Set<String> coreTileSpecIds;
 
 	// created by SolveItemData.createWorker()
 	public AffineAlignBlockWorker(
@@ -121,6 +125,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			LOG.error("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
 			throw new RuntimeException("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
 		}
+
+		this.coreTileSpecIds = new HashSet<>(); // will be populated by call to assembleMatchData
 	}
 
 	@Override
@@ -150,6 +156,26 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			final List<AffineBlockDataWrapper<M, S>> solveItems = splitSolveItem(inputSolveItem);
 
+			for (final Iterator<AffineBlockDataWrapper<M, S>> i = solveItems.iterator(); i.hasNext();) {
+				final AffineBlockDataWrapper<M, S> solveItem = i.next();
+				// Remove any (potentially split) items that do not contain at least 2 tiles
+				// whose centers are within the block bounds.  This can occur if a tile at the edge
+				// of the bounds gets split off into a small cluster (e.g. because of resin edges).
+				final Set<String> allItemTileSpecIds = solveItem.blockData.rtsc().getTileIds();
+				final Set<String> coreItemTileSpecIds = new HashSet<>(allItemTileSpecIds);
+				coreItemTileSpecIds.retainAll(coreTileSpecIds);
+				if (coreItemTileSpecIds.size() < 2) {
+					LOG.info("run: removing solveItem {} with only {} core tiles ({}), populatedBounds {}, and {} padding tiles ({})",
+							 solveItem.blockData.toDetailsString(),
+							 coreItemTileSpecIds.size(),
+							 coreItemTileSpecIds,
+							 solveItem.blockData.getPopulatedBounds(),
+							 allItemTileSpecIds.size(),
+							 allItemTileSpecIds);
+					i.remove();
+				}
+			}
+
 			for (final AffineBlockDataWrapper<M, S> solveItem : solveItems) {
 				if (! assignRegularizationModel(solveItem,
 												AffineBlockDataWrapper.samplesPerDimension,
@@ -160,8 +186,11 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 
 			for (final AffineBlockDataWrapper<M, S> solveItem : solveItems) {
-				computeSolveItemErrors(solveItem.blockData(), canvasMatches);
-				result.add(solveItem.blockData());
+				// remove data for tiles with centers outside the block bounds (but connected to tiles inside)
+				solveItem.retainTiles(coreTileSpecIds);
+				final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+				computeSolveItemErrors(blockData, canvasMatches);
+				result.add(blockData);
 			}
 		}
 
@@ -184,6 +213,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		LOG.info("assembleMatchData: entry, loading transforms and matches for block {} with maxZDistance={}",
 				 blockData, maxZDistance);
 
+		// fetch tiles in bounds and all associated matches
 		final ResolvedTileSpecsWithMatchPairs tileSpecsWithMatchPairs =
 				renderDataClient.getResolvedTilesWithMatchPairs(renderStack,
 																blockData.getOriginalBounds(),
@@ -191,16 +221,33 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 																null,
 																null,
 																true);
+		final ResolvedTileSpecCollection rtsc = tileSpecsWithMatchPairs.getResolvedTileSpecs();
 
-		// use block tile filter to identify keeper tiles (based upon bounds)
-		final Set<String> tileIdsToKeep =
+		// identify "padding" tiles missing from original request because they are outside block bounds (but connected to inside tiles)
+		final Set<String> missingPaddingTileIds = tileSpecsWithMatchPairs.findPaddingTileIds();
+
+		LOG.info("assembleMatchData: loading {} completing padding tile specs for block {}",
+				 missingPaddingTileIds.size(), blockData);
+
+		// fetch missing padding tile specs ...
+		final List<TileSpec> missingPaddingTileSpecs =
+				renderDataClient.getTileSpecsWithIds(new ArrayList<>(missingPaddingTileIds),
+													 renderStack);
+
+		// and add them to the collection for block alignment (they will be removed after optimization)
+		missingPaddingTileSpecs.forEach(rtsc::addTileSpecToCollection);
+
+		// At this point, collection has all tiles and matches but with tiles
+		// that are too far away in z (> maxZDistance), so we remove those.
+		tileSpecsWithMatchPairs.normalize(maxZDistance);
+
+		// use block tile filter to identify core tiles to be returned to driver
+		this.coreTileSpecIds.clear();
+		this.coreTileSpecIds.addAll(
 				BlockTileBoundsFilter.findIncludedAndConvertToTileIdSet(
 						tileSpecsWithMatchPairs.getResolvedTileSpecs().getTileSpecs(),
 						blockData.getOriginalBounds(),
-						blockData.getBlockTileBoundsFilter());
-
-		// remove unwanted tiles and match pairs
-		tileSpecsWithMatchPairs.normalize(tileIdsToKeep, maxZDistance);
+						blockData.getBlockTileBoundsFilter()));
 
 		// initialize block results with the filtered data
 		blockResults.init(tileSpecsWithMatchPairs.getResolvedTileSpecs());
@@ -797,7 +844,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				LOG.info("splitSolveItem: splitBlockData={}, parentBlockData={}", splitBlockData, blockData);
 
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("splitSolveItem: split block details are {}", splitBlockData.toDetailsString());
+					LOG.debug("splitSolveItem: split block populatedBounds are {} and details are {}",
+							  splitBlockData.getPopulatedBounds(), // NOTE: populatedBounds are dynamically derived
+							  splitBlockData.toDetailsString());
 				}
 
 				// update all the maps

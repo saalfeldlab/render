@@ -56,6 +56,8 @@ public class Assembler<Z, G extends Model<G>, R>
 		final ResultContainer<Z> results = new ResultContainer<>();
 		results.init(cumulativeRtsc);
 
+		LOG.info("createAssembly: created cumulativeRtsc with {} tiles", cumulativeRtsc.getTileCount());
+
 		try {
 			// now compute the final alignment for each block
 			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile =

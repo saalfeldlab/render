@@ -13,6 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -43,10 +44,15 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 		final Map<String, List<BlockData<R, ?>>> tileIdToBlocks = new HashMap<>();
 		final Map<BlockData<R, ?>, WeightFunction> blockToWeightFunctions = new HashMap<>();
 		for (final BlockData<R, ?> block : blockToTile.keySet()) {
-			for (final String tileId : block.getResults().getTileIds()) {
+			final Set<String> blockTileIds = block.getResults().getTileIds();
+			for (final String tileId : blockTileIds) {
 				tileIdToBlocks.computeIfAbsent(tileId, k -> new ArrayList<>()).add(block);
 			}
-			blockToWeightFunctions.put(block, blockFactory.createWeightFunction(block));
+			if (blockTileIds.isEmpty()) {
+				throw new IllegalStateException("no tiles in block " +  block.toDetailsString());
+			} else {
+				blockToWeightFunctions.put(block, blockFactory.createWeightFunction(block));
+			}
 		}
 
 		for (final Map.Entry<String, List<BlockData<R, ?>>> entry : tileIdToBlocks.entrySet()) {
