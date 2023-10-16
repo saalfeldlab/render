@@ -93,9 +93,11 @@ public class StackAlignmentComparisonClient {
 
 		for (final Double z : zValues) {
 			final ResolvedTileSpecsWithMatchPairs baseline = getResolvedTilesWithMatchPairsForZ(renderClient, params.baselineStack, baselineBounds, z);
+			baseline.normalize();
 			final AlignmentErrors errorsBaseline = computeSolveItemErrors(baseline, z);
 
 			final ResolvedTileSpecsWithMatchPairs other = getResolvedTilesWithMatchPairsForZ(renderClient, params.otherStack, otherBounds, z);
+			other.normalize();
 			final AlignmentErrors errorsOther = computeSolveItemErrors(other, z);
 
 			differences.absorb(AlignmentErrors.computeDifferences(errorsBaseline, errorsOther, params.differenceMetric.metricFunction));
@@ -138,7 +140,7 @@ public class StackAlignmentComparisonClient {
 			if (pTileSpec == null || qTileSpec == null)
 				continue;
 
-			// make sure to record every pair only once by only considering "forward" matches in z
+			// make sure to record every cross-layer pair only once by only considering "forward" matches in z
 			if ((pTileSpec.getZ() < currentZ) || (qTileSpec.getZ() < currentZ))
 				continue;
 
