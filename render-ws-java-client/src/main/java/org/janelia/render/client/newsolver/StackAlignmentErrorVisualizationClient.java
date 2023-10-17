@@ -1,5 +1,6 @@
 package org.janelia.render.client.newsolver;
 
+import bdv.util.BdvStackSource;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import mpicbg.models.AffineModel2D;
@@ -15,17 +16,22 @@ import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
+import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.janelia.render.client.newsolver.AlignmentErrors.MergingMethod;
 import static org.janelia.render.client.newsolver.AlignmentErrors.MergingMethod.RELATIVE_DIFFERENCE;
@@ -35,28 +41,12 @@ public class StackAlignmentComparisonClient {
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
 		private final RenderWebServiceParameters renderParams = new RenderWebServiceParameters();
-		@ParametersDelegate
-		private final MatchCollectionParameters matchParams = new MatchCollectionParameters();
-		@Parameter(names = "--baselineStack", description = "Stack to use as baseline", required = true)
+		@Parameter(names = "--stack", description = "Stack to use as baseline", required = true)
 		private String baselineStack;
-		@Parameter(names = "--otherStack", description = "Stack to compare to baseline", required = true)
-		private String otherStack;
-		@Parameter(names = "--differenceMetric", description = "Metric to use for comparing errors (default: RELATIVE)")
-		private MergingMethod differenceMetric = RELATIVE_DIFFERENCE;
-		@Parameter(names = "--fileName", description = "Name of file to write pairwise errors to (default: pairwiseErrors.json)")
-		private String fileName = "pairwiseErrors.json.gz";
+		@Parameter(names = "--fileName", description = "Name of file to read pairwise errors from", required = true)
+		private String fileName;
 	}
 
-
-	private static final List<Double> blockOptimizerLambdasRigid = Arrays.asList(1.0, 1.0, 0.9, 0.3, 0.01);
-	private static final List<Double> blockOptimizerLambdasTranslation = Arrays.asList(1.0, 0.0, 0.0, 0.0, 0.0);
-	private static final AffineModel2D stitchingModel = new InterpolatedAffineModel2D<>(
-			new InterpolatedAffineModel2D<>(
-					new InterpolatedAffineModel2D<>(
-							new AffineModel2D(),
-							new RigidModel2D(), blockOptimizerLambdasRigid.get(0)),
-					new TranslationModel2D(), blockOptimizerLambdasTranslation.get(0)),
-			new StabilizingAffineModel2D<>(new RigidModel2D()), 0.0).createAffineModel2D();
 
 	private final Parameters params;
 
@@ -100,6 +90,29 @@ public class StackAlignmentComparisonClient {
 
 			differences.absorb(AlignmentErrors.merge(errorsBaseline, errorsOther, params.differenceMetric));
 		}
+
+		final List<String> tileIds = tiles.getResolvedTileSpecs().getTileSpecs().stream().map(TileSpec::getTileId).collect(Collectors.toList());
+		BdvStackSource<?> source = null;
+		final String name = "errors";
+		final HashMap<String, AffineModel2D> idToModels = new HashMap<>(tileIds.stream().collect(Collectors.toMap(id -> id, id -> new AffineModel2D())));
+		final HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<>(tileIds.stream().collect(Collectors.toMap(id -> id, id -> new MinimalTileSpecWrapper(tiles.getTileSpec(id)))));
+		final HashMap<String, Float> idToValue = new HashMap<>(errors.accumulateForTiles());
+		final int minDS = 0;
+		final int maxDS = 1;
+		final int dsInc = 1;
+		final int numThreads = 8;
+
+		VisualizeTools.visualizeMultiRes(
+				source,
+				name,
+				idToModels,
+				idToTileSpec,
+				idToValue,
+				minDS,
+				maxDS,
+				dsInc,
+				numThreads);
+
 
 		AlignmentErrors.writeToFile(differences, params.fileName);
 

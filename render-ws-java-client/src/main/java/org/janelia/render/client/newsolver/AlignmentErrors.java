@@ -3,9 +3,11 @@ package org.janelia.render.client.newsolver;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.OrderedCanvasIdPairWithValue;
 import org.janelia.alignment.util.FileUtil;
+import script.imglib.math.Or;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.DoubleBinaryOperator;
@@ -29,6 +31,19 @@ class AlignmentErrors {
 				.collect(Collectors.toList());
 	}
 
+	public Map<String, Double> accumulateForTiles() {
+		final Map<String, Double> tileToError = new HashMap<>();
+		pairwiseErrors.forEach(pairWithValue -> {
+			final String pId = pairWithValue.getP().getId();
+			final String qId = pairWithValue.getQ().getId();
+			final double pErr = tileToError.computeIfAbsent(pId, k -> 0.0);
+			tileToError.put(pId, (pErr + pairWithValue.getValue()));
+			final double qErr = tileToError.computeIfAbsent(qId, k -> 0.0);
+			tileToError.put(qId, (qErr + pairWithValue.getValue()));
+		});
+		return tileToError;
+	}
+
 	public static AlignmentErrors merge(final AlignmentErrors baseline, final AlignmentErrors other, final MergingMethod mergingMethod) {
 		final AlignmentErrors differences = new AlignmentErrors();
 		final Map<OrderedCanvasIdPair, Double> errorLookup = other.pairwiseErrors.stream()
@@ -45,6 +60,14 @@ class AlignmentErrors {
 
 	public static void writeToFile(final AlignmentErrors errors, final String filename) throws IOException {
 		FileUtil.saveJsonFile(filename, errors.pairwiseErrors);
+	}
+
+	public static AlignmentErrors loadFromFile(final String filename) throws IOException {
+		final List<OrderedCanvasIdPairWithValue> loadedErrors = OrderedCanvasIdPairWithValue.loadList(filename);
+
+		final AlignmentErrors errors = new AlignmentErrors();
+		errors.pairwiseErrors.addAll(loadedErrors);
+		return errors;
 	}
 
 	public enum MergingMethod {
