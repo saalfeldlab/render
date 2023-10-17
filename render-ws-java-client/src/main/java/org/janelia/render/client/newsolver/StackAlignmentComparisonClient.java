@@ -26,7 +26,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.DoubleBinaryOperator;
+
+import static org.janelia.render.client.newsolver.AlignmentErrors.MergingMethod;
+import static org.janelia.render.client.newsolver.AlignmentErrors.MergingMethod.RELATIVE_DIFFERENCE;
 
 public class StackAlignmentComparisonClient {
 
@@ -40,7 +42,7 @@ public class StackAlignmentComparisonClient {
 		@Parameter(names = "--otherStack", description = "Stack to compare to baseline", required = true)
 		private String otherStack;
 		@Parameter(names = "--differenceMetric", description = "Metric to use for comparing errors (default: RELATIVE)")
-		private DifferenceMetric differenceMetric = DifferenceMetric.RELATIVE;
+		private MergingMethod differenceMetric = RELATIVE_DIFFERENCE;
 		@Parameter(names = "--fileName", description = "Name of file to write pairwise errors to (default: pairwiseErrors.json)")
 		private String fileName = "pairwiseErrors.json.gz";
 	}
@@ -96,7 +98,7 @@ public class StackAlignmentComparisonClient {
 			other.normalize();
 			final AlignmentErrors errorsOther = computeSolveItemErrors(other, z);
 
-			differences.absorb(AlignmentErrors.computeDifferences(errorsBaseline, errorsOther, params.differenceMetric.metricFunction));
+			differences.absorb(AlignmentErrors.merge(errorsBaseline, errorsOther, params.differenceMetric));
 		}
 
 		AlignmentErrors.writeToFile(differences, params.fileName);
@@ -155,17 +157,6 @@ public class StackAlignmentComparisonClient {
 
 		LOG.info("computeSolveItemErrors, exit");
 		return alignmentErrors;
-	}
-
-	public enum DifferenceMetric {
-		RELATIVE((a, b) -> Math.abs(a - b) / a),
-		ABSOLUTE((a, b) -> Math.abs(a - b));
-
-		public final DoubleBinaryOperator metricFunction;
-
-		DifferenceMetric(final DoubleBinaryOperator metricFunction) {
-			this.metricFunction = metricFunction;
-		}
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(StackAlignmentComparisonClient.class);

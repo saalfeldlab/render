@@ -29,14 +29,14 @@ class AlignmentErrors {
 				.collect(Collectors.toList());
 	}
 
-	public static AlignmentErrors computeDifferences(final AlignmentErrors baseline, final AlignmentErrors other, final DoubleBinaryOperator comparisonMetric) {
+	public static AlignmentErrors merge(final AlignmentErrors baseline, final AlignmentErrors other, final MergingMethod mergingMethod) {
 		final AlignmentErrors differences = new AlignmentErrors();
 		final Map<OrderedCanvasIdPair, Double> errorLookup = other.pairwiseErrors.stream()
 				.collect(Collectors.toMap(OrderedCanvasIdPairWithValue::getPair, OrderedCanvasIdPairWithValue::getValue));
 
 		baseline.pairwiseErrors.forEach(pairWithValue -> {
 			final double otherError = errorLookup.get(pairWithValue.getPair());
-			final double errorDifference = comparisonMetric.applyAsDouble(pairWithValue.getValue(), otherError);
+			final double errorDifference = mergingMethod.function.applyAsDouble(pairWithValue.getValue(), otherError);
 			differences.addError(pairWithValue.getPair(), errorDifference);
 		});
 
@@ -45,5 +45,16 @@ class AlignmentErrors {
 
 	public static void writeToFile(final AlignmentErrors errors, final String filename) throws IOException {
 		FileUtil.saveJsonFile(filename, errors.pairwiseErrors);
+	}
+
+	public enum MergingMethod {
+		RELATIVE_DIFFERENCE((a, b) -> Math.abs(a - b) / a),
+		ABSOLUTE_DIFFERENCE((a, b) -> Math.abs(a - b));
+
+		private final DoubleBinaryOperator function;
+
+		MergingMethod(final DoubleBinaryOperator function) {
+			this.function = function;
+		}
 	}
 }
