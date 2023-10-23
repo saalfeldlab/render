@@ -1,6 +1,5 @@
 package org.janelia.render.client.newsolver;
 
-import bdv.util.BdvStackSource;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import mpicbg.models.AffineModel2D;
@@ -19,15 +18,12 @@ import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
-import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 
 public class StackAlignmentErrorClient {

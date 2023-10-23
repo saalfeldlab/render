@@ -3,7 +3,6 @@ package org.janelia.render.client.newsolver;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.OrderedCanvasIdPairWithValue;
 import org.janelia.alignment.util.FileUtil;
-import script.imglib.math.Or;
 
 import java.io.IOException;
 import java.util.ArrayList;
