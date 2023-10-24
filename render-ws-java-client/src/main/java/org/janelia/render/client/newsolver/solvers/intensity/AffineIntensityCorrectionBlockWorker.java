@@ -59,6 +59,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	private final FIBSEMIntensityCorrectionParameters<M> parameters;
 	private static final int ITERATIONS = 2000;
 
+	private static final Tile<? extends Affine1D<?>> equilibrationTile = new Tile<>(new IdentityModel());
+
 	public AffineIntensityCorrectionBlockWorker(
 			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
 			final int startId,
@@ -218,6 +220,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		final TileConfiguration tc = new TileConfiguration();
 		coefficientTiles.values().forEach(tc::addTiles);
 
+		// anchor the equilibration tile
+		tc.addTile(equilibrationTile);
+		tc.fixTile(equilibrationTile);
+
 		LOG.info("solveForGlobalCoefficients: optimizing {} tiles with {} threads", tc.getTiles().size(), numThreads);
 		try {
 			TileUtil.optimizeConcurrently(new ErrorStatistic(iterations + 1), 0.01f, iterations, iterations, 0.75f, tc, tc.getTiles(), tc.getFixedTiles(), 1);
@@ -255,9 +261,13 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 					identityConnect(coefficientTile.get(right), coefficientTile.get(left));
 					identityConnect(coefficientTile.get(top), coefficientTile.get(bot));
-					if (equilibrateIntensities) {
-						connectAverages(coefficientTile.get(right), averages.get(right), coefficientTile.get(left), averages.get(left));
-						connectAverages(coefficientTile.get(top), averages.get(top), coefficientTile.get(bot), averages.get(bot));
+				}
+			}
+			if (equilibrateIntensities) {
+				for (int i = 0; i < parameters.numCoefficients(); i++) {
+					for (int j = 0; j < parameters.numCoefficients(); j++) {
+						final int idx = getLinearIndex(i, j, parameters.numCoefficients());
+						equilibrateIntensity(coefficientTile.get(idx), averages.get(idx));
 					}
 				}
 			}
@@ -271,11 +281,11 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return y * n + x;
 	}
 
-	private void connectAverages(final Tile<?> t1, final Double p1, final Tile<?> t2, final Double p2) {
-		final double weight = 2.0;
+	private void equilibrateIntensity(final Tile<?> tile, final Double average) {
+		final double weight = 1.0;
 		final List<PointMatch> matches = new ArrayList<>();
-		matches.add(new PointMatch(new Point(new double[] { p1 }), new Point(new double[] { p2 }), weight));
-		t1.connect(t2, matches);
+		matches.add(new PointMatch(new Point(new double[] { average }), new Point(new double[] { 0.5 }), weight));
+		tile.connect(equilibrationTile, matches);
 	}
 
 	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2) {
