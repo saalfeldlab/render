@@ -3,6 +3,8 @@ package org.janelia.render.client.newsolver;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
+import java.io.IOException;
+
 /**
  * Tests the {@link StackAlignmentComparisonClient} class.
  *
@@ -36,13 +38,8 @@ public class StackAlignmentComparisonClientTest {
                         "--stack", null,
                         "--fileName", null};
 
-        errorArgs[9] = stack1;
-        errorArgs[11] = fileName1;
-        StackAlignmentErrorClient.main(errorArgs);
-
-        errorArgs[9] = stack2;
-        errorArgs[11] = fileName2;
-        StackAlignmentErrorClient.main(errorArgs);
+        computeErrorsUsing(errorArgs, stack1, fileName1);
+        computeErrorsUsing(errorArgs, stack2, fileName2);
 
         final String[] comparisonArgs = new String[] {
                         "--baselineFile", fileName1,
@@ -50,6 +47,21 @@ public class StackAlignmentComparisonClientTest {
                         "--metric", "RELATIVE_DIFFERENCE",
                         "--reportWorstPairs", "50"};
 
-        StackAlignmentComparisonClient.main(comparisonArgs);
+        final StackAlignmentComparisonClient.Parameters params = new StackAlignmentComparisonClient.Parameters();
+        params.parse(comparisonArgs);
+        new StackAlignmentComparisonClient(params).compareErrors();
+    }
+
+    private static void computeErrorsUsing(final String[] args, final String stack, final String fileName) {
+        args[9] = stack;
+        args[11] = fileName;
+
+        final StackAlignmentErrorClient.Parameters params = new StackAlignmentErrorClient.Parameters();
+        params.parse(args);
+        try {
+            new StackAlignmentErrorClient(params).fetchAndComputeError();
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
