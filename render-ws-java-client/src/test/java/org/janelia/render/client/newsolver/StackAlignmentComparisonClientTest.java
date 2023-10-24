@@ -44,7 +44,7 @@ public class StackAlignmentComparisonClientTest {
         final String[] comparisonArgs = new String[] {
                         "--baselineFile", fileName1,
                         "--otherFile", fileName2,
-                        "--metric", "RELATIVE_DIFFERENCE",
+                        "--metric", "ABSOLUTE_CHANGE",
                         "--reportWorstPairs", "50"};
 
         final StackAlignmentComparisonClient.Parameters params = new StackAlignmentComparisonClient.Parameters();

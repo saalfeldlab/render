@@ -70,6 +70,8 @@ class AlignmentErrors {
 	}
 
 	public enum MergingMethod {
+		RELATIVE_CHANGE((a, b) -> b / a),
+		ABSOLUTE_CHANGE((a, b) -> b - a),
 		RELATIVE_DIFFERENCE((a, b) -> Math.abs(a - b) / a),
 		ABSOLUTE_DIFFERENCE((a, b) -> Math.abs(a - b));
 
