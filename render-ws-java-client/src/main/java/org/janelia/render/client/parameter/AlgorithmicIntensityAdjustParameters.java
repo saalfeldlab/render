@@ -54,10 +54,10 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	public int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
 
 	@Parameter(
-			names = "--equilibrateIntensities",
-			description = "Apply translation to every coefficient tile to make the mean intensity equal to this value (default: null)",
-			arity = 0)
-	public boolean preEquilibrateIntensity = false;
+			names = "--equilibrationWeight",
+			description = "Apply equilibration to every coefficient tile to make the mean intensity more uniform (default: 0.0 = no equilibration)"
+	)
+	public double equilibrationWeight = 0.0;
 
 
 	public void initDefaultValues() throws IllegalArgumentException {

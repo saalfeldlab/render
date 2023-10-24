@@ -247,7 +247,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private void connectTilesWithinPatches(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
 		final Collection<TileSpec> allTiles = blockData.rtsc().getTileSpecs();
-		final boolean equilibrateIntensities = blockData.solveTypeParameters().equilibrateIntensities();
+		final double equilibrationWeight = blockData.solveTypeParameters().equilibrationWeight();
 
 		for (final TileSpec p : allTiles) {
 			final List<? extends Tile<?>> coefficientTile = coefficientTiles.get(p.getTileId());
@@ -263,11 +263,11 @@ public class AffineIntensityCorrectionBlockWorker<M>
 					identityConnect(coefficientTile.get(top), coefficientTile.get(bot));
 				}
 			}
-			if (equilibrateIntensities) {
+			if (equilibrationWeight > 0.0) {
 				for (int i = 0; i < parameters.numCoefficients(); i++) {
 					for (int j = 0; j < parameters.numCoefficients(); j++) {
 						final int idx = getLinearIndex(i, j, parameters.numCoefficients());
-						equilibrateIntensity(coefficientTile.get(idx), averages.get(idx));
+						equilibrateIntensity(coefficientTile.get(idx), averages.get(idx), equilibrationWeight);
 					}
 				}
 			}
@@ -281,8 +281,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return y * n + x;
 	}
 
-	private void equilibrateIntensity(final Tile<?> tile, final Double average) {
-		final double weight = 1.0;
+	private void equilibrateIntensity(final Tile<?> tile, final Double average, final double weight) {
 		final List<PointMatch> matches = new ArrayList<>();
 		matches.add(new PointMatch(new Point(new double[] { average }), new Point(new double[] { 0.5 }), weight));
 		tile.connect(equilibrationTile, matches);
