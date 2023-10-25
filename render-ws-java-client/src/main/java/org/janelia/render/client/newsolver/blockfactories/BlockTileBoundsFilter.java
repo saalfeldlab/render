@@ -36,6 +36,12 @@ public interface BlockTileBoundsFilter
         return blockXYBounds.contains(tileBounds.getCenterX(), tileBounds.getCenterY());
     };
 
+    BlockTileBoundsFilter SCALED_XY = (tileBounds, blockBounds) -> {
+        // only keep tiles that touch a shrunk version of the block
+        final Bounds scaledBlockBounds = blockBounds.scaled(0.75, 0.75, 1.0);
+        final Rectangle scaledXYBounds = scaledBlockBounds.toRectangle();
+        return scaledXYBounds.intersects(tileBounds.toRectangle());
+    };
     /**
      * @return list of included tile bounds based upon the specified parameters.
      */

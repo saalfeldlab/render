@@ -63,18 +63,16 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 				.regularGrid(In.X, minX, maxX, blockSizeX)
 				.regularGrid(In.Y, minY, maxY, blockSizeY)
 				.singleBlock(In.Z, minZ, maxZ)
-				.plus()
-				.shiftedGrid(In.X, minX, maxX, blockSizeX)
-				.shiftedGrid(In.Y, minY, maxY, blockSizeY)
-				.singleBlock(In.Z, minZ, maxZ)
 				.create();
 
-		return blockCollectionFromLayout(blockLayout, blockSolveParameterProvider);
+		// grow blocks such that they overlap
+		final List<Bounds> scaledLayout = blockLayout.stream().map(b -> b.scaled(2.0, 2.0, 1.0)).collect(Collectors.toList());
+		return blockCollectionFromLayout(scaledLayout, blockSolveParameterProvider);
 	}
 
 	@Override
 	protected BlockTileBoundsFilter getBlockTileFilter() {
-		return BlockTileBoundsFilter.XY_MIDPOINT;
+		return BlockTileBoundsFilter.SCALED_XY;
 	}
 
 	@Override
