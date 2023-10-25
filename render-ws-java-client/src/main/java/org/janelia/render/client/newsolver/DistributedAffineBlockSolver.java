@@ -65,18 +65,18 @@ public class DistributedAffineBlockSolver
                     "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                     "--owner", "hess_wafer_53",
                     "--project", "cut_000_to_009",
-                    "--matchCollection", "c000_s095_v01_match",
-                    "--stack", "c000_s095_v01",
-                    "--targetStack", "c000_s095_v01_align_test_xy_qq",
-					"--minX", "0",
-					"--maxX", "84000",
-					"--minY", "0",
-					"--maxY", "86000",
-                    "--minZ", "20",
-                    "--maxZ", "20",
+                    "--matchCollection", "c009_s310_v01_match",
+                    "--stack", "c009_s310_v01_mfov_08",
+                    "--targetStack", "c009_s310_v01_align_test_overlap_shrink",
+					"--minX", "33400",
+					"--maxX", "54600",
+					"--minY", "400",
+					"--maxY", "18700",
+                    "--minZ", "424",
+                    "--maxZ", "460",
 
-					"--blockSizeX", "12000",
-					"--blockSizeY", "12000",
+					"--blockSizeX", "10000",
+					"--blockSizeY", "8000",
 					// "--blockSizeZ", "100",
 
                     "--completeTargetStack",
@@ -84,7 +84,7 @@ public class DistributedAffineBlockSolver
 
 					"--maxNumMatches", "0", // no limit, default
 					"--threadsWorker", "1",
-					"--threadsGlobal", "12",
+					"--threadsGlobal", "4",
 
                     "--blockOptimizerLambdasRigid",          "1.0,1.0,0.9,0.3,0.01",
                     "--blockOptimizerLambdasTranslation",    "1.0,0.0,0.0,0.0,0.0",
