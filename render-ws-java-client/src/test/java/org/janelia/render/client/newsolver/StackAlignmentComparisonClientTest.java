@@ -21,8 +21,6 @@ public class StackAlignmentComparisonClientTest {
     // --------------------------------------------------------------
     // The following methods support ad-hoc interactive testing with external render web services.
     // Consequently, they aren't included in the unit test suite.
-    //
-    // To see old ad-hoc tests that visualized matches in ImageJ, look at code before the commit for this line.
 
     public static void main(final String[] args) throws Exception {
         final String fileName1 = "errors1.json.gz";
