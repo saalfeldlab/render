@@ -41,6 +41,8 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
+import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreator;
+import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.BlockTileBoundsFilter;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
@@ -395,6 +397,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 				// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
 				final List<PointMatch> matches = new ArrayList<>();
+				final SameTileMatchCreator<AffineModel2D> matchCreator = new SameTileMatchCreatorAffine2D<>(samplesPerDimension);
 
 				for (final Tile<M> imageTile : imageTiles) {
 					final String tileId = solveItem.tileToIdMap().get(imageTile);
@@ -403,22 +406,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get(tileId);
 					final AffineModel2D metaDataTransform = getMetaDataTransformation(solveItem, tileId);
 
-					final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
-					final double sampleHeight = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
-
-					// ALTERNATIVELY: ONLY SELECT ONE OF THE TILES
-					for (int y = 0; y < samplesPerDimension; ++y) {
-						final double sampleY = y * sampleHeight;
-						for (int x = 0; x < samplesPerDimension; ++x) {
-							final double[] p = new double[] { x * sampleWidth, sampleY };
-							final double[] q = new double[] { x * sampleWidth, sampleY };
-
-							stitchingTransform.applyInPlace(p);
-							metaDataTransform.applyInPlace(q);
-
-							matches.add(new PointMatch(new Point(p), new Point(q)));
-						}
-					}
+					matchCreator.addMatches(tileSpec, stitchingTransform, metaDataTransform, null, null, matches);
 				}
 
 				final AlignmentModel model = (AlignmentModel) groupedTile.getModel();
@@ -603,38 +591,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						final String pId = solveItem.tileToIdMap().get( pair.getA().getA() );
 						final String qId = solveItem.tileToIdMap().get( pair.getA().getB() );
 
-						final Tile< S > p, q;
-		
-						if ( !idTotile.containsKey( pId ) )
-						{
-							//p = new Tile<>( model.copy() );
-							// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
-							p = SolveTools.buildTile(
-									solveItem.idToPreviousModel().get( pId ),
-									blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy(),
-									100, 100, 3 );
-							idTotile.put( pId, p );
-							tileToId.put( p, pId );
-						}
-						else
-						{
-							p = idTotile.get( pId );
-						}
-		
-						if ( !idTotile.containsKey( qId ) )
-						{
-							//q = new Tile<>( model.copy() );
-							q = SolveTools.buildTile(
-									solveItem.idToPreviousModel().get( qId ),
-									blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy(),
-									100, 100, 3 );
-							idTotile.put( qId, q );
-							tileToId.put( q, qId );
-						}
-						else
-						{
-							q = idTotile.get( qId );
-						}
+						final Tile<S> p = getAndCacheTile(solveItem, z, idTotile, pId, tileToId);
+						final Tile<S> q = getAndCacheTile(solveItem, z, idTotile, qId, tileToId);
 
 						// TODO: do we really need to duplicate the PointMatches?
 						p.connect( q, SolveTools.duplicate( pair.getB() ) );
@@ -790,6 +748,31 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			throw new IllegalStateException(errorMsg);
 		}
 
+	}
+
+	private static <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> Tile<S> getAndCacheTile(
+			final AffineBlockDataWrapper<M, S> solveItem,
+			final int z,
+			final HashMap<String, Tile<S>> idToTile,
+			final String pId,
+			final HashMap<Tile<S>, String> tileToId) {
+
+		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+		final Tile<S> p;
+
+		if (! idToTile.containsKey(pId)) {
+			// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
+			p = SolveTools.buildTile(
+					solveItem.idToPreviousModel().get(pId),
+					blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy(),
+					100, 100, 3 );
+			idToTile.put(pId, p);
+			tileToId.put(p, pId);
+		} else {
+			p = idToTile.get(pId);
+		}
+
+		return p;
 	}
 
 	protected ArrayList<AffineBlockDataWrapper<M, S>> splitSolveItem(final AffineBlockDataWrapper<M, S> inputSolveItem)
