@@ -94,8 +94,7 @@ public class IntensityCorrectionClient
         final JavaRDD<ArrayList<? extends BlockData<ArrayList<AffineModel1D>, ?>>> rddProcessedBlocks =
                 rddBlocks.map(block -> {
                     final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(threadsForSparkTasks);
-                    worker.run();
-                    return worker.getBlockDataList();
+                    return new ArrayList<>(worker.call());
                 });
 
         LOG.info("runWithContext: processing {} blocks", blocks.size());

@@ -117,12 +117,11 @@ public class DistributedIntensityCorrectionSolver {
 		return allItems;
 	}
 
-	private ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> createAndRunWorker(final BlockData<ArrayList<AffineModel1D>, ?> block)
+	private List<BlockData<ArrayList<AffineModel1D>, ?>> createAndRunWorker(final BlockData<ArrayList<AffineModel1D>, ?> block)
 			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
 		final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(solverSetup.distributedSolve.threadsWorker);
-		worker.run();
-		return new ArrayList<>(worker.getBlockDataList());
+		return new ArrayList<>(worker.call());
 	}
 
 	public ResultContainer<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {

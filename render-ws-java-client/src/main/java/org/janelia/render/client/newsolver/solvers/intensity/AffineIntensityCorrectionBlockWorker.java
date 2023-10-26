@@ -4,7 +4,6 @@ import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
-import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IdentityModel;
 import mpicbg.models.InterpolatedAffineModel1D;
@@ -37,7 +36,6 @@ import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduc
 import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
-import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.parameter.ZDistanceParameters;
@@ -75,7 +73,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	 * runs the Worker
 	 */
 	@Override
-	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
+	public List<BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>>> call()
+			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
 		fetchResolvedTiles();
 		final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(blockData.rtsc());
@@ -95,6 +94,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		});
 
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, blockData={}", blockData);
+		return new ArrayList<>(List.of(blockData));
 	}
 
 	private void fetchResolvedTiles() throws IOException {
@@ -338,14 +338,6 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			result.add((double) (averages[i] / counts[i]));
 
 		return new ValuePair<>(tile.getTileId(), result);
-	}
-
-	/**
-	 * @return - the result(s) of the solve, multiple ones if they were not connected
-	 */
-	@Override
-	public ArrayList<BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>>> getBlockDataList() {
-		return new ArrayList<>(List.of(blockData));
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);

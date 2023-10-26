@@ -85,7 +85,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	final HashMap< Integer, List< Integer > > zToPairs;
 
 	final AffineBlockDataWrapper<M, S> inputSolveItem;
-	private ArrayList<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> result;
 
 	// to filter matches
 	final MatchFilter matchFilter;
@@ -130,15 +129,11 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	}
 
 	@Override
-	public ArrayList<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> getBlockDataList()
-	{
-		return result;
-	}
+	public List<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> call()
+			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
-	@Override
-	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
-	{
-		this.result = new ArrayList<>(); // initialize result to empty list to avoid NPEs later
+		// initialize result to empty list to avoid NPEs later
+		final ArrayList<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> result = new ArrayList<>();
 
 		// for error computation (local)
 		final List<CanvasMatches> canvasMatches = assembleMatchData();
@@ -195,6 +190,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		}
 
 		LOG.info("run: saved {} results for blocks {}", result.size(), result);
+		return result;
 	}
 
 	private List<CanvasMatches> assembleMatchData()
