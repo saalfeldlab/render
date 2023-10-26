@@ -27,7 +27,7 @@ public class SameTileMatchCreatorAffineIntensity implements SameTileMatchCreator
 
 		// TODO: in this case it doesn't matter if it's A or B, for other cases the blocks might be useful
 		// TODO: very likely that idToAverages() will move to FIBSEMIntensityCorrectionParameters in the future, thus we will need a P
-		final ArrayList<Double> averages = blockContextA.idToAverages().get(tileSpec.getTileId());
+		final List<Double> averages = blockContextA.getResults().getAveragesFor(tileSpec.getTileId());
 
 		// TODO: instead of average, a random pixel could be taken
 		for (int i = 0; i < nModels; ++i) {

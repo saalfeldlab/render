@@ -4,6 +4,7 @@ import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +13,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
@@ -30,8 +32,8 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
 	public void fuseGlobally(
 			final ResultContainer<Z> globalData,
-			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile
-	) {
+			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile,
+			final BlockFactory blockFactory) {
 		final HashMap<BlockData<R, ?>, G> blockToG = new HashMap<>();
 
 		blockToTile.forEach((block, tile) -> {
@@ -40,18 +42,23 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 		});
 
 		final Map<String, List<BlockData<R, ?>>> tileIdToBlocks = new HashMap<>();
+		final Map<BlockData<R, ?>, WeightFunction> blockToWeightFunctions = new HashMap<>();
 		for (final BlockData<R, ?> block : blockToTile.keySet()) {
-			for (final String tileId : block.getResults().getTileIds()) {
+			final Set<String> blockTileIds = block.getResults().getTileIds();
+			for (final String tileId : blockTileIds) {
 				tileIdToBlocks.computeIfAbsent(tileId, k -> new ArrayList<>()).add(block);
+			}
+			if (blockTileIds.isEmpty()) {
+				throw new IllegalStateException("no tiles in block " +  block.toDetailsString());
+			} else {
+				blockToWeightFunctions.put(block, blockFactory.createWeightFunction(block));
 			}
 		}
 
-		final Map<BlockData<R, ?>, WeightFunction> blockToWeightFunctions = new HashMap<>();
 		for (final Map.Entry<String, List<BlockData<R, ?>>> entry : tileIdToBlocks.entrySet()) {
 			final String tileId = entry.getKey();
 			final List<BlockData<R, ?>> blocksForTile = entry.getValue();
-			final int[] blockIds = blocksForTile.stream().mapToInt(BlockData::getId).toArray();
-			LOG.info("tile '" + tileId + "' is in following blocks: " + Arrays.toString(blockIds));
+			// LOG.debug("fuseGlobally: tile '{}' is in following blocks: {}", tileId, blocksForTile);
 
 			// all tileSpecs are identical for all overlapping blocks
 			final TileSpec tile = blocksForTile.get(0).rtsc().getTileSpec(tileId);
@@ -67,12 +74,15 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 				final R newModel = block.getResults().getModelFor(tileId);
 				// TODO: confirm this is proper way to handle, consider moving retrieval to block method and put check there
 				if (newModel == null) {
-					throw new IllegalArgumentException("failed to find new model for tile " + tileId);
+					throw new IllegalStateException("failed to find new model for tile " + tileId + " in block " + block);
 				}
 				final I model = combineResultGlobal.apply(newModel, globalModel);
 				models.add(model);
 
-				final WeightFunction weight = blockToWeightFunctions.computeIfAbsent(block, BlockData::createWeightFunction);
+				final WeightFunction weight = blockToWeightFunctions.get(block);
+				if (weight == null) {
+					throw new IllegalStateException("failed to find weight function for block " + block + " associated with tileId " + tileId);
+				}
 				final double w = weight.compute(midpointXY[0], midpointXY[1], z);
 				weights.add(w);
 
@@ -84,7 +94,8 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 			}
 
 			final List<Double> normalizedWeights = normalize(weights);
-			LOG.info("tile '" + tileId + "', models are fused following weights: " + Arrays.toString(normalizedWeights.toArray()));
+			LOG.debug("fuseGlobally: tile '{}' models are fused following weights: {}",
+					  tileId, Arrays.toString(normalizedWeights.toArray()));
 			final Z tileModel = fusion.apply(models, normalizedWeights);
 			globalData.recordModel(tileId, tileModel);
 			globalData.recordAllErrors(tileId, error);

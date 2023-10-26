@@ -199,7 +199,7 @@ public class TilePairClient {
 
         this.renderDataClient = parameters.renderWeb.getDataClient();
 
-        if ((parameters.zValues != null) && (parameters.zValues.size() > 0) && (tpdp.zNeighborDistance != 0)) {
+        if ((parameters.zValues != null) && (! parameters.zValues.isEmpty()) && (tpdp.zNeighborDistance != 0)) {
             throw new IllegalArgumentException(
                     "Explicit --z values can only be specified when --zNeighborDistance is zero (for montages).");
         }
@@ -269,7 +269,7 @@ public class TilePairClient {
             throws IllegalArgumentException, IOException {
 
         final List<Double> zValues = getZValues();
-        if (zValues.size() == 0) {
+        if (zValues.isEmpty()) {
             throw new IllegalArgumentException(
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
@@ -281,7 +281,7 @@ public class TilePairClient {
     public void deriveAndSaveSortedNeighborPairsForZValues(final List<Double> sortedZValues)
             throws IllegalArgumentException, IOException {
 
-        if ((sortedZValues == null) || (sortedZValues.size() == 0)) {
+        if ((sortedZValues == null) || (sortedZValues.isEmpty())) {
             throw new IllegalArgumentException(
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
@@ -430,7 +430,7 @@ public class TilePairClient {
 
         }
 
-        if (neighborPairs.size() > 0) {
+        if (! neighborPairs.isEmpty()) {
             final List<OrderedCanvasIdPair> neighborPairsList = new ArrayList<>(neighborPairs);
             final String outputFileName = numberOfOutputFiles == 0 ? parameters.toJson : getOutputFileName();
             savePairs(neighborPairsList, renderParametersUrlTemplate, outputFileName);

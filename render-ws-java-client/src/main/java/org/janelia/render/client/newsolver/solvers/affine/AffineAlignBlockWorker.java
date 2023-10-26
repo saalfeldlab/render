@@ -1,5 +1,8 @@
 package org.janelia.render.client.newsolver.solvers.affine;
 
+import ij.ImageJ;
+import ij.ImagePlus;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -7,12 +10,29 @@ import java.util.Collections;
 import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.ErrorStatistic;
+import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.InterpolatedAffineModel2D;
+import mpicbg.models.Model;
+import mpicbg.models.NoninvertibleModelException;
+import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
+import mpicbg.models.PointMatch;
+import mpicbg.models.RigidModel2D;
+import mpicbg.models.Tile;
+import mpicbg.models.TileConfiguration;
+import mpicbg.models.TileUtil;
+import mpicbg.models.TranslationModel2D;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -21,6 +41,9 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
+import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreator;
+import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
+import org.janelia.render.client.newsolver.blockfactories.BlockTileBoundsFilter;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -39,23 +62,6 @@ import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ij.ImageJ;
-import ij.ImagePlus;
-import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.ErrorStatistic;
-import mpicbg.models.IllDefinedDataPointsException;
-import mpicbg.models.InterpolatedAffineModel2D;
-import mpicbg.models.Model;
-import mpicbg.models.NoninvertibleModelException;
-import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
-import mpicbg.models.PointMatch;
-import mpicbg.models.RigidModel2D;
-import mpicbg.models.Tile;
-import mpicbg.models.TileConfiguration;
-import mpicbg.models.TileUtil;
-import mpicbg.models.TranslationModel2D;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
@@ -81,7 +87,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	final HashMap< Integer, List< Integer > > zToPairs;
 
 	final AffineBlockDataWrapper<M, S> inputSolveItem;
-	private ArrayList<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> result;
 
 	// to filter matches
 	final MatchFilter matchFilter;
@@ -89,14 +94,15 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	// if stitching first should be done
 	final boolean stitchFirst;
 
+	// ids of tile specs whose results should be included in this block (as defined by filter)
+	final Set<String> coreTileSpecIds;
 
 	// created by SolveItemData.createWorker()
 	public AffineAlignBlockWorker(
 			final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
-			final int startId,
 			final int numThreads )
 	{
-		super( startId, blockData, numThreads );
+		super(blockData, numThreads);
 
 		final FIBSEMAlignmentParameters<M, S> parameters = blockData.solveTypeParameters();
 		this.matchDataClient = new RenderDataClient(parameters.baseDataUrl(),
@@ -120,68 +126,80 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			LOG.error("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
 			throw new RuntimeException("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
 		}
+
+		this.coreTileSpecIds = new HashSet<>(); // will be populated by call to assembleMatchData
 	}
 
 	@Override
-	public ArrayList<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> getBlockDataList()
-	{
-		return result;
-	}
+	public List<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> call()
+			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
-	@Override
-	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException
-	{
+		// initialize result to empty list to avoid NPEs later
+		final ArrayList<BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>> result = new ArrayList<>();
+
 		// for error computation (local)
 		final List<CanvasMatches> canvasMatches = assembleMatchData();
 
-		// minStitchingInliersSupplier:
-		// how many stitching inliers are needed to stitch first
-		// reason: if tiles are rarely connected and it is stitched first, a useful
-		// common alignment model after stitching cannot be found
-		stitchSectionsAndCreateGroupedTiles(inputSolveItem, pairs, zToPairs, stitchFirst, numThreads);
+		// only process block if it has data
+		if (! canvasMatches.isEmpty()) {
 
-		connectGroupedTiles(pairs, inputSolveItem);
+			// minStitchingInliersSupplier:
+			// how many stitching inliers are needed to stitch first
+			// reason: if tiles are rarely connected and solve is stitched first, a useful
+			// common alignment model after stitching cannot be found
+			stitchSectionsAndCreateGroupedTiles(inputSolveItem, pairs, zToPairs, stitchFirst, numThreads);
 
-		final List<AffineBlockDataWrapper<M, S>> solveItems = splitSolveItem(inputSolveItem, startId);
+			connectGroupedTiles(pairs, inputSolveItem);
 
-		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
-		{
-				/*
-				java.lang.NullPointerException: Cannot invoke "org.janelia.alignment.spec.TileSpec.getZ()" because the return value of "org.janelia.alignment.spec.ResolvedTileSpecCollection.getTileSpec(String)" is null
-						at org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker.assignRegularizationModel(AffineAlignBlockWorker.java:345)
-						at org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker.run(AffineAlignBlockWorker.java:164)
-						at org.janelia.render.client.newsolver.DistributedAffineBlockSolver.lambda$1(DistributedAffineBlockSolver.java:108)
-						at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
-						at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)
-						at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)
-						at java.base/java.lang.Thread.run(Thread.java:833)
-				*/
+			final List<AffineBlockDataWrapper<M, S>> solveItems = splitSolveItem(inputSolveItem);
 
-			if ( !assignRegularizationModel( solveItem, AffineBlockDataWrapper.samplesPerDimension, stabilizationRadius ) )
-				throw new RuntimeException( "Couldn't regularize. Please check." );
+			for (final Iterator<AffineBlockDataWrapper<M, S>> i = solveItems.iterator(); i.hasNext();) {
+				final AffineBlockDataWrapper<M, S> solveItem = i.next();
+				// Remove any (potentially split) items that do not contain at least 2 tiles
+				// whose centers are within the block bounds.  This can occur if a tile at the edge
+				// of the bounds gets split off into a small cluster (e.g. because of resin edges).
+				final Set<String> allItemTileSpecIds = solveItem.blockData.rtsc().getTileIds();
+				final Set<String> coreItemTileSpecIds = new HashSet<>(allItemTileSpecIds);
+				coreItemTileSpecIds.retainAll(coreTileSpecIds);
+				if (coreItemTileSpecIds.size() < 2) {
+					LOG.info("run: removing solveItem {} with only {} core tiles ({}), populatedBounds {}, and {} padding tiles ({})",
+							 solveItem.blockData.toDetailsString(),
+							 coreItemTileSpecIds.size(),
+							 coreItemTileSpecIds,
+							 solveItem.blockData.getPopulatedBounds(),
+							 allItemTileSpecIds.size(),
+							 allItemTileSpecIds);
+					i.remove();
+				}
+			}
 
-			solve( solveItem, numThreads );
+			for (final AffineBlockDataWrapper<M, S> solveItem : solveItems) {
+				if (! assignRegularizationModel(solveItem,
+												AffineBlockDataWrapper.samplesPerDimension,
+												stabilizationRadius)) {
+					throw new RuntimeException("could not regularize block " + solveItem.blockData().toDetailsString());
+				}
+				solve(solveItem, numThreads);
+			}
+
+			for (final AffineBlockDataWrapper<M, S> solveItem : solveItems) {
+				// remove data for tiles with centers outside the block bounds (but connected to tiles inside)
+				solveItem.retainTiles(coreTileSpecIds);
+				final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+				computeSolveItemErrors(blockData, canvasMatches);
+				result.add(blockData);
+			}
 		}
 
-		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
-			computeSolveItemErrors(solveItem.blockData(), canvasMatches);
-
-		// clean up
-		this.result = new ArrayList<>();
-		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
-		{
-			result.add( solveItem.blockData() );
-			solveItem.matches().clear();
-			solveItem.tileToGroupedTile().clear();
-			solveItem.groupedTileToTiles().clear();
-			solveItem.idToTileMap().clear();
-		}
+		LOG.info("run: saved {} results for blocks {}", result.size(), result);
+		return result;
 	}
 
 	private List<CanvasMatches> assembleMatchData()
 			throws IOException {
 
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = inputSolveItem.blockData();
+		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 
 		Integer maxZDistance = blockData.solveTypeParameters().maxZRangeMatches(); // TODO: move this parameter to API query
 		if (maxZDistance < 0) {
@@ -190,21 +208,47 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		final String matchCollectionName = matchDataClient.getProject(); // TODO: remove matchDataClient
 
-		LOG.info("assembleMatchData: entry, loading transforms and matches for block {} with {} tiles and maxZDistance={}",
-				 blockData, blockData.getTileCount(), maxZDistance);
+		LOG.info("assembleMatchData: entry, loading transforms and matches for block {} with maxZDistance={}",
+				 blockData, maxZDistance);
 
+		// fetch tiles in bounds and all associated matches
 		final ResolvedTileSpecsWithMatchPairs tileSpecsWithMatchPairs =
 				renderDataClient.getResolvedTilesWithMatchPairs(renderStack,
-																blockData.getBounds(),
+																blockData.getOriginalBounds(),
 																matchCollectionName,
 																null,
-																null);
-		// TODO: only pull rtsc once and initialize result after that (currently done in BlockData constructor)
+																null,
+																true);
+		final ResolvedTileSpecCollection rtsc = tileSpecsWithMatchPairs.getResolvedTileSpecs();
 
-		// block tileIds are filtered by center point during BlockFactory.defineBlockCollection process
-		// (more specifically by BlockFactory.pruneRtsc), so apply the same filtering to retrieved tile and match data
-		final Set<String> tileIdsToKeep = new HashSet<>(blockData.rtsc().getTileIds());
-		tileSpecsWithMatchPairs.normalize(tileIdsToKeep, maxZDistance);
+		// identify "padding" tiles missing from original request because they are outside block bounds (but connected to inside tiles)
+		final Set<String> missingPaddingTileIds = tileSpecsWithMatchPairs.findPaddingTileIds();
+
+		LOG.info("assembleMatchData: loading {} completing padding tile specs for block {}",
+				 missingPaddingTileIds.size(), blockData);
+
+		// fetch missing padding tile specs ...
+		final List<TileSpec> missingPaddingTileSpecs =
+				renderDataClient.getTileSpecsWithIds(new ArrayList<>(missingPaddingTileIds),
+													 renderStack);
+
+		// and add them to the collection for block alignment (they will be removed after optimization)
+		missingPaddingTileSpecs.forEach(rtsc::addTileSpecToCollection);
+
+		// At this point, collection has all tiles and matches but with tiles
+		// that are too far away in z (> maxZDistance), so we remove those.
+		tileSpecsWithMatchPairs.normalize(maxZDistance);
+
+		// use block tile filter to identify core tiles to be returned to driver
+		this.coreTileSpecIds.clear();
+		this.coreTileSpecIds.addAll(
+				BlockTileBoundsFilter.findIncludedAndConvertToTileIdSet(
+						tileSpecsWithMatchPairs.getResolvedTileSpecs().getTileSpecs(),
+						blockData.getOriginalBounds(),
+						blockData.getBlockTileBoundsFilter()));
+
+		// initialize block results with the filtered data
+		blockResults.init(tileSpecsWithMatchPairs.getResolvedTileSpecs());
 
 		final List<CanvasMatches> matchPairs = new ArrayList<>(tileSpecsWithMatchPairs.getMatchPairCount());
 
@@ -231,6 +275,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final int pZ = pTileSpec.getIntegerZ();
 			final int qZ = qTileSpec.getIntegerZ();
 
+			blockResults.recordMatchedTile(pZ, pId);
+			blockResults.recordMatchedTile(qZ, qId);
+
 			// if the pair is from the same layer we remember the current index in the pairs list for stitching
 			if (pZ == qZ) {
 				zToPairs.computeIfAbsent(pZ, k -> new ArrayList<>()).add(pairs.size() - 1);
@@ -238,6 +285,14 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			// for error computation
 			matchPairs.add(pair);
+		}
+
+		// remove included (by filter) tiles that are only matched with excluded (by filter) tiles
+		// these will be tiles at the extreme edge of a block's bounds
+		final List<String> unmatchedTileIds = blockResults.findAndRemoveUnmatchedTiles().stream().sorted().collect(Collectors.toList());
+		if (! unmatchedTileIds.isEmpty()) {
+			LOG.warn("assembleMatchData: removed {} unmatched tiles from block {}, removed tileIds are: {}",
+					 unmatchedTileIds.size(), blockData, unmatchedTileIds);
 		}
 
 		return matchPairs;
@@ -342,6 +397,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 				// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
 				final List<PointMatch> matches = new ArrayList<>();
+				final SameTileMatchCreator<AffineModel2D> matchCreator = new SameTileMatchCreatorAffine2D<>(samplesPerDimension);
 
 				for (final Tile<M> imageTile : imageTiles) {
 					final String tileId = solveItem.tileToIdMap().get(imageTile);
@@ -350,22 +406,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get(tileId);
 					final AffineModel2D metaDataTransform = getMetaDataTransformation(solveItem, tileId);
 
-					final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);
-					final double sampleHeight = (tileSpec.getHeight() - 1.0) / (samplesPerDimension - 1.0);
-
-					// ALTERNATIVELY: ONLY SELECT ONE OF THE TILES
-					for (int y = 0; y < samplesPerDimension; ++y) {
-						final double sampleY = y * sampleHeight;
-						for (int x = 0; x < samplesPerDimension; ++x) {
-							final double[] p = new double[] { x * sampleWidth, sampleY };
-							final double[] q = new double[] { x * sampleWidth, sampleY };
-
-							stitchingTransform.applyInPlace(p);
-							metaDataTransform.applyInPlace(q);
-
-							matches.add(new PointMatch(new Point(p), new Point(q)));
-						}
-					}
+					matchCreator.addMatches(tileSpec, stitchingTransform, metaDataTransform, null, null, matches);
 				}
 
 				final AlignmentModel model = (AlignmentModel) groupedTile.getModel();
@@ -515,6 +556,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final int numThreads)
 	{
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 		final int maxPlateauWidthStitching = blockData.solveTypeParameters().maxPlateauWidthStitching();
 		final double maxAllowedErrorStitching = blockData.solveTypeParameters().maxAllowedErrorStitching();
 		final int maxIterationsStitching = blockData.solveTypeParameters().maxIterationsStitching();
@@ -522,9 +564,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		// combine tiles per layer that are be stitched first, but iterate over all z's 
 		// (also those only consisting of single tiles, they are connected in z though)
-		final ArrayList<Integer> zList = new ArrayList<>(blockData.getResults().getZLayers());
+		final ArrayList<Integer> zList = new ArrayList<>(blockResults.getMatchedZLayers());
 		Collections.sort( zList );
 
+		final Set<String> solveItemTileIdsForConsistencyCheck = new HashSet<>();
 		for ( final int z : zList )
 		{
 			LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, z={}", blockData, z);
@@ -548,38 +591,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						final String pId = solveItem.tileToIdMap().get( pair.getA().getA() );
 						final String qId = solveItem.tileToIdMap().get( pair.getA().getB() );
 
-						final Tile< S > p, q;
-		
-						if ( !idTotile.containsKey( pId ) )
-						{
-							//p = new Tile<>( model.copy() );
-							// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
-							p = SolveTools.buildTile(
-									solveItem.idToPreviousModel().get( pId ),
-									blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy(),
-									100, 100, 3 );
-							idTotile.put( pId, p );
-							tileToId.put( p, pId );
-						}
-						else
-						{
-							p = idTotile.get( pId );
-						}
-		
-						if ( !idTotile.containsKey( qId ) )
-						{
-							//q = new Tile<>( model.copy() );
-							q = SolveTools.buildTile(
-									solveItem.idToPreviousModel().get( qId ),
-									blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy(),
-									100, 100, 3 );
-							idTotile.put( qId, q );
-							tileToId.put( q, qId );
-						}
-						else
-						{
-							q = idTotile.get( qId );
-						}
+						final Tile<S> p = getAndCacheTile(solveItem, z, idTotile, pId, tileToId);
+						final Tile<S> q = getAndCacheTile(solveItem, z, idTotile, qId, tileToId);
 
 						// TODO: do we really need to duplicate the PointMatches?
 						p.connect( q, SolveTools.duplicate( pair.getB() ) );
@@ -588,15 +601,16 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 
 			// add all missing TileIds as unconnected Tiles
-			for (final String tileId : blockData.getResults().getTileIdsForZLayer(z))
-				if ( !idTotile.containsKey( tileId ) )
-				{
+			for (final String tileId : blockResults.getMatchedTileIdsForZLayer(z)) {
+				solveItemTileIdsForConsistencyCheck.add(tileId);
+				if (! idTotile.containsKey(tileId)) {
 					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, unconnected tileId {}", blockData, tileId);
 
 					final Tile<S> tile = new Tile<>(blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy());
 					idTotile.put( tileId, tile );
 					tileToId.put( tile, tileId );
 				}
+			}
 
 			// Now identify connected graphs within all tiles
 			final ArrayList<Set<Tile<?>>> sets = WorkerTools.safelyIdentifyConnectedGraphs(new ArrayList<>(idTotile.values()));
@@ -698,7 +712,11 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				else
 				{
 					final String tileId = tileToId.get( set.iterator().next() );
-					solveItem.idToStitchingModel().put( tileId, solveItem.idToPreviousModel().get( tileId ).copy() );
+					final AffineModel2D previousModel = solveItem.idToPreviousModel().get(tileId);
+					if (previousModel == null) {
+						throw new IllegalStateException("failed to find previous model for tile " + tileId + " in block " + blockData);
+					}
+					solveItem.idToStitchingModel().put( tileId, previousModel.copy());
 
 					// assign the original tile (we made a new one for stitching with a different model) to its grouped tile
 					solveItem.tileToGroupedTile().put( solveItem.idToTileMap().get( tileId ), groupedTile );
@@ -710,13 +728,55 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				}
 			}
 		}
+
+		// make sure output solveItem tileIds are consistent with input block tileIds
+		final Set<String> blockOnlyTileIds = new HashSet<>(blockResults.getTileIds());
+		blockOnlyTileIds.removeAll(solveItemTileIdsForConsistencyCheck);
+		final Set<String> solveItemOnlyTileIds = new HashSet<>(solveItemTileIdsForConsistencyCheck);
+		solveItemOnlyTileIds.removeAll(blockResults.getTileIds());
+		if (blockOnlyTileIds.isEmpty() && solveItemOnlyTileIds.isEmpty()) {
+			LOG.debug("stitchSectionsAndCreateGroupedTiles: exit, tileIds are consistent");
+		} else {
+			// log error in worker thread before throwing exception that will get logged in main/driver thread
+			final String errorMsg = "inconsistent tileIds for block " + blockData.toDetailsString() +
+									", check block tile/match filtering, block only tileIds are " +
+									blockOnlyTileIds.stream().sorted().collect(Collectors.toList()) +
+									", solveItem only tileIds are " +
+									solveItemOnlyTileIds.stream().sorted().collect(Collectors.toList());
+			LOG.error("stitchSectionsAndCreateGroupedTiles: exit, {}", errorMsg);
+
+			throw new IllegalStateException(errorMsg);
+		}
+
 	}
 
-	protected ArrayList<AffineBlockDataWrapper<M, S>> splitSolveItem(final AffineBlockDataWrapper<M, S> inputSolveItem, final int startId)
-	{
-		// assigning new id's to the solve items (they collide for now with other workers, fix upon merging)
-		int id = startId + 1;
+	private static <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>> Tile<S> getAndCacheTile(
+			final AffineBlockDataWrapper<M, S> solveItem,
+			final int z,
+			final HashMap<String, Tile<S>> idToTile,
+			final String pId,
+			final HashMap<Tile<S>, String> tileToId) {
 
+		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+		final Tile<S> p;
+
+		if (! idToTile.containsKey(pId)) {
+			// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
+			p = SolveTools.buildTile(
+					solveItem.idToPreviousModel().get(pId),
+					blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy(),
+					100, 100, 3 );
+			idToTile.put(pId, p);
+			tileToId.put(p, pId);
+		} else {
+			p = idToTile.get(pId);
+		}
+
+		return p;
+	}
+
+	protected ArrayList<AffineBlockDataWrapper<M, S>> splitSolveItem(final AffineBlockDataWrapper<M, S> inputSolveItem)
+	{
 		final ArrayList<AffineBlockDataWrapper<M, S>> solveItems = new ArrayList<>();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
@@ -737,6 +797,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		}
 		else
 		{
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("splitSolveItem: parent block details are {}", blockData.toDetailsString());
+			}
+
 			int graphCount = 0;
 
 			for ( final Set< Tile< ? > > subgraph : graphs ) // TODO: type sets properly
@@ -746,29 +810,23 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 				// re-assemble allTileIds and idToTileSpec
 				// update all the maps
-				final ResolvedTileSpecCollection originalRTSC = blockData.rtsc();
-				final List<TileSpec> groupedTileSpecList = subgraph.stream()
+				final Set<String> groupedTileIds = subgraph.stream()
 						.map(groupedTile -> inputSolveItem.groupedTileToTiles().get(groupedTile))
 						.flatMap(Collection::stream)
 						.map(tile -> inputSolveItem.tileToIdMap().get(tile))
-						.map(originalRTSC::getTileSpec)
-						.collect(Collectors.toList());
+						.collect(Collectors.toSet());
 
-				final ResolvedTileSpecCollection newRTSC =
-						new ResolvedTileSpecCollection(originalRTSC.getTransformSpecs(),
-													   groupedTileSpecList);
+				final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> splitBlockData =
+						blockData.buildSplitBlock(groupedTileIds);
+				final AffineBlockDataWrapper<M, S> solveItem = new AffineBlockDataWrapper<>(splitBlockData);
 
-				final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> newBlockData = new BlockData<>(blockData.blockFactory(), // no copy necessary
-																											   blockData.solveTypeParameters(), // no copy necessary
-																											   id,
-																											   blockData.getBounds(),
-																											   newRTSC);
-				final AffineBlockDataWrapper<M, S> solveItem = new AffineBlockDataWrapper<>(newBlockData);
+				LOG.info("splitSolveItem: splitBlockData={}, parentBlockData={}", splitBlockData, blockData);
 
-				++id;
-
-				LOG.info("splitSolveItem: block {}: old graph id={}, new graph id={}", newBlockData, blockData.getId(), newBlockData.getId());
-				LOG.info("splitSolveItem: block {}: min: {} > max: {}", newBlockData, newBlockData.minZ(), newBlockData.maxZ());
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("splitSolveItem: split block populatedBounds are {} and details are {}",
+							  splitBlockData.getPopulatedBounds(), // NOTE: populatedBounds are dynamically derived
+							  splitBlockData.toDetailsString());
+				}
 
 				// update all the maps
 				for ( final Tile< ? > groupedTile : subgraph )
@@ -780,8 +838,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.idToTileMap().put( tileId, t );
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-						newBlockData.getResults().recordModel(tileId, blockData.getResults().getModelFor(tileId));
-
 						solveItem.idToStitchingModel().put(tileId, inputSolveItem.idToStitchingModel().get(tileId));
 
 						final Tile< M > groupedTileCast = inputSolveItem.tileToGroupedTile().get( t );
@@ -802,6 +858,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final int numThreads ) throws InterruptedException, ExecutionException
 	{
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 		final PreAlign preAlign = blockData.solveTypeParameters().preAlign();
 
 		final List<Integer> blockOptimizerIterations = blockData.solveTypeParameters().blockOptimizerIterations();
@@ -828,7 +885,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			final Map<String, Double> weights = blockOptimizer.getWeightsForRun(k);
 			LOG.info("solve: block {}, run {}: l(rigid)={}, l(translation)={}, l(regularization)={}",
-					solveItem.blockData().getId(), k, weights.get(AlignmentModelType.RIGID.name()), weights.get(AlignmentModelType.TRANSLATION.name()), weights.get(AlignmentModelType.REGULARIZATION.name()));
+					solveItem.blockData(), k, weights.get(AlignmentModelType.RIGID.name()), weights.get(AlignmentModelType.TRANSLATION.name()), weights.get(AlignmentModelType.REGULARIZATION.name()));
 
 			for (final Tile<?> tile : tileConfig.getTiles()) {
 				final AlignmentModel model = (AlignmentModel) tile.getModel();
@@ -878,7 +935,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			LOG.info("solve: block {}: grouped model for tile {} is {}", blockData, tileId, tileIdToGroupModel.get(tileId));
 
-			blockData.getResults().recordModel(tileId, affine);
+			blockResults.recordModel(tileId, affine);
 			LOG.info("solve: block {}: tile {} model from grouped tile is {}", blockData, tileId, affine);
 		}
 	}
@@ -927,7 +984,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		// for local fits
 		final Model< ? > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
 
-		final ResultContainer<AffineModel2D> results = blockData.getResults();
+		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 
 		for (final CanvasMatches match : canvasMatches) {
 
@@ -946,15 +1003,15 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					blockData.solveTypeParameters().stitchingSolveModelInstance(pTileSpec.getZ().intValue()),
 					pTileSpec,
 					qTileSpec,
-					results.getModelFor(pTileId),
-					results.getModelFor(qTileId),
+					blockResults.getModelFor(pTileId),
+					blockResults.getModelFor(qTileId),
 					match.getMatches());
 
-			results.recordPairwiseTileError(pTileId, qTileId, vDiff);
+			blockResults.recordPairwiseTileError(pTileId, qTileId, vDiff);
 		}
 
-		LOG.info("computeSolveItemErrors, exit");
+		LOG.info("computeSolveItemErrors: exit");
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
+	private static final Logger LOG = LoggerFactory.getLogger(AffineAlignBlockWorker.class);
 }

@@ -26,16 +26,15 @@ import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.newsolver.assembly.Assembler;
-import org.janelia.render.client.newsolver.assembly.ResultContainer;
-import org.janelia.render.client.newsolver.assembly.GlobalSolver;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
+import org.janelia.render.client.newsolver.assembly.GlobalSolver;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
@@ -109,26 +108,21 @@ public class DistributedIntensityCorrectionSolver {
 			for (final Future<List<BlockData<ArrayList<AffineModel1D>, ?>>> future : taskExecutor.invokeAll(workers))
 					allItems.addAll(future.get());
 		} catch (final InterruptedException | ExecutionException e) {
-			throw new RuntimeException("Failed to compute alignments", e);
+			throw new RuntimeException("Failed to compute intensity correction", e);
 		} finally {
 			taskExecutor.shutdown();
 		}
 
-		// avoid duplicate id assigned while splitting solveitems in the workers
-		// but do keep ids that are smaller or equal to the maxId of the initial solveset
-		final int maxId = WorkerTools.fixIds(allItems, blocks.maxId());
-
-		LOG.info("solveBlocksUsingThreadPool: exit, computed {} blocks, maxId={}", allItems.size(), maxId);
+		LOG.info("solveBlocksUsingThreadPool: exit, computed {} blocks", allItems.size());
 
 		return allItems;
 	}
 
-	private ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> createAndRunWorker(final BlockData<ArrayList<AffineModel1D>, ?> block)
+	private List<BlockData<ArrayList<AffineModel1D>, ?>> createAndRunWorker(final BlockData<ArrayList<AffineModel1D>, ?> block)
 			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
-		final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(blocks.maxId() + 1, solverSetup.distributedSolve.threadsWorker);
-		worker.run();
-		return new ArrayList<>(worker.getBlockDataList());
+		final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(solverSetup.distributedSolve.threadsWorker);
+		return new ArrayList<>(worker.call());
 	}
 
 	public ResultContainer<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {
@@ -152,7 +146,7 @@ public class DistributedIntensityCorrectionSolver {
 
 		LOG.info("assembleBlocks: exit");
 
-		return assembler.createAssembly(allItems);
+		return assembler.createAssembly(allItems, blockFactory);
 	}
 
 	public void saveResultsAsNeeded(final ResultContainer<ArrayList<AffineModel1D>> finalizedItems)
@@ -277,7 +271,7 @@ public class DistributedIntensityCorrectionSolver {
 		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, solverSetup.blockPartition);
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();
 		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col =
-				blockFactory.defineBlockCollection(rtsc -> defaultSolveParams);
+				blockFactory.defineBlockCollection(() -> defaultSolveParams);
 
 		this.blocks = col;
 		return col;

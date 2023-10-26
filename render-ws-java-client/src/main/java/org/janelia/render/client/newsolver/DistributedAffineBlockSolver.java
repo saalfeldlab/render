@@ -3,7 +3,6 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -12,14 +11,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+import mpicbg.models.Affine2D;
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.RigidModel2D;
+
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.assembly.Assembler;
-import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.GlobalSolver;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
@@ -32,10 +35,6 @@ import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import mpicbg.models.Affine2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.Model;
 
 import static org.janelia.render.client.newsolver.solvers.affine.AlignmentModel.AlignmentModelBuilder;
 
@@ -120,7 +119,7 @@ public class DistributedAffineBlockSolver
 
 		final ArrayList<Callable<List<BlockData<AffineModel2D, ?>>>> workers = new ArrayList<>();
 
-		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block, alignmentSolver, cmdLineSetup)));
+		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block, cmdLineSetup)));
 
 		final ArrayList<BlockData<AffineModel2D, ?>> allItems = new ArrayList<>();
 		final List<Throwable> workerExceptions = new ArrayList<>();
@@ -143,13 +142,13 @@ public class DistributedAffineBlockSolver
 			throw new IllegalStateException("no blocks were computed, something is wrong");
 		}
 
-		// avoid duplicate id assigned while splitting solveitems in the workers
-		// but do keep ids that are smaller or equal to the maxId of the initial solveset
-		final int maxId = WorkerTools.fixIds(allItems, alignmentSolver.col.maxId());
+		// TODO: remove blocks that have no tiles?
 
-		LOG.info("main: computed {} blocks, maxId={}", allItems.size(), maxId);
+		LOG.info("main: computed {} blocks", allItems.size());
 
-		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup, allItems);
+		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup,
+																				allItems,
+																				alignmentSolver.blockFactory);
 
 		// save the re-aligned part
         LOG.info("main: saving target stack {}", cmdLineSetup.targetStack);
@@ -180,26 +179,16 @@ public class DistributedAffineBlockSolver
 
 	private static List<BlockData<AffineModel2D, ?>> createAndRunWorker(
 			final BlockData<AffineModel2D, ?> block,
-			final DistributedAffineBlockSolver alignmentSolver,
 			final AffineBlockSolverSetup cmdLineSetup) throws NoninvertibleModelException, IOException, ExecutionException, InterruptedException {
 
-			final Worker<AffineModel2D, ?> worker = block.createWorker(
-					alignmentSolver.col.maxId() + 1,
-					cmdLineSetup.distributedSolve.threadsWorker);
-
-			worker.run();
-
-			final ArrayList<? extends BlockData<AffineModel2D, ?>> blockDataList = worker.getBlockDataList();
-			if (blockDataList == null) {
-				throw new IllegalStateException("no items returned for worker " + worker);
-			}
-
-			return new ArrayList<>(blockDataList);
+			final Worker<AffineModel2D, ?> worker = block.createWorker(cmdLineSetup.distributedSolve.threadsWorker);
+			return new ArrayList<>(worker.call());
 	}
 
 	private static ResultContainer<AffineModel2D> solveAndCombineBlocks(
 			final AffineBlockSolverSetup cmdLineSetup,
-			final ArrayList<BlockData<AffineModel2D, ?>> allItems) {
+			final ArrayList<BlockData<AffineModel2D, ?>> allItems,
+			final BlockFactory blockFactory) {
 
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
 				new BlockCombiner<>(DistributedAffineBlockSolver::integrateGlobalModel,
@@ -216,7 +205,7 @@ public class DistributedAffineBlockSolver
 							a.set(r);
 							return a;});
 
-		return assembler.createAssembly(allItems);
+		return assembler.createAssembly(allItems, blockFactory);
 	}
 
 
@@ -266,21 +255,12 @@ public class DistributedAffineBlockSolver
 					final S stitchingModel) {
 
 		final FIBSEMAlignmentParameters<M, S> defaultSolveParams;
-		if (solverSetup.stitchFirst)
+		if (solverSetup.stitchFirst) {
 			defaultSolveParams = solverSetup.setupSolveParametersWithStitching(blockModel, stitchingModel);
-		else
+		} else {
 			defaultSolveParams = solverSetup.setupSolveParameters(blockModel, stitchingModel);
-
-		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> bc =
-				blockFactory.defineBlockCollection(rtsc -> defaultSolveParams);
-
-		final IntSummaryStatistics stats = bc.allBlocks().stream()
-				.mapToInt(block -> block.rtsc().getTileCount())
-				.summaryStatistics();
-
-		LOG.info("minTileCount={}, maxTileCount={}, avgTileCount={}", stats.getMin(), stats.getMax(), stats.getAverage());
-
-		return bc;
+		}
+		return blockFactory.defineBlockCollection(() -> defaultSolveParams);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineBlockSolver.class);

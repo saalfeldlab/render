@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.CoordinateTransform;
@@ -442,6 +443,18 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
+     * @return a copy of this collection that only contains tile specs with ids contained in tileIdsToKeep.
+     */
+    public ResolvedTileSpecCollection copyAndRetainTileSpecs(final Set<String> tileIdsToKeep) {
+        final List<TileSpec> tileSpecsToKeep = this.tileIdToSpecMap.values().stream()
+                .filter(ts -> tileIdsToKeep.contains(ts.getTileId())).collect(Collectors.toList());
+        final ResolvedTileSpecCollection copy = new ResolvedTileSpecCollection(getTransformSpecs(),
+                                                                               tileSpecsToKeep);
+        copy.removeUnreferencedTransforms();
+        return copy;
+    }
+
+    /**
      * Uses this collection's tileSpecValidator to remove any invalid tile specs.
      */
     public void removeInvalidTileSpecs() {
@@ -538,6 +551,16 @@ public class ResolvedTileSpecCollection implements Serializable {
             tileIdsForSection.add(tileSpec.getTileId());
         }
         return sectionIdToTileIds;
+    }
+
+    /**
+     * @return bounds built from the union of the bounds of all tiles in this collection
+     *         (or null if this collection does not have any tiles).
+     */
+    public Bounds toBounds() {
+        final Collection<TileSpec> tileSpecs = tileIdToSpecMap.values();
+        final Bounds identity = tileSpecs.isEmpty() ? null : tileSpecs.iterator().next().toTileBounds();
+        return tileSpecs.stream().map(ts -> (Bounds) ts.toTileBounds()).reduce(identity, Bounds::union);
     }
 
     @Override

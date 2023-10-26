@@ -3,7 +3,6 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 import java.awt.Rectangle;
 import java.io.Serializable;
 
-import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -47,38 +46,10 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 	public String stack() { return stack; }
 
 	public M blockSolveModel() { return blockSolveModel; }
-
-	/**
-	 * @return - the bounding box of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
-	 */
-	public Bounds boundingBox(final BlockData<R, P> blockData)
-	{
-		double minX = Double.MAX_VALUE;
-		double maxX = -Double.MAX_VALUE;
-
-		double minY = Double.MAX_VALUE;
-		double maxY = -Double.MAX_VALUE;
-
-		double minZ = Double.MAX_VALUE;
-		double maxZ = -Double.MAX_VALUE;
-
-		for ( final TileSpec ts : blockData.rtsc().getTileSpecs() )
-		{
-			minX = Math.min( minX, ts.getMinX() );
-			minY = Math.min( minY, ts.getMinY() );
-			minZ = Math.min( minZ, ts.getZ() );
-
-			maxX = Math.max( maxX, ts.getMaxX() );
-			maxY = Math.max( maxY, ts.getMaxY() );
-			maxZ = Math.max( maxZ, ts.getZ() );
-		}
-
-		return new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
-	}
-
 	/**
 	 * @return - the center of mass of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
 	 */
+
 	public double[] centerOfMass(final BlockData<R, P> blockData)
 	{
 
@@ -105,6 +76,5 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 
 	public abstract Worker<R, P> createWorker(
 			final BlockData<R, P> blockData,
-			final int startId,
 			final int threadsWorker);
 }

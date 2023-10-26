@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,8 @@ public class Assembler<Z, G extends Model<G>, R>
 		this.converter = converter;
 	}
 
-	public ResultContainer<Z> createAssembly(final List<BlockData<R, ?>> blocks) {
+	public ResultContainer<Z> createAssembly(final List<BlockData<R, ?>> blocks,
+											 final BlockFactory blockFactory) {
 
 		// the trivial case of a single block, would crash with the code below
 		if (isTrivialCase(blocks)) {
@@ -51,7 +53,10 @@ public class Assembler<Z, G extends Model<G>, R>
 		}
 
 		final ResolvedTileSpecCollection cumulativeRtsc = mergeResolvedTileSpecCollections(blocks.stream().map(BlockData::rtsc).collect(Collectors.toList()));
-		final ResultContainer<Z> results = new ResultContainer<>(cumulativeRtsc);
+		final ResultContainer<Z> results = new ResultContainer<>();
+		results.init(cumulativeRtsc);
+
+		LOG.info("createAssembly: created cumulativeRtsc with {} tiles", cumulativeRtsc.getTileCount());
 
 		try {
 			// now compute the final alignment for each block
@@ -59,7 +64,7 @@ public class Assembler<Z, G extends Model<G>, R>
 					globalSolver.globalSolve(blocks);
 
 			// now fuse blocks into a full assembly
-			blockCombiner.fuseGlobally(results, blockToTile);
+			blockCombiner.fuseGlobally(results, blockToTile, blockFactory);
 		} catch (final Exception e) {
 			throw new RuntimeException("failed assembly", e);
 		}
@@ -89,7 +94,8 @@ public class Assembler<Z, G extends Model<G>, R>
 	private ResultContainer<Z> buildTrivialAssembly(final BlockData<R, ?> block) {
 		LOG.info("buildTrivialAssembly: entry, only a single block, no solve across blocks necessary.");
 
-		final ResultContainer<Z> globalData = new ResultContainer<>(block.rtsc());
+		final ResultContainer<Z> globalData = new ResultContainer<>();
+		globalData.init(block.rtsc());
 		for (final String tileId : block.rtsc().getTileIds()) {
 			globalData.recordModel(tileId, converter.apply(block.getResults().getModelFor(tileId)));
 		}

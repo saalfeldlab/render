@@ -24,6 +24,8 @@ import net.imglib2.util.Pair;
 import net.imglib2.util.StopWatch;
 import net.imglib2.util.ValuePair;
 
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -33,6 +35,7 @@ import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
 import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduceFilter;
 import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.parameter.ZDistanceParameters;
@@ -63,10 +66,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	public AffineIntensityCorrectionBlockWorker(
 			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
-			final int startId,
 			final int numThreads) throws IOException {
 
-		super(startId, blockData, numThreads);
+		super(blockData, numThreads);
 		parameters = blockData.solveTypeParameters();
 	}
 
@@ -74,13 +76,16 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	 * runs the Worker
 	 */
 	@Override
-	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
+	public List<BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>>> call()
+			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
+
+		fetchResolvedTiles();
 		final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(blockData.rtsc());
 
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
 
 		if (coefficientTiles == null)
-			throw new RuntimeException("AffineIntensityCorrectionBlockWorker: no coefficient tiles were computed");
+			throw new RuntimeException("AffineIntensityCorrectionBlockWorker: no coefficient tiles were computed for block " + blockData);
 
 		coefficientTiles.forEach((tileId, tiles) -> {
 			final ArrayList<AffineModel1D> models = new ArrayList<>();
@@ -91,7 +96,20 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			blockData.getResults().recordModel(tileId, models);
 		});
 
-		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());
+		LOG.info("AffineIntensityCorrectionBlockWorker: exit, blockData={}", blockData);
+		return new ArrayList<>(List.of(blockData));
+	}
+
+	private void fetchResolvedTiles() throws IOException {
+		final Bounds bounds = blockData.getOriginalBounds();
+		final ResolvedTileSpecCollection rtsc = renderDataClient.getResolvedTiles(
+				parameters.stack(),
+				bounds.getMinZ(), bounds.getMaxZ(),
+				null, // groupId,
+				bounds.getMinX(), bounds.getMaxX(),
+				bounds.getMinY(), bounds.getMaxY(),
+				null); // matchPattern
+		blockData.getResults().init(rtsc);
 	}
 
 	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<MinimalTileSpecWrapper> tiles) throws ExecutionException, InterruptedException {
@@ -152,8 +170,11 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		for (final MinimalTileSpecWrapper tile : tiles)
 			averageComputations.add(exec.submit(() -> computeAverages(tile, parameters.numCoefficients(), parameters.renderScale(), meshResolution, imageProcessorCache)));
 
-		for (final Future<Pair<String, ArrayList<Double>>> average : averageComputations)
-			blockData.idToAverages().put(average.get().getA(), average.get().getB());
+		final ResultContainer<ArrayList<AffineModel1D>> results = blockData.getResults();
+		for (final Future<Pair<String, ArrayList<Double>>> average : averageComputations) {
+			results.recordAverages(average.get().getA(),
+								   average.get().getB());
+		}
 
 		exec.shutdown();
 		LOG.info("splitIntoCoefficientTiles: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());
@@ -213,7 +234,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return new FinalRealInterval(p1min, p1max);
 	}
 
-	private void solveForGlobalCoefficients(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles, final int iterations) {
+	@SuppressWarnings("SameParameterValue")
+	private void solveForGlobalCoefficients(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
+											final int iterations) {
 		connectTilesWithinPatches(coefficientTiles);
 
 		/* optimize */
@@ -336,14 +359,6 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return new ValuePair<>(tile.getTileId(), result);
 	}
 
-	/**
-	 * @return - the result(s) of the solve, multiple ones if they were not connected
-	 */
-	@Override
-	public ArrayList<BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>>> getBlockDataList() {
-		return new ArrayList<>(List.of(blockData));
-	}
-
 	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
 
 	static final private class Matcher implements Runnable
@@ -420,7 +435,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			 * iterate over all pixels and feed matches into the match
 			 * matrix
 			 */
-			int label1 = 0, label2 = 0;
+			int label1, label2 = 0;
 			float weight1 = 0, weight2 = 0;
 			for (int i = 0; i < n; ++i) {
 				// lazily check if it pays to create a match

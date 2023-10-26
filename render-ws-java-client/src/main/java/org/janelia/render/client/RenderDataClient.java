@@ -43,6 +43,7 @@ import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.request.WaitingRetryHandler;
+import org.janelia.render.client.response.BaseResponseHandler;
 import org.janelia.render.client.response.EmptyResponseHandler;
 import org.janelia.render.client.response.JsonResponseHandler;
 import org.janelia.render.client.response.ResourceCreatedResponseHandler;
@@ -1018,6 +1019,7 @@ public class RenderDataClient {
      * @param  collectionName  name of match collection.
      * @param  groupId         group id for all tiles (or null).
      * @param  matchPattern    only return tiles with ids that match this pattern (null for all tiles).
+     * @param  handleNotFound  if true, return empty object when 404 is returned for request instead of just raising exception.
      *
      * @return the set of resolved tiles and transforms that match the specified criteria.
      *
@@ -1028,7 +1030,8 @@ public class RenderDataClient {
                                                                           final Bounds bounds,
                                                                           final String collectionName,
                                                                           final String groupId,
-                                                                          final String matchPattern)
+                                                                          final String matchPattern,
+                                                                          final boolean handleNotFound)
             throws IOException {
 
         final String baseUrlString = urls.getStackUrlString(stack);
@@ -1057,7 +1060,22 @@ public class RenderDataClient {
 
         LOG.info("getResolvedTilesWithMatchPairs: submitting {}", requestContext);
 
-        return httpClient.execute(httpGet, responseHandler);
+        ResolvedTileSpecsWithMatchPairs result;
+        try {
+            result = httpClient.execute(httpGet, responseHandler);
+        } catch (final IOException e) {
+            final String msg = e.getMessage();
+            if (handleNotFound && (msg != null) && msg.contains(EXCEPTION_MSG_PREFIX_FOR_404)) {
+                LOG.info("getResolvedTilesWithMatchPairs: handling request exception: {}", msg);
+                result = new ResolvedTileSpecsWithMatchPairs(new ResolvedTileSpecCollection(new ArrayList<>(),
+                                                                                            new ArrayList<>()),
+                                                             new ArrayList<>());
+            } else {
+                throw e;
+            }
+        }
+
+        return result;
     }
 
     /**
@@ -1519,4 +1537,8 @@ public class RenderDataClient {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderDataClient.class);
+
+    private static final String EXCEPTION_MSG_PREFIX_FOR_404 =
+            BaseResponseHandler.buildHttpStatusMessagePrefix(404);
+
 }

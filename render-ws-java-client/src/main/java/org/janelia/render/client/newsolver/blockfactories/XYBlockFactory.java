@@ -1,29 +1,32 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
-import java.awt.Rectangle;
-import java.io.IOException;
+import ij.plugin.filter.EDM;
+import ij.process.ByteProcessor;
+import ij.process.FloatProcessor;
+
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import ij.process.ByteProcessor;
-import ij.process.FloatProcessor;
-import ij.plugin.filter.EDM;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
+
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
@@ -70,30 +73,14 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 	}
 
 	@Override
-	protected ResolvedTileSpecCollection fetchTileSpecs(
-			final Bounds bound,
-			final RenderDataClient dataClient,
-			final BlockDataSolveParameters<?, ?, ?> basicParameters) throws IOException {
-
-		return dataClient.getResolvedTiles(
-				basicParameters.stack(),
-				bound.getMinZ(), bound.getMaxZ(),
-				null, // groupId,
-				bound.getMinX(), bound.getMaxX(),
-				bound.getMinY(), bound.getMaxY(),
-				null); // matchPattern
-	}
-
-	@Override
-	protected boolean shouldBeIncluded(final Bounds tileBounds, final Bounds blockBounds) {
-		// only keep tiles where midpoint is inside block to reduce overlap
-		final Rectangle blockXYBounds = blockBounds.toRectangle();
-		return blockXYBounds.contains(tileBounds.getCenterX(), tileBounds.getCenterY());
+	protected BlockTileBoundsFilter getBlockTileFilter() {
+		return BlockTileBoundsFilter.XY_MIDPOINT;
 	}
 
 	@Override
 	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
 		// the render scale needs to be fairly small so that the entire MFOV area fits into one image
+		// TODO: @minnerbe to consider parameterizing scale (so can be set based upon stack bounds)
 		return new XYDistanceWeightFunction(block, 0.01);
 	}
 
@@ -105,24 +92,54 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 		private final double minY;
 
 		public XYDistanceWeightFunction(final BlockData<?, ?> block, final double resolution) {
+
+			LOG.info("XYDistanceWeightFunction ctor: entry, block {}", block.toDetailsString());
+
 			final ResultContainer<?> results = block.getResults();
-			layerDistanceMaps = new HashMap<>(results.getZLayers().size());
+			layerDistanceMaps = new HashMap<>(results.getMatchedZLayers().size());
 			this.resolution = resolution;
 
-			final Bounds stackBounds = block.boundingBox();
+			final Bounds stackBounds = block.getPopulatedBounds();
 			minX = stackBounds.getMinX();
 			minY = stackBounds.getMinY();
 
-			results.getZLayers().forEach(z -> {
-				final List<TileSpec> layerTiles = results.getTileIdsForZLayer(z).stream()
-						// .sorted() // to be consistent with the render order of the web service
-						.map(results.getResolvedTileSpecs()::getTileSpec)
-						.collect(Collectors.toList());
-				layerDistanceMaps.put(z, createLayerDistanceMap(layerTiles, resolution, stackBounds));
+			final Collection<Integer> matchedZLayers = results.getMatchedZLayers();
+			if (matchedZLayers.isEmpty()) {
+				final List<String> tileIds = results.getTileIds().stream().sorted().collect(Collectors.toList());
+				LOG.warn("XYDistanceWeightFunction ctor: block {} results with no matchedZLayers has {} tileIds: {}",
+						 block, tileIds.size(), tileIds);
+				throw new IllegalStateException("block " + block + " has no matched z layers");
+			}
+
+			final ResolvedTileSpecCollection rtsc = results.getResolvedTileSpecs();
+			matchedZLayers.forEach(z -> {
+				int foundTileCount = 0;
+				int missingTileCount = 0;
+				final List<TileSpec> layerTiles = new ArrayList<>();
+				for (final String tileId: results.getMatchedTileIdsForZLayer(z)) {
+					final TileSpec tileSpec = rtsc.getTileSpec(tileId);
+					if (tileSpec == null) {
+						missingTileCount++;
+					} else {
+						foundTileCount++;
+						layerTiles.add(tileSpec);
+					}
+				}
+				if (layerTiles.isEmpty()) {
+					LOG.info("XYDistanceWeightFunction ctor: no tiles found for z {} in {}", z, block.toDetailsString());
+				} else {
+					layerDistanceMaps.put(z, createLayerDistanceMap(layerTiles, resolution, stackBounds));
+				}
+
+				LOG.info("XYDistanceWeightFunction ctor: {} found tiles and {} missing tiles for z {} in {}",
+						 foundTileCount, missingTileCount, z, block.toDetailsString());
 			});
 		}
 
 		public static FloatProcessor createLayerDistanceMap(final List<TileSpec> layerTiles, final double resolution, final Bounds bounds) {
+
+			final String firstTileId = layerTiles.isEmpty() ? null : layerTiles.get(0).getTileId();
+			LOG.info("createLayerDistanceMap: entry, firstTileId={}", firstTileId);
 
 			layerTiles.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));
 
@@ -132,6 +149,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			renderParameters.addTileSpecs(layerTiles);
 			renderParameters.initializeDerivedValues();
 
+			// TODO: figure out if/how to parameterize cache size
 			// render the layer into an 8-bit mask: 0=background (no tiles), everything else is foreground (tiles)
 			final long pixelsToCache = 100_000_000L;
 			final ImageProcessorCache ipCache = new ImageProcessorCache(pixelsToCache, false, false);
@@ -150,7 +168,14 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			final double yLocal = (y - minY) * resolution;
 
 			final FloatProcessor distanceMap = layerDistanceMaps.get((int)z);
+			if (distanceMap == null) {
+				final List<Integer> mappedZs = layerDistanceMaps.keySet().stream().sorted().collect(Collectors.toList());
+				throw new IllegalStateException("failed to find distanceMap for z " + z + ", maps exist for z values " + mappedZs);
+			}
+			
 			return distanceMap.getInterpolatedValue(xLocal, yLocal);
 		}
 	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(XYBlockFactory.class);
 }
