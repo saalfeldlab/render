@@ -4,8 +4,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -13,12 +11,11 @@ import org.apache.commons.lang.math.IntRange;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.solver.SerializableValuePair;
 
 /**
  * Should contain only geometric data, nothing specific to the type of solve
@@ -43,9 +40,6 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	// contains solve-specific parameters and models
 	final private P solveTypeParameters;
 
-	// used for saving and display
-	final private ResolvedTileSpecCollection rtsc;
-
 	// all z-layers as String map to List that only contains the z-layer as double
 	final protected Map<String, ArrayList<Double>> sectionIdToZMap; 
 
@@ -55,7 +49,7 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	//
 	// below are the results that the worker has to fill up
 	//
-	final private AssemblyMaps<R> localData = new AssemblyMaps<>();
+	final private ResultContainer<R> localResults;
 
 	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
 	// coefficient-tile intensity average for global intensity-correction
@@ -67,17 +61,15 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 			final P solveTypeParameters,
 			final int id,
 			final Bounds bounds,
-			final ResolvedTileSpecCollection rtsc )
+			final ResolvedTileSpecCollection rtsc)
 	{
 		this.id = id;
 		this.bounds = bounds;
 		this.blockFactory = blockFactory;
 		this.solveTypeParameters = solveTypeParameters;
-		this.rtsc = rtsc;
 
 		this.sectionIdToZMap = new HashMap<>();
-		localData.idToTileSpec.putAll(rtsc.getTileIdToSpecMap());
-		localData.sharedTransformSpecs.addAll(rtsc.getTransformSpecs());
+		localResults = new ResultContainer<>(rtsc);
 
 		// TODO: trautmane
 		final IntRange zRange = fetchRenderDetails( rtsc.getTileSpecs(), sectionIdToZMap );
@@ -112,12 +104,10 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	public P solveTypeParameters() { return solveTypeParameters; }
 	public BlockFactory blockFactory() { return blockFactory; }
 
-	public ResolvedTileSpecCollection rtsc() { return rtsc; }
-	public HashMap<String, R> idToNewModel() { return localData.idToModel; }
-	public HashMap<String, List<SerializableValuePair<String, Double>>> idToBlockErrorMap() { return localData.idToErrorMap; }
+	public ResolvedTileSpecCollection rtsc() { return localResults.getResolvedTileSpecs(); }
 	public HashMap<String, ArrayList<Double>> idToAverages() { return idToAverages; }
 
-	public HashMap<Integer, HashSet<String>> zToTileId() { return localData.zToTileId; }
+	public ResultContainer<R> getResults() { return localResults; }
 
 	public void assignUpdatedId( final int id ) { this.id = id; }
 
@@ -167,7 +157,7 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(id, maxZ, minZ, rtsc);
+		return Objects.hash(id, maxZ, minZ, localResults);
 	}
 
 	@Override
@@ -179,7 +169,7 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 		if (getClass() != obj.getClass())
 			return false;
 		final BlockData<?,?> other = (BlockData<?,?>) obj;
-		return id == other.id && maxZ == other.maxZ && minZ == other.minZ && Objects.equals(rtsc, other.rtsc);
+		return id == other.id && maxZ == other.maxZ && minZ == other.minZ && Objects.equals(localResults, other.localResults);
 	}
 
 	@Override
@@ -188,6 +178,6 @@ public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implement
 	}
 
 	public int getTileCount() {
-		return rtsc == null ? 0 : rtsc().getTileCount();
+		return localResults == null ? 0 : localResults.getResolvedTileSpecs().getTileCount();
 	}
 }

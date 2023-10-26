@@ -36,17 +36,17 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.parameter.ZDistanceParameters;
-import org.janelia.render.client.solver.SerializableValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.*;
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -57,6 +57,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		extends Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> {
 
 	private final FIBSEMIntensityCorrectionParameters<M> parameters;
+	private static final int ITERATIONS = 2000;
+
+	private static final Tile<? extends Affine1D<?>> equilibrationTile = new Tile<>(new IdentityModel());
 
 	public AffineIntensityCorrectionBlockWorker(
 			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
@@ -74,12 +77,6 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 		final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(blockData.rtsc());
 
-		for (final MinimalTileSpecWrapper wrappedTile : wrappedTiles) {
-			final String tileId = wrappedTile.getTileId();
-			final int z = (int) Math.round(wrappedTile.getZ());
-			blockData.zToTileId().computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
-		}
-
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
 
 		if (coefficientTiles == null)
@@ -91,7 +88,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				final AffineModel1D model = ((InterpolatedAffineModel1D<?, ?>) tile.getModel()).createAffineModel1D();
 				models.add(model);
 			});
-			blockData.idToNewModel().put(tileId, models);
+			blockData.getResults().recordModel(tileId, models);
 		});
 
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, minZ={}, maxZ={}", blockData.minZ(), blockData.maxZ());
@@ -112,9 +109,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				: new ImageProcessorCache(parameters.maxNumberOfCachedPixels(), true, false);
 
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = splitIntoCoefficientTiles(tiles, imageProcessorCache);
-		
-		final int iterations = 2000;
-		solveForGlobalCoefficients(coefficientTiles, iterations);
+
+		solveForGlobalCoefficients(coefficientTiles, ITERATIONS);
 
 		return coefficientTiles;
 	}
@@ -224,6 +220,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		final TileConfiguration tc = new TileConfiguration();
 		coefficientTiles.values().forEach(tc::addTiles);
 
+		// anchor the equilibration tile
+		tc.addTile(equilibrationTile);
+		tc.fixTile(equilibrationTile);
+
 		LOG.info("solveForGlobalCoefficients: optimizing {} tiles with {} threads", tc.getTiles().size(), numThreads);
 		try {
 			TileUtil.optimizeConcurrently(new ErrorStatistic(iterations + 1), 0.01f, iterations, iterations, 0.75f, tc, tc.getTiles(), tc.getFixedTiles(), 1);
@@ -237,9 +237,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				t.updateCost();
 				return t.getDistance();
 			}).average().orElse(Double.MAX_VALUE);
-			final List<SerializableValuePair<String, Double>> errorList = new ArrayList<>();
-			errorList.add(new SerializableValuePair<>(tileId, error));
-			blockData.idToBlockErrorMap().put(tileId, errorList);
+			final Map<String, Double> errorMap = new HashMap<>();
+			errorMap.put(tileId, error);
+			blockData.getResults().recordAllErrors(tileId, errorMap);
 		});
 
 		LOG.info("solveForGlobalCoefficients: exit, returning intensity coefficients for {} tiles", coefficientTiles.size());
@@ -247,21 +247,28 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private void connectTilesWithinPatches(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
 		final Collection<TileSpec> allTiles = blockData.rtsc().getTileSpecs();
-
+		final double equilibrationWeight = blockData.solveTypeParameters().equilibrationWeight();
 
 		for (final TileSpec p : allTiles) {
-			final ArrayList<? extends Tile<?>> coefficientTile = coefficientTiles.get(p.getTileId());
+			final List<? extends Tile<?>> coefficientTile = coefficientTiles.get(p.getTileId());
+			final List<Double> averages = blockData.idToAverages().get(p.getTileId());
 			for (int i = 1; i < parameters.numCoefficients(); ++i) {
 				for (int j = 0; j < parameters.numCoefficients(); ++j) {
-					// connect left to right
 					final int left = getLinearIndex(i-1, j, parameters.numCoefficients());
 					final int right = getLinearIndex(i, j, parameters.numCoefficients());
-					identityConnect(coefficientTile.get(right), coefficientTile.get(left));
-
-					// connect top to bottom
 					final int top = getLinearIndex(j, i, parameters.numCoefficients());
 					final int bot = getLinearIndex(j, i-1, parameters.numCoefficients());
+
+					identityConnect(coefficientTile.get(right), coefficientTile.get(left));
 					identityConnect(coefficientTile.get(top), coefficientTile.get(bot));
+				}
+			}
+			if (equilibrationWeight > 0.0) {
+				for (int i = 0; i < parameters.numCoefficients(); i++) {
+					for (int j = 0; j < parameters.numCoefficients(); j++) {
+						final int idx = getLinearIndex(i, j, parameters.numCoefficients());
+						equilibrateIntensity(coefficientTile.get(idx), averages.get(idx), equilibrationWeight);
+					}
 				}
 			}
 		}
@@ -272,6 +279,12 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	 */
 	private int getLinearIndex(final int x, final int y, final int n) {
 		return y * n + x;
+	}
+
+	private void equilibrateIntensity(final Tile<?> tile, final Double average, final double weight) {
+		final List<PointMatch> matches = new ArrayList<>();
+		matches.add(new PointMatch(new Point(new double[] { average }), new Point(new double[] { 0.5 }), weight));
+		tile.connect(equilibrationTile, matches);
 	}
 
 	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2) {

@@ -14,7 +14,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.DistributedIntensityCorrectionSolver;
-import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -120,7 +120,7 @@ public class IntensityCorrectionClient
 
         LOG.info("runWithContext: computed {} blocks, maxId={}", allItems.size(), maxId);
 
-        final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
+        final ResultContainer<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
         intensitySolver.saveResultsAsNeeded(finalizedItems);
 
         LOG.info("runWithContext: exit");

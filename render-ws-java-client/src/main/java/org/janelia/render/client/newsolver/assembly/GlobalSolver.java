@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
-public class BlockSolver<Z, G extends Model<G>, R> {
+public class GlobalSolver<G extends Model<G>, R> {
 
 	final private G globalModel;
 	final private SameTileMatchCreator<R> sameTileMatchCreator;
@@ -33,7 +33,7 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 	final private int maxIterations;
 	final private int numThreads;
 
-	public BlockSolver(
+	public GlobalSolver(
 			final G globalModel,
 			final SameTileMatchCreator<R> sameTileMatchCreator,
 			final DistributedSolveParameters parameters
@@ -47,21 +47,12 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 	}
 
 	public HashMap<BlockData<R, ?>, Tile<G>> globalSolve(
-			final List<? extends BlockData<R, ?>> blocks,
-			final AssemblyMaps<Z> am
+			final List<? extends BlockData<R, ?>> blocks
 	) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException {
 
 		final HashMap<BlockData<R, ?>, Tile<G>> blockToTile = new HashMap<>();
 		for (final BlockData<R, ?> block : blocks) {
 			blockToTile.put(block, new Tile<>(globalModel.copy()));
-
-			final ResolvedTileSpecCollection tileSpecs = block.rtsc();
-			for (final String tileId : tileSpecs.getTileIds()) {
-				final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
-				final Integer z = tileSpec.getZ().intValue();
-				am.idToTileSpec.put(tileId, tileSpec);
-				am.zToTileId.computeIfAbsent(z, k -> new HashSet<>()).add(tileId);
-			}
 		}
 
 		LOG.info("globalSolve: solving {} items", blocks.size());
@@ -83,10 +74,9 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 
 				for (final String tileId : commonTileIds) {
 					final TileSpec tileSpecAB = tileSpecs.getTileSpec(tileId);
-					am.idToTileSpec.put(tileId, tileSpecAB);
 
-					final R modelA = solveItemA.idToNewModel().get(tileId);
-					final R modelB = solveItemB.idToNewModel().get(tileId);
+					final R modelA = solveItemA.getResults().getModelFor(tileId);
+					final R modelB = solveItemB.getResults().getModelFor(tileId);
 					if (modelA == null)  {
 						throw new IllegalArgumentException("model A is missing for tile " + tileId);
 					} else if (modelB == null)  {
@@ -129,11 +119,11 @@ public class BlockSolver<Z, G extends Model<G>, R> {
 			final BlockData<?, ?> blockA,
 			final BlockData<?, ?> blockB
 	) {
-		final Set<String> tileIdsA = new HashSet<>(blockA.idToNewModel().keySet());
-		final Set<String> tileIdsB = blockB.idToNewModel().keySet();
+		final Set<String> tileIdsA = new HashSet<>(blockA.getResults().getTileIds());
+		final Set<String> tileIdsB = blockB.getResults().getTileIds();
 		tileIdsA.retainAll(tileIdsB);
 		return tileIdsA;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(BlockSolver.class);
+	private static final Logger LOG = LoggerFactory.getLogger(GlobalSolver.class);
 }

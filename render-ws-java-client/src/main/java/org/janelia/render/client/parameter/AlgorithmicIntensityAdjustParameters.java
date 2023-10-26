@@ -53,6 +53,13 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
 
+	@Parameter(
+			names = "--equilibrationWeight",
+			description = "Apply equilibration to every coefficient tile to make the mean intensity more uniform (default: 0.0 = no equilibration)"
+	)
+	public double equilibrationWeight = 0.0;
+
+
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();
 	}

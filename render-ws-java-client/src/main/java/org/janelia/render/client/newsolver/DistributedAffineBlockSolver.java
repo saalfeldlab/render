@@ -17,9 +17,9 @@ import mpicbg.models.RigidModel2D;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.assembly.Assembler;
-import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
-import org.janelia.render.client.newsolver.assembly.BlockSolver;
+import org.janelia.render.client.newsolver.assembly.GlobalSolver;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
@@ -53,7 +53,7 @@ public class DistributedAffineBlockSolver
 		this.renderSetup = renderSetup;
 	}
 
-	public static void main( final String[] args )
+	public static void main(final String[] args)
 			throws IOException, InterruptedException {
         final AffineBlockSolverSetup cmdLineSetup = new AffineBlockSolverSetup();
 
@@ -149,11 +149,11 @@ public class DistributedAffineBlockSolver
 
 		LOG.info("main: computed {} blocks, maxId={}", allItems.size(), maxId);
 
-		final AssemblyMaps<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup, allItems);
+		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup, allItems);
 
 		// save the re-aligned part
-		LOG.info("main: saving target stack {}", cmdLineSetup.targetStack);
-		final List<Double> zToSave = finalTiles.idToTileSpec.values().stream()
+        LOG.info("main: saving target stack {}", cmdLineSetup.targetStack);
+		final List<Double> zToSave = finalTiles.getResolvedTileSpecs().getTileSpecs().stream()
 				.map(TileSpec::getZ)
 				.distinct()
 				.sorted()
@@ -171,7 +171,7 @@ public class DistributedAffineBlockSolver
 		runParams.maxZ = zToSave.get(zToSave.size() - 1);
 		LOG.info("main: saving from {} to {}", runParams.minZ, runParams.maxZ);
 
-		SolveTools.saveTargetStackTiles(cmdLineSetup.stack, cmdLineSetup.targetStack.stack, runParams, finalTiles.idToModel, null, zToSave, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
+		SolveTools.saveTargetStackTiles(cmdLineSetup.stack, cmdLineSetup.targetStack.stack, runParams, finalTiles.getModelMap(), null, zToSave, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
 		if (cmdLineSetup.targetStack.completeStack) {
 			LOG.info("main: completing target stack {}", cmdLineSetup.targetStack.stack);
 			SolveTools.completeStack(cmdLineSetup.targetStack.stack, runParams);
@@ -197,34 +197,26 @@ public class DistributedAffineBlockSolver
 			return new ArrayList<>(blockDataList);
 	}
 
-	private static AssemblyMaps<AffineModel2D> solveAndCombineBlocks(
+	private static ResultContainer<AffineModel2D> solveAndCombineBlocks(
 			final AffineBlockSolverSetup cmdLineSetup,
 			final ArrayList<BlockData<AffineModel2D, ?>> allItems) {
 
-		final BlockSolver<AffineModel2D, RigidModel2D, AffineModel2D> blockSolver =
-				new BlockSolver<>(new RigidModel2D(),
-						new SameTileMatchCreatorAffine2D<AffineModel2D>(),
-						cmdLineSetup.distributedSolve);
-
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
-				new BlockCombiner<>(
-						blockSolver,
-						DistributedAffineBlockSolver::integrateGlobalModel,
-						DistributedAffineBlockSolver::interpolateModels
-				);
+				new BlockCombiner<>(DistributedAffineBlockSolver::integrateGlobalModel,
+									DistributedAffineBlockSolver::interpolateModels);
+
+		final GlobalSolver<RigidModel2D, AffineModel2D> globalSolver =
+				new GlobalSolver<>(new RigidModel2D(),
+								   new SameTileMatchCreatorAffine2D<AffineModel2D>(),
+								   cmdLineSetup.distributedSolve);
 
 		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
-				new Assembler<>(
-						allItems,
-						blockSolver,
-						fusion,
-						(r) -> {
+				new Assembler<>(globalSolver, fusion, (r) -> {
 							final AffineModel2D a = new AffineModel2D();
 							a.set(r);
-							return a;
-						});
+							return a;});
 
-		return assembler.createAssembly();
+		return assembler.createAssembly(allItems);
 	}
 
 

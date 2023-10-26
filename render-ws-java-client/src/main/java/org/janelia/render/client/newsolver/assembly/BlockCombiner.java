@@ -4,7 +4,6 @@ import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.solver.SerializableValuePair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,22 +17,19 @@ import java.util.stream.Collectors;
 
 public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
-	final BlockSolver<Z, G, R> solver;
 	final BiFunction<R, G, I> combineResultGlobal;
 	final BiFunction<List<I>, List<Double>, Z> fusion;
 
 	public BlockCombiner(
-			final BlockSolver<Z, G, R> solver,
 			final BiFunction<R, G, I> combineResultGlobal,
 			final BiFunction<List<I>, List<Double>, Z> fusion
 	) {
-		this.solver = solver;
 		this.combineResultGlobal = combineResultGlobal;
 		this.fusion = fusion;
 	}
 
 	public void fuseGlobally(
-			final AssemblyMaps<Z> globalData,
+			final ResultContainer<Z> globalData,
 			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile
 	) {
 		final HashMap<BlockData<R, ?>, G> blockToG = new HashMap<>();
@@ -45,7 +41,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 
 		final Map<String, List<BlockData<R, ?>>> tileIdToBlocks = new HashMap<>();
 		for (final BlockData<R, ?> block : blockToTile.keySet()) {
-			for (final String tileId : block.idToNewModel().keySet()) {
+			for (final String tileId : block.getResults().getTileIds()) {
 				tileIdToBlocks.computeIfAbsent(tileId, k -> new ArrayList<>()).add(block);
 			}
 		}
@@ -57,18 +53,18 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 			final int[] blockIds = blocksForTile.stream().mapToInt(BlockData::getId).toArray();
 			LOG.info("tile '" + tileId + "' is in following blocks: " + Arrays.toString(blockIds));
 
-			// all tilespecs are identical for all overlapping blocks
+			// all tileSpecs are identical for all overlapping blocks
 			final TileSpec tile = blocksForTile.get(0).rtsc().getTileSpec(tileId);
 			final double[] midpointXY = tile.getWorldCoordinates((tile.getWidth() - 1) / 2.0, (tile.getHeight() - 1) / 2.0);
 			final double z = tile.getZ();
 
 			final List<I> models = new ArrayList<>();
 			final List<Double> weights = new ArrayList<>();
-			List<SerializableValuePair<String, Double>> error = null;
+			Map<String, Double> error = null;
 			double maxWeight = -1.0;
 			for (final BlockData<R, ?> block : blocksForTile) {
 				final G globalModel = blockToG.get(block);
-				final R newModel = block.idToNewModel().get(tileId);
+				final R newModel = block.getResults().getModelFor(tileId);
 				// TODO: confirm this is proper way to handle, consider moving retrieval to block method and put check there
 				if (newModel == null) {
 					throw new IllegalArgumentException("failed to find new model for tile " + tileId);
@@ -83,15 +79,15 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 				// TODO: proper error computation using the matches that are now stored in the SolveItemData object
 				if (w > maxWeight) {
 					maxWeight = w;
-					error = block.idToBlockErrorMap().get(tileId);
+					error = block.getResults().getErrorMapFor(tileId);
 				}
 			}
 
 			final List<Double> normalizedWeights = normalize(weights);
 			LOG.info("tile '" + tileId + "', models are fused following weights: " + Arrays.toString(normalizedWeights.toArray()));
 			final Z tileModel = fusion.apply(models, normalizedWeights);
-			globalData.idToModel.put(tileId, tileModel);
-			globalData.idToErrorMap.put(tileId, error);
+			globalData.recordModel(tileId, tileModel);
+			globalData.recordAllErrors(tileId, error);
 		}
 	}
 

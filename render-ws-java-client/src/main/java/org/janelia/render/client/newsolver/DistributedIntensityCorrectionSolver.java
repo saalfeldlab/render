@@ -26,8 +26,8 @@ import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.newsolver.assembly.Assembler;
-import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
-import org.janelia.render.client.newsolver.assembly.BlockSolver;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
+import org.janelia.render.client.newsolver.assembly.GlobalSolver;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
@@ -61,7 +61,7 @@ public class DistributedIntensityCorrectionSolver {
 		// TODO: remove testing hack ...
 		if (args.length == 0) {
 			final String[] testArgs = {
-					"--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+					"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
 					"--owner", "cellmap",
 					"--project", "jrc_mus_thymus_1",
 					"--stack", "v2_acquire_align",
@@ -71,7 +71,8 @@ public class DistributedIntensityCorrectionSolver {
 					"--blockSizeZ", "6",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 14,503
-					"--zDistance", "0", "--minZ", "1000", "--maxZ", "1001"
+					"--zDistance", "0", "--minZ", "1245", "--maxZ", "1246",
+					"--equilibrationWeight", "0.5"
 			};
 			cmdLineSetup.parse(testArgs);
 		} else {
@@ -90,7 +91,7 @@ public class DistributedIntensityCorrectionSolver {
 		final ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> allItems =
 				intensitySolver.solveBlocksUsingThreadPool(blockCollection);
 
-		final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
+		final ResultContainer<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
 
 		intensitySolver.saveResultsAsNeeded(finalizedItems);
 	}
@@ -130,44 +131,41 @@ public class DistributedIntensityCorrectionSolver {
 		return new ArrayList<>(worker.getBlockDataList());
 	}
 
-	public AssemblyMaps<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {
+	public ResultContainer<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {
 
 		LOG.info("assembleBlocks: entry, processing {} blocks", allItems.size());
 
-		final BlockSolver<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> blockSolver =
-				new BlockSolver<>(
-						new TranslationModel1D(),
-						new SameTileMatchCreatorAffineIntensity(),
-						solverSetup.distributedSolve);
-
 		final BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
-				new BlockCombiner<>(blockSolver,
-									DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
+				new BlockCombiner<>(DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
 									DistributedIntensityCorrectionSolver::interpolateModels);
 
+		final GlobalSolver<TranslationModel1D, ArrayList<AffineModel1D>> globalSolver =
+				new GlobalSolver<>(new TranslationModel1D(),
+								   new SameTileMatchCreatorAffineIntensity(),
+								   solverSetup.distributedSolve);
+
 		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> assembler =
-				new Assembler<>(allItems, blockSolver, fusion, r -> {
+				new Assembler<>(globalSolver, fusion, r -> {
 					final ArrayList<AffineModel1D> rCopy = new ArrayList<>(r.size());
 					r.forEach(model -> rCopy.add(model.copy()));
-					return rCopy;
-				});
+					return rCopy;});
 
 		LOG.info("assembleBlocks: exit");
 
-		return assembler.createAssembly();
+		return assembler.createAssembly(allItems);
 	}
 
-	public void saveResultsAsNeeded(final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems)
+	public void saveResultsAsNeeded(final ResultContainer<ArrayList<AffineModel1D>> finalizedItems)
 			throws IOException {
 		// this adds the filters to the tile specs and pushes the data to the DB
 		final boolean saveResults = (solverSetup.targetStack.stack != null);
 		final RenderDataClient renderDataClient = solverSetup.renderWeb.getDataClient();
 		if (saveResults) {
-			final List<TileSpec> tileSpecs = new ArrayList<>(finalizedItems.idToTileSpec.values());
-			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.idToModel;
+			final ResolvedTileSpecCollection rtsc = finalizedItems.getResolvedTileSpecs();
+			final List<TileSpec> tileSpecs = new ArrayList<>(rtsc.getTileSpecs());
+			final Map<String, ArrayList<AffineModel1D>> coefficientTiles = finalizedItems.getModelMap();
 			final Map<String, FilterSpec> idToFilterSpec = convertCoefficientsToFilter(tileSpecs, coefficientTiles, solverSetup.intensityAdjust.numCoefficients);
-			addFilters(finalizedItems.idToTileSpec, idToFilterSpec);
-			final ResolvedTileSpecCollection rtsc = finalizedItems.buildResolvedTileSpecs();
+			addFilters(rtsc, idToFilterSpec);
 			renderDataClient.saveResolvedTiles(rtsc, solverSetup.targetStack.stack, null);
 			if (solverSetup.targetStack.completeStack)
 				renderDataClient.setStackState(solverSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
@@ -228,7 +226,7 @@ public class DistributedIntensityCorrectionSolver {
 
 	private static Map<String, FilterSpec> convertCoefficientsToFilter(
 			final List<TileSpec> tiles,
-			final HashMap<String, ArrayList<AffineModel1D>> coefficientTiles,
+			final Map<String, ArrayList<AffineModel1D>> coefficientTiles,
 			final int numCoefficients) {
 
 		final ArrayList<OnTheFlyIntensity> corrected = convertModelsToOtfIntensities(tiles, numCoefficients, coefficientTiles);
@@ -266,10 +264,10 @@ public class DistributedIntensityCorrectionSolver {
 		return correctedOnTheFly;
 	}
 
-	private static void addFilters(final Map<String, TileSpec> idToTileSpec,
+	private static void addFilters(final ResolvedTileSpecCollection rtsc,
 								   final Map<String, FilterSpec> idToFilterSpec) {
 		idToFilterSpec.forEach((tileId, filterSpec) -> {
-			final TileSpec tileSpec = idToTileSpec.get(tileId);
+			final TileSpec tileSpec = rtsc.getTileSpec(tileId);
 			tileSpec.setFilterSpec(filterSpec);
 			tileSpec.convertSingleChannelSpecToLegacyForm();
 		});

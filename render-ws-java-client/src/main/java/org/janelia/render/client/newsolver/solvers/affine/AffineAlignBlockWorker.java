@@ -20,6 +20,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.solvers.Worker;
@@ -29,7 +30,6 @@ import org.janelia.render.client.parameter.BlockOptimizerParameters;
 import org.janelia.render.client.parameter.BlockOptimizerParameters.AlignmentModelType;
 import org.janelia.render.client.solver.ConstantAffineModel2D;
 import org.janelia.render.client.solver.Graph;
-import org.janelia.render.client.solver.SerializableValuePair;
 import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.janelia.render.client.solver.matchfilter.MatchFilter;
@@ -98,27 +98,25 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	{
 		super( startId, blockData, numThreads );
 
-		this.matchDataClient =
-				new RenderDataClient(
-						blockData.solveTypeParameters().baseDataUrl(),
-						blockData.solveTypeParameters().matchOwner(),
-						blockData.solveTypeParameters().matchCollection() );
+		final FIBSEMAlignmentParameters<M, S> parameters = blockData.solveTypeParameters();
+		this.matchDataClient = new RenderDataClient(parameters.baseDataUrl(),
+													parameters.matchOwner(),
+													parameters.matchCollection());
 
-		this.inputSolveItem = new AffineBlockDataWrapper<>( blockData );
+		this.inputSolveItem = new AffineBlockDataWrapper<>(blockData);
 
-		if ( blockData.solveTypeParameters().maxNumMatches() <= 0 )
+		if (parameters.maxNumMatches() <= 0)
 			this.matchFilter = new NoMatchFilter();
 		else
-			this.matchFilter = new RandomMaxAmountFilter( blockData.solveTypeParameters().maxNumMatches() );
+			this.matchFilter = new RandomMaxAmountFilter(parameters.maxNumMatches());
 
 		// used locally
-		this.stitchFirst = blockData.solveTypeParameters().minStitchingInliersSupplier() != null;
+		this.stitchFirst = (parameters.minStitchingInliersSupplier() != null);
 		this.pairs = new ArrayList<>();
 		this.zToPairs = new HashMap<>();
 
 		// NOTE: if you choose to stitch first, you need to pre-align, otherwise, it's OK to use the initial alignment for each tile
-		if ( stitchFirst && inputSolveItem.blockData().solveTypeParameters().preAlign() == PreAlign.NONE )
-		{
+		if (stitchFirst && parameters.preAlign() == PreAlign.NONE) {
 			LOG.error("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
 			throw new RuntimeException("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
 		}
@@ -140,13 +138,13 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		// how many stitching inliers are needed to stitch first
 		// reason: if tiles are rarely connected and it is stitched first, a useful
 		// common alignment model after stitching cannot be found
-		stitchSectionsAndCreateGroupedTiles( inputSolveItem, pairs, zToPairs, stitchFirst, numThreads );
+		stitchSectionsAndCreateGroupedTiles(inputSolveItem, pairs, zToPairs, stitchFirst, numThreads);
 
-		connectGroupedTiles( pairs, inputSolveItem );
+		connectGroupedTiles(pairs, inputSolveItem);
 
 		final List<AffineBlockDataWrapper<M, S>> solveItems = splitSolveItem(inputSolveItem, startId);
 
-		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
+		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
 		{
 				/*
 				java.lang.NullPointerException: Cannot invoke "org.janelia.alignment.spec.TileSpec.getZ()" because the return value of "org.janelia.alignment.spec.ResolvedTileSpecCollection.getTileSpec(String)" is null
@@ -165,12 +163,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			solve( solveItem, numThreads );
 		}
 
-		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
-			computeSolveItemErrors( solveItem, canvasMatches );
+		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
+			computeSolveItemErrors(solveItem.blockData(), canvasMatches);
 
 		// clean up
 		this.result = new ArrayList<>();
-		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems )
+		for ( final AffineBlockDataWrapper<M, S> solveItem : solveItems)
 		{
 			result.add( solveItem.blockData() );
 			solveItem.matches().clear();
@@ -201,6 +199,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 																matchCollectionName,
 																null,
 																null);
+		// TODO: only pull rtsc once and initialize result after that (currently done in BlockData constructor)
 
 		// block tileIds are filtered by center point during BlockFactory.defineBlockCollection process
 		// (more specifically by BlockFactory.pruneRtsc), so apply the same filtering to retrieved tile and match data
@@ -232,9 +231,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final int pZ = pTileSpec.getIntegerZ();
 			final int qZ = qTileSpec.getIntegerZ();
 
-			blockData.zToTileId().computeIfAbsent(pZ, k -> new HashSet<>()).add(pId);
-			blockData.zToTileId().computeIfAbsent(qZ, k -> new HashSet<>()).add(qId);
-
 			// if the pair is from the same layer we remember the current index in the pairs list for stitching
 			if (pZ == qZ) {
 				zToPairs.computeIfAbsent(pZ, k -> new ArrayList<>()).add(pairs.size() - 1);
@@ -247,27 +243,19 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		return matchPairs;
 	}
 
-	protected Tile<M> getOrBuildTile( final String id, final TileSpec tileSpec )
+	protected Tile<M> getOrBuildTile(final String id, final TileSpec tileSpec)
 	{
+		if (inputSolveItem.idToTileMap().containsKey(id))
+			return inputSolveItem.idToTileMap().get(id);
+
 		final Tile<M> tile;
-		if (!inputSolveItem.idToTileMap().containsKey(id))
-		{
-			final Pair<Tile<M>, AffineModel2D> pair =
-					SolveTools.buildTileFromSpec( inputSolveItem.blockData().solveTypeParameters().blockSolveModel().copy(), AffineBlockDataWrapper.samplesPerDimension, tileSpec );
-			tile = pair.getA();
-			inputSolveItem.idToTileMap().put(id, tile);
-			inputSolveItem.tileToIdMap().put(tile, id);
+		final Pair<Tile<M>, AffineModel2D> pair =
+				SolveTools.buildTileFromSpec(inputSolveItem.blockData().solveTypeParameters().blockSolveModel().copy(), AffineBlockDataWrapper.samplesPerDimension, tileSpec);
+		tile = pair.getA();
+		inputSolveItem.idToTileMap().put(id, tile);
+		inputSolveItem.tileToIdMap().put(tile, id);
 
-			inputSolveItem.idToPreviousModel().put(id, pair.getB());
-			//inputSolveItem.blockData().idToTileSpec().put(id, minimalSpecWrapper); // this is now done ahead of time
-
-			//if ( tileSpec.hasLabel( "restart" ) )
-			//	inputSolveItem.restarts().add((int) Math.round(tileSpec.getZ()));
-		}
-		else
-		{
-			tile = inputSolveItem.idToTileMap().get(id);
-		}
+		inputSolveItem.idToPreviousModel().put(id, pair.getB());
 
 		return tile;
 	}
@@ -521,26 +509,25 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 	protected void stitchSectionsAndCreateGroupedTiles(
 			final AffineBlockDataWrapper<M, S> solveItem,
-			final ArrayList< Pair< Pair< Tile< ? >, Tile< ? > >, List< PointMatch > > > pairs,
-			final HashMap< Integer, List< Integer > > zToPairs,
+			final ArrayList<Pair<Pair<Tile<?>, Tile<?>>, List<PointMatch>>> pairs,
+			final HashMap<Integer, List<Integer>>zToPairs,
 			final boolean stitchFirst,
-			final int numThreads )
+			final int numThreads)
 	{
-		final int maxPlateauWidthStitching = solveItem.blockData().solveTypeParameters().maxPlateauWidthStitching();
-		final double maxAllowedErrorStitching = solveItem.blockData().solveTypeParameters().maxAllowedErrorStitching();
-		final int maxIterationsStitching = solveItem.blockData().solveTypeParameters().maxIterationsStitching();
-		final Function< Integer, Integer > minStitchingInliersSupplier = solveItem.blockData().solveTypeParameters().minStitchingInliersSupplier();
-
-		//final S model = solveItem.stitchingSolveModelInstance();
+		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+		final int maxPlateauWidthStitching = blockData.solveTypeParameters().maxPlateauWidthStitching();
+		final double maxAllowedErrorStitching = blockData.solveTypeParameters().maxAllowedErrorStitching();
+		final int maxIterationsStitching = blockData.solveTypeParameters().maxIterationsStitching();
+		final Function<Integer, Integer> minStitchingInliersSupplier = blockData.solveTypeParameters().minStitchingInliersSupplier();
 
 		// combine tiles per layer that are be stitched first, but iterate over all z's 
 		// (also those only consisting of single tiles, they are connected in z though)
-		final ArrayList< Integer > zList = new ArrayList<>( solveItem.blockData().zToTileId().keySet() );
+		final ArrayList<Integer> zList = new ArrayList<>(blockData.getResults().getZLayers());
 		Collections.sort( zList );
 
 		for ( final int z : zList )
 		{
-			LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, z={}", solveItem.blockData(), z);
+			LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, z={}", blockData, z);
 
 			final HashMap< String, Tile< S > > idTotile = new HashMap<>();
 			final HashMap< Tile< S >, String > tileToId = new HashMap<>();
@@ -569,7 +556,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 							// since we do preAlign later this seems redundant. However, it makes sure the tiles are more or less at the right global coordinates
 							p = SolveTools.buildTile(
 									solveItem.idToPreviousModel().get( pId ),
-									solveItem.blockData().solveTypeParameters().stitchingSolveModelInstance( z ).copy(),
+									blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy(),
 									100, 100, 3 );
 							idTotile.put( pId, p );
 							tileToId.put( p, pId );
@@ -584,7 +571,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 							//q = new Tile<>( model.copy() );
 							q = SolveTools.buildTile(
 									solveItem.idToPreviousModel().get( qId ),
-									solveItem.blockData().solveTypeParameters().stitchingSolveModelInstance( z ).copy(),
+									blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy(),
 									100, 100, 3 );
 							idTotile.put( qId, q );
 							tileToId.put( q, qId );
@@ -601,32 +588,32 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 
 			// add all missing TileIds as unconnected Tiles
-			for ( final String tileId : solveItem.blockData().zToTileId().get( z ) )
+			for (final String tileId : blockData.getResults().getTileIdsForZLayer(z))
 				if ( !idTotile.containsKey( tileId ) )
 				{
-					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, unconnected tileId {}", solveItem.blockData(), tileId);
+					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, unconnected tileId {}", blockData, tileId);
 
-					final Tile< S > tile = new Tile<>(solveItem.blockData().solveTypeParameters().stitchingSolveModelInstance(z).copy());
+					final Tile<S> tile = new Tile<>(blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy());
 					idTotile.put( tileId, tile );
 					tileToId.put( tile, tileId );
 				}
 
 			// Now identify connected graphs within all tiles
-			final ArrayList< Set< Tile< ? > > > sets = safelyIdentifyConnectedGraphs( new ArrayList<>(idTotile.values()) );
+			final ArrayList<Set<Tile<?>>> sets = WorkerTools.safelyIdentifyConnectedGraphs(new ArrayList<>(idTotile.values()));
 
-			LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, z={}, #sets={}", solveItem.blockData(), z, sets.size());
+			LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, z={}, #sets={}", blockData, z, sets.size());
 
 			// solve each set (if size > 1)
 			int setCount = 0;
 			for ( final Set< Tile< ? > > set : sets )
 			{
 				setCount++;
-				LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Set={}", solveItem.blockData(), setCount);
+				LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Set={}", blockData, setCount);
 
 				//
 				// the grouped tile for this set of one layer
 				//
-				final Tile< M > groupedTile = new Tile<>( solveItem.blockData().solveTypeParameters().blockSolveModel().copy() );
+				final Tile<M> groupedTile = new Tile<>(blockData.solveTypeParameters().blockSolveModel().copy());
 
 				if ( set.size() > 1 )
 				{
@@ -639,7 +626,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						tileConfig.preAlign();
 					} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
 						LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Could not solve prealign for z={}, cause: ",
-								 solveItem.blockData(), z, e);
+								 blockData, z, e);
 					}
 
 					// test if the graph has cycles, if yes we would need to do a solve
@@ -649,7 +636,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 							!new Graph( new ArrayList<>( set ) ).isCyclic() ) )
 					{
 						LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Full solve required for stitching z={}",
-								 solveItem.blockData(), z);
+								 blockData, z);
 
 						try {
 							TileUtil.optimizeConcurrently(
@@ -664,10 +651,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 								numThreads );
 
 							LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Solve z={} avg={}, min={}, max={}",
-									 solveItem.blockData(), z, tileConfig.getError(), tileConfig.getMinError(), tileConfig.getMaxError());
+									 blockData, z, tileConfig.getError(), tileConfig.getMinError(), tileConfig.getMaxError());
 						} catch (final Exception e) {
 							LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Could not solve stitiching for z={}, cause: ",
-									 solveItem.blockData(), z, e);
+									 blockData, z, e);
 						}
 					}
 
@@ -685,8 +672,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
 						solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
-						LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: TileId {} Model=     {}", solveItem.blockData(), tileId, affine);
-						LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: TileId {} prev Model={}", solveItem.blockData(), tileId, solveItem.idToPreviousModel().get(tileId));
+						LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: TileId {} Model=     {}", blockData, tileId, affine);
+						LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: TileId {} prev Model={}", blockData, tileId, solveItem.idToPreviousModel().get(tileId));
 					}
 
 					// Hack: show a section after alignment
@@ -701,7 +688,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 							}
 
 							new ImageJ();
-							final ImagePlus imp1 = VisualizeTools.renderTS(models, solveItem.blockData().rtsc().getTileIdToSpecMap(), 0.15 );
+							final ImagePlus imp1 = VisualizeTools.renderTS(models, blockData.rtsc().getTileIdToSpecMap(), 0.15);
 							imp1.setTitle( "z=" + z );
 						} catch (final NoninvertibleModelException e) {
 							LOG.info("stitchSectionsAndCreateGroupedTiles: Could not show section: ", e);
@@ -719,8 +706,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
 					solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
-					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Single TileId {}",
-							 solveItem.blockData(), tileId);
+					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Single TileId {}", blockData, tileId);
 				}
 			}
 		}
@@ -734,10 +720,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final ArrayList<AffineBlockDataWrapper<M, S>> solveItems = new ArrayList<>();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
-		final ArrayList< Set< Tile< ? > > > graphs = safelyIdentifyConnectedGraphs( new HashSet<>( inputSolveItem.tileToGroupedTile().values() ) );
+		final ArrayList<Set<Tile<?>>> graphs = WorkerTools.safelyIdentifyConnectedGraphs(new HashSet<>(inputSolveItem.tileToGroupedTile().values()));
 
-		LOG.info("splitSolveItem: block {}: Graph of SolveItem {} consists of {} subgraphs.",
-				 inputSolveItem.blockData(), inputSolveItem.blockData().getId(), graphs.size());
+		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = inputSolveItem.blockData();
+		LOG.info("splitSolveItem: block {}: Graph consists of {} subgraphs.", blockData, graphs.size());
 
 		if (graphs.isEmpty())
 		{
@@ -747,7 +733,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		{
 			solveItems.add( inputSolveItem );
 
-			LOG.info("splitSolveItem: block {}: Graph 0 has {} tiles.", inputSolveItem.blockData(), graphs.get(0).size());
+			LOG.info("splitSolveItem: block {}: Graph 0 has {} tiles.", blockData, graphs.get(0).size());
 		}
 		else
 		{
@@ -756,13 +742,11 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			for ( final Set< Tile< ? > > subgraph : graphs ) // TODO: type sets properly
 			{
 				graphCount++;
-				LOG.info("splitSolveItem: block {}: new graph {} has {} tiles.",
-						 inputSolveItem.blockData(), graphCount, subgraph.size());
-
+				LOG.info("splitSolveItem: block {}: new graph {} has {} tiles.", blockData, graphCount, subgraph.size());
 
 				// re-assemble allTileIds and idToTileSpec
 				// update all the maps
-				final ResolvedTileSpecCollection originalRTSC = inputSolveItem.blockData().rtsc();
+				final ResolvedTileSpecCollection originalRTSC = blockData.rtsc();
 				final List<TileSpec> groupedTileSpecList = subgraph.stream()
 						.map(groupedTile -> inputSolveItem.groupedTileToTiles().get(groupedTile))
 						.flatMap(Collection::stream)
@@ -774,19 +758,17 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						new ResolvedTileSpecCollection(originalRTSC.getTransformSpecs(),
 													   groupedTileSpecList);
 
-				final AffineBlockDataWrapper<M, S> solveItem =
-						new AffineBlockDataWrapper<>(
-								new BlockData<>(
-										inputSolveItem.blockData().blockFactory(), // no copy necessary
-										inputSolveItem.blockData().solveTypeParameters(), // no copy necessary
-										id,
-										inputSolveItem.blockData().getBounds(),
-										newRTSC ) );
+				final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> newBlockData = new BlockData<>(blockData.blockFactory(), // no copy necessary
+																											   blockData.solveTypeParameters(), // no copy necessary
+																											   id,
+																											   blockData.getBounds(),
+																											   newRTSC);
+				final AffineBlockDataWrapper<M, S> solveItem = new AffineBlockDataWrapper<>(newBlockData);
 
 				++id;
 
-				LOG.info("splitSolveItem: block {}: old graph id={}, new graph id={}", inputSolveItem.blockData(), inputSolveItem.blockData().getId(), solveItem.blockData().getId());
-				LOG.info("splitSolveItem: block {}: min: {} > max: {}", inputSolveItem.blockData(), solveItem.blockData().minZ(), solveItem.blockData().maxZ());
+				LOG.info("splitSolveItem: block {}: old graph id={}, new graph id={}", newBlockData, blockData.getId(), newBlockData.getId());
+				LOG.info("splitSolveItem: block {}: min: {} > max: {}", newBlockData, newBlockData.minZ(), newBlockData.maxZ());
 
 				// update all the maps
 				for ( final Tile< ? > groupedTile : subgraph )
@@ -798,10 +780,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.idToTileMap().put( tileId, t );
 						solveItem.tileToIdMap().put( t, tileId );
 						solveItem.idToPreviousModel().put( tileId, inputSolveItem.idToPreviousModel().get( tileId ) );
-						//solveItem.idToTileSpec().put( tileId, inputSolveItem.blockData().idToTileSpec().get( tileId ) ); // now done initially
-						solveItem.blockData().idToNewModel().put( tileId, inputSolveItem.blockData().idToNewModel().get( tileId ) );
+						newBlockData.getResults().recordModel(tileId, blockData.getResults().getModelFor(tileId));
 
-						solveItem.idToStitchingModel().put( tileId, inputSolveItem.idToStitchingModel().get( tileId ) );
+						solveItem.idToStitchingModel().put(tileId, inputSolveItem.idToStitchingModel().get(tileId));
 
 						final Tile< M > groupedTileCast = inputSolveItem.tileToGroupedTile().get( t );
 
@@ -810,37 +791,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					}
 				}
 
-				// add the restart lookup
-				//for ( final int z : inputSolveItem.restarts() )
-				//	if ( z >= solveItem.blockData().minZ() && z <= solveItem.blockData().maxZ() )
-				//		solveItem.restarts().add( z );
-
-				// used for global solve outside
-				for ( int z = solveItem.blockData().minZ(); z <= solveItem.blockData().maxZ(); ++z )
-				{
-					final HashSet< String > allTilesPerZ = inputSolveItem.blockData().zToTileId().get( z );
-
-					if ( allTilesPerZ == null )
-						continue;
-
-					final HashSet< String > myTilesPerZ = new HashSet<>();
-
-					for ( final String tileId : allTilesPerZ )
-					{
-						if ( solveItem.idToTileMap().containsKey( tileId ) )
-							myTilesPerZ.add( tileId );
-					}
-					
-					if (myTilesPerZ.isEmpty())
-					{
-						LOG.info("splitSolveItem: block {}: ERROR: z={} of new graph has 0 tileIds, the must not happen, this is a bug.", inputSolveItem.blockData(), z);
-						System.exit(0);
-					}
-
-					solveItem.blockData().zToTileId().put( z, myTilesPerZ );
-				}
-
-				solveItems.add( solveItem );
+				solveItems.add(solveItem);
 			}
 		}
 		return solveItems;
@@ -850,11 +801,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			final AffineBlockDataWrapper<M, S> solveItem,
 			final int numThreads ) throws InterruptedException, ExecutionException
 	{
-		final PreAlign preAlign = solveItem.blockData().solveTypeParameters().preAlign();
+		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
+		final PreAlign preAlign = blockData.solveTypeParameters().preAlign();
 
-		final List<Integer> blockOptimizerIterations = solveItem.blockData().solveTypeParameters().blockOptimizerIterations();
-		final List<Integer> blockMaxPlateauWidth = solveItem.blockData().solveTypeParameters().blockMaxPlateauWidth();
-		final double blockMaxAllowedError = blockData.solveTypeParameters().blockMaxAllowedError();
+		final List<Integer> blockOptimizerIterations = blockData.solveTypeParameters().blockOptimizerIterations();
+		final List<Integer> blockMaxPlateauWidth = blockData.solveTypeParameters().blockMaxPlateauWidth();
+		final double blockMaxAllowedError = this.blockData.solveTypeParameters().blockMaxAllowedError();
 
 		final TileConfiguration tileConfig = new TileConfiguration();
 
@@ -864,7 +816,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		if (LOG.isInfoEnabled()) {
 			final DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles());
 			LOG.info("solve: block {}, optimizing {} tiles with preAlign {}, error stats before optimization are {}",
-					 solveItem.blockData(), solveItem.groupedTileToTiles().keySet().size(), preAlign, errors);
+					 blockData, solveItem.groupedTileToTiles().keySet().size(), preAlign, errors);
 		}
 
 		if ((preAlign != null) && (preAlign != PreAlign.NONE)) {
@@ -905,9 +857,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			LOG.info("solve: errors: {}", errors);
 		}
 
-		// create lookup for the new models
-		solveItem.blockData().idToNewModel().clear();
-
 		final ArrayList<String> tileIds = new ArrayList<>();
 		final HashMap<String, AffineModel2D> tileIdToGroupModel = new HashMap<>();
 
@@ -927,10 +876,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			affine.preConcatenate( tileIdToGroupModel.get( tileId ) );
 
-			LOG.info("solve: block {}: grouped model for tile {} is {}", solveItem.blockData(), tileId, tileIdToGroupModel.get(tileId));
+			LOG.info("solve: block {}: grouped model for tile {} is {}", blockData, tileId, tileIdToGroupModel.get(tileId));
 
-			solveItem.blockData().idToNewModel().put( tileId, affine );
-			LOG.info("solve: block {}: tile {} model from grouped tile is {}", solveItem.blockData(), tileId, affine);
+			blockData.getResults().recordModel(tileId, affine);
+			LOG.info("solve: block {}: tile {} model from grouped tile is {}", blockData, tileId, affine);
 		}
 	}
 
@@ -969,121 +918,43 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	}
 
 	// note: these are local errors of a single block only
-	private void computeSolveItemErrors(final AffineBlockDataWrapper<M, S> solveItem,
+	private void computeSolveItemErrors(final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
 										final List<CanvasMatches> canvasMatches) {
 
 		LOG.info("computeSolveItemErrors: entry, computing per-block errors for {} tiles using {} pairs of images ...",
-				 solveItem.blockData().rtsc().getTileCount(),
-				 canvasMatches.size());
+				 blockData.rtsc().getTileCount(), canvasMatches.size());
 
 		// for local fits
 		final Model< ? > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
-		//final Model< ? > montageLayerModel = solveItem.stitchingSolveModelInstance();
 
-		for ( final CanvasMatches match : canvasMatches )
-		{
+		final ResultContainer<AffineModel2D> results = blockData.getResults();
+
+		for (final CanvasMatches match : canvasMatches) {
+
 			final String pTileId = match.getpId();
 			final String qTileId = match.getqId();
 
-			final TileSpec pTileSpec = solveItem.blockData().rtsc().getTileSpec( pTileId );
-			final TileSpec qTileSpec = solveItem.blockData().rtsc().getTileSpec( qTileId );
+			final TileSpec pTileSpec = blockData.rtsc().getTileSpec(pTileId);
+			final TileSpec qTileSpec = blockData.rtsc().getTileSpec(qTileId);
 
 			// it is from a different solveitem
-			if ( pTileSpec == null || qTileSpec == null )
+			if (pTileSpec == null || qTileSpec == null)
 				continue;
-
-			// for a correct computation of errors after global alignment
-			//if ( serializeMatches )
-			//	solveItem.matches().add( new SerializableValuePair<>(new SerializableValuePair<>(pTileId, qTileId ), match.getMatches() ) );
 
 			final double vDiff = WorkerTools.computeAlignmentError(
 					crossLayerModel,
-					solveItem.blockData().solveTypeParameters().stitchingSolveModelInstance( (int)Math.round( pTileSpec.getZ() ) ),
+					blockData.solveTypeParameters().stitchingSolveModelInstance(pTileSpec.getZ().intValue()),
 					pTileSpec,
 					qTileSpec,
-					solveItem.blockData().idToNewModel().get( pTileId ),
-					solveItem.blockData().idToNewModel().get( qTileId ),
-					match.getMatches() );
+					results.getModelFor(pTileId),
+					results.getModelFor(qTileId),
+					match.getMatches());
 
-			solveItem.blockData().idToBlockErrorMap()
-					.computeIfAbsent(pTileId, k -> new ArrayList<>())
-					.add(new SerializableValuePair<>(qTileId, vDiff));
-			solveItem.blockData().idToBlockErrorMap()
-					.computeIfAbsent(qTileId, k -> new ArrayList<>())
-					.add(new SerializableValuePair<>(pTileId, vDiff));
+			results.recordPairwiseTileError(pTileId, qTileId, vDiff);
 		}
 
 		LOG.info("computeSolveItemErrors, exit");
 	}
 
-	/**
-	 * Adaptation of {@link Tile#traceConnectedGraph} that avoids StackOverflowError from
-	 * too much recursion when dealing with larger connected graphs.
-	 */
-	@SuppressWarnings("JavadocReference")
-	private void safelyTraceConnectedGraph(final Tile<?> forTile,
-										   final Set<Tile<?>> graph,
-										   final Set<Tile<?>> deferredTiles,
-										   final int recursionDepth) {
-		final int maxRecursionDepth = 500;
-
-		graph.add(forTile);
-
-		for (final Tile<?> t : forTile.getConnectedTiles()) {
-			if (! (graph.contains(t) || deferredTiles.contains(t))) {
-				if (recursionDepth < maxRecursionDepth) {
-					safelyTraceConnectedGraph(t, graph, deferredTiles, recursionDepth + 1);
-				} else {
-					deferredTiles.add(t);
-				}
-			}
-		}
-	}
-
-	/**
-	 * Adaptation of {@link Tile#identifyConnectedGraphs} that avoids StackOverflowError from
-	 * too much recursion when dealing with larger connected graphs.
-	 */
-	private ArrayList< Set< Tile< ? > > > safelyIdentifyConnectedGraphs(final Collection<Tile<?>> tiles) {
-
-		LOG.info("safelyIdentifyConnectedGraphs: entry, checking {} tiles", tiles.size());
-
-		final ArrayList< Set< Tile< ? > > > graphs = new ArrayList<>();
-		int numInspectedTiles = 0;
-		A:		for ( final Tile< ? > tile : tiles )
-		{
-			for ( final Set< Tile< ? > > knownGraph : graphs ) {
-				if (knownGraph.contains(tile)) {
-					continue A;
-				}
-			}
-
-			final Set< Tile< ? > > currentGraph = new HashSet<>();
-			final Set< Tile< ? > > deferredTiles = new HashSet<>();
-			safelyTraceConnectedGraph(tile, currentGraph, deferredTiles, 0);
-
-			while (!deferredTiles.isEmpty()) {
-				LOG.info("safelyIdentifyConnectedGraphs: {} max recursion deferred tiles, current graph size is {}",
-						 deferredTiles.size(), currentGraph.size());
-				final List<Tile<?>> toDoList = new ArrayList<>(deferredTiles);
-				deferredTiles.clear();
-				for (final Tile<?> toDoTile : toDoList) {
-					safelyTraceConnectedGraph(toDoTile, currentGraph, deferredTiles, 0);
-				}
-			}
-
-			numInspectedTiles += currentGraph.size();
-			graphs.add(currentGraph);
-
-			if ( numInspectedTiles == tiles.size() ) {
-				break;
-			}
-		}
-
-		LOG.info("safelyIdentifyConnectedGraphs: returning {} graph(s)", graphs.size());
-
-		return graphs;
-	}
-
-	private static final Logger LOG = LoggerFactory.getLogger(AffineAlignBlockWorker.class);
+	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
 }

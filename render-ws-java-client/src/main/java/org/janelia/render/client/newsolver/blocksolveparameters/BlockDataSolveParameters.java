@@ -82,12 +82,11 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 	public double[] centerOfMass(final BlockData<R, P> blockData)
 	{
 
-		final double[] c = new double[ 3 ];
+		final double[] c = new double[3];
 		int count = 0;
 
-		for ( final String tileId : blockData.idToNewModel().keySet() )
-		{
-			final TileSpec ts = blockData.rtsc().getTileSpec( tileId );
+		for (final String tileId : blockData.getResults().getTileIds()) {
+			final TileSpec ts = blockData.rtsc().getTileSpec(tileId);
 
 			// the affine transform for the tile
 			final Rectangle r = ts.toTileBounds().toRectangle();
