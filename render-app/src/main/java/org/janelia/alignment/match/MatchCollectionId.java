@@ -1,9 +1,9 @@
 package org.janelia.alignment.match;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.google.common.base.Objects;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 import org.janelia.alignment.util.CollectionNameUtil;
 
@@ -81,7 +81,7 @@ public class MatchCollectionId
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(owner, name);
+        return Objects.hash(owner, name);
     }
 
     @Override

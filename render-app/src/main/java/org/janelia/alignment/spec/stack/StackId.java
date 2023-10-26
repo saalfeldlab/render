@@ -1,9 +1,9 @@
 package org.janelia.alignment.spec.stack;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.google.common.base.Objects;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.MatchCollectionId;
@@ -83,14 +83,14 @@ public class StackId implements Comparable<StackId>, Serializable {
             return false;
         }
         final StackId stackId = (StackId) o;
-        return Objects.equal(stack, stackId.stack) &&
-               Objects.equal(project, stackId.project) &&
-               Objects.equal(owner, stackId.owner);
+        return Objects.equals(stack, stackId.stack) &&
+               Objects.equals(project, stackId.project) &&
+               Objects.equals(owner, stackId.owner);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(stack, project, owner);
+        return Objects.hash(stack, project, owner);
     }
     
     @Override

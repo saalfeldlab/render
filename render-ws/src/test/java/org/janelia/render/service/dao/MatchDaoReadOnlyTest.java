@@ -2,6 +2,7 @@ package org.janelia.render.service.dao;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -336,22 +337,47 @@ public class MatchDaoReadOnlyTest {
     @Test
     public void testWriteMatchesAndTileSpecs() throws Exception {
 
-        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
-
         // add tile specs that have same ids as match.json test data (imported into collectionId)
         final ResolvedTileSpecCollection tileSpecs = new ResolvedTileSpecCollection();
         tileSpecs.addTileSpecToCollection(buildTileSpec("section1", "tile1.1"));
         tileSpecs.addTileSpecToCollection(buildTileSpec("section2", "tile2.1"));
 
-        dao.writeMatchesAndTileSpecs(collectionId, tileSpecs, outputStream);
+        // tile1.1 has 3 pairs in match.json, one of those is with tile2.1 and
+        // tile2.1 only has one pair (the one with tile1.1)
+
+        // only 3 match pairs should be returned when all tiles are in same query
+        testWriteMatchesAndTileSpecsWithTileBatchSize("single batch",
+                                                      tileSpecs,
+                                                      2,
+                                                      3);
+
+        // 4 match pairs should be returned when tiles are split between in same query
+        testWriteMatchesAndTileSpecsWithTileBatchSize("split batches",
+                                                      tileSpecs,
+                                                      1,
+                                                      4);
+    }
+
+    private static void testWriteMatchesAndTileSpecsWithTileBatchSize(final String context,
+                                                                      final ResolvedTileSpecCollection tileSpecs,
+                                                                      final int maxTilesPerQuery,
+                                                                      final int expectedResultPairCount)
+            throws IOException {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        dao.writeMatchesAndTileSpecs(collectionId, tileSpecs, outputStream, maxTilesPerQuery);
 
         final String json = outputStream.toString();
         final ResolvedTileSpecsWithMatchPairs tilesWithPairs =
                 ResolvedTileSpecsWithMatchPairs.fromJson(new StringReader(json));
 
         final ResolvedTileSpecCollection resultTiles = tilesWithPairs.getResolvedTileSpecs();
-        Assert.assertEquals("tile counts do not match",
+        Assert.assertEquals(context + " tile counts do not match",
                             tileSpecs.getTileCount(), resultTiles.getTileCount());
+
+        final List<CanvasMatches> resultPairs = tilesWithPairs.getMatchPairs();
+        Assert.assertEquals(context + " pair counts do not match",
+                            expectedResultPairCount, resultPairs.size());
     }
 
     private List<CanvasMatches> getListFromStream(final ByteArrayOutputStream outputStream) {

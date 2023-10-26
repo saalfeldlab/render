@@ -197,6 +197,14 @@ public class Bounds implements Serializable {
         return new Bounds(this.minX, this.minY, minZ, this.maxX, this.maxY, this.maxZ);
     }
 
+    public Bounds withMaxZ(final Double maxZ) {
+        return new Bounds(this.minX, this.minY, this.minZ, this.maxX, this.maxY, maxZ);
+    }
+
+    public Bounds withZ(final Double z) {
+        return new Bounds(this.minX, this.minY, z, this.maxX, this.maxY, z);
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }
