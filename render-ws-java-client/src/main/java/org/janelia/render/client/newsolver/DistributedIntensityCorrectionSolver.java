@@ -107,7 +107,7 @@ public class DistributedIntensityCorrectionSolver {
 			for (final Future<List<BlockData<ArrayList<AffineModel1D>, ?>>> future : taskExecutor.invokeAll(workers))
 					allItems.addAll(future.get());
 		} catch (final InterruptedException | ExecutionException e) {
-			throw new RuntimeException("Failed to compute alignments", e);
+			throw new RuntimeException("Failed to compute intensity correction", e);
 		} finally {
 			taskExecutor.shutdown();
 		}

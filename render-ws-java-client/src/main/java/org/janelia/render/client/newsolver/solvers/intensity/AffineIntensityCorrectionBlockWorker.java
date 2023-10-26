@@ -4,6 +4,7 @@ import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IdentityModel;
 import mpicbg.models.InterpolatedAffineModel1D;
@@ -24,6 +25,8 @@ import net.imglib2.util.Pair;
 import net.imglib2.util.StopWatch;
 import net.imglib2.util.ValuePair;
 
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -34,6 +37,7 @@ import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduc
 import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.parameter.ZDistanceParameters;
@@ -72,6 +76,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	 */
 	@Override
 	public void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
+
+		fetchResolvedTiles();
 		final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(blockData.rtsc());
 
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
@@ -89,6 +95,18 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		});
 
 		LOG.info("AffineIntensityCorrectionBlockWorker: exit, blockData={}", blockData);
+	}
+
+	private void fetchResolvedTiles() throws IOException {
+		final Bounds bounds = blockData.getOriginalBounds();
+		final ResolvedTileSpecCollection rtsc = renderDataClient.getResolvedTiles(
+				parameters.stack(),
+				bounds.getMinZ(), bounds.getMaxZ(),
+				null, // groupId,
+				bounds.getMinX(), bounds.getMaxX(),
+				bounds.getMinY(), bounds.getMaxY(),
+				null); // matchPattern
+		blockData.getResults().init(rtsc);
 	}
 
 	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<MinimalTileSpecWrapper> tiles) throws ExecutionException, InterruptedException {
