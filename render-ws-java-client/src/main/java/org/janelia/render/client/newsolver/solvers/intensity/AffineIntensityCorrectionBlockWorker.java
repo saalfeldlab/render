@@ -272,9 +272,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		final Collection<TileSpec> allTiles = blockData.rtsc().getTileSpecs();
 		final double equilibrationWeight = blockData.solveTypeParameters().equilibrationWeight();
 
+		final ResultContainer<ArrayList<AffineModel1D>> results = blockData.getResults();
 		for (final TileSpec p : allTiles) {
 			final List<? extends Tile<?>> coefficientTile = coefficientTiles.get(p.getTileId());
-			final List<Double> averages = blockData.idToAverages().get(p.getTileId());
 			for (int i = 1; i < parameters.numCoefficients(); ++i) {
 				for (int j = 0; j < parameters.numCoefficients(); ++j) {
 					final int left = getLinearIndex(i-1, j, parameters.numCoefficients());
@@ -287,6 +287,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				}
 			}
 			if (equilibrationWeight > 0.0) {
+				final List<Double> averages = results.getAveragesFor(p.getTileId());
 				for (int i = 0; i < parameters.numCoefficients(); i++) {
 					for (int j = 0; j < parameters.numCoefficients(); j++) {
 						final int idx = getLinearIndex(i, j, parameters.numCoefficients());
