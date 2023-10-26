@@ -1,8 +1,7 @@
 package org.janelia.alignment.match;
 
-import com.google.common.base.Objects;
-
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * A pair of canvas identifiers with {@linkplain Comparable natural ordering}.
@@ -77,13 +76,13 @@ public class OrderedCanvasIdPair
             return false;
         }
         final OrderedCanvasIdPair that = (OrderedCanvasIdPair) o;
-        return Objects.equal(p, that.p) &&
-               Objects.equal(q, that.q);
+        return Objects.equals(p, that.p) &&
+               Objects.equals(q, that.q);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(p, q);
+        return Objects.hash(p, q);
     }
 
     @Override

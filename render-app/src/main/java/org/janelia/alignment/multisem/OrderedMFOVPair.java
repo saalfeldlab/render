@@ -1,8 +1,7 @@
 package org.janelia.alignment.multisem;
 
-import com.google.common.base.Objects;
-
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * A pair of MFOV identifiers with {@linkplain Comparable natural ordering}.
@@ -67,13 +66,13 @@ public class OrderedMFOVPair
             return false;
         }
         final OrderedMFOVPair that = (OrderedMFOVPair) o;
-        return Objects.equal(p, that.p) &&
-               Objects.equal(q, that.q);
+        return Objects.equals(p, that.p) &&
+               Objects.equals(q, that.q);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(p, q);
+        return Objects.hash(p, q);
     }
 
     @Override
