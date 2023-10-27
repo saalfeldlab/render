@@ -205,6 +205,14 @@ public class Bounds implements Serializable {
         return new Bounds(this.minX, this.minY, z, this.maxX, this.maxY, z);
     }
 
+    public Bounds scaled(final double scaleX, final double scaleY, final double scaleZ) {
+        final double padX = getDeltaX() * (scaleX - 1.0) / 2.0;
+        final double padY = getDeltaY() * (scaleY - 1.0) / 2.0;
+        final double padZ = getDeltaZ() * (scaleZ - 1.0) / 2.0;
+        return new Bounds(minX - padX, minY - padY, minZ - padZ,
+                          maxX + padX, maxY + padY, maxZ + padZ);
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }

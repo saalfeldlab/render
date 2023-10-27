@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver.blockfactories;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.render.client.newsolver.BlockCollection;
@@ -35,13 +36,13 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 	public <M, R, P extends BlockDataSolveParameters<M,R,P>> BlockCollection<M, R, P> defineBlockCollection(
 			final ParameterProvider< M, R, P > blockSolveParameterProvider )
 	{
-		final List<Bounds> blockBounds = new BlockLayoutCreator()
+		final List<Bounds> blockLayout = new BlockLayoutCreator()
 				.regularGrid(In.Z, minZ, maxZ, blockSize)
-				.plus()
-				.shiftedGrid(In.Z, minZ, maxZ, blockSize)
 				.create();
 
-		return blockCollectionFromLayout(blockBounds, blockSolveParameterProvider);
+		// grow blocks such that they overlap
+		final List<Bounds> scaledLayout = blockLayout.stream().map(b -> b.scaled(1.0, 1.0, 2.0)).collect(Collectors.toList());
+		return blockCollectionFromLayout(scaledLayout, blockSolveParameterProvider);
 	}
 
 	@Override
