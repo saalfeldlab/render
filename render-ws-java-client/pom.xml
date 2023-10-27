@@ -76,6 +76,11 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Create a git.properties file to be included in the jar/war.  Configuration is defined in root module pom.xml. -->
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
 
