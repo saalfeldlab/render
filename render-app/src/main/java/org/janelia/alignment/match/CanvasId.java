@@ -1,8 +1,7 @@
 package org.janelia.alignment.match;
 
-import com.google.common.base.Objects;
-
 import java.io.Serializable;
+import java.util.Objects;
 
 import org.janelia.alignment.json.JsonUtils;
 
@@ -130,9 +129,9 @@ public class CanvasId
             return false;
         }
         final CanvasId canvasId = (CanvasId) that;
-        return Objects.equal(id, canvasId.id) &&
-               Objects.equal(groupId, canvasId.groupId) &&
-               Objects.equal(relativePosition, canvasId.relativePosition);
+        return Objects.equals(id, canvasId.id) &&
+               Objects.equals(groupId, canvasId.groupId) &&
+               Objects.equals(relativePosition, canvasId.relativePosition);
     }
 
     @Override

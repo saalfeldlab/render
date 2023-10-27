@@ -70,7 +70,8 @@ public class DistributedIntensityCorrectionSolver {
 					"--blockSizeZ", "6",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 14,503
-					"--zDistance", "0", "--minZ", "1000", "--maxZ", "1001"
+					"--zDistance", "0", "--minZ", "1245", "--maxZ", "1246",
+					"--equilibrationWeight", "0.5"
 			};
 			cmdLineSetup.parse(testArgs);
 		} else {
@@ -107,7 +108,7 @@ public class DistributedIntensityCorrectionSolver {
 			for (final Future<List<BlockData<ArrayList<AffineModel1D>, ?>>> future : taskExecutor.invokeAll(workers))
 					allItems.addAll(future.get());
 		} catch (final InterruptedException | ExecutionException e) {
-			throw new RuntimeException("Failed to compute alignments", e);
+			throw new RuntimeException("Failed to compute intensity correction", e);
 		} finally {
 			taskExecutor.shutdown();
 		}
@@ -117,12 +118,11 @@ public class DistributedIntensityCorrectionSolver {
 		return allItems;
 	}
 
-	private ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> createAndRunWorker(final BlockData<ArrayList<AffineModel1D>, ?> block)
+	private List<BlockData<ArrayList<AffineModel1D>, ?>> createAndRunWorker(final BlockData<ArrayList<AffineModel1D>, ?> block)
 			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
 		final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(solverSetup.distributedSolve.threadsWorker);
-		worker.run();
-		return new ArrayList<>(worker.getBlockDataList());
+		return new ArrayList<>(worker.call());
 	}
 
 	public ResultContainer<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {

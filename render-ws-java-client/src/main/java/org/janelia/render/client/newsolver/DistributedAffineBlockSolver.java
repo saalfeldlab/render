@@ -182,10 +182,7 @@ public class DistributedAffineBlockSolver
 			final AffineBlockSolverSetup cmdLineSetup) throws NoninvertibleModelException, IOException, ExecutionException, InterruptedException {
 
 			final Worker<AffineModel2D, ?> worker = block.createWorker(cmdLineSetup.distributedSolve.threadsWorker);
-
-			worker.run();
-
-			return new ArrayList<>(worker.getBlockDataList());
+			return new ArrayList<>(worker.call());
 	}
 
 	private static ResultContainer<AffineModel2D> solveAndCombineBlocks(
