@@ -8,6 +8,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
@@ -46,22 +47,16 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 				.regularGrid(In.X, minX, maxX, blockSizeX)
 				.regularGrid(In.Y, minY, maxY, blockSizeY)
 				.regularGrid(In.Z, minZ, maxZ, blockSizeZ)
-				.plus()
-				.shiftedGrid(In.X, minX, maxX, blockSizeX)
-				.shiftedGrid(In.Y, minY, maxY, blockSizeY)
-				.regularGrid(In.Z, minZ, maxZ, blockSizeZ)
-				.plus()
-				.regularGrid(In.X, minX, maxX, blockSizeX)
-				.regularGrid(In.Y, minY, maxY, blockSizeY)
-				.shiftedGrid(In.Z, minZ, maxZ, blockSizeZ)
 				.create();
 
-		return blockCollectionFromLayout(blockLayout, blockSolveParameterProvider);
+		// grow blocks such that they overlap
+		final List<Bounds> scaledLayout = blockLayout.stream().map(b -> b.scaled(2.0, 2.0, 2.0)).collect(Collectors.toList());
+		return blockCollectionFromLayout(scaledLayout, blockSolveParameterProvider);
 	}
 
 	@Override
 	protected BlockTileBoundsFilter getBlockTileFilter() {
-		return BlockTileBoundsFilter.XY_MIDPOINT;
+		return BlockTileBoundsFilter.SCALED_XY;
 	}
 
 	@Override
