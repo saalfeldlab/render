@@ -195,6 +195,33 @@
 <!--                    </configuration>-->
 <!--                </plugin>-->
 
+                <plugin>
+                    <!-- See https://github.com/git-commit-id/git-commit-id-maven-plugin for plugin details. -->
+                    <groupId>io.github.git-commit-id</groupId>
+                    <artifactId>git-commit-id-maven-plugin</artifactId>
+                    <version>7.0.0</version>
+                    <executions>
+                        <execution>
+                            <id>get-git-info</id>
+                            <goals>
+                                <goal>revision</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <configuration>
+                        <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                        <verbose>false</verbose>
+                        <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                        <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                        <format>properties</format> <!-- Valid options are "properties" (default) and "json". -->
+                        <excludeProperties>
+                            <!-- filter out email address info just in case -->
+                            <excludeProperty>git.commit.user.email</excludeProperty>
+                            <excludeProperty>git.build.user.email</excludeProperty>
+                        </excludeProperties>
+                    </configuration>
+                </plugin>
+                
             </plugins>
         </pluginManagement>
     </build>
