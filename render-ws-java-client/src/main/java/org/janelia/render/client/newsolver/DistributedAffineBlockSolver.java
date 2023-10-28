@@ -146,12 +146,20 @@ public class DistributedAffineBlockSolver
 
 		LOG.info("main: computed {} blocks", allItems.size());
 
+		solveCombineAndSaveBlocks(cmdLineSetup, allItems, alignmentSolver);
+	}
+
+	public static void solveCombineAndSaveBlocks(final AffineBlockSolverSetup cmdLineSetup,
+												 final List<BlockData<AffineModel2D, ?>> allItems,
+												 final DistributedAffineBlockSolver alignmentSolver)
+			throws IOException {
+
 		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup,
 																				allItems,
 																				alignmentSolver.blockFactory);
 
 		// save the re-aligned part
-        LOG.info("main: saving target stack {}", cmdLineSetup.targetStack);
+		LOG.info("solveCombineAndSaveBlocks: saving target stack {}", cmdLineSetup.targetStack);
 		final List<Double> zToSave = finalTiles.getResolvedTileSpecs().getTileSpecs().stream()
 				.map(TileSpec::getZ)
 				.distinct()
@@ -177,7 +185,7 @@ public class DistributedAffineBlockSolver
 		}
 	}
 
-	private static List<BlockData<AffineModel2D, ?>> createAndRunWorker(
+	public static List<BlockData<AffineModel2D, ?>> createAndRunWorker(
 			final BlockData<AffineModel2D, ?> block,
 			final AffineBlockSolverSetup cmdLineSetup) throws NoninvertibleModelException, IOException, ExecutionException, InterruptedException {
 
@@ -187,7 +195,7 @@ public class DistributedAffineBlockSolver
 
 	private static ResultContainer<AffineModel2D> solveAndCombineBlocks(
 			final AffineBlockSolverSetup cmdLineSetup,
-			final ArrayList<BlockData<AffineModel2D, ?>> allItems,
+			final List<BlockData<AffineModel2D, ?>> allItems,
 			final BlockFactory blockFactory) {
 
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
@@ -236,7 +244,7 @@ public class DistributedAffineBlockSolver
 		return model.createAffineModel2D();
 	}
 
-	protected <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
+	public <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
 			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> setupSolve(final M blockModel, final S stitchingModel)
 	{
 		// setup XY BlockFactory
