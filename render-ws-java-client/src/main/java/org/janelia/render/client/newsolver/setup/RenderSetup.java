@@ -123,15 +123,7 @@ public class RenderSetup
 
 		runParams.pGroupList.sort(Comparator.comparing(Pair::getA));
 
-		if (runParams.pGroupList.isEmpty())
-			throw new IllegalArgumentException("stack " + stack + " does not contain any sections with the specified z values");
-
-		// setup bounds for run using stack bounds and user specified bounds ...
-		final StackStats stats = sourceStackMetaData.getStats();
-		final Bounds stackBounds = stats == null ? null : stats.getStackBounds();
-		if (stackBounds == null) {
-			throw new IllegalStateException("Bounds missing for stack " + stack + ".  Stack may need to be completed.");
-		}
+		final Bounds stackBounds = getBounds(stack, runParams, sourceStackMetaData);
 		runParams.minX = xyRange.minX == null ? stackBounds.getMinX() : Math.max(xyRange.minX, stackBounds.getMinX());
 		runParams.maxX = xyRange.maxX == null ? stackBounds.getMaxX() : Math.min(xyRange.maxX, stackBounds.getMaxX());
 		runParams.minY = xyRange.minY == null ? stackBounds.getMinY() : Math.max(xyRange.minY, stackBounds.getMinY());
@@ -139,17 +131,15 @@ public class RenderSetup
 		runParams.minZ = layerRange.minZ == null ? stackBounds.getMinZ() : Math.max(layerRange.minZ, stackBounds.getMinZ());
 		runParams.maxZ = layerRange.maxZ == null ? stackBounds.getMaxZ() : Math.min(layerRange.maxZ, stackBounds.getMaxZ());
 
-		allSectionDataList.forEach(sd ->
-								   {
-									   final Double z = sd.getZ();
-									   if ((z != null) && (z.compareTo(runParams.minZ) >= 0) && (z.compareTo(runParams.maxZ) <= 0))
-									   {
-										   final List<Double> zListForSection = runParams.sectionIdToZMap.computeIfAbsent(
-												   sd.getSectionId(), zList -> new ArrayList<>());
+		allSectionDataList.forEach(sectionData -> {
+			final Double z = sectionData.getZ();
+			if ((z != null) && (z.compareTo(runParams.minZ) >= 0) && (z.compareTo(runParams.maxZ) <= 0)) {
+				final List<Double> zListForSection = runParams.sectionIdToZMap.computeIfAbsent(
+						sectionData.getSectionId(), zList -> new ArrayList<>());
 
-										   zListForSection.add(sd.getZ());
-									   }
-								   });
+				zListForSection.add(sectionData.getZ());
+			}
+		});
 
 		// a HashMap where int is the z section, and string is the description (problem, restart, ...)
 		runParams.zToGroupIdMap = new HashMap<>();
@@ -178,6 +168,19 @@ public class RenderSetup
 				  runParams.minZ.intValue(), runParams.maxZ.intValue(), challengeListZ);
 
 		return runParams;
+	}
+
+	private static Bounds getBounds(final String stack, final RenderSetup runParams, final StackMetaData sourceStackMetaData) {
+		if (runParams.pGroupList.isEmpty())
+			throw new IllegalArgumentException("stack " + stack + " does not contain any sections with the specified z values");
+
+		// setup bounds for run using stack bounds and user specified bounds ...
+		final StackStats stats = sourceStackMetaData.getStats();
+		final Bounds stackBounds = (stats == null) ? null : stats.getStackBounds();
+		if (stackBounds == null)
+			throw new IllegalStateException("Bounds missing for stack " + stack + ".  Stack may need to be completed.");
+
+		return stackBounds;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(RenderSetup.class);
