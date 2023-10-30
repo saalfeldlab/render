@@ -173,7 +173,9 @@ public class RenderSetup
 		}
 
 		final List<Integer> challengeListZ = runParams.zToGroupIdMap.keySet().stream().sorted().collect(Collectors.toList());
-		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}", (int)Math.round(layerRange.minZ), (int)Math.round(layerRange.maxZ), challengeListZ);
+
+		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}",
+				  runParams.minZ.intValue(), runParams.maxZ.intValue(), challengeListZ);
 
 		return runParams;
 	}
