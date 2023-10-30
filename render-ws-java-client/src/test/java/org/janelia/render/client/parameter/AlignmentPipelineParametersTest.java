@@ -25,6 +25,9 @@ public class AlignmentPipelineParametersTest {
 
         Assert.assertEquals("incorrect affineBlockSolverSetup.targetStack.stackSuffix value parsed",
                             "_align_pipe_aa", affineBlockSolverSetup.targetStack.stackSuffix);
+
+        Assert.assertTrue("incorrect affineBlockSolverSetup.targetStack.completeTargetStack value parsed",
+                          affineBlockSolverSetup.targetStack.completeStack);
     }
 
     private static final String PIPELINE_JSON =
@@ -48,7 +51,7 @@ public class AlignmentPipelineParametersTest {
             "    },\n" +
             "    \"targetStack\": {\n" +
             "      \"stackSuffix\": \"_align_pipe_aa\",\n" +
-            "      \"completeTargetStack\": true\n" +
+            "      \"completeStack\": true\n" +
             "    },\n" +
             "    \"matches\": {\n" +
             "      \"matchCollection\": \"c000_s095_v01_match_agg2\"\n" +
