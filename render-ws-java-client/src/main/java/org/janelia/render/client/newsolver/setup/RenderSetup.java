@@ -118,12 +118,11 @@ public class RenderSetup
 		runParams.zToTileSpecsMap = new HashMap<>();
 		runParams.totalTileCount = 0;
 
+		final StackMetaData sourceStackMetaData = runParams.renderDataClient.getStackMetaData(stack);
 		if (targetStack == null) {
 			runParams.targetDataClient = null;
 		} else {
 			runParams.targetDataClient = new RenderDataClient(webServiceParameters.baseDataUrl, targetOwner, targetProject);
-
-			final StackMetaData sourceStackMetaData = runParams.renderDataClient.getStackMetaData(stack);
 			runParams.targetDataClient.setupDerivedStack(sourceStackMetaData, targetStack);
 		}
 
@@ -151,80 +150,23 @@ public class RenderSetup
 		if (runParams.pGroupList.isEmpty())
 			throw new IllegalArgumentException("stack " + stack + " does not contain any sections with the specified z values");
 
-		Double minXForRun = xyRange.minX;
-		Double maxXForRun = xyRange.maxX;
-
-		Double minYForRun = xyRange.minY;
-		Double maxYForRun = xyRange.maxY;
-
-		Double minZForRun = layerRange.minZ;
-		Double maxZForRun = layerRange.maxZ;
-
-		// if minZ || maxZ == null in parameters, then use min and max of the stack
-		if ((minZForRun == null) || (maxZForRun == null))
-		{
-			final StackMetaData stackMetaData = runParams.renderDataClient.getStackMetaData(stack);
-			final StackStats stackStats = stackMetaData.getStats();
-			if (stackStats != null)
-			{
-				final Bounds stackBounds = stackStats.getStackBounds();
-				if (stackBounds != null)
-				{
-					if (minXForRun == null)
-						minXForRun = stackBounds.getMinX();
-
-					if (maxXForRun == null)
-						maxXForRun = stackBounds.getMaxX();
-
-					if (minYForRun == null)
-						minYForRun = stackBounds.getMinY();
-
-					if (maxYForRun == null)
-						maxYForRun = stackBounds.getMaxY();
-
-					if (minZForRun == null)
-						minZForRun = stackBounds.getMinZ();
-
-					if (maxZForRun == null)
-						maxZForRun = stackBounds.getMaxZ();
-				}
-			}
-
-			if ( (minXForRun == null) || (maxXForRun == null) )
-				throw new IllegalArgumentException( "Failed to derive min and/or max x values for stack " + stack + ".  Stack may need to be completed.");
-
-			if ( (minYForRun == null) || (maxYForRun == null) )
-				throw new IllegalArgumentException( "Failed to derive min and/or max y values for stack " + stack + ".  Stack may need to be completed.");
-
-			if ( (minZForRun == null) || (maxZForRun == null) )
-				throw new IllegalArgumentException( "Failed to derive min and/or max z values for stack " + stack + ".  Stack may need to be completed.");
-
-			xyRange.minX = minXForRun;
-			xyRange.maxX = maxXForRun;
-
-			xyRange.minY = minYForRun;
-			xyRange.maxY = maxYForRun;
-
-			layerRange.minZ = minZForRun;
-			layerRange.maxZ = maxZForRun;
+		// setup bounds for run using stack bounds and user specified bounds ...
+		final StackStats stats = sourceStackMetaData.getStats();
+		final Bounds stackBounds = stats == null ? null : stats.getStackBounds();
+		if (stackBounds == null) {
+			throw new IllegalStateException("Bounds missing for stack " + stack + ".  Stack may need to be completed.");
 		}
-
-		final Double minZ = minZForRun;
-		final Double maxZ = maxZForRun;
-
-		runParams.minX = minXForRun;
-		runParams.maxX = maxXForRun;
-
-		runParams.minY = minYForRun;
-		runParams.maxY = maxYForRun;
-
-		runParams.minZ = minZForRun;
-		runParams.maxZ = maxZForRun;
+		runParams.minX = xyRange.minX == null ? stackBounds.getMinX() : Math.max(xyRange.minX, stackBounds.getMinX());
+		runParams.maxX = xyRange.maxX == null ? stackBounds.getMaxX() : Math.min(xyRange.maxX, stackBounds.getMaxX());
+		runParams.minY = xyRange.minY == null ? stackBounds.getMinY() : Math.max(xyRange.minY, stackBounds.getMinY());
+		runParams.maxY = xyRange.maxY == null ? stackBounds.getMaxY() : Math.min(xyRange.maxY, stackBounds.getMaxY());
+		runParams.minZ = layerRange.minZ == null ? stackBounds.getMinZ() : Math.max(layerRange.minZ, stackBounds.getMinZ());
+		runParams.maxZ = layerRange.maxZ == null ? stackBounds.getMaxZ() : Math.min(layerRange.maxZ, stackBounds.getMaxZ());
 
 		allSectionDataList.forEach(sd ->
 								   {
 									   final Double z = sd.getZ();
-									   if ((z != null) && (z.compareTo(minZ) >= 0) && (z.compareTo(maxZ) <= 0))
+									   if ((z != null) && (z.compareTo(runParams.minZ) >= 0) && (z.compareTo(runParams.maxZ) <= 0))
 									   {
 										   final List<Double> zListForSection = runParams.sectionIdToZMap.computeIfAbsent(
 												   sd.getSectionId(), zList -> new ArrayList<>());
