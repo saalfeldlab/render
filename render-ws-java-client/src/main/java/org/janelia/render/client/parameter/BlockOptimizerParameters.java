@@ -1,18 +1,19 @@
 package org.janelia.render.client.parameter;
 
 import com.beust.jcommander.Parameter;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.RigidModel2D;
-import mpicbg.models.TranslationModel2D;
-import org.janelia.render.client.newsolver.solvers.affine.AlignmentModel;
-import org.janelia.render.client.newsolver.solvers.affine.AlignmentModel.AlignmentModelBuilder;
-import org.janelia.render.client.solver.StabilizingAffineModel2D;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+
+import mpicbg.models.AffineModel2D;
+import mpicbg.models.RigidModel2D;
+import mpicbg.models.TranslationModel2D;
+
+import org.janelia.render.client.newsolver.solvers.affine.AlignmentModel;
+import org.janelia.render.client.newsolver.solvers.affine.AlignmentModel.AlignmentModelBuilder;
+import org.janelia.render.client.solver.StabilizingAffineModel2D;
 
 /**
  * Parameters for optimization of distributed blocks.
@@ -29,21 +30,21 @@ public class BlockOptimizerParameters implements Serializable {
 			description = "Explicit optimizer lambda values for the rigid regularizer, by default optimizer loops through lambdas (1.0,0.5,0.1,0.01)",
 			variableArity = true
 	)
-	public List<Double> lambdasRigid = new ArrayList<>(Arrays.asList(1.0, 0.5, 0.1, 0.01));
+	public List<Double> lambdasRigid = Arrays.asList(1.0, 0.5, 0.1, 0.01);
 
 	@Parameter(
 			names = "--blockOptimizerLambdasTranslation",
 			description = "Explicit optimizer lambda values for the translation regularizer, by default optimizer loops through lambdas (1.0,0.5,0.1,0.01)",
 			variableArity = true
 	)
-	public List<Double> lambdasTranslation = new ArrayList<>(Arrays.asList(0.5, 0.0, 0.0, 0.0));
+	public List<Double> lambdasTranslation = Arrays.asList(0.5, 0.0, 0.0, 0.0);
 
 	@Parameter(
 			names = "--blockOptimizerLambdasRegularization",
 			description = "Explicit optimizer lambda values for the Regularizer-model, by default optimizer loops through lambdas (0.05, 0.01, 0.0, 0.0)",
 			variableArity = true
 	)
-	public List<Double> lambdasRegularization = new ArrayList<>(Arrays.asList(0.05, 0.01, 0.0, 0.0));
+	public List<Double> lambdasRegularization = Arrays.asList(0.05, 0.01, 0.0, 0.0);
 
 	@Parameter(
 			names = "--blockOptimizerIterations",
@@ -51,7 +52,7 @@ public class BlockOptimizerParameters implements Serializable {
 					"by default optimizer uses (1000,1000,400,200), MUST MATCH SIZE of blockOptimizerLambdas",
 			variableArity = true
 	)
-	public List<Integer> iterations = new ArrayList<>(Arrays.asList(1000, 1000, 400, 200));
+	public List<Integer> iterations = Arrays.asList(1000, 1000, 400, 200);
 
 	@Parameter(
 			names = "--blockMaxPlateauWidth",
@@ -59,7 +60,7 @@ public class BlockOptimizerParameters implements Serializable {
 					"by default optimizer uses (2500,250,100,50), MUST MATCH SIZE of blockOptimizerLambdas",
 			variableArity = true
 	)
-	public List<Integer> maxPlateauWidth = new ArrayList<>(Arrays.asList(250, 250, 100, 50));
+	public List<Integer> maxPlateauWidth = Arrays.asList(250, 250, 100, 50);
 
 	@Parameter(
 			names = "--blockMaxAllowedError",
@@ -109,10 +110,10 @@ public class BlockOptimizerParameters implements Serializable {
 		return iterations.size();
 	}
 
-	public static enum AlignmentModelType {
+	public enum AlignmentModelType {
 		AFFINE,
 		RIGID,
 		TRANSLATION,
-		REGULARIZATION;
+		REGULARIZATION
 	}
 }
