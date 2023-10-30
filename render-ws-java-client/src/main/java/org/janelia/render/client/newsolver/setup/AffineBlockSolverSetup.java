@@ -76,6 +76,7 @@ public class AffineBlockSolverSetup extends CommandLineParameters
     @Parameter(names = "--maxZRangeMatches", description = "max z-range in which to load matches (default: '-1' - no limit)")
     public int maxZRangeMatches = -1;
 
+	// TODO: remove this parameter if it remains unused after we are done with the wafer 53 alignment
     // Parameter for testing
 	@SuppressWarnings("unused")
 	@Parameter(
