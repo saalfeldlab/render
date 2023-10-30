@@ -76,6 +76,8 @@ public class DistributedAffineBlockSolverClient
                                   affineBlockSolverSetup.stitching.getModel());
         final List<BlockData<AffineModel2D, ?>> allInputBlocks = new ArrayList<>(blockCollection.allBlocks());
 
+        LOG.info("runWithContext: setup {} input blocks: {}", allInputBlocks.size(), allInputBlocks);
+
         final JavaRDD<BlockData<AffineModel2D, ?>> rddInputBlocks = sparkContext.parallelize(allInputBlocks);
 
         final JavaRDD<List<BlockData<AffineModel2D, ?>>> rddOutputBlocks = rddInputBlocks.map(block -> {
