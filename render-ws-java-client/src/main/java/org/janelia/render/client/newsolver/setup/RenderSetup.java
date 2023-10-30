@@ -39,30 +39,6 @@ public class RenderSetup
 	public Double minX, maxX, minY, maxY, minZ, maxZ;
 	public int totalTileCount;
 
-	@Override
-	public RenderSetup clone()
-	{
-		final RenderSetup runParams = new RenderSetup();
-
-		runParams.renderDataClient = this.renderDataClient;
-		runParams.matchDataClient = this.matchDataClient;
-		runParams.targetDataClient = this.targetDataClient;
-
-		runParams.pGroupList = this.pGroupList;
-		runParams.sectionIdToZMap = this.sectionIdToZMap;
-		runParams.zToGroupIdMap = this.zToGroupIdMap;
-		runParams.zToTileSpecsMap = new HashMap<>(); // otherwise we get synchronization issues, TODO: Reuse
-		runParams.minX = this.minX;
-		runParams.maxX = this.maxX;
-		runParams.minY = this.minY;
-		runParams.maxY = this.maxY;
-		runParams.minZ = this.minZ;
-		runParams.maxZ = this.maxZ;
-		runParams.totalTileCount = 0;
-
-		return runParams;
-	}
-
 	public static RenderSetup setupSolve(final AffineBlockSolverSetup parameters) throws IOException {
 
 		parameters.initDefaultValues();
