@@ -5,6 +5,8 @@ import java.util.function.Function;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
+
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.parameter.BlockOptimizerParameters;
@@ -75,6 +77,7 @@ public class AffineBlockSolverSetup extends CommandLineParameters
     public int maxZRangeMatches = -1;
 
     // Parameter for testing
+	@SuppressWarnings("unused")
 	@Parameter(
 			names = "--visualizeResults",
 			description = "Visualize results (if running interactively)",
@@ -131,5 +134,16 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 				matches,
 				maxNumMatches,
 				maxZRangeMatches);
+	}
+
+	public void setValuesFromPipeline(final String baseDataUrl,
+									  final StackId sourceStackId) {
+		this.renderWeb.baseDataUrl = baseDataUrl;
+
+		this.renderWeb.owner = sourceStackId.getOwner();
+		this.renderWeb.project = sourceStackId.getProject();
+		this.stack = sourceStackId.getStack();
+
+		this.targetStack.setValuesFromPipeline(sourceStackId, "_align");
 	}
 }

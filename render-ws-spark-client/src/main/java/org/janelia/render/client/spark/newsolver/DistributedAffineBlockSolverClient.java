@@ -47,10 +47,10 @@ public class DistributedAffineBlockSolverClient
 
     }
 
-    private final AffineBlockSolverSetup cmdLineSetup;
+    private final AffineBlockSolverSetup affineBlockSolverSetup;
 
-    private DistributedAffineBlockSolverClient(final AffineBlockSolverSetup cmdLineSetup) {
-        this.cmdLineSetup = cmdLineSetup;
+    public DistributedAffineBlockSolverClient(final AffineBlockSolverSetup affineBlockSolverSetup) {
+        this.affineBlockSolverSetup = affineBlockSolverSetup;
     }
 
     public void run() throws IOException {
@@ -66,21 +66,21 @@ public class DistributedAffineBlockSolverClient
     public void runWithContext(final JavaSparkContext sparkContext)
             throws IOException {
 
-        LOG.info("runWithContext: entry, threadsGlobal={}", cmdLineSetup.distributedSolve.threadsGlobal);
+        LOG.info("runWithContext: entry, threadsGlobal={}", affineBlockSolverSetup.distributedSolve.threadsGlobal);
 
-        final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
-        final DistributedAffineBlockSolver solver = new DistributedAffineBlockSolver(cmdLineSetup, renderSetup);
+        final RenderSetup renderSetup = RenderSetup.setupSolve(affineBlockSolverSetup);
+        final DistributedAffineBlockSolver solver = new DistributedAffineBlockSolver(affineBlockSolverSetup, renderSetup);
 
         final BlockCollection<?, AffineModel2D, ?> blockCollection =
-                solver.setupSolve(cmdLineSetup.blockOptimizer.getModel(),
-                                  cmdLineSetup.stitching.getModel());
+                solver.setupSolve(affineBlockSolverSetup.blockOptimizer.getModel(),
+                                  affineBlockSolverSetup.stitching.getModel());
         final List<BlockData<AffineModel2D, ?>> allInputBlocks = new ArrayList<>(blockCollection.allBlocks());
 
         final JavaRDD<BlockData<AffineModel2D, ?>> rddInputBlocks = sparkContext.parallelize(allInputBlocks);
 
         final JavaRDD<List<BlockData<AffineModel2D, ?>>> rddOutputBlocks = rddInputBlocks.map(block -> {
             LogUtilities.setupExecutorLog4j(""); // block info is already in most solver log calls so leave context empty here
-            return DistributedAffineBlockSolver.createAndRunWorker(block, cmdLineSetup);
+            return DistributedAffineBlockSolver.createAndRunWorker(block, affineBlockSolverSetup);
         });
 
         final List<BlockData<AffineModel2D, ?>> allOutputBlocks = rddOutputBlocks
@@ -96,7 +96,7 @@ public class DistributedAffineBlockSolverClient
         LOG.info("runWithContext: collected blocks");
         LOG.info("runWithContext: computed {} blocks", allOutputBlocks.size());
 
-        DistributedAffineBlockSolver.solveCombineAndSaveBlocks(cmdLineSetup,
+        DistributedAffineBlockSolver.solveCombineAndSaveBlocks(affineBlockSolverSetup,
                                                                allOutputBlocks,
                                                                solver);
         LOG.info("runWithContext: exit");

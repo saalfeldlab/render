@@ -10,6 +10,7 @@ import java.util.List;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.util.FileUtil;
+import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 
 /**
  * Parameters for an alignment pipeline run.
@@ -26,10 +27,12 @@ public class AlignmentPipelineParameters
     private final UnconnectedCrossMFOVParameters unconnectedCrossMfov;
     private final TileClusterParameters tileCluster;
     private final MatchCopyParameters matchCopy;
+    private final AffineBlockSolverSetup affineBlockSolverSetup;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -44,7 +47,8 @@ public class AlignmentPipelineParameters
                                        final MFOVMontageMatchPatchParameters mfovMontagePatch,
                                        final UnconnectedCrossMFOVParameters unconnectedCrossMfov,
                                        final TileClusterParameters tileCluster,
-                                       final MatchCopyParameters matchCopy) {
+                                       final MatchCopyParameters matchCopy,
+                                       final AffineBlockSolverSetup affineBlockSolverSetup) {
         this.multiProject = multiProject;
         this.mipmap = mipmap;
         this.matchRunList = matchRunList;
@@ -52,6 +56,7 @@ public class AlignmentPipelineParameters
         this.unconnectedCrossMfov = unconnectedCrossMfov;
         this.tileCluster = tileCluster;
         this.matchCopy = matchCopy;
+        this.affineBlockSolverSetup = affineBlockSolverSetup;
     }
 
     public MultiProjectParameters getMultiProject() {
@@ -67,7 +72,7 @@ public class AlignmentPipelineParameters
     }
 
     public boolean hasMatchParameters() {
-        return (matchRunList != null) && (matchRunList.size() > 0);
+        return (matchRunList != null) && (! matchRunList.isEmpty());
     }
 
     public List<MatchRunParameters> getMatchRunList() {
@@ -104,6 +109,14 @@ public class AlignmentPipelineParameters
 
     public MatchCopyParameters getMatchCopy() {
         return matchCopy;
+    }
+
+    public boolean hasAffineBlockSolverSetup() {
+        return (affineBlockSolverSetup != null);
+    }
+
+    public AffineBlockSolverSetup getAffineBlockSolverSetup() {
+        return affineBlockSolverSetup;
     }
 
     @SuppressWarnings("unused")
