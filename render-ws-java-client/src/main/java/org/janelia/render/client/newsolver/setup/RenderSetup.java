@@ -14,7 +14,6 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -122,8 +121,12 @@ public class RenderSetup
 			runParams.pGroupList.add(new SerializableValuePair<>(entry, sectionIds.get(entry)));
 
 		runParams.pGroupList.sort(Comparator.comparing(Pair::getA));
+		if (runParams.pGroupList.isEmpty()) {
+			throw new IllegalArgumentException("stack " + stack + " does not contain any sections with the specified z values");
+		}
 
-		final Bounds stackBounds = getBounds(stack, runParams, sourceStackMetaData);
+		// setup bounds for run using stack bounds and user specified bounds ...
+		final Bounds stackBounds = sourceStackMetaData.getStackBounds();
 		runParams.minX = xyRange.minX == null ? stackBounds.getMinX() : Math.max(xyRange.minX, stackBounds.getMinX());
 		runParams.maxX = xyRange.maxX == null ? stackBounds.getMaxX() : Math.min(xyRange.maxX, stackBounds.getMaxX());
 		runParams.minY = xyRange.minY == null ? stackBounds.getMinY() : Math.max(xyRange.minY, stackBounds.getMinY());
@@ -168,19 +171,6 @@ public class RenderSetup
 				  runParams.minZ.intValue(), runParams.maxZ.intValue(), challengeListZ);
 
 		return runParams;
-	}
-
-	private static Bounds getBounds(final String stack, final RenderSetup runParams, final StackMetaData sourceStackMetaData) {
-		if (runParams.pGroupList.isEmpty())
-			throw new IllegalArgumentException("stack " + stack + " does not contain any sections with the specified z values");
-
-		// setup bounds for run using stack bounds and user specified bounds ...
-		final StackStats stats = sourceStackMetaData.getStats();
-		final Bounds stackBounds = (stats == null) ? null : stats.getStackBounds();
-		if (stackBounds == null)
-			throw new IllegalStateException("Bounds missing for stack " + stack + ".  Stack may need to be completed.");
-
-		return stackBounds;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(RenderSetup.class);
