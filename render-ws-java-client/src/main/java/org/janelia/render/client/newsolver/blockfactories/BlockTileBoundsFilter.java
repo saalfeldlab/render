@@ -42,6 +42,18 @@ public interface BlockTileBoundsFilter
         final Rectangle scaledXYBounds = scaledBlockBounds.toRectangle();
         return scaledXYBounds.intersects(tileBounds.toRectangle());
     };
+
+    BlockTileBoundsFilter Z_INSIDE = (tileBounds, blockBounds) -> {
+        // only keep tiles that are inside block z range
+        return (tileBounds.getMinZ() >= blockBounds.getMinZ()) && (tileBounds.getMaxZ() <= blockBounds.getMaxZ());
+    };
+
+    BlockTileBoundsFilter SCALED_XY_Z_INSIDE = (tileBounds, blockBounds) -> {
+        // scaled in xy, inside in z
+        return BlockTileBoundsFilter.SCALED_XY.shouldBeIncluded(tileBounds, blockBounds)
+                && BlockTileBoundsFilter.Z_INSIDE.shouldBeIncluded(tileBounds, blockBounds);
+    };
+
     /**
      * @return list of included tile bounds based upon the specified parameters.
      */

@@ -56,7 +56,7 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 
 	@Override
 	protected BlockTileBoundsFilter getBlockTileFilter() {
-		return BlockTileBoundsFilter.SCALED_XY;
+		return BlockTileBoundsFilter.SCALED_XY_Z_INSIDE;
 	}
 
 	@Override

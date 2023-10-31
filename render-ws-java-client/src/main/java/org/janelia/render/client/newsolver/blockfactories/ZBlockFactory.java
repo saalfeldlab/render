@@ -47,7 +47,7 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 
 	@Override
 	protected BlockTileBoundsFilter getBlockTileFilter() {
-		return BlockTileBoundsFilter.INCLUDE_ALL;  // whole layer is always included
+		return BlockTileBoundsFilter.Z_INSIDE;
 	}
 
 	@Override
