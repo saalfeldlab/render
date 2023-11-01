@@ -136,8 +136,8 @@
 
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.12</artifactId>
-            <version>3.0.1</version>
+            <artifactId>spark-core_2.13</artifactId>
+            <version>3.4.1</version>
             <scope>provided</scope>
             <exclusions>
 
@@ -145,10 +145,6 @@
                 <exclusion>
                     <groupId>javax.activation</groupId>
                     <artifactId>activation</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>javax.xml.bind</groupId>
-                    <artifactId>jaxb-api</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
@@ -163,48 +159,26 @@
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
                 <exclusion>
-                    <groupId>org.glassfish.hk2.external</groupId>
-                    <artifactId>aopalliance-repackaged</artifactId>
+                    <groupId>org.apache.logging.log4j</groupId>
+                    <artifactId>log4j-1.2-api</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.hk2.external</groupId>
-                    <artifactId>jakarta.inject</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.hk2.external</groupId>
-                    <artifactId>javax.inject</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.jersey.core</groupId>
-                    <artifactId>jersey-client</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>jakarta.ws.rs</groupId>
-                    <artifactId>jakarta.ws.rs-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>net.java.dev.jets3t</groupId>
-                    <artifactId>jets3t</artifactId>
-                </exclusion>
+                <!--
+                  Hack Process to Run Spark Jobs from IntelliJ:
 
-                <!-- filter out jersey-common dependency that produces invalid bytecode error -->
-                <exclusion>
-                    <groupId>org.glassfish.jersey.core</groupId>
-                    <artifactId>jersey-common</artifactId>
-                </exclusion>
+                  Comment out the hadoop-client-runtime exclusion below and run mvn compile to pull it into your local .m2/repository.
+                  The compile will fail because of the enforcer no-duplicate-classes rule but the jar will get pulled.
+                  Once $HOME/.m2/repository/org/apache/hadoop/hadoop-client-runtime/3.3.4/hadoop-client-runtime-3.3.4.jar exists,
+                  uncomment the exclusion and run mvn clean package.
+                  Finally, add the hadoop-client-runtime-3.3.4.jar to IntelliJ run configurations to run local Spark jobs from IDE.
 
+                  Note that the hadoop version will change with Spark version changes.
+                  Hopefully, whoever updates Spark will also update this comment with the new corresponding hadoop version and .m2 path.
+                -->
                 <exclusion>
-                    <groupId>net.jpountz.lz4</groupId>
-                    <artifactId>lz4</artifactId>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-client-runtime</artifactId>
                 </exclusion>
-
             </exclusions>
-        </dependency>
-
-        <!-- explicitly reference desired Guava version here to override older version brought in by hadoop libraries -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
         </dependency>
 
     </dependencies>

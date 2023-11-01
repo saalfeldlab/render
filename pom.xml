@@ -144,7 +144,7 @@
         <!-- NOTE: need old version of jitk-tps before John removed mpicbg dependency -->
         <jitk-tps-with-mpicbg.version>1.3.2</jitk-tps-with-mpicbg.version>
 
-        <jackson-version>2.11.0</jackson-version>
+        <jackson-version>2.14.3</jackson-version> <!-- NOTE: 2.15.3 causes NullPointerException in maven enforcer plugin -->
 
         <swagger-version>1.6.2</swagger-version>
 
