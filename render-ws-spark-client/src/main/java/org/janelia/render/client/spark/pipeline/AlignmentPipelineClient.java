@@ -13,6 +13,7 @@ import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
 import org.janelia.alignment.multisem.UnconnectedMFOVPairsForStack;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.parameter.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
@@ -22,6 +23,7 @@ import org.janelia.render.client.spark.match.CopyMatchClient;
 import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
 import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
 import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
+import org.janelia.render.client.spark.newsolver.DistributedAffineBlockSolverClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -120,7 +122,7 @@ public class AlignmentPipelineClient
             final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
                     unconnectedMfovClient.findUnconnectedMFOVs(sparkContext);
 
-            if (unconnectedMFOVsForAllStacks.size() > 0) {
+            if (! unconnectedMFOVsForAllStacks.isEmpty()) {
                 final String errorMessage =
                         "found " + unconnectedMFOVsForAllStacks.size() + " stacks with unconnected MFOVs";
                 LOG.error("runWithContext: {}: {}", errorMessage, unconnectedMFOVsForAllStacks);
@@ -145,7 +147,7 @@ public class AlignmentPipelineClient
                 }
             }
 
-            if (problemStackSummaryStrings.size() > 0) {
+            if (! problemStackSummaryStrings.isEmpty()) {
                 throw new IllegalStateException("The following " + problemStackSummaryStrings.size() +
                                                 " stacks have match connection issues:\n" +
                                                 String.join("\n", problemStackSummaryStrings));
@@ -158,6 +160,21 @@ public class AlignmentPipelineClient
                                                    alignmentPipelineParameters.getMatchCopy());
             final CopyMatchClient copyMatchClient = new CopyMatchClient(p);
             copyMatchClient.copyMatches(sparkContext);
+        }
+
+        if (alignmentPipelineParameters.hasAffineBlockSolverSetup()) {
+            final MultiProjectParameters multiProject = alignmentPipelineParameters.getMultiProject();
+            final AffineBlockSolverSetup affineBlockSolverSetup = alignmentPipelineParameters.getAffineBlockSolverSetup();
+            final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
+            // TODO: parallelize processing of each stack rather than handling them serially
+            // TODO: push StackWithZValues idea into core solver code
+            for (final StackWithZValues stackWithZValues : stackList) {
+                affineBlockSolverSetup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
+                                                             stackWithZValues.getStackId());
+                final DistributedAffineBlockSolverClient affineBlockSolverClient =
+                        new DistributedAffineBlockSolverClient(affineBlockSolverSetup);
+                affineBlockSolverClient.runWithContext(sparkContext);
+            }
         }
 
         LOG.info("runWithContext: exit");

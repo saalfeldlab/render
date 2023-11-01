@@ -62,8 +62,6 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	private final FIBSEMIntensityCorrectionParameters<M> parameters;
 	private static final int ITERATIONS = 2000;
 
-	private static final Tile<? extends Affine1D<?>> equilibrationTile = new Tile<>(new IdentityModel());
-
 	public AffineIntensityCorrectionBlockWorker(
 			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
 			final int numThreads) throws IOException {
@@ -237,7 +235,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	@SuppressWarnings("SameParameterValue")
 	private void solveForGlobalCoefficients(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
 											final int iterations) {
-		connectTilesWithinPatches(coefficientTiles);
+
+		final Tile<? extends Affine1D<?>> equilibrationTile = new Tile<>(new IdentityModel());
+
+		connectTilesWithinPatches(coefficientTiles, equilibrationTile);
 
 		/* optimize */
 		final TileConfiguration tc = new TileConfiguration();
@@ -268,7 +269,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		LOG.info("solveForGlobalCoefficients: exit, returning intensity coefficients for {} tiles", coefficientTiles.size());
 	}
 
-	private void connectTilesWithinPatches(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
+	private void connectTilesWithinPatches(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
+										   final Tile<? extends Affine1D<?>> equilibrationTile) {
 		final Collection<TileSpec> allTiles = blockData.rtsc().getTileSpecs();
 		final double equilibrationWeight = blockData.solveTypeParameters().equilibrationWeight();
 
@@ -291,7 +293,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				for (int i = 0; i < parameters.numCoefficients(); i++) {
 					for (int j = 0; j < parameters.numCoefficients(); j++) {
 						final int idx = getLinearIndex(i, j, parameters.numCoefficients());
-						equilibrateIntensity(coefficientTile.get(idx), averages.get(idx), equilibrationWeight);
+						equilibrateIntensity(coefficientTile.get(idx),
+											 equilibrationTile,
+											 averages.get(idx),
+											 equilibrationWeight);
 					}
 				}
 			}
@@ -305,10 +310,14 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return y * n + x;
 	}
 
-	private void equilibrateIntensity(final Tile<?> tile, final Double average, final double weight) {
-		final List<PointMatch> matches = new ArrayList<>();
-		matches.add(new PointMatch(new Point(new double[] { average }), new Point(new double[] { 0.5 }), weight));
-		tile.connect(equilibrationTile, matches);
+	private static void equilibrateIntensity(final Tile<?> coefficientTile,
+											 final Tile<?> equilibrationTile,
+											 final Double average,
+											 final double weight) {
+		final PointMatch eqMatch = new PointMatch(new Point(new double[] { average }),
+												  new Point(new double[] { 0.5 }),
+												  weight);
+		coefficientTile.connect(equilibrationTile, List.of(eqMatch));
 	}
 
 	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2) {

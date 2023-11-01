@@ -14,7 +14,6 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -38,30 +37,6 @@ public class RenderSetup
 	public Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
 	public Double minX, maxX, minY, maxY, minZ, maxZ;
 	public int totalTileCount;
-
-	@Override
-	public RenderSetup clone()
-	{
-		final RenderSetup runParams = new RenderSetup();
-
-		runParams.renderDataClient = this.renderDataClient;
-		runParams.matchDataClient = this.matchDataClient;
-		runParams.targetDataClient = this.targetDataClient;
-
-		runParams.pGroupList = this.pGroupList;
-		runParams.sectionIdToZMap = this.sectionIdToZMap;
-		runParams.zToGroupIdMap = this.zToGroupIdMap;
-		runParams.zToTileSpecsMap = new HashMap<>(); // otherwise we get synchronization issues, TODO: Reuse
-		runParams.minX = this.minX;
-		runParams.maxX = this.maxX;
-		runParams.minY = this.minY;
-		runParams.maxY = this.maxY;
-		runParams.minZ = this.minZ;
-		runParams.maxZ = this.maxZ;
-		runParams.totalTileCount = 0;
-
-		return runParams;
-	}
 
 	public static RenderSetup setupSolve(final AffineBlockSolverSetup parameters) throws IOException {
 
@@ -118,12 +93,11 @@ public class RenderSetup
 		runParams.zToTileSpecsMap = new HashMap<>();
 		runParams.totalTileCount = 0;
 
+		final StackMetaData sourceStackMetaData = runParams.renderDataClient.getStackMetaData(stack);
 		if (targetStack == null) {
 			runParams.targetDataClient = null;
 		} else {
 			runParams.targetDataClient = new RenderDataClient(webServiceParameters.baseDataUrl, targetOwner, targetProject);
-
-			final StackMetaData sourceStackMetaData = runParams.renderDataClient.getStackMetaData(stack);
 			runParams.targetDataClient.setupDerivedStack(sourceStackMetaData, targetStack);
 		}
 
@@ -147,91 +121,28 @@ public class RenderSetup
 			runParams.pGroupList.add(new SerializableValuePair<>(entry, sectionIds.get(entry)));
 
 		runParams.pGroupList.sort(Comparator.comparing(Pair::getA));
-
-		if (runParams.pGroupList.isEmpty())
+		if (runParams.pGroupList.isEmpty()) {
 			throw new IllegalArgumentException("stack " + stack + " does not contain any sections with the specified z values");
-
-		Double minXForRun = xyRange.minX;
-		Double maxXForRun = xyRange.maxX;
-
-		Double minYForRun = xyRange.minY;
-		Double maxYForRun = xyRange.maxY;
-
-		Double minZForRun = layerRange.minZ;
-		Double maxZForRun = layerRange.maxZ;
-
-		// if minZ || maxZ == null in parameters, then use min and max of the stack
-		if ((minZForRun == null) || (maxZForRun == null))
-		{
-			final StackMetaData stackMetaData = runParams.renderDataClient.getStackMetaData(stack);
-			final StackStats stackStats = stackMetaData.getStats();
-			if (stackStats != null)
-			{
-				final Bounds stackBounds = stackStats.getStackBounds();
-				if (stackBounds != null)
-				{
-					if (minXForRun == null)
-						minXForRun = stackBounds.getMinX();
-
-					if (maxXForRun == null)
-						maxXForRun = stackBounds.getMaxX();
-
-					if (minYForRun == null)
-						minYForRun = stackBounds.getMinY();
-
-					if (maxYForRun == null)
-						maxYForRun = stackBounds.getMaxY();
-
-					if (minZForRun == null)
-						minZForRun = stackBounds.getMinZ();
-
-					if (maxZForRun == null)
-						maxZForRun = stackBounds.getMaxZ();
-				}
-			}
-
-			if ( (minXForRun == null) || (maxXForRun == null) )
-				throw new IllegalArgumentException( "Failed to derive min and/or max x values for stack " + stack + ".  Stack may need to be completed.");
-
-			if ( (minYForRun == null) || (maxYForRun == null) )
-				throw new IllegalArgumentException( "Failed to derive min and/or max y values for stack " + stack + ".  Stack may need to be completed.");
-
-			if ( (minZForRun == null) || (maxZForRun == null) )
-				throw new IllegalArgumentException( "Failed to derive min and/or max z values for stack " + stack + ".  Stack may need to be completed.");
-
-			xyRange.minX = minXForRun;
-			xyRange.maxX = maxXForRun;
-
-			xyRange.minY = minYForRun;
-			xyRange.maxY = maxYForRun;
-
-			layerRange.minZ = minZForRun;
-			layerRange.maxZ = maxZForRun;
 		}
 
-		final Double minZ = minZForRun;
-		final Double maxZ = maxZForRun;
+		// setup bounds for run using stack bounds and user specified bounds ...
+		final Bounds stackBounds = sourceStackMetaData.getStackBounds();
+		runParams.minX = xyRange.minX == null ? stackBounds.getMinX() : Math.max(xyRange.minX, stackBounds.getMinX());
+		runParams.maxX = xyRange.maxX == null ? stackBounds.getMaxX() : Math.min(xyRange.maxX, stackBounds.getMaxX());
+		runParams.minY = xyRange.minY == null ? stackBounds.getMinY() : Math.max(xyRange.minY, stackBounds.getMinY());
+		runParams.maxY = xyRange.maxY == null ? stackBounds.getMaxY() : Math.min(xyRange.maxY, stackBounds.getMaxY());
+		runParams.minZ = layerRange.minZ == null ? stackBounds.getMinZ() : Math.max(layerRange.minZ, stackBounds.getMinZ());
+		runParams.maxZ = layerRange.maxZ == null ? stackBounds.getMaxZ() : Math.min(layerRange.maxZ, stackBounds.getMaxZ());
 
-		runParams.minX = minXForRun;
-		runParams.maxX = maxXForRun;
+		allSectionDataList.forEach(sectionData -> {
+			final Double z = sectionData.getZ();
+			if ((z != null) && (z.compareTo(runParams.minZ) >= 0) && (z.compareTo(runParams.maxZ) <= 0)) {
+				final List<Double> zListForSection = runParams.sectionIdToZMap.computeIfAbsent(
+						sectionData.getSectionId(), zList -> new ArrayList<>());
 
-		runParams.minY = minYForRun;
-		runParams.maxY = maxYForRun;
-
-		runParams.minZ = minZForRun;
-		runParams.maxZ = maxZForRun;
-
-		allSectionDataList.forEach(sd ->
-								   {
-									   final Double z = sd.getZ();
-									   if ((z != null) && (z.compareTo(minZ) >= 0) && (z.compareTo(maxZ) <= 0))
-									   {
-										   final List<Double> zListForSection = runParams.sectionIdToZMap.computeIfAbsent(
-												   sd.getSectionId(), zList -> new ArrayList<>());
-
-										   zListForSection.add(sd.getZ());
-									   }
-								   });
+				zListForSection.add(sectionData.getZ());
+			}
+		});
 
 		// a HashMap where int is the z section, and string is the description (problem, restart, ...)
 		runParams.zToGroupIdMap = new HashMap<>();
@@ -255,7 +166,9 @@ public class RenderSetup
 		}
 
 		final List<Integer> challengeListZ = runParams.zToGroupIdMap.keySet().stream().sorted().collect(Collectors.toList());
-		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}", (int)Math.round(layerRange.minZ), (int)Math.round(layerRange.maxZ), challengeListZ);
+
+		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}",
+				  runParams.minZ.intValue(), runParams.maxZ.intValue(), challengeListZ);
 
 		return runParams;
 	}

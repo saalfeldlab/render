@@ -13,6 +13,7 @@ import java.util.List;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.Bounds;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -287,6 +288,22 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         if (currentVersion != null) {
             currentVersion.setDefaultChannel(defaultChannel);
         }
+    }
+
+    /**
+     * @return bounds for this stack.
+     *
+     * @throws IllegalStateException
+     *   if the stack's bounds are not available.
+     */
+    public Bounds getStackBounds()
+            throws IllegalStateException {
+        final Bounds stackBounds = (stats == null) ? null : stats.getStackBounds();
+        if (stackBounds == null) {
+            throw new IllegalStateException("Stack bounds are missing for " + stackId +
+                                            ".  Stack may need to be completed.");
+        }
+        return stackBounds;
     }
 
     @Override

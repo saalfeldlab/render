@@ -10,6 +10,7 @@ import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
 
 import java.awt.geom.AffineTransform;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -201,7 +202,7 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 	}
 
 
-	private static class AffineModel2DWrapper<T extends Model<T> & Affine2D<T>> {
+	private static class AffineModel2DWrapper<T extends Model<T> & Affine2D<T>> implements Serializable {
 		private final T wrappedInstance;
 
 		public AffineModel2DWrapper(final T instance) {
