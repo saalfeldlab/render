@@ -1,9 +1,9 @@
 package org.janelia.render.client.solver.interactive;
 
 import bdv.util.Bdv;
+import bdv.viewer.OverlayRenderer;
+import bdv.viewer.TransformListener;
 import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.ui.OverlayRenderer;
-import net.imglib2.ui.TransformListener;
 
 public abstract class MinimalBdvOverlay implements OverlayRenderer, TransformListener< AffineTransform3D >
 {

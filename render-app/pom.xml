@@ -16,7 +16,6 @@
         <plugins>
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>
-                <version>3.5.0</version>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -44,7 +43,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.0.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -135,15 +133,14 @@
         <!-- Overridden SciJava Dependencies -->
 
         <dependency>
-            <groupId>jitk</groupId>
-            <artifactId>jitk-tps</artifactId>
-            <version>${jitk-tps-with-mpicbg.version}</version>
+            <groupId>org.janelia.saalfeldlab</groupId>
+            <artifactId>n5</artifactId>
+            <version>${n5-version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.janelia.saalfeldlab</groupId>
-            <artifactId>n5</artifactId>
-            <version>${n5-version}</version>
+            <artifactId>n5-imglib2</artifactId>
         </dependency>
 
         <dependency>
