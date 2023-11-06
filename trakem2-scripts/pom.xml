@@ -32,25 +32,47 @@
 
                             <filters>
 
+                                <!-- filter out overlapping or irrelevant resources and classes -->
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
-                                        <exclude>org/janelia/acquire/**</exclude>
-                                        <exclude>org/python/**</exclude>
-
                                         <exclude>module-info.class</exclude>
-
-                                        <!--
-                                          Exclude manifest signature files (e.g. from org.bouncycastle artifact)
-                                          to prevent invalid signature error when launching fiji.
-                                        -->
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>plugins.config</exclude>
+                                        <exclude>LICENSE</exclude>
+                                        <exclude>META-INF/*</exclude>
+                                        <exclude>META-INF/json/org.scijava.plugin.Plugin</exclude>
+                                        <exclude>META-INF/services/**</exclude>
+                                        <exclude>META-INF/versions/**</exclude>
 
                                     </excludes>
                                 </filter>
-
+                                <filter>
+                                    <artifact>com.fasterxml.jackson.dataformat:jackson-dataformat-cbor</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/services/com.fasterxml.jackson.core.JsonFactory</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.render:render-*</artifact>
+                                    <excludes>
+                                        <exclude>git.properties</exclude> <!-- will get pulled in from trakem2-scripts -->
+                                        <exclude>logback.xml</exclude>
+                                        <exclude>log4j.properties</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.saalfeldlab:n5-universe</artifact>
+                                    <excludes>
+                                        <exclude>*.json</exclude>
+                                        <exclude>*.jq</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.saalfeldlab:n5-*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/json/org.janelia.saalfeldlab.n5.Compression*</exclude>
+                                    </excludes>
+                                </filter>
                             </filters>
 
                             <artifactSet>
@@ -163,6 +185,11 @@
                 <exclusion>
                     <groupId>org.python</groupId>
                     <artifactId>jython-slim</artifactId>
+                </exclusion>
+                <!-- filter out unneeded google-http-client jar which causes xpp3 QName overlap issue in shaded jars -->
+                <exclusion>
+                    <groupId>com.google.http-client</groupId>
+                    <artifactId>google-http-client-xml</artifactId>
                 </exclusion>
             </exclusions>
 

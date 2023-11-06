@@ -33,23 +33,52 @@
                             <outputFile>target/${project.artifactId}-${project.version}-standalone.jar</outputFile>
 
                             <filters>
+                                <!-- filter out overlapping resources and classes -->
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
                                         <exclude>module-info.class</exclude>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>plugins.config</exclude>
+                                        <exclude>LICENSE</exclude>
+                                        <exclude>META-INF/*</exclude>
+                                        <exclude>META-INF/json/org.scijava.plugin.Plugin</exclude>
+                                        <exclude>META-INF/services/**</exclude>
+                                        <exclude>META-INF/versions/**</exclude>
                                     </excludes>
                                 </filter>
-                                <!-- not sure if this filter is needed ...
                                 <filter>
-                                    <artifact>sc.fiji</artifact>
+                                    <artifact>sc.fiji:SPIM_Registration</artifact>
                                     <excludes>
-                                        <exclude>lenscorrection/NonLinearTransform.class</exclude>
+                                        <exclude>META-INF/json/**</exclude>
                                     </excludes>
                                 </filter>
-                                -->
+                                <filter>
+                                    <artifact>com.fasterxml.jackson.dataformat:jackson-dataformat-cbor</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/services/com.fasterxml.jackson.core.JsonFactory</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.render:render-ws-*</artifact>
+                                    <excludes>
+                                        <exclude>git.properties</exclude> <!-- will get pulled in from render-app -->
+                                        <exclude>logback.xml</exclude>
+                                        <exclude>log4j.properties</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.saalfeldlab:n5-universe</artifact>
+                                    <excludes>
+                                        <exclude>*.json</exclude>
+                                        <exclude>*.jq</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.saalfeldlab:n5-*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/json/org.janelia.saalfeldlab.n5.Compression*</exclude>
+                                    </excludes>
+                                </filter>
                             </filters>
 
                             <artifactSet>
@@ -127,6 +156,11 @@
                     <groupId>com.esotericsoftware</groupId>
                     <artifactId>kryo</artifactId>
                 </exclusion>
+                <!-- filter out unneeded google-http-client jar which causes overlap issue in shaded jar -->
+                <exclusion>
+                    <groupId>com.google.http-client</groupId>
+                    <artifactId>google-http-client-xml</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -142,7 +176,7 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.13</artifactId>
-            <version>3.4.1</version>
+            <version>3.4.1</version> <!-- released on June 23, 2023, see https://spark.apache.org/releases/spark-release-3-4-1.html -->
             <scope>provided</scope>
             <exclusions>
 

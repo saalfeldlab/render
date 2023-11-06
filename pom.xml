@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.scijava</groupId>
         <artifactId>pom-scijava</artifactId>
-        <version>36.0.0</version>
+        <version>37.0.0</version> <!-- 37.0.0 was released on 2023-10-12, see https://mvnrepository.com/artifact/org.scijava/pom-scijava -->
         <relativePath />
     </parent>
 
@@ -139,7 +139,7 @@
           NOTE: To prevent attributes.json read errors the render n5 version should be kept in-sync with
                 the hot-knife n5 version if you need to run concurrent code from both repos on the same n5 group.
         -->
-        <n5-version>2.5.1</n5-version>
+        <n5-version>3.0.2</n5-version>
 
         <jackson-version>2.14.3</jackson-version> <!-- NOTE: 2.15.3 causes NullPointerException in maven enforcer plugin -->
 
@@ -156,6 +156,9 @@
         <!-- Override JDK 8 settings in pom-scijava-base now that Jetty 10 has forced us to JDK 11  -->
         <scijava.jvm.version>11</scijava.jvm.version>
         <scijava.jvm.build.version>[11,]</scijava.jvm.build.version>
+
+        <!-- only print test summaries for failures and avoid warnings for skipped tests -->
+        <surefire.printSummary>false</surefire.printSummary>
 
         <!--        <deploy.path>/Users/trautmane/projects/git/maven</deploy.path>-->
     </properties>
