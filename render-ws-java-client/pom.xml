@@ -18,7 +18,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>1.7.1</version>
 
                 <executions>
                     <execution>
@@ -39,13 +38,34 @@
                             </transformers>
 
                             <filters>
+                                <!-- filter out overlapping resources and classes -->
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
                                         <exclude>module-info.class</exclude>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>plugins.config</exclude>
+                                        <exclude>LICENSE</exclude>
+                                        <exclude>META-INF/*</exclude>
+                                        <exclude>META-INF/json/org.scijava.plugin.Plugin</exclude>
+                                        <exclude>META-INF/versions/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>sc.fiji:SPIM_Registration</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/json/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>com.fasterxml.jackson.dataformat:jackson-dataformat-cbor</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/services/com.fasterxml.jackson.core.JsonFactory</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.render:render-app</artifact>
+                                    <excludes>
+                                        <exclude>git.properties</exclude> <!-- will get pulled in from render-ws-java-client -->
                                     </excludes>
                                 </filter>
                             </filters>
@@ -66,7 +86,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.0.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -117,6 +136,11 @@
         </dependency>
 
         <dependency>
+            <groupId>sc.fiji</groupId>
+            <artifactId>bigdataviewer-core</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
         </dependency>
@@ -128,12 +152,6 @@
         </dependency>
 
         <!-- Overridden SciJava Dependencies -->
-
-        <dependency>
-            <groupId>jitk</groupId>
-            <artifactId>jitk-tps</artifactId>
-            <version>${jitk-tps-with-mpicbg.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>org.janelia.saalfeldlab</groupId>

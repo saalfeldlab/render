@@ -1,19 +1,20 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.Parameter;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+
+import mpicbg.trakem2.transform.ThinPlateSplineTransform;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.Parameter;
-
 import jitk.spline.ThinPlateR2LogRSplineKernelTransform;
-import mpicbg.trakem2.transform.ThinPlateSplineTransform;
 
 /**
  * Java client for translating "raw" landmark (control point) values into a
@@ -104,7 +105,7 @@ public class ThinPlateSplineClient {
         parameters.validate();
     }
 
-    public LeafTransformSpec buildTransformSpec() throws Exception {
+    public LeafTransformSpec buildTransformSpec() {
 
         final double[][] sourcePoints = new double[parameters.numberOfDimensions][parameters.numberOfLandmarks];
         final double[][] targetPoints = new double[parameters.numberOfDimensions][parameters.numberOfLandmarks];
@@ -122,10 +123,10 @@ public class ThinPlateSplineClient {
         }
 
         final ThinPlateR2LogRSplineKernelTransform kernelTransform =
-                new ThinPlateR2LogRSplineKernelTransform(parameters.numberOfDimensions, sourcePoints, targetPoints);
-
-        kernelTransform.setDoAffine(parameters.computeAffine);
-        kernelTransform.solve();
+                new ThinPlateR2LogRSplineKernelTransform(parameters.numberOfDimensions,
+                                                         sourcePoints,
+                                                         targetPoints,
+                                                         parameters.computeAffine);
 
         final ThinPlateSplineTransform serializableTransform = new ThinPlateSplineTransform(kernelTransform);
 

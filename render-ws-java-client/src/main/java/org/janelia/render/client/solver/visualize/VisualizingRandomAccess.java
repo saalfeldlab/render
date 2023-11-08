@@ -3,13 +3,13 @@ package org.janelia.render.client.solver.visualize;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import mpicbg.models.AffineModel2D;
+
 import org.janelia.render.client.solver.MinimalTileSpec;
 
-import mpicbg.models.AffineModel2D;
 import net.imglib2.AbstractLocalizable;
 import net.imglib2.Localizable;
 import net.imglib2.RandomAccess;
-import net.imglib2.Sampler;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
 
@@ -143,7 +143,9 @@ public class VisualizingRandomAccess extends AbstractLocalizable implements Rand
 	}
 
 	@Override
-	public Sampler<FloatType> copy() { return copyRandomAccess(); }
+	public RandomAccess<FloatType> copy() {
+		return copyRandomAccess();
+	}
 
 	@Override
 	public RandomAccess<FloatType> copyRandomAccess()

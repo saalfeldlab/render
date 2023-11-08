@@ -19,7 +19,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>1.7.1</version>
 
                 <executions>
                     <execution>
@@ -34,23 +33,52 @@
                             <outputFile>target/${project.artifactId}-${project.version}-standalone.jar</outputFile>
 
                             <filters>
+                                <!-- filter out overlapping resources and classes -->
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
                                         <exclude>module-info.class</exclude>
-                                        <exclude>META-INF/*.SF</exclude>
-                                        <exclude>META-INF/*.DSA</exclude>
-                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>plugins.config</exclude>
+                                        <exclude>LICENSE</exclude>
+                                        <exclude>META-INF/*</exclude>
+                                        <exclude>META-INF/json/org.scijava.plugin.Plugin</exclude>
+                                        <exclude>META-INF/services/**</exclude>
+                                        <exclude>META-INF/versions/**</exclude>
                                     </excludes>
                                 </filter>
-                                <!-- not sure if this filter is needed ...
                                 <filter>
-                                    <artifact>sc.fiji</artifact>
+                                    <artifact>sc.fiji:SPIM_Registration</artifact>
                                     <excludes>
-                                        <exclude>lenscorrection/NonLinearTransform.class</exclude>
+                                        <exclude>META-INF/json/**</exclude>
                                     </excludes>
                                 </filter>
-                                -->
+                                <filter>
+                                    <artifact>com.fasterxml.jackson.dataformat:jackson-dataformat-cbor</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/services/com.fasterxml.jackson.core.JsonFactory</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.render:render-ws-*</artifact>
+                                    <excludes>
+                                        <exclude>git.properties</exclude> <!-- will get pulled in from render-app -->
+                                        <exclude>logback.xml</exclude>
+                                        <exclude>log4j.properties</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.saalfeldlab:n5-universe</artifact>
+                                    <excludes>
+                                        <exclude>*.json</exclude>
+                                        <exclude>*.jq</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.saalfeldlab:n5-*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/json/org.janelia.saalfeldlab.n5.Compression*</exclude>
+                                    </excludes>
+                                </filter>
                             </filters>
 
                             <artifactSet>
@@ -72,7 +100,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.0.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -122,7 +149,19 @@
         <dependency>
             <groupId>org.janelia.saalfeldlab</groupId>
             <artifactId>n5-spark</artifactId>
-            <version>3.4.1</version>
+            <version>3.7.3</version>
+            <exclusions>
+                <!-- filter out dependencies that cause duplicate class failures -->
+                <exclusion>
+                    <groupId>com.esotericsoftware</groupId>
+                    <artifactId>kryo</artifactId>
+                </exclusion>
+                <!-- filter out unneeded google-http-client jar which causes overlap issue in shaded jar -->
+                <exclusion>
+                    <groupId>com.google.http-client</groupId>
+                    <artifactId>google-http-client-xml</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
@@ -136,8 +175,8 @@
 
         <dependency>
             <groupId>org.apache.spark</groupId>
-            <artifactId>spark-core_2.12</artifactId>
-            <version>3.0.1</version>
+            <artifactId>spark-core_2.13</artifactId>
+            <version>3.4.1</version> <!-- released on June 23, 2023, see https://spark.apache.org/releases/spark-release-3-4-1.html -->
             <scope>provided</scope>
             <exclusions>
 
@@ -145,10 +184,6 @@
                 <exclusion>
                     <groupId>javax.activation</groupId>
                     <artifactId>activation</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>javax.xml.bind</groupId>
-                    <artifactId>jaxb-api</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
@@ -162,49 +197,24 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-log4j12</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.hk2.external</groupId>
-                    <artifactId>aopalliance-repackaged</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.hk2.external</groupId>
-                    <artifactId>jakarta.inject</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.hk2.external</groupId>
-                    <artifactId>javax.inject</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.glassfish.jersey.core</groupId>
-                    <artifactId>jersey-client</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>jakarta.ws.rs</groupId>
-                    <artifactId>jakarta.ws.rs-api</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>net.java.dev.jets3t</groupId>
-                    <artifactId>jets3t</artifactId>
-                </exclusion>
 
-                <!-- filter out jersey-common dependency that produces invalid bytecode error -->
-                <exclusion>
-                    <groupId>org.glassfish.jersey.core</groupId>
-                    <artifactId>jersey-common</artifactId>
-                </exclusion>
+                <!--
+                  Hack Process to Run Spark Jobs from IntelliJ:
 
-                <exclusion>
-                    <groupId>net.jpountz.lz4</groupId>
-                    <artifactId>lz4</artifactId>
-                </exclusion>
+                  Comment out the hadoop-client-runtime exclusion below and run mvn compile to pull it into your local .m2/repository.
+                  The compile will fail because of the enforcer no-duplicate-classes rule but the jar will get pulled.
+                  Once $HOME/.m2/repository/org/apache/hadoop/hadoop-client-runtime/3.3.4/hadoop-client-runtime-3.3.4.jar exists,
+                  uncomment the exclusion and run mvn clean package.
+                  Finally, add the hadoop-client-runtime-3.3.4.jar to IntelliJ run configurations to run local Spark jobs from IDE.
 
+                  Note that the hadoop version will change with Spark version changes.
+                  Hopefully, whoever updates Spark will also update this comment with the new corresponding hadoop version and .m2 path.
+                -->
+                <exclusion>
+                    <groupId>org.apache.hadoop</groupId>
+                    <artifactId>hadoop-client-runtime</artifactId>
+                </exclusion>
             </exclusions>
-        </dependency>
-
-        <!-- explicitly reference desired Guava version here to override older version brought in by hadoop libraries -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
         </dependency>
 
     </dependencies>
