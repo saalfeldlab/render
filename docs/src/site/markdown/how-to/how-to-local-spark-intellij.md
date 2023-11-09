@@ -10,7 +10,7 @@ few extra settings to your IntelliJ run configuration to get spark clients to ru
 The hadoop client runtime library is required to run spark locally.  If you don't already have it in a local directory, 
 an easy way to install it is to: 
 - Comment out the library's exclusion block in the 
-[render-ws-spark-client pom.xml](../../../../../render-ws-spark-client/pom.xml):
+[render-ws-spark-client pom.xml](../../../../../render-ws-spark-client/pom.xml#L213-L216):
 ```
 <!--
   <exclusion>
