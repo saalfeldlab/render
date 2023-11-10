@@ -10,7 +10,6 @@ import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.setup.BlockPartitionParameters;
-import org.janelia.render.client.newsolver.setup.RenderSetup;
 
 public abstract class BlockFactory implements Serializable {
 	public abstract <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
@@ -33,16 +32,17 @@ public abstract class BlockFactory implements Serializable {
 
 	protected abstract BlockTileBoundsFilter getBlockTileFilter();
 
-	public static BlockFactory fromBlocksizes(final RenderSetup range, final BlockPartitionParameters blockPartition) {
+	public static BlockFactory fromBlocksizes(final Bounds range,
+											  final BlockPartitionParameters blockPartition) {
 
-		final int minZ = range.minZ.intValue();
-		final int maxZ = range.maxZ.intValue();
+		final int minZ = range.getMinZ().intValue();
+		final int maxZ = range.getMaxZ().intValue();
 
 		if (blockPartition.hasXY()) {
-			final Double minX = range.minX;
-			final Double maxX = range.maxX;
-			final Double minY = range.minY;
-			final Double maxY = range.maxY;
+			final Double minX = range.getMinX();
+			final Double maxX = range.getMaxX();
+			final Double minY = range.getMinY();
+			final Double maxY = range.getMaxY();
 
 			if (blockPartition.hasZ())
 				return new XYZBlockFactory(minX, maxX, minY, maxY, minZ, maxZ, blockPartition.sizeX, blockPartition.sizeY, blockPartition.sizeZ);

@@ -268,7 +268,7 @@ public class DistributedIntensityCorrectionSolver {
 	}
 
 	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> setupSolve() {
-		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, solverSetup.blockPartition);
+		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup.getBounds(), solverSetup.blockPartition);
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();
 		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col =
 				blockFactory.defineBlockCollection(() -> defaultSolveParams);

@@ -248,7 +248,7 @@ public class DistributedAffineBlockSolver
 			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> setupSolve(final M blockModel, final S stitchingModel)
 	{
 		// setup XY BlockFactory
-		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup, solverSetup.blockPartition);
+		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup.getBounds(), solverSetup.blockPartition);
 		
 		// create all blocks
 		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> col = setupBlockCollection(this.blockFactory, blockModel, stitchingModel);

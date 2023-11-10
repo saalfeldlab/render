@@ -35,8 +35,13 @@ public class RenderSetup
 	public Map<Integer, String> zToGroupIdMap; // a HashMap where int is the z section, and string is the description (problem, restart, ...)
 	public Map<String, ArrayList<Double>> sectionIdToZMap; // this is a cache
 	public Map<Double, ResolvedTileSpecCollection> zToTileSpecsMap; // this is a cache
-	public Double minX, maxX, minY, maxY, minZ, maxZ;
 	public int totalTileCount;
+
+	private Bounds bounds;
+
+	public Bounds getBounds() {
+		return bounds;
+	}
 
 	public static RenderSetup setupSolve(final AffineBlockSolverSetup parameters) throws IOException {
 
@@ -127,16 +132,18 @@ public class RenderSetup
 
 		// setup bounds for run using stack bounds and user specified bounds ...
 		final Bounds stackBounds = sourceStackMetaData.getStackBounds();
-		runParams.minX = xyRange.minX == null ? stackBounds.getMinX() : Math.max(xyRange.minX, stackBounds.getMinX());
-		runParams.maxX = xyRange.maxX == null ? stackBounds.getMaxX() : Math.min(xyRange.maxX, stackBounds.getMaxX());
-		runParams.minY = xyRange.minY == null ? stackBounds.getMinY() : Math.max(xyRange.minY, stackBounds.getMinY());
-		runParams.maxY = xyRange.maxY == null ? stackBounds.getMaxY() : Math.min(xyRange.maxY, stackBounds.getMaxY());
-		runParams.minZ = layerRange.minZ == null ? stackBounds.getMinZ() : Math.max(layerRange.minZ, stackBounds.getMinZ());
-		runParams.maxZ = layerRange.maxZ == null ? stackBounds.getMaxZ() : Math.min(layerRange.maxZ, stackBounds.getMaxZ());
+		final double minX = xyRange.minX == null ? stackBounds.getMinX() : Math.max(xyRange.minX, stackBounds.getMinX());
+		final double maxX = xyRange.maxX == null ? stackBounds.getMaxX() : Math.min(xyRange.maxX, stackBounds.getMaxX());
+		final double minY = xyRange.minY == null ? stackBounds.getMinY() : Math.max(xyRange.minY, stackBounds.getMinY());
+		final double maxY = xyRange.maxY == null ? stackBounds.getMaxY() : Math.min(xyRange.maxY, stackBounds.getMaxY());
+		final Double minZ = layerRange.minZ == null ? stackBounds.getMinZ() : Math.max(layerRange.minZ, stackBounds.getMinZ());
+		final Double maxZ = layerRange.maxZ == null ? stackBounds.getMaxZ() : Math.min(layerRange.maxZ, stackBounds.getMaxZ());
+
+		runParams.bounds = new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
 
 		allSectionDataList.forEach(sectionData -> {
 			final Double z = sectionData.getZ();
-			if ((z != null) && (z.compareTo(runParams.minZ) >= 0) && (z.compareTo(runParams.maxZ) <= 0)) {
+			if ((z != null) && (z.compareTo(minZ) >= 0) && (z.compareTo(maxZ) <= 0)) {
 				final List<Double> zListForSection = runParams.sectionIdToZMap.computeIfAbsent(
 						sectionData.getSectionId(), zList -> new ArrayList<>());
 
@@ -151,8 +158,8 @@ public class RenderSetup
 			try {
 				final ResolvedTileSpecCollection groupTileSpecs =
 						runParams.renderDataClient.getResolvedTiles(stack,
-																	runParams.minZ,
-																	runParams.maxZ,
+																	minZ,
+																	maxZ,
 																	groupId,
 																	null,
 																	null,
@@ -168,7 +175,7 @@ public class RenderSetup
 		final List<Integer> challengeListZ = runParams.zToGroupIdMap.keySet().stream().sorted().collect(Collectors.toList());
 
 		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}",
-				  runParams.minZ.intValue(), runParams.maxZ.intValue(), challengeListZ);
+				  minZ.intValue(), maxZ.intValue(), challengeListZ);
 
 		return runParams;
 	}
