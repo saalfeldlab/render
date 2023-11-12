@@ -164,17 +164,17 @@ public class AlignmentPipelineClient
 
         if (alignmentPipelineParameters.hasAffineBlockSolverSetup()) {
             final MultiProjectParameters multiProject = alignmentPipelineParameters.getMultiProject();
-            final AffineBlockSolverSetup affineBlockSolverSetup = alignmentPipelineParameters.getAffineBlockSolverSetup();
+            final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
+            final AffineBlockSolverSetup setup = alignmentPipelineParameters.getAffineBlockSolverSetup();
             final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
-            // TODO: parallelize processing of each stack rather than handling them serially
             // TODO: push StackWithZValues idea into core solver code
             for (final StackWithZValues stackWithZValues : stackList) {
-                affineBlockSolverSetup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
-                                                             stackWithZValues.getStackId());
-                final DistributedAffineBlockSolverClient affineBlockSolverClient =
-                        new DistributedAffineBlockSolverClient(affineBlockSolverSetup);
-                affineBlockSolverClient.runWithContext(sparkContext);
+                setup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
+                                            stackWithZValues.getStackId());
+                setupList.add(setup.clone());
             }
+            final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
+            affineBlockSolverClient.runWithContext(sparkContext, setupList);
         }
 
         LOG.info("runWithContext: exit");

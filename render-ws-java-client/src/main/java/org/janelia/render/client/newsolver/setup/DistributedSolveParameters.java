@@ -44,6 +44,12 @@ public class DistributedSolveParameters implements Serializable {
 			description = "Number of threads to be used for global coarse solve (default: numProcessors/2)")
 	public int threadsGlobal = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
 
+	@Parameter(
+			names = "--deriveThreadsUsingSparkConfig",
+			description = "If specified, override threadsWorker and threadsGlobal based upon Spark configuration",
+			arity = 1)
+	public boolean deriveThreadsUsingSparkConfig = false;
+
 	public DistributedSolveParameters() {}
 
 	public DistributedSolveParameters(
@@ -51,7 +57,8 @@ public class DistributedSolveParameters implements Serializable {
 			final Integer maxIterationsGlobal,
 			final Integer maxPlateauWidthGlobal,
 			final int threadsWorker,
-			final int threadsGlobal) {
+			final int threadsGlobal,
+			final boolean deriveThreadsUsingSparkConfig) {
 
 		if (maxAllowedErrorGlobal < 0)
 			throw new RuntimeException("MaxAllowedErrorGlobal has to be >= 0.");
@@ -65,6 +72,7 @@ public class DistributedSolveParameters implements Serializable {
 		this.maxPlateauWidthGlobal = maxPlateauWidthGlobal;
 		this.threadsWorker = threadsWorker;
 		this.threadsGlobal = threadsGlobal;
+		this.deriveThreadsUsingSparkConfig = deriveThreadsUsingSparkConfig;
 	}
 
 	protected static void ensurePositive(final Integer value, final String name) {

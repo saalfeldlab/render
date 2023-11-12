@@ -6,6 +6,7 @@ import java.util.function.Function;
 import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
@@ -147,4 +148,14 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 
 		this.targetStack.setValuesFromPipeline(sourceStackId, "_align");
 	}
+
+	/** (Slowly) creates a clone of this setup by serializing it to and from JSON. */
+	@SuppressWarnings("MethodDoesntCallSuperMethod")
+	public AffineBlockSolverSetup clone() {
+		final String json = JSON_HELPER.toJson(this);
+		return JSON_HELPER.fromJson(json);
+	}
+
+	private static final JsonUtils.Helper<AffineBlockSolverSetup> JSON_HELPER =
+			new JsonUtils.Helper<>(AffineBlockSolverSetup.class);
 }
