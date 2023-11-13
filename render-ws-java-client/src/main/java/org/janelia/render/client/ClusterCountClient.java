@@ -19,6 +19,7 @@ import org.janelia.alignment.match.TileIdsWithMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
+import org.janelia.render.client.match.UnconnectedTileEdges;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
@@ -113,6 +114,9 @@ public class ClusterCountClient {
         final List<Double> sortedZValues = zToSectionIdsMap.keySet().stream().sorted().collect(Collectors.toList());
         final SortedConnectedCanvasIdClusters allClusters = new SortedConnectedCanvasIdClusters(new ArrayList<>());
         final Set<String> allUnconnectedTileIds = new HashSet<>();
+        final UnconnectedTileEdges unconnectedEdges =
+                parameters.tileCluster.maxLayersForUnconnectedEdge == null ? null :
+                new UnconnectedTileEdges(parameters.tileCluster.maxLayersForUnconnectedEdge);
 
         final int layerCount = sortedZValues.size();
         for (int i = 0; i < layerCount; i += tileClusterParameters.maxLayersPerBatch) {
@@ -124,7 +128,8 @@ public class ClusterCountClient {
                                                  matchDataClient,
                                                  zToSectionIdsMap,
                                                  sortedZValues.subList(fromIndex, toIndex),
-                                                 allUnconnectedTileIds);
+                                                 allUnconnectedTileIds,
+                                                 unconnectedEdges);
             allClusters.mergeOverlappingClusters(clusters);
         }
 
@@ -155,6 +160,13 @@ public class ClusterCountClient {
             stackClusterSummary.addTileClusterSummary(tileSummary);
         }
 
+        if (unconnectedEdges != null) {
+            final List<String> unconnectedTileEdgesList = unconnectedEdges.buildSortedUnconnectedEdgeList();
+            final boolean hasTooManyConsecutiveUnconnectedEdges = unconnectedEdges.hasTooManyConsecutiveUnconnectedEdges();
+            stackClusterSummary.setUnconnectedEdgeData(unconnectedTileEdgesList,
+                                                       hasTooManyConsecutiveUnconnectedEdges);
+        }
+
         LOG.info("findConnectedClusters: {} ", stackClusterSummary.toDetailsString());
 
         return stackClusterSummary;
@@ -165,7 +177,8 @@ public class ClusterCountClient {
                                                                          final RenderDataClient matchDataClient,
                                                                          final Map<Double, Set<String>> zToSectionIdsMap,
                                                                          final List<Double> sortedZValues,
-                                                                         final Set<String> allUnconnectedTileIds)
+                                                                         final Set<String> allUnconnectedTileIds,
+                                                                         final UnconnectedTileEdges unconnectedTileEdges)
             throws IOException {
 
         final Set<String> allStackTileIds = new HashSet<>();
@@ -183,9 +196,13 @@ public class ClusterCountClient {
                 } else {
                     matchedPairs = matchDataClient.getMatchesWithinGroup(sectionId,true);
                 }
+
+                if (unconnectedTileEdges != null) {
+                    unconnectedTileEdges.appendUnconnectedEdgesForZ(z, resolvedTiles, matchedPairs);
+                }
+
                 allCanvasMatches.addAll(matchedPairs);
             }
-
         }
 
         final TileIdsWithMatches allTileIdsWithMatches = new TileIdsWithMatches();

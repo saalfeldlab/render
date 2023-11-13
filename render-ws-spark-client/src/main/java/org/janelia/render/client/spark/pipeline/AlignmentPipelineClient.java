@@ -142,7 +142,9 @@ public class AlignmentPipelineClient
 
             final List<String> problemStackSummaryStrings = new ArrayList<>();
             for (final ConnectedTileClusterSummaryForStack stackSummary : summaryList) {
-                if (stackSummary.hasMultipleClustersOrUnconnectedTiles()) {
+                if (stackSummary.hasMultipleClusters() ||
+                    stackSummary.hasUnconnectedTiles() ||
+                    stackSummary.hasTooManyConsecutiveUnconnectedEdges()) {
                     problemStackSummaryStrings.add(stackSummary.toString());
                 }
             }

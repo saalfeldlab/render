@@ -5,8 +5,11 @@ import java.util.regex.Pattern;
 import com.beust.jcommander.IStringConverter;
 import com.beust.jcommander.ParameterException;
 
+import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.TileSpec;
+
 /**
- * Identifies a row and column cell position.
+ * Identifies a cell within a grid by its row and column.
  *
  * @author Eric Trautman
  */
@@ -67,6 +70,17 @@ public class CellId
         return "{\"row\": " + row +
                ", \"column\": " + column +
                '}';
+    }
+
+    public static CellId fromTileSpec(final TileSpec tileSpec) {
+        CellId cell = null;
+        if (tileSpec != null) {
+            final LayoutData layout = tileSpec.getLayout();
+            if (layout != null) {
+                cell = new CellId(layout.getImageRow(), layout.getImageCol());
+            }
+        }
+        return cell;
     }
 
     public static class StringConverter implements IStringConverter<CellId> {
