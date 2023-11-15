@@ -29,7 +29,7 @@ import jakarta.annotation.Nonnull;
 public class UnconnectedTileEdges {
 
     final int maxUnconnectedLayers;
-    final Map<CellEdge, List<ZRange>> edgeToUnconnectedZRangesMap;
+    final Map<CellEdge, List<InclusiveZRange>> edgeToUnconnectedZRangesMap;
 
     public UnconnectedTileEdges(final int maxUnconnectedLayers) {
         this.maxUnconnectedLayers = maxUnconnectedLayers;
@@ -73,7 +73,7 @@ public class UnconnectedTileEdges {
         final List<String> sortedUnconnectedEdges = new ArrayList<>();
         final List<CellEdge> sortedEdges = edgeToUnconnectedZRangesMap.keySet().stream().sorted().collect(Collectors.toList());
         for (final CellEdge edge : sortedEdges) {
-            for (final ZRange zRange : edgeToUnconnectedZRangesMap.get(edge)) {
+            for (final InclusiveZRange zRange : edgeToUnconnectedZRangesMap.get(edge)) {
                 sortedUnconnectedEdges.add("edge " + edge + " is not connected for " + zRange);
             }
         }
@@ -154,18 +154,18 @@ public class UnconnectedTileEdges {
 
         for (final CellEdge edge : expectedConnectedEdges) {
             if (! actualConnectedEdges.contains(edge)) {
-                final List<ZRange> unconnectedZRangesForEdge =
+                final List<InclusiveZRange> unconnectedZRangesForEdge =
                         edgeToUnconnectedZRangesMap.computeIfAbsent(edge, k -> new ArrayList<>());
 
                 final int rangeCount = unconnectedZRangesForEdge.size();
 
                 if (rangeCount == 0) {
 
-                    unconnectedZRangesForEdge.add(new ZRange(z));
+                    unconnectedZRangesForEdge.add(new InclusiveZRange(z));
 
                 } else {
 
-                    final ZRange lastZRange = unconnectedZRangesForEdge.get(rangeCount - 1);
+                    final InclusiveZRange lastZRange = unconnectedZRangesForEdge.get(rangeCount - 1);
                     final int zDistance = lastZRange.distance(z);
 
                     if (zDistance < 0) {
@@ -174,7 +174,7 @@ public class UnconnectedTileEdges {
                     } else if (zDistance <= 1) {
                         lastZRange.setLastZ(z);
                     } else if (lastZRange.size() > maxUnconnectedLayers) {
-                        unconnectedZRangesForEdge.add(new ZRange(z));
+                        unconnectedZRangesForEdge.add(new InclusiveZRange(z));
                     } else {
                         lastZRange.reset(z);
                     }
@@ -184,11 +184,11 @@ public class UnconnectedTileEdges {
         }
     }
 
-    public static class ZRange {
+    private static class InclusiveZRange {
         private double firstZ;
         private double lastZ;
 
-        public ZRange(final double firstAndLastZ) {
+        public InclusiveZRange(final double firstAndLastZ) {
             this.reset(firstAndLastZ);
         }
 
