@@ -93,9 +93,9 @@ public class CellEdge
 
     }
 
-    public static CellEdge getEdgeForPair(final String pId,
-                                          final String qId,
-                                          final ResolvedTileSpecCollection resolvedTiles) {
+    public static CellEdge forPair(final String pId,
+                                   final String qId,
+                                   final ResolvedTileSpecCollection resolvedTiles) {
         CellEdge edge = null;
         final CellId pCell = CellId.fromTileSpec(resolvedTiles.getTileSpec(pId));
         final CellId qCell = CellId.fromTileSpec(resolvedTiles.getTileSpec(qId));
