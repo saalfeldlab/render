@@ -50,8 +50,8 @@ public class TileClusterParameters
             names = "--maxLayersForUnconnectedEdge",
             description = "Maximum allowed number of consecutive z layers with an unconnected edge " +
                           "before flagging problem region (e.g. 50).  " +
-                          "Omit to skip check for unconnected tile edges.")
-    public Integer maxLayersForUnconnectedEdge;
+                          "Omit or set to to zero to skip check for unconnected tile edges.")
+    public int maxLayersForUnconnectedEdge = 0;
 
     /**
      * Validate that --matchCollection has been defined if it is required

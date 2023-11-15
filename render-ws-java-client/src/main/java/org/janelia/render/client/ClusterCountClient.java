@@ -115,7 +115,7 @@ public class ClusterCountClient {
         final SortedConnectedCanvasIdClusters allClusters = new SortedConnectedCanvasIdClusters(new ArrayList<>());
         final Set<String> allUnconnectedTileIds = new HashSet<>();
         final UnconnectedTileEdges unconnectedEdges =
-                parameters.tileCluster.maxLayersForUnconnectedEdge == null ? null :
+                parameters.tileCluster.maxLayersForUnconnectedEdge < 1 ? null :
                 new UnconnectedTileEdges(parameters.tileCluster.maxLayersForUnconnectedEdge);
 
         final int layerCount = sortedZValues.size();

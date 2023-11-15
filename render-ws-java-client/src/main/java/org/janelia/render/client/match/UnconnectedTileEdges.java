@@ -28,10 +28,10 @@ import jakarta.annotation.Nonnull;
  */
 public class UnconnectedTileEdges {
 
-    final Integer maxUnconnectedLayers;
+    final int maxUnconnectedLayers;
     final Map<CellEdge, List<ZRange>> edgeToUnconnectedZRangesMap;
 
-    public UnconnectedTileEdges(final Integer maxUnconnectedLayers) {
+    public UnconnectedTileEdges(final int maxUnconnectedLayers) {
         this.maxUnconnectedLayers = maxUnconnectedLayers;
         this.edgeToUnconnectedZRangesMap = new HashMap<>();
     }
@@ -40,7 +40,7 @@ public class UnconnectedTileEdges {
                                            final ResolvedTileSpecCollection resolvedTiles,
                                            final List<CanvasMatches> matchedPairs) {
 
-        if ((maxUnconnectedLayers != null) && (maxUnconnectedLayers > 0)) {
+        if (maxUnconnectedLayers > 0) {
 
             final Set<Integer> rowsForZ = new HashSet<>();
             final Set<Integer> columnsForZ = new HashSet<>();
