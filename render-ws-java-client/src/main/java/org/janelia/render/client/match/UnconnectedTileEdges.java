@@ -130,9 +130,15 @@ public class UnconnectedTileEdges {
             // only consider matches within the same group
             if (canvasMatches.getpGroupId().equals(canvasMatches.getqGroupId())) {
                 try {
-                    connectedEdges.add(CellEdge.getEdgeForPair(canvasMatches.getpId(),
-                                                               canvasMatches.getqId(),
-                                                               resolvedTiles));
+                    final CellEdge cellEdge = CellEdge.getEdgeForPair(canvasMatches.getpId(),
+                                                                      canvasMatches.getqId(),
+                                                                      resolvedTiles);
+                    if (cellEdge == null) {
+                        LOG.warn("buildActualConnectedEdges: ignoring match pair " + canvasMatches.getpId() + " and " +
+                                 canvasMatches.getqId() + " because layout data is missing from tile specs");
+                    } else {
+                        connectedEdges.add(cellEdge);
+                    }
                 } catch (final IllegalArgumentException e) {
                     LOG.warn("buildActualConnectedEdges: ignoring match pair " + canvasMatches.getpId() + " and " +
                              canvasMatches.getqId(), e);
