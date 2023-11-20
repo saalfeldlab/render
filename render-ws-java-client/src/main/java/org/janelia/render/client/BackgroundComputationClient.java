@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.plugin.filter.GaussianBlur;
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -19,6 +20,7 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.Rectangle;
 import java.io.IOException;
+import java.util.DoubleSummaryStatistics;
 
 /**
  * Create and store a background image that can be used to subtract a
@@ -40,6 +42,8 @@ public class BackgroundComputationClient {
 		private String regex = null;
 		@Parameter(names = "--scale", description = "Scale factor for background image (default: 1.0)")
 		private double scale = 1.0;
+		@Parameter(names = "--smoothing", description = "Sigma for Gaussian blur in pixels (default: 100.0)")
+		private double sigma = 100.0;
 		@Parameter(names = "--fileName", description = "Name of file to write background image to (default: background_<stack>.png)")
 		private String fileName = null;
 
@@ -96,7 +100,7 @@ public class BackgroundComputationClient {
 		final int w = (int) (boundingBox.width * params.scale + 0.5);
 		final int h = (int) (boundingBox.height * params.scale + 0.5);
 
-		final FloatProcessor averagePixels = new FloatProcessor(w, h);
+		final FloatProcessor cumulativeIntensities = new FloatProcessor(w, h);
 		final ColorProcessor numberOfPixels = new ColorProcessor(w, h);
 
 		final FloatProcessor pixels = new FloatProcessor(w, h);
@@ -107,12 +111,12 @@ public class BackgroundComputationClient {
 			final MinimalTileSpecWrapper p = new MinimalTileSpecWrapper(tileSpec);
 
 			Render.render(p, 1, 1, pixels, unused, isInImage, boundingBox.x, boundingBox.y, params.scale, meshResolution, imageProcessorCache);
-			accumulateIntensities(averagePixels, numberOfPixels, pixels, isInImage);
+			accumulateIntensities(cumulativeIntensities, numberOfPixels, pixels, isInImage);
 		}
 
-		divideByNumberOfPixels(averagePixels, numberOfPixels);
+		final ImagePlus imp = averageAndSmooth(cumulativeIntensities, numberOfPixels);
 
-		IJ.save(new ImagePlus("Background", averagePixels), params.getFileName());
+		IJ.save(imp, params.getFileName());
 	}
 
 	private ResolvedTileSpecCollection getTileSpecs() {
@@ -152,18 +156,39 @@ public class BackgroundComputationClient {
 		}
 	}
 
-	private static void divideByNumberOfPixels(final FloatProcessor averagePixels, final ColorProcessor numberOfPixels) {
-		final int w = averagePixels.getWidth();
-		final int h = averagePixels.getHeight();
+	private ImagePlus averageAndSmooth(final FloatProcessor cumulativeIntensities, final ColorProcessor numberOfPixels) {
+		final int w = cumulativeIntensities.getWidth();
+		final int h = cumulativeIntensities.getHeight();
 
+		final FloatProcessor averageIntensities = new FloatProcessor(w, h);
+		final DoubleSummaryStatistics statistics = new DoubleSummaryStatistics();
+
+		// average intensities where actual image was present
 		for (int y = 0; y < h; ++y) {
 			for (int x = 0; x < w; ++x) {
 				final int n = numberOfPixels.get(x, y);
 				if (n != 0) {
-					averagePixels.setf(x, y, averagePixels.getf(x, y) / n);
+					final float average = cumulativeIntensities.getf(x, y) / n;
+					averageIntensities.setf(x, y, average);
+					statistics.accept(average);
 				}
 			}
 		}
+
+		// set all other intensities to global average
+		final float globalAverage = (float) statistics.getAverage();
+		for (int y = 0; y < h; ++y) {
+			for (int x = 0; x < w; ++x) {
+				if (numberOfPixels.get(x, y) == 0) {
+					averageIntensities.setf(x, y, globalAverage);
+				}
+			}
+		}
+
+		final GaussianBlur blur = new GaussianBlur();
+		blur.blurGaussian(averageIntensities, params.sigma * params.scale);
+
+		return new ImagePlus("Background", averageIntensities);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(BackgroundComputationClient.class);
