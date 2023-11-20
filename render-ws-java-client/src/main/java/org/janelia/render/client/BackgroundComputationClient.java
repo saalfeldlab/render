@@ -2,6 +2,7 @@ package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import ij.IJ;
 import ij.ImagePlus;
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
@@ -16,7 +17,6 @@ import org.janelia.render.client.parameter.ZRangeParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
 import java.awt.Rectangle;
 import java.io.IOException;
 
@@ -112,14 +112,7 @@ public class BackgroundComputationClient {
 
 		divideByNumberOfPixels(averagePixels, numberOfPixels);
 
-		final ImagePlus imp = new ImagePlus("Background", averagePixels);
-		imp.show();
-
-		try {
-			Thread.sleep(Duration.ofMinutes(1000).toMillis());
-		} catch (final InterruptedException e) {
-			throw new RuntimeException(e);
-		}
+		IJ.save(new ImagePlus("Background", averagePixels), params.getFileName());
 	}
 
 	private ResolvedTileSpecCollection getTileSpecs() {
