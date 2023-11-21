@@ -763,7 +763,7 @@ public class VisualizeTools
 			throw new UnsupportedOperationException("multi-channel source for tile " + tileId +
 													" is not currently supported");
 		}
-		final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().get(0);
+		final ChannelSpec firstChannelSpec = allChannels.get(0);
 		final ImageAndMask imageAndMask = firstChannelSpec.getFirstMipmapImageAndMask(tileId);
 		final ImageProcessor sourceProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),
 																	   0,

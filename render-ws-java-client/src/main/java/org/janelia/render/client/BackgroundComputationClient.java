@@ -25,6 +25,9 @@ import java.util.DoubleSummaryStatistics;
 /**
  * Create and store a background image that can be used to subtract a
  * spatially varying background from a set of images.
+ * Originally developed for the CellMap jrc_mus_thymus_1 dataset.
+ *
+ * @author Michael Innerberger
  */
 public class BackgroundComputationClient {
 
