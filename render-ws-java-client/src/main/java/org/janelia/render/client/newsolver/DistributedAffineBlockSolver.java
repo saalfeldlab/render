@@ -67,7 +67,7 @@ public class DistributedAffineBlockSolver
                     "--project", "cut_000_to_009",
                     "--matchCollection", "c009_s310_v01_match",
                     "--stack", "c009_s310_v01_mfov_08",
-                    "--targetStack", "c009_s310_v01_align_test_overlap_shrink",
+                    "--targetStack", "c009_s310_v01_mfov_08_test",
 					"--minX", "33400",
 					"--maxX", "54600",
 					"--minY", "400",
@@ -75,8 +75,8 @@ public class DistributedAffineBlockSolver
                     "--minZ", "424",
                     "--maxZ", "460",
 
-					"--blockSizeX", "10000",
-					"--blockSizeY", "8000",
+					"--blockSizeX", "7000",
+					"--blockSizeY", "6000",
 					// "--blockSizeZ", "100",
 
                     "--completeTargetStack",
@@ -84,7 +84,7 @@ public class DistributedAffineBlockSolver
 
 					"--maxNumMatches", "0", // no limit, default
 					"--threadsWorker", "1",
-					"--threadsGlobal", "4",
+					"--threadsGlobal", "5",
 
                     "--blockOptimizerLambdasRigid",          "1.0,1.0,0.9,0.3,0.01",
                     "--blockOptimizerLambdasTranslation",    "1.0,0.0,0.0,0.0,0.0",
