@@ -60,8 +60,8 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			final ParameterProvider<M, R, P> blockSolveParameterProvider)
 	{
 		final List<Bounds> blockLayout = new BlockLayoutCreator()
-				.shiftedGrid(In.X, minX, maxX, blockSizeX)
-				.shiftedGrid(In.Y, minY, maxY, blockSizeY)
+				.regularGrid(In.X, minX, maxX, blockSizeX)
+				.regularGrid(In.Y, minY, maxY, blockSizeY)
 				.singleBlock(In.Z, minZ, maxZ)
 				.create();
 
