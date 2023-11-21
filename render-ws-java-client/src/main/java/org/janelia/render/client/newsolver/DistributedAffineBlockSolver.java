@@ -200,7 +200,7 @@ public class DistributedAffineBlockSolver
 
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
 				new BlockCombiner<>(DistributedAffineBlockSolver::integrateGlobalModel,
-									DistributedAffineBlockSolver::interpolateModels);
+									DistributedAffineBlockSolver::pickRandom);
 
 		final GlobalSolver<RigidModel2D, AffineModel2D> globalSolver =
 				new GlobalSolver<>(new RigidModel2D(),
@@ -242,6 +242,31 @@ public class DistributedAffineBlockSolver
 		final AlignmentModel model = builder.build();
 		model.setWeights(weightMap);
 		return model.createAffineModel2D();
+	}
+
+	private static AffineModel2D pickRandom(final List<AffineModel2D> models, final List<Double> weights) {
+		if (models.isEmpty() || models.size() != weights.size())
+			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
+
+		if (models.size() == 1)
+			return models.get(0);
+
+		final double randomSample = Math.random();
+		final int i = getRandomIndex(weights, randomSample);
+		return models.get(i);
+	}
+
+	private static int getRandomIndex(final List<Double> weights, final double randomSample) {
+		int i;
+		double sum = 0.0;
+
+		for (i = 0; i < weights.size(); i++) {
+			sum += weights.get(i);
+			if (randomSample < sum)
+				break;
+		}
+
+		return i;
 	}
 
 	public <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
