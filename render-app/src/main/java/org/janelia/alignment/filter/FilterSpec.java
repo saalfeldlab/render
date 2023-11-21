@@ -16,6 +16,7 @@
  */
 package org.janelia.alignment.filter;
 
+import java.lang.reflect.Constructor;
 import java.util.Map;
 
 import org.janelia.alignment.json.JsonUtils;
@@ -30,7 +31,7 @@ public class FilterSpec {
     private final String className;
     private final Map<String, String> parameters;
 
-    private transient Class clazz;
+    private transient Class<?> clazz;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -68,10 +69,11 @@ public class FilterSpec {
     public Filter buildInstance()
             throws IllegalArgumentException {
 
-        final Class clazz = getClazz();
+        final Class<?> clazz = getClazz();
         final Object instance;
         try {
-            instance = clazz.newInstance();
+            final Constructor<?> constructor = clazz.getConstructor();
+            instance = constructor.newInstance();
         } catch (final Exception e) {
             throw new IllegalArgumentException("failed to create instance of filter class '" + className + "'", e);
         }
@@ -111,7 +113,7 @@ public class FilterSpec {
         return new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
     }
 
-    private Class getClazz() throws IllegalArgumentException {
+    private Class<?> getClazz() throws IllegalArgumentException {
         if (clazz == null) {
             if (className == null) {
                 throw new IllegalArgumentException("no className defined for filter spec");
