@@ -22,7 +22,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.newsolver.assembly.Assembler;
@@ -227,7 +226,7 @@ public class DistributedIntensityCorrectionSolver {
 
 		final Map<String, FilterSpec> idToFilterSpec = new HashMap<>();
 		for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
-			final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
+			final String tileId = onTheFlyIntensity.getTileSpec().getTileId();
 			final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
 			final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
 			idToFilterSpec.put(tileId, filterSpec);
@@ -253,7 +252,7 @@ public class DistributedIntensityCorrectionSolver {
 				affine.toArray(ab_coefficients[i]);
 			}
 
-			correctedOnTheFly.add(new LinearOnTheFlyIntensity(new MinimalTileSpecWrapper(tile), ab_coefficients, numCoefficients ));
+			correctedOnTheFly.add(new LinearOnTheFlyIntensity(tile, ab_coefficients, numCoefficients ));
 		}
 		return correctedOnTheFly;
 	}

@@ -2,7 +2,6 @@ package org.janelia.render.client.solver;
 
 import java.io.Serializable;
 
-import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.TileSpec;
 
 public class MinimalTileSpec implements Serializable

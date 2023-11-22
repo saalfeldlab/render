@@ -23,7 +23,6 @@ import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,22 +64,12 @@ import net.imglib2.view.Views;
 
 public class AdjustBlock {
 
-	public static List< MinimalTileSpecWrapper > wrapTileSpecs(final ResolvedTileSpecCollection resolvedTiles)
-	{
-		final List< MinimalTileSpecWrapper > data = new ArrayList<>(resolvedTiles.getTileCount());
+	public static List<TileSpec> sortTileSpecs(final ResolvedTileSpecCollection resolvedTiles) {
 		// tile order changes adjustment results, so sort tiles by id to ensure (somewhat) consistent results
-		final List<TileSpec> sortedTileSpecs = resolvedTiles.getTileSpecs()
+		return resolvedTiles.getTileSpecs()
 				.stream()
 				.sorted(Comparator.comparing(TileSpec::getTileId))
 				.collect(Collectors.toList());
-		for ( final TileSpec tileSpec : sortedTileSpecs )
-		{
-			//final AffineModel2D lastTransform = SolveTools.loadLastTransformFromSpec( tileSpec );
-			//data.add( new ValuePair<>( lastTransform, new MinimalTileSpec( tileSpec ) ) );
-			data.add( new MinimalTileSpecWrapper( tileSpec ) );
-		}
-
-		return data;
 	}
 
 	/**
@@ -200,14 +189,14 @@ public class AdjustBlock {
 	}
 
 	public static HashMap< Integer, double[] > computeAdjustments(
-			final List<Pair<AffineModel2D,MinimalTileSpec>> data,
+			final List<Pair<AffineModel2D, TileSpec>> data,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected )
 	{
 		// we need to go from inside to outside adjusting avg and stdev of the overlapping areas
 		ArrayList< Pair< Integer, Integer > > inputOrder = new ArrayList<>();
 
 		for ( int i = 0; i < data.size(); ++i )
-			inputOrder.add( new ValuePair<>( data.get( i ).getB().getImageCol(), i ) );
+			inputOrder.add(new ValuePair<>(data.get(i).getB().getLayout().getImageCol(), i));
 
 		// sort by column order
 		Collections.sort( inputOrder, (o1, o2 ) -> o1.getA().compareTo( o2.getA() ) );
@@ -237,7 +226,7 @@ public class AdjustBlock {
 
 			final AffineModel2D model = data.get( i ).getA();
 			final AffineTransform2D affine = toImgLib( model );
-			final MinimalTileSpec tileSpec = data.get( i ).getB();
+			final TileSpec tileSpec = data.get(i).getB();
 			final RealInterval boundingBox = boundingBox( 0,0,corrected.get( i ).getB().getWidth() - 1,corrected.get( i ).getB().getHeight() - 1, model );
 
 			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
@@ -349,7 +338,7 @@ public class AdjustBlock {
 							adjustments.put( i, new double[] { avgO, mul, avgQ } );
 
 							LOG.debug("computeAdjustments: adjustment for column {} is: sub {}, mul {}, add {}",
-									  tileSpec.getImageCol(), avgO, mul, avgQ);
+									  tileSpec.getLayout().getImageCol(), avgO, mul, avgQ);
 							break;
 						}
 					}
@@ -359,7 +348,7 @@ public class AdjustBlock {
 			if ( !adjustments.containsKey( i ) )
 			{
 				LOG.warn("computeAdjustments: COULD NOT ADJUST column {}, setting to identity",
-						 tileSpec.getImageCol());
+						 tileSpec.getLayout().getImageCol());
 				adjustments.put( i, new double[] { 0, 1, 0 } );
 			}
 		}
@@ -369,7 +358,7 @@ public class AdjustBlock {
 
 	public static ImageProcessorWithMasks fuseFinal(
 			final RenderParameters sliceRenderParameters,
-			final List<MinimalTileSpecWrapper> data1,
+			final List<TileSpec> data1,
 			final ArrayList < OnTheFlyIntensity > corrected1,
 			final ImageProcessorCache imageProcessorCache )
 	{
@@ -380,7 +369,7 @@ public class AdjustBlock {
 												 false);
 
 		for (int i = 0; i < data1.size(); i++) {
-			final MinimalTileSpecWrapper wrapper = data1.get(i);
+			final TileSpec tileSpec = data1.get(i);
 
 			// this should be a virtual construct
 			{
@@ -392,7 +381,7 @@ public class AdjustBlock {
 				final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
 				*/
 
-				preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), corrected1.get( i ).computeIntensityCorrection8BitOnTheFly(imageProcessorCache) );
+				preloadedImageProcessorCache.put(tileSpec.getTileImageUrl(), corrected1.get(i).computeIntensityCorrection8BitOnTheFly(imageProcessorCache));
 			}
 		}
 		// TODO: this will be bigger than 2^31
@@ -401,7 +390,7 @@ public class AdjustBlock {
 
 	public static ImageProcessorWithMasks fuseFinal(
 			final RenderParameters sliceRenderParameters,
-			final List<MinimalTileSpecWrapper> data1,
+			final List<TileSpec> data1,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 ) // TODO: this will likely cause outofmemory
 	{
 		// TODO: pass pre-loaded cache in and clear source data so that masks can be cached and reused across z
@@ -411,7 +400,7 @@ public class AdjustBlock {
 												 false);
 
 		for (int i = 0; i < data1.size(); i++) {
-			final MinimalTileSpecWrapper wrapper = data1.get(i);
+			final TileSpec wrapper = data1.get(i);
 			final FloatProcessor correctedSource = corrected1.get(i).getB();
 
 			// Need to reset intensity range back to full 8-bit before converting to byte processor!
@@ -426,7 +415,7 @@ public class AdjustBlock {
 
 	public static RandomAccessibleInterval< UnsignedByteType > fuse2d(
 			final Interval interval,
-			final List<Pair<AffineModel2D,MinimalTileSpec>> data,
+			final List<Pair<AffineModel2D, TileSpec>> data,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected,
 			final Map< Integer, double[] > adjustments  )
 	{
@@ -512,7 +501,7 @@ public class AdjustBlock {
 	}
 
 	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForSliceTiles(
-			final List<MinimalTileSpecWrapper> sliceTiles,
+			final List<TileSpec> sliceTiles,
 			final double renderScale,
 			final Integer zDistance,
 			final ImageProcessorCache imageProcessorCache,
@@ -548,7 +537,7 @@ public class AdjustBlock {
 			final IntensityCorrectionStrategy strategy,
 			final int numThreads) throws InterruptedException, ExecutionException
 	{
-		final List<MinimalTileSpecWrapper> tilesForZ = wrapTileSpecs(resolvedTiles);
+		final List<TileSpec> tilesForZ = sortTileSpecs(resolvedTiles);
 		//final HashMap< Integer, double[] > adjustments = new HashMap<>();
 
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(

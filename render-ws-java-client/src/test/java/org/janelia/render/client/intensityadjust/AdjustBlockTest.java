@@ -52,7 +52,7 @@ public class AdjustBlockTest {
 
         final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
 
-        final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
+        final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
         final ArrayList<OnTheFlyIntensity> correctedList =
                 AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
@@ -72,7 +72,7 @@ public class AdjustBlockTest {
         final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
         final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
         final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
-        final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
+        final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
         final ArrayList<OnTheFlyIntensity> correctedList =
                 AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
@@ -88,8 +88,8 @@ public class AdjustBlockTest {
         final Filter affineFilter = new LinearIntensityMap8BitFilter(numCoefficients, numCoefficients, 2, tile.getCoefficients());
         final Filter quadraticFilter = new QuadraticIntensityMap8BitFilter(numCoefficients, numCoefficients, 3, padCoefficients(tile.getCoefficients()));
 
-        final byte[] affinePixels = getProcessedPixels(tile.getMinimalTileSpecWrapper().getTileSpec(), affineFilter);
-        final byte[] quadraticPixels = getProcessedPixels(tile.getMinimalTileSpecWrapper().getTileSpec(), quadraticFilter);
+        final byte[] affinePixels = getProcessedPixels(tile.getTileSpec(), affineFilter);
+        final byte[] quadraticPixels = getProcessedPixels(tile.getTileSpec(), quadraticFilter);
 
         assertArrayEquals(affinePixels, quadraticPixels);
     }
@@ -125,25 +125,25 @@ public class AdjustBlockTest {
     }
 
     @Test
-    public void constantFilterMakesPixelsConstant() throws FileNotFoundException, ExecutionException, InterruptedException {
+    public void constantFilterMakesPixelsConstant() throws FileNotFoundException {
 
         final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
         final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
         final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
-        final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
+        final List<TileSpec> tiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
-        final MinimalTileSpecWrapper wrapper = wrappedTiles.get(0);
+        final TileSpec tileSpec = tiles.get(0);
         final double[][] coefficients = new double[numCoefficients*numCoefficients][2];
         for (final double[] coeff : coefficients)
             coeff[1] = Math.PI / 255; // take scaling of coefficients into account
 
         final Filter constantPiFilter = new LinearIntensityMap8BitFilter(numCoefficients, numCoefficients, 2, coefficients);
-        final byte[] pixels = getProcessedPixels(wrapper.getTileSpec(), constantPiFilter);
+        final byte[] pixels = getProcessedPixels(tileSpec, constantPiFilter);
 
         final byte bytePi = (byte) Math.PI;
         for (int i = 0; i < pixels.length; i++) {
             // exclude boundary because ImageProcessor doesn't interpolate correctly due to floating point comparison
-            if (!((i+1) % wrapper.getWidth() == 0 || (i / wrapper.getWidth() + 1) >= wrapper.getHeight()))
+            if (!((i+1) % tileSpec.getWidth() == 0 || (i / tileSpec.getWidth() + 1) >= tileSpec.getHeight()))
                 assertEquals("Pixel at location " + i + " differs", bytePi, pixels[i]);
         }
     }
@@ -158,7 +158,7 @@ public class AdjustBlockTest {
             final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(),
                                                                                             tileSpecs);
 
-            final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
+            final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
             final ArrayList<OnTheFlyIntensity> correctedList =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
@@ -196,7 +196,7 @@ public class AdjustBlockTest {
         final double renderScale = 0.4;
 
         for (final OnTheFlyIntensity correctedTile : correctedList) {
-            final TileSpec tileSpec = correctedTile.getMinimalTileSpecWrapper().getTileSpec();
+            final TileSpec tileSpec = correctedTile.getTileSpec();
             showTileSpec(context + " original " + tileSpec.getTileId(),
                          tileSpec,
                          renderScale,
@@ -222,7 +222,7 @@ public class AdjustBlockTest {
 
         for (final OnTheFlyIntensity correctedTile : correctedList) {
 
-            final String tileId = correctedTile.getMinimalTileSpecWrapper().getTileId();
+            final String tileId = correctedTile.getTileSpec().getTileId();
             final double[][] expectedCoefficients = tileIdToExpectedCoefficients.get(tileId);
             final double[][] actualCoefficients = correctedTile.getCoefficients();
 
