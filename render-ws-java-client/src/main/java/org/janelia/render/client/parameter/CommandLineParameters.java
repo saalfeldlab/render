@@ -38,7 +38,7 @@ public class CommandLineParameters implements Serializable {
     }
 
     public void parse(final String[] args,
-                      final Class programClass,
+                      final Class<?> programClass,
                       final boolean exitOnHelpOrFailure) throws IllegalArgumentException {
 
         jCommander = new JCommander(this);

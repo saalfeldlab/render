@@ -104,6 +104,10 @@ public class DistributedAffineBlockSolver
         	cmdLineSetup.parse(args);
         }
 
+		run(cmdLineSetup);
+	}
+
+	public static void run(AffineBlockSolverSetup cmdLineSetup) throws IOException, InterruptedException {
 		final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
