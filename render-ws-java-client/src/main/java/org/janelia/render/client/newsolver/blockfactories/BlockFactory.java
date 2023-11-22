@@ -13,7 +13,7 @@ import org.janelia.render.client.newsolver.setup.BlockPartitionParameters;
 
 public abstract class BlockFactory implements Serializable {
 	public abstract <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
-			final ParameterProvider< M, R, P > blockSolveParameterProvider );
+			final ParameterProvider<M, R, P> blockSolveParameterProvider, final boolean shiftBlocks);
 
 	public abstract WeightFunction createWeightFunction(final BlockData<?, ?> block);
 
@@ -32,9 +32,10 @@ public abstract class BlockFactory implements Serializable {
 
 	protected abstract BlockTileBoundsFilter getBlockTileFilter();
 
-	public static BlockFactory fromBlocksizes(final Bounds range,
-											  final BlockPartitionParameters blockPartition) {
-
+	public static BlockFactory fromBlockSizes(
+			final Bounds range,
+			final BlockPartitionParameters blockPartition)
+	{
 		final int minZ = range.getMinZ().intValue();
 		final int maxZ = range.getMaxZ().intValue();
 

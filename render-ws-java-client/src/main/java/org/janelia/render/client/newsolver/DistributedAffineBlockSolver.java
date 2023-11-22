@@ -78,8 +78,9 @@ public class DistributedAffineBlockSolver
 					"--blockSizeX", "7000",
 					"--blockSizeY", "6000",
 					// "--blockSizeZ", "100",
+					"--shiftBlocks",
 
-                    "--completeTargetStack",
+					"--completeTargetStack",
 					//"--visualizeResults",
 
 					"--maxNumMatches", "0", // no limit, default
@@ -273,7 +274,7 @@ public class DistributedAffineBlockSolver
 			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> setupSolve(final M blockModel, final S stitchingModel)
 	{
 		// setup XY BlockFactory
-		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup.getBounds(), solverSetup.blockPartition);
+		this.blockFactory = BlockFactory.fromBlockSizes(renderSetup.getBounds(), solverSetup.blockPartition);
 		
 		// create all blocks
 		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> col = setupBlockCollection(this.blockFactory, blockModel, stitchingModel);
@@ -293,7 +294,7 @@ public class DistributedAffineBlockSolver
 		} else {
 			defaultSolveParams = solverSetup.setupSolveParameters(blockModel, stitchingModel);
 		}
-		return blockFactory.defineBlockCollection(() -> defaultSolveParams);
+		return blockFactory.defineBlockCollection(() -> defaultSolveParams, solverSetup.blockPartition.shiftBlocks);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineBlockSolver.class);
