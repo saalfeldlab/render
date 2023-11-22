@@ -73,7 +73,10 @@ public class AlternatingDomainDecompositionSolverClient {
 		final String targetStackPrefix = parameters.targetStack.stack;
 
 		for (int i = 0; i < N_RUNS; i++) {
-			parameters.targetStack.stack = targetStackPrefix + "_run" + (i + 1);
+			final int runNumber = i + 1;
+			LOG.info("solveAlternating: run {} of {}", runNumber, N_RUNS);
+
+			parameters.targetStack.stack = targetStackPrefix + "_run" + runNumber;
 			DistributedAffineBlockSolver.run(parameters);
 
 			parameters.blockPartition.shiftBlocks = !parameters.blockPartition.shiftBlocks;
