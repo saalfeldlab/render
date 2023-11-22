@@ -36,7 +36,6 @@ public class AlternatingDomainDecompositionSolverClient {
 
 					"--blockSizeX", "7000",
 					"--blockSizeY", "6000",
-					"--shiftBlocks",
 
 					"--completeTargetStack",
 
