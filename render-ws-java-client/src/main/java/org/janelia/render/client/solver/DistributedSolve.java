@@ -89,14 +89,10 @@ public abstract class DistributedSolve
 
 	public void run() throws IOException, NoninvertibleModelException
 	{
-		try
-		{
+		try {
 			this.allItems = distributedSolve();
-		}
-		catch ( Exception e )
-		{
-			LOG.info("FAILED to compute distributed blocks (STOPPING): " + e );
-			e.printStackTrace();
+		} catch (final Exception e) {
+			LOG.error("FAILED to compute distributed blocks (STOPPING): ", e);
 			return;
 		}
 
@@ -104,36 +100,24 @@ public abstract class DistributedSolve
 		// but do keep ids that are smaller or equal to the maxId of the initial solveset
 		final int maxId = SolveTools.fixIds( this.allItems, solveSet.getMaxId() );
 
-		try
-		{
+		try {
 			if ( serializer != null )
 				serializer.serialize( this.allItems );
-		}
-		catch ( Exception e )
-		{
-			LOG.info("FAILED to serialize (continuing): " + e );
-			e.printStackTrace();
+		} catch (final Exception e) {
+			LOG.info("FAILED to serialize (continuing): ", e);
 		}
 
-		try
-		{
+		try {
 			this.solve = globalSolve( this.allItems, maxId + 1 );
-		}
-		catch ( Exception e )
-		{
-			LOG.info("FAILED to compute global solve (STOPPING): " + e );
-			e.printStackTrace();
+		} catch (final Exception e) {
+			LOG.error("FAILED to compute global solve (STOPPING): ", e);
 			return;
 		}
 
-		try
-		{
+		try {
 			computeGlobalErrors( this.solve, this.allItems, new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 ), (Model<?>)solveSetFactory.defaultStitchingModel );
-		}
-		catch ( Exception e )
-		{
-			LOG.info("FAILED to compute global errors: " + e );
-			e.printStackTrace();
+		} catch (final Exception e) {
+			LOG.error("FAILED to compute global errors (STOPPING): ", e);
 			return;
 		}
 
@@ -149,7 +133,7 @@ public abstract class DistributedSolve
 			for (final TileSpec ts : solve.idToTileSpecGlobal.values())
 				zToSaveSet.add( ts.getZ() );
 
-			List< Double > zToSave = new ArrayList<>( zToSaveSet );
+			final List<Double> zToSave = new ArrayList<>(zToSaveSet);
 			Collections.sort( zToSave );
 
 			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
@@ -214,7 +198,7 @@ public abstract class DistributedSolve
 	protected GlobalSolve globalSolve(
 			final List< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allSolveItems,
 			final int startId )
-					throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException, NoninvertibleModelException
+					throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException
 	{
 		int id = startId;
 
@@ -233,7 +217,7 @@ public abstract class DistributedSolve
 				final HashSet< String > tileIds = solveItem.zToTileId().get( z );
 
 				// if there are none, we continue with the next
-				if ( tileIds.size() == 0 )
+				if (tileIds.isEmpty())
 					continue;
 
 				gs.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
@@ -272,7 +256,7 @@ public abstract class DistributedSolve
 		for ( int a = 0; a < allSolveItems.size() - 1; ++a )
 		{
 			final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemA = allSolveItems.get( a );
-			solveItemDataToTile.putIfAbsent( solveItemA, new Tile( solveItemA.globalSolveModelInstance() ) ); //TODO: how comes I can init a Tile with Affine2D???
+			solveItemDataToTile.putIfAbsent(solveItemA, new Tile<>(solveItemA.globalSolveModelInstance())); //TODO: how comes I can init a Tile with Affine2D???
 
 			for ( int z = solveItemA.minZ(); z <= solveItemA.maxZ(); ++z )
 			{
@@ -284,7 +268,7 @@ public abstract class DistributedSolve
 				for ( int b = a + 1; b < allSolveItems.size(); ++b )
 				{
 					final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemB = allSolveItems.get( b );
-					solveItemDataToTile.putIfAbsent( solveItemB, new Tile( solveItemB.globalSolveModelInstance() ) );
+					solveItemDataToTile.putIfAbsent(solveItemB, new Tile<>(solveItemB.globalSolveModelInstance()));
 
 					LOG.info( "globalSolve: solveItemB z range is {} to {}", solveItemB.minZ(), solveItemB.maxZ());
 
@@ -311,7 +295,7 @@ public abstract class DistributedSolve
 						final HashSet< String > tileIds = commonStrings( tileIdsA, tileIdsB );
 
 						// if there are none, we continue with the next
-						if ( tileIds.size() == 0 )
+						if (tileIds.isEmpty())
 							continue;
 
 						gs.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
@@ -390,7 +374,7 @@ public abstract class DistributedSolve
 						final HashSet< String > tileIds = solveItemA.zToTileId().get( z );
 
 						// if there are none, we continue with the next
-						if ( tileIds.size() == 0 )
+						if (tileIds.isEmpty())
 							continue;
 	
 						gs.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
@@ -401,7 +385,7 @@ public abstract class DistributedSolve
 						final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemB =
 								solveItemA.createCorrespondingDummySolveItem( id, z );
 						zToSolveItemPairs.get( z ).add( new ValuePair<>( new ValuePair<>( solveItemA, solveItemB ), tileIds ) );
-						solveItemDataToTile.putIfAbsent( solveItemB, new Tile( solveItemB.globalSolveModelInstance() ) );
+						solveItemDataToTile.putIfAbsent(solveItemB, new Tile<>(solveItemB.globalSolveModelInstance()));
 	
 						++id;
 
@@ -442,7 +426,7 @@ public abstract class DistributedSolve
 		{
 			blockToAffine2d.put( solveItem, SolveTools.createAffine( solveItemDataToTile.get( solveItem ).getModel() ) );
 
-			if ( !DummySolveItemData.class.isInstance( solveItem ) )
+			if (! (solveItem instanceof DummySolveItemData))
 				LOG.info( "Block " + solveItem.getId() + ": " + blockToAffine2d.get( solveItem ) );
 		}
 
@@ -529,10 +513,10 @@ public abstract class DistributedSolve
 		// pTileId >> qTileId, Matches
 		final HashMap< String, HashMap< String, Matches > > allMatches = new HashMap<>();
 
+		/*
 		// combine all matches from all solveitems
 		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > sid : allSolveItems )
 		{
-			/*
 			for ( final Pair< Pair< String, String>, Matches > matchPair : sid.matches )
 			{
 				final String pTileId = matchPair.getA().getA();
@@ -545,16 +529,13 @@ public abstract class DistributedSolve
 				if ( !qTileIdToMatches.containsKey( qTileId ) )
 					qTileIdToMatches.put( qTileId, matches );
 			}
-			*/
 		}
+		*/
 
-		if ( allMatches.size() == 0 )
-		{
+		if (allMatches.isEmpty()) {
 			LOG.info( "Matches were not saved, using a combination of local errors." );
 			return;
-		}
-		else
-		{
+		} else {
 			LOG.info( "Clearing local block errors." );
 			gs.idToErrorMapGlobal.clear();
 		}

@@ -70,15 +70,15 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 		// one object per Tile, we just later know the new affine model to create all matches
 		// just want to avoid to load the data twice
-		HashSet< String > topTileIds = new HashSet<>();
-		HashSet< String > bottomTileIds = new HashSet<>();
+		final HashSet<String> topTileIds = new HashSet<>();
+		final HashSet<String> bottomTileIds = new HashSet<>();
 
-		ArrayList< String > idsToIgnore = new ArrayList<>();
+		final ArrayList<String> idsToIgnore = new ArrayList<>();
 		//idsToIgnore.add( "_0-0-2.22801" );
 
 		final ArrayList< String > connectedTiles = new ArrayList<>();
 
-		HashMap< Integer, Integer > zLimits = new HashMap<>();
+		final HashMap<Integer, Integer> zLimits = new HashMap<>();
 		//zLimits.put( 15769, 1 );
 
 		for (final String pGroupId : runParams.pGroupList.stream().map(Pair::getA).collect( Collectors.toList() ) )
@@ -222,8 +222,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 		for (final double lambda : lambdaValues)
 		{
-			for (final Tile tile : idToTileMap.values()) {
-				((InterpolatedAffineModel2D) tile.getModel()).setLambda(lambda);
+			for (final Tile<?> tile : idToTileMap.values()) {
+				((InterpolatedAffineModel2D<?, ?>) tile.getModel()).setLambda(lambda);
 			}
 
 			int numIterations = parameters.maxIterations;
@@ -263,7 +263,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 		for (final String tileId : tileIds )
 		{
 			final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = idToTileMap.get(tileId);
-			AffineModel2D affine = tile.getModel().createAffineModel2D();
+			final AffineModel2D affine = tile.getModel().createAffineModel2D();
 
 			idToNewModel.put( tileId, affine );
 			LOG.info("tile {} model is {}", tileId, affine);
@@ -477,13 +477,13 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 		new ImageJ();
 
 		// visualize new result
-		ImagePlus imp1 = VisualizeTools.render( idToFinalModel, idToTileSpec, 0.15 );
+		final ImagePlus imp1 = VisualizeTools.render(idToFinalModel, idToTileSpec, 0.15);
 		imp1.setTitle( "final" );
 
 		//ImagePlus imp2 = VisualizeTools.render( idToNewModel, idToTileSpec, 0.15 );
 		//imp2.setTitle( "realign" );
 
-		ImagePlus imp3 = VisualizeTools.render( idToPreviousModel, idToTileSpec, 0.15 );
+		final ImagePlus imp3 = VisualizeTools.render(idToPreviousModel, idToTileSpec, 0.15);
 		imp3.setTitle( "previous" );
 
 		SimpleMultiThreading.threadHaltUnClean();
@@ -492,7 +492,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args)
 	{
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
@@ -525,7 +525,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final PartialSolveBoxed client = new PartialSolveBoxed(parameters);
+                final PartialSolveBoxed<?> client = new PartialSolveBoxed<>(parameters);
 
                 client.run();
             }

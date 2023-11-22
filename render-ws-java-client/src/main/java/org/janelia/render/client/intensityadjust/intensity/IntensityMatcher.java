@@ -119,14 +119,14 @@ public class IntensityMatcher
 			 * generate a matrix of all coefficients in p1 to all
 			 * coefficients in p2 to store matches
 			 */
-			final ArrayList< ArrayList< PointMatch > > list = new ArrayList< ArrayList< PointMatch > >();
+			final ArrayList< ArrayList< PointMatch > > list = new ArrayList<>();
 			final int dimSize = numCoefficients * numCoefficients;
 			final int matrixSize = dimSize * dimSize;
 			for (int i = 0; i < matrixSize; ++i) {
 				list.add(new ArrayList<>());
 			}
 
-			final ListImg< ArrayList< PointMatch > > matrix = new ListImg< ArrayList< PointMatch > >( list, dimSize, dimSize );
+			final ListImg< ArrayList< PointMatch > > matrix = new ListImg<>(list, dimSize, dimSize);
 			final ListRandomAccess< ArrayList< PointMatch > > ra = matrix.randomAccess();
 
 			/*
@@ -162,7 +162,7 @@ public class IntensityMatcher
 			}
 
 			/* filter matches */
-			final ArrayList< PointMatch > inliers = new ArrayList< PointMatch >();
+			final ArrayList< PointMatch > inliers = new ArrayList<>();
 			for ( final ArrayList< PointMatch > candidates : matrix )
 			{
 				inliers.clear();
@@ -184,8 +184,7 @@ public class IntensityMatcher
 				{
 					ra.setPosition( j, 1 );
 					final ArrayList< PointMatch > matches = ra.get();
-					if ( matches.size() > 0 )
-					{
+					if (!matches.isEmpty()) {
 						final Tile< ? > t2 = p2CoefficientsTiles.get( j );
 						//synchronized ( MatchIntensities.this )
 						{
@@ -480,8 +479,7 @@ public class IntensityMatcher
 
 		LOG.info("getOnTheFlyIntensities: optimizing {} tiles", tc.getTiles().size());
 
-		try
-		{
+		try {
 			//final ErrorStatistic observer = new ErrorStatistic( iterations + 1 );
 			//tc.optimizeSilentlyConcurrent( observer, 0.01f, iterations, iterations, 0.75f );
 
@@ -489,11 +487,8 @@ public class IntensityMatcher
 										  tc, tc.getTiles(), tc.getFixedTiles(), 1 );
 
 			//tc.optimize( 0.01f, iterations, iterations, 0.75f );
-		}
-		catch ( final Exception e )
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		} catch (final Exception e) {
+			LOG.error("getOnTheFlyIntensities: error optimizing tiles", e);
 		}
 
 		final ArrayList<OnTheFlyIntensity> onTheFlyIntensities = strategy.getOnTheFlyIntensities(patches,
@@ -505,15 +500,15 @@ public class IntensityMatcher
 		return onTheFlyIntensities;
 	}
 
-	final static protected void identityConnect( final Tile< ? > t1, final Tile< ? > t2, final double weight )
+	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2, final double weight)
 	{
-		final ArrayList< PointMatch > matches = new ArrayList< PointMatch >();
+		final ArrayList< PointMatch > matches = new ArrayList<>();
 		matches.add( new PointMatch( new Point( new double[] { 0 } ), new Point( new double[] { 0 } ) ) );
 		matches.add( new PointMatch( new Point( new double[] { 1 } ), new Point( new double[] { 1 } ) ) );
 		t1.connect( t2, matches );
 	}
 
-	final public static RealInterval getBoundingBox(final TileSpec tileSpec)
+	public static RealInterval getBoundingBox(final TileSpec tileSpec)
 	{
 		final double[] p1min = new double[]{ tileSpec.getMinX(), tileSpec.getMinY() };
 		final double[] p1max = new double[]{ tileSpec.getMaxX(), tileSpec.getMaxY() };
@@ -527,14 +522,14 @@ public class IntensityMatcher
 		return new FinalRealInterval(p1min, p1max);
 	}
 
-	final static protected <T extends Model<T> & Affine1D<T>> HashMap<TileSpec, ArrayList<Tile<T>>> generateCoefficientsTiles(
+	static protected <T extends Model<T> & Affine1D<T>> HashMap<TileSpec, ArrayList<Tile<T>>> generateCoefficientsTiles(
 			final Collection<TileSpec> patches,
 			final IntensityCorrectionStrategy provider,
-			final int nCoefficients )
+			final int nCoefficients)
 	{
 		final HashMap<TileSpec, ArrayList< Tile< T > > > map = new HashMap<>();
 		for (final TileSpec p : patches) {
-			final ArrayList< Tile< T > > coefficientModels = new ArrayList< Tile< T > >();
+			final ArrayList< Tile< T > > coefficientModels = new ArrayList<>();
 			for ( int i = 0; i < nCoefficients; ++i )
 				coefficientModels.add(new Tile<T>(provider.getModelFor(p)));
 

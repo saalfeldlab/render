@@ -16,6 +16,7 @@ import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.solver.MultiResolutionSource;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +44,6 @@ import net.imglib2.RealRandomAccessible;
 import net.imglib2.cache.img.CellLoader;
 import net.imglib2.cache.img.ReadOnlyCachedCellImgFactory;
 import net.imglib2.cache.img.ReadOnlyCachedCellImgOptions;
-import net.imglib2.cache.img.SingleCellArrayImg;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
@@ -126,14 +126,14 @@ public class VisualizeTools
 
 		final RandomAccessibleInterval< VolatileFloatType > volatileImg = VolatileViews.wrapAsVolatile( cachedImg );
 	
-		BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "Preview" ).numRenderingThreads( numThreads );
-		BdvStackSource< ? > preview = BdvFunctions.show( volatileImg, "weights", options );
+		final BdvOptions options = Bdv.options().numSourceGroups(1 ).frameTitle("Preview" ).numRenderingThreads(numThreads );
+		final BdvStackSource<?> preview = BdvFunctions.show(volatileImg, "weights", options );
 		preview.setDisplayRange( 0, 3 );
 
 		return preview;
 	}
 
-	public static final HashMap<String, Float> constantIdToValue( final Collection< String > tileIds )
+	public static HashMap<String, Float> constantIdToValue(final Collection<String> tileIds)
 	{
 		final HashMap<String, Float> idToValue = new HashMap<>();
 
@@ -273,7 +273,7 @@ public class VisualizeTools
 
 		if ( source == null )
 		{
-			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "MultiResolution" ).numRenderingThreads( numThreads );
+			final BdvOptions options = Bdv.options().numSourceGroups(1).frameTitle("MultiResolution").numRenderingThreads(numThreads);
 			source = BdvFunctions.show( new MultiResolutionSource( createVolatileRAIs( multiRes ), name ), options );
 		}
 		else
@@ -333,20 +333,14 @@ public class VisualizeTools
 		final ReadOnlyCachedCellImgOptions options = new ReadOnlyCachedCellImgOptions().cellDimensions( cellDim ).maxCacheSize( maxCacheSize );
 		final ReadOnlyCachedCellImgFactory factory = new ReadOnlyCachedCellImgFactory( options );
 
-		final CellLoader< T > loader = new CellLoader< T >()
-		{
-			@Override
-			public void load( final SingleCellArrayImg< T, ? > cell ) throws Exception
-			{
-				final Cursor< T > cursor = cell.localizingCursor();
-				final RandomAccess< T > ra = in.randomAccess();
-				
-				while( cursor.hasNext() )
-				{
-					cursor.fwd();
-					ra.setPosition( cursor );
-					cursor.get().set( ra.get() );
-				}
+		final CellLoader<T> loader = cell -> {
+			final Cursor<T> cursor = cell.localizingCursor();
+			final RandomAccess<T> ra = in.randomAccess();
+
+			while(cursor.hasNext()) {
+				cursor.fwd();
+				ra.setPosition(cursor);
+				cursor.get().set(ra.get());
 			}
 		};
 
@@ -478,7 +472,7 @@ public class VisualizeTools
 		System.out.println( "BB z: " + minI[ 2 ] + " >>> " + maxI[ 2 ] + ", d=" + dimI[ 2 ]);
 
 		// init image
-		final ImagePlusImg< UnsignedByteType, ? > stack = new ImagePlusImgFactory<UnsignedByteType>( new UnsignedByteType()).create( dimI );
+		final ImagePlusImg<UnsignedByteType, ?> stack = new ImagePlusImgFactory<>(new UnsignedByteType()).create(dimI);
 		final RandomAccessibleInterval< UnsignedByteType > img = Views.translate( stack, minI );
 
 		final AffineModel2D invScaleModel = new AffineModel2D();
@@ -503,66 +497,13 @@ public class VisualizeTools
 		{
 			final ArrayList<Pair<String, TileSpec>> data = zToTileSpec.get( z );
 
-			tasks.add( new Callable< Void >()
-			{
-				@Override
-				public Void call() throws Exception
-				{
-					for (final Pair<String, TileSpec> pair : data) {
-						final TileSpec tileSpec = pair.getB();
-						final AffineModel2D model = idToRenderModels.get( pair.getA() );
-
-						// scale the transform so it takes into account that the input images are scaled
-						model.concatenate( invScaleModel );
-
-						final ImageProcessorWithMasks imp = getImage( tileSpec, scale );
-						RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.ip) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-						RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
-						
-						// draw
-						final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
-						final Cursor< UnsignedByteType > c = slice.cursor();
-						
-						AffineTransform2D affine = new AffineTransform2D();
-						double[] array = new double[6];
-						model.toArray( array );
-						affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
-						final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), img ).cursor();
-						final Cursor< UnsignedByteType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), img ).cursor();
-						
-						while ( c.hasNext() )
-						{
-							c.fwd();
-							cMask.fwd();
-							cSrc.fwd();
-							if (cMask.get().get() == 255) {
-								FloatType srcType = cSrc.get();
-								float value = srcType.get();
-								if (value >= 0) {
-									UnsignedByteType type = c.get();
-									final float currentValue = type.get();
-									if ( currentValue > 0 )
-										type.setReal( ( value + currentValue ) / 2 );
-									else
-										type.setReal( value );
-								}
-							}
-						}
-
-						IJ.showProgress( ai.getAndIncrement(), idToRenderModels.keySet().size() - 1 );
-					}
-					return null;
-				}
-			});
+			tasks.add(() -> renderData(scale, z, data, idToRenderModels, invScaleModel, img, ai));
 		}
 
-		try
-		{
+		try {
 			taskExecutor.invokeAll( tasks );
-		}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
+		} catch (final InterruptedException e) {
+			LOG.error("Error rendering", e);
 		}
 
 		taskExecutor.shutdown();
@@ -622,7 +563,7 @@ public class VisualizeTools
 		//final ImagePlus imp = ImageJFunctions.wrap( img, "stack", null );
 		final ImagePlus imp = stack.getImagePlus();
 
-		Calibration cal = new Calibration();
+		final Calibration cal = new Calibration();
 		cal.xOrigin = -minI[ 0 ];
 		cal.yOrigin = -minI[ 1 ];
 		cal.zOrigin = -minI[ 2 ];
@@ -635,6 +576,61 @@ public class VisualizeTools
 		imp.show();
 
 		return imp;
+	}
+
+	@Nullable
+	private static Void renderData(
+			final double scale,
+			final int z,
+			final ArrayList<Pair<String, TileSpec>> data,
+			final HashMap<String, AffineModel2D> idToRenderModels,
+			final AffineModel2D invScaleModel,
+			final RandomAccessibleInterval<UnsignedByteType> img,
+			final AtomicInteger ai)
+	{
+		for (final Pair<String, TileSpec> pair : data) {
+			final TileSpec tileSpec = pair.getB();
+			final AffineModel2D model = idToRenderModels.get(pair.getA());
+
+			// scale the transform so it takes into account that the input images are scaled
+			model.concatenate(invScaleModel);
+
+			final ImageProcessorWithMasks imp = getImage(tileSpec, scale);
+			final RealRandomAccessible<FloatType> interpolant = Views.interpolate(Views.extendValue((RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from(new ImagePlus("", imp.ip)), new FloatType(-1f)), new NLinearInterpolatorFactory<>());
+			final RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate(Views.extendZero((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from(new ImagePlus("", imp.mask))), new NearestNeighborInterpolatorFactory<>());
+
+			// draw
+			final IterableInterval<UnsignedByteType> slice = Views.iterable(Views.hyperSlice(img, 2, z));
+			final Cursor<UnsignedByteType> c = slice.cursor();
+
+			final AffineTransform2D affine = new AffineTransform2D();
+			final double[] array = new double[6];
+			model.toArray(array);
+			affine.set(array[0], array[2], array[4], array[1], array[3], array[5]);
+			final Cursor<FloatType> cSrc = Views.interval(RealViews.affine(interpolant, affine), img).cursor();
+			final Cursor<UnsignedByteType> cMask = Views.interval(RealViews.affine(interpolantMask, affine), img).cursor();
+
+			while (c.hasNext()) {
+				c.fwd();
+				cMask.fwd();
+				cSrc.fwd();
+				if (cMask.get().get() == 255) {
+					final FloatType srcType = cSrc.get();
+					final float value = srcType.get();
+					if (value >= 0) {
+						final UnsignedByteType type = c.get();
+						final float currentValue = type.get();
+						if ( currentValue > 0 )
+							type.setReal( ( value + currentValue ) / 2 );
+						else
+							type.setReal( value );
+					}
+				}
+			}
+
+			IJ.showProgress(ai.getAndIncrement(), idToRenderModels.keySet().size() - 1 );
+		}
+		return null;
 	}
 
 	protected static FloatProcessor getFullResImage(final TileSpec tileSpec)

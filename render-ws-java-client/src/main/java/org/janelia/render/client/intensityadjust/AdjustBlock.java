@@ -74,14 +74,10 @@ public class AdjustBlock {
 
 	/**
 	 * Fits a quadratic function along X and removes the difference, independently for each image
-	 * 
-	 * @param imp
-	 * @param debug
-	 * @return
 	 */
 	public static FloatProcessor correct( final ImageProcessorWithMasks imp, final boolean debug )
 	{
-		double[] avg = new double[ imp.ip.getWidth() ];
+		final double[] avg = new double[ imp.ip.getWidth() ];
 		final ArrayList< Point > points = new ArrayList<>();
 
 		// use only 70% of the pixels in the middle
@@ -115,7 +111,7 @@ public class AdjustBlock {
 
 		if ( debug )
 		{
-			ImagePlus line = ImageJFunctions.wrapFloat( Views.addDimension( ArrayImgs.doubles( avg, avg.length ), 0, 0 ), "" );
+			final ImagePlus line = ImageJFunctions.wrapFloat(Views.addDimension(ArrayImgs.doubles(avg, avg.length), 0, 0), "");
 			line.setRoi(new Line(0,0,avg.length,0));
 			new ProfilePlot( line ).createWindow();
 		}
@@ -138,12 +134,12 @@ public class AdjustBlock {
 			*/
 
 			//HigherOrderPolynomialFunction q = new HigherOrderPolynomialFunction( 3 );
-			QuadraticFunction q = new QuadraticFunction();
+			final QuadraticFunction q = new QuadraticFunction();
 			q.fitFunction(points);
 
 			double avgFit = 0.0;
 
-			double[] fit = new double[ avg.length ];
+			final double[] fit = new double[avg.length];
 
 			for ( int x = 0; x < avg.length; ++x )
 			{
@@ -154,7 +150,7 @@ public class AdjustBlock {
 			
 			avgFit /= (double)fit.length;
 
-			double[] correctedAvg = new double[ avg.length ];
+			final double[] correctedAvg = new double[avg.length];
 			final FloatProcessor corrected = new FloatProcessor( imp.ip.getWidth(), imp.ip.getHeight() );
 
 			for ( int x = 0; x < avg.length; ++x )
@@ -169,20 +165,19 @@ public class AdjustBlock {
 
 			if ( debug )
 			{
-				ImagePlus fitImp = ImageJFunctions.wrapFloat( Views.addDimension( ArrayImgs.doubles( fit, fit.length ), 0, 0 ), "" );
+				final ImagePlus fitImp = ImageJFunctions.wrapFloat(Views.addDimension(ArrayImgs.doubles(fit, fit.length), 0, 0), "");
 				fitImp.setRoi(new Line(0,0,avg.length,0));
 				new ProfilePlot( fitImp ).createWindow();
 
-				ImagePlus correctedImp = ImageJFunctions.wrapFloat( Views.addDimension( ArrayImgs.doubles( correctedAvg, correctedAvg.length ), 0, 0 ), "" );
+				final ImagePlus correctedImp = ImageJFunctions.wrapFloat(Views.addDimension(ArrayImgs.doubles(correctedAvg, correctedAvg.length), 0, 0), "");
 				correctedImp.setRoi(new Line(0,0,avg.length,0));
 				new ProfilePlot( correctedImp ).createWindow();
 			}
 
 			return corrected;
 		}
-		catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		catch (final Exception e) {
+			LOG.error("correct: caught exception ", e);
 		}
 
 		return null;
@@ -193,21 +188,21 @@ public class AdjustBlock {
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected )
 	{
 		// we need to go from inside to outside adjusting avg and stdev of the overlapping areas
-		ArrayList< Pair< Integer, Integer > > inputOrder = new ArrayList<>();
+		final ArrayList<Pair<Integer, Integer>> inputOrder = new ArrayList<>();
 
 		for ( int i = 0; i < data.size(); ++i )
 			inputOrder.add(new ValuePair<>(data.get(i).getB().getLayout().getImageCol(), i));
 
 		// sort by column order
-		Collections.sort( inputOrder, (o1, o2 ) -> o1.getA().compareTo( o2.getA() ) );
+		inputOrder.sort(Comparator.comparing(Pair::getA));
 
-		ArrayList< Integer > order = new ArrayList<>();
+		final ArrayList<Integer> order = new ArrayList<>();
 
 		// [1,2,3,4] -> 3
 		// [1,2,4] -> 2
 		// [1,4] -> 4
 		// [1] -> 1
-		while( inputOrder.size() > 0 )
+		while(!inputOrder.isEmpty())
 		{
 			final int index = inputOrder.size() / 2;
 			order.add( inputOrder.get( index ).getB() ); // just remember the index
@@ -468,7 +463,7 @@ public class AdjustBlock {
 	public static AffineTransform2D toImgLib( final AffineModel2D model )
 	{
 		final AffineTransform2D affine = new AffineTransform2D();
-		double[] array = new double[6];
+		final double[] array = new double[6];
 		model.toArray( array );
 		affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
 		return affine;
@@ -720,12 +715,12 @@ public class AdjustBlock {
 //		return fuse2d(interval, data, corrected, adjustments);
 //	}
 
-	public static void main( String[] args ) throws IOException, InterruptedException, ExecutionException
+	public static void main(final String[] args) throws IOException, InterruptedException, ExecutionException
 	{
-		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "Z0720_07m_BR"; //"flyem";
-		String project = "Sec39";//"Sec26"; //"Z0419_25_Alpha3";
-		String stack = "v1_acquire_trimmed_sp1";//"v2_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
+		final String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
+		final String owner = "Z0720_07m_BR"; //"flyem";
+		final String project = "Sec39";//"Sec26"; //"Z0419_25_Alpha3";
+		final String stack = "v1_acquire_trimmed_sp1";//"v2_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		final StackMetaData meta =  renderDataClient.getStackMetaData( stack );
@@ -781,7 +776,7 @@ public class AdjustBlock {
 
 		final ImagePlus imp1 = new ImagePlus( project + "_" + stack, stack3d );
 
-		Calibration cal = new Calibration();
+		final Calibration cal = new Calibration();
 		cal.xOrigin = -(int)interval.min(0);
 		cal.yOrigin = -(int)interval.min(1);
 		cal.zOrigin = -minZ;

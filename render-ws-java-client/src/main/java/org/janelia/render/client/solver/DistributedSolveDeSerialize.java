@@ -2,7 +2,6 @@ package org.janelia.render.client.solver;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.ArrayList;
@@ -50,17 +49,7 @@ public class DistributedSolveDeSerialize extends DistributedSolve
 
 		final ArrayList< SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > allItems = new ArrayList<>();
 
-		String[] files = path.list( new FilenameFilter() {
-			
-			@Override
-			public boolean accept(File dir, String name)
-			{
-				if ( name.endsWith(".obj") )
-					return true;
-				else
-					return false;
-			}
-		});
+		final String[] files = path.list((dir, name) -> name.endsWith(".obj"));
 
 		Arrays.sort( files );
 
@@ -72,16 +61,14 @@ public class DistributedSolveDeSerialize extends DistributedSolve
 			System.exit( 0 );
 		}
 
-		for ( final String filename : files )
-		{
-			try
-	        {
+		for ( final String filename : files ) {
+			try {
 				 // Reading the object from a file 
-	            FileInputStream file = new FileInputStream( new File( path, filename ) ); 
-	            ObjectInputStream in = new ObjectInputStream(file); 
+	            final FileInputStream file = new FileInputStream(new File(path, filename ) );
+	            final ObjectInputStream in = new ObjectInputStream(file);
 	              
 	            // Method for deserialization of object 
-	            SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItem = (SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > >)in.readObject(); 
+	            final SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> solveItem = (SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>>)in.readObject();
 
 	            allItems.add( solveItem );
 
@@ -89,10 +76,8 @@ public class DistributedSolveDeSerialize extends DistributedSolve
 	            file.close(); 
 	              
 	            System.out.println("Object has been deserialized " + solveItem.getId() );
-	        }
-			catch( Exception e )
-			{
-				e.printStackTrace();
+	        } catch(final Exception e) {
+				LOG.error("Failed to deserialize: " + filename, e);
 				System.exit( 0 );
 			}
 		}
@@ -102,7 +87,7 @@ public class DistributedSolveDeSerialize extends DistributedSolve
 		return allItems;
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args)
 	{
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override

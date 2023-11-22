@@ -57,28 +57,27 @@ public class RenderTools
 	final static public String boundingBoxFormat = stackFormat + "/z/%d/box/%d,%d,%d,%d,%f";
 	final static public String renderParametersFormat = boundingBoxFormat + "/render-parameters";
 
-	final public static StackMetaData openStackMetaData(
+	public static StackMetaData openStackMetaData(
 			final String baseUrl,
 			final String owner,
 			final String project,
-			final String stack ) throws IOException
+			final String stack) throws IOException
 	{
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		return renderDataClient.getStackMetaData( stack );
 	}
 
-	final static public int[] availableDownsamplings(
+	static public int[] availableDownsamplings(
 			final String baseUrl,
 			final String owner,
 			final String project,
-			final String stack ) throws IOException
+			final String stack) throws IOException
 	{
 		return availableDownsamplings( openStackMetaData( baseUrl, owner, project, stack ) );
 	}
 
-	final static public int[] availableDownsamplings(
-			final StackMetaData sourceStackMetaData ) throws IOException
-	{
+	static public int[] availableDownsamplings(
+			final StackMetaData sourceStackMetaData) {
 		// Say you have scalings of 0.5, 0.25, 0.1
 		// and I query 0.500000001
 		// will it use 1.0 then - yes
@@ -100,9 +99,9 @@ public class RenderTools
 		}
 	}
 
-	final static public Interval stackBounds( final StackMetaData sourceStackMetaData ) throws IOException
+	static public Interval stackBounds(final StackMetaData sourceStackMetaData) throws IOException
 	{
-		Bounds bounds = sourceStackMetaData.getStats().getStackBounds();
+		final Bounds bounds = sourceStackMetaData.getStats().getStackBounds();
 		
 		return new FinalInterval(
 				new long[] {
@@ -127,7 +126,7 @@ public class RenderTools
 	 * @param scale - the preexisting downsampled image as stored on disk
 	 * @return
 	 */
-	final static public BufferedImage renderImage(
+	static public BufferedImage renderImage(
 			final ImageProcessorCache ipCache,
 			final String baseUrl,
 			final String owner,
@@ -135,12 +134,12 @@ public class RenderTools
 			final String stack,
 			final String tileId,
 			final AffineTransform2D t,
-			final double scale )
+			final double scale)
 	{
 		return null;
 	}
 
-	final static public ImageProcessorWithMasks renderImage(
+	static public ImageProcessorWithMasks renderImage(
 			final ImageProcessorCache ipCache,
 			final String baseUrl,
 			final String owner,
@@ -222,7 +221,7 @@ public class RenderTools
 			final String stack,
 			final HashMap<String, AffineModel2D> idToModels,
 			final HashMap<String, TileSpec> idToTileSpec,
-			BdvStackSource< ? > source,
+			final BdvStackSource<?> source,
 			final int numThreads ) throws IOException
 	{
 		final Interval interval = VisualizingRandomAccessibleInterval.computeInterval(
@@ -244,7 +243,7 @@ public class RenderTools
 			final String project,
 			final String stack,
 			final Interval fullResInterval,
-			BdvStackSource< ? > source,
+			final BdvStackSource<?> source,
 			final int numRenderingThreads,
 			final int numFetchThreads ) throws IOException
 	{
@@ -332,7 +331,7 @@ public class RenderTools
 			final int[] blockSize = new int[] { blockSizeXY, blockSizeXY, 1 };
 
 			// TODO: return it for invalidation
-			CachedCellImg<FloatType, ?> cachedCellImg =
+			final CachedCellImg<FloatType, ?> cachedCellImg =
 					Lazy.process(
 						interval,
 						blockSize,
@@ -369,7 +368,7 @@ public class RenderTools
 		
 		if ( source == null )
 		{
-			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( project + "_" + stack ).numRenderingThreads( numRenderingThreads );
+			final BdvOptions options = Bdv.options().numSourceGroups(1).frameTitle(project + "_" + stack).numRenderingThreads(numRenderingThreads);
 			final String windowName = owner + " " + project + " " + stack;
 			source = BdvFunctions.show( new MultiResolutionSource( multiRes, windowName ), options );
 		}
@@ -391,10 +390,10 @@ public class RenderTools
 		final String project = args.length < 2 ? "cut_000_to_009" : args[1];
 		final String stack = args.length < 3 ? "c000_s095_v01" : args[2];
 
-		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
+		final StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
 		
 		final int[] ds = availableDownsamplings( meta );
-		Interval interval = stackBounds( meta );
+		final Interval interval = stackBounds(meta);
 //		Interval interval = new FinalInterval(
 //				new long[] { 2000L, -1300L, 5000L },
 //				new long[] { 3000L, -300L, 5002L } );
@@ -445,7 +444,7 @@ public class RenderTools
 		SimpleMultiThreading.threadHaltUnClean();
 		*/
 
-		BdvStackSource<?> img = RenderTools.renderMultiRes(
+		final BdvStackSource<?> img = RenderTools.renderMultiRes(
 				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads );
 		
 		img.setDisplayRange( 0, 256 );
