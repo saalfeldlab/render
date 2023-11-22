@@ -566,14 +566,14 @@ public class AdjustBlock {
 //		final double scale = 0.22;
 //		final double[] sigma = new double[] { 0, 50 };
 //
-//		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
+//		final List<TileSpec> data = getData(z, renderDataClient, stack);
 //		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
 //		final HashMap< Integer, double[] > adjustments = new HashMap<>();
 //
 //		int k = -1;
-//		for (final Pair<AffineModel2D, MinimalTileSpec> tile : data) {
+//		for (final Pair<AffineModel2D, TileSpec> tile : data) {
 //			++k;
-//			final MinimalTileSpec minimalTileSpec = tile.getB();
+//			final TileSpec minimalTileSpec = tile.getB();
 //
 //			//if (minimalTileSpec.getImageCol() != 0 )
 //			//	continue;
@@ -693,12 +693,12 @@ public class AdjustBlock {
 //																						  final int z)
 //			throws IOException {
 //
-//		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
+//		final List<TileSpec> data = getData(z, renderDataClient, stack);
 //		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
 //
-//		for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )
+//		for ( final Pair<AffineModel2D,TileSpec> tile : data )
 //		{
-//			final MinimalTileSpec minimalTileSpec = tile.getB();
+//			final TileSpec minimalTileSpec = tile.getB();
 //
 //			LOG.debug("renderIntensityAdjustedSlice: processing tile {} in column {}",
 //					  minimalTileSpec.getTileId(), minimalTileSpec.getImageCol());

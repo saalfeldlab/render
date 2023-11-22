@@ -5,7 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.janelia.render.client.solver.MinimalTileSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,8 +17,8 @@ import net.imglib2.util.Pair;
 
 public class ErrorTools
 {
-	public static enum ErrorFilter{ ALL, CROSS_LAYER_ONLY, MONTAGE_LAYER_ONLY };
-	public static enum ErrorType{ MIN, AVG, MAX };
+	public enum ErrorFilter{ ALL, CROSS_LAYER_ONLY, MONTAGE_LAYER_ONLY }
+	public enum ErrorType{ MIN, AVG, MAX }
 
 	public static int problematicRegionRange = 50;
 
@@ -50,8 +50,8 @@ public class ErrorTools
 	}
 
 	public static Errors computeErrors(
-			final Map< String, List< Pair< String, Double > > > idToErrors,
-			final Map< String, MinimalTileSpec > idToTileSpec,
+			final Map<String, List<Pair<String, Double>>> idToErrors,
+			final Map<String, TileSpec> idToTileSpec,
 			final ErrorFilter filter )
 	{
 		final Errors err = new Errors();
@@ -175,19 +175,19 @@ public class ErrorTools
 			final Errors err,
 			final ErrorType errorType,
 			final double significance,
-			final HashMap< String, AffineModel2D > idToModel,
-			final HashMap< String, MinimalTileSpec > idToTileSpec )
+			final HashMap<String, AffineModel2D> idToModel,
+			final HashMap<String, TileSpec> idToTileSpec )
 	{
 		// the actual values to display
 		final HashMap< String, Float > idToRegion = new HashMap<>();
 
 		// to later find the neighbors
-		final HashMap< Integer, List< MinimalTileSpec > > zToTileSpec = new HashMap<>();
-		final HashMap< Integer, List< MinimalTileSpec > > zWithOutliers = new HashMap<>();
+		final HashMap<Integer, List<TileSpec>> zToTileSpec = new HashMap<>();
+		final HashMap<Integer, List<TileSpec>> zWithOutliers = new HashMap<>();
 
 		for ( final String tileId : idToTileSpec.keySet() )
 		{
-			final MinimalTileSpec ts = idToTileSpec.get( tileId );
+			final TileSpec ts = idToTileSpec.get(tileId);
 			final int z = (int)Math.round( ts.getZ() );
 
 			final double avgError, stDevError, error;
@@ -228,20 +228,20 @@ public class ErrorTools
 
 		for ( final int z : zWithOutliers.keySet() )
 		{
-			for ( final MinimalTileSpec ts : zWithOutliers.get( z ) )
+			for (final TileSpec ts : zWithOutliers.get(z))
 			{
-				final int col = ts.getImageCol();
+				final int col = ts.getLayout().getImageCol();
 
 				for ( int d = 1; d < problematicRegionRange; ++d )
 				{
 					if ( zToTileSpec.containsKey( z + d ))
-						for ( final MinimalTileSpec ts2 : zToTileSpec.get( z + d ) )
-							if ( ts2 != null && ts2.getImageCol() == col )
+						for (final TileSpec ts2 : zToTileSpec.get(z + d))
+							if (ts2 != null && ts2.getLayout().getImageCol() == col)
 								idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
 
 					if ( zToTileSpec.containsKey( z - d ))
-						for ( final MinimalTileSpec ts2 : zToTileSpec.get( z - d ) )
-							if ( ts2 != null && ts2.getImageCol() == col )
+						for (final TileSpec ts2 : zToTileSpec.get(z - d))
+							if (ts2 != null && ts2.getLayout().getImageCol() == col)
 								idToRegion.put( ts2.getTileId(), Math.max( idToRegion.get( ts2.getTileId() ), (problematicRegionRange - d) / (float)problematicRegionRange ) );
 				}
 			}
@@ -256,8 +256,8 @@ public class ErrorTools
 
 	public static BdvStackSource< ? > renderErrors(
 			final Errors err,
-			final HashMap< String, AffineModel2D > idToModel,
-			final HashMap< String, MinimalTileSpec > idToTileSpec )
+			final HashMap<String, AffineModel2D> idToModel,
+			final HashMap<String, TileSpec> idToTileSpec)
 	{
 		return renderErrors( null, err, idToModel, idToTileSpec );
 	}
@@ -265,8 +265,8 @@ public class ErrorTools
 	public static BdvStackSource< ? > renderErrors(
 			BdvStackSource< ? > source,
 			final Errors err,
-			final HashMap< String, AffineModel2D > idToModel,
-			final HashMap< String, MinimalTileSpec > idToTileSpec )
+			final HashMap<String, AffineModel2D> idToModel,
+			final HashMap<String, TileSpec> idToTileSpec )
 	{
 		final double maxRange = Math.max( err.maxMinError, Math.max( err.maxAvgError, err.maxMaxError ) );
 
@@ -289,8 +289,8 @@ public class ErrorTools
 
 	public static double[] errors(
 			final String tileId,
-			final Map< String, List< Pair< String, Double > > > errors,
-			final Map< String, MinimalTileSpec > idToTileSpec,
+			final Map<String, List<Pair<String, Double>>> errors,
+			final Map<String, TileSpec> idToTileSpec,
 			final ErrorFilter errorFilter )
 	{
 		final int z = (int)Math.round( idToTileSpec.get( tileId ).getZ() );

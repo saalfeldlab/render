@@ -1,6 +1,5 @@
 package org.janelia.render.client.solver.visualize;
 
-import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
 import java.awt.image.BufferedImage;
@@ -12,14 +11,13 @@ import java.util.function.Function;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
-import org.janelia.alignment.loader.ImageJDefaultLoader;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.MultiResolutionSource;
 import org.janelia.render.client.solver.visualize.imglib2.VolatileTmp;
 import org.janelia.render.client.solver.visualize.lazy.Lazy;
@@ -223,7 +221,7 @@ public class RenderTools
 			final String project,
 			final String stack,
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, TileSpec> idToTileSpec,
 			BdvStackSource< ? > source,
 			final int numThreads ) throws IOException
 	{

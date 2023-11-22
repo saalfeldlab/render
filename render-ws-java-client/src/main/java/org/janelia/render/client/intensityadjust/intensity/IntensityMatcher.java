@@ -292,10 +292,10 @@ public class IntensityMatcher
 		List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
 
 		// iterate in the same order as the input
-		for ( final MinimalTileSpecWrapper p : patches )
-		//for ( final Entry< Pair<AffineModel2D,MinimalTileSpec>, ArrayList< Tile< ? extends M > > > entry : coefficientsTiles.entrySet() )
+		for ( final TileSpec p : patches )
+		//for ( final Entry< Pair<AffineModel2D,TileSpec>, ArrayList< Tile< ? extends M > > > entry : coefficientsTiles.entrySet() )
 		{
-			//final Pair<AffineModel2D,MinimalTileSpec> p = entry.getKey();
+			//final Pair<AffineModel2D,TileSpec> p = entry.getKey();
 			//final ArrayList< Tile< ? extends M > > tiles = entry.getValue();
 			final ArrayList< Tile< ? extends M > > tiles = coefficientsTiles.get( p );
 

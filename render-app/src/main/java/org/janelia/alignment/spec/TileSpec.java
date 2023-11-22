@@ -55,6 +55,7 @@ import org.janelia.alignment.spec.stack.MipmapPathBuilder;
  */
 public class TileSpec implements Serializable {
 
+    public static String RESTART_LABEL = "restart";
     private String tileId;
     private LayoutData layout;
     private String groupId;

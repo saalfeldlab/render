@@ -63,8 +63,8 @@ public class SolveTools
 	public static double computeAlignmentError(
 			final Model< ? > crossLayerModel,
 			final Model< ? > montageLayerModel,
-			final MinimalTileSpec pTileSpec,
-			final MinimalTileSpec qTileSpec,
+			final TileSpec pTileSpec,
+			final TileSpec qTileSpec,
 			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
 			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
 			final Matches matches )
@@ -75,8 +75,8 @@ public class SolveTools
 	public static double computeAlignmentError(
 			final Model< ? > crossLayerModel,
 			final Model< ? > montageLayerModel,
-			final MinimalTileSpec pTileSpec,
-			final MinimalTileSpec qTileSpec,
+			final TileSpec pTileSpec,
+			final TileSpec qTileSpec,
 			final CoordinateTransform pAlignmentTransform,
 			final CoordinateTransform qAlignmentTransform,
 			final Matches matches,
@@ -259,7 +259,7 @@ public class SolveTools
 			for ( final Tile< B > imageTile : solveItem.groupedTileToTiles().get( prevGroupedTile ) )
 			{
 				final String tileId = solveItem.tileToIdMap().get( imageTile );
-				final int tileCol = solveItem.idToTileSpec().get( tileId ).getImageCol();
+				final int tileCol = solveItem.idToTileSpec().get(tileId).getLayout().getImageCol();
 
 				prevTiles.add( new ValuePair<>( new ValuePair<>( tileCol, tileId ), prevGroupedTile ) );
 			}
@@ -525,7 +525,7 @@ public class SolveTools
 			for ( final Tile< ? > tile : solveItem.groupedTileToTiles().get( groupedTile ) )
 			{
 				final String tileId = solveItem.tileToIdMap().get( tile );
-				final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+				final TileSpec tileSpec = solveItem.idToTileSpec().get(tileId);
 
 				final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
 				affine.preConcatenate( groupedModel );

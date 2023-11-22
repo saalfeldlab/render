@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import ij.ImagePlus;
@@ -34,7 +35,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 
 	// used for saving and display
-	final private HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<>();
+	final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
 
 	// contains the model as determined by the local solve
 	final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
@@ -116,7 +117,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	public boolean rigidPreAlign() { return rigidPreAlign; }
 
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
-	public HashMap<String, MinimalTileSpec> idToTileSpec() { return idToTileSpec; }
+	public HashMap<String, TileSpec> idToTileSpec() { return idToTileSpec; }
 	public HashMap<Integer, HashSet<String>> zToTileId() { return zToTileId; }
 	public HashMap<String, AffineModel2D> idToNewModel() { return idToNewModel; }
 	public HashMap<Integer, Double> zToDynamicLambda() { return zToDynamicLambda; }
@@ -147,7 +148,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	{
 		try
 		{
-			ImagePlus imp = VisualizeTools.render( idToPreviousModel(), idToTileSpec(), 0.15 );
+			final ImagePlus imp = VisualizeTools.render(idToPreviousModel(), idToTileSpec(), 0.15 );
 			imp.setTitle( "input" );
 			return imp;
 		}

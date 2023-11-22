@@ -16,8 +16,6 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.RunParameters;
 import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
@@ -68,7 +66,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 		final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 		final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
-		final HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<>();
+		final HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
 
 		// one object per Tile, we just later know the new affine model to create all matches
 		// just want to avoid to load the data twice
@@ -155,7 +153,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 					p = pairP.getA();
 					idToTileMap.put( pId, p );
 					idToPreviousModel.put( pId, pairP.getB() );
-					idToTileSpec.put( pId, new MinimalTileSpecWrapper(pTileSpec ) );
+					idToTileSpec.put(pId, pTileSpec);
 
 					if ( pTileSpec.getZ() <= topBorder )
 						topTileIds.add( pId );
@@ -174,7 +172,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 					q = pairQ.getA();
 					idToTileMap.put( qId, q );
 					idToPreviousModel.put( qId, pairQ.getB() );
-					idToTileSpec.put( qId, new MinimalTileSpecWrapper( qTileSpec ) );
+					idToTileSpec.put(qId, qTileSpec);
 
 					if ( qTileSpec.getZ() <= topBorder )
 						topTileIds.add( qId );
@@ -285,7 +283,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 		for ( final String tileId : topTileIds )
 		{
-			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final TileSpec tileSpec = idToTileSpec.get(tileId);
 			final AffineModel2D previousModel = idToPreviousModel.get( tileId );
 			final AffineModel2D newModel = idToNewModel.get( tileId );
 
@@ -316,7 +314,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 		for ( final String tileId : bottomTileIds )
 		{
-			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final TileSpec tileSpec = idToTileSpec.get(tileId);
 			final AffineModel2D previousModel = idToPreviousModel.get( tileId );
 			final AffineModel2D newModel = idToNewModel.get( tileId );
 
@@ -391,7 +389,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 
 		for ( final String tileId : tileIds )
 		{
-			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final TileSpec tileSpec = idToTileSpec.get(tileId);
 			final double z = tileSpec.getZ();
 
 			// previous and resolved model for the current tile
@@ -443,7 +441,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 			//
 			final HashSet< Double > zToSaveSet = new HashSet<>();
 
-			for ( final MinimalTileSpec ts : idToTileSpec.values() )
+			for (final TileSpec ts : idToTileSpec.values())
 				zToSaveSet.add( ts.getZ() );
 
 			List< Double > zToSave = new ArrayList<>( zToSaveSet );

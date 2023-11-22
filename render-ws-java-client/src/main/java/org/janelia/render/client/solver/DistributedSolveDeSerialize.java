@@ -171,7 +171,7 @@ public class DistributedSolveDeSerialize extends DistributedSolve
 
 				vis = VisualizeTools.renderDynamicLambda( vis, gs.zToDynamicLambdaGlobal, gs.idToFinalModelGlobal, gs.idToTileSpecGlobal, parameters.dynamicLambdaFactor );
 
-				BdvStackSource<?> img = RenderTools.renderMultiRes(
+				final BdvStackSource<?> img = RenderTools.renderMultiRes(
 						null,
 						parameters.renderWeb.baseDataUrl,
 						parameters.renderWeb.owner,

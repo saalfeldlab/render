@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutionException;
 
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +47,7 @@ public abstract class DistributedSolve
 	public static class GlobalSolve
 	{
 		final HashMap<String, AffineModel2D> idToFinalModelGlobal = new HashMap<>();
-		final HashMap<String, MinimalTileSpec> idToTileSpecGlobal = new HashMap<>();
+		final HashMap<String, TileSpec> idToTileSpecGlobal = new HashMap<>();
 		final HashMap<Integer, HashSet<String> > zToTileIdGlobal = new HashMap<>();
 		final HashMap<Integer, Double> zToDynamicLambdaGlobal = new HashMap<>();
 		final HashMap< String, List< Pair< String, Double > > > idToErrorMapGlobal = new HashMap<>();
@@ -145,7 +146,7 @@ public abstract class DistributedSolve
 			//
 			final HashSet< Double > zToSaveSet = new HashSet<>();
 
-			for ( final MinimalTileSpec ts : solve.idToTileSpecGlobal.values() )
+			for (final TileSpec ts : solve.idToTileSpecGlobal.values())
 				zToSaveSet.add( ts.getZ() );
 
 			List< Double > zToSave = new ArrayList<>( zToSaveSet );
@@ -324,7 +325,7 @@ public abstract class DistributedSolve
 						for ( final String tileId : tileIds )
 						{
 							// tilespec is identical
-							final MinimalTileSpec tileSpec = solveItemA.idToTileSpec().get( tileId );
+							final TileSpec tileSpec = solveItemA.idToTileSpec().get(tileId);
 
 							// remember the tileids and tileSpecs
 							gs.zToTileIdGlobal.get( z ).add( tileId );
@@ -570,8 +571,8 @@ public abstract class DistributedSolve
 			{
 				final Matches matches = qTileIdToMatches.get( qTileId );
 
-				final MinimalTileSpec pTileSpec = gs.idToTileSpecGlobal.get( pTileId );
-				final MinimalTileSpec qTileSpec = gs.idToTileSpecGlobal.get( qTileId );
+				final TileSpec pTileSpec = gs.idToTileSpecGlobal.get(pTileId);
+				final TileSpec qTileSpec = gs.idToTileSpecGlobal.get(qTileId);
 
 				final double vDiff = SolveTools.computeAlignmentError(
 						crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, gs.idToFinalModelGlobal.get( pTileId ), gs.idToFinalModelGlobal.get( qTileId ), matches );
