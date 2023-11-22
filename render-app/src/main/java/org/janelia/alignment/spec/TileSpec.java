@@ -908,6 +908,17 @@ public class TileSpec implements Serializable {
 		return imageAndMask.hasMask() ? imageAndMask.getMaskFilePath() : null;
     }
 
+    /**
+     * Get the URL to the image file for this tile spec.
+     *
+     * @return URL to image file or null if this tile spec does not have a mask.
+     */
+    public String getTileImageUrl() {
+        final Map.Entry<Integer, ImageAndMask> mipmapEntry = this.getFirstMipmapEntry();
+        final ImageAndMask imageAndMask = mipmapEntry.getValue();
+        return imageAndMask.getImageUrl();
+    }
+
     @Override
     public String toString() {
         return tileId;
