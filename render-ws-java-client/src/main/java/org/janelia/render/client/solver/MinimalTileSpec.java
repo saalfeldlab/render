@@ -21,9 +21,8 @@ public class MinimalTileSpec implements Serializable
 
 	public MinimalTileSpec( final TileSpec tileSpec )
 	{
-		final ImageAndMask imageAndMask = tileSpec.getFirstMipmapEntry().getValue();
-		this.fileName = imageAndMask.getImageFilePath();
-		this.fileNameMask = imageAndMask.hasMask() ? imageAndMask.getMaskFilePath() : null;
+		this.fileName = tileSpec.getImagePath();
+		this.fileNameMask = tileSpec.getMaskPath();
 
 		this.tileId = tileSpec.getTileId();
 

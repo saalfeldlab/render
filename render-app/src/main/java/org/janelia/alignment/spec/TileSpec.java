@@ -886,6 +886,28 @@ public class TileSpec implements Serializable {
         return ctl;
     }
 
+    /**
+     * Get the path to the image file for this tile spec.
+     *
+     * @return path to image file or null if this tile spec does not have a mask.
+     */
+    @JsonIgnore
+    public String getImagePath() {
+        final ImageAndMask imageAndMask = this.getFirstMipmapEntry().getValue();
+        return imageAndMask.hasImage() ? imageAndMask.getImageFilePath() : null;
+    }
+
+    /**
+     * Get the path to the mask file for this tile spec.
+     *
+     * @return path to mask file or null if this tile spec does not have a mask.
+     */
+    @JsonIgnore
+    public String getMaskPath() {
+        final ImageAndMask imageAndMask = this.getFirstMipmapEntry().getValue();
+		return imageAndMask.hasMask() ? imageAndMask.getMaskFilePath() : null;
+    }
+
     @Override
     public String toString() {
         return tileId;
