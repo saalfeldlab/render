@@ -13,7 +13,7 @@ import java.io.IOException;
  * all tiles are placed in the center of a block in one of the iterations.
  * See also: additive Schwarz domain decomposition.
  *
- * Author: Michael Innerberger
+ * @author Michael Innerberger
  */
 public class AlternatingDomainDecompositionSolverClient {
 
