@@ -97,8 +97,8 @@ public class BackgroundCorrectionClient {
 		ensureOutputFolderExists();
 		for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
 			final ImageProcessor ip = loadImage(tileSpec, imageProcessorCache);
-			subtractBackground(ip);
-			saveImage(ip, tileSpec);
+			final ImageProcessor processedImage = subtractBackground(ip);
+			saveImage(processedImage, tileSpec);
 		}
 	}
 
@@ -143,7 +143,7 @@ public class BackgroundCorrectionClient {
 									   imageAndMask.getImageSliceNumber());
 	}
 
-	private void subtractBackground(final ImageProcessor ip) {
+	private ImageProcessor subtractBackground(final ImageProcessor ip) {
 		// convert to 32-bit grayscale (float) for lossless processing
 		final ImagePlus original = new ImagePlus("original", ip);
 		final ImageConverter imageConverter = new ImageConverter(original);
@@ -166,6 +166,10 @@ public class BackgroundCorrectionClient {
 		// finally, subtract the background
 		final ImagePlus resizedBackground = Scaler.resize(background, ip.getWidth(), ip.getHeight(), 1, "bilinear");
 		ImageCalculator.run(original, resizedBackground, "subtract");
+
+		// convert back to original bit depth
+		imageConverter.convertToGray8();
+		return original.getProcessor();
 	}
 
 	private void saveImage(final ImageProcessor ip, final TileSpec tileSpec) {
