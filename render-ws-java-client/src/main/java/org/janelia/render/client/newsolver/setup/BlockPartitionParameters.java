@@ -27,7 +27,8 @@ public class BlockPartitionParameters implements Serializable {
 
 	@Parameter(
 			names = "--shiftBlocks",
-			description = "Shift blocks by half a block size in all partitioned directions")
+			description = "Shift blocks by half a block size in all partitioned directions",
+			arity = 0)
 	public Boolean shiftBlocks = false;
 
 	public BlockPartitionParameters() {}

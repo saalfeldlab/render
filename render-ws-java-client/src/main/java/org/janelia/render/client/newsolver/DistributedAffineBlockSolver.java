@@ -9,6 +9,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import mpicbg.models.Affine2D;
@@ -107,7 +108,7 @@ public class DistributedAffineBlockSolver
 		run(cmdLineSetup);
 	}
 
-	public static void run(AffineBlockSolverSetup cmdLineSetup) throws IOException, InterruptedException {
+	public static void run(final AffineBlockSolverSetup cmdLineSetup) throws IOException, InterruptedException {
 		final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
@@ -256,7 +257,7 @@ public class DistributedAffineBlockSolver
 		if (models.size() == 1)
 			return models.get(0);
 
-		final double randomSample = Math.random();
+		final double randomSample = ThreadLocalRandom.current().nextDouble();
 		final int i = getRandomIndex(weights, randomSample);
 		return models.get(i);
 	}
