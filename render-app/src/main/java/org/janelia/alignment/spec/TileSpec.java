@@ -890,7 +890,7 @@ public class TileSpec implements Serializable {
     /**
      * Get the path to the image file for this tile spec.
      *
-     * @return path to image file or null if this tile spec does not have a mask.
+     * @return path to image file or null if this tile spec does not have an image.
      */
     @JsonIgnore
     public String getImagePath() {
@@ -912,12 +912,11 @@ public class TileSpec implements Serializable {
     /**
      * Get the URL to the image file for this tile spec.
      *
-     * @return URL to image file or null if this tile spec does not have a mask.
+     * @return URL to image file or null if this tile spec does not have an image.
      */
     public String getTileImageUrl() {
-        final Map.Entry<Integer, ImageAndMask> mipmapEntry = this.getFirstMipmapEntry();
-        final ImageAndMask imageAndMask = mipmapEntry.getValue();
-        return imageAndMask.getImageUrl();
+        final ImageAndMask imageAndMask = this.getFirstMipmapEntry().getValue();
+        return imageAndMask.hasImage() ? imageAndMask.getImageUrl() : null;
     }
 
     @Override
