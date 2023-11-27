@@ -4,7 +4,13 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import ij.IJ;
 import ij.ImagePlus;
+import ij.measure.Measurements;
+import ij.plugin.ImageCalculator;
+import ij.plugin.Scaler;
+import ij.plugin.filter.RankFilters;
+import ij.process.ImageConverter;
 import ij.process.ImageProcessor;
+import ij.process.ImageStatistics;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -42,6 +48,8 @@ public class BackgroundCorrectionClient {
 		private String regex = null;
 		@Parameter(names = "--radius", description = "Radius for median filter in pixels (default: 50.0)")
 		private double radius = 50.0;
+		@Parameter(names = "--scale", description = "Scale to use for median filter (default: 0.1)")
+		private double scale = 0.1;
 		@Parameter(names = "--outputFolder", description = "Folder to write corrected images to (default: ./background_corrected)")
 		private String outputFolder = "background_corrected";
 	}
@@ -57,6 +65,8 @@ public class BackgroundCorrectionClient {
 					"--minZ", "1250",
 					"--maxZ", "1250",
 					"--regex", ".*_0-[01]-1.*",
+					"--radius", "700.0",
+					"--scale", "0.05",
 			};
 		}
 
@@ -87,6 +97,7 @@ public class BackgroundCorrectionClient {
 		ensureOutputFolderExists();
 		for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
 			final ImageProcessor ip = loadImage(tileSpec, imageProcessorCache);
+			subtractBackground(ip);
 			saveImage(ip, tileSpec);
 		}
 	}
@@ -130,6 +141,31 @@ public class BackgroundCorrectionClient {
 									   firstChannelSpec.is16Bit(),
 									   imageAndMask.getImageLoaderType(),
 									   imageAndMask.getImageSliceNumber());
+	}
+
+	private void subtractBackground(final ImageProcessor ip) {
+		// convert to 32-bit grayscale (float) for lossless processing
+		final ImagePlus original = new ImagePlus("original", ip);
+		final ImageConverter imageConverter = new ImageConverter(original);
+		imageConverter.convertToGray32();
+
+		// resize to speed up processing
+		final int targetWidth = (int) (params.scale * ip.getWidth());
+		final int targetHeight = (int) (params.scale * ip.getHeight());
+		final ImagePlus background = Scaler.resize(original, targetWidth, targetHeight, 1, "bilinear");
+
+		// median filtering for actual background computation
+		final double downscaledRadius = params.radius * params.scale;
+		final RankFilters rankFilters = new RankFilters();
+		rankFilters.rank(background.getProcessor(), downscaledRadius, RankFilters.MEDIAN);
+
+		// subtract mean to not shift the actual image values
+		final double mean = ImageStatistics.getStatistics(background.getProcessor(), Measurements.MEAN, null).mean;
+		background.getProcessor().subtract(mean);
+
+		// finally, subtract the background
+		final ImagePlus resizedBackground = Scaler.resize(background, ip.getWidth(), ip.getHeight(), 1, "bilinear");
+		ImageCalculator.run(original, resizedBackground, "subtract");
 	}
 
 	private void saveImage(final ImageProcessor ip, final TileSpec tileSpec) {
