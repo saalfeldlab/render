@@ -16,7 +16,6 @@ import mpicbg.models.Tile;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.solvers.affine.AffineBlockDataWrapper;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,8 +86,8 @@ public class WorkerTools
 		return SolveTools.computeAlignmentError(
 				crossLayerModel,
 				montageLayerModel,
-				new MinimalTileSpec( pTileSpec ),
-				new MinimalTileSpec( qTileSpec ),
+				pTileSpec,
+				qTileSpec,
 				pAlignmentTransform,
 				qAlignmentTransform,
 				matches,

@@ -45,8 +45,8 @@ import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import ij.process.ByteProcessor;
@@ -183,7 +183,7 @@ public class Render
 	 * @param imageProcessorCache cache of loaded image processors.
 	 */
 	public static void render(
-			final MinimalTileSpecWrapper patch,
+			final TileSpec patch,
 			final int coefficientsWidth,
 			final int coefficientsHeight,
 			final FloatProcessor targetImage,
@@ -197,7 +197,7 @@ public class Render
 
 		// get the entire images at full scale
 		final ImageProcessorWithMasks impOriginal =
-				VisualizeTools.getUntransformedProcessorWithMasks(patch.getTileSpec(), imageProcessorCache);
+				VisualizeTools.getUntransformedProcessorWithMasks(patch, imageProcessorCache);
 
 		/* assemble coordinate transformations and add bounding box offset */
 		//final CoordinateTransformList< CoordinateTransform > ctl = new CoordinateTransformList< CoordinateTransform >();

@@ -55,6 +55,7 @@ import org.janelia.alignment.spec.stack.MipmapPathBuilder;
  */
 public class TileSpec implements Serializable {
 
+    public static String RESTART_LABEL = "restart";
     private String tileId;
     private LayoutData layout;
     private String groupId;
@@ -884,6 +885,38 @@ public class TileSpec implements Serializable {
         }
 
         return ctl;
+    }
+
+    /**
+     * Get the path to the image file for this tile spec.
+     *
+     * @return path to image file or null if this tile spec does not have an image.
+     */
+    @JsonIgnore
+    public String getImagePath() {
+        final ImageAndMask imageAndMask = this.getFirstMipmapEntry().getValue();
+        return imageAndMask.hasImage() ? imageAndMask.getImageFilePath() : null;
+    }
+
+    /**
+     * Get the path to the mask file for this tile spec.
+     *
+     * @return path to mask file or null if this tile spec does not have a mask.
+     */
+    @JsonIgnore
+    public String getMaskPath() {
+        final ImageAndMask imageAndMask = this.getFirstMipmapEntry().getValue();
+		return imageAndMask.hasMask() ? imageAndMask.getMaskFilePath() : null;
+    }
+
+    /**
+     * Get the URL to the image file for this tile spec.
+     *
+     * @return URL to image file or null if this tile spec does not have an image.
+     */
+    public String getTileImageUrl() {
+        final ImageAndMask imageAndMask = this.getFirstMipmapEntry().getValue();
+        return imageAndMask.hasImage() ? imageAndMask.getImageUrl() : null;
     }
 
     @Override
