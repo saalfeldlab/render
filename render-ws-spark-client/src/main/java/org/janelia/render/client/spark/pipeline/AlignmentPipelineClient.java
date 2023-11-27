@@ -5,6 +5,7 @@ import com.beust.jcommander.Parameter;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
@@ -165,21 +166,63 @@ public class AlignmentPipelineClient
         }
 
         if (alignmentPipelineParameters.hasAffineBlockSolverSetup()) {
-            final MultiProjectParameters multiProject = alignmentPipelineParameters.getMultiProject();
-            final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
-            final AffineBlockSolverSetup setup = alignmentPipelineParameters.getAffineBlockSolverSetup();
-            final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
-            // TODO: push StackWithZValues idea into core solver code
-            for (final StackWithZValues stackWithZValues : stackList) {
-                setup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
-                                            stackWithZValues.getStackId());
-                setupList.add(setup.clone());
-            }
-            final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
-            affineBlockSolverClient.runWithContext(sparkContext, setupList);
+            runAffineBlockSolver(sparkContext, alignmentPipelineParameters);
         }
 
         LOG.info("runWithContext: exit");
+    }
+
+    private static void runAffineBlockSolver(final JavaSparkContext sparkContext,
+                                             final AlignmentPipelineParameters alignmentPipelineParameters)
+            throws IOException {
+
+        final MultiProjectParameters multiProject = alignmentPipelineParameters.getMultiProject();
+        final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
+        final AffineBlockSolverSetup setup = alignmentPipelineParameters.getAffineBlockSolverSetup();
+        final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
+
+        // TODO: push StackWithZValues idea into core solver code
+        for (final StackWithZValues stackWithZValues : stackList) {
+            setup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
+                                        stackWithZValues.getStackId());
+            setupList.add(setup.clone());
+        }
+
+        final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
+
+        if (setup.alternatingRuns < 2) {
+
+            affineBlockSolverClient.runWithContext(sparkContext, setupList);
+
+        } else {
+
+            // TODO: handle alternatingRuns for multiple stacks
+            if (stackList.size() > 1) {
+                throw new IllegalArgumentException("alternatingRuns is not supported for multiple stacks");
+            }
+
+            final AffineBlockSolverSetup updatedSetup = setupList.get(0);
+            String sourceStack = updatedSetup.stack;
+            final String originalTargetStack = updatedSetup.targetStack.stack;
+
+            for (int runNumber = 0; runNumber < updatedSetup.alternatingRuns; runNumber++) {
+
+                final String targetStack = originalTargetStack + "_run" + runNumber;
+
+                final AffineBlockSolverSetup runSetup = updatedSetup.clone();
+                runSetup.stack = sourceStack;
+                runSetup.targetStack.stack = targetStack;
+                runSetup.blockPartition.shiftBlocks = runNumber % 2 == 1;
+
+                LOG.info("runAffineBlockSolver: run {} of {}, stack={}, targetStack={}, shiftBlocks={}",
+                         (runNumber + 1), runSetup.alternatingRuns, sourceStack, targetStack, runSetup.blockPartition.shiftBlocks);
+
+                affineBlockSolverClient.runWithContext(sparkContext, Collections.singletonList(runSetup));
+
+                sourceStack = runSetup.targetStack.stack;
+            }
+
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(AlignmentPipelineClient.class);

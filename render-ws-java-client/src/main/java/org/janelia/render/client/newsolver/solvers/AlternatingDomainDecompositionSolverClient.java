@@ -17,8 +17,6 @@ import java.io.IOException;
  */
 public class AlternatingDomainDecompositionSolverClient {
 
-	private static final int N_RUNS = 4;
-
 	public static void main(String[] args) {
 		if (args.length == 0) {
 			args = new String[]{"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
@@ -47,7 +45,9 @@ public class AlternatingDomainDecompositionSolverClient {
 					"--blockOptimizerLambdasTranslation", "1.0,0.0,0.0,0.0,0.0",
 					"--blockOptimizerLambdasRegularization", "0.0,0.0,0.0,0.0,0.0",
 					"--blockOptimizerIterations", "50,50,30,25,25",
-					"--blockMaxPlateauWidth", "25,25,15,10,10"
+					"--blockMaxPlateauWidth", "25,25,15,10,10",
+
+					"--alternatingRuns", "4"
 			};
 		}
 
@@ -72,9 +72,9 @@ public class AlternatingDomainDecompositionSolverClient {
 	private void solveAlternating(final AffineBlockSolverSetup parameters) throws IOException, InterruptedException {
 		final String targetStackPrefix = parameters.targetStack.stack;
 
-		for (int i = 0; i < N_RUNS; i++) {
+		for (int i = 0; i < parameters.alternatingRuns; i++) {
 			final int runNumber = i + 1;
-			LOG.info("solveAlternating: run {} of {}", runNumber, N_RUNS);
+			LOG.info("solveAlternating: run {} of {}", (runNumber + 1), parameters.alternatingRuns);
 
 			parameters.targetStack.stack = targetStackPrefix + "_run" + runNumber;
 			DistributedAffineBlockSolver.run(parameters);
