@@ -6,6 +6,7 @@ import mpicbg.models.IdentityModel;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import mpicbg.models.TranslationModel1D;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
 import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduceFilter;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
@@ -53,7 +54,7 @@ public class QuadraticIntensityCorrectionStrategy
 
 	@Override
 	@SuppressWarnings("unchecked") // modelTemplate is always of the type given above
-	public <M extends Model<M>> M getModelFor(final MinimalTileSpecWrapper p) {
+	public <M extends Model<M>> M getModelFor(final TileSpec p) {
 		if (quadraticZValues.contains(p.getZ())) {
 			return (M) quadraticModelTemplate.copy();
 		} else {
@@ -65,13 +66,13 @@ public class QuadraticIntensityCorrectionStrategy
 	// TODO: this code should be computed on-the-fly as a function of the coefficients
 	// TODO: replace interface Affine1D once a better alternative is available
 	public ArrayList<OnTheFlyIntensity> getOnTheFlyIntensities(
-			final List<MinimalTileSpecWrapper> patches,
+			final List<TileSpec> patches,
 			final int numCoefficients,
-			final Map<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles) {
+			final Map<TileSpec, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles) {
 
 		final ArrayList<OnTheFlyIntensity> correctedOnTheFly = new ArrayList<>();
 
-		for (final MinimalTileSpecWrapper p : patches) {
+		for (final TileSpec p : patches) {
 			/* save coefficients */
 			final double[][] abc_coefficients = new double[numCoefficients * numCoefficients][3];
 

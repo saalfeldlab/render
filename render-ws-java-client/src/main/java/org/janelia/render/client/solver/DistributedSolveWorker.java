@@ -16,7 +16,6 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.matchfilter.MatchFilter;
 import org.janelia.render.client.solver.matchfilter.NoMatchFilter;
 import org.janelia.render.client.solver.matchfilter.RandomMaxAmountFilter;
@@ -44,6 +43,8 @@ import mpicbg.models.TranslationModel2D;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
+
+import static org.janelia.alignment.spec.TileSpec.RESTART_LABEL;
 
 public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
@@ -299,13 +300,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					inputSolveItem.idToTileMap().put( pId, p );
 					inputSolveItem.idToPreviousModel().put( pId, pairP.getB() );
 
-					final MinimalTileSpec pTileSpecMin = new MinimalTileSpecWrapper(pTileSpec );
-					inputSolveItem.idToTileSpec().put( pId, pTileSpecMin );
+					inputSolveItem.idToTileSpec().put(pId, pTileSpec);
 
 					inputSolveItem.tileToIdMap().put( p, pId );
 
-					if ( pTileSpecMin.isRestart() )
-						inputSolveItem.restarts().add( (int)Math.round( pTileSpecMin.getZ() ) );
+					if (pTileSpec.hasLabel(RESTART_LABEL))
+						inputSolveItem.restarts().add( (int)Math.round( pTileSpec.getZ() ) );
 				}
 				else
 				{
@@ -319,13 +319,12 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					inputSolveItem.idToTileMap().put( qId, q );
 					inputSolveItem.idToPreviousModel().put( qId, pairQ.getB() );
 
-					final MinimalTileSpec qTileSpecMin = new MinimalTileSpecWrapper( qTileSpec );
-					inputSolveItem.idToTileSpec().put( qId, qTileSpecMin );
+					inputSolveItem.idToTileSpec().put(qId, qTileSpec);
 
 					inputSolveItem.tileToIdMap().put( q, qId );
 
-					if ( qTileSpecMin.isRestart() )
-						inputSolveItem.restarts().add( (int)Math.round( qTileSpecMin.getZ() ) );
+					if (qTileSpec.hasLabel(RESTART_LABEL))
+						inputSolveItem.restarts().add( (int)Math.round( qTileSpec.getZ() ) );
 				}
 				else
 				{
@@ -424,7 +423,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					for ( final Tile<B> imageTile : imageTiles )
 					{
 						final String tileId = solveItem.tileToIdMap().get( imageTile );
-						final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+						final TileSpec tileSpec = solveItem.idToTileSpec().get(tileId);
 						
 						//if ( !tileId.contains("_0-0-0") )
 						//	continue;
@@ -547,9 +546,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					for ( final Tile<B> imageTile : imageTiles )
 					{
 						final String tileId = solveItem.tileToIdMap().get( imageTile );
-						final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+						final TileSpec tileSpec = solveItem.idToTileSpec().get(tileId);
 
-						final int tileCol = tileSpec.getImageCol();
+						final int tileCol = tileSpec.getLayout().getImageCol();
 
 //						if ( tileCol != 0 )
 //							continue;
@@ -868,7 +867,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 				{
 					for ( final Tile< ? > t : inputSolveItem.groupedTileToTiles().get( groupedTile ) )
 					{
-						final MinimalTileSpec tileSpec = inputSolveItem.idToTileSpec().get( inputSolveItem.tileToIdMap().get( t ) );
+						final TileSpec tileSpec = inputSolveItem.idToTileSpec().get(inputSolveItem.tileToIdMap().get(t));
 	
 						newMin = Math.min( newMin, (int)Math.round( tileSpec.getZ() ) );
 						newMax = Math.max( newMax, (int)Math.round( tileSpec.getZ() ) );
@@ -1117,8 +1116,8 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final String pTileId = match.getpId();
 			final String qTileId = match.getqId();
 
-			final MinimalTileSpec pTileSpec = solveItem.idToTileSpec().get( pTileId );
-			final MinimalTileSpec qTileSpec = solveItem.idToTileSpec().get( qTileId );
+			final TileSpec pTileSpec = solveItem.idToTileSpec().get(pTileId);
+			final TileSpec qTileSpec = solveItem.idToTileSpec().get(qTileId);
 
 			// it is from a different solveitem
 			if ( pTileSpec == null || qTileSpec == null )

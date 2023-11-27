@@ -23,7 +23,6 @@ import org.janelia.alignment.util.PreloadedImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,34 +64,20 @@ import net.imglib2.view.Views;
 
 public class AdjustBlock {
 
-	public static List< MinimalTileSpecWrapper > wrapTileSpecs(final ResolvedTileSpecCollection resolvedTiles)
-	{
-		final List< MinimalTileSpecWrapper > data = new ArrayList<>(resolvedTiles.getTileCount());
+	public static List<TileSpec> sortTileSpecs(final ResolvedTileSpecCollection resolvedTiles) {
 		// tile order changes adjustment results, so sort tiles by id to ensure (somewhat) consistent results
-		final List<TileSpec> sortedTileSpecs = resolvedTiles.getTileSpecs()
+		return resolvedTiles.getTileSpecs()
 				.stream()
 				.sorted(Comparator.comparing(TileSpec::getTileId))
 				.collect(Collectors.toList());
-		for ( final TileSpec tileSpec : sortedTileSpecs )
-		{
-			//final AffineModel2D lastTransform = SolveTools.loadLastTransformFromSpec( tileSpec );
-			//data.add( new ValuePair<>( lastTransform, new MinimalTileSpec( tileSpec ) ) );
-			data.add( new MinimalTileSpecWrapper( tileSpec ) );
-		}
-
-		return data;
 	}
 
 	/**
 	 * Fits a quadratic function along X and removes the difference, independently for each image
-	 * 
-	 * @param imp
-	 * @param debug
-	 * @return
 	 */
 	public static FloatProcessor correct( final ImageProcessorWithMasks imp, final boolean debug )
 	{
-		double[] avg = new double[ imp.ip.getWidth() ];
+		final double[] avg = new double[ imp.ip.getWidth() ];
 		final ArrayList< Point > points = new ArrayList<>();
 
 		// use only 70% of the pixels in the middle
@@ -126,7 +111,7 @@ public class AdjustBlock {
 
 		if ( debug )
 		{
-			ImagePlus line = ImageJFunctions.wrapFloat( Views.addDimension( ArrayImgs.doubles( avg, avg.length ), 0, 0 ), "" );
+			final ImagePlus line = ImageJFunctions.wrapFloat(Views.addDimension(ArrayImgs.doubles(avg, avg.length), 0, 0), "");
 			line.setRoi(new Line(0,0,avg.length,0));
 			new ProfilePlot( line ).createWindow();
 		}
@@ -149,12 +134,12 @@ public class AdjustBlock {
 			*/
 
 			//HigherOrderPolynomialFunction q = new HigherOrderPolynomialFunction( 3 );
-			QuadraticFunction q = new QuadraticFunction();
+			final QuadraticFunction q = new QuadraticFunction();
 			q.fitFunction(points);
 
 			double avgFit = 0.0;
 
-			double[] fit = new double[ avg.length ];
+			final double[] fit = new double[avg.length];
 
 			for ( int x = 0; x < avg.length; ++x )
 			{
@@ -165,7 +150,7 @@ public class AdjustBlock {
 			
 			avgFit /= (double)fit.length;
 
-			double[] correctedAvg = new double[ avg.length ];
+			final double[] correctedAvg = new double[avg.length];
 			final FloatProcessor corrected = new FloatProcessor( imp.ip.getWidth(), imp.ip.getHeight() );
 
 			for ( int x = 0; x < avg.length; ++x )
@@ -180,45 +165,44 @@ public class AdjustBlock {
 
 			if ( debug )
 			{
-				ImagePlus fitImp = ImageJFunctions.wrapFloat( Views.addDimension( ArrayImgs.doubles( fit, fit.length ), 0, 0 ), "" );
+				final ImagePlus fitImp = ImageJFunctions.wrapFloat(Views.addDimension(ArrayImgs.doubles(fit, fit.length), 0, 0), "");
 				fitImp.setRoi(new Line(0,0,avg.length,0));
 				new ProfilePlot( fitImp ).createWindow();
 
-				ImagePlus correctedImp = ImageJFunctions.wrapFloat( Views.addDimension( ArrayImgs.doubles( correctedAvg, correctedAvg.length ), 0, 0 ), "" );
+				final ImagePlus correctedImp = ImageJFunctions.wrapFloat(Views.addDimension(ArrayImgs.doubles(correctedAvg, correctedAvg.length), 0, 0), "");
 				correctedImp.setRoi(new Line(0,0,avg.length,0));
 				new ProfilePlot( correctedImp ).createWindow();
 			}
 
 			return corrected;
 		}
-		catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		catch (final Exception e) {
+			LOG.error("correct: caught exception ", e);
 		}
 
 		return null;
 	}
 
 	public static HashMap< Integer, double[] > computeAdjustments(
-			final List<Pair<AffineModel2D,MinimalTileSpec>> data,
+			final List<Pair<AffineModel2D, TileSpec>> data,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected )
 	{
 		// we need to go from inside to outside adjusting avg and stdev of the overlapping areas
-		ArrayList< Pair< Integer, Integer > > inputOrder = new ArrayList<>();
+		final ArrayList<Pair<Integer, Integer>> inputOrder = new ArrayList<>();
 
 		for ( int i = 0; i < data.size(); ++i )
-			inputOrder.add( new ValuePair<>( data.get( i ).getB().getImageCol(), i ) );
+			inputOrder.add(new ValuePair<>(data.get(i).getB().getLayout().getImageCol(), i));
 
 		// sort by column order
-		Collections.sort( inputOrder, (o1, o2 ) -> o1.getA().compareTo( o2.getA() ) );
+		inputOrder.sort(Comparator.comparing(Pair::getA));
 
-		ArrayList< Integer > order = new ArrayList<>();
+		final ArrayList<Integer> order = new ArrayList<>();
 
 		// [1,2,3,4] -> 3
 		// [1,2,4] -> 2
 		// [1,4] -> 4
 		// [1] -> 1
-		while( inputOrder.size() > 0 )
+		while(!inputOrder.isEmpty())
 		{
 			final int index = inputOrder.size() / 2;
 			order.add( inputOrder.get( index ).getB() ); // just remember the index
@@ -237,7 +221,7 @@ public class AdjustBlock {
 
 			final AffineModel2D model = data.get( i ).getA();
 			final AffineTransform2D affine = toImgLib( model );
-			final MinimalTileSpec tileSpec = data.get( i ).getB();
+			final TileSpec tileSpec = data.get(i).getB();
 			final RealInterval boundingBox = boundingBox( 0,0,corrected.get( i ).getB().getWidth() - 1,corrected.get( i ).getB().getHeight() - 1, model );
 
 			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
@@ -349,7 +333,7 @@ public class AdjustBlock {
 							adjustments.put( i, new double[] { avgO, mul, avgQ } );
 
 							LOG.debug("computeAdjustments: adjustment for column {} is: sub {}, mul {}, add {}",
-									  tileSpec.getImageCol(), avgO, mul, avgQ);
+									  tileSpec.getLayout().getImageCol(), avgO, mul, avgQ);
 							break;
 						}
 					}
@@ -359,7 +343,7 @@ public class AdjustBlock {
 			if ( !adjustments.containsKey( i ) )
 			{
 				LOG.warn("computeAdjustments: COULD NOT ADJUST column {}, setting to identity",
-						 tileSpec.getImageCol());
+						 tileSpec.getLayout().getImageCol());
 				adjustments.put( i, new double[] { 0, 1, 0 } );
 			}
 		}
@@ -369,7 +353,7 @@ public class AdjustBlock {
 
 	public static ImageProcessorWithMasks fuseFinal(
 			final RenderParameters sliceRenderParameters,
-			final List<MinimalTileSpecWrapper> data1,
+			final List<TileSpec> data1,
 			final ArrayList < OnTheFlyIntensity > corrected1,
 			final ImageProcessorCache imageProcessorCache )
 	{
@@ -380,7 +364,7 @@ public class AdjustBlock {
 												 false);
 
 		for (int i = 0; i < data1.size(); i++) {
-			final MinimalTileSpecWrapper wrapper = data1.get(i);
+			final TileSpec tileSpec = data1.get(i);
 
 			// this should be a virtual construct
 			{
@@ -392,7 +376,7 @@ public class AdjustBlock {
 				final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
 				*/
 
-				preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), corrected1.get( i ).computeIntensityCorrection8BitOnTheFly(imageProcessorCache) );
+				preloadedImageProcessorCache.put(tileSpec.getTileImageUrl(), corrected1.get(i).computeIntensityCorrection8BitOnTheFly(imageProcessorCache));
 			}
 		}
 		// TODO: this will be bigger than 2^31
@@ -401,7 +385,7 @@ public class AdjustBlock {
 
 	public static ImageProcessorWithMasks fuseFinal(
 			final RenderParameters sliceRenderParameters,
-			final List<MinimalTileSpecWrapper> data1,
+			final List<TileSpec> data1,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 ) // TODO: this will likely cause outofmemory
 	{
 		// TODO: pass pre-loaded cache in and clear source data so that masks can be cached and reused across z
@@ -411,7 +395,7 @@ public class AdjustBlock {
 												 false);
 
 		for (int i = 0; i < data1.size(); i++) {
-			final MinimalTileSpecWrapper wrapper = data1.get(i);
+			final TileSpec wrapper = data1.get(i);
 			final FloatProcessor correctedSource = corrected1.get(i).getB();
 
 			// Need to reset intensity range back to full 8-bit before converting to byte processor!
@@ -426,7 +410,7 @@ public class AdjustBlock {
 
 	public static RandomAccessibleInterval< UnsignedByteType > fuse2d(
 			final Interval interval,
-			final List<Pair<AffineModel2D,MinimalTileSpec>> data,
+			final List<Pair<AffineModel2D, TileSpec>> data,
 			final List<Pair<ByteProcessor, FloatProcessor>> corrected,
 			final Map< Integer, double[] > adjustments  )
 	{
@@ -479,7 +463,7 @@ public class AdjustBlock {
 	public static AffineTransform2D toImgLib( final AffineModel2D model )
 	{
 		final AffineTransform2D affine = new AffineTransform2D();
-		double[] array = new double[6];
+		final double[] array = new double[6];
 		model.toArray( array );
 		affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
 		return affine;
@@ -512,7 +496,7 @@ public class AdjustBlock {
 	}
 
 	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForSliceTiles(
-			final List<MinimalTileSpecWrapper> sliceTiles,
+			final List<TileSpec> sliceTiles,
 			final double renderScale,
 			final Integer zDistance,
 			final ImageProcessorCache imageProcessorCache,
@@ -548,7 +532,7 @@ public class AdjustBlock {
 			final IntensityCorrectionStrategy strategy,
 			final int numThreads) throws InterruptedException, ExecutionException
 	{
-		final List<MinimalTileSpecWrapper> tilesForZ = wrapTileSpecs(resolvedTiles);
+		final List<TileSpec> tilesForZ = sortTileSpecs(resolvedTiles);
 		//final HashMap< Integer, double[] > adjustments = new HashMap<>();
 
 		//final List<Pair<ByteProcessor, FloatProcessor>> corrected = new IntensityMatcher().match(
@@ -577,14 +561,14 @@ public class AdjustBlock {
 //		final double scale = 0.22;
 //		final double[] sigma = new double[] { 0, 50 };
 //
-//		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
+//		final List<TileSpec> data = getData(z, renderDataClient, stack);
 //		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
 //		final HashMap< Integer, double[] > adjustments = new HashMap<>();
 //
 //		int k = -1;
-//		for (final Pair<AffineModel2D, MinimalTileSpec> tile : data) {
+//		for (final Pair<AffineModel2D, TileSpec> tile : data) {
 //			++k;
-//			final MinimalTileSpec minimalTileSpec = tile.getB();
+//			final TileSpec minimalTileSpec = tile.getB();
 //
 //			//if (minimalTileSpec.getImageCol() != 0 )
 //			//	continue;
@@ -704,12 +688,12 @@ public class AdjustBlock {
 //																						  final int z)
 //			throws IOException {
 //
-//		final List<MinimalTileSpecWrapper> data = getData(z, renderDataClient, stack);
+//		final List<TileSpec> data = getData(z, renderDataClient, stack);
 //		final List<Pair<ByteProcessor, FloatProcessor>> corrected = new ArrayList<>();
 //
-//		for ( final Pair<AffineModel2D,MinimalTileSpec> tile : data )
+//		for ( final Pair<AffineModel2D,TileSpec> tile : data )
 //		{
-//			final MinimalTileSpec minimalTileSpec = tile.getB();
+//			final TileSpec minimalTileSpec = tile.getB();
 //
 //			LOG.debug("renderIntensityAdjustedSlice: processing tile {} in column {}",
 //					  minimalTileSpec.getTileId(), minimalTileSpec.getImageCol());
@@ -731,12 +715,12 @@ public class AdjustBlock {
 //		return fuse2d(interval, data, corrected, adjustments);
 //	}
 
-	public static void main( String[] args ) throws IOException, InterruptedException, ExecutionException
+	public static void main(final String[] args) throws IOException, InterruptedException, ExecutionException
 	{
-		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "Z0720_07m_BR"; //"flyem";
-		String project = "Sec39";//"Sec26"; //"Z0419_25_Alpha3";
-		String stack = "v1_acquire_trimmed_sp1";//"v2_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
+		final String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
+		final String owner = "Z0720_07m_BR"; //"flyem";
+		final String project = "Sec39";//"Sec26"; //"Z0419_25_Alpha3";
+		final String stack = "v1_acquire_trimmed_sp1";//"v2_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		final StackMetaData meta =  renderDataClient.getStackMetaData( stack );
@@ -792,7 +776,7 @@ public class AdjustBlock {
 
 		final ImagePlus imp1 = new ImagePlus( project + "_" + stack, stack3d );
 
-		Calibration cal = new Calibration();
+		final Calibration cal = new Calibration();
 		cal.xOrigin = -(int)interval.min(0);
 		cal.yOrigin = -(int)interval.min(1);
 		cal.zOrigin = -minZ;

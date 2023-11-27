@@ -9,8 +9,8 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWith
 import org.janelia.alignment.filter.IntensityMap8BitFilter;
 import org.janelia.alignment.filter.QuadraticIntensityMap8BitFilter;
 import org.janelia.alignment.intensity.QuadraticIntensityMap;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import net.imglib2.img.Img;
@@ -24,7 +24,7 @@ public class QuadraticOnTheFlyIntensity extends OnTheFlyIntensity {
 
 
 	public QuadraticOnTheFlyIntensity(
-			final MinimalTileSpecWrapper p,
+			final TileSpec p,
 			final double[][] abc_coefficients,
 			final int numCoefficients) {
 		super(p, abc_coefficients, numCoefficients);
@@ -32,7 +32,7 @@ public class QuadraticOnTheFlyIntensity extends OnTheFlyIntensity {
 
 	@Override
 	public FloatProcessor computeIntensityCorrectionOnTheFly(
-			final MinimalTileSpecWrapper p,
+			final TileSpec p,
 			final double[][] abc_coefficients,
 			final int numCoefficients,
 			final ImageProcessorCache imageProcessorCache) {
@@ -41,7 +41,7 @@ public class QuadraticOnTheFlyIntensity extends OnTheFlyIntensity {
 		final FloatProcessor bs = new FloatProcessor(numCoefficients, numCoefficients);
 		final FloatProcessor cs = new FloatProcessor(numCoefficients, numCoefficients);
 
-		final ImageProcessorWithMasks imp = VisualizeTools.getUntransformedProcessorWithMasks(p.getTileSpec(), imageProcessorCache);
+		final ImageProcessorWithMasks imp = VisualizeTools.getUntransformedProcessorWithMasks(p, imageProcessorCache);
 
 		final FloatProcessor fp = imp.ip.convertToFloatProcessor();
 		fp.resetMinAndMax();

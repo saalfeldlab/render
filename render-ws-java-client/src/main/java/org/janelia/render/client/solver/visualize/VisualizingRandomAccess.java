@@ -5,7 +5,7 @@ import java.util.HashMap;
 
 import mpicbg.models.AffineModel2D;
 
-import org.janelia.render.client.solver.MinimalTileSpec;
+import org.janelia.alignment.spec.TileSpec;
 
 import net.imglib2.AbstractLocalizable;
 import net.imglib2.Localizable;
@@ -16,14 +16,14 @@ import net.imglib2.util.Pair;
 public class VisualizingRandomAccess extends AbstractLocalizable implements RandomAccess< FloatType >
 {
 	final HashMap<String, AffineModel2D> idToInvertedRenderModels;
-	final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec; // at full resolution
+	final HashMap<Integer, ArrayList<Pair<String, TileSpec>>> zToTileSpec; // at full resolution
 	final HashMap<String, Float> idToValue;
 	final double[] scale, tmp;
 	final FloatType type;
 
 	public VisualizingRandomAccess(
 			final HashMap<String, AffineModel2D> idToInvertedRenderModels,
-			final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec,
+			final HashMap<Integer, ArrayList<Pair<String, TileSpec>>> zToTileSpec,
 			final HashMap<String, Float> idToValue,
 			final double[] scale )
 	{
@@ -44,7 +44,7 @@ public class VisualizingRandomAccess extends AbstractLocalizable implements Rand
 		// the position is in the scaled space and needs to be mapped to full res
 		final int z = (int)Math.round( this.position[ 2 ] / scale[ 2 ] );
 
-		final ArrayList< Pair<String,MinimalTileSpec> > entries = zToTileSpec.get( z );
+		final ArrayList<Pair<String, TileSpec>> entries = zToTileSpec.get(z);
 
 		if ( entries == null )
 		{
@@ -54,7 +54,7 @@ public class VisualizingRandomAccess extends AbstractLocalizable implements Rand
 
 		float value = 0;
 
-		for ( final Pair< String, MinimalTileSpec > pair : entries )
+		for (final Pair<String, TileSpec> pair : entries)
 		{
 			final String tileId = pair.getA();
 			final int w = pair.getB().getWidth();

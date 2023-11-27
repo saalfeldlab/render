@@ -4,14 +4,14 @@ import ij.process.ByteProcessor;
 import ij.process.FloatProcessor;
 
 import org.janelia.alignment.filter.IntensityMap8BitFilter;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 
 public abstract class OnTheFlyIntensity {
 
-	final MinimalTileSpecWrapper p;
+	final TileSpec p;
 
-	// all coefficients needed for a single image (depends how its broken up initially), each tile is a 1D affine, i.e. 2 numbers
+	// all coefficients needed for a single image (depends on how it's broken up initially), each tile is a 1D affine, i.e. 2 numbers
 	// ArrayList< Tile< ? extends Affine1D< ? > > > subRegionTiles;
 	// we only store the actual coefficients
 	// contains [numCoefficients * numCoefficients][ab]
@@ -21,7 +21,7 @@ public abstract class OnTheFlyIntensity {
 	final int numCoefficients;
 
 	public OnTheFlyIntensity(
-			final MinimalTileSpecWrapper p,
+			final TileSpec p,
 			final double[][] coefficients,
 			final int numCoefficients )
 	{
@@ -30,7 +30,7 @@ public abstract class OnTheFlyIntensity {
 		this.numCoefficients = numCoefficients;
 	}
 
-	public MinimalTileSpecWrapper getMinimalTileSpecWrapper() { return p; }
+	public TileSpec getTileSpec() { return p; }
 	public double[][] getCoefficients() { return coefficients; }
 	public int getNumCoefficients() { return numCoefficients; }
 
@@ -49,8 +49,8 @@ public abstract class OnTheFlyIntensity {
 	}
 
 	public abstract FloatProcessor computeIntensityCorrectionOnTheFly(
-			final MinimalTileSpecWrapper p,
-			final double[][] coefficients, // all coefficients needed for a single image (depends how its broken up initially), e.g., if each tile is a 1D affine, 2 numbers
+			final TileSpec p,
+			final double[][] coefficients, // all coefficients needed for a single image (depends on how it's broken up initially), e.g., if each tile is a 1D affine, 2 numbers
 			final int numCoefficients, // e.g. if numCoefficients==4, then we have 16 tiles per image
 			final ImageProcessorCache imageProcessorCache);
 

@@ -9,8 +9,8 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWith
 import org.janelia.alignment.filter.IntensityMap8BitFilter;
 import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
 import org.janelia.alignment.intensity.LinearIntensityMap;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import net.imglib2.img.Img;
@@ -21,7 +21,7 @@ import net.imglib2.type.numeric.real.FloatType;
 public class LinearOnTheFlyIntensity extends OnTheFlyIntensity
 {
 	public LinearOnTheFlyIntensity(
-			final MinimalTileSpecWrapper p,
+			final TileSpec p,
 			final double[][] ab_coefficients,
 			final int numCoefficients )
 	{
@@ -30,7 +30,7 @@ public class LinearOnTheFlyIntensity extends OnTheFlyIntensity
 
 	@Override
 	public FloatProcessor computeIntensityCorrectionOnTheFly(
-			final MinimalTileSpecWrapper p,
+			final TileSpec p,
 			final double[][] ab_coefficients, // all coefficients needed for a single image (depends how its broken up initially), each tile is a 1D affine, i.e. 2 numbers
 			final int numCoefficients, // e.g. if numCoefficients==4, then we have 16 tiles per image
 			final ImageProcessorCache imageProcessorCache )
@@ -40,8 +40,7 @@ public class LinearOnTheFlyIntensity extends OnTheFlyIntensity
 		final FloatProcessor as = new FloatProcessor( numCoefficients, numCoefficients );
 		final FloatProcessor bs = new FloatProcessor( numCoefficients, numCoefficients );
 
-		final ImageProcessorWithMasks imp = VisualizeTools.getUntransformedProcessorWithMasks(p.getTileSpec(),
-																							  imageProcessorCache);
+		final ImageProcessorWithMasks imp = VisualizeTools.getUntransformedProcessorWithMasks(p, imageProcessorCache);
 
 		final FloatProcessor fp = imp.ip.convertToFloatProcessor();
 		fp.resetMinAndMax();

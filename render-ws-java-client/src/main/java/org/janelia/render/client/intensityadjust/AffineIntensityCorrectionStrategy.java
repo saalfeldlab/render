@@ -7,6 +7,7 @@ import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import mpicbg.models.TranslationModel1D;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
 import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduceFilter;
 import org.janelia.render.client.intensityadjust.virtual.LinearOnTheFlyIntensity;
@@ -36,12 +37,12 @@ public class AffineIntensityCorrectionStrategy implements IntensityCorrectionStr
 	@Override
 	// TODO: this code should be computed on-the-fly as a function of the coefficients
 	public ArrayList<OnTheFlyIntensity> getOnTheFlyIntensities(
-			final List<MinimalTileSpecWrapper> patches,
+			final List<TileSpec> patches,
 			final int numCoefficients,
-			final Map<MinimalTileSpecWrapper, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles) {
+			final Map<TileSpec, ArrayList<Tile<? extends Affine1D<?>>>> coefficientsTiles) {
 
 		final ArrayList<OnTheFlyIntensity> correctedOnTheFly = new ArrayList<>();
-		for (final MinimalTileSpecWrapper p : patches) {
+		for (final TileSpec p : patches) {
 			/* save coefficients */
 			final double[][] ab_coefficients = new double[numCoefficients * numCoefficients][2];
 
@@ -61,7 +62,7 @@ public class AffineIntensityCorrectionStrategy implements IntensityCorrectionStr
 
 	@Override
 	@SuppressWarnings("unchecked") // modelTemplate is always of the type given above
-	public <M extends Model<M>> M getModelFor(final MinimalTileSpecWrapper p) {
+	public <M extends Model<M>> M getModelFor(final TileSpec p) {
 		return (M) modelTemplate.copy();
 	}
 

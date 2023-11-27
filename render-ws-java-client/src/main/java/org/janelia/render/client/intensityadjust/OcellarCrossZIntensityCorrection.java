@@ -118,9 +118,9 @@ public class OcellarCrossZIntensityCorrection {
                 showTileSpec("Q original", secondOverlapSpec, 0.1, imageProcessorCache);
             }
 
-            final List<MinimalTileSpecWrapper> alignedOverlapBoxes = new ArrayList<>();
-            alignedOverlapBoxes.add(new MinimalTileSpecWrapper(firstOverlapSpec));
-            alignedOverlapBoxes.add(new MinimalTileSpecWrapper(secondOverlapSpec));
+            final List<TileSpec> alignedOverlapBoxes = new ArrayList<>();
+            alignedOverlapBoxes.add(firstOverlapSpec);
+            alignedOverlapBoxes.add(secondOverlapSpec);
 
             final List<OnTheFlyIntensity> corrected =
                     AdjustBlock.correctIntensitiesForSliceTiles(alignedOverlapBoxes,
