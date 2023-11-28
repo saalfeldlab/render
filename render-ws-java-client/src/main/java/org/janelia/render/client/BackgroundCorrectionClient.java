@@ -17,12 +17,16 @@ import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.algorithm.neighborhood.HyperSphereShape;
 import net.imglib2.img.Img;
+import net.imglib2.img.basictypeaccess.array.FloatArray;
 import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.img.imageplus.ImagePlusImg;
+import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.interpolation.InterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.ChannelSpec;
@@ -66,7 +70,7 @@ public class BackgroundCorrectionClient {
 		@Parameter(names = "--scale", description = "Scale to use for median filter (default: 0.1)")
 		private double scale = 0.1;
 		@Parameter(names = "--outputFolder", description = "Folder to write corrected images to (default: ./background_corrected)")
-		private String outputFolder = "background_corrected_base";
+		private String outputFolder = "background_corrected";
 	}
 
 	public static void main(String[] args) {
@@ -114,7 +118,8 @@ public class BackgroundCorrectionClient {
 			final ImageProcessor ip = loadImage(tileSpec, imageProcessorCache);
 
 			final long start = System.currentTimeMillis();
-			final ImageProcessor processedImage = subtractBackground(ip);
+//			final ImageProcessor processedImage = subtractBackground(ip);
+			final ImageProcessor processedImage = subtractBackgroundMirrorOob(ip);
 //			final ImageProcessor processedImage = subtractBackgroundIL2(ip);
 			final long end = System.currentTimeMillis();
 			LOG.info("Corrected background for tile {} in {} ms", tileSpec.getTileId(), end - start);
@@ -193,6 +198,37 @@ public class BackgroundCorrectionClient {
 		return original.getProcessor();
 	}
 
+	private ImageProcessor subtractBackgroundMirrorOob(final ImageProcessor ip) {
+		// convert to 32-bit grayscale (float) for lossless processing
+		final ImagePlus original = new ImagePlus("original", ip);
+		final ImageConverter imageConverter = new ImageConverter(original);
+		imageConverter.convertToGray32();
+
+		// resize to speed up processing
+		final int targetWidth = (int) (params.scale * ip.getWidth());
+		final int targetHeight = (int) (params.scale * ip.getHeight());
+		final ImagePlus background = Scaler.resize(original, targetWidth, targetHeight, 1, "bilinear");
+
+		// median filtering for actual background computation
+		final double downscaledRadius = params.radius * params.scale;
+		final RankFilters rankFilters = new RankFilters();
+		final ImagePlus extendedBackground = extendBorder(background, downscaledRadius);
+		rankFilters.rank(extendedBackground.getProcessor(), downscaledRadius, RankFilters.MEDIAN);
+		final ImagePlus filteredBackground = crop(extendedBackground, downscaledRadius);
+
+		// subtract mean to not shift the actual image values
+		final double mean = ImageStatistics.getStatistics(filteredBackground.getProcessor(), Measurements.MEAN, null).mean;
+		filteredBackground.getProcessor().subtract(mean);
+
+		// finally, subtract the background
+		final ImagePlus resizedBackground = Scaler.resize(filteredBackground, ip.getWidth(), ip.getHeight(), 1, "bilinear");
+		ImageCalculator.run(original, resizedBackground, "subtract");
+
+		// convert back to original bit depth
+		imageConverter.convertToGray8();
+		return original.getProcessor();
+	}
+
 	private ImageProcessor subtractBackgroundIL2(final ImageProcessor ip) {
 		// convert to 32-bit grayscale (float) for lossless processing
 		final Img<FloatType> original = ImageJFunctions.convertFloat(new ImagePlus("original", ip));
@@ -261,6 +297,32 @@ public class BackgroundCorrectionClient {
 	private void subtractAverage(final Img<FloatType> input) {
 		final float mean = ij.op().stats().mean(input).getRealFloat();
 		LoopBuilder.setImages(input).forEachPixel(p -> p.set(p.get() - mean));
+	}
+
+	private ImagePlus extendBorder(final ImagePlus input, final double padding) {
+		final Img<FloatType> in = ImageJFunctions.wrap(input);
+		final long extendSize = (long) Math.ceil(padding);
+		final IntervalView<FloatType> view = Views.expandMirrorSingle(in, extendSize, extendSize);
+
+		// make copy, otherwise the changes of the median filter are not visible
+		final ImagePlusImg<FloatType, FloatArray> test = ImagePlusImgs.floats(input.getWidth() + 2 * extendSize, input.getHeight() + 2 * extendSize);
+		LoopBuilder.setImages(view, test).forEachPixel((v, t) -> t.set(v.get()));
+
+		final ImagePlus out = test.getImagePlus();
+		out.getProcessor().setMinAndMax(0.0, 255.0);
+		return out;
+	}
+
+	private ImagePlus crop(final ImagePlus input, final double padding) {
+		final long cropSize = (long) Math.ceil(padding);
+		final long[] min = new long[] {cropSize, cropSize};
+		final long[] max = new long[] {input.getWidth() - cropSize - 1, input.getHeight() - cropSize - 1};
+		final Img<FloatType> in = ImageJFunctions.wrap(input);
+
+		final RandomAccessibleInterval<FloatType> roi = Views.interval(in, min, max);
+		final ImagePlus out = ImageJFunctions.wrap(roi, "cropped");
+		out.getProcessor().setMinAndMax(0.0, 255.0);
+		return out;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(BackgroundCorrectionClient.class);
