@@ -8,7 +8,6 @@ import ij.measure.Measurements;
 import ij.plugin.ImageCalculator;
 import ij.plugin.Scaler;
 import ij.plugin.filter.RankFilters;
-import ij.process.ImageConverter;
 import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
 import net.imglib2.RandomAccessibleInterval;
@@ -109,11 +108,11 @@ public class BackgroundCorrectionClient {
 			final ImageProcessor ip = loadImage(tileSpec, imageProcessorCache);
 
 			final long start = System.currentTimeMillis();
-			final ImageProcessor processedImage = subtractBackground(ip);
+			subtractBackground(ip);
 			final long end = System.currentTimeMillis();
 			LOG.info("Corrected background for tile {} in {} ms", tileSpec.getTileId(), end - start);
 
-			saveImage(processedImage, tileSpec);
+			saveImage(ip, tileSpec);
 		}
 	}
 
@@ -158,16 +157,14 @@ public class BackgroundCorrectionClient {
 									   imageAndMask.getImageSliceNumber());
 	}
 
-	private ImageProcessor subtractBackground(final ImageProcessor ip) {
+	private void subtractBackground(final ImageProcessor ip) {
 		// convert to 32-bit grayscale (float) for lossless processing
-		final ImagePlus original = new ImagePlus("original", ip);
-		final ImageConverter imageConverter = new ImageConverter(original);
-		imageConverter.convertToGray32();
+		final ImagePlus content = new ImagePlus("content", ip.convertToFloat());
 
 		// resize to speed up processing
 		final int targetWidth = (int) (params.scale * ip.getWidth());
 		final int targetHeight = (int) (params.scale * ip.getHeight());
-		final ImagePlus background = Scaler.resize(original, targetWidth, targetHeight, 1, "bilinear");
+		final ImagePlus background = Scaler.resize(content, targetWidth, targetHeight, 1, "bilinear");
 
 		// median filtering for actual background computation
 		final double downscaledRadius = params.radius * params.scale;
@@ -182,11 +179,10 @@ public class BackgroundCorrectionClient {
 
 		// finally, subtract the background
 		final ImagePlus resizedBackground = Scaler.resize(filteredBackground, ip.getWidth(), ip.getHeight(), 1, "bilinear");
-		ImageCalculator.run(original, resizedBackground, "subtract");
+		ImageCalculator.run(content, resizedBackground, "subtract");
 
 		// convert back to original bit depth
-		imageConverter.convertToGray8();
-		return original.getProcessor();
+		ip.insert(content.getProcessor().convertToByteProcessor(), 0, 0);
 	}
 
 	private void saveImage(final ImageProcessor ip, final TileSpec tileSpec) {
@@ -203,10 +199,10 @@ public class BackgroundCorrectionClient {
 
 		// make copy, otherwise the changes of the median filter are not visible
 		// this leads to a very hard to find bug, so don't delete this copy!
-		final ImagePlusImg<FloatType, FloatArray> test = ImagePlusImgs.floats(input.getWidth() + 2 * extendSize, input.getHeight() + 2 * extendSize);
-		LoopBuilder.setImages(view, test).forEachPixel((v, t) -> t.set(v.get()));
+		final ImagePlusImg<FloatType, FloatArray> copy = ImagePlusImgs.floats(input.getWidth() + 2 * extendSize, input.getHeight() + 2 * extendSize);
+		LoopBuilder.setImages(view, copy).forEachPixel((v, t) -> t.set(v.get()));
 
-		final ImagePlus out = test.getImagePlus();
+		final ImagePlus out = copy.getImagePlus();
 		out.getProcessor().setMinAndMax(0.0, 255.0);
 		return out;
 	}
