@@ -11,6 +11,19 @@ import ij.plugin.filter.RankFilters;
 import ij.process.ImageConverter;
 import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
+import net.imagej.ImageJ;
+import net.imglib2.IterableInterval;
+import net.imglib2.RandomAccessible;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.algorithm.neighborhood.HyperSphereShape;
+import net.imglib2.img.Img;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.InterpolatorFactory;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.loops.LoopBuilder;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.view.Views;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -34,6 +47,8 @@ import java.nio.file.Path;
  */
 public class BackgroundCorrectionClient {
 
+	private static final ImageJ ij = new ImageJ();
+
 	private final Parameters params;
 	private final RenderDataClient renderClient;
 
@@ -51,7 +66,7 @@ public class BackgroundCorrectionClient {
 		@Parameter(names = "--scale", description = "Scale to use for median filter (default: 0.1)")
 		private double scale = 0.1;
 		@Parameter(names = "--outputFolder", description = "Folder to write corrected images to (default: ./background_corrected)")
-		private String outputFolder = "background_corrected";
+		private String outputFolder = "background_corrected_base";
 	}
 
 	public static void main(String[] args) {
@@ -97,7 +112,13 @@ public class BackgroundCorrectionClient {
 		ensureOutputFolderExists();
 		for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
 			final ImageProcessor ip = loadImage(tileSpec, imageProcessorCache);
+
+			final long start = System.currentTimeMillis();
 			final ImageProcessor processedImage = subtractBackground(ip);
+//			final ImageProcessor processedImage = subtractBackgroundIL2(ip);
+			final long end = System.currentTimeMillis();
+			LOG.info("Corrected background for tile {} in {} ms", tileSpec.getTileId(), end - start);
+
 			saveImage(processedImage, tileSpec);
 		}
 	}
@@ -172,11 +193,74 @@ public class BackgroundCorrectionClient {
 		return original.getProcessor();
 	}
 
+	private ImageProcessor subtractBackgroundIL2(final ImageProcessor ip) {
+		// convert to 32-bit grayscale (float) for lossless processing
+		final Img<FloatType> original = ImageJFunctions.convertFloat(new ImagePlus("original", ip));
+
+		// resize to speed up processing
+		final int targetWidth = (int) (params.scale * ip.getWidth());
+		final int targetHeight = (int) (params.scale * ip.getHeight());
+		Img<FloatType> background = rescale(original, new long[] {targetWidth, targetHeight});
+
+		// median filtering for actual background computation
+		final double downscaledRadius = params.radius * params.scale;
+		background = medianFilter(background, downscaledRadius);
+
+		// subtract mean to not shift the actual image values
+		subtractAverage(background);
+
+		// finally, subtract the background
+		final Img<FloatType> resizedBackground = rescale(background, original.dimensionsAsLongArray());
+		LoopBuilder.setImages(original, resizedBackground).forEachPixel((o, b) -> o.set(o.get() - b.get()));
+
+		// convert back to original bit depth
+		return ImageJFunctions.wrap(convertToByte(original), "corrected").getProcessor();
+	}
+
 	private void saveImage(final ImageProcessor ip, final TileSpec tileSpec) {
 		final String tileId = tileSpec.getTileId();
 		final ImagePlus imp = new ImagePlus(tileId, ip);
 		final Path targetPath = Path.of(params.outputFolder, tileId + ".png").toAbsolutePath();
 		IJ.save(imp, targetPath.toString());
+	}
+
+	private Img<FloatType> rescale(
+			final Img<FloatType> input,
+			final long[] newDims)
+	{
+		final int n = input.numDimensions();
+		final double[] scaleFactors = new double[n];
+		for (int i = 0; i < n; i++)
+			scaleFactors[i] = (double) newDims[i] / input.dimension(i);
+
+		final InterpolatorFactory<FloatType, RandomAccessible<FloatType>> interpolator = new NLinearInterpolatorFactory<>();
+		final RandomAccessibleInterval<FloatType> scaledView = ij.op().transform().scaleView(input, scaleFactors, interpolator);
+
+		final Img<FloatType> output = input.factory().create(newDims);
+		LoopBuilder.setImages(scaledView, output).forEachPixel((v, o) -> o.set(v));
+		return output;
+	}
+
+	private Img<FloatType> medianFilter(
+			final Img<FloatType> input,
+			final double radius)
+	{
+		final long integerRadius = Math.round(radius);
+
+		final Img<FloatType> output = input.factory().create(input);
+		final IterableInterval<FloatType> out = Views.iterable(output);
+		ij.op().filter().median(out, input, new HyperSphereShape(integerRadius));
+
+		return output;
+	}
+
+	private Img<UnsignedByteType> convertToByte(final Img<FloatType> input) {
+		return ij.op().convert().uint8(input);
+	}
+
+	private void subtractAverage(final Img<FloatType> input) {
+		final float mean = ij.op().stats().mean(input).getRealFloat();
+		LoopBuilder.setImages(input).forEachPixel(p -> p.set(p.get() - mean));
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(BackgroundCorrectionClient.class);
