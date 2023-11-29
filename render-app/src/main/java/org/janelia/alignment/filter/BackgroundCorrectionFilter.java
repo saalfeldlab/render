@@ -53,7 +53,7 @@ public class BackgroundCorrectionFilter implements Filter {
 
     @Override
     public void process(final ImageProcessor ip, final double scale) {
-        final double shrinkFactor = downSamplingFactor * scale;
+        final double shrinkFactor = downSamplingFactor / scale;
 
         // convert to 32-bit grayscale (float) for lossless processing
         final ImagePlus content = new ImagePlus("content", ip.convertToFloat());
