@@ -180,6 +180,7 @@ public class AlignmentPipelineClient
         final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
         final AffineBlockSolverSetup setup = alignmentPipelineParameters.getAffineBlockSolverSetup();
         final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
+        final int nRuns = setup.alternatingRuns.nRuns;
 
         // TODO: push StackWithZValues idea into core solver code
         for (final StackWithZValues stackWithZValues : stackList) {
@@ -190,7 +191,7 @@ public class AlignmentPipelineClient
 
         final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
 
-        if (setup.alternatingRuns < 2) {
+        if (nRuns == 1) {
 
             affineBlockSolverClient.runWithContext(sparkContext, setupList);
 
@@ -205,7 +206,7 @@ public class AlignmentPipelineClient
             String sourceStack = updatedSetup.stack;
             final String originalTargetStack = updatedSetup.targetStack.stack;
 
-            for (int runNumber = 0; runNumber < updatedSetup.alternatingRuns; runNumber++) {
+            for (int runNumber = 0; runNumber < nRuns; runNumber++) {
 
                 final String targetStack = originalTargetStack + "_run" + runNumber;
 
@@ -215,7 +216,7 @@ public class AlignmentPipelineClient
                 runSetup.blockPartition.shiftBlocks = runNumber % 2 == 1;
 
                 LOG.info("runAffineBlockSolver: run {} of {}, stack={}, targetStack={}, shiftBlocks={}",
-                         (runNumber + 1), runSetup.alternatingRuns, sourceStack, targetStack, runSetup.blockPartition.shiftBlocks);
+						 (runNumber + 1), nRuns, sourceStack, targetStack, runSetup.blockPartition.shiftBlocks);
 
                 affineBlockSolverClient.runWithContext(sparkContext, Collections.singletonList(runSetup));
 

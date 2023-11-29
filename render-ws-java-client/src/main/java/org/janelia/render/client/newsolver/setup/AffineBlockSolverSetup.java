@@ -10,6 +10,7 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
+import org.janelia.render.client.parameter.AlternatingRunParameters;
 import org.janelia.render.client.parameter.BlockOptimizerParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
@@ -52,6 +53,9 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 	@ParametersDelegate
 	public BlockOptimizerParameters blockOptimizer = new BlockOptimizerParameters();
 
+	@ParametersDelegate
+	public AlternatingRunParameters alternatingRuns = new AlternatingRunParameters();
+
     @Parameter(
             names = "--stack",
             description = "Stack name",
@@ -76,11 +80,6 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 
     @Parameter(names = "--maxZRangeMatches", description = "max z-range in which to load matches (default: '-1' - no limit)")
     public int maxZRangeMatches = -1;
-
-	@Parameter(
-			names = "--alternatingRuns",
-			description = "Number of alternating solve runs")
-	public int alternatingRuns = 1;
 
 	// TODO: remove this parameter if it remains unused after we are done with the wafer 53 alignment
     // Parameter for testing

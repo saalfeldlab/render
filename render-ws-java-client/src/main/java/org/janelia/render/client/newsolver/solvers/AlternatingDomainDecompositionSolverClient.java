@@ -71,10 +71,11 @@ public class AlternatingDomainDecompositionSolverClient {
 
 	private void solveAlternating(final AffineBlockSolverSetup parameters) throws IOException, InterruptedException {
 		final String targetStackPrefix = parameters.targetStack.stack;
+		final int nRuns = parameters.alternatingRuns.nRuns;
 
-		for (int i = 0; i < parameters.alternatingRuns; i++) {
+		for (int i = 0; i < nRuns; i++) {
 			final int runNumber = i + 1;
-			LOG.info("solveAlternating: run {} of {}", (runNumber + 1), parameters.alternatingRuns);
+			LOG.info("solveAlternating: run {} of {}", (runNumber + 1), nRuns);
 
 			parameters.targetStack.stack = targetStackPrefix + "_run" + runNumber;
 			DistributedAffineBlockSolver.run(parameters);
