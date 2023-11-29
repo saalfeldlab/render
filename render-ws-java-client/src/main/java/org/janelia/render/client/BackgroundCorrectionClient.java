@@ -61,7 +61,7 @@ public class BackgroundCorrectionClient {
 					"--minZ", "1250",
 					"--maxZ", "1250",
 					"--regex", ".*_0-[01]-1.*",
-					"--radius", "700.0",
+					"--radius", "1000.0",
 					"--scale", "0.05",
 			};
 		}
