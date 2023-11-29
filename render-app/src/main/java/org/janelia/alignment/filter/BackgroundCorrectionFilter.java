@@ -24,7 +24,7 @@ import java.util.Map;
 public class BackgroundCorrectionFilter implements Filter {
 
     private double radius;
-    private final double downSamplingFactor;
+    private double downSamplingFactor;
 
     // empty constructor required to create instances from specifications
     @SuppressWarnings("unused")
@@ -40,12 +40,14 @@ public class BackgroundCorrectionFilter implements Filter {
     @Override
     public void init(final Map<String, String> params) {
         this.radius = Filter.getDoubleParameter("radius", params);
+        this.downSamplingFactor = Filter.getDoubleParameter("downSamplingFactor", params);
     }
 
     @Override
     public Map<String, String> toParametersMap() {
         final Map<String, String> map = new LinkedHashMap<>();
         map.put("radius", String.valueOf(radius));
+        map.put("downSamplingFactor", String.valueOf(downSamplingFactor));
         return map;
     }
 
