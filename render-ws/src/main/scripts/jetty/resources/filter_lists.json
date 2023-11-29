@@ -9,6 +9,16 @@
       }
     ],
 
+    "jrc_mus_thymus_1": [
+      {
+        "className" : "org.janelia.alignment.filter.BackgroundCorrectionFilter",
+        "parameters" : {
+          "radius" : "1000.0",
+          "downSamplingFactor" : "0.05"
+        }
+      }
+    ],
+
     "Z0422_17_VNC_1" : [
       {
         "className" : "org.janelia.alignment.destreak.ConfigurableMaskStreakCorrector",
