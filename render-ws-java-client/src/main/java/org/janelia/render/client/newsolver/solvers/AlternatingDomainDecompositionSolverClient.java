@@ -1,7 +1,9 @@
 package org.janelia.render.client.newsolver.solvers;
 
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.DistributedAffineBlockSolver;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,19 +72,50 @@ public class AlternatingDomainDecompositionSolverClient {
 	}
 
 	private void solveAlternating(final AffineBlockSolverSetup parameters) throws IOException, InterruptedException {
-		final String targetStackPrefix = parameters.targetStack.stack;
+		final String targetStackName = parameters.targetStack.stack;
 		final int nRuns = parameters.alternatingRuns.nRuns;
 
-		for (int i = 0; i < nRuns; i++) {
-			final int runNumber = i + 1;
-			LOG.info("solveAlternating: run {} of {}", (runNumber + 1), nRuns);
+		for (int runNumber = 1; runNumber <= nRuns; runNumber++) {
+			LOG.info("solveAlternating: run {} of {}", runNumber, nRuns);
 
-			parameters.targetStack.stack = targetStackPrefix + "_run" + runNumber;
+			parameters.targetStack.stack = getStackName(targetStackName, runNumber, nRuns);
 			DistributedAffineBlockSolver.run(parameters);
 
-			parameters.blockPartition.shiftBlocks = !parameters.blockPartition.shiftBlocks;
-			parameters.stack = parameters.targetStack.stack;
+			if ((! parameters.alternatingRuns.keepIntermediateStacks) && (runNumber > 1))
+				cleanUpIntermediateStack(parameters);
+
+			updateParameters(parameters);
 		}
+	}
+
+	private static String getStackName(final String name, final int runNumber, final int nTotalRuns) {
+		if (runNumber == nTotalRuns) {
+			return name;
+		} else {
+			return name + "_run" + runNumber;
+		}
+	}
+
+	private static void cleanUpIntermediateStack(final AffineBlockSolverSetup parameters) {
+		final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
+		try {
+			dataClient.deleteStack(parameters.stack, null);
+			LOG.info("cleanUpIntermediateStack: deleted stack {}", parameters.stack);
+		} catch (final IOException e) {
+			LOG.error("cleanUpIntermediateStack: error deleting stack {}", parameters.stack, e);
+		}
+	}
+
+	private static void updateParameters(final AffineBlockSolverSetup parameters) {
+		// alternate block layout
+		parameters.blockPartition.shiftBlocks = !parameters.blockPartition.shiftBlocks;
+
+		// get data from previous run
+		parameters.stack = parameters.targetStack.stack;
+
+		// don't stitch or pre-align after first run
+		parameters.stitchFirst = false;
+		parameters.preAlign = PreAlign.NONE;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(AlternatingDomainDecompositionSolverClient.class);
