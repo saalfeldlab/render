@@ -79,7 +79,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 
 	@Override
 	protected BlockTileBoundsFilter getBlockTileFilter() {
-		return BlockTileBoundsFilter.SCALED_XY;
+		return BlockTileBoundsFilter.XY_MIDPOINT;
 	}
 
 	@Override
