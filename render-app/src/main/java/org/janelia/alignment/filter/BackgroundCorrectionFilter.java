@@ -4,6 +4,7 @@ import ij.ImagePlus;
 import ij.measure.Measurements;
 import ij.plugin.ImageCalculator;
 import ij.plugin.Scaler;
+import ij.plugin.filter.GaussianBlur;
 import ij.plugin.filter.RankFilters;
 import ij.process.ImageProcessor;
 import ij.process.ImageStatistics;
@@ -20,11 +21,45 @@ import net.imglib2.view.Views;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 public class BackgroundCorrectionFilter implements Filter {
 
+    public enum SmoothMethod {
+        GAUSSIAN((ip, radius) -> {
+            final GaussianBlur gaussianBlur = new GaussianBlur();
+            gaussianBlur.blurGaussian(ip, radius);
+            return null;
+        }),
+        MEDIAN((ip, radius) -> {
+            final RankFilters rankFilters = new RankFilters();
+            rankFilters.rank(ip, radius, RankFilters.MEDIAN);
+            return null;
+        });
+
+        private final BiFunction<ImageProcessor, Double, Void> smoother;
+
+        SmoothMethod(final BiFunction<ImageProcessor, Double, Void> smoother) {
+            this.smoother = smoother;
+        }
+
+        public void apply(final ImageProcessor ip, final double radius) {
+            smoother.apply(ip, radius);
+        }
+
+        public static SmoothMethod fromString(final String method) {
+            for (final SmoothMethod smoothMethod : values()) {
+                if (smoothMethod.name().equalsIgnoreCase(method)) {
+                    return smoothMethod;
+                }
+            }
+            throw new IllegalArgumentException("Unknown smooth method: " + method);
+        }
+    }
+
     private double radius;
     private double downSamplingFactor;
+    private SmoothMethod smoothMethod;
 
     // empty constructor required to create instances from specifications
     @SuppressWarnings("unused")
@@ -33,14 +68,20 @@ public class BackgroundCorrectionFilter implements Filter {
     }
 
     public BackgroundCorrectionFilter(final double radius, final double downSamplingFactor) {
+        this(radius, downSamplingFactor, SmoothMethod.GAUSSIAN);
+    }
+
+    public BackgroundCorrectionFilter(final double radius, final double downSamplingFactor, final SmoothMethod smoothMethod) {
         this.radius = radius;
         this.downSamplingFactor = downSamplingFactor;
+        this.smoothMethod = smoothMethod;
     }
 
     @Override
     public void init(final Map<String, String> params) {
         this.radius = Filter.getDoubleParameter("radius", params);
         this.downSamplingFactor = Filter.getDoubleParameter("downSamplingFactor", params);
+        this.smoothMethod = SmoothMethod.fromString(Filter.getStringParameter("smoothMethod", params));
     }
 
     @Override
@@ -48,6 +89,7 @@ public class BackgroundCorrectionFilter implements Filter {
         final Map<String, String> map = new LinkedHashMap<>();
         map.put("radius", String.valueOf(radius));
         map.put("downSamplingFactor", String.valueOf(downSamplingFactor));
+        map.put("smoothMethod", smoothMethod.name());
         return map;
     }
 
@@ -65,9 +107,8 @@ public class BackgroundCorrectionFilter implements Filter {
 
         // median filtering for actual background computation
         final double downscaledRadius = radius * shrinkFactor;
-        final RankFilters rankFilters = new RankFilters();
         final ImagePlus extendedBackground = extendBorder(background, downscaledRadius);
-        rankFilters.rank(extendedBackground.getProcessor(), downscaledRadius, RankFilters.MEDIAN);
+        smoothMethod.apply(extendedBackground.getProcessor(), downscaledRadius);
         final ImagePlus filteredBackground = crop(extendedBackground, downscaledRadius);
 
         // subtract mean to not shift the actual image values
