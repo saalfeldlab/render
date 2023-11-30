@@ -248,7 +248,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						blockData.getBlockTileBoundsFilter()));
 
 		// initialize block results with the filtered data
-		blockResults.init(tileSpecsWithMatchPairs.getResolvedTileSpecs());
+		blockResults.init(rtsc);
 
 		final List<CanvasMatches> matchPairs = new ArrayList<>(tileSpecsWithMatchPairs.getMatchPairCount());
 
@@ -859,16 +859,28 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	{
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
 		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
-		final PreAlign preAlign = blockData.solveTypeParameters().preAlign();
+		final FIBSEMAlignmentParameters<M, S> alignmentParameters = blockData.solveTypeParameters();
+		final BlockOptimizerParameters blockOptimizer = alignmentParameters.blockOptimizerParameters();
+		final PreAlign preAlign = alignmentParameters.preAlign();
 
-		final List<Integer> blockOptimizerIterations = blockData.solveTypeParameters().blockOptimizerIterations();
-		final List<Integer> blockMaxPlateauWidth = blockData.solveTypeParameters().blockMaxPlateauWidth();
+		final List<Integer> blockOptimizerIterations = alignmentParameters.blockOptimizerIterations();
+		final List<Integer> blockMaxPlateauWidth = alignmentParameters.blockMaxPlateauWidth();
 		final double blockMaxAllowedError = this.blockData.solveTypeParameters().blockMaxAllowedError();
 
 		final TileConfiguration tileConfig = new TileConfiguration();
 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
-		tileConfig.addTiles( new HashSet<>( solveItem.tileToGroupedTile().values() ) );
+		tileConfig.addTiles(new HashSet<>(solveItem.tileToGroupedTile().values()));
+
+		// fix boundary tiles that are also in another block (= use information from that block)
+		if (blockOptimizer.fixBlockBoundary) {
+			final Set<Tile<?>> boundaryTiles = new HashSet<>(tileConfig.getTiles());
+			final Set<Tile<?>> coreTiles = coreTileSpecIds.stream().map(solveItem.idToTileMap()::get).collect(Collectors.toSet());
+			boundaryTiles.removeAll(coreTiles);
+			boundaryTiles.forEach(tileConfig::fixTile);
+			LOG.info("solve: block {}, fixing {} boundary tiles of {} tiles",
+					 blockData, boundaryTiles.size(), tileConfig.getTiles().size());
+		}
 
 		if (LOG.isInfoEnabled()) {
 			final DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles());
@@ -880,7 +892,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			preAlign(solveItem, tileConfig, preAlign.toString());
 		}
 
-		final BlockOptimizerParameters blockOptimizer = blockData.solveTypeParameters().blockOptimizerParameters();
 		for (int k = 0; k < blockOptimizerIterations.size(); ++k) {
 
 			final Map<String, Double> weights = blockOptimizer.getWeightsForRun(k);
