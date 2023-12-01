@@ -392,7 +392,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			for (final Tile<M> groupedTile : groupedTiles) {
 				final List<Tile<M>> imageTiles = solveItem.groupedTileToTiles().get(groupedTile);
 
-				if (groupedTiles.size() > 1 && LOG.isDebugEnabled())
+				if (imageTiles.size() > 1 && LOG.isDebugEnabled())
 					LOG.debug("assignConstantAffineModel: z={} grouped tile [{}] contains {} image tiles.",
 							 z, groupedTile, imageTiles.size());
 
