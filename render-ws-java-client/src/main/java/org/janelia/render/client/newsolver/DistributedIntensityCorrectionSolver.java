@@ -77,6 +77,10 @@ public class DistributedIntensityCorrectionSolver {
 			cmdLineSetup.parse(args);
 		}
 
+		run(cmdLineSetup);
+	}
+
+	public static void run(final IntensityCorrectionSetup cmdLineSetup) throws IOException {
 		final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
