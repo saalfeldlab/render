@@ -123,8 +123,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		// NOTE: if you choose to stitch first, you need to pre-align, otherwise, it's OK to use the initial alignment for each tile
 		if (stitchFirst && parameters.preAlign() == PreAlign.NONE) {
-			LOG.error("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
-			throw new RuntimeException("Since you choose to stitch first, you must pre-align with Translation or Rigid.");
+			final String msg = "Since you choose to stitch first, you must pre-align with Translation or Rigid.";
+			LOG.error(msg);
+			throw new RuntimeException(msg);
 		}
 
 		this.coreTileSpecIds = new HashSet<>(); // will be populated by call to assembleMatchData
@@ -391,8 +392,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			for (final Tile<M> groupedTile : groupedTiles) {
 				final List<Tile<M>> imageTiles = solveItem.groupedTileToTiles().get(groupedTile);
 
-				if (groupedTiles.size() > 1)
-					LOG.info("assignConstantAffineModel: z={} grouped tile [{}] contains {} image tiles.",
+				if (groupedTiles.size() > 1 && LOG.isDebugEnabled())
+					LOG.debug("assignConstantAffineModel: z={} grouped tile [{}] contains {} image tiles.",
 							 z, groupedTile, imageTiles.size());
 
 				// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
@@ -424,7 +425,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					}
 					LOG.info("assignConstantAffineModel: Error={}", (sumError / matches.size()));
 				} catch (final Exception e) {
-					LOG.info("assignConstantAffineModel: Caught exception: ", e);
+					LOG.warn("assignConstantAffineModel: Caught exception: ", e);
 				}
 			}
 		}
@@ -463,8 +464,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			for (final Tile<M> groupedTile : groupedTiles) {
 				final List<Tile<M>> imageTiles = solveItem.groupedTileToTiles().get(groupedTile);
 
-				if (groupedTiles.size() > 1)
-					LOG.info("assignStabilizingModel: z={} grouped tile [{}] contains {} image tiles.",
+				if (groupedTiles.size() > 1 && LOG.isDebugEnabled())
+					LOG.debug("assignStabilizingModel: z={} grouped tile [{}] contains {} image tiles.",
 							 z, groupedTile, imageTiles.size());
 
 				// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
@@ -634,12 +635,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					final TileConfiguration tileConfig = new TileConfiguration();
 					tileConfig.addTiles( set );
 
-					// we always prealign (not sure how far off the current alignment in renderer is)
+					// we always pre-align (not sure how far off the current alignment in renderer is)
 					// a simple preAlign suffices for Translation and Rigid as it doesn't matter which Tile is fixed during alignment
 					try {
 						tileConfig.preAlign();
 					} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
-						LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Could not solve prealign for z={}, cause: ",
+						LOG.warn("stitchSectionsAndCreateGroupedTiles: block {}: Could not solve pre-align for z={}, cause: ",
 								 blockData, z, e);
 					}
 
@@ -667,7 +668,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 							LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Solve z={} avg={}, min={}, max={}",
 									 blockData, z, tileConfig.getError(), tileConfig.getMinError(), tileConfig.getMaxError());
 						} catch (final Exception e) {
-							LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Could not solve stitiching for z={}, cause: ",
+							LOG.warn("stitchSectionsAndCreateGroupedTiles: block {}: Could not solve stitching for z={}, cause: ",
 									 blockData, z, e);
 						}
 					}
@@ -686,8 +687,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
 						solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
-						LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: TileId {} Model=     {}", blockData, tileId, affine);
-						LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: TileId {} prev Model={}", blockData, tileId, solveItem.idToPreviousModel().get(tileId));
+						if (LOG.isDebugEnabled()) {
+							LOG.debug("stitchSectionsAndCreateGroupedTiles: block {}: TileId {} Model=     {}", blockData, tileId, affine);
+							LOG.debug("stitchSectionsAndCreateGroupedTiles: block {}: TileId {} prev Model={}", blockData, tileId, solveItem.idToPreviousModel().get(tileId));
+						}
 					}
 
 					// Hack: show a section after alignment
@@ -705,7 +708,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 							final ImagePlus imp1 = VisualizeTools.renderTS(models, blockData.rtsc().getTileIdToSpecMap(), 0.15);
 							imp1.setTitle( "z=" + z );
 						} catch (final NoninvertibleModelException e) {
-							LOG.info("stitchSectionsAndCreateGroupedTiles: Could not show section: ", e);
+							LOG.warn("stitchSectionsAndCreateGroupedTiles: Could not show section: ", e);
 						}
 					}
 				}
@@ -724,7 +727,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
 					solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
-					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Single TileId {}", blockData, tileId);
+					if (LOG.isDebugEnabled())
+						LOG.debug("stitchSectionsAndCreateGroupedTiles: block {}: Single TileId {}", blockData, tileId);
 				}
 			}
 		}
@@ -735,7 +739,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final Set<String> solveItemOnlyTileIds = new HashSet<>(solveItemTileIdsForConsistencyCheck);
 		solveItemOnlyTileIds.removeAll(blockResults.getTileIds());
 		if (blockOnlyTileIds.isEmpty() && solveItemOnlyTileIds.isEmpty()) {
-			LOG.debug("stitchSectionsAndCreateGroupedTiles: exit, tileIds are consistent");
+			LOG.info("stitchSectionsAndCreateGroupedTiles: exit, tileIds are consistent");
 		} else {
 			// log error in worker thread before throwing exception that will get logged in main/driver thread
 			final String errorMsg = "inconsistent tileIds for block " + blockData.toDetailsString() +
@@ -936,18 +940,18 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			tileIdToGroupModel.put(tileId, model.createAffineModel2D());
 		}
 
-		Collections.sort( tileIds );
+		Collections.sort(tileIds);
 
-		for (final String tileId : tileIds )
-		{
-			final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
+		for (final String tileId : tileIds) {
+			final AffineModel2D stitchingModel = solveItem.idToStitchingModel().get(tileId).copy();
+			final AffineModel2D groupModel = tileIdToGroupModel.get(tileId);
 
-			affine.preConcatenate( tileIdToGroupModel.get( tileId ) );
+			stitchingModel.preConcatenate(groupModel);
+			blockResults.recordModel(tileId, stitchingModel);
 
-			LOG.info("solve: block {}: grouped model for tile {} is {}", blockData, tileId, tileIdToGroupModel.get(tileId));
-
-			blockResults.recordModel(tileId, affine);
-			LOG.info("solve: block {}: tile {} model from grouped tile is {}", blockData, tileId, affine);
+			if (LOG.isDebugEnabled())
+				LOG.debug("solve: block {}: grouped model for tile {} is {}, final model is {}",
+						  blockData, tileId, groupModel, stitchingModel);
 		}
 	}
 
@@ -981,7 +985,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 			// TODO: else they should be in the right position
 		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
-			LOG.info("block {}: prealign failed: ", inputSolveItem.blockData(), e);
+			LOG.warn("block {}: pre-align failed: ", inputSolveItem.blockData(), e);
 		}
 	}
 

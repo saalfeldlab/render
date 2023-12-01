@@ -76,6 +76,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	public List<BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>>> call()
 			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
+		LOG.info("AffineIntensityCorrectionBlockWorker: entry, blockData={}", blockData);
 		fetchResolvedTiles();
 		final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(blockData.rtsc());
 

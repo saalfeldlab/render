@@ -111,7 +111,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			final Collection<Integer> matchedZLayers = results.getMatchedZLayers();
 			if (matchedZLayers.isEmpty()) {
 				final List<String> tileIds = results.getTileIds().stream().sorted().collect(Collectors.toList());
-				LOG.warn("XYDistanceWeightFunction ctor: block {} results with no matchedZLayers has {} tileIds: {}",
+				LOG.error("XYDistanceWeightFunction ctor: block {} results with no matchedZLayers has {} tileIds: {}",
 						 block, tileIds.size(), tileIds);
 				throw new IllegalStateException("block " + block + " has no matched z layers");
 			}
