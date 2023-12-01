@@ -255,7 +255,6 @@ public class AlignmentPipelineClient
         if (runNumber > 1) {
             parameters.stitchFirst = false;
             parameters.preAlign = PreAlign.NONE;
-            parameters.blockOptimizer.fixBlockBoundary = true;
         }
     }
 

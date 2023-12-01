@@ -68,12 +68,6 @@ public class BlockOptimizerParameters implements Serializable {
 	)
 	public Double maxAllowedError = 10.0;
 
-	@Parameter(
-			names = "--fixBlockBoundary",
-			description = "Fix tiles that are on the boundary of that block and shared with another block (default: false)"
-	)
-	public Boolean fixBlockBoundary = false;
-
 	public boolean isConsistent() {
 		final int n = nRuns();
 		return n == maxPlateauWidth.size() &&

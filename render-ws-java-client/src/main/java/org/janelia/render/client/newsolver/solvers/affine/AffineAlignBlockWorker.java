@@ -864,7 +864,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData = solveItem.blockData();
 		final ResultContainer<AffineModel2D> blockResults = blockData.getResults();
 		final FIBSEMAlignmentParameters<M, S> alignmentParameters = blockData.solveTypeParameters();
-		final BlockOptimizerParameters blockOptimizer = alignmentParameters.blockOptimizerParameters();
 		final PreAlign preAlign = alignmentParameters.preAlign();
 
 		final List<Integer> blockOptimizerIterations = alignmentParameters.blockOptimizerIterations();
@@ -876,16 +875,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		// new HashSet because all tiles link to their common group tile, which is therefore present more than once
 		tileConfig.addTiles(new HashSet<>(solveItem.tileToGroupedTile().values()));
 
-		// fix boundary tiles that are also in another block (= use information from that block)
-		if (blockOptimizer.fixBlockBoundary) {
-			final Set<Tile<?>> boundaryTiles = new HashSet<>(tileConfig.getTiles());
-			final Set<Tile<?>> coreTiles = coreTileSpecIds.stream().map(solveItem.idToTileMap()::get).collect(Collectors.toSet());
-			boundaryTiles.removeAll(coreTiles);
-			boundaryTiles.forEach(tileConfig::fixTile);
-			LOG.info("solve: block {}, fixing {} boundary tiles of {} tiles",
-					 blockData, boundaryTiles.size(), tileConfig.getTiles().size());
-		}
-
 		if (LOG.isInfoEnabled()) {
 			final DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles());
 			LOG.info("solve: block {}, optimizing {} tiles with preAlign {}, error stats before optimization are {}",
@@ -896,6 +885,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			preAlign(solveItem, tileConfig, preAlign.toString());
 		}
 
+		final BlockOptimizerParameters blockOptimizer = alignmentParameters.blockOptimizerParameters();
 		for (int k = 0; k < blockOptimizerIterations.size(); ++k) {
 
 			final Map<String, Double> weights = blockOptimizer.getWeightsForRun(k);

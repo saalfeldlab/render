@@ -116,9 +116,6 @@ public class AlternatingDomainDecompositionSolverClient {
 		// don't stitch or pre-align after first run
 		parameters.stitchFirst = false;
 		parameters.preAlign = PreAlign.NONE;
-
-		// fix tile boundaries after the initial run
-		parameters.blockOptimizer.fixBlockBoundary = true;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(AlternatingDomainDecompositionSolverClient.class);
