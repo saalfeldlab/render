@@ -24,7 +24,6 @@ public class ADDIntensityCorrectionClient {
 			args = new String[]{"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
 					"--owner", "hess_wafer_53",
 					"--project", "cut_000_to_009",
-					"--matchCollection", "c009_s310_v01_match",
 					"--stack", "c009_s310_v01_mfov_08_test",
 					"--targetStack", "c009_s310_v01_mfov_08_test_ic",
 					"--minX", "33400",

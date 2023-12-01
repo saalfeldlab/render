@@ -7,6 +7,7 @@ import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.AlternatingRunParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.XYRangeParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 
 
@@ -25,6 +26,9 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 
 	@ParametersDelegate
 	public TargetStackParameters targetStack = new TargetStackParameters();
+
+	@ParametersDelegate
+	public XYRangeParameters xyRange = new XYRangeParameters();
 
 	@ParametersDelegate
 	public ZRangeParameters layerRange = new ZRangeParameters();
