@@ -11,13 +11,14 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 
 /**
+ * Alternating Domain Decomposition solver:
  * A solver that alternates between solving for a given block layout and a shifted one so that
  * all tiles are placed in the center of a block in one of the iterations.
  * See also: additive Schwarz domain decomposition.
  *
  * @author Michael Innerberger
  */
-public class AlternatingDomainDecompositionSolverClient {
+public class ADDSolverClient {
 
 	public static void main(String[] args) {
 		if (args.length == 0) {
@@ -62,8 +63,7 @@ public class AlternatingDomainDecompositionSolverClient {
 
 				LOG.info("runClient: entry, parameters={}", parameters);
 
-				final AlternatingDomainDecompositionSolverClient client =
-						new AlternatingDomainDecompositionSolverClient();
+				final ADDSolverClient client = new ADDSolverClient();
 
 				client.solveAlternating(parameters);
 			}
@@ -118,5 +118,5 @@ public class AlternatingDomainDecompositionSolverClient {
 		parameters.preAlign = PreAlign.NONE;
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(AlternatingDomainDecompositionSolverClient.class);
+	private static final Logger LOG = LoggerFactory.getLogger(ADDSolverClient.class);
 }
