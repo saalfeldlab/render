@@ -3,6 +3,8 @@ package org.janelia.alignment.match;
 import java.io.Serializable;
 import java.util.Objects;
 
+import org.janelia.alignment.spec.TileBounds;
+
 /**
  * A pair of canvas identifiers with {@linkplain Comparable natural ordering}.
  *
@@ -55,6 +57,41 @@ public class OrderedCanvasIdPair
         this.absoluteDeltaZ = deltaZ == null ? null : Math.abs(deltaZ);
     }
 
+    /**
+     * @param  oneTileBounds      identifiers and bounds for one canvas identifier.
+     * @param  anotherTileBounds  identifiers and bounds for another canvas identifier.
+     *
+     * @return an ordered pair where each CanvasId includes relative position information
+     *         based upon the specified tile bounds.
+     *         Assumes that the bounds are for the same layer so the pair's deltaZ is set to null.
+     *
+     * @throws IllegalArgumentException
+     *   if both tile identifiers are the same.
+     */
+    public static OrderedCanvasIdPair withRelativePositions(final TileBounds oneTileBounds,
+                                                            final TileBounds anotherTileBounds)
+            throws IllegalArgumentException {
+
+        final CanvasId oneCanvasId = new CanvasId(oneTileBounds.getSectionId(), oneTileBounds.getTileId());
+        final CanvasId anotherCanvasId = new CanvasId(anotherTileBounds.getSectionId(), anotherTileBounds.getTileId());
+
+        final int comparisonResult = oneCanvasId.compareTo(anotherCanvasId);
+        final MontageRelativePosition[] positions = MontageRelativePosition.getRelativePositions(oneTileBounds,
+                                                                                                 anotherTileBounds);
+        final OrderedCanvasIdPair pair;
+        if (comparisonResult < 0) {
+            pair = new OrderedCanvasIdPair(oneCanvasId.withRelativePosition(positions[0]),
+                                           anotherCanvasId.withRelativePosition(positions[1]),
+                                           null);
+        } else {
+            // flip relative position values since p and q will be flipped by constructor normalization
+            pair = new OrderedCanvasIdPair(oneCanvasId.withRelativePosition(positions[1]),
+                                           anotherCanvasId.withRelativePosition(positions[0]),
+                                           null);
+        }
+        return pair;
+    }
+
     public CanvasId getP() {
         return p;
     }
@@ -96,11 +133,6 @@ public class OrderedCanvasIdPair
 
     @Override
     public String toString() {
-        if ((p.getGroupId() == null) && (q.getGroupId() == null)) {
-            return "[\"" + p.getId() + "\", \"" + q.getId() + "\"]";
-        } else {
-            return "{\"p\": [\"" + p.getGroupId() + "\", \"" + p.getId() + "\"], \"q\": [\"" +
-                   q.getGroupId() + "\", \"" + q.getId() + "\"]}";
-        }
+            return "{\"p\": \"" + p + "\", \"q\": \"" + q + "\"}";
     }
 }

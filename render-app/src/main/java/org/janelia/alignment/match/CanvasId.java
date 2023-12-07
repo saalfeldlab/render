@@ -1,9 +1,12 @@
 package org.janelia.alignment.match;
 
 import java.io.Serializable;
+import java.util.Comparator;
 import java.util.Objects;
 
 import org.janelia.alignment.json.JsonUtils;
+
+import jakarta.annotation.Nonnull;
 
 import static org.janelia.alignment.match.MontageRelativePosition.LEFT;
 import static org.janelia.alignment.match.MontageRelativePosition.TOP;
@@ -116,6 +119,10 @@ public class CanvasId
         }
     }
 
+    public CanvasId withRelativePosition(final MontageRelativePosition relativePosition) {
+        return new CanvasId(groupId, id, relativePosition);
+    }
+
     public CanvasId withoutRelativePosition() {
         return new CanvasId(groupId, id);
     }
@@ -136,23 +143,12 @@ public class CanvasId
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(id, groupId, relativePosition);
+        return Objects.hash(id, groupId, relativePosition);
     }
 
     @Override
-    public int compareTo(final CanvasId that) {
-        int result = this.groupId.compareTo(that.groupId);
-        if (result == 0) {
-            result = this.id.compareTo(that.id);
-            if (result == 0) {
-                if (this.relativePosition == null) {
-                    result = that.relativePosition == null ? 0 : -1;
-                } else if (that.relativePosition != null) {
-                    result = this.relativePosition.compareTo(that.relativePosition);
-                }
-            }
-        }
-        return result;
+    public int compareTo(@Nonnull final CanvasId that) {
+        return CANVAS_ID_COMPARATOR.compare(this, that);
     }
 
     @Override
@@ -172,5 +168,10 @@ public class CanvasId
             new JsonUtils.Helper<>(CanvasId.class);
 
     public static final double[] ZERO_OFFSETS = { 0.0, 0.0 };
+
+    private static final Comparator<CanvasId> CANVAS_ID_COMPARATOR = Comparator
+            .comparing(CanvasId::getGroupId, Comparator.nullsFirst(Comparator.naturalOrder()))
+            .thenComparing(CanvasId::getId, Comparator.nullsFirst(Comparator.naturalOrder()))
+            .thenComparing(CanvasId::getRelativePosition, Comparator.nullsFirst(Comparator.naturalOrder()));
 
 }

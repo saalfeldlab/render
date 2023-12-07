@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
+import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,39 +55,35 @@ public class TileBoundsRTreeTest {
 
     }
 
-    @SuppressWarnings("MismatchedReadAndWriteOfArray")
     @Test
     public void testGetCircleNeighbors() {
 
-        final TileBoundsRTree treeForZ1 = new TileBoundsRTree(z,
-                                                              Arrays.asList(getTileBounds(0, z),
-                                                                            getTileBounds(1, z)));
-        final TileBoundsRTree treeForZ2 = new TileBoundsRTree(2.0,
-                                                              buildListForZ(2.0));
-        final TileBoundsRTree treeForZ3 = new TileBoundsRTree(3.0,
-                                                              buildListForZ(3.0));
+        final TileBounds z1tile0Bounds = getTileBounds(0, z);
+        final TileBounds z1tile1Bounds = getTileBounds(1, z);
+
+        final TileBoundsRTree treeForZ1 = new TileBoundsRTree(z, Arrays.asList(z1tile0Bounds, z1tile1Bounds));
+        final TileBoundsRTree treeForZ2 = new TileBoundsRTree(2.0, buildListForZ(2.0));
+        final TileBoundsRTree treeForZ3 = new TileBoundsRTree(3.0, buildListForZ(3.0));
         final List<TileBoundsRTree> neighborTrees = Arrays.asList(treeForZ2, treeForZ3);
         final List<TileBounds> sourceTileBoundsList = treeForZ1.getTileBoundsList();
 
+        final double radiusFactor = 1.1;
         final Set<OrderedCanvasIdPair> neighborPairs = treeForZ1.getCircleNeighbors(sourceTileBoundsList,
                                                                                     neighborTrees,
-                                                                                    1.1,
+                                                                                    radiusFactor,
                                                                                     null,
                                                                                     false,
                                                                                     false,
                                                                                     false);
 
-        // these are short-hand names for the pairs to clarify how many pairs are expected
-        final String[] expectedPairs = {
-                        "z1-0,z1-1",
-                        "z1-0,z2-0", "z1-0,z2-1", "z1-0,z2-3", "z1-0,z2-4",
-                        "z1-0,z3-0", "z1-0,z3-1", "z1-0,z3-3", "z1-0,z3-4",
-                        "z1-1,z2-0", "z1-1,z2-1", "z1-1,z2-2", "z1-1,z2-3", "z1-1,z2-4", "z1-1,z2-5",
-                        "z1-1,z3-0", "z1-1,z3-1", "z1-1,z3-2", "z1-1,z3-3", "z1-1,z3-4", "z1-1,z3-5"
-        };
+        final Set<OrderedCanvasIdPair> expectedPairs = new TreeSet<>();
+        expectedPairs.add(OrderedCanvasIdPair.withRelativePositions(z1tile0Bounds, z1tile1Bounds));
+        expectedPairs.addAll(buildExpectedPairs(1.0, 0, 2.0, 0, 1, 3, 4));
+        expectedPairs.addAll(buildExpectedPairs(1.0, 0, 3.0, 0, 1, 3, 4));
+        expectedPairs.addAll(buildExpectedPairs(1.0, 1, 2.0, 0, 1, 2, 3, 4, 5));
+        expectedPairs.addAll(buildExpectedPairs(1.0, 1, 3.0, 0, 1, 2, 3, 4, 5));
 
-        Assert.assertEquals("invalid number of pairs found, pairs are " + new TreeSet<>(neighborPairs),
-                            expectedPairs.length, neighborPairs.size());
+        validatePairs("radius factor " + radiusFactor, expectedPairs, neighborPairs);
 
         // all test tiles have width 10 and overlap by 1 pixel, radius of 1 should pair only tiles in same column
         final Double explicitRadius = 1.0;
@@ -99,16 +96,13 @@ public class TileBoundsRTreeTest {
                                              false,
                                              false);
 
-        final String[] expectedPairsForExplicitRadius = {
-                "z1-0,z2-0",
-                "z1-0,z3-0",
-                "z1-1,z2-1",
-                "z1-1,z3-1"
-        };
+        expectedPairs.clear();
+        expectedPairs.addAll(buildExpectedPairs(1.0, 0, 2.0, 0));
+        expectedPairs.addAll(buildExpectedPairs(1.0, 0, 3.0, 0));
+        expectedPairs.addAll(buildExpectedPairs(1.0, 1, 2.0, 1));
+        expectedPairs.addAll(buildExpectedPairs(1.0, 1, 3.0, 1));
 
-        Assert.assertEquals("invalid number of pairs found, pairs are " + new TreeSet<>(neighborPairsWithExplicitRadius),
-                            expectedPairsForExplicitRadius.length, neighborPairsWithExplicitRadius.size());
-
+        validatePairs("explicit radius " + explicitRadius, expectedPairs, neighborPairsWithExplicitRadius);
     }
 
     @Test
@@ -196,9 +190,9 @@ public class TileBoundsRTreeTest {
         final double tileSize = 10;
         final int row = tileIndex / tilesPerRow;
         final int col = tileIndex % tilesPerRow;
-        final Double minX = col * (tileSize - 1.0);
+        final double minX = col * (tileSize - 1.0);
         final Double maxX = minX + tileSize;
-        final Double minY = row * (tileSize - 1.0);
+        final double minY = row * (tileSize - 1.0);
         final Double maxY = minY + tileSize;
         return new TileBounds(getTileId(tileIndex, z), String.valueOf(z), z, minX, minY, maxX, maxY) ;
     }
@@ -219,5 +213,46 @@ public class TileBoundsRTreeTest {
         }
 
         return list;
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private List<OrderedCanvasIdPair> buildExpectedPairs(final double pZ,
+                                                         final int pTileIndex,
+                                                         final double qZ,
+                                                         final int... qTileIndexes) {
+        final List<OrderedCanvasIdPair> expectedPairs = new ArrayList<>();
+        final CanvasId pCanvasId = new CanvasId(String.valueOf(pZ), getTileId(pTileIndex, pZ));
+        for (final int qTileIndex : qTileIndexes) {
+            final CanvasId qCanvasId = new CanvasId(String.valueOf(qZ), getTileId(qTileIndex, qZ));
+            final double deltaZ = Math.abs(pZ - qZ);
+            expectedPairs.add(new OrderedCanvasIdPair(pCanvasId,
+                                                      qCanvasId,
+                                                      deltaZ));
+        }
+        return expectedPairs;
+    }
+
+    private void validatePairs(final String context,
+                               final Set<OrderedCanvasIdPair> expectedPairs,
+                               final Set<OrderedCanvasIdPair> actualPairs) {
+
+        final Set<OrderedCanvasIdPair> expectedMissingFromActual = new TreeSet<>(expectedPairs);
+        expectedMissingFromActual.removeAll(actualPairs);
+
+        final Set<OrderedCanvasIdPair> actualMissingFromExpected = new TreeSet<>(actualPairs);
+        actualMissingFromExpected.removeAll(expectedPairs);
+
+        final int numberOfMissingPairs = expectedMissingFromActual.size() + actualMissingFromExpected.size();
+        if (numberOfMissingPairs > 0) {
+
+            final Set<OrderedCanvasIdPair> commonPairs = new TreeSet<>(actualPairs);
+            commonPairs.retainAll(expectedPairs);
+
+            Assert.fail("for " + context + ", missing " + expectedMissingFromActual.size() +
+                        " pairs " + expectedMissingFromActual +
+                        " and found " + actualMissingFromExpected.size() +
+                        " unexpected pairs " + actualMissingFromExpected +
+                        ", " + commonPairs.size() + " common pairs are " + commonPairs);
+        }
     }
 }
