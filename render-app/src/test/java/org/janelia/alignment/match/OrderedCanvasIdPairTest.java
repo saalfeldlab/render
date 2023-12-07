@@ -1,5 +1,6 @@
 package org.janelia.alignment.match;
 
+import org.janelia.alignment.spec.TileBounds;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -22,8 +23,49 @@ public class OrderedCanvasIdPairTest {
         Assert.assertEquals("invalid canvasId for q in pair " + pair, pair.getQ(), getCanvasId(9));
     }
 
+    @Test
+    public void testWithRelativePositions() {
+        final String tileAId = "tileA";
+        final TileBounds boundsA = new TileBounds(tileAId,"1.0", 1.0,
+                                                  10.0, 11.0,
+                                                  20.0, 21.0);
+        final String tileBId = "tileB";
+        final TileBounds boundsB = new TileBounds(tileBId, boundsA.getSectionId(), boundsA.getZ(),
+                                                  boundsA.getMinX() + 5.0, boundsA.getMinY(),
+                                                  boundsA.getMaxX() + 5.0, boundsA.getMaxY());
+
+        final OrderedCanvasIdPair leftRightPair = OrderedCanvasIdPair.withRelativePositions(boundsA,
+                                                                                            boundsB);
+        validatePair("leftRightPair", leftRightPair, tileAId, MontageRelativePosition.LEFT);
+
+        final String tileOverlapId = "tileOverlap";
+        final TileBounds boundsOverlap = new TileBounds(tileOverlapId, boundsA.getSectionId(), boundsA.getZ(),
+                                                        boundsA.getMinX(), boundsA.getMinY(),
+                                                        boundsA.getMaxX(), boundsA.getMaxY());
+
+        final OrderedCanvasIdPair orderedOverlapPair = OrderedCanvasIdPair.withRelativePositions(boundsA,
+                                                                                                 boundsOverlap);
+        validatePair("orderedOverlapPair", orderedOverlapPair, tileAId, MontageRelativePosition.TOP);
+
+        final OrderedCanvasIdPair reversedOverlapPair = OrderedCanvasIdPair.withRelativePositions(boundsOverlap,
+                                                                                                  boundsA);
+        Assert.assertEquals("overlap pairs should be the same", orderedOverlapPair, reversedOverlapPair);
+    }
+
     private CanvasId getCanvasId(final int tileIndex) {
         return new CanvasId("99.0", "tile-" + tileIndex);
+    }
+
+    @SuppressWarnings("SameParameterValue")
+    private void validatePair(final String context,
+                              final OrderedCanvasIdPair pair,
+                              final String expectedPTileId,
+                              final MontageRelativePosition expectedPPosition) {
+        final CanvasId p = pair.getP();
+        Assert.assertEquals(context + ", invalid p.id for pair " + pair,
+                            expectedPTileId, p.getId());
+        Assert.assertEquals(context + ", invalid p.relativePosition for " + pair,
+                            expectedPPosition, p.getRelativePosition());
     }
 
 }

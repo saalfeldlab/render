@@ -75,21 +75,27 @@ public class OrderedCanvasIdPair
         final CanvasId oneCanvasId = new CanvasId(oneTileBounds.getSectionId(), oneTileBounds.getTileId());
         final CanvasId anotherCanvasId = new CanvasId(anotherTileBounds.getSectionId(), anotherTileBounds.getTileId());
 
-        final int comparisonResult = oneCanvasId.compareTo(anotherCanvasId);
         final MontageRelativePosition[] positions = MontageRelativePosition.getRelativePositions(oneTileBounds,
                                                                                                  anotherTileBounds);
-        final OrderedCanvasIdPair pair;
-        if (comparisonResult < 0) {
-            pair = new OrderedCanvasIdPair(oneCanvasId.withRelativePosition(positions[0]),
-                                           anotherCanvasId.withRelativePosition(positions[1]),
-                                           null);
-        } else {
-            // flip relative position values since p and q will be flipped by constructor normalization
-            pair = new OrderedCanvasIdPair(oneCanvasId.withRelativePosition(positions[1]),
-                                           anotherCanvasId.withRelativePosition(positions[0]),
-                                           null);
+        final int comparisonResult = oneCanvasId.compareTo(anotherCanvasId);
+        // if the tile identifiers are not in natural order ...
+        if (comparisonResult > 0) {
+            final MontageRelativePosition[] flippedPositions =
+                    MontageRelativePosition.getRelativePositions(anotherTileBounds,
+                                                                 oneTileBounds);
+            // and if both tiles are in the same position relative to each other ...
+            if (positions[0].equals(flippedPositions[0])) {
+                // then flip the positions to maintain consistency with natural order
+                positions[0] = flippedPositions[1]; // NOTE: this is flipping because both are same
+                positions[1] = flippedPositions[0];
+            }
+        } else if (comparisonResult == 0) {
+            throw new IllegalArgumentException("both IDs are the same: '" + oneCanvasId + "'");
         }
-        return pair;
+
+        return new OrderedCanvasIdPair(oneCanvasId.withRelativePosition(positions[0]),
+                                       anotherCanvasId.withRelativePosition(positions[1]),
+                                       null);
     }
 
     public CanvasId getP() {

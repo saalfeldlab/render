@@ -106,6 +106,32 @@ public class TileBoundsRTreeTest {
     }
 
     @Test
+    public void testGetCircleNeighborsWithFullyOverlappingTiles() {
+        final TileBounds z1tile0Bounds = getTileBounds(0, z);
+        final TileBounds fullyOverlappingTileBounds = new TileBounds(getTileId(1, z),
+                                                                     String.valueOf(z), z,
+                                                                     z1tile0Bounds.getMinX(),
+                                                                     z1tile0Bounds.getMinY(),
+                                                                     z1tile0Bounds.getMaxX(),
+                                                                     z1tile0Bounds.getMaxY());
+        final List<TileBounds> sourceTileBoundsList = Arrays.asList(z1tile0Bounds, fullyOverlappingTileBounds);
+        final TileBoundsRTree testTree = new TileBoundsRTree(z, sourceTileBoundsList);
+        final List<TileBoundsRTree> neighborTrees = new ArrayList<>();
+        final Set<OrderedCanvasIdPair> neighborPairs = testTree.getCircleNeighbors(sourceTileBoundsList,
+                                                                                   neighborTrees,
+                                                                                   0.6,
+                                                                                   null,
+                                                                                   false,
+                                                                                   false,
+                                                                                   false);
+
+        final Set<OrderedCanvasIdPair> expectedPairs = new TreeSet<>();
+        expectedPairs.add(OrderedCanvasIdPair.withRelativePositions(z1tile0Bounds, fullyOverlappingTileBounds));
+
+        validatePairs("fully overlapping tiles", expectedPairs, neighborPairs);
+    }
+
+    @Test
     public void testGetCanvasIdPairs() {
 
         final Double z = 99.0;
