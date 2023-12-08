@@ -392,9 +392,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			for (final Tile<M> groupedTile : groupedTiles) {
 				final List<Tile<M>> imageTiles = solveItem.groupedTileToTiles().get(groupedTile);
 
-				if (imageTiles.size() > 1 && LOG.isDebugEnabled())
+				if (imageTiles.size() > 1) {
 					LOG.debug("assignConstantAffineModel: z={} grouped tile [{}] contains {} image tiles.",
-							 z, groupedTile, imageTiles.size());
+							  z, groupedTile, imageTiles.size());
+				}
 
 				// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
 				final List<PointMatch> matches = new ArrayList<>();
@@ -464,9 +465,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			for (final Tile<M> groupedTile : groupedTiles) {
 				final List<Tile<M>> imageTiles = solveItem.groupedTileToTiles().get(groupedTile);
 
-				if (groupedTiles.size() > 1 && LOG.isDebugEnabled())
+				if (groupedTiles.size() > 1) {
 					LOG.debug("assignStabilizingModel: z={} grouped tile [{}] contains {} image tiles.",
-							 z, groupedTile, imageTiles.size());
+							  z, groupedTile, imageTiles.size());
+				}
 
 				// create pointmatches from the edges of each image in the grouped tile to the respective edges in the metadata
 				// TODO: create a custom class for this type
@@ -727,8 +729,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					solveItem.groupedTileToTiles().putIfAbsent( groupedTile, new ArrayList<>() );
 					solveItem.groupedTileToTiles().get( groupedTile ).add( solveItem.idToTileMap().get( tileId ) );
 
-					if (LOG.isDebugEnabled())
-						LOG.debug("stitchSectionsAndCreateGroupedTiles: block {}: Single TileId {}", blockData, tileId);
+					LOG.debug("stitchSectionsAndCreateGroupedTiles: block {}: Single TileId {}", blockData, tileId);
 				}
 			}
 		}
@@ -939,9 +940,8 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			stitchingModel.preConcatenate(groupModel);
 			blockResults.recordModel(tileId, stitchingModel);
 
-			if (LOG.isDebugEnabled())
-				LOG.debug("solve: block {}: grouped model for tile {} is {}, final model is {}",
-						  blockData, tileId, groupModel, stitchingModel);
+			LOG.debug("solve: block {}: grouped model for tile {} is {}, final model is {}",
+					  blockData, tileId, groupModel, stitchingModel);
 		}
 	}
 

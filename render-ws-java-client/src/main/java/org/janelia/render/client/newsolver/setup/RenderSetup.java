@@ -154,8 +154,7 @@ public class RenderSetup
 		// a HashMap where int is the z section, and string is the description (problem, restart, ...)
 		runParams.zToGroupIdMap = new HashMap<>();
 		for (final String groupId : Arrays.asList("restart", "problem")) { // NOTE: "problem" groupId is for future use
-			if (LOG.isDebugEnabled())
-				LOG.debug("Querying: {}", groupId);
+			LOG.debug("Querying: {}", groupId);
 			try {
 				final ResolvedTileSpecCollection groupTileSpecs =
 						runParams.renderDataClient.getResolvedTiles(stack,
@@ -175,9 +174,8 @@ public class RenderSetup
 
 		final List<Integer> challengeListZ = runParams.zToGroupIdMap.keySet().stream().sorted().collect(Collectors.toList());
 
-		if (LOG.isDebugEnabled())
-			LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}",
-					  minZ.intValue(), maxZ.intValue(), challengeListZ);
+		LOG.debug("setup: minZ={}, maxZ={}, challenge layers are {}",
+				  minZ.intValue(), maxZ.intValue(), challengeListZ);
 
 		return runParams;
 	}
