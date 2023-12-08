@@ -98,10 +98,19 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	final Set<String> coreTileSpecIds;
 
 	// created by SolveItemData.createWorker()
+
+	/**
+	 * Basic constructor.
+	 *
+	 * @param  blockData   describes the block to be solved.
+	 * @param  numThreads  number of threads to use for solving.
+	 *
+	 * @throws IllegalArgumentException
+	 *   if stitchFirst is true and preAlign is NONE.
+	 */
 	public AffineAlignBlockWorker(
 			final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
-			final int numThreads )
-	{
+			final int numThreads) throws IllegalArgumentException {
 		super(blockData, numThreads);
 
 		final FIBSEMAlignmentParameters<M, S> parameters = blockData.solveTypeParameters();
@@ -123,9 +132,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		// NOTE: if you choose to stitch first, you need to pre-align, otherwise, it's OK to use the initial alignment for each tile
 		if (stitchFirst && parameters.preAlign() == PreAlign.NONE) {
-			final String msg = "Since you choose to stitch first, you must pre-align with Translation or Rigid.";
-			LOG.error(msg);
-			throw new RuntimeException(msg);
+			throw new IllegalArgumentException("AffineBlockSolverSetup with --stitchFirst requires --preAlign to be TRANSLATION or RIGID");
 		}
 
 		this.coreTileSpecIds = new HashSet<>(); // will be populated by call to assembleMatchData
