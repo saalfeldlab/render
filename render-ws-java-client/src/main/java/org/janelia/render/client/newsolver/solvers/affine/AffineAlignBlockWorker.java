@@ -465,7 +465,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 
 			final List<Tile<M>> groupedTiles = zToGroupedTileList.get(z);
-			LOG.info("assignStabilizingModel: z={} contains {} grouped tiles (StabilizingAffineModel2D), connected from {} to {}",
+			LOG.info("assignStabilizingAffineModel: z={} contains {} grouped tiles (StabilizingAffineModel2D), connected from {} to {}",
 					 z, groupedTiles.size(), allZ.get(from), allZ.get(to));
 
 			// now go over all tiles of the current z
@@ -473,7 +473,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 				final List<Tile<M>> imageTiles = solveItem.groupedTileToTiles().get(groupedTile);
 
 				if (groupedTiles.size() > 1) {
-					LOG.debug("assignStabilizingModel: z={} grouped tile [{}] contains {} image tiles.",
+					LOG.debug("assignStabilizingAffineModel: z={} grouped tile [{}] contains {} image tiles.",
 							  z, groupedTile, imageTiles.size());
 				}
 
@@ -496,7 +496,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 					if (neighbors.isEmpty()) {
 						// this can happen when number of tiles per layer changes for example
-						LOG.info("assignStabilizingModel: could not find corresponding tile for {}", tileId);
+						LOG.info("assignStabilizingAffineModel: could not find corresponding tile for {}", tileId);
 						continue;
 					}
 
