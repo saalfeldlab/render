@@ -262,7 +262,7 @@ public class DistributedAffineBlockSolver
 		return models.get(i);
 	}
 
-	private static int getRandomIndex(final List<Double> weights, final double randomSample) {
+	protected static int getRandomIndex(final List<Double> weights, final double randomSample) {
 		int i;
 		double sum = 0.0;
 

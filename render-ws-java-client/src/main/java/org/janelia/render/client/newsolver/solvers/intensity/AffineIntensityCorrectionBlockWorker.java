@@ -165,8 +165,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			future.get();
 
 		final List<Future<Pair<String, ArrayList<Double>>>> averageComputations = new ArrayList<>();
-		for (final TileSpec tile : tiles)
+		for (final TileSpec tile : tiles) {
 			averageComputations.add(exec.submit(() -> computeAverages(tile, parameters.numCoefficients(), parameters.renderScale(), meshResolution, imageProcessorCache)));
+			blockData.getResults().recordMatchedTile(tile.getIntegerZ(), tile.getTileId());
+		}
 
 		final ResultContainer<ArrayList<AffineModel1D>> results = blockData.getResults();
 		for (final Future<Pair<String, ArrayList<Double>>> average : averageComputations) {
@@ -369,7 +371,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return new ValuePair<>(tile.getTileId(), result);
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
+	private static final Logger LOG = LoggerFactory.getLogger(AffineIntensityCorrectionBlockWorker.class);
 
 	static final private class Matcher implements Runnable
 	{
