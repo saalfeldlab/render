@@ -38,8 +38,8 @@ public class OrderedCanvasIdPairTest {
                                                                                             boundsB);
         validatePair("leftRightPair", leftRightPair, tileAId, MontageRelativePosition.LEFT);
 
-        final String tileOverlapId = "tileOverlap";
-        final TileBounds boundsOverlap = new TileBounds(tileOverlapId, boundsA.getSectionId(), boundsA.getZ(),
+        final String sameBoundsTileId = "sameBoundsTile";
+        final TileBounds boundsOverlap = new TileBounds(sameBoundsTileId, boundsA.getSectionId(), boundsA.getZ(),
                                                         boundsA.getMinX(), boundsA.getMinY(),
                                                         boundsA.getMaxX(), boundsA.getMaxY());
 
