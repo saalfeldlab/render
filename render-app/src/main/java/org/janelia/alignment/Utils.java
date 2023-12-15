@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
@@ -410,5 +411,8 @@ public class Utils {
         }
         return uri;
     }
+
+    public static final Comparator<String> NULLS_FIRST_STRING_COMPARATOR =
+            Comparator.nullsFirst(Comparator.naturalOrder());
 
 }

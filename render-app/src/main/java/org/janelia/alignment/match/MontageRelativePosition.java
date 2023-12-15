@@ -1,5 +1,7 @@
 package org.janelia.alignment.match;
 
+import java.util.Comparator;
+
 import org.janelia.alignment.spec.Bounds;
 
 /**
@@ -57,4 +59,6 @@ public enum MontageRelativePosition {
         return opposite;
     }
 
+    public static final Comparator<MontageRelativePosition> NULLS_FIRST_POSITION_COMPARATOR =
+            Comparator.nullsFirst(Comparator.naturalOrder());
 }

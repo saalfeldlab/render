@@ -8,8 +8,8 @@ import org.janelia.alignment.json.JsonUtils;
 
 import jakarta.annotation.Nonnull;
 
-import static org.janelia.alignment.match.MontageRelativePosition.LEFT;
-import static org.janelia.alignment.match.MontageRelativePosition.TOP;
+import static org.janelia.alignment.Utils.NULLS_FIRST_STRING_COMPARATOR;
+import static org.janelia.alignment.match.MontageRelativePosition.*;
 
 /**
  * Key identifiers for a canvas.
@@ -170,8 +170,7 @@ public class CanvasId
     public static final double[] ZERO_OFFSETS = { 0.0, 0.0 };
 
     private static final Comparator<CanvasId> CANVAS_ID_COMPARATOR = Comparator
-            .comparing(CanvasId::getGroupId, Comparator.nullsFirst(Comparator.naturalOrder()))
-            .thenComparing(CanvasId::getId, Comparator.nullsFirst(Comparator.naturalOrder()))
-            .thenComparing(CanvasId::getRelativePosition, Comparator.nullsFirst(Comparator.naturalOrder()));
-
+            .comparing(CanvasId::getGroupId, NULLS_FIRST_STRING_COMPARATOR)
+            .thenComparing(CanvasId::getId, NULLS_FIRST_STRING_COMPARATOR)
+            .thenComparing(CanvasId::getRelativePosition, NULLS_FIRST_POSITION_COMPARATOR);
 }
