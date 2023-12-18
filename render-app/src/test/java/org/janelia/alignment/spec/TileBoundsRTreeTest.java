@@ -245,10 +245,10 @@ public class TileBoundsRTreeTest {
     private List<OrderedCanvasIdPair> buildExpectedPairs(final double pZ,
                                                          final int pTileIndex,
                                                          final double qZ,
-                                                         final int... qTileIndexes) {
+                                                         final int... qTileIndices) {
         final List<OrderedCanvasIdPair> expectedPairs = new ArrayList<>();
         final CanvasId pCanvasId = new CanvasId(String.valueOf(pZ), getTileId(pTileIndex, pZ));
-        for (final int qTileIndex : qTileIndexes) {
+        for (final int qTileIndex : qTileIndices) {
             final CanvasId qCanvasId = new CanvasId(String.valueOf(qZ), getTileId(qTileIndex, qZ));
             final double deltaZ = Math.abs(pZ - qZ);
             expectedPairs.add(new OrderedCanvasIdPair(pCanvasId,
