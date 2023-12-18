@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
@@ -38,6 +39,8 @@ import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.janelia.render.client.newsolver.DistributedAffineBlockSolver.getRandomIndex;
 
 
 public class DistributedIntensityCorrectionSolver {
@@ -77,6 +80,10 @@ public class DistributedIntensityCorrectionSolver {
 			cmdLineSetup.parse(args);
 		}
 
+		run(cmdLineSetup);
+	}
+
+	public static void run(final IntensityCorrectionSetup cmdLineSetup) throws IOException {
 		final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
@@ -130,7 +137,7 @@ public class DistributedIntensityCorrectionSolver {
 
 		final BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
 				new BlockCombiner<>(DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
-									DistributedIntensityCorrectionSolver::interpolateModels);
+									DistributedIntensityCorrectionSolver::pickRandom);
 
 		final GlobalSolver<TranslationModel1D, ArrayList<AffineModel1D>> globalSolver =
 				new GlobalSolver<>(new TranslationModel1D(),
@@ -217,6 +224,19 @@ public class DistributedIntensityCorrectionSolver {
 		return interpolatedModels;
 	}
 
+	// TODO: remove duplication with DistributedAffineBlockSolver
+	private static ArrayList<AffineModel1D> pickRandom(final List<ArrayList<AffineModel1D>> models, final List<Double> weights) {
+		if (models.isEmpty() || models.size() != weights.size())
+			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
+
+		if (models.size() == 1)
+			return models.get(0);
+
+		final double randomSample = ThreadLocalRandom.current().nextDouble();
+		final int i = getRandomIndex(weights, randomSample);
+		return models.get(i);
+	}
+
 	private static Map<String, FilterSpec> convertCoefficientsToFilter(
 			final List<TileSpec> tiles,
 			final Map<String, ArrayList<AffineModel1D>> coefficientTiles,
@@ -267,10 +287,10 @@ public class DistributedIntensityCorrectionSolver {
 	}
 
 	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> setupSolve() {
-		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup.getBounds(), solverSetup.blockPartition);
+		this.blockFactory = BlockFactory.fromBlockSizes(renderSetup.getBounds(), solverSetup.blockPartition);
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();
 		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col =
-				blockFactory.defineBlockCollection(() -> defaultSolveParams);
+				blockFactory.defineBlockCollection(() -> defaultSolveParams, solverSetup.blockPartition.shiftBlocks);
 
 		this.blocks = col;
 		return col;

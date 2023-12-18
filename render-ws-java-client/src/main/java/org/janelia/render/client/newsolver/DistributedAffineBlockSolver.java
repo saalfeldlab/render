@@ -9,6 +9,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 import mpicbg.models.Affine2D;
@@ -67,7 +68,7 @@ public class DistributedAffineBlockSolver
                     "--project", "cut_000_to_009",
                     "--matchCollection", "c009_s310_v01_match",
                     "--stack", "c009_s310_v01_mfov_08",
-                    "--targetStack", "c009_s310_v01_align_test_overlap_shrink",
+                    "--targetStack", "c009_s310_v01_mfov_08_test",
 					"--minX", "33400",
 					"--maxX", "54600",
 					"--minY", "400",
@@ -75,16 +76,17 @@ public class DistributedAffineBlockSolver
                     "--minZ", "424",
                     "--maxZ", "460",
 
-					"--blockSizeX", "10000",
-					"--blockSizeY", "8000",
+					"--blockSizeX", "7000",
+					"--blockSizeY", "6000",
 					// "--blockSizeZ", "100",
+					"--shiftBlocks",
 
-                    "--completeTargetStack",
+					"--completeTargetStack",
 					//"--visualizeResults",
 
 					"--maxNumMatches", "0", // no limit, default
 					"--threadsWorker", "1",
-					"--threadsGlobal", "4",
+					"--threadsGlobal", "5",
 
                     "--blockOptimizerLambdasRigid",          "1.0,1.0,0.9,0.3,0.01",
                     "--blockOptimizerLambdasTranslation",    "1.0,0.0,0.0,0.0,0.0",
@@ -103,6 +105,10 @@ public class DistributedAffineBlockSolver
         	cmdLineSetup.parse(args);
         }
 
+		run(cmdLineSetup);
+	}
+
+	public static void run(final AffineBlockSolverSetup cmdLineSetup) throws IOException, InterruptedException {
 		final RenderSetup renderSetup = RenderSetup.setupSolve(cmdLineSetup);
 
 		// Note: different setups can be used if specific things need to be done for the solve or certain blocks
@@ -200,7 +206,7 @@ public class DistributedAffineBlockSolver
 
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
 				new BlockCombiner<>(DistributedAffineBlockSolver::integrateGlobalModel,
-									DistributedAffineBlockSolver::interpolateModels);
+									DistributedAffineBlockSolver::pickRandom);
 
 		final GlobalSolver<RigidModel2D, AffineModel2D> globalSolver =
 				new GlobalSolver<>(new RigidModel2D(),
@@ -244,11 +250,36 @@ public class DistributedAffineBlockSolver
 		return model.createAffineModel2D();
 	}
 
+	private static AffineModel2D pickRandom(final List<AffineModel2D> models, final List<Double> weights) {
+		if (models.isEmpty() || models.size() != weights.size())
+			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
+
+		if (models.size() == 1)
+			return models.get(0);
+
+		final double randomSample = ThreadLocalRandom.current().nextDouble();
+		final int i = getRandomIndex(weights, randomSample);
+		return models.get(i);
+	}
+
+	protected static int getRandomIndex(final List<Double> weights, final double randomSample) {
+		int i;
+		double sum = 0.0;
+
+		for (i = 0; i < weights.size(); i++) {
+			sum += weights.get(i);
+			if (randomSample < sum)
+				break;
+		}
+
+		return i;
+	}
+
 	public <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
 			BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> setupSolve(final M blockModel, final S stitchingModel)
 	{
 		// setup XY BlockFactory
-		this.blockFactory = BlockFactory.fromBlocksizes(renderSetup.getBounds(), solverSetup.blockPartition);
+		this.blockFactory = BlockFactory.fromBlockSizes(renderSetup.getBounds(), solverSetup.blockPartition);
 		
 		// create all blocks
 		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> col = setupBlockCollection(this.blockFactory, blockModel, stitchingModel);
@@ -268,7 +299,7 @@ public class DistributedAffineBlockSolver
 		} else {
 			defaultSolveParams = solverSetup.setupSolveParameters(blockModel, stitchingModel);
 		}
-		return blockFactory.defineBlockCollection(() -> defaultSolveParams);
+		return blockFactory.defineBlockCollection(() -> defaultSolveParams, solverSetup.blockPartition.shiftBlocks);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineBlockSolver.class);

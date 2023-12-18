@@ -154,7 +154,7 @@ public class RenderSetup
 		// a HashMap where int is the z section, and string is the description (problem, restart, ...)
 		runParams.zToGroupIdMap = new HashMap<>();
 		for (final String groupId : Arrays.asList("restart", "problem")) { // NOTE: "problem" groupId is for future use
-			LOG.debug( "Querying: " + groupId );
+			LOG.debug("Querying: {}", groupId);
 			try {
 				final ResolvedTileSpecCollection groupTileSpecs =
 						runParams.renderDataClient.getResolvedTiles(stack,

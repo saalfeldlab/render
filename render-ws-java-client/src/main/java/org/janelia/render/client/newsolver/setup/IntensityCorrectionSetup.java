@@ -4,8 +4,10 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.beust.jcommander.ParametersDelegate;
 import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
+import org.janelia.render.client.parameter.AlternatingRunParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.XYRangeParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 
 
@@ -26,10 +28,16 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 	public TargetStackParameters targetStack = new TargetStackParameters();
 
 	@ParametersDelegate
+	public XYRangeParameters xyRange = new XYRangeParameters();
+
+	@ParametersDelegate
 	public ZRangeParameters layerRange = new ZRangeParameters();
 
 	@ParametersDelegate
 	public BlockPartitionParameters blockPartition = new BlockPartitionParameters();
+
+	@ParametersDelegate
+	public AlternatingRunParameters alternatingRuns = new AlternatingRunParameters();
 
     // Parameter for testing
 	@SuppressWarnings("unused")

@@ -36,6 +36,12 @@ public interface BlockTileBoundsFilter
         return blockXYBounds.contains(tileBounds.getCenterX(), tileBounds.getCenterY());
     };
 
+    BlockTileBoundsFilter XYZ_MIDPOINT = (tileBounds, blockBounds) -> {
+        // only keep tiles where midpoint is inside block to reduce overlap
+        return BlockTileBoundsFilter.XY_MIDPOINT.shouldBeIncluded(tileBounds, blockBounds)
+                && BlockTileBoundsFilter.Z_INSIDE.shouldBeIncluded(tileBounds, blockBounds);
+    };
+
     BlockTileBoundsFilter SCALED_XY = (tileBounds, blockBounds) -> {
         // only keep tiles that touch a shrunk version of the block
         final Bounds scaledBlockBounds = blockBounds.scaled(0.75, 0.75, 1.0);

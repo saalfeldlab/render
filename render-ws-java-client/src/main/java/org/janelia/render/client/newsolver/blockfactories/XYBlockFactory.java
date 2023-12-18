@@ -57,13 +57,20 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 
 	@Override
 	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
-			final ParameterProvider<M, R, P> blockSolveParameterProvider)
+			final ParameterProvider<M, R, P> blockSolveParameterProvider,
+			final boolean shiftBlocks)
 	{
-		final List<Bounds> blockLayout = new BlockLayoutCreator()
-				.regularGrid(In.X, minX, maxX, blockSizeX)
-				.regularGrid(In.Y, minY, maxY, blockSizeY)
-				.singleBlock(In.Z, minZ, maxZ)
-				.create();
+		final BlockLayoutCreator creator = new BlockLayoutCreator();
+		if (shiftBlocks) {
+			creator.shiftedGrid(In.X, minX, maxX, blockSizeX);
+			creator.shiftedGrid(In.Y, minY, maxY, blockSizeY);
+		} else {
+			creator.regularGrid(In.X, minX, maxX, blockSizeX);
+			creator.regularGrid(In.Y, minY, maxY, blockSizeY);
+		}
+
+		creator.singleBlock(In.Z, minZ, maxZ);
+		final List<Bounds> blockLayout = creator.create();
 
 		// grow blocks such that they overlap
 		final List<Bounds> scaledLayout = blockLayout.stream().map(b -> b.scaled(2.0, 2.0, 1.0)).collect(Collectors.toList());
@@ -72,7 +79,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 
 	@Override
 	protected BlockTileBoundsFilter getBlockTileFilter() {
-		return BlockTileBoundsFilter.SCALED_XY;
+		return BlockTileBoundsFilter.XY_MIDPOINT;
 	}
 
 	@Override
@@ -104,7 +111,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 			final Collection<Integer> matchedZLayers = results.getMatchedZLayers();
 			if (matchedZLayers.isEmpty()) {
 				final List<String> tileIds = results.getTileIds().stream().sorted().collect(Collectors.toList());
-				LOG.warn("XYDistanceWeightFunction ctor: block {} results with no matchedZLayers has {} tileIds: {}",
+				LOG.error("XYDistanceWeightFunction ctor: block {} results with no matchedZLayers has {} tileIds: {}",
 						 block, tileIds.size(), tileIds);
 				throw new IllegalStateException("block " + block + " has no matched z layers");
 			}

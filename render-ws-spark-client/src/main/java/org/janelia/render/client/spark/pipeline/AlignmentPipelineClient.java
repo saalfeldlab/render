@@ -1,18 +1,14 @@
 package org.janelia.render.client.spark.pipeline;
 
 import com.beust.jcommander.Parameter;
-
-import java.io.IOException;
-import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
 import org.janelia.alignment.multisem.UnconnectedMFOVPairsForStack;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.parameter.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -26,6 +22,12 @@ import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
 import org.janelia.render.client.spark.newsolver.DistributedAffineBlockSolverClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Spark client for running various alignment stages in one go.
@@ -165,21 +167,95 @@ public class AlignmentPipelineClient
         }
 
         if (alignmentPipelineParameters.hasAffineBlockSolverSetup()) {
-            final MultiProjectParameters multiProject = alignmentPipelineParameters.getMultiProject();
-            final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
-            final AffineBlockSolverSetup setup = alignmentPipelineParameters.getAffineBlockSolverSetup();
-            final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
-            // TODO: push StackWithZValues idea into core solver code
-            for (final StackWithZValues stackWithZValues : stackList) {
-                setup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
-                                            stackWithZValues.getStackId());
-                setupList.add(setup.clone());
-            }
-            final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
-            affineBlockSolverClient.runWithContext(sparkContext, setupList);
+            runAffineBlockSolver(sparkContext, alignmentPipelineParameters);
         }
 
         LOG.info("runWithContext: exit");
+    }
+
+    private static void runAffineBlockSolver(final JavaSparkContext sparkContext,
+                                             final AlignmentPipelineParameters alignmentPipelineParameters)
+            throws IOException {
+
+        final MultiProjectParameters multiProject = alignmentPipelineParameters.getMultiProject();
+        final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
+        final AffineBlockSolverSetup setup = alignmentPipelineParameters.getAffineBlockSolverSetup();
+        final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
+        final int nRuns = setup.alternatingRuns.nRuns;
+
+        // TODO: push StackWithZValues idea into core solver code
+        for (final StackWithZValues stackWithZValues : stackList) {
+            setup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
+                                        stackWithZValues.getStackId());
+            setupList.add(setup.clone());
+        }
+
+        final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
+
+        if (nRuns == 1) {
+
+            affineBlockSolverClient.runWithContext(sparkContext, setupList);
+
+        } else {
+
+            // TODO: handle alternatingRuns for multiple stacks
+            if (stackList.size() > 1) {
+                throw new IllegalArgumentException("alternatingRuns is not supported for multiple stacks");
+            }
+
+            final AffineBlockSolverSetup updatedSetup = setupList.get(0);
+            String sourceStack = updatedSetup.stack;
+            final String originalTargetStack = updatedSetup.targetStack.stack;
+
+            for (int runNumber = 1; runNumber <= nRuns; runNumber++) {
+
+                final String targetStack = getStackName(originalTargetStack, runNumber, nRuns);
+
+                final AffineBlockSolverSetup runSetup = updatedSetup.clone();
+                runSetup.stack = sourceStack;
+                runSetup.targetStack.stack = targetStack;
+                updateParameters(runSetup, runNumber);
+
+                LOG.info("runAffineBlockSolver: run {} of {}, stack={}, targetStack={}, shiftBlocks={}",
+						 runNumber, nRuns, sourceStack, targetStack, runSetup.blockPartition.shiftBlocks);
+
+                affineBlockSolverClient.runWithContext(sparkContext, Collections.singletonList(runSetup));
+
+                if ((! runSetup.alternatingRuns.keepIntermediateStacks) && (runNumber > 1))
+                    cleanUpIntermediateStack(runSetup);
+
+                sourceStack = runSetup.targetStack.stack;
+            }
+        }
+    }
+
+    private static String getStackName(final String name, final int runNumber, final int nTotalRuns) {
+        if (runNumber == nTotalRuns) {
+            return name;
+        } else {
+            return name + "_run" + runNumber;
+        }
+    }
+
+    private static void cleanUpIntermediateStack(final AffineBlockSolverSetup parameters) {
+        final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
+        try {
+            dataClient.deleteStack(parameters.stack, null);
+            LOG.info("cleanUpIntermediateStack: deleted stack {}", parameters.stack);
+        } catch (final IOException e) {
+            LOG.error("cleanUpIntermediateStack: error deleting stack {}", parameters.stack, e);
+        }
+    }
+
+    private static void updateParameters(final AffineBlockSolverSetup parameters, final int runNumber) {
+        // alternate block layout
+        parameters.blockPartition.shiftBlocks = (runNumber % 2 == 1);
+
+        // don't stitch or pre-align after first run
+        if (runNumber > 1) {
+            parameters.stitchFirst = false;
+            parameters.preAlign = PreAlign.NONE;
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(AlignmentPipelineClient.class);

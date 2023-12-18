@@ -34,11 +34,14 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 
 	@Override
 	public <M, R, P extends BlockDataSolveParameters<M,R,P>> BlockCollection<M, R, P> defineBlockCollection(
-			final ParameterProvider< M, R, P > blockSolveParameterProvider )
+			final ParameterProvider<M, R, P> blockSolveParameterProvider,
+			final boolean shiftBlocks)
 	{
-		final List<Bounds> blockLayout = new BlockLayoutCreator()
-				.regularGrid(In.Z, minZ, maxZ, blockSize)
-				.create();
+		final List<Bounds> blockLayout;
+		if (shiftBlocks)
+			blockLayout = new BlockLayoutCreator().shiftedGrid(In.Z, minZ, maxZ, blockSize).create();
+		else
+			blockLayout = new BlockLayoutCreator().regularGrid(In.Z, minZ, maxZ, blockSize).create();
 
 		// grow blocks such that they overlap
 		final List<Bounds> scaledLayout = blockLayout.stream().map(b -> b.scaled(1.0, 1.0, 2.0)).collect(Collectors.toList());
