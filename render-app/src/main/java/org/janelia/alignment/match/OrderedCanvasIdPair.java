@@ -21,6 +21,8 @@ public class OrderedCanvasIdPair
 
     private final Double absoluteDeltaZ;
 
+    // TODO: merge absoluteDeltaZ with montageRelativePosition into a single relativePosition class ( see https://github.com/saalfeldlab/render/pull/163#discussion_r1421439483 )
+
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private OrderedCanvasIdPair() {
