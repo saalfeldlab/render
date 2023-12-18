@@ -304,7 +304,7 @@ public class TileBoundsRTree {
 
                         final OrderedCanvasIdPair pair;
                         if (includeRelativePosition) {
-                            pair = OrderedCanvasIdPair.withRelativePositions(fromTile, toTile);
+                            pair = OrderedCanvasIdPair.withRelativeMontagePositions(fromTile, toTile);
                         } else {
                             final Double deltaZ = fromTile.getZ() - toTile.getZ();
                             pair = new OrderedCanvasIdPair(p,

@@ -77,7 +77,7 @@ public class TileBoundsRTreeTest {
                                                                                     false);
 
         final Set<OrderedCanvasIdPair> expectedPairs = new TreeSet<>();
-        expectedPairs.add(OrderedCanvasIdPair.withRelativePositions(z1tile0Bounds, z1tile1Bounds));
+        expectedPairs.add(OrderedCanvasIdPair.withRelativeMontagePositions(z1tile0Bounds, z1tile1Bounds));
         expectedPairs.addAll(buildExpectedPairs(1.0, 0, 2.0, 0, 1, 3, 4));
         expectedPairs.addAll(buildExpectedPairs(1.0, 0, 3.0, 0, 1, 3, 4));
         expectedPairs.addAll(buildExpectedPairs(1.0, 1, 2.0, 0, 1, 2, 3, 4, 5));
@@ -126,7 +126,7 @@ public class TileBoundsRTreeTest {
                                                                                    false);
 
         final Set<OrderedCanvasIdPair> expectedPairs = new TreeSet<>();
-        expectedPairs.add(OrderedCanvasIdPair.withRelativePositions(z1tile0Bounds, fullyOverlappingTileBounds));
+        expectedPairs.add(OrderedCanvasIdPair.withRelativeMontagePositions(z1tile0Bounds, fullyOverlappingTileBounds));
 
         validatePairs("fully overlapping tiles", expectedPairs, neighborPairs);
     }

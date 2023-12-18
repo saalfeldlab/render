@@ -24,7 +24,7 @@ public class OrderedCanvasIdPairTest {
     }
 
     @Test
-    public void testWithRelativePositions() {
+    public void testWithRelativeMontagePositions() {
         final String tileAId = "tileA";
         final TileBounds boundsA = new TileBounds(tileAId,"1.0", 1.0,
                                                   10.0, 11.0,
@@ -34,8 +34,8 @@ public class OrderedCanvasIdPairTest {
                                                   boundsA.getMinX() + 5.0, boundsA.getMinY(),
                                                   boundsA.getMaxX() + 5.0, boundsA.getMaxY());
 
-        final OrderedCanvasIdPair leftRightPair = OrderedCanvasIdPair.withRelativePositions(boundsA,
-                                                                                            boundsB);
+        final OrderedCanvasIdPair leftRightPair = OrderedCanvasIdPair.withRelativeMontagePositions(boundsA,
+                                                                                                   boundsB);
         validatePair("leftRightPair", leftRightPair, tileAId, MontageRelativePosition.LEFT);
 
         final String sameBoundsTileId = "tileSameBounds";
@@ -43,14 +43,14 @@ public class OrderedCanvasIdPairTest {
                                                      boundsA.getMinX(), boundsA.getMinY(),
                                                      boundsA.getMaxX(), boundsA.getMaxY());
 
-        final OrderedCanvasIdPair orderedSameBoundsPair = OrderedCanvasIdPair.withRelativePositions(boundsA,
-                                                                                                    sameBounds);
+        final OrderedCanvasIdPair orderedSameBoundsPair = OrderedCanvasIdPair.withRelativeMontagePositions(boundsA,
+                                                                                                           sameBounds);
         validatePair("orderedSameBoundsPair", orderedSameBoundsPair, tileAId, MontageRelativePosition.TOP);
 
-        final OrderedCanvasIdPair reversedSamBoundsPair = OrderedCanvasIdPair.withRelativePositions(sameBounds,
-                                                                                                    boundsA);
+        final OrderedCanvasIdPair reversedSameBoundsPair = OrderedCanvasIdPair.withRelativeMontagePositions(sameBounds,
+                                                                                                           boundsA);
         Assert.assertEquals("same bounds pairs should be the same",
-                            orderedSameBoundsPair, reversedSamBoundsPair);
+                            orderedSameBoundsPair, reversedSameBoundsPair);
     }
 
     private CanvasId getCanvasId(final int tileIndex) {

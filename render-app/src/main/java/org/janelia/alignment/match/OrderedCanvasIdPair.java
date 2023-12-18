@@ -63,15 +63,15 @@ public class OrderedCanvasIdPair
      * @param  oneTileBounds      identifiers and bounds for one canvas identifier.
      * @param  anotherTileBounds  identifiers and bounds for another canvas identifier.
      *
-     * @return an ordered pair where each CanvasId includes relative position information
+     * @return an ordered pair where each CanvasId includes montage relative position information
      *         based upon the specified tile bounds.
      *         Assumes that the bounds are for the same layer so the pair's deltaZ is set to null.
      *
      * @throws IllegalArgumentException
      *   if both tile identifiers are the same.
      */
-    public static OrderedCanvasIdPair withRelativePositions(final TileBounds oneTileBounds,
-                                                            final TileBounds anotherTileBounds)
+    public static OrderedCanvasIdPair withRelativeMontagePositions(final TileBounds oneTileBounds,
+                                                                   final TileBounds anotherTileBounds)
             throws IllegalArgumentException {
 
         final CanvasId oneCanvasId = new CanvasId(oneTileBounds.getSectionId(), oneTileBounds.getTileId());
