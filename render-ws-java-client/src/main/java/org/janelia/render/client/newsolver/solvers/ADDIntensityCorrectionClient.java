@@ -25,25 +25,25 @@ public class ADDIntensityCorrectionClient {
 					"--owner", "hess_wafer_53",
 					"--project", "cut_000_to_009",
 					"--stack", "c009_s310_v01_mfov_08_test",
-					"--targetStack", "c009_s310_v01_mfov_08_test_ic",
+					"--targetStack", "c009_s310_v01_mfov_08_test_ic_3",
 					"--minX", "33400",
 					"--maxX", "54600",
 					"--minY", "400",
 					"--maxY", "18700",
 					"--minZ", "424",
-					"--maxZ", "460",
+					"--maxZ", "425",
 
 					"--blockSizeX", "7000",
 					"--blockSizeY", "6000",
 
 					"--completeTargetStack",
 
-					"--threadsWorker", "1",
+					"--threadsWorker", "2",
 					"--threadsGlobal", "5",
 
 					"--zDistance", "0",
 
-					"--alternatingRuns", "4"
+					"--alternatingRuns", "1"
 			};
 		}
 
