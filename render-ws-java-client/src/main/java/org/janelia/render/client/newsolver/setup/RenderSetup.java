@@ -28,7 +28,6 @@ import net.imglib2.util.Pair;
 public class RenderSetup
 {
 	public RenderDataClient renderDataClient;
-	public RenderDataClient matchDataClient;
 	public RenderDataClient targetDataClient;
 	
 	public List< Pair< String, Double > > pGroupList;
@@ -44,39 +43,25 @@ public class RenderSetup
 	}
 
 	public static RenderSetup setupSolve(final AffineBlockSolverSetup parameters) throws IOException {
-
 		parameters.initDefaultValues();
-		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
-		final XYRangeParameters xyRange = new XYRangeParameters();
-		xyRange.minX = parameters.xyRange.minX;
-		xyRange.maxX = parameters.xyRange.maxX;
-		xyRange.minY = parameters.xyRange.minY;
-		xyRange.maxY = parameters.xyRange.maxY;
-		final ZRangeParameters layerRange = new ZRangeParameters();
-		layerRange.minZ = parameters.zRange.minZ;
-		layerRange.maxZ = parameters.zRange.maxZ;
-		final String stack = parameters.stack;
-		final String targetStack = parameters.targetStack.stack;
-		final String targetOwner = parameters.targetStack.owner;
-		final String targetProject = parameters.targetStack.project;
-		final String matchOwner = parameters.matches.matchOwner;
-		final String matchCollection = parameters.matches.matchCollection;
-
-		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, matchOwner, matchCollection, stack, xyRange, layerRange);
+		return setupSolve(parameters.renderWeb,
+						  parameters.targetStack.stack,
+						  parameters.targetStack.owner,
+						  parameters.targetStack.project,
+						  parameters.stack,
+						  parameters.xyRange,
+						  parameters.zRange);
 	}
 
 	public static RenderSetup setupSolve(final IntensityCorrectionSetup parameters) throws IOException {
-
 		parameters.initDefaultValues();
-		final RenderWebServiceParameters webServiceParameters = parameters.renderWeb;
-		final ZRangeParameters layerRange = parameters.layerRange;
-		final XYRangeParameters xyRange = new XYRangeParameters();
-		final String stack = parameters.intensityAdjust.stack;
-		final String targetStack = parameters.targetStack.stack;
-		final String targetOwner = parameters.targetStack.owner;
-		final String targetProject = parameters.targetStack.project;
-
-		return setupSolve(webServiceParameters, targetStack, targetOwner, targetProject, null, null, stack, xyRange, layerRange);
+		return setupSolve(parameters.renderWeb,
+						  parameters.targetStack.stack,
+						  parameters.targetStack.owner,
+						  parameters.targetStack.project,
+						  parameters.intensityAdjust.stack,
+						  parameters.xyRange,
+						  parameters.layerRange);
 	}
 
 	private static RenderSetup setupSolve(
@@ -84,8 +69,6 @@ public class RenderSetup
 			final String targetStack,
 			final String targetOwner,
 			final String targetProject,
-			final String matchOwner,
-			final String matchCollection,
 			final String stack,
 			final XYRangeParameters xyRange,
 			final ZRangeParameters layerRange) throws IOException {
@@ -93,7 +76,6 @@ public class RenderSetup
 		final RenderSetup runParams = new RenderSetup();
 
 		runParams.renderDataClient = webServiceParameters.getDataClient();
-		runParams.matchDataClient = new RenderDataClient(webServiceParameters.baseDataUrl, matchOwner, matchCollection);
 		runParams.sectionIdToZMap = new TreeMap<>();
 		runParams.zToTileSpecsMap = new HashMap<>();
 		runParams.totalTileCount = 0;
