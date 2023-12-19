@@ -127,7 +127,8 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 						missingTileCount++;
 					} else {
 						foundTileCount++;
-						layerTiles.add(tileSpec);
+						// tile spec gets modified for layer distance map, so need to clone it
+						layerTiles.add(tileSpec.slowClone());
 					}
 				}
 				if (layerTiles.isEmpty()) {
