@@ -45,6 +45,7 @@ import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 
+import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
@@ -198,6 +199,12 @@ public class Render
 		// get the entire images at full scale
 		final ImageProcessorWithMasks impOriginal =
 				VisualizeTools.getUntransformedProcessorWithMasks(patch, imageProcessorCache);
+
+		// apply filters if there are any
+		final FilterSpec filterSpec = patch.getFilterSpec();
+		if (filterSpec != null) {
+			filterSpec.buildInstance().process(impOriginal.ip, scale);
+		}
 
 		/* assemble coordinate transformations and add bounding box offset */
 		//final CoordinateTransformList< CoordinateTransform > ctl = new CoordinateTransformList< CoordinateTransform >();
