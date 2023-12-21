@@ -28,6 +28,25 @@ public class LinearIntensityMap8BitFilter
         super(numberOfRegionRows, numberOfRegionColumns, coefficientsPerRegion, coefficients);
     }
 
+    /**
+     * Merges the current filter with another filter such that the result of the merge is equivalent to applying the
+     * other filter first and then the current filter.
+     *
+     * @param otherFilter An instance of LinearIntensityMap8BitFilter that should be applied first.
+     */
+    public void after(final LinearIntensityMap8BitFilter otherFilter) {
+        final double[][] otherCoefficients = otherFilter.getCoefficients();
+
+        for (int i = 0; i < coefficients.length; ++i) {
+            final double[] ab = coefficients[i];
+            final double[] otherAb = otherCoefficients[i];
+
+            // chaining of two linear functions of the form y = ax + b
+            ab[1] = ab[1] + ab[0] * otherAb[1];
+            ab[0] = ab[0] * otherAb[0];
+        }
+    }
+
 
     /**
      * Adapted from render-java-ws-client module implementation of:
