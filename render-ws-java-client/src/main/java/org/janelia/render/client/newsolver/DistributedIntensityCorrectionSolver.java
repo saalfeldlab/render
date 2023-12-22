@@ -17,8 +17,10 @@ import mpicbg.models.AffineModel1D;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.TranslationModel1D;
 
+import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.filter.IntensityMap8BitFilter;
+import org.janelia.alignment.filter.LinearIntensityMap8BitFilter;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -246,10 +248,14 @@ public class DistributedIntensityCorrectionSolver {
 
 		final Map<String, FilterSpec> idToFilterSpec = new HashMap<>();
 		for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
-			final String tileId = onTheFlyIntensity.getTileSpec().getTileId();
-			final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
-			final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
-			idToFilterSpec.put(tileId, filterSpec);
+			final TileSpec tileSpec = onTheFlyIntensity.getTileSpec();
+			final IntensityMap8BitFilter newFilter = onTheFlyIntensity.toFilter();
+			final FilterSpec existingFilterSpec = tileSpec.getFilterSpec();
+			if (existingFilterSpec != null) {
+				checkAndMergeFilters(existingFilterSpec.buildInstance(), newFilter);
+			}
+			final FilterSpec filterSpec = new FilterSpec(newFilter.getClass().getName(), newFilter.toParametersMap());
+			idToFilterSpec.put(tileSpec.getTileId(), filterSpec);
 		}
 
 		return idToFilterSpec;
@@ -275,6 +281,18 @@ public class DistributedIntensityCorrectionSolver {
 			correctedOnTheFly.add(new LinearOnTheFlyIntensity(tile, ab_coefficients, numCoefficients ));
 		}
 		return correctedOnTheFly;
+	}
+
+	private static void checkAndMergeFilters(final Filter oldFilter, final IntensityMap8BitFilter newFilter) {
+		if (oldFilter instanceof LinearIntensityMap8BitFilter
+				&& newFilter instanceof LinearIntensityMap8BitFilter) {
+			final LinearIntensityMap8BitFilter oldLinearFilter = (LinearIntensityMap8BitFilter) oldFilter;
+			final LinearIntensityMap8BitFilter newLinearFilter = (LinearIntensityMap8BitFilter) newFilter;
+			newLinearFilter.after(oldLinearFilter);
+		} else {
+			throw new IllegalArgumentException("Cannot merge filters of type " + oldFilter.getClass().getName() +
+											   " and " + newFilter.getClass().getName());
+		}
 	}
 
 	private static void addFilters(final ResolvedTileSpecCollection rtsc,

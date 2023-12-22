@@ -741,6 +741,7 @@ public class VisualizeTools
 		return imp;
 	}
 
+	// TODO: this does not only visualize but also load data; move it somewhere else?
 	public static ImageProcessorWithMasks getUntransformedProcessorWithMasks(final TileSpec tileSpec,
 																			 final ImageProcessorCache imageProcessorCache) {
 		final String tileId = tileSpec.getTileId();
