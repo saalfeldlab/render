@@ -27,6 +27,7 @@ public class AlignmentPipelineParameters
         implements Serializable {
 
     private final MultiProjectParameters multiProject;
+    private final List<AlignmentPipelineStepId> pipelineSteps;
     private final MipmapParameters mipmap;
     private final List<MatchRunParameters> matchRunList;
     private final MFOVMontageMatchPatchParameters mfovMontagePatch;
@@ -44,10 +45,12 @@ public class AlignmentPipelineParameters
              null,
              null,
              null,
+             null,
              null);
     }
 
     public AlignmentPipelineParameters(final MultiProjectParameters multiProject,
+                                       final List<AlignmentPipelineStepId> pipelineSteps,
                                        final MipmapParameters mipmap,
                                        final List<MatchRunParameters> matchRunList,
                                        final MFOVMontageMatchPatchParameters mfovMontagePatch,
@@ -56,6 +59,7 @@ public class AlignmentPipelineParameters
                                        final MatchCopyParameters matchCopy,
                                        final AffineBlockSolverSetup affineBlockSolverSetup) {
         this.multiProject = multiProject;
+        this.pipelineSteps = pipelineSteps;
         this.mipmap = mipmap;
         this.matchRunList = matchRunList;
         this.mfovMontagePatch = mfovMontagePatch;
@@ -69,60 +73,46 @@ public class AlignmentPipelineParameters
         return multiProject;
     }
 
-    public boolean hasMipmapParameters() {
-        return mipmap != null;
-    }
-
     public MipmapParameters getMipmap() {
         return mipmap;
-    }
-
-    public boolean hasMatchParameters() {
-        return (matchRunList != null) && (! matchRunList.isEmpty());
     }
 
     public List<MatchRunParameters> getMatchRunList() {
         return matchRunList;
     }
 
-    public boolean hasMfovMontagePatchParameters() {
-        return (mfovMontagePatch != null);
-    }
-
     public MFOVMontageMatchPatchParameters getMfovMontagePatch() {
         return mfovMontagePatch;
-    }
-
-    public boolean hasUnconnectedCrossMfovParameters() {
-        return (unconnectedCrossMfov != null);
     }
 
     public UnconnectedCrossMFOVParameters getUnconnectedCrossMfov() {
         return unconnectedCrossMfov;
     }
 
-    public boolean hasTileClusterParameters() {
-        return (tileCluster != null);
-    }
-
     public TileClusterParameters getTileCluster() {
         return tileCluster;
-    }
-
-    public boolean hasMatchCopyParameters() {
-        return (matchCopy != null);
     }
 
     public MatchCopyParameters getMatchCopy() {
         return matchCopy;
     }
 
-    public boolean hasAffineBlockSolverSetup() {
-        return (affineBlockSolverSetup != null);
-    }
-
     public AffineBlockSolverSetup getAffineBlockSolverSetup() {
         return affineBlockSolverSetup;
+    }
+
+    public List<AlignmentPipelineStep> buildStepClients()
+            throws IllegalArgumentException {
+
+        if ((pipelineSteps == null) || pipelineSteps.isEmpty()) {
+            throw new IllegalArgumentException("no pipeline steps defined");
+        }
+
+        validateRequiredElementExists("multiProject", multiProject);
+
+        return pipelineSteps.stream()
+                            .map(AlignmentPipelineStepId::toStepClient)
+                            .collect(java.util.stream.Collectors.toList());
     }
 
     @SuppressWarnings("unused")
@@ -131,6 +121,14 @@ public class AlignmentPipelineParameters
      */
     public String toJson() {
         return JSON_HELPER.toJson(this);
+    }
+
+    public static void validateRequiredElementExists(final String elementName,
+                                                     final Object element)
+            throws IllegalArgumentException {
+        if (element == null) {
+            throw new IllegalArgumentException(elementName + " missing from pipeline parameters");
+        }
     }
 
     public static AlignmentPipelineParameters fromJson(final Reader json) {

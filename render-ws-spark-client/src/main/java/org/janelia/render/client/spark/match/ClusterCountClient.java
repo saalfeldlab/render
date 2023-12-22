@@ -4,6 +4,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
@@ -16,11 +17,12 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.spark.LogUtilities;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +32,7 @@ import org.slf4j.LoggerFactory;
  * @author Eric Trautman
  */
 public class ClusterCountClient
-        implements Serializable {
+        implements Serializable, AlignmentPipelineStep {
 
     public static class Parameters extends CommandLineParameters {
         @ParametersDelegate
@@ -46,63 +48,80 @@ public class ClusterCountClient
             javaClientParameters.tileCluster = tileCluster;
             return new org.janelia.render.client.ClusterCountClient(javaClientParameters);
         }
-
-        /** @return client specific parameters populated from specified alignment pipeline parameters. */
-        public static Parameters fromPipeline(final AlignmentPipelineParameters alignmentPipelineParameters) {
-            final Parameters derivedParameters = new Parameters();
-            derivedParameters.multiProject = alignmentPipelineParameters.getMultiProject();
-            derivedParameters.tileCluster = alignmentPipelineParameters.getTileCluster();
-            return derivedParameters;
-        }
-
     }
 
+    /** Run the client with command line parameters. */
     public static void main(final String[] args) {
-
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
             public void runClient(final String[] args) throws Exception {
-
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-
-                final ClusterCountClient client = new ClusterCountClient(parameters);
-                client.run();
-
+                final ClusterCountClient client = new ClusterCountClient();
+                client.createContextAndRun(parameters);
             }
         };
         clientRunner.run();
-
     }
 
-    private final Parameters parameters;
-
-    public ClusterCountClient(final Parameters parameters) throws IllegalArgumentException {
-        LOG.info("init: parameters={}", parameters);
-        this.parameters = parameters;
+    /** Empty constructor required for alignment pipeline steps. */
+    public ClusterCountClient() {
     }
 
-    public void run() throws IOException {
-
-        final SparkConf conf = new SparkConf().setAppName("ClusterCountClient");
-
+    /** Create a spark context and run the client with the specified parameters. */
+    public void createContextAndRun(final Parameters clientParameters) throws IOException {
+        final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
-            final String sparkAppId = sparkContext.getConf().getAppId();
-            LOG.info("run: appId is {}", sparkAppId);
-            findConnectedClusters(sparkContext);
+            LOG.info("run: appId is {}", sparkContext.getConf().getAppId());
+            findConnectedClusters(sparkContext, clientParameters);
         }
     }
 
-    public List<ConnectedTileClusterSummaryForStack> findConnectedClusters(final JavaSparkContext sparkContext)
+    /** Validates the specified pipeline parameters are sufficient. */
+    @Override
+    public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException {
+        AlignmentPipelineParameters.validateRequiredElementExists("tileCluster",
+                                                                  pipelineParameters.getTileCluster());
+    }
+
+    /** Run the client as part of an alignment pipeline. */
+    public void runPipelineStep(final JavaSparkContext sparkContext,
+                                final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException, IOException {
+
+        final Parameters clientParameters = new Parameters();
+        clientParameters.multiProject = pipelineParameters.getMultiProject();
+        clientParameters.tileCluster = pipelineParameters.getTileCluster();
+
+        final List<ConnectedTileClusterSummaryForStack> summaryList =
+                findConnectedClusters(sparkContext, clientParameters);
+
+        final List<String> problemStackSummaryStrings = new ArrayList<>();
+        for (final ConnectedTileClusterSummaryForStack stackSummary : summaryList) {
+            if (stackSummary.hasMultipleClusters() ||
+                stackSummary.hasUnconnectedTiles() ||
+                stackSummary.hasTooManyConsecutiveUnconnectedEdges()) {
+                problemStackSummaryStrings.add(stackSummary.toString());
+            }
+        }
+
+        if (! problemStackSummaryStrings.isEmpty()) {
+            throw new IOException("The following " + problemStackSummaryStrings.size() +
+                                  " stacks have match connection issues:\n" +
+                                  String.join("\n", problemStackSummaryStrings));
+        }
+    }
+
+    private List<ConnectedTileClusterSummaryForStack> findConnectedClusters(final JavaSparkContext sparkContext,
+                                                                            final Parameters clientParameters)
             throws IOException {
 
-        LOG.info("findConnectedClusters: entry");
+        LOG.info("findConnectedClusters: entry, clientParameters={}", clientParameters);
 
-        final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
-        final String baseDataUrl = renderDataClient.getBaseDataUrl();
-
-        final List<StackWithZValues> stackWithZValuesList =
-                parameters.multiProject.stackIdWithZ.buildListOfStackWithAllZ(renderDataClient);
+        final MultiProjectParameters multiProjectParameters = clientParameters.multiProject;
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
+        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
 
         final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
 
@@ -111,16 +130,16 @@ public class ClusterCountClient
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
             final StackId stackId = stackWithZ.getStackId();
-            final MatchCollectionId matchCollectionId = parameters.multiProject.getMatchCollectionIdForStack(stackId);
+            final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
             final RenderDataClient localDataClient = new RenderDataClient(baseDataUrl,
                                                                           stackId.getOwner(),
                                                                           stackId.getProject());
-            final org.janelia.render.client.ClusterCountClient jClient = parameters.buildJavaClient();
+            final org.janelia.render.client.ClusterCountClient jClient = clientParameters.buildJavaClient();
 
             return jClient.findConnectedClustersForStack(stackWithZ,
                                                          matchCollectionId,
                                                          localDataClient,
-                                                         parameters.tileCluster);
+                                                         clientParameters.tileCluster);
         };
 
         final JavaRDD<ConnectedTileClusterSummaryForStack> rddSummaries = rddStackWithZValues.map(summarizeFunction);

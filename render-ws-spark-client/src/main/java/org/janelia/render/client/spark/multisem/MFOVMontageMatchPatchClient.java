@@ -16,11 +16,12 @@ import org.janelia.alignment.multisem.StackMFOVWithZValues;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory;
  * @author Eric Trautman
  */
 public class MFOVMontageMatchPatchClient
-        implements Serializable {
+        implements Serializable, AlignmentPipelineStep {
 
     public static class Parameters extends CommandLineParameters {
 
@@ -43,84 +44,86 @@ public class MFOVMontageMatchPatchClient
                 description = "JSON file where match patch parameters are defined",
                 required = true)
         public String matchPatchJson;
-
-        /** @return client specific parameters populated from specified alignment pipeline parameters. */
-        public static Parameters fromPipeline(final AlignmentPipelineParameters alignmentPipelineParameters) {
-            final Parameters derivedParameters = new Parameters();
-            derivedParameters.multiProject = alignmentPipelineParameters.getMultiProject();
-            // NOTE: matchPatch parameters should/will be loaded from alignmentPipelineParameters directly
-            //       instead of from matchPatchJson file
-            return derivedParameters;
-        }
-
     }
 
-
+    /** Run the client with command line parameters. */
     public static void main(final String[] args) {
-
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
             public void runClient(final String[] args) throws Exception {
-
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-
-                final MFOVMontageMatchPatchClient client = new MFOVMontageMatchPatchClient(parameters);
-                client.run();
+                final MFOVMontageMatchPatchClient client = new MFOVMontageMatchPatchClient();
+                client.createContextAndRun(parameters);
             }
         };
         clientRunner.run();
-
     }
 
-    private final Parameters parameters;
-
-    public MFOVMontageMatchPatchClient(final Parameters parameters) throws IllegalArgumentException {
-        LOG.info("init: parameters={}", parameters);
-        this.parameters = parameters;
+    /** Empty constructor required for alignment pipeline steps. */
+    public MFOVMontageMatchPatchClient() {
     }
 
-    public void run() throws IOException {
-
-        final SparkConf conf = new SparkConf().setAppName("MFOVMontageMatchPatchClient");
-
+    /** Create a spark context and run the client with the specified parameters. */
+    public void createContextAndRun(final Parameters clientParameters) throws IOException {
+        final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
-            final String sparkAppId = sparkContext.getConf().getAppId();
-            LOG.info("run: appId is {}", sparkAppId);
-
+            LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
             final MFOVMontageMatchPatchParameters patchParameters =
-                    MFOVMontageMatchPatchParameters.fromJsonFile(parameters.matchPatchJson);
-
-            patchPairs(sparkContext, patchParameters);
+                    MFOVMontageMatchPatchParameters.fromJsonFile(clientParameters.matchPatchJson);
+            patchPairs(sparkContext, clientParameters.multiProject, patchParameters);
         }
     }
 
-    public void patchPairs(final JavaSparkContext sparkContext,
-                           final MFOVMontageMatchPatchParameters patchParameters)
+    /** Validates the specified pipeline parameters are sufficient. */
+    @Override
+    public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException {
+        AlignmentPipelineParameters.validateRequiredElementExists("mfovMontagePatch",
+                                                                  pipelineParameters.getMfovMontagePatch());
+    }
+
+    /** Run the client as part of an alignment pipeline. */
+    public void runPipelineStep(final JavaSparkContext sparkContext,
+                                final AlignmentPipelineParameters pipelineParameters)
+            throws IOException {
+        patchPairs(sparkContext,
+                   pipelineParameters.getMultiProject(),
+                   pipelineParameters.getMfovMontagePatch());
+    }
+
+
+    private void patchPairs(final JavaSparkContext sparkContext,
+                            final MultiProjectParameters multiProjectParameters,
+                            final MFOVMontageMatchPatchParameters patchParameters)
             throws IOException {
 
-        patchPairsForPass(sparkContext, patchParameters, 1);
+        LOG.info("patchPairs: entry, multiProjectParameters={}, patchParameters={}",
+                 multiProjectParameters, patchParameters);
+
+        patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
 
         if (patchParameters.secondPassDerivedMatchWeight != null) {
             patchParameters.setWeightsForSecondPass();
-            patchPairsForPass(sparkContext, patchParameters, 2);
+            patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 2);
         }
 
+        LOG.info("patchPairs: exit");
     }
 
-    public void patchPairsForPass(final JavaSparkContext sparkContext,
-                                  final MFOVMontageMatchPatchParameters patchParameters,
-                                  final int passNumber)
+    private void patchPairsForPass(final JavaSparkContext sparkContext,
+                                   final MultiProjectParameters multiProjectParameters,
+                                   final MFOVMontageMatchPatchParameters patchParameters,
+                                   final int passNumber)
             throws IOException {
 
         final String passName = "pass" + passNumber;
 
         LOG.info("patchPairsForPass: entry, {}", passName);
 
-        final MultiProjectParameters multiProject = parameters.multiProject;
-        final String baseDataUrl = multiProject.getBaseDataUrl();
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
         final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
-                multiProject.buildListOfStackMFOVWithAllZ(patchParameters.getMultiFieldOfViewId());
+                multiProjectParameters.buildListOfStackMFOVWithAllZ(patchParameters.getMultiFieldOfViewId());
 
         LOG.info("patchPairsForPass: {}, distributing tasks for {} MFOVs", passName, stackMFOVWithZValuesList.size());
 
@@ -140,7 +143,7 @@ public class MFOVMontageMatchPatchClient
                                                                             stackId.getOwner(),
                                                                             stackId.getProject());
 
-            final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackId);
+            final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
 
             final org.janelia.render.client.multisem.MFOVMontageMatchPatchClient javaPatchClient =
                     new org.janelia.render.client.multisem.MFOVMontageMatchPatchClient(javaPatchClientParameters);
