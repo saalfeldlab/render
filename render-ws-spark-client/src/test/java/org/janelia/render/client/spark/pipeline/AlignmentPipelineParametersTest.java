@@ -1,4 +1,4 @@
-package org.janelia.render.client.parameter;
+package org.janelia.render.client.spark.pipeline;
 
 import java.io.StringReader;
 

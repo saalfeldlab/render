@@ -30,7 +30,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.TilePairClient;
 import org.janelia.render.client.match.InMemoryTilePairClient;
-import org.janelia.render.client.parameter.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;

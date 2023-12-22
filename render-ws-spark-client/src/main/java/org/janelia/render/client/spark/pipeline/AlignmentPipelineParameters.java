@@ -1,4 +1,4 @@
-package org.janelia.render.client.parameter;
+package org.janelia.render.client.spark.pipeline;
 
 import java.io.IOException;
 import java.io.Reader;
@@ -11,6 +11,12 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
+import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
+import org.janelia.render.client.parameter.MatchCopyParameters;
+import org.janelia.render.client.parameter.MipmapParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.TileClusterParameters;
+import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
 
 /**
  * Parameters for an alignment pipeline run.
