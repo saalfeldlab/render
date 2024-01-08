@@ -15,10 +15,9 @@ import org.junit.Test;
 public class AlignmentPipelineParametersTest {
 
     @Test
-    public void testJson()
+    public void testAffineBlockSolverSetup()
             throws IOException {
-        final AlignmentPipelineParameters pipelineParameters =
-                AlignmentPipelineParameters.fromJsonFile("src/test/resources/pipeline/msem_alignment_pipeline.json");
+        final AlignmentPipelineParameters pipelineParameters = loadTestParameters();
 
         Assert.assertNotNull("deserialized parameters are null", pipelineParameters);
 
@@ -30,10 +29,20 @@ public class AlignmentPipelineParametersTest {
 
         Assert.assertTrue("incorrect affineBlockSolverSetup.targetStack.completeTargetStack value parsed",
                           affineBlockSolverSetup.targetStack.completeStack);
+    }
+
+    @Test
+    public void testBuildStepClients()
+            throws IOException {
+        final AlignmentPipelineParameters pipelineParameters = loadTestParameters();
 
         final List<AlignmentPipelineStep> stepClients = pipelineParameters.buildStepClients();
+        
         Assert.assertNotNull("stepClients is null", stepClients);
         Assert.assertEquals("incorrect number of stepClients", 7, stepClients.size());
     }
 
+    private AlignmentPipelineParameters loadTestParameters() throws IOException {
+        return AlignmentPipelineParameters.fromJsonFile("src/test/resources/pipeline/msem_alignment_pipeline.json");
+    }
 }
