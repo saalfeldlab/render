@@ -15,14 +15,20 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.storage.StorageLevel;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.DistributedAffineBlockSolver;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.DistributedSolveParameters;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,44 +38,116 @@ import scala.Tuple2;
  * Spark client for running a DistributedAffineBlockSolve.
  */
 public class DistributedAffineBlockSolverClient
-        implements Serializable {
+        implements Serializable, AlignmentPipelineStep {
 
+    /**
+     * Run the client with command line parameters.
+     */
     public static void main(final String[] args) {
-
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
-            public void runClient(final String[] args) throws Exception {
-
+            public void runClient(final String[] args)
+                    throws Exception {
                 final AffineBlockSolverSetup parameters = new AffineBlockSolverSetup();
                 parameters.parse(args);
-
-                LOG.info("runClient: entry, parameters={}", parameters);
-
                 final DistributedAffineBlockSolverClient client = new DistributedAffineBlockSolverClient();
-                client.run(parameters);
+                client.createContextAndRun(parameters);
             }
         };
         clientRunner.run();
-
     }
 
+    /**
+     * Empty constructor required for alignment pipeline steps.
+     */
     public DistributedAffineBlockSolverClient() {
     }
 
-    public void run(final AffineBlockSolverSetup affineBlockSolverSetup) throws IOException {
-        final SparkConf conf = new SparkConf().setAppName("DistributedAffineBlockSolverClient");
+    /**
+     * Create a spark context and run the client with the specified setup.
+     */
+    public void createContextAndRun(final AffineBlockSolverSetup affineBlockSolverSetup)
+            throws IOException {
+        final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
-            final String sparkAppId = sparkContext.getConf().getAppId();
-            LOG.info("run: appId is {}", sparkAppId);
-            runWithContext(sparkContext, Collections.singletonList(affineBlockSolverSetup));
+            LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
+            alignSetupList(sparkContext, Collections.singletonList(affineBlockSolverSetup));
         }
     }
 
-    public void runWithContext(final JavaSparkContext sparkContext,
-                               final List<AffineBlockSolverSetup> setupList)
+    /** Validates the specified pipeline parameters are sufficient. */
+    @Override
+    public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException {
+        AlignmentPipelineParameters.validateRequiredElementExists("affineBlockSolverSetup",
+                                                                  pipelineParameters.getAffineBlockSolverSetup());
+    }
+
+    /**
+     * Run the client as part of an alignment pipeline.
+     */
+    public void runPipelineStep(final JavaSparkContext sparkContext,
+                                final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException, IOException {
+
+        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject();
+        final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
+        final AffineBlockSolverSetup setup = pipelineParameters.getAffineBlockSolverSetup();
+        final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
+        final int nRuns = setup.alternatingRuns.nRuns;
+
+        // TODO: push StackWithZValues idea into core solver code
+        for (final StackWithZValues stackWithZValues : stackList) {
+            setup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
+                                        stackWithZValues.getStackId());
+            setupList.add(setup.clone());
+        }
+
+        final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
+
+        if (nRuns == 1) {
+
+            affineBlockSolverClient.alignSetupList(sparkContext, setupList);
+
+        } else {
+
+            // TODO: handle alternatingRuns for multiple stacks
+            if (stackList.size() > 1) {
+                throw new IllegalArgumentException("alternatingRuns is not supported for multiple stacks");
+            }
+
+            final AffineBlockSolverSetup updatedSetup = setupList.get(0);
+            String sourceStack = updatedSetup.stack;
+            final String originalTargetStack = updatedSetup.targetStack.stack;
+
+            for (int runNumber = 1; runNumber <= nRuns; runNumber++) {
+
+                final String targetStack = getStackName(originalTargetStack, runNumber, nRuns);
+
+                final AffineBlockSolverSetup runSetup = updatedSetup.clone();
+                runSetup.stack = sourceStack;
+                runSetup.targetStack.stack = targetStack;
+                updateParameters(runSetup, runNumber);
+
+                LOG.info("runPipelineStep: run {} of {}, stack={}, targetStack={}, shiftBlocks={}",
+                         runNumber, nRuns, sourceStack, targetStack, runSetup.blockPartition.shiftBlocks);
+
+                affineBlockSolverClient.alignSetupList(sparkContext, Collections.singletonList(runSetup));
+
+                if ((!runSetup.alternatingRuns.keepIntermediateStacks) && (runNumber > 1))
+                    cleanUpIntermediateStack(runSetup);
+
+                sourceStack = runSetup.targetStack.stack;
+            }
+        }
+
+    }
+
+    private void alignSetupList(final JavaSparkContext sparkContext,
+                                final List<AffineBlockSolverSetup> setupList)
             throws IOException {
 
-        LOG.info("runWithContext: entry, setupList={}", setupList);
+        LOG.info("alignSetupList: entry, setupList={}", setupList);
 
         final int parallelism = deriveParallelismValues(sparkContext, setupList);
 
@@ -91,7 +169,38 @@ public class DistributedAffineBlockSolverClient
             globallySolveOneSetup(setupList, 0, solverList, outputBlocks);
         }
 
-        LOG.info("runWithContext: exit");
+        LOG.info("alignSetupList: exit");
+    }
+
+    // TODO: these methods are very close to those in ADDSolverClient, need to refactor to reuse as much as possible
+
+    private static String getStackName(final String name, final int runNumber, final int nTotalRuns) {
+        if (runNumber == nTotalRuns) {
+            return name;
+        } else {
+            return name + "_run" + runNumber;
+        }
+    }
+
+    private static void cleanUpIntermediateStack(final AffineBlockSolverSetup parameters) {
+        final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
+        try {
+            dataClient.deleteStack(parameters.stack, null);
+            LOG.info("cleanUpIntermediateStack: deleted stack {}", parameters.stack);
+        } catch (final IOException e) {
+            LOG.error("cleanUpIntermediateStack: error deleting stack {}", parameters.stack, e);
+        }
+    }
+
+    private static void updateParameters(final AffineBlockSolverSetup parameters, final int runNumber) {
+        // alternate block layout
+        parameters.blockPartition.shiftBlocks = (runNumber % 2 == 1);
+
+        // don't stitch or pre-align after first run
+        if (runNumber > 1) {
+            parameters.stitchFirst = false;
+            parameters.preAlign = FIBSEMAlignmentParameters.PreAlign.NONE;
+        }
     }
 
     private static int deriveParallelismValues(final JavaSparkContext sparkContext,

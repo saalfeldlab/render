@@ -20,6 +20,8 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +31,7 @@ import org.slf4j.LoggerFactory;
  * @author Eric Trautman
  */
 public class CopyMatchClient
-        implements Serializable {
+        implements Serializable, AlignmentPipelineStep {
 
     public static class Parameters extends CommandLineParameters {
         @ParametersDelegate
@@ -47,56 +49,63 @@ public class CopyMatchClient
             this.multiProject = multiProject;
             this.matchCopy = matchCopy;
         }
-
     }
 
+    /** Run the client with command line parameters. */
     public static void main(final String[] args) {
-
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
             public void runClient(final String[] args) throws Exception {
-
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
                 parameters.matchCopy.validate();
-
-                final CopyMatchClient client = new CopyMatchClient(parameters);
-                client.run();
-
+                final CopyMatchClient client = new CopyMatchClient();
+                client.createContextAndRun(parameters);
             }
         };
         clientRunner.run();
-
     }
 
-    private final Parameters parameters;
-
-    public CopyMatchClient(final Parameters parameters) throws IllegalArgumentException {
-        LOG.info("init: parameters={}", parameters);
-        this.parameters = parameters;
+    /** Empty constructor required for alignment pipeline steps. */
+    public CopyMatchClient() {
     }
 
-    public void run() throws IOException {
-
-        final SparkConf conf = new SparkConf().setAppName("CopyMatchClient");
-
+    /** Create a spark context and run the client with the specified parameters. */
+    public void createContextAndRun(final Parameters clientParameters) throws IOException {
+        final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
-            final String sparkAppId = sparkContext.getConf().getAppId();
-            LOG.info("run: appId is {}", sparkAppId);
-            copyMatches(sparkContext);
+            LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
+            copyMatches(sparkContext, clientParameters);
         }
     }
 
-    public void copyMatches(final JavaSparkContext sparkContext)
+    /** Validates the specified pipeline parameters are sufficient. */
+    @Override
+    public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException {
+        AlignmentPipelineParameters.validateRequiredElementExists("matchCopy",
+                                                                  pipelineParameters.getMatchCopy());
+    }
+
+    /** Run the client as part of an alignment pipeline. */
+    public void runPipelineStep(final JavaSparkContext sparkContext,
+                                final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException, IOException {
+        final Parameters clientParameters = new Parameters(pipelineParameters.getMultiProject(),
+                                                           pipelineParameters.getMatchCopy());
+        copyMatches(sparkContext, clientParameters);
+    }
+
+    private void copyMatches(final JavaSparkContext sparkContext,
+                             final Parameters clientParameters)
             throws IOException {
 
-        LOG.info("copyMatches: entry");
+        LOG.info("copyMatches: entry, clientParameters={}", clientParameters);
 
-        final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
-        final String baseDataUrl = renderDataClient.getBaseDataUrl();
-
-        final List<StackWithZValues> stackWithZValuesList =
-                parameters.multiProject.stackIdWithZ.buildListOfStackWithBatchedZ(renderDataClient);
+        final MultiProjectParameters multiProjectParameters = clientParameters.multiProject;
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
+        final MatchCopyParameters matchCopyParameters = clientParameters.matchCopy;
+        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithBatchedZ();
 
         final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
 
@@ -105,7 +114,7 @@ public class CopyMatchClient
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
             final StackId stackId = stackWithZ.getStackId();
-            final MatchCollectionId matchCollectionId = parameters.multiProject.getMatchCollectionIdForStack(stackId);
+            final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
 
             final RenderDataClient sourceDataClient = new RenderDataClient(baseDataUrl,
                                                                            stackId.getOwner(),
@@ -114,7 +123,7 @@ public class CopyMatchClient
             final RenderDataClient sourceMatchClient = sourceDataClient.buildClient(matchCollectionId.getOwner(),
                                                                                     matchCollectionId.getName());
 
-            final RenderDataClient targetMatchClient = parameters.matchCopy.buildTargetMatchClient(sourceMatchClient);
+            final RenderDataClient targetMatchClient = matchCopyParameters.buildTargetMatchClient(sourceMatchClient);
 
             final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(stackId.getStack(),
                                                                                            null,
@@ -125,7 +134,7 @@ public class CopyMatchClient
                 org.janelia.render.client.CopyMatchClient.copyMatches(sourceMatchClient,
                                                                       targetMatchClient,
                                                                       sectionData.getSectionId(),
-                                                                      parameters.matchCopy);
+                                                                      matchCopyParameters);
             }
 
             return null;

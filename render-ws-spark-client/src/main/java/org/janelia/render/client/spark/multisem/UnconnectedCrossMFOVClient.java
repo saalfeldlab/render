@@ -16,11 +16,12 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.parameter.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
 import org.janelia.render.client.spark.LogUtilities;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +32,7 @@ import org.slf4j.LoggerFactory;
  * @author Eric Trautman
  */
 public class UnconnectedCrossMFOVClient
-        implements Serializable {
+        implements Serializable, AlignmentPipelineStep {
 
     public static class Parameters extends CommandLineParameters {
 
@@ -48,64 +49,77 @@ public class UnconnectedCrossMFOVClient
             javaClientParameters.core = core;
             return new org.janelia.render.client.multisem.UnconnectedCrossMFOVClient(javaClientParameters);
         }
-
-        /** @return client specific parameters populated from specified alignment pipeline parameters. */
-        public static Parameters fromPipeline(final AlignmentPipelineParameters alignmentPipelineParameters) {
-            final Parameters derivedParameters = new Parameters();
-            derivedParameters.multiProject = alignmentPipelineParameters.getMultiProject();
-            derivedParameters.core = alignmentPipelineParameters.getUnconnectedCrossMfov();
-            return derivedParameters;
-        }
-
     }
 
+    /** Run the client with command line parameters. */
     public static void main(final String[] args) {
-
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
             public void runClient(final String[] args) throws Exception {
-
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-
-                final UnconnectedCrossMFOVClient client = new UnconnectedCrossMFOVClient(parameters);
-                client.run();
+                final UnconnectedCrossMFOVClient client = new UnconnectedCrossMFOVClient();
+                client.createContextAndRun(parameters);
             }
         };
         clientRunner.run();
-
     }
 
-    private final Parameters parameters;
-
-    public UnconnectedCrossMFOVClient(final Parameters parameters) throws IllegalArgumentException {
-        LOG.info("init: parameters={}", parameters);
-        this.parameters = parameters;
+    /** Empty constructor required for alignment pipeline steps. */
+    public UnconnectedCrossMFOVClient() throws IllegalArgumentException {
     }
 
-    public void run() throws IOException {
-
-        final SparkConf conf = new SparkConf().setAppName("UnconnectedCrossMFOVClient");
-
+    /** Create a spark context and run the client with the specified parameters. */
+    public void createContextAndRun(final Parameters clientParameters) throws IOException {
+        final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
-            final String sparkAppId = sparkContext.getConf().getAppId();
-            LOG.info("run: appId is {}", sparkAppId);
+            LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
+            final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
+                    findUnconnectedMFOVs(sparkContext, clientParameters);
 
-            final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks = findUnconnectedMFOVs(sparkContext);
-
-            final org.janelia.render.client.multisem.UnconnectedCrossMFOVClient jClient = parameters.buildJavaClient();
+            final org.janelia.render.client.multisem.UnconnectedCrossMFOVClient jClient = clientParameters.buildJavaClient();
             jClient.logOrStoreUnconnectedMFOVPairs(unconnectedMFOVsForAllStacks);
         }
     }
 
-    public List<UnconnectedMFOVPairsForStack> findUnconnectedMFOVs(final JavaSparkContext sparkContext)
+    /** Validates the specified pipeline parameters are sufficient. */
+    @Override
+    public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException {
+        AlignmentPipelineParameters.validateRequiredElementExists("unconnectedCrossMfov",
+                                                                  pipelineParameters.getUnconnectedCrossMfov());
+    }
+
+    /** Run the client as part of an alignment pipeline. */
+    public void runPipelineStep(final JavaSparkContext sparkContext,
+                                final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException, IOException {
+
+        final Parameters clientParameters = new Parameters();
+        clientParameters.multiProject = pipelineParameters.getMultiProject();
+        clientParameters.core = pipelineParameters.getUnconnectedCrossMfov();
+        final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
+                findUnconnectedMFOVs(sparkContext, clientParameters);
+
+        if (! unconnectedMFOVsForAllStacks.isEmpty()) {
+            final String errorMessage =
+                    "found " + unconnectedMFOVsForAllStacks.size() + " stacks with unconnected MFOVs";
+            LOG.error("runPipelineStep: {}: {}", errorMessage, unconnectedMFOVsForAllStacks);
+            throw new IOException(errorMessage);
+        } else {
+            LOG.info("runPipelineStep: all MFOVs in all stacks are connected");
+        }
+    }
+
+    private List<UnconnectedMFOVPairsForStack> findUnconnectedMFOVs(final JavaSparkContext sparkContext,
+                                                                    final Parameters clientParameters)
             throws IOException {
 
         LOG.info("findUnconnectedMFOVs: entry");
 
-        final MultiProjectParameters multiProject = parameters.multiProject;
-        final String baseDataUrl = multiProject.getBaseDataUrl();
-        final List<StackWithZValues> stackWithZValuesList = multiProject.buildListOfStackWithAllZ();
+        final MultiProjectParameters multiProjectParameters = clientParameters.multiProject;
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
+        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
 
         LOG.info("findUnconnectedMFOVs: distributing tasks for {} stacks", stackWithZValuesList.size());
 
@@ -119,10 +133,10 @@ public class UnconnectedCrossMFOVClient
             final RenderDataClient localDataClient = new RenderDataClient(baseDataUrl,
                                                                           stackId.getOwner(),
                                                                           stackId.getProject());
-            final org.janelia.render.client.multisem.UnconnectedCrossMFOVClient jClient = parameters.buildJavaClient();
+            final org.janelia.render.client.multisem.UnconnectedCrossMFOVClient jClient = clientParameters.buildJavaClient();
 
             return jClient.findUnconnectedMFOVs(stackWithZ,
-                                                multiProject.deriveMatchCollectionNamesFromProject,
+                                                multiProjectParameters.deriveMatchCollectionNamesFromProject,
                                                 localDataClient);
         };
 
