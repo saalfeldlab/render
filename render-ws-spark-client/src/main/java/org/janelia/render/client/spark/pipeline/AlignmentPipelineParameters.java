@@ -101,6 +101,12 @@ public class AlignmentPipelineParameters
         return affineBlockSolverSetup;
     }
 
+    /**
+     * @return a list of clients for each specified pipeline step.
+     *
+     * @throws IllegalArgumentException
+     *   if no steps are defined or if any of the parameters are invalid.
+     */
     public List<AlignmentPipelineStep> buildStepClients()
             throws IllegalArgumentException {
 
