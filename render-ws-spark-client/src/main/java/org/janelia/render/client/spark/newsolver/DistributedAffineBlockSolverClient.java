@@ -228,6 +228,15 @@ public class DistributedAffineBlockSolverClient
                 setup.distributedSolve.threadsWorker = executorCores;
             });
 
+            try {
+                final int sleepSeconds = 15;
+                LOG.info("deriveParallelismValues: sleeping {} seconds to give workers a chance to connect",
+                         sleepSeconds);
+                Thread.sleep(sleepSeconds * 1000L);
+            } catch (final InterruptedException e) {
+                LOG.warn("deriveParallelismValues: interrupted while sleeping", e);
+            }
+
             // set parallelism to number of worker executors
             // see https://stackoverflow.com/questions/51342460/getexecutormemorystatus-size-not-outputting-correct-num-of-executors
             final int numberOfExecutorsIncludingDriver = sparkContext.sc().getExecutorMemoryStatus().size();
