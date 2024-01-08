@@ -18,9 +18,6 @@ public class AlignmentPipelineParametersTest {
     public void testAffineBlockSolverSetup()
             throws IOException {
         final AlignmentPipelineParameters pipelineParameters = loadTestParameters();
-
-        Assert.assertNotNull("deserialized parameters are null", pipelineParameters);
-
         final AffineBlockSolverSetup affineBlockSolverSetup = pipelineParameters.getAffineBlockSolverSetup();
         Assert.assertNotNull("affineBlockSolverSetup is null", affineBlockSolverSetup);
 
@@ -35,7 +32,6 @@ public class AlignmentPipelineParametersTest {
     public void testBuildStepClients()
             throws IOException {
         final AlignmentPipelineParameters pipelineParameters = loadTestParameters();
-
         final List<AlignmentPipelineStep> stepClients = pipelineParameters.buildStepClients();
         
         Assert.assertNotNull("stepClients is null", stepClients);
@@ -43,6 +39,9 @@ public class AlignmentPipelineParametersTest {
     }
 
     private AlignmentPipelineParameters loadTestParameters() throws IOException {
-        return AlignmentPipelineParameters.fromJsonFile("src/test/resources/pipeline/msem_alignment_pipeline.json");
+        final AlignmentPipelineParameters pipelineParameters =
+                AlignmentPipelineParameters.fromJsonFile("src/test/resources/pipeline/msem_alignment_pipeline.json");
+        Assert.assertNotNull("deserialized parameters are null", pipelineParameters);
+        return pipelineParameters;
     }
 }
