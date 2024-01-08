@@ -13,8 +13,11 @@ public interface AlignmentPipelineStep {
 
     /**
      * Validates the specified pipeline parameters are sufficient for this step.
+     * This method quietly completes (doing nothing) if the parameters are valid
+     * but will throw an exception it finds a problem.
      *
      * @param  pipelineParameters  parameters to validate.
+     *                             Parameters are simply read and should not be mutated during validation.
      *
      * @throws IllegalArgumentException
      *   if any of the parameters are invalid or missing.
