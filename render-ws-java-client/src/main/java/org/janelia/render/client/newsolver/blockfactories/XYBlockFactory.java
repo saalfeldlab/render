@@ -30,6 +30,16 @@ import org.slf4j.LoggerFactory;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
+
+/**
+ * Factory for creating blocks by dividing a stack in x and y.
+ * The blocks created by this factory have a linear weight function based on
+ * the distance from the block center. Blocks should be merged using random
+ * picking and used within an alternating block solve strategy with multiple
+ * steps.
+ *
+ * @author Stephan Preibisch
+ */
 public class XYBlockFactory extends BlockFactory implements Serializable {
 
 	private static final long serialVersionUID = -2022190797935740332L;
@@ -80,6 +90,11 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 	@Override
 	protected BlockTileBoundsFilter getBlockTileFilter() {
 		return BlockTileBoundsFilter.XY_MIDPOINT;
+	}
+
+	@Override
+	public MergingStrategy getMergingStrategy() {
+		return MergingStrategy.RANDOM_PICK;
 	}
 
 	@Override
