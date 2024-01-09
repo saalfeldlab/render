@@ -11,12 +11,36 @@ import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.setup.BlockPartitionParameters;
 
+/**
+ * Abstract class representing a factory for creating blocks.
+ *
+ * @author Michael Innerberger
+ */
 public abstract class BlockFactory implements Serializable {
+
+	/**
+	 * Define a collection of blocks.
+	 *
+	 * @param blockSolveParameterProvider Provider for block solve parameters.
+	 * @param shiftBlocks Flag indicating whether blocks should be shifted.
+	 * @return A collection of blocks.
+	 */
 	public abstract <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
 			final ParameterProvider<M, R, P> blockSolveParameterProvider, final boolean shiftBlocks);
 
+	/**
+	 * Create a weight function for a block.
+	 *
+	 * @param block The block for which the weight function is to be created.
+	 * @return The weight function for the block.
+	 */
 	public abstract WeightFunction createWeightFunction(final BlockData<?, ?> block);
 
+	/**
+	 * Get the strategy for merging blocks.
+	 *
+	 * @return The {@link MergingStrategy}.
+	 */
 	public abstract MergingStrategy getMergingStrategy();
 
 	protected <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> blockCollectionFromLayout(
@@ -34,6 +58,13 @@ public abstract class BlockFactory implements Serializable {
 
 	protected abstract BlockTileBoundsFilter getBlockTileFilter();
 
+	/**
+	 * Create a block factory from block sizes.
+	 *
+	 * @param range The bounds of the whole stack to be divided
+	 * @param blockPartition The partition parameters for the blocks.
+	 * @return A block factory.
+	 */
 	public static BlockFactory fromBlockSizes(
 			final Bounds range,
 			final BlockPartitionParameters blockPartition)

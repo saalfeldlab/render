@@ -12,8 +12,17 @@ import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolvePa
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
-public class ZBlockFactory extends BlockFactory implements Serializable
-{
+/**
+ * Factory for creating blocks by dividing a stack in z.
+ * The blocks created by this factory have a linear weight function in z
+ * and can be merged using linear blending. Therefore, this factory should
+ * not be used in alternating block solving, since already one step should
+ * produce a good result.
+ *
+ * @author Stephan Preibisch
+ */
+public class ZBlockFactory extends BlockFactory implements Serializable {
+
 	private static final long serialVersionUID = 4169473785487008894L;
 
 	final int minZ, maxZ, blockSize;
