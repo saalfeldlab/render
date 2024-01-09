@@ -18,6 +18,8 @@ import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
 
+import static org.janelia.alignment.json.JsonUtils.STRICT_MAPPER;
+
 /**
  * Parameters for an alignment pipeline run.
  *
@@ -126,7 +128,7 @@ public class AlignmentPipelineParameters
      * @return JSON representation of these parameters.
      */
     public String toJson() {
-        return JSON_HELPER.toJson(this);
+        return STRICT_JSON_HELPER.toJson(this);
     }
 
     public static void validateRequiredElementExists(final String elementName,
@@ -138,7 +140,7 @@ public class AlignmentPipelineParameters
     }
 
     public static AlignmentPipelineParameters fromJson(final Reader json) {
-        return JSON_HELPER.fromJson(json);
+        return STRICT_JSON_HELPER.fromJson(json);
     }
 
     public static AlignmentPipelineParameters fromJsonFile(final String dataFile)
@@ -151,6 +153,6 @@ public class AlignmentPipelineParameters
         return parameters;
     }
 
-    private static final JsonUtils.Helper<AlignmentPipelineParameters> JSON_HELPER =
-            new JsonUtils.Helper<>(AlignmentPipelineParameters.class);
+    private static final JsonUtils.Helper<AlignmentPipelineParameters> STRICT_JSON_HELPER =
+            new JsonUtils.Helper<>(STRICT_MAPPER, AlignmentPipelineParameters.class);
 }
