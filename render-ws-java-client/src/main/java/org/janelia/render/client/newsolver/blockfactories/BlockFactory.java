@@ -17,6 +17,8 @@ public abstract class BlockFactory implements Serializable {
 
 	public abstract WeightFunction createWeightFunction(final BlockData<?, ?> block);
 
+	public abstract MergingStrategy getMergingStrategy();
+
 	protected <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> blockCollectionFromLayout(
 			final List<Bounds> blockLayout,
 			final ParameterProvider<M, R, P> parameterProvider) {

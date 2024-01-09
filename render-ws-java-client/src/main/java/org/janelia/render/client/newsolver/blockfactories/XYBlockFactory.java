@@ -83,6 +83,11 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 	}
 
 	@Override
+	public MergingStrategy getMergingStrategy() {
+		return MergingStrategy.RANDOM_PICK;
+	}
+
+	@Override
 	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
 		// the render scale needs to be fairly small so that the entire MFOV area fits into one image
 		// TODO: @minnerbe to consider parameterizing scale (so can be set based upon stack bounds)

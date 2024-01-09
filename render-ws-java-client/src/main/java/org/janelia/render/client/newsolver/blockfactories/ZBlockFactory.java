@@ -54,6 +54,11 @@ public class ZBlockFactory extends BlockFactory implements Serializable
 	}
 
 	@Override
+	public MergingStrategy getMergingStrategy() {
+		return MergingStrategy.LINEAR_BLENDING;
+	}
+
+	@Override
 	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
 		return new ZDistanceWeightFunction(block, 0.01);
 	}

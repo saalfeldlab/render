@@ -67,6 +67,11 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 	}
 
 	@Override
+	public MergingStrategy getMergingStrategy() {
+		return MergingStrategy.RANDOM_PICK;
+	}
+
+	@Override
 	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
 		final WeightFunction xyWeightFunction = new XYBlockFactory.XYDistanceWeightFunction(block, 0.01);
 		final WeightFunction zWeightFunction = new ZBlockFactory.ZDistanceWeightFunction(block, 0.01);

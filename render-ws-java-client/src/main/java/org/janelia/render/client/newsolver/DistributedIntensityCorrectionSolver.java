@@ -33,6 +33,7 @@ import org.janelia.render.client.newsolver.assembly.GlobalSolver;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffineIntensity;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
+import org.janelia.render.client.newsolver.blockfactories.MergingStrategy;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
@@ -138,8 +139,7 @@ public class DistributedIntensityCorrectionSolver {
 		LOG.info("assembleBlocks: entry, processing {} blocks", allItems.size());
 
 		final BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion =
-				new BlockCombiner<>(DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
-									DistributedIntensityCorrectionSolver::pickRandom);
+				chooseCombiner(blockFactory);
 
 		final GlobalSolver<TranslationModel1D, ArrayList<AffineModel1D>> globalSolver =
 				new GlobalSolver<>(new TranslationModel1D(),
@@ -155,6 +155,22 @@ public class DistributedIntensityCorrectionSolver {
 		LOG.info("assembleBlocks: exit");
 
 		return assembler.createAssembly(allItems, blockFactory);
+	}
+
+	private static BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>>
+	chooseCombiner(final BlockFactory blockFactory) {
+		final MergingStrategy mergingStrategy = blockFactory.getMergingStrategy();
+		final BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> fusion;
+		if (mergingStrategy.equals(MergingStrategy.LINEAR_BLENDING)) {
+			fusion = new BlockCombiner<>(DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
+										 DistributedIntensityCorrectionSolver::interpolateModels);
+		} else if (mergingStrategy.equals(MergingStrategy.RANDOM_PICK)) {
+			fusion = new BlockCombiner<>(DistributedIntensityCorrectionSolver::integrateGlobalTranslation,
+										 DistributedIntensityCorrectionSolver::pickRandom);
+		} else {
+			throw new IllegalStateException("unknown merging strategy " + mergingStrategy);
+		}
+		return fusion;
 	}
 
 	public void saveResultsAsNeeded(final ResultContainer<ArrayList<AffineModel1D>> finalizedItems)

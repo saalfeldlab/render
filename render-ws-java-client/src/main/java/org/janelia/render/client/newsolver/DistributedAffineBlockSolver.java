@@ -26,6 +26,7 @@ import org.janelia.render.client.newsolver.assembly.GlobalSolver;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreatorAffine2D;
 import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
+import org.janelia.render.client.newsolver.blockfactories.MergingStrategy;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
@@ -204,9 +205,7 @@ public class DistributedAffineBlockSolver
 			final List<BlockData<AffineModel2D, ?>> allItems,
 			final BlockFactory blockFactory) {
 
-		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion =
-				new BlockCombiner<>(DistributedAffineBlockSolver::integrateGlobalModel,
-									DistributedAffineBlockSolver::pickRandom);
+		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion = chooseCombiner(blockFactory);
 
 		final GlobalSolver<RigidModel2D, AffineModel2D> globalSolver =
 				new GlobalSolver<>(new RigidModel2D(),
@@ -220,6 +219,22 @@ public class DistributedAffineBlockSolver
 							return a;});
 
 		return assembler.createAssembly(allItems, blockFactory);
+	}
+
+	private static BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D>
+	chooseCombiner(final BlockFactory blockFactory) {
+		final MergingStrategy mergingStrategy = blockFactory.getMergingStrategy();
+		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion;
+		if (mergingStrategy.equals(MergingStrategy.LINEAR_BLENDING)) {
+			fusion = new BlockCombiner<>(DistributedAffineBlockSolver::integrateGlobalModel,
+										 DistributedAffineBlockSolver::interpolateModels);
+		} else if (mergingStrategy.equals(MergingStrategy.RANDOM_PICK)) {
+			fusion = new BlockCombiner<>(DistributedAffineBlockSolver::integrateGlobalModel,
+										 DistributedAffineBlockSolver::pickRandom);
+		} else {
+			throw new IllegalStateException("unknown merging strategy " + mergingStrategy);
+		}
+		return fusion;
 	}
 
 
