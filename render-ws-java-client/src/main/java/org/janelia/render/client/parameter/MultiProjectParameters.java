@@ -90,6 +90,11 @@ public class MultiProjectParameters
         return stackIdWithZ.buildListOfStackWithBatchedZ(this.getDataClient());
     }
 
+    public List<StackWithZValues> buildListOfStackWithBatchedZ(final int zValuesPerBatch)
+            throws IOException, IllegalArgumentException {
+        return stackIdWithZ.buildListOfStackWithBatchedZ(this.getDataClient(), zValuesPerBatch);
+    }
+
     public List<StackWithZValues> buildListOfStackWithAllZ()
             throws IOException, IllegalArgumentException {
         return stackIdWithZ.buildListOfStackWithAllZ(this.getDataClient());

@@ -4,7 +4,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,8 +30,8 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerBoundsParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
+import org.janelia.render.client.parameter.ZSpacingParameters;
 import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
-import org.janelia.render.client.zspacing.loader.ResinMaskParameters;
 import org.janelia.thickness.inference.Options;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,46 +58,8 @@ public class ZPositionCorrectionClient {
                 required = true)
         public String stack;
 
-        @Parameter(
-                names = "--scale",
-                description = "Scale to render each layer",
-                required = true)
-        public Double scale;
-
-        @Parameter(
-                names = "--rootDirectory",
-                description = "Root directory for all output (e.g. /groups/flyem/data/alignment-ett/zcorr)",
-                required = true)
-        public String rootDirectory;
-
-        @Parameter(
-                names = "--runName",
-                description = "Common run name to include in output path when running array jobs.  " +
-                              "Typically includes the timestamp when the array job was created.  " +
-                              "Omit if not running in an array job context.")
-        public String runName;
-
-        @Parameter(
-                names = "--optionsJson",
-                description = "JSON file containing thickness correction options (omit to use default values)")
-        public String optionsJson;
-
-        @Parameter(
-                names = "--nLocalEstimates",
-                description = "Number of local estimates")
-        public Integer nLocalEstimates = 1;
-
         @ParametersDelegate
-        public ResinMaskParameters resin = new ResinMaskParameters();
-
-        @Parameter(
-                names = "--normalizedEdgeLayerCount",
-                description = "The number of layers at the beginning and end of the stack to assign correction " +
-                              "delta values of 1.0.  This hack fixes the stretched or squished corrections the " +
-                              "solver typically produces for layers at the edges of the stack.  " +
-                              "For Z0720_07m stacks, we set this value to 30.  " +
-                              "Omit to leave the solver correction values as is.")
-        public Integer normalizedEdgeLayerCount;
+        public ZSpacingParameters zSpacing = new ZSpacingParameters();
 
         @Parameter(
                 names = "--correlationBatch",
@@ -106,12 +67,6 @@ public class ZPositionCorrectionClient {
                               "Format is <batch number>:<total batch count> where first batch number is 1 " +
                               "(e.g. '1:20', '2:20', ..., '20:20').")
         public String correlationBatch;
-
-        @Parameter(
-                names = "--solveExisting",
-                description = "Specify to load existing correlation data and solve.",
-                arity = 0)
-        public boolean solveExisting;
 
         @Parameter(
                 names = "--poorCorrelationThreshold",
@@ -157,12 +112,6 @@ public class ZPositionCorrectionClient {
         public Parameters() {
         }
 
-        public Options getInferenceOptions()
-                throws FileNotFoundException {
-            return optionsJson == null ?
-                   HeadlessZPositionCorrection.generateDefaultFIBSEMOptions() : Options.read(optionsJson);
-        }
-
         private Integer currentBatchNumber = null;
         private Integer totalBatchCount = null;
 
@@ -199,14 +148,14 @@ public class ZPositionCorrectionClient {
 
         public File getBaseRunDirectory() {
 
-            final String stackPath = Paths.get(rootDirectory, renderWeb.owner, renderWeb.project, stack).toString();
+            final String stackPath = Paths.get(zSpacing.rootDirectory, renderWeb.owner, renderWeb.project, stack).toString();
 
             final Path path;
-            if (runName == null) {
+            if (zSpacing.runName == null) {
                 final SimpleDateFormat sdf = new SimpleDateFormat("'run_'yyyyMMdd_HHmmss");
                 path = Paths.get(stackPath, sdf.format(new Date()));
             } else {
-                path = Paths.get(stackPath, runName);
+                path = Paths.get(stackPath, zSpacing.runName);
             }
 
             return path.toFile().getAbsoluteFile();
@@ -234,7 +183,7 @@ public class ZPositionCorrectionClient {
                     client.saveRunFiles();
                 }
 
-                if (parameters.solveExisting) {
+                if (parameters.zSpacing.solveExisting) {
 
                     final CrossCorrelationData ccData = client.loadCrossCorrelationDataSets();
                     client.estimateAndSaveZCoordinates(ccData);
@@ -278,7 +227,7 @@ public class ZPositionCorrectionClient {
     private final int firstLayerOffset;
     private final List<Double> stackResolutionValues;
 
-    ZPositionCorrectionClient(final Parameters parameters)
+    public ZPositionCorrectionClient(final Parameters parameters)
             throws IllegalArgumentException, IOException {
 
         this.parameters = parameters;
@@ -288,7 +237,7 @@ public class ZPositionCorrectionClient {
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
         this.stackResolutionValues = stackMetaData.getCurrentResolutionValues();
 
-        this.inferenceOptions = parameters.getInferenceOptions();
+        this.inferenceOptions = parameters.zSpacing.getInferenceOptions();
 
         final List<SectionData> sectionDataList = renderDataClient.getStackSectionData(parameters.stack,
                                                                                        parameters.layerRange.minZ,
@@ -315,12 +264,13 @@ public class ZPositionCorrectionClient {
             this.firstLayerOffset = allSortedZList.indexOf(this.sortedZList.get(0));
         } else {
             this.sortedZList = allSortedZList;
-            this.firstLayerOffset = 0;
+            final List<Double> allSortedZIgnoringParameters = renderDataClient.getStackZValues(parameters.stack);
+            this.firstLayerOffset = allSortedZIgnoringParameters.indexOf(this.sortedZList.get(0));
         }
 
-        if (parameters.runName == null) {
+        if (parameters.zSpacing.runName == null) {
             this.runDirectory = this.baseRunDirectory;
-        } else if (parameters.solveExisting) {
+        } else if (parameters.zSpacing.solveExisting) {
             final SimpleDateFormat sdf = new SimpleDateFormat("'solve_'yyyyMMdd_HHmmss");
             this.runDirectory = new File(this.baseRunDirectory, sdf.format(new Date()));
         } else { // batched cross correlation run
@@ -368,10 +318,10 @@ public class ZPositionCorrectionClient {
                              stackUrlString, "%s",
                              layerBounds.getX(), layerBounds.getY(),
                              layerBounds.getWidth(), layerBounds.getHeight(),
-                             parameters.scale);
+                             parameters.zSpacing.scale);
     }
 
-    CrossCorrelationData deriveCrossCorrelationData()
+    public CrossCorrelationData deriveCrossCorrelationData()
             throws IllegalArgumentException {
 
         LOG.info("deriveCrossCorrelationData: using comparison range: {}", inferenceOptions.comparisonRange);
@@ -386,10 +336,10 @@ public class ZPositionCorrectionClient {
         final ImageProcessorCache maskCache = new ImageProcessorCache(pixelsInLargeMask,
                                                                       false,
                                                                       false);
-        final RenderLayerLoader layerLoader = parameters.resin.buildLoader(layerUrlPattern,
-                                                                           sortedZList,
-                                                                           maskCache,
-                                                                           parameters.scale);
+        final RenderLayerLoader layerLoader = parameters.zSpacing.resin.buildLoader(layerUrlPattern,
+                                                                                    sortedZList,
+                                                                                    maskCache,
+                                                                                    parameters.zSpacing.scale);
 
         if (parameters.debugFormat != null) {
             final File debugDirectory = new File(runDirectory, "debug-images");
@@ -444,10 +394,10 @@ public class ZPositionCorrectionClient {
                                                                    column,
                                                                    numberOfRegionRows,
                                                                    numberOfRegionColumns);
-                final RenderLayerLoader layerLoader = parameters.resin.buildLoader(layerUrlPattern,
-                                                                                   sortedZList,
-                                                                                   imageProcessorCache,
-                                                                                   parameters.scale);
+                final RenderLayerLoader layerLoader = parameters.zSpacing.resin.buildLoader(layerUrlPattern,
+                                                                                            sortedZList,
+                                                                                            imageProcessorCache,
+                                                                                            parameters.zSpacing.scale);
                 final CrossCorrelationData crossCorrelationData =
                         HeadlessZPositionCorrection.deriveCrossCorrelationWithCachedLoaders(layerLoader,
                                                                                             1,
@@ -525,14 +475,14 @@ public class ZPositionCorrectionClient {
         }
     }
 
-    void saveCrossCorrelationData(final CrossCorrelationData ccData)
+    public void saveCrossCorrelationData(final CrossCorrelationData ccData)
             throws IOException {
         final String ccDataPath = new File(runDirectory,
                                            CrossCorrelationData.DEFAULT_DATA_FILE_NAME).getAbsolutePath();
         FileUtil.saveJsonFile(ccDataPath, ccData);
     }
 
-    CrossCorrelationData loadCrossCorrelationDataSets()
+    public CrossCorrelationData loadCrossCorrelationDataSets()
             throws IllegalArgumentException, IOException {
         final File ccDataParent = new File(baseRunDirectory, CrossCorrelationData.DEFAULT_BATCHES_DIR_NAME);
         final List<CrossCorrelationData> dataSets =
@@ -542,7 +492,7 @@ public class ZPositionCorrectionClient {
         return CrossCorrelationData.merge(dataSets);
     }
 
-    void estimateAndSaveZCoordinates(final CrossCorrelationData ccData)
+    public void estimateAndSaveZCoordinates(final CrossCorrelationData ccData)
             throws IllegalArgumentException, IOException {
 
         LOG.info("estimateAndSaveZCoordinates: using inference options: {}", inferenceOptions);
@@ -553,11 +503,11 @@ public class ZPositionCorrectionClient {
 
         double[] transforms = HeadlessZPositionCorrection.estimateZCoordinates(crossCorrelationMatrix,
                                                                                inferenceOptions,
-                                                                               parameters.nLocalEstimates);
+                                                                               parameters.zSpacing.nLocalEstimates);
 
-        if ((parameters.normalizedEdgeLayerCount != null) &&
-            (transforms.length > (3 * parameters.normalizedEdgeLayerCount))) {
-            transforms = normalizeTransforms(transforms, parameters.normalizedEdgeLayerCount);
+        if ((parameters.zSpacing.normalizedEdgeLayerCount != null) &&
+            (transforms.length > (3 * parameters.zSpacing.normalizedEdgeLayerCount))) {
+            transforms = normalizeTransforms(transforms, parameters.zSpacing.normalizedEdgeLayerCount);
         }
         
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();

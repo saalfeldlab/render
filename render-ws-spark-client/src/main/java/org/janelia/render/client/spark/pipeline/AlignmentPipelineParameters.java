@@ -17,6 +17,7 @@ import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
+import org.janelia.render.client.parameter.ZSpacingParameters;
 
 import static org.janelia.alignment.json.JsonUtils.STRICT_MAPPER;
 
@@ -37,10 +38,12 @@ public class AlignmentPipelineParameters
     private final TileClusterParameters tileCluster;
     private final MatchCopyParameters matchCopy;
     private final AffineBlockSolverSetup affineBlockSolverSetup;
+    private final ZSpacingParameters zSpacing;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -59,7 +62,8 @@ public class AlignmentPipelineParameters
                                        final UnconnectedCrossMFOVParameters unconnectedCrossMfov,
                                        final TileClusterParameters tileCluster,
                                        final MatchCopyParameters matchCopy,
-                                       final AffineBlockSolverSetup affineBlockSolverSetup) {
+                                       final AffineBlockSolverSetup affineBlockSolverSetup,
+                                       final ZSpacingParameters zSpacing) {
         this.multiProject = multiProject;
         this.pipelineSteps = pipelineSteps;
         this.mipmap = mipmap;
@@ -69,6 +73,7 @@ public class AlignmentPipelineParameters
         this.tileCluster = tileCluster;
         this.matchCopy = matchCopy;
         this.affineBlockSolverSetup = affineBlockSolverSetup;
+        this.zSpacing = zSpacing;
     }
 
     public MultiProjectParameters getMultiProject() {
@@ -101,6 +106,10 @@ public class AlignmentPipelineParameters
 
     public AffineBlockSolverSetup getAffineBlockSolverSetup() {
         return affineBlockSolverSetup;
+    }
+
+    public ZSpacingParameters getZSpacing() {
+        return zSpacing;
     }
 
     /**
