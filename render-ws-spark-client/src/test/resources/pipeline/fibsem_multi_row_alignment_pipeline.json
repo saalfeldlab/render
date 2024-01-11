@@ -4,8 +4,6 @@
     "owner": "cellmap",
     "project": "jrc_hum_airway_14953vc",
     "stackIdWithZ": {
-      "allStacksInProject": false,
-      "allStacksInAllProjects": false,
       "zValuesPerBatch": 1,
       "stackNames": [
         "v1_acquire"

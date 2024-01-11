@@ -21,8 +21,7 @@ public class UnconnectedCrossMFOVClientTest {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "hess_wafer_53",
                 "--project", "cut_000_to_009",
-//                "--stack", "c001_s145_v01",
-                "--allStacksInProject",
+                "--stack", "c001_s145_v01",
                 "--minPairsForConnection", "6",
                 "--unconnectedMFOVPairsDirectory", "/Users/trautmane/Desktop/mfov",
                 "--montageStackSuffix", "_mfov_montage"

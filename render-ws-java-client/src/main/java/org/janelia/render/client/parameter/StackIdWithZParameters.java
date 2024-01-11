@@ -24,20 +24,9 @@ public class StackIdWithZParameters
     @Parameter(
             names = "--stack",
             description = "Process these stacks",
-            variableArity = true)
+            variableArity = true,
+            required = true)
     public List<String> stackNames;
-
-    @Parameter(
-            names = "--allStacksInProject",
-            description = "Process all stacks in --project",
-            arity = 0)
-    public boolean allStacksInProject = false;
-
-    @Parameter(
-            names = "--allStacksInAllProjects",
-            description = "Process all stacks in all projects for --owner",
-            arity = 0)
-    public boolean allStacksInAllProjects = false;
 
     @ParametersDelegate
     public ZRangeParameters layerRange = new ZRangeParameters();
@@ -60,16 +49,12 @@ public class StackIdWithZParameters
     public List<StackId> getStackIdList(final RenderDataClient renderDataClient)
             throws IOException {
         final List<StackId> stackIdList;
-        if (allStacksInAllProjects) {
-            stackIdList = renderDataClient.getOwnerStacks();
-        } else if (allStacksInProject) {
-            stackIdList = renderDataClient.getProjectStacks();
-        } else if (stackNames != null) {
+        if (stackNames != null) {
             stackIdList = renderDataClient.getProjectStacks().stream()
                     .filter(stackId -> stackNames.contains(stackId.getStack()))
                     .collect(Collectors.toList());
         } else {
-            throw new IOException("must specify either --stack, --allStacksInProject, or --allStacksInAllProjects");
+            throw new IOException("must specify at least one --stack");
         }
         return stackIdList;
     }
