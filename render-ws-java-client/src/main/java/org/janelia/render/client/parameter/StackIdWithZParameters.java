@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.stack.StackId;
@@ -23,10 +24,14 @@ public class StackIdWithZParameters
 
     @Parameter(
             names = "--stack",
-            description = "Process these stacks",
-            variableArity = true,
-            required = true)
+            description = "Process stacks with these names",
+            variableArity = true)
     public List<String> stackNames;
+
+    @Parameter(
+            names = "--stackPattern",
+            description = "Process stacks with names matching this pattern")
+    public String stackPattern;
 
     @ParametersDelegate
     public ZRangeParameters layerRange = new ZRangeParameters();
@@ -48,15 +53,16 @@ public class StackIdWithZParameters
 
     public List<StackId> getStackIdList(final RenderDataClient renderDataClient)
             throws IOException {
-        final List<StackId> stackIdList;
-        if (stackNames != null) {
-            stackIdList = renderDataClient.getProjectStacks().stream()
-                    .filter(stackId -> stackNames.contains(stackId.getStack()))
-                    .collect(Collectors.toList());
-        } else {
-            throw new IOException("must specify at least one --stack");
+        final boolean hasStackNames = (stackNames != null) && ! stackNames.isEmpty();
+        final boolean hasStackPattern = (stackPattern != null) && ! stackPattern.isEmpty();
+        if (! (hasStackNames || hasStackPattern)) {
+            throw new IOException("must specify --stack or --stackPattern");
         }
-        return stackIdList;
+        final Pattern p = stackPattern == null ? null : Pattern.compile(stackPattern);
+        return renderDataClient.getProjectStacks().stream()
+                .filter(stackId -> ((stackNames != null) && stackNames.contains(stackId.getStack()) ||
+                                    (p != null) && p.matcher(stackId.getStack()).matches()))
+                .collect(Collectors.toList());
     }
 
     /**
