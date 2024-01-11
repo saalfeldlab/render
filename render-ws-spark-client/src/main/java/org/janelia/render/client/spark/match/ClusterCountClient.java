@@ -91,7 +91,7 @@ public class ClusterCountClient
             throws IllegalArgumentException, IOException {
 
         final Parameters clientParameters = new Parameters();
-        clientParameters.multiProject = pipelineParameters.getmultiProject(pipelineParameters.getRawNamingGroup());
+        clientParameters.multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
         clientParameters.tileCluster = pipelineParameters.getTileCluster();
 
         final List<ConnectedTileClusterSummaryForStack> summaryList =

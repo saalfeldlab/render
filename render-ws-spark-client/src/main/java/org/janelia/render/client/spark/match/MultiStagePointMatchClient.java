@@ -103,7 +103,7 @@ public class MultiStagePointMatchClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IOException {
 
-        final MultiProjectParameters multiProjectParameters = pipelineParameters.getmultiProject(pipelineParameters.getRawNamingGroup());
+        final MultiProjectParameters multiProjectParameters = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
         final List<StackWithZValues> batchedList = multiProjectParameters.buildListOfStackWithBatchedZ();
         generatePairsAndMatchesForRunList(sparkContext,
                                           multiProjectParameters,

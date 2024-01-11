@@ -83,7 +83,7 @@ public class AlignmentPipelineParameters
         this.zSpacing = zSpacing;
     }
 
-    public MultiProjectParameters getmultiProject(final StackIdNamingGroup withNamingGroup) {
+    public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
         multiProject.setNamingGroup(withNamingGroup);
         return multiProject;
     }

@@ -90,7 +90,7 @@ public class DistributedAffineBlockSolverClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final MultiProjectParameters multiProject = pipelineParameters.getmultiProject(pipelineParameters.getRawNamingGroup());
+        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
         final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
         final AffineBlockSolverSetup setup = pipelineParameters.getAffineBlockSolverSetup();
         final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
