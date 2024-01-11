@@ -4,8 +4,19 @@
     "owner" : "hess_wafer_53",
     "project" : "cut_000_to_009",
     "stackIdWithZ" : {
-      "stackPattern": "^c..._s..._v01$",
+      "projectPattern": "^cut_..._to_...$",
       "zValuesPerBatch": 1
+    }
+  },
+  "pipelineStackGroups": {
+    "raw": {
+      "stackPattern": "^c..._s..._v01$"
+    },
+    "aligned": {
+      "stackPattern": "^c.*_align$"
+    },
+    "intensityCorrected": {
+      "stackPattern": "^c.*_ic$"
     }
   },
   "pipelineSteps": [
@@ -343,7 +354,7 @@
       "threadsGlobal": 44
     },
     "targetStack": {
-      "stackSuffix": "_align_pipe_alt_aa",
+      "stackSuffix": "_align",
       "completeStack": true
     },
     "matches": {

@@ -22,7 +22,7 @@ public class AlignmentPipelineParametersTest {
         Assert.assertNotNull("affineBlockSolverSetup is null", affineBlockSolverSetup);
 
         Assert.assertEquals("incorrect affineBlockSolverSetup.targetStack.stackSuffix value parsed",
-                            "_align_pipe_alt_aa", affineBlockSolverSetup.targetStack.stackSuffix);
+                            "_align", affineBlockSolverSetup.targetStack.stackSuffix);
 
         Assert.assertTrue("incorrect affineBlockSolverSetup.targetStack.completeTargetStack value parsed",
                           affineBlockSolverSetup.targetStack.completeStack);

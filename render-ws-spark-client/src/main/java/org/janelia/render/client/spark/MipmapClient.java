@@ -82,7 +82,7 @@ public class MipmapClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final MultiStackParameters multiStack = pipelineParameters.getMultiStack();
+        final MultiStackParameters multiStack = pipelineParameters.getMultiStack(pipelineParameters.getRawNamingGroup());
         final Parameters clientParameters = new Parameters();
         clientParameters.renderWeb = new RenderWebServiceParameters(multiStack.baseDataUrl,
                                                                     multiStack.owner,

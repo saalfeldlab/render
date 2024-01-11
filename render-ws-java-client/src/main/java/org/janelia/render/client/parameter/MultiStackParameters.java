@@ -13,6 +13,7 @@ import java.util.List;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.multisem.StackMFOVWithZValues;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.multisem.Utilities;
@@ -124,6 +125,12 @@ public class MultiStackParameters
         }
 
         return stackMFOVWithZValuesList;
+    }
+
+    public void setNamingGroup(final StackIdNamingGroup namingGroup) {
+        if ((namingGroup != null) && (this.stackIdWithZ != null)) {
+            this.stackIdWithZ.setNamingGroup(namingGroup);
+        }
     }
 
     private synchronized void buildDataClient() {

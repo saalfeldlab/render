@@ -90,7 +90,7 @@ public class DistributedAffineBlockSolverClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final MultiStackParameters multiStack = pipelineParameters.getMultiStack();
+        final MultiStackParameters multiStack = pipelineParameters.getMultiStack(pipelineParameters.getRawNamingGroup());
         final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
         final AffineBlockSolverSetup setup = pipelineParameters.getAffineBlockSolverSetup();
         final List<StackWithZValues> stackList = multiStack.buildListOfStackWithAllZ();

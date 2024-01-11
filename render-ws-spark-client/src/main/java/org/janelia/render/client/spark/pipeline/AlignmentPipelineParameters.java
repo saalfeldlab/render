@@ -9,6 +9,8 @@ import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
+import org.janelia.alignment.spec.stack.PipelineStackIdNamingGroups;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
@@ -30,6 +32,7 @@ public class AlignmentPipelineParameters
         implements Serializable {
 
     private final MultiStackParameters multiStack;
+    private final PipelineStackIdNamingGroups pipelineStackGroups;
     private final List<AlignmentPipelineStepId> pipelineSteps;
     private final MipmapParameters mipmap;
     private final List<MatchRunParameters> matchRunList;
@@ -51,10 +54,12 @@ public class AlignmentPipelineParameters
              null,
              null,
              null,
+             null,
              null);
     }
 
     public AlignmentPipelineParameters(final MultiStackParameters multiStack,
+                                       final PipelineStackIdNamingGroups pipelineStackGroups,
                                        final List<AlignmentPipelineStepId> pipelineSteps,
                                        final MipmapParameters mipmap,
                                        final List<MatchRunParameters> matchRunList,
@@ -65,6 +70,7 @@ public class AlignmentPipelineParameters
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
                                        final ZSpacingParameters zSpacing) {
         this.multiStack = multiStack;
+        this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
         this.mipmap = mipmap;
         this.matchRunList = matchRunList;
@@ -76,8 +82,21 @@ public class AlignmentPipelineParameters
         this.zSpacing = zSpacing;
     }
 
-    public MultiStackParameters getMultiStack() {
+    public MultiStackParameters getMultiStack(final StackIdNamingGroup withNamingGroup) {
+        multiStack.setNamingGroup(withNamingGroup);
         return multiStack;
+    }
+
+    public StackIdNamingGroup getRawNamingGroup() {
+        return pipelineStackGroups == null ? null : pipelineStackGroups.getRaw();
+    }
+
+    public StackIdNamingGroup getAlignedNamingGroup() {
+        return pipelineStackGroups == null ? null : pipelineStackGroups.getAligned();
+    }
+
+    public StackIdNamingGroup getIntensityCorrectedNamingGroup() {
+        return pipelineStackGroups == null ? null : pipelineStackGroups.getIntensityCorrected();
     }
 
     public MipmapParameters getMipmap() {

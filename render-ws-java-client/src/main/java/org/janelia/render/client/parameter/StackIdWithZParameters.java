@@ -2,6 +2,7 @@ package org.janelia.render.client.parameter;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -11,6 +12,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.RenderDataClient;
 
@@ -21,6 +23,11 @@ import org.janelia.render.client.RenderDataClient;
  */
 public class StackIdWithZParameters
         implements Serializable {
+
+    @Parameter(
+            names = "--projectPattern",
+            description = "Process stacks with project names matching this pattern")
+    public String projectPattern;
 
     @Parameter(
             names = "--stack",
@@ -47,21 +54,32 @@ public class StackIdWithZParameters
             description = "Number of stack z values to batch together when distributing work")
     public int zValuesPerBatch = 1;
 
+    @JsonIgnore
+    private StackIdNamingGroup namingGroup;
+
+    public void setNamingGroup(final StackIdNamingGroup namingGroup) {
+        this.namingGroup = namingGroup;
+    }
+
     public boolean hasNoDefinedStacks() {
         return (stackNames == null) || stackNames.isEmpty();
     }
 
     public List<StackId> getStackIdList(final RenderDataClient renderDataClient)
             throws IOException {
-        final boolean hasStackNames = (stackNames != null) && ! stackNames.isEmpty();
-        final boolean hasStackPattern = (stackPattern != null) && ! stackPattern.isEmpty();
-        if (! (hasStackNames || hasStackPattern)) {
-            throw new IOException("must specify --stack or --stackPattern");
-        }
-        final Pattern p = stackPattern == null ? null : Pattern.compile(stackPattern);
-        return renderDataClient.getProjectStacks().stream()
-                .filter(stackId -> ((stackNames != null) && stackNames.contains(stackId.getStack()) ||
-                                    (p != null) && p.matcher(stackId.getStack()).matches()))
+
+        final List<StackId> eligibleStackIds = getEligibleStackIds(renderDataClient);
+        final Pattern cpp = compilePattern(projectPattern,
+                                           (namingGroup == null) ? null : namingGroup.getProjectPattern());
+        final Pattern csp = compilePattern(stackPattern,
+                                           (namingGroup == null) ? null : namingGroup.getStackPattern());
+
+        return eligibleStackIds.stream()
+                .filter(stackId -> {
+                    return ((cpp == null) || cpp.matcher(stackId.getProject()).matches()) &&    // project matches and
+                           (((csp != null) && csp.matcher(stackId.getStack()).matches()) ||     // ( stack matches or
+                            ((stackNames != null) && stackNames.contains(stackId.getStack()))); //   stack is in list )
+                })
                 .collect(Collectors.toList());
     }
 
@@ -117,6 +135,35 @@ public class StackIdWithZParameters
         }
 
         return batchedList;
+    }
+
+    private List<StackId> getEligibleStackIds(final RenderDataClient renderDataClient)
+            throws IOException {
+
+        final boolean hasProjectPattern = ((projectPattern != null) && ! projectPattern.isEmpty()) ||
+                                          ((namingGroup != null) && namingGroup.hasProjectPattern());
+        final boolean hasStackPattern = ((stackPattern != null) && ! stackPattern.isEmpty()) ||
+                                        ((namingGroup != null) && namingGroup.hasStackPattern());
+        final boolean hasStackNames = (stackNames != null) && ! stackNames.isEmpty();
+
+        if (! (hasProjectPattern || hasStackPattern || hasStackNames)) {
+            throw new IOException("must specify at least one of --projectPattern, --stack, or --stackPattern");
+        }
+
+        // if projectPattern is specified, fetch all stacks for the client's owner
+        // otherwise only fetch stacks for the client's project
+        return hasProjectPattern ? renderDataClient.getOwnerStacks() : renderDataClient.getProjectStacks();
+    }
+
+    private Pattern compilePattern(final String defaultPattern,
+                                   final String namingGroupPattern) {
+        if ((namingGroupPattern != null) && (! namingGroupPattern.isEmpty())) {
+            return Pattern.compile(namingGroupPattern);
+        } else if ((defaultPattern != null) && (! defaultPattern.isEmpty())) {
+            return Pattern.compile(defaultPattern);
+        } else {
+            return null;
+        }
     }
 
 }
