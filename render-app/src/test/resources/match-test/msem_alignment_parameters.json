@@ -1,5 +1,5 @@
 {
-  "multiStack": {
+  "multiProject": {
     "baseDataUrl" : "http://10.40.3.113:8080/render-ws/v1",
     "owner" : "hess_wafer_53",
     "project" : "cut_000_to_009",

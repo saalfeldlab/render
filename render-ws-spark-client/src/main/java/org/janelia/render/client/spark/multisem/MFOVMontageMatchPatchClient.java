@@ -18,7 +18,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
-import org.janelia.render.client.parameter.MultiStackParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
@@ -37,7 +37,7 @@ public class MFOVMontageMatchPatchClient
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MultiStackParameters multiStack = new MultiStackParameters();
+        public MultiProjectParameters multiProject = new MultiProjectParameters();
 
         @Parameter(
                 names = "--matchPatchJson",
@@ -71,7 +71,7 @@ public class MFOVMontageMatchPatchClient
             LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
             final MFOVMontageMatchPatchParameters patchParameters =
                     MFOVMontageMatchPatchParameters.fromJsonFile(clientParameters.matchPatchJson);
-            patchPairs(sparkContext, clientParameters.multiStack, patchParameters);
+            patchPairs(sparkContext, clientParameters.multiProject, patchParameters);
         }
     }
 
@@ -88,31 +88,31 @@ public class MFOVMontageMatchPatchClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IOException {
         patchPairs(sparkContext,
-                   pipelineParameters.getMultiStack(pipelineParameters.getRawNamingGroup()),
+                   pipelineParameters.getmultiProject(pipelineParameters.getRawNamingGroup()),
                    pipelineParameters.getMfovMontagePatch());
     }
 
 
     private void patchPairs(final JavaSparkContext sparkContext,
-                            final MultiStackParameters multiStackParameters,
+                            final MultiProjectParameters multiProjectParameters,
                             final MFOVMontageMatchPatchParameters patchParameters)
             throws IOException {
 
-        LOG.info("patchPairs: entry, multiStackParameters={}, patchParameters={}",
-                 multiStackParameters, patchParameters);
+        LOG.info("patchPairs: entry, multiProjectParameters={}, patchParameters={}",
+                 multiProjectParameters, patchParameters);
 
-        patchPairsForPass(sparkContext, multiStackParameters, patchParameters, 1);
+        patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
 
         if (patchParameters.secondPassDerivedMatchWeight != null) {
             patchParameters.setWeightsForSecondPass();
-            patchPairsForPass(sparkContext, multiStackParameters, patchParameters, 2);
+            patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 2);
         }
 
         LOG.info("patchPairs: exit");
     }
 
     private void patchPairsForPass(final JavaSparkContext sparkContext,
-                                   final MultiStackParameters multiStackParameters,
+                                   final MultiProjectParameters multiProjectParameters,
                                    final MFOVMontageMatchPatchParameters patchParameters,
                                    final int passNumber)
             throws IOException {
@@ -121,9 +121,9 @@ public class MFOVMontageMatchPatchClient
 
         LOG.info("patchPairsForPass: entry, {}", passName);
 
-        final String baseDataUrl = multiStackParameters.getBaseDataUrl();
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
         final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
-                multiStackParameters.buildListOfStackMFOVWithAllZ(patchParameters.getMultiFieldOfViewId());
+                multiProjectParameters.buildListOfStackMFOVWithAllZ(patchParameters.getMultiFieldOfViewId());
 
         LOG.info("patchPairsForPass: {}, distributing tasks for {} MFOVs", passName, stackMFOVWithZValuesList.size());
 
@@ -143,7 +143,7 @@ public class MFOVMontageMatchPatchClient
                                                                             stackId.getOwner(),
                                                                             stackId.getProject());
 
-            final MatchCollectionId matchCollectionId = multiStackParameters.getMatchCollectionIdForStack(stackId);
+            final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
 
             final org.janelia.render.client.multisem.MFOVMontageMatchPatchClient javaPatchClient =
                     new org.janelia.render.client.multisem.MFOVMontageMatchPatchClient(javaPatchClientParameters);

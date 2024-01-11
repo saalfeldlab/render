@@ -28,7 +28,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
-import org.janelia.render.client.parameter.MultiStackParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +60,7 @@ public class MFOVMontageMatchPatchClient {
             extends CommandLineParameters {
 
         @ParametersDelegate
-        public MultiStackParameters multiStack = new MultiStackParameters();
+        public MultiProjectParameters multiProject = new MultiProjectParameters();
 
         @ParametersDelegate
         public MFOVMontageMatchPatchParameters patch = new MFOVMontageMatchPatchParameters();
@@ -89,25 +89,25 @@ public class MFOVMontageMatchPatchClient {
         clientRunner.run();
     }
 
-    private final MultiStackParameters multiStack;
+    private final MultiProjectParameters multiProject;
     private MFOVMontageMatchPatchParameters patch;
 
     public MFOVMontageMatchPatchClient(final Parameters parameters) {
-        this.multiStack = parameters.multiStack;
+        this.multiProject = parameters.multiProject;
         this.patch = parameters.patch;
     }
 
     public void deriveAndSaveMatchesForAllUnconnectedPairs()
             throws Exception {
 
-        final RenderDataClient defaultDataClient = multiStack.getDataClient();
+        final RenderDataClient defaultDataClient = multiProject.getDataClient();
         final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
-                multiStack.buildListOfStackMFOVWithAllZ(patch.multiFieldOfViewId);
+                multiProject.buildListOfStackMFOVWithAllZ(patch.multiFieldOfViewId);
 
         for (final StackMFOVWithZValues stackMFOVWithZValues : stackMFOVWithZValuesList) {
             final StackId stackId = stackMFOVWithZValues.getStackId();
             this.patch = this.patch.withMultiFieldOfViewId(stackMFOVWithZValues.getmFOVId());
-            final MatchCollectionId matchCollectionId = multiStack.getMatchCollectionIdForStack(stackId);
+            final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackId);
             final String matchStorageCollectionName = patch.getMatchStorageCollectionName(matchCollectionId);
             deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
                                                            stackMFOVWithZValues,

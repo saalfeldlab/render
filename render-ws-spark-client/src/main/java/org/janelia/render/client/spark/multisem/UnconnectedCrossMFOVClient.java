@@ -17,7 +17,7 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MultiStackParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
@@ -37,7 +37,7 @@ public class UnconnectedCrossMFOVClient
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MultiStackParameters multiStack = new MultiStackParameters();
+        public MultiProjectParameters multiProject = new MultiProjectParameters();
 
         @ParametersDelegate
         public UnconnectedCrossMFOVParameters core = new UnconnectedCrossMFOVParameters();
@@ -45,7 +45,7 @@ public class UnconnectedCrossMFOVClient
         public org.janelia.render.client.multisem.UnconnectedCrossMFOVClient buildJavaClient() {
             final org.janelia.render.client.multisem.UnconnectedCrossMFOVClient.Parameters javaClientParameters =
                     new org.janelia.render.client.multisem.UnconnectedCrossMFOVClient.Parameters();
-            javaClientParameters.multiStack = multiStack;
+            javaClientParameters.multiProject = multiProject;
             javaClientParameters.core = core;
             return new org.janelia.render.client.multisem.UnconnectedCrossMFOVClient(javaClientParameters);
         }
@@ -96,7 +96,7 @@ public class UnconnectedCrossMFOVClient
             throws IllegalArgumentException, IOException {
 
         final Parameters clientParameters = new Parameters();
-        clientParameters.multiStack = pipelineParameters.getMultiStack(pipelineParameters.getRawNamingGroup());
+        clientParameters.multiProject = pipelineParameters.getmultiProject(pipelineParameters.getRawNamingGroup());
         clientParameters.core = pipelineParameters.getUnconnectedCrossMfov();
         final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
                 findUnconnectedMFOVs(sparkContext, clientParameters);
@@ -117,9 +117,9 @@ public class UnconnectedCrossMFOVClient
 
         LOG.info("findUnconnectedMFOVs: entry");
 
-        final MultiStackParameters multiStackParameters = clientParameters.multiStack;
-        final String baseDataUrl = multiStackParameters.getBaseDataUrl();
-        final List<StackWithZValues> stackWithZValuesList = multiStackParameters.buildListOfStackWithAllZ();
+        final MultiProjectParameters multiProjectParameters = clientParameters.multiProject;
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
+        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
 
         LOG.info("findUnconnectedMFOVs: distributing tasks for {} stacks", stackWithZValuesList.size());
 
@@ -136,7 +136,7 @@ public class UnconnectedCrossMFOVClient
             final org.janelia.render.client.multisem.UnconnectedCrossMFOVClient jClient = clientParameters.buildJavaClient();
 
             return jClient.findUnconnectedMFOVs(stackWithZ,
-                                                multiStackParameters.deriveMatchCollectionNamesFromProject,
+                                                multiProjectParameters.deriveMatchCollectionNamesFromProject,
                                                 localDataClient);
         };
 

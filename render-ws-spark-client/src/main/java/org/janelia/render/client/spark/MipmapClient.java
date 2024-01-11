@@ -18,7 +18,7 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
-import org.janelia.render.client.parameter.MultiStackParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.slf4j.Logger;
@@ -82,13 +82,13 @@ public class MipmapClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final MultiStackParameters multiStack = pipelineParameters.getMultiStack(pipelineParameters.getRawNamingGroup());
+        final MultiProjectParameters multiProject = pipelineParameters.getmultiProject(pipelineParameters.getRawNamingGroup());
         final Parameters clientParameters = new Parameters();
-        clientParameters.renderWeb = new RenderWebServiceParameters(multiStack.baseDataUrl,
-                                                                    multiStack.owner,
-                                                                    multiStack.project);
+        clientParameters.renderWeb = new RenderWebServiceParameters(multiProject.baseDataUrl,
+                                                                    multiProject.owner,
+                                                                    multiProject.project);
         clientParameters.mipmap = pipelineParameters.getMipmap();
-        clientParameters.mipmap.setStackIdWithZIfUndefined(multiStack.stackIdWithZ);
+        clientParameters.mipmap.setStackIdWithZIfUndefined(multiProject.stackIdWithZ);
 
         generateMipmaps(sparkContext, clientParameters);
     }
