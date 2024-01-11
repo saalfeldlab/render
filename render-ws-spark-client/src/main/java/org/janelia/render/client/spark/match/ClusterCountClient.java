@@ -18,7 +18,7 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.MultiStackParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
@@ -36,7 +36,7 @@ public class ClusterCountClient
 
     public static class Parameters extends CommandLineParameters {
         @ParametersDelegate
-        public MultiProjectParameters multiProject = new MultiProjectParameters();
+        public MultiStackParameters multiStack = new MultiStackParameters();
 
         @ParametersDelegate
         public TileClusterParameters tileCluster = new TileClusterParameters();
@@ -44,7 +44,7 @@ public class ClusterCountClient
         public org.janelia.render.client.ClusterCountClient buildJavaClient() {
             final org.janelia.render.client.ClusterCountClient.Parameters javaClientParameters =
                     new org.janelia.render.client.ClusterCountClient.Parameters();
-            javaClientParameters.multiProject = multiProject;
+            javaClientParameters.multiStack = multiStack;
             javaClientParameters.tileCluster = tileCluster;
             return new org.janelia.render.client.ClusterCountClient(javaClientParameters);
         }
@@ -91,7 +91,7 @@ public class ClusterCountClient
             throws IllegalArgumentException, IOException {
 
         final Parameters clientParameters = new Parameters();
-        clientParameters.multiProject = pipelineParameters.getMultiProject();
+        clientParameters.multiStack = pipelineParameters.getMultiStack();
         clientParameters.tileCluster = pipelineParameters.getTileCluster();
 
         final List<ConnectedTileClusterSummaryForStack> summaryList =
@@ -119,9 +119,9 @@ public class ClusterCountClient
 
         LOG.info("findConnectedClusters: entry, clientParameters={}", clientParameters);
 
-        final MultiProjectParameters multiProjectParameters = clientParameters.multiProject;
-        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
-        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
+        final MultiStackParameters multiStackParameters = clientParameters.multiStack;
+        final String baseDataUrl = multiStackParameters.getBaseDataUrl();
+        final List<StackWithZValues> stackWithZValuesList = multiStackParameters.buildListOfStackWithAllZ();
 
         final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
 
@@ -130,7 +130,7 @@ public class ClusterCountClient
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
             final StackId stackId = stackWithZ.getStackId();
-            final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
+            final MatchCollectionId matchCollectionId = multiStackParameters.getMatchCollectionIdForStack(stackId);
             final RenderDataClient localDataClient = new RenderDataClient(baseDataUrl,
                                                                           stackId.getOwner(),
                                                                           stackId.getProject());

@@ -15,7 +15,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.MultiStackParameters;
 import org.janelia.render.client.parameter.ZSpacingParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
@@ -35,7 +35,7 @@ public class ZPositionCorrectionClient
 
     public static class Parameters extends CommandLineParameters {
         @ParametersDelegate
-        public MultiProjectParameters multiProject = new MultiProjectParameters();
+        public MultiStackParameters multiStack = new MultiStackParameters();
 
         @ParametersDelegate
         public ZSpacingParameters zSpacing = new ZSpacingParameters();
@@ -49,7 +49,7 @@ public class ZPositionCorrectionClient
             final org.janelia.render.client.zspacing.ZPositionCorrectionClient.Parameters jClientParameters =
                     new org.janelia.render.client.zspacing.ZPositionCorrectionClient.Parameters();
 
-            jClientParameters.renderWeb.baseDataUrl = multiProject.baseDataUrl;
+            jClientParameters.renderWeb.baseDataUrl = multiStack.baseDataUrl;
 
             final StackId stackId = stackIdWithZValues.getStackId();
             jClientParameters.renderWeb.owner = stackId.getOwner();
@@ -116,7 +116,7 @@ public class ZPositionCorrectionClient
             throws IllegalArgumentException, IOException {
 
         final Parameters clientParameters = new Parameters();
-        clientParameters.multiProject = pipelineParameters.getMultiProject();
+        clientParameters.multiStack = pipelineParameters.getMultiStack();
         clientParameters.zSpacing = pipelineParameters.getZSpacing();
         deriveAndSolveCrossCorrelationData(sparkContext, clientParameters);
     }
@@ -130,9 +130,9 @@ public class ZPositionCorrectionClient
         LOG.info("deriveAndSolveCrossCorrelationData: entry, clientParameters={}, comparisonRange={}",
                  clientParameters, comparisonRange);
 
-        final MultiProjectParameters multiProjectParameters = clientParameters.multiProject;
+        final MultiStackParameters multiStackParameters = clientParameters.multiStack;
 
-        final List<StackWithZValues> stackWithAllZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
+        final List<StackWithZValues> stackWithAllZValuesList = multiStackParameters.buildListOfStackWithAllZ();
 
         final long totalNumberOfZValues = stackWithAllZValuesList.stream()
                 .map(stackWithZ -> (long) stackWithZ.getzValues().size())
@@ -144,7 +144,7 @@ public class ZPositionCorrectionClient
                                    clientParameters,
                                    comparisonRange,
                                    totalNumberOfZValues,
-                                   multiProjectParameters,
+                                   multiStackParameters,
                                    runName);
 
         final JavaRDD<StackWithZValues> rddStackWithAllZValues = sparkContext.parallelize(stackWithAllZValuesList);
@@ -168,7 +168,7 @@ public class ZPositionCorrectionClient
                                                    final Parameters clientParameters,
                                                    final int comparisonRange,
                                                    final long totalNumberOfZValues,
-                                                   final MultiProjectParameters multiProjectParameters,
+                                                   final MultiStackParameters multiStackParameters,
                                                    final String runName)
             throws IOException {
 
@@ -177,7 +177,7 @@ public class ZPositionCorrectionClient
         final int zValuesPerBatch = Math.max(Math.toIntExact(longZValuesPerBatch), minBatchSizeForComparisonRange);
 
         final List<StackWithZValues> stackWithBatchedZValuesList =
-                multiProjectParameters.buildListOfStackWithBatchedZ(zValuesPerBatch);
+                multiStackParameters.buildListOfStackWithBatchedZ(zValuesPerBatch);
 
         LOG.info("deriveCrossCorrelationData: created {} batches with {} layers each for {} total layers, defaultParallelism={}",
                  stackWithBatchedZValuesList.size(),

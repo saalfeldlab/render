@@ -1,5 +1,5 @@
 {
-  "multiProject": {
+  "multiStack": {
     "baseDataUrl" : "http://renderer-dev,int.janelia.org:8080/render-ws/v1",
     "owner" : "hess_wafer_53",
     "project" : "cut_000_to_009",

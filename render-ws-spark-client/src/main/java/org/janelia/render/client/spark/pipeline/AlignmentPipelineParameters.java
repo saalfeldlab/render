@@ -14,7 +14,7 @@ import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
-import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.MultiStackParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
 import org.janelia.render.client.parameter.ZSpacingParameters;
@@ -29,7 +29,7 @@ import static org.janelia.alignment.json.JsonUtils.STRICT_MAPPER;
 public class AlignmentPipelineParameters
         implements Serializable {
 
-    private final MultiProjectParameters multiProject;
+    private final MultiStackParameters multiStack;
     private final List<AlignmentPipelineStepId> pipelineSteps;
     private final MipmapParameters mipmap;
     private final List<MatchRunParameters> matchRunList;
@@ -54,7 +54,7 @@ public class AlignmentPipelineParameters
              null);
     }
 
-    public AlignmentPipelineParameters(final MultiProjectParameters multiProject,
+    public AlignmentPipelineParameters(final MultiStackParameters multiStack,
                                        final List<AlignmentPipelineStepId> pipelineSteps,
                                        final MipmapParameters mipmap,
                                        final List<MatchRunParameters> matchRunList,
@@ -64,7 +64,7 @@ public class AlignmentPipelineParameters
                                        final MatchCopyParameters matchCopy,
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
                                        final ZSpacingParameters zSpacing) {
-        this.multiProject = multiProject;
+        this.multiStack = multiStack;
         this.pipelineSteps = pipelineSteps;
         this.mipmap = mipmap;
         this.matchRunList = matchRunList;
@@ -76,8 +76,8 @@ public class AlignmentPipelineParameters
         this.zSpacing = zSpacing;
     }
 
-    public MultiProjectParameters getMultiProject() {
-        return multiProject;
+    public MultiStackParameters getMultiStack() {
+        return multiStack;
     }
 
     public MipmapParameters getMipmap() {
@@ -125,7 +125,7 @@ public class AlignmentPipelineParameters
             throw new IllegalArgumentException("no pipeline steps defined");
         }
 
-        validateRequiredElementExists("multiProject", multiProject);
+        validateRequiredElementExists("multiStack", multiStack);
 
         return pipelineSteps.stream()
                             .map(AlignmentPipelineStepId::toStepClient)

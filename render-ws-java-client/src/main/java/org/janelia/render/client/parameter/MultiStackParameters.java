@@ -18,14 +18,13 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.multisem.Utilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 /**
- * Parameters for identifying projects, stacks, and match collections.
+ * Parameters for identifying a project with related stacks and match collections.
  *
  * @author Eric Trautman
  */
 @Parameters
-public class MultiProjectParameters
+public class MultiStackParameters
         implements Serializable {
 
     @Parameter(
@@ -42,7 +41,7 @@ public class MultiProjectParameters
 
     @Parameter(
             names = "--project",
-            description = "Project for all tiles (or first project if processing a multi-project run)",
+            description = "Project for all stacks",
             required = true)
     public String project;
 
@@ -72,7 +71,7 @@ public class MultiProjectParameters
         return dataClient;
     }
 
-    public MultiProjectParameters() {
+    public MultiStackParameters() {
     }
 
     public String getBaseDataUrl() {
@@ -133,6 +132,6 @@ public class MultiProjectParameters
         }
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(MultiProjectParameters.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MultiStackParameters.class);
 
 }

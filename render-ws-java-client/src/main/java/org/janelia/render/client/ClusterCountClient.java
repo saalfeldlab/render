@@ -21,7 +21,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.match.UnconnectedTileEdges;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.MultiStackParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,7 +36,7 @@ public class ClusterCountClient {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MultiProjectParameters multiProject = new MultiProjectParameters();
+        public MultiStackParameters multiStack = new MultiStackParameters();
 
         @ParametersDelegate
         public TileClusterParameters tileCluster = new TileClusterParameters();
@@ -73,13 +73,13 @@ public class ClusterCountClient {
     public void findConnectedClusters()
             throws Exception {
 
-        final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
-        final List<StackWithZValues> stackWithZList = parameters.multiProject.buildListOfStackWithAllZ();
+        final RenderDataClient renderDataClient = parameters.multiStack.getDataClient();
+        final List<StackWithZValues> stackWithZList = parameters.multiStack.buildListOfStackWithAllZ();
         for (final StackWithZValues stackWithZ : stackWithZList) {
 
             final StackId stackId = stackWithZ.getStackId();
             final MatchCollectionId defaultMatchCollectionId =
-                    parameters.multiProject.getMatchCollectionIdForStack(stackId);
+                    parameters.multiStack.getMatchCollectionIdForStack(stackId);
 
             findConnectedClustersForStack(stackWithZ,
                                           defaultMatchCollectionId,

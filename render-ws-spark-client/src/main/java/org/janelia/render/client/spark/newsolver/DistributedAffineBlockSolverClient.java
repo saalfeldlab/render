@@ -25,7 +25,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentP
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.DistributedSolveParameters;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
-import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.MultiStackParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
@@ -90,15 +90,15 @@ public class DistributedAffineBlockSolverClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject();
+        final MultiStackParameters multiStack = pipelineParameters.getMultiStack();
         final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
         final AffineBlockSolverSetup setup = pipelineParameters.getAffineBlockSolverSetup();
-        final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
+        final List<StackWithZValues> stackList = multiStack.buildListOfStackWithAllZ();
         final int nRuns = setup.alternatingRuns.nRuns;
 
         // TODO: push StackWithZValues idea into core solver code
         for (final StackWithZValues stackWithZValues : stackList) {
-            setup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
+            setup.setValuesFromPipeline(multiStack.getBaseDataUrl(),
                                         stackWithZValues.getStackId());
             setupList.add(setup.clone());
         }

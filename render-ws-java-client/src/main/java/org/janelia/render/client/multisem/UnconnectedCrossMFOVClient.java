@@ -26,7 +26,7 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.MultiStackParameters;
 import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +42,7 @@ public class UnconnectedCrossMFOVClient {
             extends CommandLineParameters {
 
         @ParametersDelegate
-        public MultiProjectParameters multiProject = new MultiProjectParameters();
+        public MultiStackParameters multiStack = new MultiStackParameters();
 
         @ParametersDelegate
         public UnconnectedCrossMFOVParameters core = new UnconnectedCrossMFOVParameters();
@@ -78,14 +78,14 @@ public class UnconnectedCrossMFOVClient {
     public List<UnconnectedMFOVPairsForStack> findUnconnectedMFOVs()
             throws IOException {
 
-        final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
-        final List<StackWithZValues> stackWithZList = parameters.multiProject.buildListOfStackWithAllZ();
+        final RenderDataClient renderDataClient = parameters.multiStack.getDataClient();
+        final List<StackWithZValues> stackWithZList = parameters.multiStack.buildListOfStackWithAllZ();
 
         final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks = new ArrayList<>();
         for (final StackWithZValues stackWithZ : stackWithZList) {
             final UnconnectedMFOVPairsForStack unconnectedMFOVPairsForStack =
                     findUnconnectedMFOVs(stackWithZ,
-                                         parameters.multiProject.deriveMatchCollectionNamesFromProject,
+                                         parameters.multiStack.deriveMatchCollectionNamesFromProject,
                                          renderDataClient);
             if (unconnectedMFOVPairsForStack.size() > 0) {
                 unconnectedMFOVsForAllStacks.add(unconnectedMFOVPairsForStack);
@@ -139,7 +139,7 @@ public class UnconnectedCrossMFOVClient {
         } else {
             storeUnconnectedMFOVPairs(unconnectedMFOVsForAllStacks,
                                       parameters.core.unconnectedMFOVPairsDirectory,
-                                      parameters.multiProject.getDataClient());
+                                      parameters.multiStack.getDataClient());
         }
     }
 

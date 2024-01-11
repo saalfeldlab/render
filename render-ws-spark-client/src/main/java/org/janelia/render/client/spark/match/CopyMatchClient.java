@@ -18,7 +18,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
-import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.MultiStackParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
@@ -35,18 +35,18 @@ public class CopyMatchClient
 
     public static class Parameters extends CommandLineParameters {
         @ParametersDelegate
-        public MultiProjectParameters multiProject;
+        public MultiStackParameters multiStack;
 
         @ParametersDelegate
         public MatchCopyParameters matchCopy;
 
         public Parameters() {
-            this(new MultiProjectParameters(), new MatchCopyParameters());
+            this(new MultiStackParameters(), new MatchCopyParameters());
         }
 
-        public Parameters(final MultiProjectParameters multiProject,
+        public Parameters(final MultiStackParameters multiStack,
                           final MatchCopyParameters matchCopy) {
-            this.multiProject = multiProject;
+            this.multiStack = multiStack;
             this.matchCopy = matchCopy;
         }
     }
@@ -91,7 +91,7 @@ public class CopyMatchClient
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
-        final Parameters clientParameters = new Parameters(pipelineParameters.getMultiProject(),
+        final Parameters clientParameters = new Parameters(pipelineParameters.getMultiStack(),
                                                            pipelineParameters.getMatchCopy());
         copyMatches(sparkContext, clientParameters);
     }
@@ -102,10 +102,10 @@ public class CopyMatchClient
 
         LOG.info("copyMatches: entry, clientParameters={}", clientParameters);
 
-        final MultiProjectParameters multiProjectParameters = clientParameters.multiProject;
-        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
+        final MultiStackParameters multiStackParameters = clientParameters.multiStack;
+        final String baseDataUrl = multiStackParameters.getBaseDataUrl();
         final MatchCopyParameters matchCopyParameters = clientParameters.matchCopy;
-        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithBatchedZ();
+        final List<StackWithZValues> stackWithZValuesList = multiStackParameters.buildListOfStackWithBatchedZ();
 
         final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
 
@@ -114,7 +114,7 @@ public class CopyMatchClient
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
             final StackId stackId = stackWithZ.getStackId();
-            final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
+            final MatchCollectionId matchCollectionId = multiStackParameters.getMatchCollectionIdForStack(stackId);
 
             final RenderDataClient sourceDataClient = new RenderDataClient(baseDataUrl,
                                                                            stackId.getOwner(),
