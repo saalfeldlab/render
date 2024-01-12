@@ -35,7 +35,7 @@ public class AlignmentPipelineParametersTest {
         final List<AlignmentPipelineStep> stepClients = pipelineParameters.buildStepClients();
         
         Assert.assertNotNull("stepClients is null", stepClients);
-        Assert.assertEquals("incorrect number of stepClients", 7, stepClients.size());
+        Assert.assertEquals("incorrect number of stepClients", 6, stepClients.size());
     }
 
     private AlignmentPipelineParameters loadTestParameters() throws IOException {
