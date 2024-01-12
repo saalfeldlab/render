@@ -162,7 +162,6 @@ public class ZPositionCorrectionClient
 
         final int completedSolveCount = rddCompletedSolveCount.collect().stream().reduce(0, Integer::sum);
 
-        LOG.info("deriveAndSolveCrossCorrelationData: collect RDD");
         LOG.info("deriveAndSolveCrossCorrelationData: exit, solved data for {} stacks", completedSolveCount);
     }
 
@@ -200,7 +199,6 @@ public class ZPositionCorrectionClient
 
         final int completedBatchCount = rddCompletedBatchCount.collect().stream().reduce(0, Integer::sum);
 
-        LOG.info("deriveCrossCorrelationData: collect RDD");
         LOG.info("deriveCrossCorrelationData: exit, generated data for {} batches", completedBatchCount);
     }
 
