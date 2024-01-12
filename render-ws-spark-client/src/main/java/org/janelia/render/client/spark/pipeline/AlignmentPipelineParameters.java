@@ -124,6 +124,10 @@ public class AlignmentPipelineParameters
         return matchCopy;
     }
 
+    public String getMatchCopyToCollectionSuffix() {
+        return matchCopy == null ? "" : matchCopy.toCollectionSuffix;
+    }
+
     public AffineBlockSolverSetup getAffineBlockSolverSetup() {
         return affineBlockSolverSetup;
     }

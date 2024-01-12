@@ -7,6 +7,7 @@ import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
@@ -142,15 +143,42 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 				maxZRangeMatches);
 	}
 
-	public void setValuesFromPipeline(final String baseDataUrl,
-									  final StackId sourceStackId) {
-		this.renderWeb.baseDataUrl = baseDataUrl;
+	/**
+	 * @param  baseDataUrl                            base web service URL for data.
+	 * @param  sourceStackId                          identifies stack being aligned.
+	 *
+	 * @param  deriveMatchCollectionNamesFromProject  indicates whether derived match collection names
+	 *                                                should be derived from the stack's project
+	 *                                                (default is to derive from stack name).
+	 *
+	 * @param  matchSuffix                            suffix to append to derived match collection names
+	 *                                                (specify empty string to omit suffix).
+	 *                                                Suffix is needed when match aggregation is performed
+	 *                                                by an earlier pipeline step.
+	 * @return a clone of this setup populated with the specified parameters.
+	 */
+	public AffineBlockSolverSetup buildPipelineClone(final String baseDataUrl,
+													 final StackId sourceStackId,
+													 final boolean deriveMatchCollectionNamesFromProject,
+													 final String matchSuffix) {
+		final AffineBlockSolverSetup clone = clone();
 
-		this.renderWeb.owner = sourceStackId.getOwner();
-		this.renderWeb.project = sourceStackId.getProject();
-		this.stack = sourceStackId.getStack();
+		clone.renderWeb.baseDataUrl = baseDataUrl;
 
-		this.targetStack.setValuesFromPipeline(sourceStackId, "_align");
+		clone.renderWeb.owner = sourceStackId.getOwner();
+		clone.renderWeb.project = sourceStackId.getProject();
+		clone.stack = sourceStackId.getStack();
+
+		clone.targetStack.setValuesFromPipeline(sourceStackId, "_align");
+
+		// if a single match collection for all stacks has not been explicitly specified,
+		// derive it from project or stack name
+		if (clone.matches.matchCollection == null) {
+			final MatchCollectionId mc = sourceStackId.getDefaultMatchCollectionId(deriveMatchCollectionNamesFromProject);
+			clone.matches.matchCollection = mc.getName() + matchSuffix;
+		}
+
+		return clone;
 	}
 
 	/** (Slowly) creates a clone of this setup by serializing it to and from JSON. */

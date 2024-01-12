@@ -97,10 +97,12 @@ public class DistributedAffineBlockSolverClient
         final int nRuns = setup.alternatingRuns.nRuns;
 
         // TODO: push StackWithZValues idea into core solver code
+        final String matchSuffix = pipelineParameters.getMatchCopyToCollectionSuffix();
         for (final StackWithZValues stackWithZValues : stackList) {
-            setup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
-                                        stackWithZValues.getStackId());
-            setupList.add(setup.clone());
+            setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
+                                                   stackWithZValues.getStackId(),
+                                                   multiProject.deriveMatchCollectionNamesFromProject,
+                                                   matchSuffix));
         }
 
         final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
