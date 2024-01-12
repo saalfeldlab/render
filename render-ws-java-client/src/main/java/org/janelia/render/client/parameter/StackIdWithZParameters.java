@@ -15,6 +15,8 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.RenderDataClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Parameters for identifying z-layers within a stack or group of stacks.
@@ -119,13 +121,17 @@ public class StackIdWithZParameters
                                                                             layerRange.minZ,
                                                                             layerRange.maxZ,
                                                                             zValues);
-            if (explicitZValuesPerBatch >= stackZValues.size()) {
-                batchedList.add(new StackWithZValues(stackId, stackZValues));
+            if (stackZValues.isEmpty()) {
+                LOG.debug("no matching z values found for {}", stackId);
             } else {
-                for (int fromIndex = 0; fromIndex < stackZValues.size(); fromIndex += explicitZValuesPerBatch) {
-                    final int toIndex = Math.min(stackZValues.size(), fromIndex + explicitZValuesPerBatch);
-                    final List<Double> batchedZValues = new ArrayList<>(stackZValues.subList(fromIndex, toIndex));
-                    batchedList.add(new StackWithZValues(stackId, batchedZValues));
+                if (explicitZValuesPerBatch >= stackZValues.size()) {
+                    batchedList.add(new StackWithZValues(stackId, stackZValues));
+                } else {
+                    for (int fromIndex = 0; fromIndex < stackZValues.size(); fromIndex += explicitZValuesPerBatch) {
+                        final int toIndex = Math.min(stackZValues.size(), fromIndex + explicitZValuesPerBatch);
+                        final List<Double> batchedZValues = new ArrayList<>(stackZValues.subList(fromIndex, toIndex));
+                        batchedList.add(new StackWithZValues(stackId, batchedZValues));
+                    }
                 }
             }
         }
@@ -166,4 +172,5 @@ public class StackIdWithZParameters
         }
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(StackIdWithZParameters.class);
 }
