@@ -16,6 +16,7 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.parameter.ZSpacingParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
@@ -46,6 +47,7 @@ public class ZPositionCorrectionClient
                                                                                             final boolean solveExisting)
                 throws IOException {
 
+            // TODO: think about alternative naming/packaging for related java and spark clients that would avoid need for long ugly declarations like this
             final org.janelia.render.client.zspacing.ZPositionCorrectionClient.Parameters jClientParameters =
                     new org.janelia.render.client.zspacing.ZPositionCorrectionClient.Parameters();
 
@@ -56,8 +58,8 @@ public class ZPositionCorrectionClient
             jClientParameters.renderWeb.project = stackId.getProject();
             jClientParameters.stack = stackId.getStack();
 
-            jClientParameters.layerRange.minZ = stackIdWithZValues.getFirstZ();
-            jClientParameters.layerRange.maxZ = stackIdWithZValues.getLastZ();
+            jClientParameters.layerRange = new ZRangeParameters(stackIdWithZValues.getFirstZ(),
+                                                                stackIdWithZValues.getLastZ());
 
             if (! solveExisting) {
                 // if deriving cross correlation for a batch of z layers (and not solving),
