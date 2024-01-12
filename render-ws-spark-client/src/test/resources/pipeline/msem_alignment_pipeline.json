@@ -1,7 +1,7 @@
 {
   "multiProject": {
     "baseDataUrl" : "http://renderer-dev,int.janelia.org:8080/render-ws/v1",
-    "owner" : "hess_wafer_53",
+    "owner" : "hess_wafer_53b",
     "project" : "cut_000_to_009",
     "stackIdWithZ" : {
       "projectPattern": "^cut_..._to_...$",
@@ -24,7 +24,6 @@
     "DERIVE_TILE_MATCHES",
     "PATCH_MFOV_MONTAGE_MATCHES",
     "FIND_UNCONNECTED_MFOVS",
-    "FIND_UNCONNECTED_TILES_AND_EDGES",
     "FILTER_MATCHES",
     "ALIGN_TILES"
   ],
@@ -356,9 +355,6 @@
     "targetStack": {
       "stackSuffix": "_align",
       "completeStack": true
-    },
-    "matches": {
-      "matchCollection": "c000_s095_v01_match_agg2"
     },
     "blockPartition": {
       "sizeX": 7000,
