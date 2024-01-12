@@ -54,7 +54,7 @@ public class StackIdWithZParameters
     public int zValuesPerBatch = 1;
 
     public boolean hasNoDefinedStacks() {
-        return (stackNames == null) || (stackNames.size() == 0);
+        return (stackNames == null) || stackNames.isEmpty();
     }
 
     public List<StackId> getStackIdList(final RenderDataClient renderDataClient)
@@ -96,8 +96,8 @@ public class StackIdWithZParameters
      * @return list of stack identifiers coupled with explicitZValuesPerBatch z values
      *         that is ordered by stack and then z.
      */
-    private List<StackWithZValues> buildListOfStackWithBatchedZ(final RenderDataClient renderDataClient,
-                                                                final int explicitZValuesPerBatch)
+    public List<StackWithZValues> buildListOfStackWithBatchedZ(final RenderDataClient renderDataClient,
+                                                               final int explicitZValuesPerBatch)
             throws IOException, IllegalArgumentException {
         if (explicitZValuesPerBatch < 1) {
             throw new IllegalArgumentException("zValuesPerBatch must be greater than zero");
@@ -121,7 +121,7 @@ public class StackIdWithZParameters
             }
         }
 
-        if (batchedList.size() == 0) {
+        if (batchedList.isEmpty()) {
             throw new IllegalArgumentException("no stack z-layers match parameters");
         }
 
