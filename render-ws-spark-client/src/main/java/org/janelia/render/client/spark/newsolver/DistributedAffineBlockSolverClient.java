@@ -100,7 +100,7 @@ public class DistributedAffineBlockSolverClient
         final String matchSuffix = pipelineParameters.getMatchCopyToCollectionSuffix();
         for (final StackWithZValues stackWithZValues : stackList) {
             setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
-                                                   stackWithZValues.getStackId(),
+                                                   stackWithZValues,
                                                    multiProject.deriveMatchCollectionNamesFromProject,
                                                    matchSuffix));
         }
