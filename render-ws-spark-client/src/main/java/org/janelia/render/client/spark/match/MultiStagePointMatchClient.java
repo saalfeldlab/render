@@ -7,8 +7,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -138,13 +140,25 @@ public class MultiStagePointMatchClient
         final TilePairDerivationParameters tilePairDerivation = matchRunParameters.getTilePairDerivationParameters();
 
         List<StackWithZValues> effectiveStackWithZValuesList = stackWithZValuesList;
+
         if (tilePairDerivation.zNeighborDistance > 0) {
-            // for cross-match pair derivation, need to ensure stacks do not have specific z layers so reduce list here
-            effectiveStackWithZValuesList = stackWithZValuesList.stream()
-                    .map(StackWithZValues::getStackId)
-                    .distinct()
-                    .map(stackId -> new StackWithZValues(stackId, new ArrayList<>()))
+
+            // For cross-match pair derivation, group all z values for each stack
+            // and let tile pair client handle sub-batching.
+            // Don't worry about optimizing batch sizes since pair derivation is very fast.
+
+            final Map<StackId, List<Double>> stackToZValuesMap = new HashMap<>();
+            for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
+                final StackId stackId = stackWithZValues.getStackId();
+                final List<Double> zValues = stackToZValuesMap.computeIfAbsent(stackId, sid -> new ArrayList<>());
+                zValues.addAll(stackWithZValues.getzValues());
+            }
+
+            effectiveStackWithZValuesList = stackToZValuesMap.keySet().stream()
+                    .sorted()
+                    .map(stackId -> new StackWithZValues(stackId, stackToZValuesMap.get(stackId)))
                     .collect(Collectors.toList());
+
             LOG.info("generatePairsAndMatchesForRun: reduced stackWithZValuesList from {} to {} items for cross pair derivation",
                      stackWithZValuesList.size(), effectiveStackWithZValuesList.size());
         }
