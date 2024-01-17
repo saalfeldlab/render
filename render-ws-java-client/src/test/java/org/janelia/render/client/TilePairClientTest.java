@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import javax.annotation.Nonnull;
@@ -41,20 +42,24 @@ public class TilePairClientTest {
         this.baseFileName = "test_tile_pairs_" + sdf.format(new Date());
     }
 
+
+    private Stream<Path> findPairFiles()
+            throws IOException {
+        try (final Stream<Path> files = Files.list(Paths.get("."))) {
+            return files.filter(path -> path.getFileName().toString().startsWith(baseFileName));
+        }
+    }
+
     @After
     public void tearDown() throws Exception {
-        try (final Stream<Path> files = Files.list(Paths.get("."))) {
-            files.forEach(path -> {
-                if (path.getFileName().toString().startsWith(baseFileName)) {
-                    try {
-                        Files.delete(path);
-                        LOG.info("deleted {}", path.toAbsolutePath());
-                    } catch (final Throwable t) {
-                        LOG.warn("failed to delete " + path.toAbsolutePath(), t);
-                    }
-                }
-            });
-        }
+        findPairFiles().forEach(path -> {
+            try {
+                Files.delete(path);
+                LOG.info("deleted {}", path.toAbsolutePath());
+            } catch (final Throwable t) {
+                LOG.warn("failed to delete " + path.toAbsolutePath(), t);
+            }
+        });
     }
 
     @Test
@@ -151,14 +156,7 @@ public class TilePairClientTest {
                                                                  1.0, 2.0, 3.0, 4.0, 5.0);
         client.deriveAndSaveSortedNeighborPairs();
 
-        final List<Path> pairFilePaths = new ArrayList<>();
-        try (final Stream<Path> files = Files.list(Paths.get("."))) {
-            files.forEach(path -> {
-                if (path.getFileName().toString().startsWith(baseFileName)) {
-                    pairFilePaths.add(path);
-                }
-            });
-        }
+        final List<Path> pairFilePaths = findPairFiles().collect(Collectors.toList());
 
         Assert.assertEquals("invalid number of pairs files created", expectedNumberOfFiles, pairFilePaths.size());
     }
