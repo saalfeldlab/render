@@ -43,10 +43,11 @@ public class TilePairClientTest {
     }
 
 
-    private Stream<Path> findPairFiles()
+    private List<Path> findPairFiles()
             throws IOException {
         try (final Stream<Path> files = Files.list(Paths.get("."))) {
-            return files.filter(path -> path.getFileName().toString().startsWith(baseFileName));
+            return files.filter(path -> path.getFileName().toString().startsWith(baseFileName))
+                    .collect(Collectors.toList());
         }
     }
 
@@ -156,8 +157,7 @@ public class TilePairClientTest {
                                                                  1.0, 2.0, 3.0, 4.0, 5.0);
         client.deriveAndSaveSortedNeighborPairs();
 
-        final List<Path> pairFilePaths = findPairFiles().collect(Collectors.toList());
-
+        final List<Path> pairFilePaths = findPairFiles();
         Assert.assertEquals("invalid number of pairs files created", expectedNumberOfFiles, pairFilePaths.size());
     }
 
@@ -202,21 +202,21 @@ public class TilePairClientTest {
         }
     }
 
-    public static void main(final String[] args) {
-
-        final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[] {
-                "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
-                "--owner", "flyTEM",
-                "--project", "FAFB_montage",
-                "--stack", "check_923_split_rough",
-                "--xyNeighborFactor", "0.6",
-                "--excludeCornerNeighbors", "false",
-                "--excludeSameLayerNeighbors", "true",
-                "--excludeCompletelyObscuredTiles", "false",
-                "--zNeighborDistance", "40",
-                "--toJson", "/Users/trautmane/Desktop/test_pairs.json"
-        };
-        TilePairClient.main(effectiveArgs);
-
-    }
+//    public static void main(final String[] args) {
+//
+//        final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[] {
+//                "--baseDataUrl", "http://tem-services.int.janelia.org:8080/render-ws/v1",
+//                "--owner", "flyTEM",
+//                "--project", "FAFB_montage",
+//                "--stack", "check_923_split_rough",
+//                "--xyNeighborFactor", "0.6",
+//                "--excludeCornerNeighbors", "false",
+//                "--excludeSameLayerNeighbors", "true",
+//                "--excludeCompletelyObscuredTiles", "false",
+//                "--zNeighborDistance", "40",
+//                "--toJson", "/Users/trautmane/Desktop/test_pairs.json"
+//        };
+//        TilePairClient.main(effectiveArgs);
+//
+//    }
 }
