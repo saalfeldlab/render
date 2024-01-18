@@ -161,13 +161,11 @@ public class StackIdWithZParameters
             final List<String> stackNames) {
 
         final Predicate<String> projectInGroup = namingGroup.hasProjectPattern()
-                ? namingGroup.projectPattern().asMatchPredicate()
-                : defaultGroup.projectPattern().asMatchPredicate();
+                ? namingGroup.projectFilter() : defaultGroup.projectFilter();
 
         final Predicate<String> stackNameExplicitlyGiven = (stackNames == null) ? s -> false : stackNames::contains;
         final Predicate<String> stackInGroup = (namingGroup.hasStackPattern()
-                ? namingGroup.stackPattern().asMatchPredicate()
-                : defaultGroup.stackPattern().asMatchPredicate())
+                ? namingGroup.stackFilter() : defaultGroup.stackFilter())
                 .or(stackNameExplicitlyGiven);
 
         return stackId -> projectInGroup.test(stackId.getProject()) && stackInGroup.test(stackId.getStack());
