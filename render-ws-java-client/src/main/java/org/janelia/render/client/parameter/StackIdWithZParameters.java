@@ -160,17 +160,15 @@ public class StackIdWithZParameters
             final StackIdNamingGroup defaultGroup,
             final List<String> stackNames) {
 
-        final Predicate<String> projectInGroup = namingGroup.projectPattern().asMatchPredicate()
-                .or(defaultGroup.projectPattern().asMatchPredicate());
-        final Predicate<String> stackInGroup;
-        if (stackNames == null) {
-            stackInGroup = namingGroup.stackPattern().asMatchPredicate()
-                    .or(defaultGroup.stackPattern().asMatchPredicate());
-        } else {
-            stackInGroup = namingGroup.stackPattern().asMatchPredicate()
-                    .or(defaultGroup.stackPattern().asMatchPredicate())
-                    .or(stackNames::contains);
-        }
+        final Predicate<String> projectInGroup = namingGroup.hasProjectPattern()
+                ? namingGroup.projectPattern().asMatchPredicate()
+                : defaultGroup.projectPattern().asMatchPredicate();
+
+        final Predicate<String> stackNameExplicitlyGiven = (stackNames == null) ? s -> false : stackNames::contains;
+        final Predicate<String> stackInGroup = (namingGroup.hasStackPattern()
+                ? namingGroup.stackPattern().asMatchPredicate()
+                : defaultGroup.stackPattern().asMatchPredicate())
+                .or(stackNameExplicitlyGiven);
 
         return stackId -> projectInGroup.test(stackId.getProject()) && stackInGroup.test(stackId.getStack());
     }
