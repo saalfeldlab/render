@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Pattern;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.stack.StackId;
@@ -71,18 +71,11 @@ public class StackIdWithZParameters
             throws IOException {
 
         final List<StackId> eligibleStackIds = getEligibleStackIds(renderDataClient);
-        final Pattern cpp = compilePattern(projectPattern,
-                                           (namingGroup == null) ? null : namingGroup.getProjectPattern());
-        final Pattern csp = compilePattern(stackPattern,
-                                           (namingGroup == null) ? null : namingGroup.getStackPattern());
+        final StackIdNamingGroup defaultGroup = new StackIdNamingGroup(projectPattern, stackPattern);
+        namingGroup = (namingGroup == null) ? new StackIdNamingGroup(null, null) : namingGroup;
 
-        return eligibleStackIds.stream()
-                .filter(stackId -> {
-                    return ((cpp == null) || cpp.matcher(stackId.getProject()).matches()) &&    // project matches and
-                           (((csp != null) && csp.matcher(stackId.getStack()).matches()) ||     // ( stack matches or
-                            ((stackNames != null) && stackNames.contains(stackId.getStack()))); //   stack is in list )
-                })
-                .collect(Collectors.toList());
+        final Predicate<StackId> groupMembershipTest = getMembershipTest(namingGroup, defaultGroup, stackNames);
+        return eligibleStackIds.stream().filter(groupMembershipTest).collect(Collectors.toList());
     }
 
     /**
@@ -146,10 +139,11 @@ public class StackIdWithZParameters
     private List<StackId> getEligibleStackIds(final RenderDataClient renderDataClient)
             throws IOException {
 
-        final boolean hasProjectPattern = ((projectPattern != null) && ! projectPattern.isEmpty()) ||
-                                          ((namingGroup != null) && namingGroup.hasProjectPattern());
-        final boolean hasStackPattern = ((stackPattern != null) && ! stackPattern.isEmpty()) ||
-                                        ((namingGroup != null) && namingGroup.hasStackPattern());
+        final StackIdNamingGroup defaultGroup = new StackIdNamingGroup(projectPattern, stackPattern);
+        namingGroup = (namingGroup == null) ? new StackIdNamingGroup(null, null) : namingGroup;
+
+        final boolean hasProjectPattern = defaultGroup.hasProjectPattern() || namingGroup.hasProjectPattern();
+        final boolean hasStackPattern = defaultGroup.hasStackPattern() || namingGroup.hasStackPattern();
         final boolean hasStackNames = (stackNames != null) && ! stackNames.isEmpty();
 
         if (! (hasProjectPattern || hasStackPattern || hasStackNames)) {
@@ -161,15 +155,24 @@ public class StackIdWithZParameters
         return hasProjectPattern ? renderDataClient.getOwnerStacks() : renderDataClient.getProjectStacks();
     }
 
-    private Pattern compilePattern(final String defaultPattern,
-                                   final String namingGroupPattern) {
-        if ((namingGroupPattern != null) && (! namingGroupPattern.isEmpty())) {
-            return Pattern.compile(namingGroupPattern);
-        } else if ((defaultPattern != null) && (! defaultPattern.isEmpty())) {
-            return Pattern.compile(defaultPattern);
+    private Predicate<StackId> getMembershipTest(
+            final StackIdNamingGroup namingGroup,
+            final StackIdNamingGroup defaultGroup,
+            final List<String> stackNames) {
+
+        final Predicate<String> projectInGroup = namingGroup.projectPattern().asMatchPredicate()
+                .or(defaultGroup.projectPattern().asMatchPredicate());
+        final Predicate<String> stackInGroup;
+        if (stackNames == null) {
+            stackInGroup = namingGroup.stackPattern().asMatchPredicate()
+                    .or(defaultGroup.stackPattern().asMatchPredicate());
         } else {
-            return null;
+            stackInGroup = namingGroup.stackPattern().asMatchPredicate()
+                    .or(defaultGroup.stackPattern().asMatchPredicate())
+                    .or(stackNames::contains);
         }
+
+        return stackId -> projectInGroup.test(stackId.getProject()) && stackInGroup.test(stackId.getStack());
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StackIdWithZParameters.class);

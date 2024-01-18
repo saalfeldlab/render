@@ -1,6 +1,7 @@
 package org.janelia.alignment.spec.stack;
 
 import java.io.Serializable;
+import java.util.regex.Pattern;
 
 /**
  * Specifies naming patterns for a group of stacks produced by a common processing step
@@ -10,6 +11,8 @@ import java.io.Serializable;
  */
 public class StackIdNamingGroup
         implements Serializable {
+
+    private static final String MATCH_ALL = ".*";
 
     /** All stacks in the group have a project name that matches this pattern (specify null to match all projects). */
     private final String projectPattern;
@@ -30,19 +33,19 @@ public class StackIdNamingGroup
     }
 
     public boolean hasProjectPattern() {
-        return (projectPattern != null) && (! projectPattern.isEmpty());
+        return (projectPattern != null) && (! projectPattern.isBlank());
     }
 
-    public String getProjectPattern() {
-        return projectPattern;
+    public Pattern projectPattern() {
+        return Pattern.compile(hasProjectPattern() ? projectPattern : MATCH_ALL);
     }
 
     public boolean hasStackPattern() {
-        return (stackPattern != null) && (! stackPattern.isEmpty());
+        return (stackPattern != null) && (! stackPattern.isBlank());
     }
 
-    public String getStackPattern() {
-        return stackPattern;
+    public Pattern stackPattern() {
+        return Pattern.compile(hasStackPattern() ? stackPattern : MATCH_ALL);
     }
 
  }
