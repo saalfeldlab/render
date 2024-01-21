@@ -4,8 +4,7 @@
     "owner" : "hess_wafer_53",
     "project" : "cut_000_to_009",
     "stackIdWithZ" : {
-      "allStacksInProject": true,
-      "allStacksInAllProjects": false,
+      "stackPattern": "^c..._s..._v01$",
       "zValuesPerBatch": 1
     }
   },

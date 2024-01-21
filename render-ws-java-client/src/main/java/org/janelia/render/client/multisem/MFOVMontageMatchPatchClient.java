@@ -177,7 +177,7 @@ public class MFOVMontageMatchPatchClient {
                                                                            patch.crossLayerDerivedMatchWeight));
         }
 
-        if (derivedMatchesForMFOV.size() > 0) {
+        if (! derivedMatchesForMFOV.isEmpty()) {
 
             LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}",
                      derivedMatchesForMFOV.size(), stackMFOVWithZValues);
@@ -250,7 +250,7 @@ public class MFOVMontageMatchPatchClient {
 
         // query web service to find connected tile pairs and remove them from unconnected set
         final Map<String, OrderedCanvasIdPair> sameLayerPairsFromOtherMFOVs = new HashMap<>();
-        if (unconnectedPairsForMFOV.size() > 0) {
+        if (! unconnectedPairsForMFOV.isEmpty()) {
 
 
             for (final String groupId : sectionIds) {

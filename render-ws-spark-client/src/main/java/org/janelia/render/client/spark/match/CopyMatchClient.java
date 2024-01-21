@@ -91,7 +91,7 @@ public class CopyMatchClient
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
-        final Parameters clientParameters = new Parameters(pipelineParameters.getMultiProject(),
+        final Parameters clientParameters = new Parameters(pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup()),
                                                            pipelineParameters.getMatchCopy());
         copyMatches(sparkContext, clientParameters);
     }

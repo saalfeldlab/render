@@ -13,6 +13,7 @@ import java.util.List;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.multisem.StackMFOVWithZValues;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.multisem.Utilities;
@@ -42,7 +43,7 @@ public class MultiProjectParameters
 
     @Parameter(
             names = "--project",
-            description = "Project for all tiles (or first project if processing a multi-project run)",
+            description = "Project for all stacks",
             required = true)
     public String project;
 
@@ -125,6 +126,12 @@ public class MultiProjectParameters
         }
 
         return stackMFOVWithZValuesList;
+    }
+
+    public void setNamingGroup(final StackIdNamingGroup namingGroup) {
+        if ((namingGroup != null) && (this.stackIdWithZ != null)) {
+            this.stackIdWithZ.setNamingGroup(namingGroup);
+        }
     }
 
     private synchronized void buildDataClient() {

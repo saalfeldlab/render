@@ -54,7 +54,9 @@ public class JsonUtils {
 
     public static final ObjectMapper STRICT_MAPPER = FAST_MAPPER.copy().
             configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true).
-            configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true);
+            configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true).
+            setDefaultPrettyPrinter(getArraysOnNewLinePrettyPrinter()).
+            enable(SerializationFeature.INDENT_OUTPUT);
 
     public static class Helper<T> {
 

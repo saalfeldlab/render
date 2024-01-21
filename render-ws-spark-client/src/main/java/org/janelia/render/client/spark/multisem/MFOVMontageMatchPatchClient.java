@@ -88,7 +88,7 @@ public class MFOVMontageMatchPatchClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IOException {
         patchPairs(sparkContext,
-                   pipelineParameters.getMultiProject(),
+                   pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup()),
                    pipelineParameters.getMfovMontagePatch());
     }
 

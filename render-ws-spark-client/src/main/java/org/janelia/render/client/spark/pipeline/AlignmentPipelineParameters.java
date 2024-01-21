@@ -9,6 +9,8 @@ import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
+import org.janelia.alignment.spec.stack.PipelineStackIdNamingGroups;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
@@ -21,6 +23,7 @@ import org.janelia.render.client.parameter.ZSpacingParameters;
 
 import static org.janelia.alignment.json.JsonUtils.STRICT_MAPPER;
 
+
 /**
  * Parameters for an alignment pipeline run.
  *
@@ -30,6 +33,7 @@ public class AlignmentPipelineParameters
         implements Serializable {
 
     private final MultiProjectParameters multiProject;
+    private final PipelineStackIdNamingGroups pipelineStackGroups;
     private final List<AlignmentPipelineStepId> pipelineSteps;
     private final MipmapParameters mipmap;
     private final List<MatchRunParameters> matchRunList;
@@ -51,10 +55,12 @@ public class AlignmentPipelineParameters
              null,
              null,
              null,
+             null,
              null);
     }
 
     public AlignmentPipelineParameters(final MultiProjectParameters multiProject,
+                                       final PipelineStackIdNamingGroups pipelineStackGroups,
                                        final List<AlignmentPipelineStepId> pipelineSteps,
                                        final MipmapParameters mipmap,
                                        final List<MatchRunParameters> matchRunList,
@@ -65,6 +71,7 @@ public class AlignmentPipelineParameters
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
                                        final ZSpacingParameters zSpacing) {
         this.multiProject = multiProject;
+        this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
         this.mipmap = mipmap;
         this.matchRunList = matchRunList;
@@ -76,8 +83,21 @@ public class AlignmentPipelineParameters
         this.zSpacing = zSpacing;
     }
 
-    public MultiProjectParameters getMultiProject() {
+    public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
+        multiProject.setNamingGroup(withNamingGroup);
         return multiProject;
+    }
+
+    public StackIdNamingGroup getRawNamingGroup() {
+        return pipelineStackGroups == null ? null : pipelineStackGroups.getRaw();
+    }
+
+    public StackIdNamingGroup getAlignedNamingGroup() {
+        return pipelineStackGroups == null ? null : pipelineStackGroups.getAligned();
+    }
+
+    public StackIdNamingGroup getIntensityCorrectedNamingGroup() {
+        return pipelineStackGroups == null ? null : pipelineStackGroups.getIntensityCorrected();
     }
 
     public MipmapParameters getMipmap() {
@@ -102,6 +122,10 @@ public class AlignmentPipelineParameters
 
     public MatchCopyParameters getMatchCopy() {
         return matchCopy;
+    }
+
+    public String getMatchCopyToCollectionSuffix() {
+        return matchCopy == null ? "" : matchCopy.toCollectionSuffix;
     }
 
     public AffineBlockSolverSetup getAffineBlockSolverSetup() {

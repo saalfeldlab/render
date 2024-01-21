@@ -118,7 +118,7 @@ public class ZPositionCorrectionClient
             throws IllegalArgumentException, IOException {
 
         final Parameters clientParameters = new Parameters();
-        clientParameters.multiProject = pipelineParameters.getMultiProject();
+        clientParameters.multiProject = pipelineParameters.getMultiProject(pipelineParameters.getAlignedNamingGroup());
         clientParameters.zSpacing = pipelineParameters.getZSpacing();
         deriveAndSolveCrossCorrelationData(sparkContext, clientParameters);
     }

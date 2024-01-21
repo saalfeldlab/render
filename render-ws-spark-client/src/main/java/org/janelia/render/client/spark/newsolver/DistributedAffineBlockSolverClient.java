@@ -90,17 +90,19 @@ public class DistributedAffineBlockSolverClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject();
+        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
         final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
         final AffineBlockSolverSetup setup = pipelineParameters.getAffineBlockSolverSetup();
         final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
         final int nRuns = setup.alternatingRuns.nRuns;
 
         // TODO: push StackWithZValues idea into core solver code
+        final String matchSuffix = pipelineParameters.getMatchCopyToCollectionSuffix();
         for (final StackWithZValues stackWithZValues : stackList) {
-            setup.setValuesFromPipeline(multiProject.getBaseDataUrl(),
-                                        stackWithZValues.getStackId());
-            setupList.add(setup.clone());
+            setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
+                                                   stackWithZValues,
+                                                   multiProject.deriveMatchCollectionNamesFromProject,
+                                                   matchSuffix));
         }
 
         final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
@@ -111,33 +113,29 @@ public class DistributedAffineBlockSolverClient
 
         } else {
 
-            // TODO: handle alternatingRuns for multiple stacks
-            if (stackList.size() > 1) {
-                throw new IllegalArgumentException("alternatingRuns is not supported for multiple stacks");
-            }
+            for (final AffineBlockSolverSetup updatedSetup : setupList) {
+                String sourceStack = updatedSetup.stack;
+                final String originalTargetStack = updatedSetup.targetStack.stack;
 
-            final AffineBlockSolverSetup updatedSetup = setupList.get(0);
-            String sourceStack = updatedSetup.stack;
-            final String originalTargetStack = updatedSetup.targetStack.stack;
+                for (int runNumber = 1; runNumber <= nRuns; runNumber++) {
 
-            for (int runNumber = 1; runNumber <= nRuns; runNumber++) {
+                    final String targetStack = getStackName(originalTargetStack, runNumber, nRuns);
 
-                final String targetStack = getStackName(originalTargetStack, runNumber, nRuns);
+                    final AffineBlockSolverSetup runSetup = updatedSetup.clone();
+                    runSetup.stack = sourceStack;
+                    runSetup.targetStack.stack = targetStack;
+                    updateParameters(runSetup, runNumber);
 
-                final AffineBlockSolverSetup runSetup = updatedSetup.clone();
-                runSetup.stack = sourceStack;
-                runSetup.targetStack.stack = targetStack;
-                updateParameters(runSetup, runNumber);
+                    LOG.info("runPipelineStep: run {} of {}, stack={}, targetStack={}, shiftBlocks={}",
+                             runNumber, nRuns, sourceStack, targetStack, runSetup.blockPartition.shiftBlocks);
 
-                LOG.info("runPipelineStep: run {} of {}, stack={}, targetStack={}, shiftBlocks={}",
-                         runNumber, nRuns, sourceStack, targetStack, runSetup.blockPartition.shiftBlocks);
+                    affineBlockSolverClient.alignSetupList(sparkContext, Collections.singletonList(runSetup));
 
-                affineBlockSolverClient.alignSetupList(sparkContext, Collections.singletonList(runSetup));
+                    if ((!runSetup.alternatingRuns.keepIntermediateStacks) && (runNumber > 1))
+                        cleanUpIntermediateStack(runSetup);
 
-                if ((!runSetup.alternatingRuns.keepIntermediateStacks) && (runNumber > 1))
-                    cleanUpIntermediateStack(runSetup);
-
-                sourceStack = runSetup.targetStack.stack;
+                    sourceStack = runSetup.targetStack.stack;
+                }
             }
         }
 

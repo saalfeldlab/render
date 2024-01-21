@@ -1,5 +1,8 @@
 package org.janelia.render.client.newsolver.setup;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.Serializable;
 import java.util.function.Function;
 
@@ -7,7 +10,9 @@ import mpicbg.models.Affine2D;
 import mpicbg.models.Model;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters.PreAlign;
 import org.janelia.render.client.parameter.AlternatingRunParameters;
@@ -18,9 +23,6 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.StitchingParameters;
 import org.janelia.render.client.parameter.XYRangeParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
-
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
 
 public class AffineBlockSolverSetup extends CommandLineParameters
 {
@@ -142,15 +144,49 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 				maxZRangeMatches);
 	}
 
-	public void setValuesFromPipeline(final String baseDataUrl,
-									  final StackId sourceStackId) {
-		this.renderWeb.baseDataUrl = baseDataUrl;
+	/**
+	 * @param  baseDataUrl                            base web service URL for data.
+	 * @param  stackWithZValues                       identifies stack and z layers to align.
+	 *
+	 * @param  deriveMatchCollectionNamesFromProject  indicates whether derived match collection names
+	 *                                                should be derived from the stack's project
+	 *                                                (default is to derive from stack name).
+	 *
+	 * @param  matchSuffix                            suffix to append to derived match collection names
+	 *                                                (specify empty string to omit suffix).
+	 *                                                Suffix is needed when match aggregation is performed
+	 *                                                by an earlier pipeline step.
+	 * @return a clone of this setup populated with the specified parameters.
+	 */
+	public AffineBlockSolverSetup buildPipelineClone(final String baseDataUrl,
+													 final StackWithZValues stackWithZValues,
+													 final boolean deriveMatchCollectionNamesFromProject,
+													 final String matchSuffix) {
 
-		this.renderWeb.owner = sourceStackId.getOwner();
-		this.renderWeb.project = sourceStackId.getProject();
-		this.stack = sourceStackId.getStack();
+		final AffineBlockSolverSetup clone = clone();
 
-		this.targetStack.setValuesFromPipeline(sourceStackId, "_align");
+		clone.renderWeb.baseDataUrl = baseDataUrl;
+
+		final StackId sourceStackId = stackWithZValues.getStackId();
+		clone.renderWeb.owner = sourceStackId.getOwner();
+		clone.renderWeb.project = sourceStackId.getProject();
+		clone.stack = sourceStackId.getStack();
+
+		clone.zRange.minZ = stackWithZValues.getFirstZ();
+		clone.zRange.maxZ = stackWithZValues.getLastZ();
+
+		// TODO: should we log a warning and/or abort if the zValues have "holes" and don't cover the entire zRange?
+
+		clone.targetStack.setValuesFromPipeline(sourceStackId, "_align");
+
+		// if a single match collection for all stacks has not been explicitly specified,
+		// derive it from project or stack name
+		if (clone.matches.matchCollection == null) {
+			final MatchCollectionId mc = sourceStackId.getDefaultMatchCollectionId(deriveMatchCollectionNamesFromProject);
+			clone.matches.matchCollection = mc.getName() + matchSuffix;
+		}
+
+		return clone;
 	}
 
 	/** (Slowly) creates a clone of this setup by serializing it to and from JSON. */

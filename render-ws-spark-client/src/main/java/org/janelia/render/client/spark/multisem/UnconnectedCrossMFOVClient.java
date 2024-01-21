@@ -96,7 +96,7 @@ public class UnconnectedCrossMFOVClient
             throws IllegalArgumentException, IOException {
 
         final Parameters clientParameters = new Parameters();
-        clientParameters.multiProject = pipelineParameters.getMultiProject();
+        clientParameters.multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
         clientParameters.core = pipelineParameters.getUnconnectedCrossMfov();
         final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
                 findUnconnectedMFOVs(sparkContext, clientParameters);
