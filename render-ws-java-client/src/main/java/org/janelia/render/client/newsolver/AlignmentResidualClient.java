@@ -18,9 +18,13 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.DoubleSummaryStatistics;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 /**
@@ -29,7 +33,6 @@ import java.util.List;
 public class AlignmentResidualClient {
 
 	private ResolvedTileSpecCollection tileSpecs;
-	private final DoubleSummaryStatistics residualStatistics = new DoubleSummaryStatistics();
 
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
@@ -83,11 +86,20 @@ public class AlignmentResidualClient {
 																								  false);
 		tiles.normalize();
 		tileSpecs = tiles.getResolvedTileSpecs();
-		tiles.getMatchPairs().forEach(this::computeMatchResidual);
-		LOG.info("residual statistics: {}", residualStatistics);
+		final List<Double> residuals = tiles.getMatchPairs().stream()
+				.map(this::computeMatchResiduals)
+				.flatMap(List::stream).collect(Collectors.toList());
+
+		final String fileName = params.stack + ".dat";
+		final BufferedWriter writer = new BufferedWriter(new FileWriter(fileName));
+		for (final Double residual : residuals) {
+			writer.write(residual.toString());
+			writer.newLine();
+		}
+		LOG.info("written residual statistics to {}", fileName);
 	}
 
-	private void computeMatchResidual(final CanvasMatches match) {
+	private List<Double> computeMatchResiduals(final CanvasMatches match) {
 		final String pTileId = match.getpId();
 		final String qTileId = match.getqId();
 
@@ -96,7 +108,7 @@ public class AlignmentResidualClient {
 
 		// tile specs can be missing, e.g., due to re-acquisition
 		if (pTileSpec == null || qTileSpec == null)
-			return;
+			return new ArrayList<>();
 
 		final CoordinateTransform pTransform = pTileSpec.getLastTransform().getNewInstance();
 		final CoordinateTransform qTransform = qTileSpec.getLastTransform().getNewInstance();
@@ -109,6 +121,7 @@ public class AlignmentResidualClient {
 			throw new IllegalStateException("pPoints.size() != qPoints.size()");
 
 		final int nPoints = pPoints.size();
+		final List<Double> residuals = new ArrayList<>(nPoints);
 		for (int i = 0; i < nPoints; i++) {
 			final double[] p = pTransform.apply(pPoints.get(i).positionAsDoubleArray());
 			final double[] q = qTransform.apply(qPoints.get(i).positionAsDoubleArray());
@@ -117,8 +130,9 @@ public class AlignmentResidualClient {
 				final double diff = p[j] - q[j];
 				distance += diff * diff;
 			}
-			residualStatistics.accept(Math.sqrt(distance));
+			residuals.add(Math.sqrt(distance));
 		}
+		return residuals;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(AlignmentResidualClient.class);
