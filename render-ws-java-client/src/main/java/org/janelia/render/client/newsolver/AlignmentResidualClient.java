@@ -19,6 +19,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.DoubleSummaryStatistics;
 import java.util.List;
 
 
@@ -28,6 +29,7 @@ import java.util.List;
 public class AlignmentResidualClient {
 
 	private ResolvedTileSpecCollection tileSpecs;
+	private final DoubleSummaryStatistics residualStatistics = new DoubleSummaryStatistics();
 
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
@@ -50,8 +52,8 @@ public class AlignmentResidualClient {
 				"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
 				"--owner", "hess_wafer_53",
 				"--project", "cut_000_to_009",
-				"--stack", "c009_s310_v01_mfov_08_exact",
-				"--matchCollection", "c009_s310_v01_match",
+				"--stack", "c000_s095_v01_align_pipe_alt_aa_run3",
+				"--matchCollection", "c000_s095_v01_match_agg2",
 				"--matchOwner", "hess_wafer_53"
 		};
 		final ClientRunner clientRunner = new ClientRunner(testArgs) {
@@ -81,14 +83,11 @@ public class AlignmentResidualClient {
 																								  false);
 		tiles.normalize();
 		tileSpecs = tiles.getResolvedTileSpecs();
-		final double totalResidual = tiles.getMatchPairs().stream()
-				.mapToDouble(this::computeMatchResidual)
-				.sum();
-		final int matchCount = tiles.getMatchPairs().stream().mapToInt(CanvasMatches::getMatchCount).sum();
-		LOG.info("average residual ({} matches)={}", matchCount, totalResidual / matchCount);
+		tiles.getMatchPairs().forEach(this::computeMatchResidual);
+		LOG.info("residual statistics: {}", residualStatistics);
 	}
 
-	private double computeMatchResidual(final CanvasMatches match) {
+	private void computeMatchResidual(final CanvasMatches match) {
 		final String pTileId = match.getpId();
 		final String qTileId = match.getqId();
 
@@ -97,7 +96,7 @@ public class AlignmentResidualClient {
 
 		// tile specs can be missing, e.g., due to re-acquisition
 		if (pTileSpec == null || qTileSpec == null)
-			return 0;
+			return;
 
 		final CoordinateTransform pTransform = pTileSpec.getLastTransform().getNewInstance();
 		final CoordinateTransform qTransform = qTileSpec.getLastTransform().getNewInstance();
@@ -110,17 +109,16 @@ public class AlignmentResidualClient {
 			throw new IllegalStateException("pPoints.size() != qPoints.size()");
 
 		final int nPoints = pPoints.size();
-		double residual = 0;
 		for (int i = 0; i < nPoints; i++) {
 			final double[] p = pTransform.apply(pPoints.get(i).positionAsDoubleArray());
 			final double[] q = qTransform.apply(qPoints.get(i).positionAsDoubleArray());
+			double distance = 0;
 			for (int j = 0; j < p.length; j++) {
 				final double diff = p[j] - q[j];
-				residual += diff * diff;
+				distance += diff * diff;
 			}
+			residualStatistics.accept(Math.sqrt(distance));
 		}
-
-		return Math.sqrt(residual);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(AlignmentResidualClient.class);
