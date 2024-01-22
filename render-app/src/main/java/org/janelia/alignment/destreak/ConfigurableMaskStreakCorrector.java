@@ -61,6 +61,15 @@ public class ConfigurableMaskStreakCorrector
         this.regionsToClear = regionsToClear;
     }
 
+    public ConfigurableMaskStreakCorrector(final ConfigurableMaskStreakCorrector corrector) {
+        super(corrector.getNumThreads());
+        this.fftWidth = corrector.fftWidth;
+        this.fftHeight = corrector.fftHeight;
+        this.extraX = corrector.extraX;
+        this.extraY = corrector.extraY;
+        this.regionsToClear = corrector.regionsToClear;
+    }
+
     public Img<FloatType> createMask(final Dimensions dim) {
 
         if (dim.dimension(0) != fftWidth || dim.dimension( 1) != fftHeight) {
@@ -151,8 +160,13 @@ public class ConfigurableMaskStreakCorrector
         final double avg = StreakCorrector.avgIntensity(img);
         LOG.debug("process: average intensity is {}", avg);
 
+        // remove streaking (but it'll introduce a wave pattern)
         final Img<UnsignedByteType> imgCorr = fftBandpassCorrection(img, false);
+
+        // create the wave pattern introduced by the filtering above
         final Img<FloatType> patternCorr = createPattern(imgCorr.dimensionsAsLongArray(), avg);
+
+        // removes the wave pattern from the corrected image
         final RandomAccessibleInterval<UnsignedByteType> fixed =
                 Converters.convertRAI(imgCorr,
                                       patternCorr,
