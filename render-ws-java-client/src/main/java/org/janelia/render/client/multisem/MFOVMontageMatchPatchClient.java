@@ -42,12 +42,19 @@ import org.slf4j.LoggerFactory;
  *     after standard matching (typically because of substrate or resin borders).
  *   </li>
  *   <li>
- *     For each unconnected pair, the client first fetches any existing standard matches for the
- *     same SFOV pair in other z layers in the slab.
- *     The existing matches are then fit to a montage patch match model.
- *     Finally, montage patch matches for the pair are derived by applying the model to each SFOV tile's
- *     corners and the matches are stored with a specified weight (typically reduced to something
- *     like 0.1 to ensure that standard matches are given precedence in future solves).
+ *     For each unconnected pair, the client first tries to find existing matches for the same pair in another
+ *     MFOV in the same layer.  If found, the existing matches are copied to the unconnected pair and stored
+ *     with a specified weight (typically reduced to something like 0.15 to ensure that standard matches are
+ *     given precedence).
+ *   </li>
+ *   <li>
+ *     If not found (no other MFOVs in the same layer have matches for the unconnected pair),
+ *     the client collects matches for the unconnected pair in all other layers and fits them to a
+ *     "montage patch match model".  Montage patch matches are derived by applying the model to each SFOV tile's
+ *     corners and those matches are stored with a specified weight.
+ *   </li>
+ *   <li>
+ *       If no matches are found for the unconnected pair in any other layer, an exception is thrown.
  *   </li>
  * </ul>
  *
