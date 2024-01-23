@@ -99,7 +99,7 @@ public class MFOVMontageMatchPatchClient
             throws IOException {
 
         LOG.info("patchPairs: entry, multiProjectParameters={}, patchParameters={}",
-                 multiProjectParameters, patchParameters);
+                 multiProjectParameters.toJson(), patchParameters.toJson());
 
         patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
 

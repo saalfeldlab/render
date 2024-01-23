@@ -10,6 +10,7 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.multisem.StackMFOVWithZValues;
 import org.janelia.alignment.spec.stack.StackId;
@@ -134,6 +135,13 @@ public class MultiProjectParameters
         }
     }
 
+    /*
+     * @return JSON representation of these parameters.
+     */
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
     private synchronized void buildDataClient() {
         if (dataClient == null) {
             dataClient = new RenderDataClient(baseDataUrl, owner, project);
@@ -141,5 +149,8 @@ public class MultiProjectParameters
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiProjectParameters.class);
+
+    private static final JsonUtils.Helper<MultiProjectParameters> JSON_HELPER =
+            new JsonUtils.Helper<>(MultiProjectParameters.class);
 
 }
