@@ -129,7 +129,7 @@ public class MFOVMontageMatchPatchClient
 
         final JavaRDD<StackMFOVWithZValues> rddStackMFOVWithZValues = sparkContext.parallelize(stackMFOVWithZValuesList);
 
-        final Function<StackMFOVWithZValues, Void> patchFunction = stackMOFVWithZ -> {
+        final Function<StackMFOVWithZValues, Integer> patchFunction = stackMOFVWithZ -> {
 
             LogUtilities.setupExecutorLog4j("MFOV:" + stackMOFVWithZ.getmFOVId() + ":" + passName);
 
@@ -148,18 +148,22 @@ public class MFOVMontageMatchPatchClient
             final org.janelia.render.client.multisem.MFOVMontageMatchPatchClient javaPatchClient =
                     new org.janelia.render.client.multisem.MFOVMontageMatchPatchClient(javaPatchClientParameters);
 
-            javaPatchClient.deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
-                                                                           stackMOFVWithZ,
-                                                                           matchCollectionId,
-                                                                           matchCollectionId.getName());
-            return null;
+            @SuppressWarnings("UnnecessaryLocalVariable")
+            final int numberOfDerivedMatchPairs =
+                    javaPatchClient.deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
+                                                                                   stackMOFVWithZ,
+                                                                                   matchCollectionId,
+                                                                                   matchCollectionId.getName());
+            return numberOfDerivedMatchPairs;
         };
 
-        final JavaRDD<Void> rddPatch = rddStackMFOVWithZValues.map(patchFunction);
-        rddPatch.collect();
+        final JavaRDD<Integer> rddPatch = rddStackMFOVWithZValues.map(patchFunction);
+        final long numberOfDerivedMatchPairs = rddPatch.collect().stream()
+                .mapToLong(Integer::longValue)
+                .reduce(0, Long::sum);
 
-        LOG.info("patchPairsForPass: {}, collected rddPatch", passName);
-        LOG.info("patchPairsForPass: {}, exit", passName);
+        LOG.info("patchPairsForPass: {}, exit, derived matches for {} tile pairs",
+                 passName, numberOfDerivedMatchPairs);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVMontageMatchPatchClient.class);

@@ -123,10 +123,15 @@ public class MFOVMontageMatchPatchClient {
         }
     }
 
-    public void deriveAndSaveMatchesForUnconnectedPairsInStack(final RenderDataClient defaultDataClient,
-                                                               final StackMFOVWithZValues stackMFOVWithZValues,
-                                                               final MatchCollectionId matchCollectionId,
-                                                               final String matchStorageCollectionName)
+    /**
+     * Derives and saves matches for all unconnected pairs in the specified stack MFOV.
+     *
+     * @return the number of tile pairs that had derived matches saved.
+     */
+    public int deriveAndSaveMatchesForUnconnectedPairsInStack(final RenderDataClient defaultDataClient,
+                                                              final StackMFOVWithZValues stackMFOVWithZValues,
+                                                              final MatchCollectionId matchCollectionId,
+                                                              final String matchStorageCollectionName)
             throws IOException, IllegalStateException {
 
         LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: entry, stackMFOVWithZValues={}", stackMFOVWithZValues);
@@ -184,10 +189,11 @@ public class MFOVMontageMatchPatchClient {
                                                                            patch.crossLayerDerivedMatchWeight));
         }
 
-        if (! derivedMatchesForMFOV.isEmpty()) {
+        final int numberOfDerivedMatchPairs = derivedMatchesForMFOV.size();
+        if (numberOfDerivedMatchPairs > 0) {
 
             LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}",
-                     derivedMatchesForMFOV.size(), stackMFOVWithZValues);
+                     numberOfDerivedMatchPairs, stackMFOVWithZValues);
 
             if (patch.matchStorageFile != null) {
                 final Path storagePath = Paths.get(patch.matchStorageFile).toAbsolutePath();
@@ -203,7 +209,10 @@ public class MFOVMontageMatchPatchClient {
                      stackMFOVWithZValues);
         }
 
-        LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: exit, stackWithZValues={}", stackMFOVWithZValues);
+        LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: exit, returning {} for {}",
+                 numberOfDerivedMatchPairs, stackMFOVWithZValues);
+
+        return derivedMatchesForMFOV.size();
     }
     
     public void updatePositionPairDataForZ(final String stack,
