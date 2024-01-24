@@ -103,6 +103,10 @@ public class MFOVMontageMatchPatchClient
 
         patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
 
+        // If second pass is requested, run it ...
+        // The intent of the second patch is to patch pairs that were not patched in first pass.
+        // Hopefully, patched data from the first pass will enable patching for all remaining unconnected pairs
+        // (typically with a significantly reduced weight).
         if (patchParameters.secondPassDerivedMatchWeight != null) {
             patchParameters.setWeightsForSecondPass();
             patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 2);
