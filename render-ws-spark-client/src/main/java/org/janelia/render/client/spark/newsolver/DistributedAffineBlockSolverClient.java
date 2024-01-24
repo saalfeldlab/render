@@ -97,7 +97,7 @@ public class DistributedAffineBlockSolverClient
         final AffineBlockSolverSetup setup = pipelineParameters.getAffineBlockSolverSetup();
         final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
         final int nRuns = setup.alternatingRuns.nRuns;
-        final boolean keepIntermediateStacks = setup.alternatingRuns.keepIntermediateStacks;
+        final boolean cleanUpIntermediateStacks = ! setup.alternatingRuns.keepIntermediateStacks;
 
         final String matchSuffix = pipelineParameters.getMatchCopyToCollectionSuffix();
         for (final StackWithZValues stackWithZValues : stackList) {
@@ -128,7 +128,7 @@ public class DistributedAffineBlockSolverClient
                 affineBlockSolverClient.alignSetupList(sparkContext, setupListForRun);
 
                 // clean-up intermediate stacks for prior runs if requested
-                if (keepIntermediateStacks && (runIndex > 0)) {
+                if (cleanUpIntermediateStacks && (runIndex > 0)) {
                     setupListForRun.forEach(DistributedAffineBlockSolverClient::cleanUpIntermediateStack);
                 }
             }
