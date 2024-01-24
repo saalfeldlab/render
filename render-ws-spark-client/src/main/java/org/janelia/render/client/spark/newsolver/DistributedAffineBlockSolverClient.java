@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.IntStream;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.NoninvertibleModelException;
@@ -32,6 +33,7 @@ import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jakarta.annotation.Nonnull;
 import scala.Tuple2;
 
 /**
@@ -95,8 +97,8 @@ public class DistributedAffineBlockSolverClient
         final AffineBlockSolverSetup setup = pipelineParameters.getAffineBlockSolverSetup();
         final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
         final int nRuns = setup.alternatingRuns.nRuns;
+        final boolean keepIntermediateStacks = setup.alternatingRuns.keepIntermediateStacks;
 
-        // TODO: push StackWithZValues idea into core solver code
         final String matchSuffix = pipelineParameters.getMatchCopyToCollectionSuffix();
         for (final StackWithZValues stackWithZValues : stackList) {
             setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
@@ -113,32 +115,59 @@ public class DistributedAffineBlockSolverClient
 
         } else {
 
-            for (final AffineBlockSolverSetup updatedSetup : setupList) {
-                String sourceStack = updatedSetup.stack;
-                final String originalTargetStack = updatedSetup.targetStack.stack;
+            // Different stacks can be aligned in parallel, but each run must be done sequentially.
+            // So, for each run, create a list of setups that will be aligned in parallel.
+            final List<List<AffineBlockSolverSetup>> setupListsForRuns = buildSetupListsForRuns(nRuns, setupList);
 
-                for (int runNumber = 1; runNumber <= nRuns; runNumber++) {
+            // loop through each run and align the stacks in parallel ...
+            for (int runIndex = 0; runIndex < nRuns; runIndex++) {
 
-                    final String targetStack = getStackName(originalTargetStack, runNumber, nRuns);
+                final List<AffineBlockSolverSetup> setupListForRun = setupListsForRuns.get(runIndex);
 
-                    final AffineBlockSolverSetup runSetup = updatedSetup.clone();
-                    runSetup.stack = sourceStack;
-                    runSetup.targetStack.stack = targetStack;
-                    updateParameters(runSetup, runNumber);
+                // align all stacks for this run
+                affineBlockSolverClient.alignSetupList(sparkContext, setupListForRun);
 
-                    LOG.info("runPipelineStep: run {} of {}, stack={}, targetStack={}, shiftBlocks={}",
-                             runNumber, nRuns, sourceStack, targetStack, runSetup.blockPartition.shiftBlocks);
-
-                    affineBlockSolverClient.alignSetupList(sparkContext, Collections.singletonList(runSetup));
-
-                    if ((!runSetup.alternatingRuns.keepIntermediateStacks) && (runNumber > 1))
-                        cleanUpIntermediateStack(runSetup);
-
-                    sourceStack = runSetup.targetStack.stack;
+                // clean-up intermediate stacks for prior runs if requested
+                if (keepIntermediateStacks && (runIndex > 0)) {
+                    setupListForRun.forEach(DistributedAffineBlockSolverClient::cleanUpIntermediateStack);
                 }
+            }
+
+        }
+
+    }
+
+    @Nonnull
+    private List<List<AffineBlockSolverSetup>> buildSetupListsForRuns(final int nRuns,
+                                                                      final List<AffineBlockSolverSetup> setupList) {
+
+        final List<List<AffineBlockSolverSetup>> setupListsForRuns = new ArrayList<>(nRuns);
+        IntStream.range(0, nRuns).forEach(i -> setupListsForRuns.add(new ArrayList<>(setupList.size())));
+
+        for (final AffineBlockSolverSetup updatedSetup : setupList) {
+
+            String runSourceStack = updatedSetup.stack;
+            final String originalTargetStack = updatedSetup.targetStack.stack;
+
+            for (int runNumber = 1; runNumber <= nRuns; runNumber++) {
+
+                final List<AffineBlockSolverSetup> setupListForRun = setupListsForRuns.get(runNumber - 1);
+
+                final AffineBlockSolverSetup runSetup = updatedSetup.clone();
+                runSetup.stack = runSourceStack;
+                runSetup.targetStack.stack = getStackName(originalTargetStack, runNumber, nRuns);
+                updateParameters(runSetup, runNumber);
+
+                setupListForRun.add(runSetup);
+
+                LOG.info("buildSetupListsForRuns: added setup for stack {}, run {}, targetStack={}, shiftBlocks={}",
+                         runSourceStack, runNumber, runSetup.targetStack.stack, runSetup.blockPartition.shiftBlocks);
+
+                runSourceStack = runSetup.targetStack.stack;
             }
         }
 
+        return setupListsForRuns;
     }
 
     private void alignSetupList(final JavaSparkContext sparkContext,
