@@ -13,7 +13,6 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 
@@ -101,7 +100,7 @@ public class ConfigurableStreakCorrectorTest {
 
     // TODO: to simplify clear region derivation, loop through correction process with different extraX|Y values and create scrollable stack from results
 
-    @SuppressWarnings({"ConstantConditions", "deprecation"})
+    @SuppressWarnings({"ConstantConditions"})
     public static void main(final String[] args) {
 
         new ImageJ();
@@ -110,8 +109,6 @@ public class ConfigurableStreakCorrectorTest {
         displayStreakCorrection(toughResinSrcPath,
                                 TOUGH_RESIN_CORRECTOR,
                                 true);
-
-        SimpleMultiThreading.threadHaltUnClean();
     }
 
     public static void displayStreakCorrection(final String srcPath,

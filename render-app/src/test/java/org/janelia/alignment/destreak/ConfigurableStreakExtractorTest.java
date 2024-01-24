@@ -8,8 +8,6 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Test;
 
-import net.imglib2.multithreading.SimpleMultiThreading;
-
 public class ConfigurableStreakExtractorTest {
 
     @Test
@@ -25,7 +23,7 @@ public class ConfigurableStreakExtractorTest {
         Assert.assertEquals("data strings should match", expectedDataString, actualDataString);
     }
 
-    @SuppressWarnings({"ConstantConditions", "deprecation"})
+    @SuppressWarnings({"ConstantConditions"})
     public static void main(final String[] args) {
 
         new ImageJ();
@@ -41,8 +39,6 @@ public class ConfigurableStreakExtractorTest {
 
         extractor.process(imp.getProcessor(), 1.0);
         imp.show();
-
-        SimpleMultiThreading.threadHaltUnClean();
     }
 
 }
