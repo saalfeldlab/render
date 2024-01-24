@@ -36,6 +36,10 @@ public abstract class StreakCorrector {
         this.numThreads = numThreads;
     }
 
+    public int getNumThreads() {
+        return numThreads;
+    }
+
     public abstract Img<FloatType> createMask(final Dimensions dim );
 
     /**
