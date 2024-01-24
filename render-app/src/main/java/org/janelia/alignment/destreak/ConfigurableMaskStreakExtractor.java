@@ -43,13 +43,19 @@ public class ConfigurableMaskStreakExtractor
         final Img<UnsignedByteType> fixed = ImageJFunctions.wrapByte(fixedImagePlus);
 
         // subtract fixed from original to get streaks - has to be FloatType since there may be negative values
-        final RandomAccessibleInterval<FloatType> originalMinusFixed =
+        final RandomAccessibleInterval<FloatType> streaks =
                 Converters.convertRAI(original,
                                       fixed,
                                       (i1,i2,o) -> o.set(i1.get() - i2.get()),
                                       new FloatType());
 
-        final ImagePlus streaksImagePlus = ImageJFunctions.wrapFloat(originalMinusFixed, "streaks");
+        convertStreaksToByteProcessor(streaks, ip);
+    }
+
+    private static void convertStreaksToByteProcessor(final RandomAccessibleInterval<FloatType> streaks,
+                                                      final ImageProcessor ip) {
+
+        final ImagePlus streaksImagePlus = ImageJFunctions.wrapFloat(streaks, "streaks");
         final ImageProcessor streaksFloatImageProcessor = streaksImagePlus.getProcessor();
 
         // reset min and max before converting to byte processor so that streaks are more easily viewed
