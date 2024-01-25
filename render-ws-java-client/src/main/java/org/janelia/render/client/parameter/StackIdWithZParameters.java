@@ -136,7 +136,7 @@ public class StackIdWithZParameters
         return batchedList;
     }
 
-    private List<StackId> getEligibleStackIds(final RenderDataClient renderDataClient)
+    public List<StackId> getEligibleStackIds(final RenderDataClient renderDataClient)
             throws IOException {
 
         final StackIdNamingGroup defaultGroup = new StackIdNamingGroup(projectPattern, stackPattern);
