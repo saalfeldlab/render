@@ -40,34 +40,6 @@ public class StackIdWithZParametersTest {
     private final RenderDataClient mockDataClient = new MockRenderDataClient(owner, projectA, stackIds);
 
     @Test
-    public void testGetEligibleStackIds() throws IOException {
-
-        final StackIdWithZParameters params = new StackIdWithZParameters();
-
-        params.projectPattern = ".*ProjectA$";
-        List<StackId> eligibleStackIds = params.getEligibleStackIds(mockDataClient);
-        Assert.assertEquals("all stacks should be returned with default project pattern",
-                            12, eligibleStackIds.size());
-
-        params.projectPattern = null;
-        params.stackPattern = "stack1.*";
-        eligibleStackIds = params.getEligibleStackIds(mockDataClient);
-        Assert.assertEquals("only default project stacks should be returned with default stack pattern",
-                            6, eligibleStackIds.size());
-
-        params.stackPattern = null;
-        params.setNamingGroup(new StackIdNamingGroup(".*ProjectB$", null));
-        eligibleStackIds = params.getEligibleStackIds(mockDataClient);
-        Assert.assertEquals("all stacks should be returned with naming group project pattern",
-                            12, eligibleStackIds.size());
-
-        params.setNamingGroup(new StackIdNamingGroup(null, "stack2.*"));
-        eligibleStackIds = params.getEligibleStackIds(mockDataClient);
-        Assert.assertEquals("only default project stacks should be returned with naming group stack pattern",
-                            6, eligibleStackIds.size());
-    }
-
-    @Test
     public void testGetStackIdList() throws IOException {
 
         final StackIdWithZParameters params = new StackIdWithZParameters();
