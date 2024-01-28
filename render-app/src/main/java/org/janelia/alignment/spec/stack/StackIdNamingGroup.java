@@ -36,7 +36,7 @@ public class StackIdNamingGroup
     }
 
     public Predicate<String> projectFilter() {
-        return hasProjectPattern() ? (s -> true) : Pattern.compile(projectPattern).asMatchPredicate();
+        return hasProjectPattern() ? Pattern.compile(projectPattern).asMatchPredicate() : (s -> true);
     }
 
     public boolean hasStackPattern() {
@@ -44,7 +44,7 @@ public class StackIdNamingGroup
     }
 
     public Predicate<String> stackFilter() {
-        return hasStackPattern() ? (s -> true) : Pattern.compile(stackPattern).asMatchPredicate();
+        return hasStackPattern() ? Pattern.compile(stackPattern).asMatchPredicate(): (s -> true);
     }
 
     @Override
