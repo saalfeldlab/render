@@ -1,6 +1,7 @@
 package org.janelia.render.client.newsolver.setup;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -16,7 +17,6 @@ import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.XYRangeParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.solver.SerializableValuePair;
@@ -26,10 +26,8 @@ import org.slf4j.LoggerFactory;
 import net.imglib2.util.Pair;
 
 public class RenderSetup
-{
-	public RenderDataClient renderDataClient;
-	public RenderDataClient targetDataClient;
-	
+		implements Serializable {
+
 	public List< Pair< String, Double > > pGroupList;
 	public Map<Integer, String> zToGroupIdMap; // a HashMap where int is the z section, and string is the description (problem, restart, ...)
 	public Map<String, ArrayList<Double>> sectionIdToZMap; // this is a cache
@@ -44,7 +42,7 @@ public class RenderSetup
 
 	public static RenderSetup setupSolve(final AffineBlockSolverSetup parameters) throws IOException {
 		parameters.initDefaultValues();
-		return setupSolve(parameters.renderWeb,
+		return setupSolve(parameters.renderWeb.getDataClient(),
 						  parameters.targetStack.stack,
 						  parameters.targetStack.owner,
 						  parameters.targetStack.project,
@@ -55,7 +53,7 @@ public class RenderSetup
 
 	public static RenderSetup setupSolve(final IntensityCorrectionSetup parameters) throws IOException {
 		parameters.initDefaultValues();
-		return setupSolve(parameters.renderWeb,
+		return setupSolve(parameters.renderWeb.getDataClient(),
 						  parameters.targetStack.stack,
 						  parameters.targetStack.owner,
 						  parameters.targetStack.project,
@@ -65,7 +63,7 @@ public class RenderSetup
 	}
 
 	private static RenderSetup setupSolve(
-			final RenderWebServiceParameters webServiceParameters,
+			final RenderDataClient renderDataClient,
 			final String targetStack,
 			final String targetOwner,
 			final String targetProject,
@@ -75,21 +73,22 @@ public class RenderSetup
 
 		final RenderSetup runParams = new RenderSetup();
 
-		runParams.renderDataClient = webServiceParameters.getDataClient();
 		runParams.sectionIdToZMap = new TreeMap<>();
 		runParams.zToTileSpecsMap = new HashMap<>();
 		runParams.totalTileCount = 0;
 
-		final StackMetaData sourceStackMetaData = runParams.renderDataClient.getStackMetaData(stack);
-		if (targetStack == null) {
-			runParams.targetDataClient = null;
-		} else {
-			runParams.targetDataClient = new RenderDataClient(webServiceParameters.baseDataUrl, targetOwner, targetProject);
-			runParams.targetDataClient.setupDerivedStack(sourceStackMetaData, targetStack);
+		final StackMetaData sourceStackMetaData = renderDataClient.getStackMetaData(stack);
+
+		// create the target stack if it doesn't exist ...
+		if (targetStack != null) {
+			final RenderDataClient targetDataClient = new RenderDataClient(renderDataClient.getBaseDataUrl(),
+																		   targetOwner,
+																		   targetProject);
+			targetDataClient.setupDerivedStack(sourceStackMetaData, targetStack);
 		}
 
 		final ZFilter zFilter = new ZFilter(layerRange.minZ, layerRange.maxZ, null);
-		final List<SectionData> allSectionDataList = runParams.renderDataClient.getStackSectionData(stack, null, null );
+		final List<SectionData> allSectionDataList = renderDataClient.getStackSectionData(stack, null, null );
 
 		runParams.pGroupList = new ArrayList<>(allSectionDataList.size());
 
@@ -139,15 +138,15 @@ public class RenderSetup
 			LOG.debug("Querying: {}", groupId);
 			try {
 				final ResolvedTileSpecCollection groupTileSpecs =
-						runParams.renderDataClient.getResolvedTiles(stack,
-																	minZ,
-																	maxZ,
-																	groupId,
-																	null,
-																	null,
-																	null,
-																	null,
-																	null);
+						renderDataClient.getResolvedTiles(stack,
+														  minZ,
+														  maxZ,
+														  groupId,
+														  null,
+														  null,
+														  null,
+														  null,
+														  null);
 				groupTileSpecs.getTileSpecs().forEach(tileSpec -> runParams.zToGroupIdMap.put(tileSpec.getZ().intValue(), groupId));
 			} catch (final IOException t) {
 				LOG.info("ignoring failure to retrieve tile specs with groupId '" + groupId + "' (since it's a reasonable thing omitting the exception)");
