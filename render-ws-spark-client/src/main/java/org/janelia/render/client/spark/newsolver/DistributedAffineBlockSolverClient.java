@@ -254,7 +254,9 @@ public class DistributedAffineBlockSolverClient
             final int executorCores = sparkConf.getInt("spark.executor.cores", 1);
 
             setupList.forEach(setup -> {
-                setup.distributedSolve.threadsGlobal = driverCores;
+                // If only one setup, global solve will be run on driver so set threadsGlobal to driver core count.
+                // Otherwise, global solve is run on executors so set threadsGlobal to executor core count.
+                setup.distributedSolve.threadsGlobal = setupList.size() == 1 ? driverCores : executorCores;
                 setup.distributedSolve.threadsWorker = executorCores;
             });
 
