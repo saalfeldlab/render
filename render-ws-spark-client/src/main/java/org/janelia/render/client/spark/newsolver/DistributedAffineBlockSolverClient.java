@@ -276,7 +276,7 @@ public class DistributedAffineBlockSolverClient
             parallelism = Math.max(numberOfWorkerExecutors, 2);
 
             LOG.info("deriveParallelismValues: updated values, threadsGlobal={}, threadsWorker={}, parallelism={}",
-                     driverCores, executorCores, parallelism);
+                     firstSetupSolveParameters.threadsGlobal, firstSetupSolveParameters.threadsWorker, parallelism);
         }
 
         return parallelism;
