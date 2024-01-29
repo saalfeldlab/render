@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import mpicbg.models.AffineModel2D;
@@ -14,8 +15,10 @@ import mpicbg.models.NoninvertibleModelException;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaPairRDD;
+import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.storage.StorageLevel;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -344,48 +347,64 @@ public class DistributedAffineBlockSolverClient
 
     private static void globallySolveMultipleSetups(final List<AffineBlockSolverSetup> setupList,
                                                     final JavaPairRDD<Integer, BlockData<AffineModel2D, ?>> rddOutputBlocks,
-                                                    final List<DistributedAffineBlockSolver> solverList)
-            throws IOException {
+                                                    final List<DistributedAffineBlockSolver> solverList) {
 
-        Integer previousSetupIndex = null;
-        final List<BlockData<AffineModel2D, ?>> outputBlocksForSetup = new ArrayList<>();
+        LOG.info("globallySolveMultipleSetups: entry, solving {} setups", setupList.size());
 
-        // To avoid collecting all blocks into memory on the driver at once:
-
-        // 1. Persist the solved output blocks so that they don't need to be recalculated after sorting.
+        // 1. Persist the solved output blocks so that they don't need to be recalculated during combination.
         //
         //    The MEMORY_AND_DISK storage level indicates that the RDD is stored as deserialized Java objects
         //    in the JVM. If the RDD does not fit in memory, partitions that don't fit are stored on disk
         //    and then read from disk when they're needed.
         rddOutputBlocks.persist(StorageLevel.MEMORY_AND_DISK());
 
-        // 2. Sort (by setupIndex) so that blocks for the same setup are adjacent.
-        final JavaPairRDD<Integer, BlockData<AffineModel2D, ?>> outputBlocksSortedBySetup = rddOutputBlocks.sortByKey();
+        // 2. Combine the solved output blocks for each setup (stack) into a list so that the list of blocks
+        //    can be solved globally on a Spark executor.  Doing the global solve on executor/workers allows
+        //    global solves for different stacks to be run concurrently.
+        final JavaPairRDD<Integer, List<BlockData<AffineModel2D, ?>>> outputBlocksForSetupRdd =
+                rddOutputBlocks.combineByKey(
+                        // createCombiner
+                        block -> {
+                            final List<BlockData<AffineModel2D, ?>> list = new ArrayList<>();
+                            list.add(block);
+                            return list;
+                        },
+                        // mergeValue
+                        (list, block) -> {
+                            list.add(block);
+                            return list;
+                        },
+                        // mergeCombiners
+                        (list1, list2) -> {
+                            list1.addAll(list2);
+                            return list1;
+                        }
+                );
 
-        // 3. Use toLocalIterator to pull the solved blocks to the driver one at a time.
-        final Iterator<Tuple2<Integer, BlockData<AffineModel2D, ?>>> localIterator = outputBlocksSortedBySetup.toLocalIterator();
+        // 3. Run the global solve for each setup (stack) in parallel.
+        final JavaRDD<StackId> globallySolvedTargetStackIdsRdd =
+                outputBlocksForSetupRdd.map(setupIndexWithOutputBlocks -> {
 
-        while (localIterator.hasNext()) {
+                    final int setupIndex = setupIndexWithOutputBlocks._1;
+                    final List<BlockData<AffineModel2D, ?>> outputBlocks = setupIndexWithOutputBlocks._2;
 
-            final Tuple2<Integer, BlockData<AffineModel2D, ?>> tuple2 = localIterator.next();
-            final int setupIndex = tuple2._1;
-            final BlockData<AffineModel2D, ?> outputBlock = tuple2._2;
+                    LogUtilities.setupExecutorLog4j("setupIndex" + setupIndex); // add setup index to log context
 
-            if ((previousSetupIndex != null) && (previousSetupIndex != setupIndex)) {
-                globallySolveOneSetup(setupList, previousSetupIndex, solverList, outputBlocksForSetup);
-                outputBlocksForSetup.clear();
-            }
+                    globallySolveOneSetup(setupList, setupIndex, solverList, outputBlocks);
 
-            outputBlocksForSetup.add(outputBlock);
-            previousSetupIndex = setupIndex;
-        }
+                    final AffineBlockSolverSetup setup = setupList.get(setupIndex);
+                    return new StackId(setup.targetStack.owner, setup.targetStack.project, setup.targetStack.stack);
+                });
 
-        if (outputBlocksForSetup.isEmpty()) {
-            throw new IOException("no blocks were computed for setupIndex " + previousSetupIndex +
-                                  ", something is wrong");
-        } else {
-            globallySolveOneSetup(setupList, previousSetupIndex, solverList, outputBlocksForSetup);
-        }
+        // 4. Collect the target stack ids for each setup (stack) that was globally solved.
+        final List<String> globallySolvedTargetStackDevStrings =
+                globallySolvedTargetStackIdsRdd.collect().stream()
+                        .sorted()
+                        .map(StackId::toDevString)
+                        .collect(Collectors.toList());
+
+        LOG.info("globallySolveMultipleSetups: exit, globally solved {} setups stacks: {}",
+                 globallySolvedTargetStackDevStrings.size(), globallySolvedTargetStackDevStrings);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineBlockSolverClient.class);
