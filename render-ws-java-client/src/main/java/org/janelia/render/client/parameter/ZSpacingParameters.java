@@ -62,6 +62,13 @@ public class ZSpacingParameters
     public boolean solveExisting;
 
     @Parameter(
+            names = "--skipSolve",
+            description = "Specify to simply derive cross correlation data and skip solve " +
+                          "(will be ignored if --solveExisting is also specified).",
+            arity = 0)
+    public boolean skipSolve;
+
+    @Parameter(
             names = "--optionsJson",
             description = "JSON file containing thickness correction options (omit to use default values)")
     public String optionsJson;
