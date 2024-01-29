@@ -1,6 +1,7 @@
 package org.janelia.render.client.newsolver;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,11 +41,10 @@ import org.slf4j.LoggerFactory;
 
 import static org.janelia.render.client.newsolver.solvers.affine.AlignmentModel.AlignmentModelBuilder;
 
-public class DistributedAffineBlockSolver
+public class DistributedAffineBlockSolver implements Serializable
 {
 	final AffineBlockSolverSetup solverSetup;
 	final RenderSetup renderSetup;
-	BlockCollection<?, AffineModel2D, ? extends FIBSEMAlignmentParameters<?, ?>> col;
 	BlockFactory blockFactory;
 
 	public DistributedAffineBlockSolver(
@@ -297,9 +297,7 @@ public class DistributedAffineBlockSolver
 		this.blockFactory = BlockFactory.fromBlockSizes(renderSetup.getBounds(), solverSetup.blockPartition);
 		
 		// create all blocks
-		final BlockCollection<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> col = setupBlockCollection(this.blockFactory, blockModel, stitchingModel);
-		this.col = col;
-		return col;
+		return setupBlockCollection(this.blockFactory, blockModel, stitchingModel);
 	}
 
 	protected <M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
