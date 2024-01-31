@@ -88,7 +88,7 @@ public class RenderSetup
 		}
 
 		final ZFilter zFilter = new ZFilter(layerRange.minZ, layerRange.maxZ, null);
-		final List<SectionData> allSectionDataList = renderDataClient.getStackSectionData(stack, null, null );
+		final List<SectionData> allSectionDataList = renderDataClient.getStackSectionData(stack, null, null);
 
 		runParams.pGroupList = new ArrayList<>(allSectionDataList.size());
 
