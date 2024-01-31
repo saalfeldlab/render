@@ -203,7 +203,7 @@ public class ZPositionCorrectionClient {
                     if (parameters.poorCorrelationThreshold != null) {
                         client.savePoorCrossCorrelationData(ccData);
                     }
-                    if (parameters.hasBatchInfo()) {
+                    if (parameters.hasBatchInfo() || parameters.zSpacing.skipSolve) {
                         client.saveCrossCorrelationData(ccData);
                     } else {
                         client.estimateAndSaveZCoordinates(ccData);

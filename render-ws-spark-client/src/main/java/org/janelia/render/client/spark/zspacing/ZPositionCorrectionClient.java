@@ -149,20 +149,23 @@ public class ZPositionCorrectionClient
                                    multiProjectParameters,
                                    runName);
 
-        final JavaRDD<StackWithZValues> rddStackWithAllZValues = sparkContext.parallelize(stackWithAllZValuesList);
+        // only solve (for thickness correction) if requested
+        if (! clientParameters.zSpacing.skipSolve) {
 
-        final JavaRDD<Integer> rddCompletedSolveCount = rddStackWithAllZValues.map(stackWithZ -> {
-            LogUtilities.setupExecutorLog4j(stackWithZ.toString());
-            final org.janelia.render.client.zspacing.ZPositionCorrectionClient jClient =
-                    clientParameters.buildJavaClient(stackWithZ, comparisonRange, runName, true);
-            final CrossCorrelationData ccData = jClient.loadCrossCorrelationDataSets();
-            jClient.estimateAndSaveZCoordinates(ccData);
-            return 1;
-        });
+            LOG.info("deriveAndSolveCrossCorrelationData: solving data for {} stacks", stackWithAllZValuesList.size());
 
-        final int completedSolveCount = rddCompletedSolveCount.collect().stream().reduce(0, Integer::sum);
+            final JavaRDD<StackWithZValues> rddStackWithAllZValues = sparkContext.parallelize(stackWithAllZValuesList);
 
-        LOG.info("deriveAndSolveCrossCorrelationData: exit, solved data for {} stacks", completedSolveCount);
+            rddStackWithAllZValues.foreach(stackWithZ -> {
+                LogUtilities.setupExecutorLog4j(stackWithZ.toString());
+                final org.janelia.render.client.zspacing.ZPositionCorrectionClient jClient =
+                        clientParameters.buildJavaClient(stackWithZ, comparisonRange, runName, true);
+                final CrossCorrelationData ccData = jClient.loadCrossCorrelationDataSets();
+                jClient.estimateAndSaveZCoordinates(ccData);
+            });
+        }
+
+        LOG.info("deriveAndSolveCrossCorrelationData: exit");
     }
 
     private static void deriveCrossCorrelationData(final JavaSparkContext sparkContext,
@@ -191,7 +194,10 @@ public class ZPositionCorrectionClient
         final JavaRDD<Integer> rddCompletedBatchCount = rddStackWithBatchedZValues.map(stackWithZ -> {
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
             final org.janelia.render.client.zspacing.ZPositionCorrectionClient jClient =
-                    clientParameters.buildJavaClient(stackWithZ, comparisonRange, runName, false);
+                    clientParameters.buildJavaClient(stackWithZ,
+                                                     comparisonRange,
+                                                     runName,
+                                                     false);
             final CrossCorrelationData ccData = jClient.deriveCrossCorrelationData();
             jClient.saveCrossCorrelationData(ccData);
             return 1;
