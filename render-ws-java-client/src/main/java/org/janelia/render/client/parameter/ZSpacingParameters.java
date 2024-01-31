@@ -19,6 +19,9 @@ import org.janelia.thickness.inference.Options;
 public class ZSpacingParameters
         implements Serializable {
 
+    // TODO: refactor this class (and possibly the clients that use it) to separate cross correlation
+    //       from thickness correction since we now use cross correlation independently for quality control
+
     @Parameter(
             names = "--scale",
             description = "Scale to render each layer",
