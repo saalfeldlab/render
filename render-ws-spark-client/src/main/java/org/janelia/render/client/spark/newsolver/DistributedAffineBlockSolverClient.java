@@ -253,10 +253,12 @@ public class DistributedAffineBlockSolverClient
             final int driverCores = sparkConf.getInt("spark.driver.cores", 1);
             final int executorCores = sparkConf.getInt("spark.executor.cores", 1);
 
+            // If only one setup, global solve will be run on driver so set threadsGlobal to driver core count.
+            // Otherwise, global solve is run on executors so set threadsGlobal to executor core count.
+            final int threadsGlobal = setupList.size() == 1 ? driverCores : executorCores;
+
             setupList.forEach(setup -> {
-                // If only one setup, global solve will be run on driver so set threadsGlobal to driver core count.
-                // Otherwise, global solve is run on executors so set threadsGlobal to executor core count.
-                setup.distributedSolve.threadsGlobal = setupList.size() == 1 ? driverCores : executorCores;
+                setup.distributedSolve.threadsGlobal = threadsGlobal;
                 setup.distributedSolve.threadsWorker = executorCores;
             });
 
@@ -385,18 +387,10 @@ public class DistributedAffineBlockSolverClient
 
         // 3. Run the global solve for each setup (stack) in parallel.
         final JavaRDD<StackId> globallySolvedTargetStackIdsRdd =
-                outputBlocksForSetupRdd.map(setupIndexWithOutputBlocks -> {
-
-                    final int setupIndex = setupIndexWithOutputBlocks._1;
-                    final List<BlockData<AffineModel2D, ?>> outputBlocks = setupIndexWithOutputBlocks._2;
-
-                    LogUtilities.setupExecutorLog4j("setupIndex" + setupIndex); // add setup index to log context
-
-                    globallySolveOneSetup(setupList, setupIndex, solverList, outputBlocks);
-
-                    final AffineBlockSolverSetup setup = setupList.get(setupIndex);
-                    return new StackId(setup.targetStack.owner, setup.targetStack.project, setup.targetStack.stack);
-                });
+                outputBlocksForSetupRdd.map(
+                        setupIndexWithOutputBlocks -> runGlobalSolveOnExecutors(setupList,
+                                                                                solverList,
+                                                                                setupIndexWithOutputBlocks));
 
         // 4. Collect the target stack ids for each setup (stack) that was globally solved.
         final List<String> globallySolvedTargetStackDevStrings =
@@ -407,6 +401,24 @@ public class DistributedAffineBlockSolverClient
 
         LOG.info("globallySolveMultipleSetups: exit, globally solved {} setups stacks: {}",
                  globallySolvedTargetStackDevStrings.size(), globallySolvedTargetStackDevStrings);
+    }
+
+    @Nonnull
+    private static StackId runGlobalSolveOnExecutors(final List<AffineBlockSolverSetup> setupList,
+                                                     final List<DistributedAffineBlockSolver> solverList,
+                                                     final Tuple2<Integer, List<BlockData<AffineModel2D, ?>>> setupIndexWithOutputBlocks)
+            throws IOException {
+
+        final int setupIndex = setupIndexWithOutputBlocks._1;
+        final List<BlockData<AffineModel2D, ?>> outputBlocks = setupIndexWithOutputBlocks._2;
+
+        LogUtilities.setupExecutorLog4j("setupIndex" + setupIndex); // add setup index to log context
+
+        globallySolveOneSetup(setupList, setupIndex, solverList, outputBlocks);
+
+        final AffineBlockSolverSetup setup = setupList.get(setupIndex);
+
+        return new StackId(setup.targetStack.owner, setup.targetStack.project, setup.targetStack.stack);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(DistributedAffineBlockSolverClient.class);
