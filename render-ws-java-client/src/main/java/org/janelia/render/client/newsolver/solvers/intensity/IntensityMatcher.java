@@ -6,10 +6,9 @@ import mpicbg.models.Affine1D;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
-import net.imglib2.Interval;
 import net.imglib2.img.list.ListImg;
 import net.imglib2.img.list.ListRandomAccess;
-import net.imglib2.util.Intervals;
+import net.imglib2.util.Pair;
 import net.imglib2.util.StopWatch;
 import net.imglib2.util.ValuePair;
 import org.janelia.alignment.spec.TileSpec;
@@ -23,10 +22,7 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-class IntensityMatcher implements Runnable {
-	//final private Rectangle roi;
-	final private ValuePair<TileSpec, TileSpec> patchPair;
-	final private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles;
+class IntensityMatcher {
 	final private PointMatchFilter filter;
 	final private double scale;
 	final private int numCoefficients;
@@ -34,15 +30,11 @@ class IntensityMatcher implements Runnable {
 	final ImageProcessorCache imageProcessorCache;
 
 	public IntensityMatcher(
-			final ValuePair<TileSpec, TileSpec> patchPair,
-			final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
 			final PointMatchFilter filter,
 			final double scale,
 			final int numCoefficients,
 			final int meshResolution,
 			final ImageProcessorCache imageProcessorCache) {
-		this.patchPair = patchPair;
-		this.coefficientTiles = coefficientTiles;
 		this.filter = filter;
 		this.scale = scale;
 		this.numCoefficients = numCoefficients;
@@ -50,13 +42,9 @@ class IntensityMatcher implements Runnable {
 		this.imageProcessorCache = imageProcessorCache;
 	}
 
-	@Override
-	public void run() {
-		final TileSpec p1 = patchPair.getA();
-		final TileSpec p2 = patchPair.getB();
+	public void match(final TileSpec p1, final TileSpec p2, final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
-
 		LOG.info("run: entry, pair {} <-> {}", p1.getTileId(), p2.getTileId());
 
 		final Rectangle box = computeIntersection(p1, p2);
@@ -149,12 +137,50 @@ class IntensityMatcher implements Runnable {
 		LOG.info("run: exit, pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
 	}
 
+	Pair<String, ArrayList<Double>> computeAverages(final TileSpec tile) {
+
+		final Rectangle box = boundingBox(tile);
+
+		final int w = (int) (box.width * scale + 0.5);
+		final int h = (int) (box.height * scale + 0.5);
+		final int n = w * h;
+
+		final FloatProcessor pixels = new FloatProcessor(w, h);
+		final FloatProcessor weights = new FloatProcessor(w, h);
+		final ColorProcessor subTiles = new ColorProcessor(w, h);
+
+		Render.render(tile, numCoefficients, numCoefficients, pixels, weights, subTiles, box.x, box.y, scale, meshResolution, imageProcessorCache);
+
+		final float[] averages = new float[numCoefficients * numCoefficients];
+		final int[] counts = new int[numCoefficients * numCoefficients];
+
+		// iterate over all pixels to compute averages
+		for (int i = 0; i < n; ++i) {
+			final int label = subTiles.get(i);
+
+			/* first label is 1 */
+			if (label > 0) {
+				final float p = pixels.getf(i);
+				averages[label - 1] += p;
+				counts[label - 1]++;
+			}
+		}
+
+		final ArrayList<Double> result = new ArrayList<>();
+		for (int i = 0; i < averages.length; ++i)
+			result.add((double) (averages[i] / counts[i]));
+
+		return new ValuePair<>(tile.getTileId(), result);
+	}
+
 	private static Rectangle computeIntersection(final TileSpec p1, final TileSpec p2) {
-		final Interval i1 = Intervals.smallestContainingInterval(AffineIntensityCorrectionBlockWorker.getBoundingBox(p1));
-		final Rectangle box1 = new Rectangle((int) i1.min(0), (int) i1.min(1), (int) i1.dimension(0), (int) i1.dimension(1));
-		final Interval i2 = Intervals.smallestContainingInterval(AffineIntensityCorrectionBlockWorker.getBoundingBox(p2));
-		final Rectangle box2 = new Rectangle((int) i2.min(0), (int) i2.min(1), (int) i2.dimension(0), (int) i2.dimension(1));
+		final Rectangle box1 = boundingBox(p1);
+		final Rectangle box2 = boundingBox(p2);
 		return box1.intersection(box2);
+	}
+
+	static Rectangle boundingBox(final TileSpec tileSpec) {
+		return tileSpec.toTileBounds().toRectangle();
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(IntensityMatcher.class);
