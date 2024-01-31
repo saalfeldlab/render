@@ -12,7 +12,6 @@ import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel1D;
-import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
 import org.janelia.alignment.spec.Bounds;
@@ -39,6 +38,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -131,21 +131,15 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		final int nGridPoints = parameters.numCoefficients() * parameters.numCoefficients();
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = generateCoefficientsTiles(tiles, nGridPoints);
 
-		final ArrayList<ValuePair<TileSpec, TileSpec>> patchPairs = findOverlappingPatches(tiles, parameters.zDistance());
+		final List<ValuePair<TileSpec, TileSpec>> patchPairs = findOverlappingPatches(tiles, parameters.zDistance());
 
 		LOG.info("splitIntoCoefficientTiles: found {} pairs for {} patches with zDistance {} -- matching intensities with {} threads", patchPairs.size(), tiles.size(), parameters.zDistance(), numThreads);
 
 		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
-		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
-		final int meshResolution = tiles.isEmpty() ? 64 : (int) tiles.get(0).getMeshCellSize();
-		final IntensityMatcher matcher = new IntensityMatcher(filter,
-															  parameters.renderScale(),
-															  parameters.numCoefficients(),
-															  meshResolution,
-															  imageProcessorCache);
-
+		final IntensityMatcher matcher = getIntensityMatcher(tiles, imageProcessorCache);
 		final ExecutorService exec = Executors.newFixedThreadPool(numThreads);
-		final ArrayList<Future<?>> matchComputations = new ArrayList<>();
+		final List<Future<?>> matchComputations = new ArrayList<>();
+
 		for (final ValuePair<TileSpec, TileSpec> patchPair : patchPairs) {
 			final TileSpec p1 = patchPair.getA();
 			final TileSpec p2 = patchPair.getB();
@@ -156,20 +150,31 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		for (final Future<?> future : matchComputations)
 			future.get();
 
-		final List<Future<Pair<String, ArrayList<Double>>>> averageComputations = new ArrayList<>();
+		final Map<String, Future<List<Double>>> averageComputations = new HashMap<>();
 		for (final TileSpec tile : tiles) {
-			averageComputations.add(exec.submit(() -> matcher.computeAverages(tile)));
+			final Future<List<Double>> average = exec.submit(() -> matcher.computeAverages(tile));
+			averageComputations.put(tile.getTileId(), average);
 			blockData.getResults().recordMatchedTile(tile.getIntegerZ(), tile.getTileId());
 		}
 
 		final ResultContainer<ArrayList<AffineModel1D>> results = blockData.getResults();
-		for (final Future<Pair<String, ArrayList<Double>>> average : averageComputations) {
-			results.recordAverages(average.get().getA(), average.get().getB());
+		for (final Entry<String, Future<List<Double>>> tileToAverages : averageComputations.entrySet()) {
+			results.recordAverages(tileToAverages.getKey(), tileToAverages.getValue().get());
 		}
 
 		exec.shutdown();
 		LOG.info("splitIntoCoefficientTiles: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());
 		return coefficientTiles;
+	}
+
+	private IntensityMatcher getIntensityMatcher(final List<TileSpec> tiles, final ImageProcessorCache imageProcessorCache) {
+		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
+		final int meshResolution = tiles.isEmpty() ? 64 : (int) tiles.get(0).getMeshCellSize();
+		return new IntensityMatcher(filter,
+									parameters.renderScale(),
+									parameters.numCoefficients(),
+									meshResolution,
+									imageProcessorCache);
 	}
 
 	private  HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> generateCoefficientsTiles(

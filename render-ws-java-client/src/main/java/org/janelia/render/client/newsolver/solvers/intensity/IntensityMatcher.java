@@ -8,9 +8,7 @@ import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import net.imglib2.img.list.ListImg;
 import net.imglib2.img.list.ListRandomAccess;
-import net.imglib2.util.Pair;
 import net.imglib2.util.StopWatch;
-import net.imglib2.util.ValuePair;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
@@ -18,9 +16,10 @@ import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.*;
+import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 class IntensityMatcher {
 	final private PointMatchFilter filter;
@@ -137,7 +136,7 @@ class IntensityMatcher {
 		LOG.info("run: exit, pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
 	}
 
-	Pair<String, ArrayList<Double>> computeAverages(final TileSpec tile) {
+	List<Double> computeAverages(final TileSpec tile) {
 
 		final Rectangle box = boundingBox(tile);
 
@@ -166,11 +165,11 @@ class IntensityMatcher {
 			}
 		}
 
-		final ArrayList<Double> result = new ArrayList<>();
+		final List<Double> result = new ArrayList<>(averages.length);
 		for (int i = 0; i < averages.length; ++i)
 			result.add((double) (averages[i] / counts[i]));
 
-		return new ValuePair<>(tile.getTileId(), result);
+		return result;
 	}
 
 	private static Rectangle computeIntersection(final TileSpec p1, final TileSpec p2) {
