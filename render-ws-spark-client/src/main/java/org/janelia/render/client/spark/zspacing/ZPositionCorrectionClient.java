@@ -151,20 +151,18 @@ public class ZPositionCorrectionClient
 
         // only solve (for thickness correction) if requested
         if (! clientParameters.zSpacing.skipSolve) {
+
+            LOG.info("deriveAndSolveCrossCorrelationData: solving data for {} stacks", stackWithAllZValuesList.size());
+
             final JavaRDD<StackWithZValues> rddStackWithAllZValues = sparkContext.parallelize(stackWithAllZValuesList);
 
-            final JavaRDD<Integer> rddCompletedSolveCount = rddStackWithAllZValues.map(stackWithZ -> {
+            rddStackWithAllZValues.foreach(stackWithZ -> {
                 LogUtilities.setupExecutorLog4j(stackWithZ.toString());
                 final org.janelia.render.client.zspacing.ZPositionCorrectionClient jClient =
                         clientParameters.buildJavaClient(stackWithZ, comparisonRange, runName, true);
                 final CrossCorrelationData ccData = jClient.loadCrossCorrelationDataSets();
                 jClient.estimateAndSaveZCoordinates(ccData);
-                return 1;
             });
-
-            final int completedSolveCount = rddCompletedSolveCount.collect().stream().reduce(0, Integer::sum);
-
-            LOG.info("deriveAndSolveCrossCorrelationData: solved data for {} stacks", completedSolveCount);
         }
 
         LOG.info("deriveAndSolveCrossCorrelationData: exit");
