@@ -53,7 +53,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	public AffineIntensityCorrectionBlockWorker(
 			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
-			final int numThreads) throws IOException {
+			final int numThreads
+	) throws IOException {
 
 		super(blockData, numThreads);
 		parameters = blockData.solveTypeParameters();
@@ -88,7 +89,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return new ArrayList<>(List.of(blockData));
 	}
 
-	private void fetchResolvedTiles() throws IOException {
+	private void fetchResolvedTiles()
+			throws IOException {
 		final Bounds bounds = blockData.getOriginalBounds();
 		final ResolvedTileSpecCollection rtsc = renderDataClient.getResolvedTiles(
 				parameters.stack(),
@@ -100,7 +102,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		blockData.getResults().init(rtsc);
 	}
 
-	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<TileSpec> tiles) throws ExecutionException, InterruptedException {
+	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<TileSpec> tiles)
+			throws ExecutionException, InterruptedException {
 
 		LOG.info("deriveIntensityFilterData: entry");
 		if (tiles.size() < 2) {
@@ -123,7 +126,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> splitIntoCoefficientTiles(
 			final List<TileSpec> tiles,
-			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException {
+			final ImageProcessorCache imageProcessorCache
+	) throws InterruptedException, ExecutionException {
 
 		if (tiles == null || tiles.isEmpty()) {
 			LOG.info("splitIntoCoefficientTiles: skipping because there are no tiles");
@@ -172,7 +176,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		return coefficientTiles;
 	}
 
-	private IntensityMatcher getIntensityMatcher(final List<TileSpec> tiles, final ImageProcessorCache imageProcessorCache) {
+	private IntensityMatcher getIntensityMatcher(
+			final List<TileSpec> tiles,
+			final ImageProcessorCache imageProcessorCache
+	) {
 		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
 		final int meshResolution = (int) tiles.get(0).getMeshCellSize();
 		return new IntensityMatcher(filter,
@@ -184,8 +191,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private  HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> generateCoefficientsTiles(
 			final Collection<TileSpec> patches,
-			final int nGridPoints) {
-
+			final int nGridPoints
+	) {
 		final InterpolatedAffineModel1D<InterpolatedAffineModel1D<AffineModel1D, TranslationModel1D>, IdentityModel> modelTemplate =
 				new InterpolatedAffineModel1D<>(
 						new InterpolatedAffineModel1D<>(
@@ -206,7 +213,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private static ArrayList<ValuePair<TileSpec, TileSpec>> findOverlappingPatches(
 			final List<TileSpec> allPatches,
-			final ZDistanceParameters zDistance) {
+			final ZDistanceParameters zDistance
+	) {
 		// find the images that actually overlap (only for those we can extract intensity PointMatches)
 		final ArrayList<ValuePair<TileSpec, TileSpec>> patchPairs = new ArrayList<>();
 		final Set<TileSpec> unconsideredPatches = new HashSet<>(allPatches);
@@ -230,9 +238,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	}
 
 	@SuppressWarnings("SameParameterValue")
-	private void solveForGlobalCoefficients(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
-											final int iterations) {
-
+	private void solveForGlobalCoefficients(
+			final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
+			final int iterations
+	) {
 		final Tile<? extends Affine1D<?>> equilibrationTile = new Tile<>(new IdentityModel());
 
 		connectTilesWithinPatches(coefficientTiles, equilibrationTile);
@@ -266,8 +275,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		LOG.info("solveForGlobalCoefficients: exit, returning intensity coefficients for {} tiles", coefficientTiles.size());
 	}
 
-	private void connectTilesWithinPatches(final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
-										   final Tile<? extends Affine1D<?>> equilibrationTile) {
+	private void connectTilesWithinPatches(
+			final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles,
+			final Tile<? extends Affine1D<?>> equilibrationTile
+	) {
 		final Collection<TileSpec> allTiles = blockData.rtsc().getTileSpecs();
 		final double equilibrationWeight = blockData.solveTypeParameters().equilibrationWeight();
 
