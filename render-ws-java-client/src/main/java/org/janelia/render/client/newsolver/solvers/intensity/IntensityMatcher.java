@@ -13,6 +13,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
 import org.janelia.render.client.intensityadjust.intensity.Render;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,13 +31,12 @@ class IntensityMatcher {
 
 	public IntensityMatcher(
 			final PointMatchFilter filter,
-			final double scale,
-			final int numCoefficients,
+			final FIBSEMIntensityCorrectionParameters<?> parameters,
 			final int meshResolution,
 			final ImageProcessorCache imageProcessorCache) {
 		this.filter = filter;
-		this.scale = scale;
-		this.numCoefficients = numCoefficients;
+		this.scale = parameters.renderScale();
+		this.numCoefficients = parameters.numCoefficients();
 		this.meshResolution = meshResolution;
 		this.imageProcessorCache = imageProcessorCache;
 	}

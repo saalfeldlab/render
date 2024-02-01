@@ -182,11 +182,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	) {
 		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
 		final int meshResolution = (int) tiles.get(0).getMeshCellSize();
-		return new IntensityMatcher(filter,
-									parameters.renderScale(),
-									parameters.numCoefficients(),
-									meshResolution,
-									imageProcessorCache);
+		return new IntensityMatcher(filter, parameters, meshResolution, imageProcessorCache);
 	}
 
 	private  HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> generateCoefficientsTiles(
