@@ -125,6 +125,11 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			final List<TileSpec> tiles,
 			final ImageProcessorCache imageProcessorCache) throws InterruptedException, ExecutionException {
 
+		if (tiles == null || tiles.isEmpty()) {
+			LOG.info("splitIntoCoefficientTiles: skipping because there are no tiles");
+			return new HashMap<>();
+		}
+
 		LOG.info("splitIntoCoefficientTiles: entry, collecting pairs for {} patches with zDistance {}", tiles.size(), parameters.zDistance());
 
 		// generate coefficient tiles for all patches
@@ -169,7 +174,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private IntensityMatcher getIntensityMatcher(final List<TileSpec> tiles, final ImageProcessorCache imageProcessorCache) {
 		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
-		final int meshResolution = tiles.isEmpty() ? 64 : (int) tiles.get(0).getMeshCellSize();
+		final int meshResolution = (int) tiles.get(0).getMeshCellSize();
 		return new IntensityMatcher(filter,
 									parameters.renderScale(),
 									parameters.numCoefficients(),
