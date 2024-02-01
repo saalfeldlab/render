@@ -34,14 +34,19 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 
 	@Parameter(
 			names = { "--maxPixelCacheGb" },
-			description = "Maximum number of gigabytes of pixels to cache"
+			description = "Maximum number of gigabytes of pixels to cache (default: 1Gb)"
 	)
 	public Integer maxPixelCacheGb = 1;
 
 	@Parameter(
 			names = "--renderScale",
-			description = "Scale for rendered tiles used during intensity comparison")
+			description = "Scale for rendered tiles in the same layer used during intensity comparison (default: 0.1)")
 	public double renderScale = 0.1;
+
+	@Parameter(
+			names = "--crossLayerRenderScale",
+			description = "Scale for rendered tiles in different layers used during intensity comparison (default: same as renderScale)")
+	public double crossLayerRenderScale = 0.0;
 
 	@ParametersDelegate
 	public ZDistanceParameters zDistance = new ZDistanceParameters();
@@ -62,6 +67,9 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();
+		if (crossLayerRenderScale == 0.0) {
+			crossLayerRenderScale = renderScale;
+		}
 	}
 
 }

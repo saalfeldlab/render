@@ -24,7 +24,8 @@ import java.util.List;
 
 class IntensityMatcher {
 	final private PointMatchFilter filter;
-	final private double scale;
+	final private double sameLayerScale;
+	final private double crossLayerScale;
 	final private int numCoefficients;
 	final int meshResolution;
 	final ImageProcessorCache imageProcessorCache;
@@ -35,7 +36,8 @@ class IntensityMatcher {
 			final int meshResolution,
 			final ImageProcessorCache imageProcessorCache) {
 		this.filter = filter;
-		this.scale = parameters.renderScale();
+		this.sameLayerScale = parameters.renderScale();
+		this.crossLayerScale = parameters.crossLayerRenderScale();
 		this.numCoefficients = parameters.numCoefficients();
 		this.meshResolution = meshResolution;
 		this.imageProcessorCache = imageProcessorCache;
@@ -46,6 +48,7 @@ class IntensityMatcher {
 		final StopWatch stopWatch = StopWatch.createAndStart();
 		LOG.info("run: entry, pair {} <-> {}", p1.getTileId(), p2.getTileId());
 
+		final double scale = (p1.zDistanceFrom(p2) == 0) ? sameLayerScale : crossLayerScale;
 		final Rectangle box = computeIntersection(p1, p2);
 		final int w = (int) (box.width * scale + 0.5);
 		final int h = (int) (box.height * scale + 0.5);
@@ -140,15 +143,15 @@ class IntensityMatcher {
 
 		final Rectangle box = boundingBox(tile);
 
-		final int w = (int) (box.width * scale + 0.5);
-		final int h = (int) (box.height * scale + 0.5);
+		final int w = (int) (box.width * sameLayerScale + 0.5);
+		final int h = (int) (box.height * sameLayerScale + 0.5);
 		final int n = w * h;
 
 		final FloatProcessor pixels = new FloatProcessor(w, h);
 		final FloatProcessor weights = new FloatProcessor(w, h);
 		final ColorProcessor subTiles = new ColorProcessor(w, h);
 
-		Render.render(tile, numCoefficients, numCoefficients, pixels, weights, subTiles, box.x, box.y, scale, meshResolution, imageProcessorCache);
+		Render.render(tile, numCoefficients, numCoefficients, pixels, weights, subTiles, box.x, box.y, sameLayerScale, meshResolution, imageProcessorCache);
 
 		final float[] averages = new float[numCoefficients * numCoefficients];
 		final int[] counts = new int[numCoefficients * numCoefficients];
