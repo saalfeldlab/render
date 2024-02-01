@@ -85,7 +85,7 @@ class IntensityMatcher {
 				final PointMatch pq = new PointMatch(new Point(new double[]{p}), new Point(new double[]{q}), weight1 * weight2);
 
 				/* first sub-tile label is 1 */
-				final List<PointMatch> matches = get(matrix, label1 - 1, label2 - 1);
+				final List<PointMatch> matches = get(matrix, label1 - 1, label2 - 1, nCoefficientTiles);
 				matches.add(pq);
 			}
 		}
@@ -108,7 +108,7 @@ class IntensityMatcher {
 			final Tile<?> t1 = p1CoefficientTiles.get(i);
 
 			for (int j = 0; j < nCoefficientTiles; ++j) {
-				final List<PointMatch> matches = get(matrix, i, j);
+				final List<PointMatch> matches = get(matrix, i, j, nCoefficientTiles);
 				if (matches.isEmpty())
 					continue;
 
@@ -131,8 +131,8 @@ class IntensityMatcher {
 		return coefficients;
 	}
 
-	private static List<PointMatch> get(final List<List<PointMatch>> matrix, final int i, final int j) {
-		return matrix.get(i * matrix.size() + j);
+	private static List<PointMatch> get(final List<List<PointMatch>> matrix, final int i, final int j, final int size) {
+		return matrix.get(i * size + j);
 	}
 
 	private static int numberOfPixels(final int length, final double scale) {
