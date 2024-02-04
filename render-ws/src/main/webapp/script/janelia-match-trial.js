@@ -826,6 +826,7 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
                     i = this.matchIndex - lastI;
                     if (i > -1) {
                         context.strokeStyle = '#00ff00';
+                        context.fillStyle = context.strokeStyle;
                         this.drawMatch(matches, i, this.pImage, this.qImage, context);
                         break;
                     }
@@ -846,6 +847,7 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
 
                     for (i = 0; i < matches.w.length; i++) {
                         context.strokeStyle = colors[i % colors.length];
+                        context.fillStyle = context.strokeStyle;
                         this.drawMatch(matches, i, this.pImage, this.qImage, context);
                     }
 
@@ -862,6 +864,7 @@ JaneliaMatchTrial.prototype.drawSelectedMatches = function(matchIndexDelta) {
                     for (; consensusSetIndex < consensusSetMatches.length; consensusSetIndex++) {
                         matches = consensusSetMatches[consensusSetIndex];
                         context.strokeStyle = colors[consensusSetIndex % colors.length];
+                        context.fillStyle = context.strokeStyle;
                         for (i = 0; i < matches.w.length; i++) {
                             this.drawMatch(matches, i, this.pImage, this.qImage, context);
                         }
@@ -905,10 +908,10 @@ JaneliaMatchTrial.prototype.drawMatch = function(matches, matchIndex, pImage, qI
         const twoPI = Math.PI * 2;
         context.beginPath();
         context.arc(px, py, radius, 0, twoPI);
-        context.stroke();
+        context.fill();
         context.beginPath();
         context.arc(qx, qy, radius, 0, twoPI);
-        context.stroke();
+        context.fill();
     }
 
 };
