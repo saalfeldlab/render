@@ -44,7 +44,6 @@ class IntensityMatcher {
 	public void match(final TileSpec p1, final TileSpec p2, final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
-		LOG.info("match: entry, pair {} <-> {}", p1.getTileId(), p2.getTileId());
 
 		final double scale = (p1.zDistanceFrom(p2) == 0) ? sameLayerScale : crossLayerScale;
 		final Rectangle box = computeIntersection(p1, p2);
@@ -62,12 +61,9 @@ class IntensityMatcher {
 		Render.render(p1, numCoefficients, numCoefficients, pixels1, weights1, subTiles1, box.x, box.y, scale, meshResolution, imageProcessorCache);
 		Render.render(p2, numCoefficients, numCoefficients, pixels2, weights2, subTiles2, box.x, box.y, scale, meshResolution, imageProcessorCache);
 
-		LOG.info("match: generate matrix for pair {} <-> {} and filter", p1.getTileId(), p2.getTileId());
-
 		// generate a matrix of all coefficients in p1 to all coefficients in p2 to store matches
 		final int nCoefficientTiles = numCoefficients * numCoefficients;
 		final List<List<PointMatch>> matrix = getPairwiseCoefficientMatrix(nCoefficientTiles);
-
 
 		// iterate over all pixels and feed matches into the match matrix
 		int label1, label2 = 0;
@@ -119,7 +115,7 @@ class IntensityMatcher {
 		}
 
 		stopWatch.stop();
-		LOG.info("match: exit, pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
+		LOG.info("match: pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
 	}
 
 	private static List<List<PointMatch>> getPairwiseCoefficientMatrix(final int dimSize) {
@@ -141,7 +137,6 @@ class IntensityMatcher {
 
 	List<Double> computeAverages(final TileSpec tile) {
 
-		LOG.info("computeAverages: entry, tile {}", tile.getTileId());
 		final StopWatch stopWatch = StopWatch.createAndStart();
 		final Rectangle box = boundingBox(tile);
 
@@ -174,7 +169,7 @@ class IntensityMatcher {
 			result.add((double) (averages[i] / counts[i]));
 
 		stopWatch.stop();
-		LOG.info("computeAverages: exit, tile {} took {}", tile.getTileId(), stopWatch);
+		LOG.info("computeAverages: tile {} took {}", tile.getTileId(), stopWatch);
 		return result;
 	}
 
