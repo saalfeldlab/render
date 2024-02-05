@@ -25,6 +25,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final double lambdaTranslation;
 	private final double lambdaIdentity;
 	private final double renderScale;
+	private final double crossLayerRenderScale;
 	private final int numCoefficients;
 	private final ZDistanceParameters zDistance;
 	private final double equilibrationWeight;
@@ -43,6 +44,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			 intensityAdjust.lambda1,
 			 intensityAdjust.lambda2,
 			 intensityAdjust.renderScale,
+			 intensityAdjust.crossLayerRenderScale,
 			 intensityAdjust.numCoefficients,
 			 intensityAdjust.zDistance,
 			 intensityAdjust.equilibrationWeight);
@@ -58,6 +60,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final double lambdaTranslation,
 			final double lambdaIdentity,
 			final double renderScale,
+			final double crossLayerRenderScale,
 			final int numCoefficients,
 			final ZDistanceParameters zDistance,
 			final double equilibrationWeight) {
@@ -68,6 +71,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.lambdaTranslation = lambdaTranslation;
 		this.lambdaIdentity = lambdaIdentity;
 		this.renderScale = renderScale;
+		this.crossLayerRenderScale = crossLayerRenderScale;
 		this.numCoefficients = numCoefficients;
 		this.zDistance = zDistance;
 		this.equilibrationWeight = equilibrationWeight;
@@ -77,6 +81,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public double lambdaTranslation() { return lambdaTranslation; }
 	public double lambdaIdentity() { return lambdaIdentity; }
 	public double renderScale() { return renderScale; }
+	public double crossLayerRenderScale() { return crossLayerRenderScale; }
 	public int numCoefficients() { return numCoefficients; }
 	public ZDistanceParameters zDistance() { return zDistance; }
 	public double equilibrationWeight() { return equilibrationWeight; }

@@ -66,17 +66,16 @@ public class DistributedIntensityCorrectionSolver {
 		if (args.length == 0) {
 			final String[] testArgs = {
 					"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-					"--owner", "cellmap",
-					"--project", "jrc_mus_thymus_1",
-					"--stack", "v2_acquire_align",
-					"--targetStack", "v2_acquire_test_intensity_debug13",
-					"--threadsWorker", "1",
-					"--threadsGlobal", "12",
+					"--owner", "hess_wafer_53",
+					"--project", "cut_000_to_009",
+					"--stack", "c009_s310_v01_mfov_08_exact",
+					"--targetStack", "c009_s310_v01_mfov_08_ic_test_new",
+					"--threadsWorker", "2",
+					"--threadsGlobal", "1",
 					"--blockSizeZ", "6",
 					"--completeTargetStack",
 					// for entire stack minZ is 1 and maxZ is 14,503
-					"--zDistance", "0", "--minZ", "1245", "--maxZ", "1246",
-					"--equilibrationWeight", "0.5"
+					"--zDistance", "0", "--minZ", "440", "--maxZ", "441",
 			};
 			cmdLineSetup.parse(testArgs);
 		} else {
