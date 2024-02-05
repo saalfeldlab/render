@@ -45,8 +45,8 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 
 	@Parameter(
 			names = "--crossLayerRenderScale",
-			description = "Scale for rendered tiles in different layers used during intensity comparison (default: same as renderScale)")
-	public double crossLayerRenderScale = 0.0;
+			description = "Scale for rendered tiles in different layers used during intensity comparison. If not given, the same scale as --renderScale is used.")
+	public Double crossLayerRenderScale = null;
 
 	@ParametersDelegate
 	public ZDistanceParameters zDistance = new ZDistanceParameters();
@@ -67,7 +67,7 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();
-		if (crossLayerRenderScale == 0.0) {
+		if (crossLayerRenderScale == null) {
 			crossLayerRenderScale = renderScale;
 		}
 	}
