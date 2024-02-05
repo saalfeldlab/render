@@ -43,7 +43,7 @@ import scala.Tuple2;
  * Spark client for running a DistributedAffineBlockSolve.
  */
 public class DistributedAffineBlockSolverClient
-        implements Serializable, AlignmentPipelineStep {
+        extends DistributedAlternatingDomainDecompositionSolver implements Serializable, AlignmentPipelineStep {
 
     /**
      * Run the client with command line parameters.
@@ -179,7 +179,10 @@ public class DistributedAffineBlockSolverClient
 
         LOG.info("alignSetupList: entry, setupList={}", setupList);
 
-        final int parallelism = deriveParallelismValues(sparkContext, setupList);
+        final List<DistributedSolveParameters> solveParameters = setupList.stream()
+                .map(setup -> setup.distributedSolve)
+                .collect(Collectors.toList());
+        final int parallelism = deriveParallelismValues(sparkContext, solveParameters);
 
         final List<DistributedAffineBlockSolver> solverList = new ArrayList<>();
         final List<Tuple2<Integer, BlockData<AffineModel2D, ?>>> inputBlocksWithSetupIndexes = new ArrayList<>();
@@ -231,57 +234,6 @@ public class DistributedAffineBlockSolverClient
             parameters.stitchFirst = false;
             parameters.preAlign = FIBSEMAlignmentParameters.PreAlign.NONE;
         }
-    }
-
-    private static int deriveParallelismValues(final JavaSparkContext sparkContext,
-                                               final List<AffineBlockSolverSetup> setupList) {
-
-        // From https://spark.apache.org/docs/3.4.1/configuration.html#execution-behavior ...
-        //   For these cluster managers, spark.default.parallelism is:
-        //   - Local mode: number of cores on the local machine
-        //   - Mesos fine grained mode: 8
-        //   - Others: total number of cores on all executor nodes or 2, whichever is larger.
-        int parallelism = sparkContext.defaultParallelism();
-        final DistributedSolveParameters firstSetupSolveParameters = setupList.get(0).distributedSolve;
-
-        LOG.info("deriveParallelismValues: entry, threadsGlobal={}, threadsWorker={}, parallelism={}",
-                 firstSetupSolveParameters.threadsGlobal, firstSetupSolveParameters.threadsWorker, parallelism);
-
-        if (firstSetupSolveParameters.deriveThreadsUsingSparkConfig) {
-
-            final SparkConf sparkConf = sparkContext.getConf();
-            final int driverCores = sparkConf.getInt("spark.driver.cores", 1);
-            final int executorCores = sparkConf.getInt("spark.executor.cores", 1);
-
-            // If only one setup, global solve will be run on driver so set threadsGlobal to driver core count.
-            // Otherwise, global solve is run on executors so set threadsGlobal to executor core count.
-            final int threadsGlobal = setupList.size() == 1 ? driverCores : executorCores;
-
-            setupList.forEach(setup -> {
-                setup.distributedSolve.threadsGlobal = threadsGlobal;
-                setup.distributedSolve.threadsWorker = executorCores;
-            });
-
-            try {
-                final int sleepSeconds = 15;
-                LOG.info("deriveParallelismValues: sleeping {} seconds to give workers a chance to connect",
-                         sleepSeconds);
-                Thread.sleep(sleepSeconds * 1000L);
-            } catch (final InterruptedException e) {
-                LOG.warn("deriveParallelismValues: interrupted while sleeping", e);
-            }
-
-            // set parallelism to number of worker executors
-            // see https://stackoverflow.com/questions/51342460/getexecutormemorystatus-size-not-outputting-correct-num-of-executors
-            final int numberOfExecutorsIncludingDriver = sparkContext.sc().getExecutorMemoryStatus().size();
-            final int numberOfWorkerExecutors = numberOfExecutorsIncludingDriver - 1;
-            parallelism = Math.max(numberOfWorkerExecutors, 2);
-
-            LOG.info("deriveParallelismValues: updated values, threadsGlobal={}, threadsWorker={}, parallelism={}",
-                     firstSetupSolveParameters.threadsGlobal, firstSetupSolveParameters.threadsWorker, parallelism);
-        }
-
-        return parallelism;
     }
 
     private static void buildSolversAndInputBlocks(final List<AffineBlockSolverSetup> setupList,
