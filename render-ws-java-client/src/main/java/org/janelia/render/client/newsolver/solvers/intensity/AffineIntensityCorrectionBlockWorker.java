@@ -147,27 +147,27 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
 		final IntensityMatcher matcher = getIntensityMatcher(tiles, imageProcessorCache);
 		final ExecutorService exec = Executors.newFixedThreadPool(numThreads);
-		final List<Future<?>> matchComputations = new ArrayList<>();
+		final List<Future<?>> matchTasks = new ArrayList<>();
 
 		for (final ValuePair<TileSpec, TileSpec> patchPair : patchPairs) {
 			final TileSpec p1 = patchPair.getA();
 			final TileSpec p2 = patchPair.getB();
 			final Runnable matchJob = () -> matcher.match(p1, p2, coefficientTiles);
-			matchComputations.add(exec.submit(matchJob));
+			matchTasks.add(exec.submit(matchJob));
 		}
 
-		for (final Future<?> future : matchComputations)
-			future.get();
+		for (final Future<?> result : matchTasks)
+			result.get();
 
-		final Map<String, Future<List<Double>>> averageComputations = new HashMap<>();
+		final Map<String, Future<List<Double>>> tileIdToAverage = new HashMap<>();
 		for (final TileSpec tile : tiles) {
-			final Future<List<Double>> average = exec.submit(() -> matcher.computeAverages(tile));
-			averageComputations.put(tile.getTileId(), average);
+			final Future<List<Double>> result = exec.submit(() -> matcher.computeAverages(tile));
+			tileIdToAverage.put(tile.getTileId(), result);
 			blockData.getResults().recordMatchedTile(tile.getIntegerZ(), tile.getTileId());
 		}
 
 		final ResultContainer<ArrayList<AffineModel1D>> results = blockData.getResults();
-		for (final Entry<String, Future<List<Double>>> tileToAverages : averageComputations.entrySet()) {
+		for (final Entry<String, Future<List<Double>>> tileToAverages : tileIdToAverage.entrySet()) {
 			results.recordAverages(tileToAverages.getKey(), tileToAverages.getValue().get());
 		}
 
