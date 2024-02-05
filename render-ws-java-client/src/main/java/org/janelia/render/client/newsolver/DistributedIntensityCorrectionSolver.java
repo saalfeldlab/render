@@ -108,7 +108,7 @@ public class DistributedIntensityCorrectionSolver {
 		LOG.info("solveBlocksUsingThreadPool: entry, threadsGlobal={}", solverSetup.distributedSolve.threadsGlobal);
 
 		final ArrayList<Callable<List<BlockData<ArrayList<AffineModel1D>, ?>>>> workers = new ArrayList<>();
-		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block)));
+		blockCollection.allBlocks().forEach(block -> workers.add(() -> createAndRunWorker(block, solverSetup)));
 
 		final ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
 		final ExecutorService taskExecutor = Executors.newFixedThreadPool(solverSetup.distributedSolve.threadsGlobal);
@@ -126,7 +126,8 @@ public class DistributedIntensityCorrectionSolver {
 		return allItems;
 	}
 
-	private List<BlockData<ArrayList<AffineModel1D>, ?>> createAndRunWorker(final BlockData<ArrayList<AffineModel1D>, ?> block)
+	public static List<BlockData<ArrayList<AffineModel1D>, ?>> createAndRunWorker(final BlockData<ArrayList<AffineModel1D>, ?> block,
+																				  final IntensityCorrectionSetup solverSetup)
 			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
 		final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(solverSetup.distributedSolve.threadsWorker);
@@ -201,7 +202,7 @@ public class DistributedIntensityCorrectionSolver {
 		return fusedModels;
 	}
 
-	// TODO: refactor this to use 1D version of AlingmentModel if and when it exists
+	// TODO: refactor this to use 1D version of AlignmentModel if and when it exists
 	private static ArrayList<AffineModel1D> interpolateModels(final List<ArrayList<AffineModel1D>> tiledModels, final List<Double> weights) {
 		if (tiledModels.isEmpty() || tiledModels.size() != weights.size())
 			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
