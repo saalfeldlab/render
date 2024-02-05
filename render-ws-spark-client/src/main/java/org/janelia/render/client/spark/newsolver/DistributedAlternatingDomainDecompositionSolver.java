@@ -2,10 +2,13 @@ package org.janelia.render.client.spark.newsolver;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaSparkContext;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.setup.DistributedSolveParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.List;
 
 public abstract class DistributedAlternatingDomainDecompositionSolver {
@@ -58,6 +61,16 @@ public abstract class DistributedAlternatingDomainDecompositionSolver {
 		}
 
 		return parallelism;
+	}
+
+	protected static void cleanUpIntermediateStack(final RenderWebServiceParameters renderWeb, final String stack) {
+		final RenderDataClient dataClient = renderWeb.getDataClient();
+		try {
+			dataClient.deleteStack(stack, null);
+			LOG.info("cleanUpIntermediateStack: deleted stack {}", stack);
+		} catch (final IOException e) {
+			LOG.error("cleanUpIntermediateStack: error deleting stack {}", stack, e);
+		}
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedAlternatingDomainDecompositionSolver.class);

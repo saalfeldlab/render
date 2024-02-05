@@ -21,7 +21,6 @@ import org.apache.spark.storage.StorageLevel;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.DistributedAffineBlockSolver;
@@ -132,7 +131,7 @@ public class DistributedAffineBlockSolverClient
 
                 // clean-up intermediate stacks for prior runs if requested
                 if (cleanUpIntermediateStacks && (runIndex > 0)) {
-                    setupListForRun.forEach(DistributedAffineBlockSolverClient::cleanUpIntermediateStack);
+                    setupListForRun.forEach(item -> cleanUpIntermediateStack(item.renderWeb, item.stack));
                 }
             }
 
@@ -212,16 +211,6 @@ public class DistributedAffineBlockSolverClient
             return name;
         } else {
             return name + "_run" + runNumber;
-        }
-    }
-
-    private static void cleanUpIntermediateStack(final AffineBlockSolverSetup parameters) {
-        final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
-        try {
-            dataClient.deleteStack(parameters.stack, null);
-            LOG.info("cleanUpIntermediateStack: deleted stack {}", parameters.stack);
-        } catch (final IOException e) {
-            LOG.error("cleanUpIntermediateStack: error deleting stack {}", parameters.stack, e);
         }
     }
 
