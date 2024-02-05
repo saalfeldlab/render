@@ -74,4 +74,12 @@ public abstract class DistributedAlternatingDomainDecompositionSolver {
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedAlternatingDomainDecompositionSolver.class);
+
+	protected static String getStackName(final String name, final int runNumber, final int nTotalRuns) {
+		if (runNumber == nTotalRuns) {
+			return name;
+		} else {
+			return name + "_run" + runNumber;
+		}
+	}
 }

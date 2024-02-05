@@ -206,14 +206,6 @@ public class DistributedAffineBlockSolverClient
 
     // TODO: these methods are very close to those in ADDSolverClient, need to refactor to reuse as much as possible
 
-    private static String getStackName(final String name, final int runNumber, final int nTotalRuns) {
-        if (runNumber == nTotalRuns) {
-            return name;
-        } else {
-            return name + "_run" + runNumber;
-        }
-    }
-
     private static void updateParameters(final AffineBlockSolverSetup parameters, final int runNumber) {
         // alternate block layout
         parameters.blockPartition.shiftBlocks = (runNumber % 2 == 1);
