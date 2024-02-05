@@ -1,22 +1,9 @@
 package org.janelia.render.client.newsolver;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadLocalRandom;
-
 import mpicbg.models.Affine1D;
 import mpicbg.models.AffineModel1D;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.TranslationModel1D;
-
 import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.filter.IntensityMap8BitFilter;
@@ -42,6 +29,18 @@ import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static org.janelia.render.client.newsolver.DistributedAffineBlockSolver.getRandomIndex;
 
@@ -98,9 +97,17 @@ public class DistributedIntensityCorrectionSolver {
 		final ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> allItems =
 				intensitySolver.solveBlocksUsingThreadPool(blockCollection);
 
-		final ResultContainer<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
+		solveCombineAndSaveBlocks(cmdLineSetup, allItems, intensitySolver);
+	}
 
-		intensitySolver.saveResultsAsNeeded(finalizedItems);
+	public static void solveCombineAndSaveBlocks(final IntensityCorrectionSetup cmdLineSetup,
+												 final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems,
+												 final DistributedIntensityCorrectionSolver solver)
+			throws IOException {
+
+		final ResultContainer<ArrayList<AffineModel1D>> finalizedItems = solver.assembleBlocks(allItems);
+
+		saveResultsAsNeeded(finalizedItems, solver.solverSetup);
 	}
 
 	public ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> solveBlocksUsingThreadPool(final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection) {
@@ -173,7 +180,7 @@ public class DistributedIntensityCorrectionSolver {
 		return fusion;
 	}
 
-	public void saveResultsAsNeeded(final ResultContainer<ArrayList<AffineModel1D>> finalizedItems)
+	public static void saveResultsAsNeeded(final ResultContainer<ArrayList<AffineModel1D>> finalizedItems, final IntensityCorrectionSetup solverSetup)
 			throws IOException {
 		// this adds the filters to the tile specs and pushes the data to the DB
 		final boolean saveResults = (solverSetup.targetStack.stack != null);
