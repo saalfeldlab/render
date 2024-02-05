@@ -166,6 +166,7 @@ JaneliaTile2.prototype.drawMatches = function(canvasMatches) {
 
         for (var matchIndex = 0; matchIndex < matchCount; matchIndex++) {
             context.strokeStyle = colors[matchIndex % colors.length];
+            context.fillStyle = context.strokeStyle;
             this.drawMatch(canvasMatches, matchIndex, pTile, qTile, context);
         }
 
@@ -229,10 +230,10 @@ JaneliaTile2.prototype.drawMatch = function(canvasMatches, matchIndex, pTile, qT
         const twoPI = Math.PI * 2;
         context.beginPath();
         context.arc(px, py, radius, 0, twoPI);
-        context.stroke();
+        context.fill();
         context.beginPath();
         context.arc(qx, qy, radius, 0, twoPI);
-        context.stroke();
+        context.fill();
     }
 };
 
@@ -632,6 +633,7 @@ JaneliaTileWithNeighbors.prototype.drawMatch = function(matchIndexDelta) {
             }
 
             context.strokeStyle = '#00ff00';
+            context.fillStyle = context.strokeStyle;
             context.lineWidth = 1;
 
             pTile.drawMatch(canvasMatches, pTile.matchIndex, pTile, qTile, context);
