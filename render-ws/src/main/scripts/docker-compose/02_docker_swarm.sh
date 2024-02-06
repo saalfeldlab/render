@@ -32,22 +32,32 @@ USAGE="USAGE:
   Other useful docker commands (not handled by this script):
 
   - Initialize the swarm with the current host as the manager (also prints join commands for other hosts):
-      docker swarm init                        # see https://docs.docker.com/engine/swarm/swarm-mode/
+      # see https://docs.docker.com/engine/swarm/swarm-mode/
+      docker swarm init
 
   - Force the current host to leave the swarm (forcing the last master to leave will destroy the swarm):
-      docker swarm leave --force               # see https://docs.docker.com/engine/reference/commandline/swarm_leave/
+      # see https://docs.docker.com/engine/reference/commandline/swarm_leave/
+      docker swarm leave --force
 
+  - Get the join token for a worker to join the swarm:
+      # see https://docs.docker.com/engine/reference/commandline/swarm_join-token/
+      docker swarm join-token worker
+      
   - Stop render-ws containers on each host in the swarm:
-      docker stack down ${SWARM_STACK_NAME}    # see https://docs.docker.com/engine/reference/commandline/stack_rm/
+      # see https://docs.docker.com/engine/reference/commandline/stack_rm/
+      docker stack down ${SWARM_STACK_NAME}
 
   - List the nodes in the swarm:
-      docker node ls                           # see https://docs.docker.com/engine/reference/commandline/node_ls/
+      # see https://docs.docker.com/engine/reference/commandline/node_ls/
+      docker node ls
 
   - List the tasks running on the current node in the swarm:
-      docker node ps                           # see https://docs.docker.com/engine/reference/commandline/node_ps/
+      # see https://docs.docker.com/engine/reference/commandline/node_ps/
+      docker node ps
 
   - List the services running in the swarm:
-      docker service ls                        # see https://docs.docker.com/engine/reference/commandline/service_ls/
+      # see https://docs.docker.com/engine/reference/commandline/service_ls/
+      docker service ls
 "
 
 if (( $# < 2 )) || [ "$1" != "up" ]; then
