@@ -1,0 +1,54 @@
+version: "3.9" # see https://docs.docker.com/compose/compose-file/compose-file-v3
+services:
+  render-ws:
+    image: ${RENDER_WS_IMAGE}
+    user: ${JETTY_RUN_AS_USER_AND_GROUP_IDS}
+    ports:
+      - "8080:8080"
+
+    # Specify configuration related to the deployment and running of services.
+    deploy:
+
+      # One instance of the service on every node in the swarm.
+      mode: global
+
+      # Docker assigns the service a virtual IP (VIP) that acts as the front end for clients to reach the service on a network.
+      # Docker ingress routing mesh routes requests between the client and available worker nodes for the service,
+      # without client knowledge of how many nodes are participating in the service or their IP addresses or ports.
+      endpoint_mode: vip
+
+      # Configures if and how to restart containers when they exit.
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 60s
+
+      # Configures how the service should be rolled back in case of a failing update.
+      rollback_config:
+        parallelism: 0  # The number of containers to rollback at a time. If set to 0, all containers rollback simultaneously.
+
+      # Configures how the service should be updated. Useful for configuring rolling updates.
+      update_config:
+        parallelism: 0  # The number of containers to update at a time.
+        failure_action: rollback
+        delay: 10s
+
+    # Configure a check that's run to determine if containers for this service are "healthy".
+    # See https://docs.docker.com/engine/reference/builder/#healthcheck
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/render-ws/v1/owners"]
+      interval: 5m
+      timeout: 60s
+      retries: 3
+      start_period: 1m
+
+    # Mount host paths or named volumes, specified as sub-options to a service.
+    volumes:
+      - ${LOCAL_RENDER_WS_LOGS_DIR}:/var/lib/jetty/logs
+      - /groups:/groups:ro,shared
+      - /nrs:/nrs:ro,shared
+
+    # Add environment variables from a file.
+    env_file:
+      - ${LOCAL_RENDER_WS_ENV_FILE}

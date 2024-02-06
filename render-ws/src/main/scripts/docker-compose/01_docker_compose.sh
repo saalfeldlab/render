@@ -26,7 +26,7 @@ if [ "${COMPOSE_CMD}" == "up-clean" ]; then
   COMPOSE_CMD="up"
 fi
 
-DOCKER_COMPOSE_YML="${LOCAL_RENDER_WS_BASE_DIR}/docker-compose.yml"
+DOCKER_COMPOSE_YML="${LOCAL_RENDER_WS_BASE_DIR}/docker-compose.standalone.yml"
 
 if [ ! -f "${DOCKER_COMPOSE_YML}" ]; then
   echo "ERROR: ${DOCKER_COMPOSE_YML} not found!"
