@@ -4,58 +4,56 @@
 
 set -e
 
-ABSOLUTE_SCRIPT=$(readlink -m $0)
-LOCAL_RENDER_WS_BASE_DIR=$(dirname ${ABSOLUTE_SCRIPT})
+ABSOLUTE_SCRIPT=$(readlink -m "${0}")
+LOCAL_RENDER_WS_BASE_DIR=$(dirname "${ABSOLUTE_SCRIPT}")
 
 # ---------------------------------------------
 # edit these variables for the current server
 
-SWARM_STACK_NAME="render-ws-swarm"
-export RENDER_WS_IMAGE="janelia-render:latest-ws"
 export JETTY_RUN_AS_USER_AND_GROUP_IDS="999:999"
 
 # ---------------------------------------------
 # everything below here should be left as is
 
-if (( $# == 0 )); then
-  BASENAME=$(basename "$0")
-  echo "USAGE: ${BASENAME} <init|up|down|force-leave|node-ls|node-ps>
+SWARM_STACK_NAME="render-swarm"
+BASENAME=$(basename "${0}")
+USAGE="USAGE: ${BASENAME} up <image>
 
-  init        - initialize the swarm with the current host as the manager
-                (after init, use docker swarm join on other hosts to add them to the swarm)
+  Starts the specified image (e.g. janelia-render-ws:latest-ws) in a docker swarm.
 
-  up          - start render-ws containers on each host in the swarm
-  down        - stop render-ws containers on each host in the swarm
+  The superfluous 'up' argument is required make it clear that this script only
+  starts up containers (or shows this usage message).
+  Containers should only be brought up after the swarm has been initialized and hosts have joined.
 
-  force-leave - force the current host to leave the swarm
-                (forcing the last master to leave will destroy the swarm)
+  Other useful docker commands (not handled by this script):
 
-  node-ls     - list the nodes in the swarm
-  node-ps     - List tasks running on current node in the swarm
+  - Initialize the swarm with the current host as the manager (also prints join commands for other hosts):
+      docker swarm init                        # see https://docs.docker.com/engine/swarm/swarm-mode/
+
+  - Force the current host to leave the swarm (forcing the last master to leave will destroy the swarm):
+      docker swarm leave --force               # see https://docs.docker.com/engine/reference/commandline/swarm_leave/
+
+  - Stop render-ws containers on each host in the swarm:
+      docker stack down ${SWARM_STACK_NAME}    # see https://docs.docker.com/engine/reference/commandline/stack_rm/
+
+  - List the nodes in the swarm:
+      docker node ls                           # see https://docs.docker.com/engine/reference/commandline/node_ls/
+
+  - List the tasks running on the current node in the swarm:
+      docker node ps                           # see https://docs.docker.com/engine/reference/commandline/node_ps/
+
+  - List the services running in the swarm:
+      docker service ls                        # see https://docs.docker.com/engine/reference/commandline/service_ls/
 "
+
+if (( $# != 2 )) || [ "$1" != "up" ]; then
+  echo "${USAGE}"
   exit 1
 fi
 
-SWARM_CMD="$1"
+export RENDER_WS_IMAGE="${1}"
 
-if [ "${SWARM_CMD}" == "init" ]; then           # see https://docs.docker.com/engine/swarm/swarm-mode/
-  docker swarm init
-  exit 0
-elif [ "${SWARM_CMD}" == "force-leave" ]; then  # see https://docs.docker.com/engine/reference/commandline/swarm_leave/
-  docker swarm leave --force
-  exit 0
-elif [ "${SWARM_CMD}" == "node-ls" ]; then      # see https://docs.docker.com/engine/reference/commandline/node_ls/
-  docker node ls
-  exit 0
-elif [ "${SWARM_CMD}" == "node-ps" ]; then      # see https://docs.docker.com/engine/reference/commandline/node_ps/
-  docker node ps
-  exit 0
-elif [ "${SWARM_CMD}" == "down" ]; then         # see https://docs.docker.com/engine/reference/commandline/stack_rm/
-  docker stack down "${SWARM_STACK_NAME}"
-  exit 0
-fi
-
-# else assume "up" ( see https://docs.docker.com/engine/reference/commandline/stack_deploy/ )
+# Running docker stack up ... ( see https://docs.docker.com/engine/reference/commandline/stack_deploy/ )
 
 DOCKER_COMPOSE_YML="${LOCAL_RENDER_WS_BASE_DIR}/docker-compose.swarm.yml"
 
