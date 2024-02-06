@@ -25,7 +25,7 @@ USAGE="USAGE:
 
   The 3-parameter <repository> <tag> variant allows for easy cut+paste from the output of docker images.
 
-  The superfluous 'up' argument is required make it clear that this script only
+  The superfluous 'up' argument is required to make it clear that this script only
   starts up containers (or shows this usage message).
   Containers should only be brought up after the swarm has been initialized and hosts have joined.
 
