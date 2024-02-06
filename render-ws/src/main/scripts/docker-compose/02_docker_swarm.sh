@@ -17,9 +17,13 @@ export JETTY_RUN_AS_USER_AND_GROUP_IDS="999:999"
 
 SWARM_STACK_NAME="render-swarm"
 BASENAME=$(basename "${0}")
-USAGE="USAGE: ${BASENAME} up <image>
+USAGE="USAGE:
+  ${BASENAME} up <render-ws-image>
+  ${BASENAME} up <render-ws-image repository> <render-ws-image tag>
 
   Starts the specified image (e.g. janelia-render-ws:latest-ws) in a docker swarm.
+
+  The 3-parameter <repository> <tag> variant allows for easy cut+paste from the output of docker images.
 
   The superfluous 'up' argument is required make it clear that this script only
   starts up containers (or shows this usage message).
@@ -46,12 +50,21 @@ USAGE="USAGE: ${BASENAME} up <image>
       docker service ls                        # see https://docs.docker.com/engine/reference/commandline/service_ls/
 "
 
-if (( $# != 2 )) || [ "$1" != "up" ]; then
+if (( $# < 2 )) || [ "$1" != "up" ]; then
   echo "${USAGE}"
   exit 1
 fi
 
-export RENDER_WS_IMAGE="${1}"
+if (( $# == 2 )); then
+  export RENDER_WS_IMAGE="${2}"
+else
+  export RENDER_WS_IMAGE="${2}:${3}"
+fi
+
+if [ "${JETTY_RUN_AS_USER_AND_GROUP_IDS}" == "999:999" ]; then
+  echo "ERROR: JETTY_RUN_AS_USER_AND_GROUP_IDS is still set to the default value of 999:999"
+  exit 1
+fi
 
 # Running docker stack up ... ( see https://docs.docker.com/engine/reference/commandline/stack_deploy/ )
 
