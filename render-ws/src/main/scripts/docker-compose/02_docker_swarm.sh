@@ -95,9 +95,9 @@ $(date) running:
   docker stack up --compose-file ${DOCKER_COMPOSE_YML} --prune --resolve-image always ${SWARM_STACK_NAME}
 "
 
-echo "${LAUNCH_INFO}" >> "${STACK_OUT_FILE}"
+echo "${LAUNCH_INFO}" >> "${SWARM_OUT_FILE}"
 
-nohup docker stack up --compose-file "${DOCKER_COMPOSE_YML}" --prune --resolve-image always "${SWARM_STACK_NAME}" >> "${STACK_OUT_FILE}" 2>&1 &
+nohup docker stack up --compose-file "${DOCKER_COMPOSE_YML}" --prune --resolve-image always "${SWARM_STACK_NAME}" >> "${SWARM_OUT_FILE}" 2>&1 &
 sleep 5
 
-docker ps -a | tee -a "${SWARM_OUT_FILE}"
+docker node ls | tee -a "${SWARM_OUT_FILE}"
