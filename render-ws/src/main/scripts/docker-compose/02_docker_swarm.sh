@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is for running the render-ws in a docker swarm.
+# This script is for running the render-ws containers in a docker swarm.
 
 set -e
 
@@ -19,33 +19,43 @@ export JETTY_RUN_AS_USER_AND_GROUP_IDS="999:999"
 
 if (( $# == 0 )); then
   BASENAME=$(basename "$0")
-  echo "USAGE: ${BASENAME} <init|up|down>
+  echo "USAGE: ${BASENAME} <init|up|down|force-leave|node-ls|node-ps>
 
-          init  - initialize the swarm with the current host as the manager
-                  (after init, use docker swarm join on other hosts to add them to the swarm)
-                  
-          up    - start render-ws containers on each host in the swarm
-          down  - stop render-ws containers on each host in the swarm
+  init        - initialize the swarm with the current host as the manager
+                (after init, use docker swarm join on other hosts to add them to the swarm)
+
+  up          - start render-ws containers on each host in the swarm
+  down        - stop render-ws containers on each host in the swarm
+
+  force-leave - force the current host to leave the swarm
+                (forcing the last master to leave will destroy the swarm)
+
+  node-ls     - list the nodes in the swarm
+  node-ps     - List tasks running on current node in the swarm
 "
   exit 1
 fi
 
 SWARM_CMD="$1"
 
-if [ "${SWARM_CMD}" == "init" ]; then
-  # see https://docs.docker.com/engine/swarm/swarm-mode/
+if [ "${SWARM_CMD}" == "init" ]; then           # see https://docs.docker.com/engine/swarm/swarm-mode/
   docker swarm init
   exit 0
-fi
-
-if [ "${SWARM_CMD}" == "down" ]; then
-  # see https://docs.docker.com/engine/reference/commandline/stack_rm/
+elif [ "${SWARM_CMD}" == "force-leave" ]; then  # see https://docs.docker.com/engine/reference/commandline/swarm_leave/
+  docker swarm leave --force
+  exit 0
+elif [ "${SWARM_CMD}" == "node-ls" ]; then      # see https://docs.docker.com/engine/reference/commandline/node_ls/
+  docker node ls
+  exit 0
+elif [ "${SWARM_CMD}" == "node-ps" ]; then      # see https://docs.docker.com/engine/reference/commandline/node_ps/
+  docker node ps
+  exit 0
+elif [ "${SWARM_CMD}" == "down" ]; then         # see https://docs.docker.com/engine/reference/commandline/stack_rm/
   docker stack down "${SWARM_STACK_NAME}"
   exit 0
 fi
 
-# else assume "up"
-# see https://docs.docker.com/engine/reference/commandline/stack_deploy/
+# else assume "up" ( see https://docs.docker.com/engine/reference/commandline/stack_deploy/ )
 
 DOCKER_COMPOSE_YML="${LOCAL_RENDER_WS_BASE_DIR}/docker-compose.swarm.yml"
 
