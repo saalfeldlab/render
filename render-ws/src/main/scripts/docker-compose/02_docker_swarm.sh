@@ -72,7 +72,8 @@ else
 fi
 
 if [ "${JETTY_RUN_AS_USER_AND_GROUP_IDS}" == "999:999" ]; then
-  echo "ERROR: JETTY_RUN_AS_USER_AND_GROUP_IDS is still set to the default value of 999:999"
+  echo "ERROR: JETTY_RUN_AS_USER_AND_GROUP_IDS is still set to the default value of 999:999.
+      Please edit this script to set the correct value for the current server."
   exit 1
 fi
 
