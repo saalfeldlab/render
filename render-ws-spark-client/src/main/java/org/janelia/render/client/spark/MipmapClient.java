@@ -21,6 +21,7 @@ import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,6 +95,11 @@ public class MipmapClient
     }
 
     /** Run the client with the specified spark context and parameters. */
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.GENERATE_MIPMAPS;
+    }
+
     private void generateMipmaps(final JavaSparkContext sparkContext,
                                  final Parameters clientParameters)
             throws IOException {

@@ -35,7 +35,11 @@ public class AlignmentPipelineParametersTest {
         final List<AlignmentPipelineStep> stepClients = pipelineParameters.buildStepClients();
         
         Assert.assertNotNull("stepClients is null", stepClients);
-        Assert.assertEquals("incorrect number of stepClients", 6, stepClients.size());
+        Assert.assertEquals("incorrect number of stepClients", 7, stepClients.size());
+
+        final AlignmentPipelineStep stepClient = stepClients.get(0);
+        Assert.assertEquals("first stepClient has incorrect defaultStepId",
+                            AlignmentPipelineStepId.GENERATE_MIPMAPS, stepClient.getDefaultStepId());
     }
 
     private AlignmentPipelineParameters loadTestParameters() throws IOException {

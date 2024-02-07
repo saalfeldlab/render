@@ -42,4 +42,8 @@ public interface AlignmentPipelineStep {
                          final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException;
 
+    /**
+     * @return the default identifier for this step.
+     */
+    AlignmentPipelineStepId getDefaultStepId();
 }

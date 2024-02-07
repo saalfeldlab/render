@@ -22,6 +22,7 @@ import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,6 +110,11 @@ public class UnconnectedCrossMFOVClient
         } else {
             LOG.info("runPipelineStep: all MFOVs in all stacks are connected");
         }
+    }
+
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.FIND_UNCONNECTED_MFOVS;
     }
 
     private List<UnconnectedMFOVPairsForStack> findUnconnectedMFOVs(final JavaSparkContext sparkContext,

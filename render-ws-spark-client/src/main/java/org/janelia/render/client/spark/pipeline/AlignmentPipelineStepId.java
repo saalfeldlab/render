@@ -9,6 +9,7 @@ import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
 import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
 import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
 import org.janelia.render.client.spark.newsolver.DistributedAffineBlockSolverClient;
+import org.janelia.render.client.spark.newsolver.DistributedIntensityCorrectionBlockSolverClient;
 import org.janelia.render.client.spark.zspacing.ZPositionCorrectionClient;
 
 /**
@@ -25,7 +26,8 @@ public enum AlignmentPipelineStepId {
     FIND_UNCONNECTED_TILES_AND_EDGES(ClusterCountClient::new),
     FILTER_MATCHES(CopyMatchClient::new),
     ALIGN_TILES(DistributedAffineBlockSolverClient::new),
-    CORRECT_Z_POSITIONS(ZPositionCorrectionClient::new);
+    CORRECT_Z_POSITIONS(ZPositionCorrectionClient::new),
+    CORRECT_INTENSITY(DistributedIntensityCorrectionBlockSolverClient::new);
 
     private final Supplier<AlignmentPipelineStep> stepClientSupplier;
 

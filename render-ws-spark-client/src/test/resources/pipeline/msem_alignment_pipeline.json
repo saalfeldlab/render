@@ -25,7 +25,8 @@
     "PATCH_MFOV_MONTAGE_MATCHES",
     "FIND_UNCONNECTED_MFOVS",
     "FILTER_MATCHES",
-    "ALIGN_TILES"
+    "ALIGN_TILES",
+    "CORRECT_INTENSITY"
   ],
   "mipmap" : {
     "rootDirectory" : "/nrs/hess/data/hess_wafer_53/mipmaps",
@@ -350,15 +351,16 @@
       "maxIterationsGlobal": 1000,
       "maxPlateauWidthGlobal": 200,
       "threadsWorker": 2,
-      "threadsGlobal": 44
+      "threadsGlobal": 2,
+      "deriveThreadsUsingSparkConfig" : true
     },
     "targetStack": {
       "stackSuffix": "_align",
       "completeStack": true
     },
     "blockPartition": {
-      "sizeX": 7000,
-      "sizeY": 6000
+      "sizeX": 9000,
+      "sizeY": 9000
     },
     "blockOptimizer": {
       "lambdasRigid": [ 1.0, 1.0, 0.9, 0.3, 0.01 ],
@@ -371,6 +373,37 @@
     "alternatingRuns": {
       "nRuns": 4,
       "keepIntermediateStacks": false
+    }
+  },
+  "intensityCorrectionSetup": {
+    "distributedSolve" : {
+      "maxAllowedErrorGlobal" : 10.0,
+      "maxIterationsGlobal" : 10000,
+      "maxPlateauWidthGlobal" : 500,
+      "threadsWorker" : 2,
+      "threadsGlobal" : 2,
+      "deriveThreadsUsingSparkConfig" : true
+    },
+    "intensityAdjust" : {
+      "lambda1" : 0.01,
+      "lambda2" : 0.01,
+      "maxPixelCacheGb" : 1,
+      "renderScale" : 0.1,
+      "zDistance" : {
+        "simpleZDistance" : [
+          1
+        ]
+      },
+      "numCoefficients" : 8,
+      "equilibrationWeight" : 0.0
+    },
+    "targetStack": {
+      "stackSuffix": "_ic",
+      "completeStack": true
+    },
+    "blockPartition": {
+      "sizeX": 9000,
+      "sizeY": 9000
     }
   }
 }

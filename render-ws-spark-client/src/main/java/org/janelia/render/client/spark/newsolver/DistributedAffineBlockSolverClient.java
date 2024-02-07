@@ -32,6 +32,7 @@ import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,6 +139,11 @@ public class DistributedAffineBlockSolverClient
 
         }
 
+    }
+
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.ALIGN_TILES;
     }
 
     @Nonnull
