@@ -73,14 +73,14 @@ public class DistributedIntensityCorrectionBlockSolverClient
 		final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
 		try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
 			LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
-			alignSetupList(sparkContext, Collections.singletonList(intensityCorrectionSetup));
+			intensityCorrectSetupList(sparkContext, Collections.singletonList(intensityCorrectionSetup));
 		}
 	}
 
-	private void alignSetupList(final JavaSparkContext sparkContext, final List<IntensityCorrectionSetup> setupList)
+	private void intensityCorrectSetupList(final JavaSparkContext sparkContext, final List<IntensityCorrectionSetup> setupList)
 			throws IOException {
 
-		LOG.info("alignSetupList: entry, setupList={}", setupList);
+		LOG.info("intensityCorrectSetupList: entry, setupList={}", setupList);
 
 		final List<DistributedSolveParameters> solveParameters = setupList.stream()
 				.map(setup -> setup.distributedSolve)
@@ -105,7 +105,7 @@ public class DistributedIntensityCorrectionBlockSolverClient
 			globallySolveOneSetup(setupList, 0, solverList, outputBlocks);
 		}
 
-		LOG.info("alignSetupList: exit");
+		LOG.info("intensityCorrectSetupList: exit");
 	}
 
 	private static void buildSolversAndInputBlocks(final List<IntensityCorrectionSetup> setupList,
@@ -274,7 +274,7 @@ public class DistributedIntensityCorrectionBlockSolverClient
 
 		if (nRuns == 1) {
 
-			intensityCorrectionSolverClient.alignSetupList(sparkContext, setupList);
+			intensityCorrectionSolverClient.intensityCorrectSetupList(sparkContext, setupList);
 
 		} else {
 
@@ -288,7 +288,7 @@ public class DistributedIntensityCorrectionBlockSolverClient
 				final List<IntensityCorrectionSetup> setupListForRun = setupListsForRuns.get(runIndex);
 
 				// align all stacks for this run
-				intensityCorrectionSolverClient.alignSetupList(sparkContext, setupListForRun);
+				intensityCorrectionSolverClient.intensityCorrectSetupList(sparkContext, setupListForRun);
 
 				// clean-up intermediate stacks for prior runs if requested
 				if (cleanUpIntermediateStacks && (runIndex > 0)) {
