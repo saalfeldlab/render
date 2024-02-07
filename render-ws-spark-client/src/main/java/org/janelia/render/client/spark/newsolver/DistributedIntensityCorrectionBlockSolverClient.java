@@ -13,6 +13,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.DistributedIntensityCorrectionSolver;
+import org.janelia.render.client.newsolver.AlternatingSolveUtils;
 import org.janelia.render.client.newsolver.setup.DistributedSolveParameters;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
@@ -84,7 +85,7 @@ public class DistributedIntensityCorrectionBlockSolverClient
 		final List<DistributedSolveParameters> solveParameters = setupList.stream()
 				.map(setup -> setup.distributedSolve)
 				.collect(Collectors.toList());
-		final int parallelism = DistributedSolveUtils.deriveParallelismValues(sparkContext, solveParameters);
+		final int parallelism = SparkDistributedSolveUtils.deriveParallelismValues(sparkContext, solveParameters);
 
 		final List<DistributedIntensityCorrectionSolver> solverList = new ArrayList<>();
 		final List<Tuple2<Integer, BlockData<ArrayList<AffineModel1D>, ?>>> inputBlocksWithSetupIndexes = new ArrayList<>();
@@ -295,7 +296,7 @@ public class DistributedIntensityCorrectionBlockSolverClient
 				// clean-up intermediate stacks for prior runs if requested
 				if (cleanUpIntermediateStacks && (runIndex > 0)) {
 					setupListForRun.forEach(
-							s -> DistributedSolveUtils.cleanUpIntermediateStack(s.renderWeb,
+							s -> AlternatingSolveUtils.cleanUpIntermediateStack(s.renderWeb,
 																				s.intensityAdjust.stack));
 				}
 			}
@@ -321,7 +322,7 @@ public class DistributedIntensityCorrectionBlockSolverClient
 
 				final IntensityCorrectionSetup runSetup = updatedSetup.clone();
 				runSetup.intensityAdjust.stack = runSourceStack;
-				runSetup.targetStack.stack = DistributedSolveUtils.getStackNameForRun(originalTargetStack,
+				runSetup.targetStack.stack = AlternatingSolveUtils.getStackNameForRun(originalTargetStack,
 																					  runNumber,
 																					  nRuns);
 				updateParameters(runSetup, runNumber);

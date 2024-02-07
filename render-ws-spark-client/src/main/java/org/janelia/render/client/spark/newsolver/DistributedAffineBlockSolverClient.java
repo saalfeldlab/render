@@ -24,7 +24,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.DistributedAffineBlockSolver;
-import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
+import org.janelia.render.client.newsolver.AlternatingSolveUtils;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.DistributedSolveParameters;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
@@ -131,7 +131,7 @@ public class DistributedAffineBlockSolverClient
 
                 // clean-up intermediate stacks for prior runs if requested
                 if (cleanUpIntermediateStacks && (runIndex > 0)) {
-                    setupListForRun.forEach(s -> DistributedSolveUtils.cleanUpIntermediateStack(s.renderWeb,
+                    setupListForRun.forEach(s -> AlternatingSolveUtils.cleanUpIntermediateStack(s.renderWeb,
                                                                                                 s.stack));
                 }
             }
@@ -158,10 +158,10 @@ public class DistributedAffineBlockSolverClient
 
                 final AffineBlockSolverSetup runSetup = updatedSetup.clone();
                 runSetup.stack = runSourceStack;
-                runSetup.targetStack.stack = DistributedSolveUtils.getStackNameForRun(originalTargetStack,
+                runSetup.targetStack.stack = AlternatingSolveUtils.getStackNameForRun(originalTargetStack,
                                                                                       runNumber,
                                                                                       nRuns);
-                updateParameters(runSetup, runNumber);
+                AlternatingSolveUtils.updateParametersForNextRun(runSetup, runNumber);
 
                 setupListForRun.add(runSetup);
 
@@ -184,7 +184,7 @@ public class DistributedAffineBlockSolverClient
         final List<DistributedSolveParameters> solveParameters = setupList.stream()
                 .map(setup -> setup.distributedSolve)
                 .collect(Collectors.toList());
-        final int parallelism = DistributedSolveUtils.deriveParallelismValues(sparkContext, solveParameters);
+        final int parallelism = SparkDistributedSolveUtils.deriveParallelismValues(sparkContext, solveParameters);
 
         final List<DistributedAffineBlockSolver> solverList = new ArrayList<>();
         final List<Tuple2<Integer, BlockData<AffineModel2D, ?>>> inputBlocksWithSetupIndexes = new ArrayList<>();
@@ -205,19 +205,6 @@ public class DistributedAffineBlockSolverClient
         }
 
         LOG.info("alignSetupList: exit");
-    }
-
-    // TODO: these methods are very close to those in ADDSolverClient, need to refactor to reuse as much as possible
-
-    private static void updateParameters(final AffineBlockSolverSetup parameters, final int runNumber) {
-        // alternate block layout
-        parameters.blockPartition.shiftBlocks = (runNumber % 2 == 1);
-
-        // don't stitch or pre-align after first run
-        if (runNumber > 1) {
-            parameters.stitchFirst = false;
-            parameters.preAlign = FIBSEMAlignmentParameters.PreAlign.NONE;
-        }
     }
 
     private static void buildSolversAndInputBlocks(final List<AffineBlockSolverSetup> setupList,
