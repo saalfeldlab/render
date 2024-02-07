@@ -11,10 +11,23 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.List;
 
-public abstract class DistributedAlternatingDomainDecompositionSolver {
+/**
+ * Common shared utilities for distributed alignment or intensity correction runs.
+ */
+public class DistributedSolveUtils {
 
-	protected static int deriveParallelismValues(final JavaSparkContext sparkContext,
-												 final List<DistributedSolveParameters> solveParameters) {
+	/**
+	 * If requested in the solve parameters, derive the parallelism value to use for the run
+	 * based upon the current spark context and a goal of each spark task using all cores on an executor.
+     * Otherwise, use the default parallelism value from the spark context.
+	 *
+	 * @param  sparkContext         the current spark context.
+	 * @param  solveParametersList  list of parameters for each solve in the run.
+	 *
+	 * @return spark parallelism value to use for the run.
+	 */
+	public static int deriveParallelismValues(final JavaSparkContext sparkContext,
+											  final List<DistributedSolveParameters> solveParametersList) {
 
 		// From https://spark.apache.org/docs/3.4.1/configuration.html#execution-behavior ...
 		//   For these cluster managers, spark.default.parallelism is:
@@ -22,7 +35,7 @@ public abstract class DistributedAlternatingDomainDecompositionSolver {
 		//   - Mesos fine grained mode: 8
 		//   - Others: total number of cores on all executor nodes or 2, whichever is larger.
 		int parallelism = sparkContext.defaultParallelism();
-		final DistributedSolveParameters firstSolveParameters = solveParameters.get(0);
+		final DistributedSolveParameters firstSolveParameters = solveParametersList.get(0);
 
 		LOG.info("deriveParallelismValues: entry, threadsGlobal={}, threadsWorker={}, parallelism={}",
 				 firstSolveParameters.threadsGlobal, firstSolveParameters.threadsWorker, parallelism);
@@ -35,9 +48,9 @@ public abstract class DistributedAlternatingDomainDecompositionSolver {
 
 			// If only one setup, global solve will be run on driver so set threadsGlobal to driver core count.
 			// Otherwise, global solve is run on executors so set threadsGlobal to executor core count.
-			final int threadsGlobal = solveParameters.size() == 1 ? driverCores : executorCores;
+			final int threadsGlobal = solveParametersList.size() == 1 ? driverCores : executorCores;
 
-			solveParameters.forEach(param -> {
+			solveParametersList.forEach(param -> {
 				param.threadsGlobal = threadsGlobal;
 				param.threadsWorker = executorCores;
 			});
@@ -63,7 +76,11 @@ public abstract class DistributedAlternatingDomainDecompositionSolver {
 		return parallelism;
 	}
 
-	protected static void cleanUpIntermediateStack(final RenderWebServiceParameters renderWeb, final String stack) {
+    /**
+     * Tries to remove the specified stack and simply logs an error if that fails.
+     */
+	public static void cleanUpIntermediateStack(final RenderWebServiceParameters renderWeb,
+                                                final String stack) {
 		final RenderDataClient dataClient = renderWeb.getDataClient();
 		try {
 			dataClient.deleteStack(stack, null);
@@ -73,13 +90,11 @@ public abstract class DistributedAlternatingDomainDecompositionSolver {
 		}
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(DistributedAlternatingDomainDecompositionSolver.class);
+	public static String getStackNameForRun(final String name,
+                                            final int runNumber,
+                                            final int nTotalRuns) {
+        return runNumber == nTotalRuns ? name : name + "_run" + runNumber;
+    }
 
-	protected static String getStackName(final String name, final int runNumber, final int nTotalRuns) {
-		if (runNumber == nTotalRuns) {
-			return name;
-		} else {
-			return name + "_run" + runNumber;
-		}
-	}
+	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveUtils.class);
 }
