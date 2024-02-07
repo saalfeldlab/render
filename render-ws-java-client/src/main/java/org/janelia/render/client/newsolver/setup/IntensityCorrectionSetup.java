@@ -63,23 +63,13 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 	}
 
 	/**
-	 * @param  baseDataUrl                            base web service URL for data.
-	 * @param  stackWithZValues                       identifies stack and z layers to align.
+	 * @param  baseDataUrl       base web service URL for data.
+	 * @param  stackWithZValues  identifies stack and z layers to align.
 	 *
-	 * @param  deriveMatchCollectionNamesFromProject  indicates whether derived match collection names
-	 *                                                should be derived from the stack's project
-	 *                                                (default is to derive from stack name).
-	 *
-	 * @param  matchSuffix                            suffix to append to derived match collection names
-	 *                                                (specify empty string to omit suffix).
-	 *                                                Suffix is needed when match aggregation is performed
-	 *                                                by an earlier pipeline step.
 	 * @return a clone of this setup populated with the specified parameters.
 	 */
 	public IntensityCorrectionSetup buildPipelineClone(final String baseDataUrl,
-													   final StackWithZValues stackWithZValues,
-													   final boolean deriveMatchCollectionNamesFromProject,
-													   final String matchSuffix) {
+													   final StackWithZValues stackWithZValues) {
 
 		final IntensityCorrectionSetup clone = clone();
 

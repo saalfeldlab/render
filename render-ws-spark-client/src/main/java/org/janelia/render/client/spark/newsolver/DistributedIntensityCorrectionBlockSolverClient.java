@@ -265,12 +265,9 @@ public class DistributedIntensityCorrectionBlockSolverClient
 		final int nRuns = setup.alternatingRuns.nRuns;
 		final boolean cleanUpIntermediateStacks = ! setup.alternatingRuns.keepIntermediateStacks;
 
-		final String matchSuffix = pipelineParameters.getMatchCopyToCollectionSuffix();
 		for (final StackWithZValues stackWithZValues : stackList) {
 			setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
-												   stackWithZValues,
-												   multiProject.deriveMatchCollectionNamesFromProject,
-												   matchSuffix));
+												   stackWithZValues));
 		}
 
 		final DistributedIntensityCorrectionBlockSolverClient intensityCorrectionSolverClient = new DistributedIntensityCorrectionBlockSolverClient();
