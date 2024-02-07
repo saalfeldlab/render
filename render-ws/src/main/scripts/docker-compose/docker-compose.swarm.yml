@@ -13,7 +13,7 @@ services:
       mode: global
 
       # Docker assigns the service a virtual IP (VIP) that acts as the front end for clients to reach the service on a network.
-      # Docker ingress routing mesh routes requests between the client and available worker nodes for the service,
+      # Using its ingress routing mesh, Docker routes requests between the client and available worker nodes for the service,
       # without client knowledge of how many nodes are participating in the service or their IP addresses or ports.
       endpoint_mode: vip
 
