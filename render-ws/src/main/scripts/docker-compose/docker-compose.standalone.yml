@@ -1,4 +1,4 @@
-version: "3.9"
+version: "3.9" # see https://docs.docker.com/compose/compose-file/compose-file-v3
 services:
   render-ws:
     image: ${RENDER_WS_IMAGE}

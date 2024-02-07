@@ -20,7 +20,7 @@
       <Arg>
         <Property name="jetty.requestlog.formatString">
           <Default>
-            %{client}a - %u %{dd/MMM/yyyy:HH:mm:ss ZZZ}t "%r" %s %{CLF}O "%{Referer}i" "%{User-Agent}i" [%{ms}T ms]
+            %{client}a - %u %{dd/MMM/yyyy:HH:mm:ss ZZZ|America/New_York}t "%r" %s %{CLF}O "%{Referer}i" "%{User-Agent}i" [%{ms}T ms]
           </Default>
         </Property>
       </Arg>
