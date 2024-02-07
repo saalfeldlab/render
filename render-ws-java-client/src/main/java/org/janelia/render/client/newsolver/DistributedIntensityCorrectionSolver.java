@@ -31,6 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -45,10 +46,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import static org.janelia.render.client.newsolver.DistributedAffineBlockSolver.getRandomIndex;
 
 
-public class DistributedIntensityCorrectionSolver {
+public class DistributedIntensityCorrectionSolver implements Serializable {
 	final IntensityCorrectionSetup solverSetup;
 	final RenderSetup renderSetup;
-	BlockCollection<?, ArrayList<AffineModel1D>, ? extends FIBSEMIntensityCorrectionParameters<?>> blocks;
 	BlockFactory blockFactory;
 
 	public DistributedIntensityCorrectionSolver(
@@ -107,7 +107,7 @@ public class DistributedIntensityCorrectionSolver {
 
 		final ResultContainer<ArrayList<AffineModel1D>> finalizedItems = solver.assembleBlocks(allItems);
 
-		saveResultsAsNeeded(finalizedItems, solver.solverSetup);
+		saveResultsAsNeeded(finalizedItems, cmdLineSetup);
 	}
 
 	public ArrayList<BlockData<ArrayList<AffineModel1D>, ?>> solveBlocksUsingThreadPool(final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection) {
@@ -330,11 +330,7 @@ public class DistributedIntensityCorrectionSolver {
 	public <M> BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> setupSolve() {
 		this.blockFactory = BlockFactory.fromBlockSizes(renderSetup.getBounds(), solverSetup.blockPartition);
 		final FIBSEMIntensityCorrectionParameters<M> defaultSolveParams = getDefaultParameters();
-		final BlockCollection<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> col =
-				blockFactory.defineBlockCollection(() -> defaultSolveParams, solverSetup.blockPartition.shiftBlocks);
-
-		this.blocks = col;
-		return col;
+		return blockFactory.defineBlockCollection(() -> defaultSolveParams, solverSetup.blockPartition.shiftBlocks);
 	}
 
 	protected <M> FIBSEMIntensityCorrectionParameters<M> getDefaultParameters() {
