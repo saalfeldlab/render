@@ -42,4 +42,10 @@ public class ZRangeParameters
                           maxZ == null ? defaultBounds.getMaxZ() : Math.min(maxZ, defaultBounds.getMaxZ()));
     }
 
+    @Override
+    public String toString() {
+        return "{minZ=" + minZ +
+               ", maxZ=" + maxZ +
+               '}';
+    }
 }
