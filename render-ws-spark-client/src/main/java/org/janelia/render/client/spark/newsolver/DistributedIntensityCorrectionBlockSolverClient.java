@@ -259,7 +259,7 @@ public class DistributedIntensityCorrectionBlockSolverClient
 	public void runPipelineStep(final JavaSparkContext sparkContext, final AlignmentPipelineParameters pipelineParameters)
 			throws IllegalArgumentException, IOException {
 
-		final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
+		final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(pipelineParameters.getAlignedNamingGroup());
 		final List<IntensityCorrectionSetup> setupList = new ArrayList<>();
 		final IntensityCorrectionSetup setup = pipelineParameters.getIntensityCorrectionSetup();
 		final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();

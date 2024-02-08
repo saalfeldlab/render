@@ -1015,6 +1015,50 @@ public class RenderDataClient {
 
     /**
      * @param  stack           name of stack.
+     * @param  minZ            minimum z value for all tiles (or null for no minimum).
+     * @param  maxZ            maximum z value for all tiles (or null for no maximum).
+     * @param  groupId         group id for all tiles (or null).
+     * @param  minX            minimum x value for all tiles (or null for no minimum).
+     * @param  maxX            maximum x value for all tiles (or null for no maximum).
+     * @param  minY            minimum y value for all tiles (or null for no minimum).
+     * @param  maxY            maximum y value for all tiles (or null for no maximum).
+     * @param  matchPattern    only return tiles with ids that match this pattern (null for all tiles).
+     * @param  handleNotFound  if true, return empty object when 404 is returned for request instead of just raising exception.
+     *
+     * @return the set of resolved tiles and transforms that match the specified criteria.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public ResolvedTileSpecCollection getResolvedTiles(final String stack,
+                                                       final Double minZ,
+                                                       final Double maxZ,
+                                                       final String groupId,
+                                                       final Double minX,
+                                                       final Double maxX,
+                                                       final Double minY,
+                                                       final Double maxY,
+                                                       final String matchPattern,
+                                                       final boolean handleNotFound)
+            throws IOException {
+
+        ResolvedTileSpecCollection result;
+        try {
+            result = getResolvedTiles(stack, minZ, maxZ, groupId, minX, maxX, minY, maxY, matchPattern);
+        } catch (final IOException e) {
+            final String msg = e.getMessage();
+            if (handleNotFound && (msg != null) && msg.contains(EXCEPTION_MSG_PREFIX_FOR_404)) {
+                LOG.info("getResolvedTiles: handling request exception: {}", msg);
+                result = new ResolvedTileSpecCollection(new ArrayList<>(), new ArrayList<>());
+            } else {
+                throw e;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * @param  stack           name of stack.
      * @param  bounds          optional bounds values for all tiles (null to exclude bounds).
      * @param  collectionName  name of match collection.
      * @param  groupId         group id for all tiles (or null).
