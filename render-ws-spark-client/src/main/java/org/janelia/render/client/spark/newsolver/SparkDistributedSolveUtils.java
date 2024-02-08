@@ -70,7 +70,7 @@ public class SparkDistributedSolveUtils {
 
 			solveParametersList.forEach(param -> {
 				param.threadsGlobal = threadsGlobal;
-				param.threadsWorker = executorCores;
+				param.threadsWorker = threadsWorker;
 			});
 
 			try {
