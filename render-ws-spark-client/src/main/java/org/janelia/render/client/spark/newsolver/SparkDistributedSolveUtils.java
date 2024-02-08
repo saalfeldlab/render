@@ -43,9 +43,30 @@ public class SparkDistributedSolveUtils {
 			final int driverCores = sparkConf.getInt("spark.driver.cores", 1);
 			final int executorCores = sparkConf.getInt("spark.executor.cores", 1);
 
-			// If only one setup, global solve will be run on driver so set threadsGlobal to driver core count.
-			// Otherwise, global solve is run on executors so set threadsGlobal to executor core count.
-			final int threadsGlobal = solveParametersList.size() == 1 ? driverCores : executorCores;
+			// TODO: fix thread count padding and warnings if/when tile optimizer is improved
+			final int threadsWorker;
+			if (executorCores < 3) {
+				LOG.warn("deriveParallelismValues: recommend at least 3 executor cores for optimization (you have {})",
+						 executorCores);
+				threadsWorker = executorCores;
+			} else {
+				threadsWorker = executorCores - 1;  // leave one core for the scheduler
+			}
+
+			final int threadsGlobal;
+			if (solveParametersList.size() > 1) {
+				// Multiple setups, so global solves will be run on executors.
+				threadsGlobal = threadsWorker;
+			} else {
+				// Only one setup, so global solve will be run on driver.
+				if (driverCores < 3) {
+					LOG.warn("deriveParallelismValues: recommend at least 3 driver cores for optimization (you have {})",
+							 driverCores);
+					threadsGlobal = driverCores;
+				} else {
+				    threadsGlobal = driverCores - 1;  // leave one core for the scheduler
+				}
+			}
 
 			solveParametersList.forEach(param -> {
 				param.threadsGlobal = threadsGlobal;
