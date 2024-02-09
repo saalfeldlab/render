@@ -78,6 +78,29 @@ public class ConfigurableStreakCorrectorTest {
             "23-11-01_072630_0-0-0.3598.0.tif"  // 2nA_3p0MHz, region might be a little too tall in y
     };
 
+    public static final int[][] HUM_AIRWAY_REGIONS_TO_CLEAR = {
+            // x, y, w, h
+            {0, 4089, 5200, 12},
+            {5200, 4089, 500, 12},
+            {5700, 4085, 202, 20},
+            {5902, 4091, 186, 8},
+            {6088, 4093, 71, 4}
+    };
+
+    public static final ConfigurableMaskStreakCorrector HUM_AIRWAY_CORRECTOR =
+            new ConfigurableMaskStreakCorrector(8,
+                                                6161,
+                                                8190,
+                                                0,
+                                                0,
+                                                HUM_AIRWAY_REGIONS_TO_CLEAR);
+
+    public static final String[] HUM_AIRWAY_FILE_NAMES = {
+            "23-12-04_185805_0-0-0.4664.0.tif",
+            "23-12-04_185805_0-0-1.4664.0.tif",
+            "23-12-04_185805_0-0-2.4664.0.tif"
+    };
+
     @Test
     public void testParameterSerializationAndParsing() {
 
@@ -105,9 +128,28 @@ public class ConfigurableStreakCorrectorTest {
 
         new ImageJ();
 
-        final String toughResinSrcPath = getToughResinPath(0); // change index to test different images
-        displayStreakCorrection(toughResinSrcPath,
-                                TOUGH_RESIN_CORRECTOR,
+/*
+#!/bin/bash
+
+# Shell script to render raw source images for testing streak correction.
+
+mkdir raw-images
+
+TILE_URL_SUFFIX="tiff-image?excludeMask=true&excludeAllTransforms=true"
+
+TILE_IDS="23-12-04_185805_0-0-0.4664.0 23-12-04_185805_0-0-1.4664.0 23-12-04_185805_0-0-2.4664.0"
+
+for TILE_ID in ${TILE_IDS}; do
+  TILE_URL="http://renderer.int.janelia.org:8080/render-ws/v1/owner/cellmap/project/jrc_hum_airway_14953vc/stack/v1_acquire/tile/${TILE_ID}/${TILE_URL_SUFFIX}"
+  curl -o raw-images/${TILE_ID}.tif "${TILE_URL}"
+done
+*/
+
+        final String srcPath = "/Users/trautmane/Desktop/cellmap_cosem/jrc_hum-airway-14953vc/raw-images/" +
+                               HUM_AIRWAY_FILE_NAMES[0]; // change file names index to test different images
+
+        displayStreakCorrection(srcPath,
+                                HUM_AIRWAY_CORRECTOR,
                                 true);
     }
 
@@ -116,12 +158,13 @@ public class ConfigurableStreakCorrectorTest {
                                                final boolean displayCorrectionData) {
 
         final ImagePlus imp = new ImagePlus(srcPath);
-        imp.setProcessor(imp.getProcessor().convertToByteProcessor());
 
         if (displayCorrectionData) {
 
+            imp.setProcessor(imp.getProcessor().convertToFloat());
+
             // original code from Preibisch that displays correction data
-            final Img<UnsignedByteType> img = ImageJFunctions.wrapByte(imp);
+            final Img<FloatType> img = ImageJFunctions.wrapFloat(imp);
 
             ImageJFunctions.show( img ).setTitle( "input" );
             final double avg = StreakCorrector.avgIntensity(img);
@@ -132,7 +175,7 @@ public class ConfigurableStreakCorrectorTest {
             final boolean showFFTAndBandpass = true;
 
             // remove streaking (but it'll introduce a wave pattern)
-            final Img<UnsignedByteType> imgCorr = corrector.fftBandpassCorrection(img, showFFTAndBandpass);
+            final Img<FloatType> imgCorr = corrector.fftBandpassCorrection(img, showFFTAndBandpass);
 
             // create the wave pattern introduced by the filtering above
             final Img<FloatType> patternCorr = corrector.createPattern(imgCorr.dimensionsAsLongArray(), avg);
