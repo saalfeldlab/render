@@ -108,6 +108,11 @@ public class StackIdWithZParameters
         }
         final List<StackWithZValues> batchedList = new ArrayList<>();
         final List<StackId> stackIdList = getStackIdList(renderDataClient);
+
+        if (stackIdList.isEmpty()) {
+            throw new IllegalArgumentException("no stacks match parameters: " + this);
+        }
+
         for (final StackId stackId : stackIdList) {
             final RenderDataClient projectClient = renderDataClient.buildClientForProject(stackId.getProject());
             final List<Double> stackZValues = projectClient.getStackZValues(stackId.getStack(),
@@ -130,10 +135,22 @@ public class StackIdWithZParameters
         }
 
         if (batchedList.isEmpty()) {
-            throw new IllegalArgumentException("no stack z-layers match parameters");
+            throw new IllegalArgumentException("no stack z-layers match parameters: " + this);
         }
 
         return batchedList;
+    }
+
+    @Override
+    public String toString() {
+        return "{projectPattern='" + projectPattern + '\'' +
+               ", stackNames=" + stackNames +
+               ", stackPattern='" + stackPattern + '\'' +
+               ", layerRange=" + layerRange +
+               ", zValues=" + zValues +
+               ", zValuesPerBatch=" + zValuesPerBatch +
+               ", namingGroup=" + namingGroup +
+               '}';
     }
 
     private List<StackId> getEligibleStackIds(final RenderDataClient renderDataClient)

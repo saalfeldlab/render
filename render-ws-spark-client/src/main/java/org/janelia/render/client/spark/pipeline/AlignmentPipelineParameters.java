@@ -13,6 +13,7 @@ import org.janelia.alignment.spec.stack.PipelineStackIdNamingGroups;
 import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
+import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
@@ -42,11 +43,13 @@ public class AlignmentPipelineParameters
     private final TileClusterParameters tileCluster;
     private final MatchCopyParameters matchCopy;
     private final AffineBlockSolverSetup affineBlockSolverSetup;
+    private final IntensityCorrectionSetup intensityCorrectionSetup;
     private final ZSpacingParameters zSpacing;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -69,6 +72,7 @@ public class AlignmentPipelineParameters
                                        final TileClusterParameters tileCluster,
                                        final MatchCopyParameters matchCopy,
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
+                                       final IntensityCorrectionSetup intensityCorrectionSetup,
                                        final ZSpacingParameters zSpacing) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
@@ -80,6 +84,7 @@ public class AlignmentPipelineParameters
         this.tileCluster = tileCluster;
         this.matchCopy = matchCopy;
         this.affineBlockSolverSetup = affineBlockSolverSetup;
+        this.intensityCorrectionSetup = intensityCorrectionSetup;
         this.zSpacing = zSpacing;
     }
 
@@ -130,6 +135,10 @@ public class AlignmentPipelineParameters
 
     public AffineBlockSolverSetup getAffineBlockSolverSetup() {
         return affineBlockSolverSetup;
+    }
+
+    public IntensityCorrectionSetup getIntensityCorrectionSetup() {
+        return intensityCorrectionSetup;
     }
 
     public ZSpacingParameters getZSpacing() {

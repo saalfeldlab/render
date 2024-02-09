@@ -21,6 +21,7 @@ import org.janelia.render.client.parameter.ZSpacingParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.janelia.render.client.zspacing.CrossCorrelationData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,6 +122,11 @@ public class ZPositionCorrectionClient
         clientParameters.multiProject = pipelineParameters.getMultiProject(pipelineParameters.getAlignedNamingGroup());
         clientParameters.zSpacing = pipelineParameters.getZSpacing();
         deriveAndSolveCrossCorrelationData(sparkContext, clientParameters);
+    }
+
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.CORRECT_Z_POSITIONS;
     }
 
     private void deriveAndSolveCrossCorrelationData(final JavaSparkContext sparkContext,

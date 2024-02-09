@@ -20,6 +20,16 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+
+/*
+ * Class for matching the intensity of two tiles. After matching, the tiles are
+ * connected and the matches are filtered. Tiles within the same layer (i.e.,
+ * partially overlapping) can be downscaled differently from tiles in different
+ * layers (i.e., almost completely overlapping).
+ * Also, computation of averages for a tile is done here.
+ *
+ * @author Michael Innerberger
+ */
 class IntensityMatcher {
 	final private PointMatchFilter filter;
 	final private double sameLayerScale;

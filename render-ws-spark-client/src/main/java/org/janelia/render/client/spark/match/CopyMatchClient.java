@@ -22,6 +22,7 @@ import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,6 +95,11 @@ public class CopyMatchClient
         final Parameters clientParameters = new Parameters(pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup()),
                                                            pipelineParameters.getMatchCopy());
         copyMatches(sparkContext, clientParameters);
+    }
+
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.FILTER_MATCHES;
     }
 
     private void copyMatches(final JavaSparkContext sparkContext,

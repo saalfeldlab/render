@@ -110,7 +110,7 @@ public class IntensityCorrectionClient
         LOG.info("runWithContext: computed {} blocks", allItems.size());
 
         final ResultContainer<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
-        intensitySolver.saveResultsAsNeeded(finalizedItems);
+        DistributedIntensityCorrectionSolver.saveResultsAsNeeded(finalizedItems, cmdLineSetup);
 
         LOG.info("runWithContext: exit");
     }

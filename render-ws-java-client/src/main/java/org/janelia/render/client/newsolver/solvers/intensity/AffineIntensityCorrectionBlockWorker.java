@@ -69,12 +69,15 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		LOG.info("call: entry, blockData={}", blockData);
 		fetchResolvedTiles();
+
+		if (blockData.rtsc().getTileCount() == 0) {
+			LOG.info("call: no tiles found, returning empty list");
+			return new ArrayList<>();
+		}
+
 		final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(blockData.rtsc());
 
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = computeCoefficients(wrappedTiles);
-
-		if (coefficientTiles == null)
-			throw new RuntimeException("no coefficient tiles were computed for block " + blockData);
 
 		coefficientTiles.forEach((tileId, tiles) -> {
 			final ArrayList<AffineModel1D> models = new ArrayList<>();
@@ -98,7 +101,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				null, // groupId,
 				bounds.getMinX(), bounds.getMaxX(),
 				bounds.getMinY(), bounds.getMaxY(),
-				null); // matchPattern
+				null, // matchPattern
+				true);
 		blockData.getResults().init(rtsc);
 	}
 
@@ -106,11 +110,6 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			throws ExecutionException, InterruptedException {
 
 		LOG.info("deriveIntensityFilterData: entry");
-		if (tiles.size() < 2) {
-			final String tileCountMsg = tiles.size() == 1 ? "1 tile" : "0 tiles";
-			LOG.info("deriveIntensityFilterData: skipping correction because collection contains {}", tileCountMsg);
-			return null;
-		}
 
 		final long maxCachedPixels = parameters.maxNumberOfCachedPixels();
 		final ImageProcessorCache imageProcessorCache = (maxCachedPixels == 0)
@@ -119,7 +118,11 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles = splitIntoCoefficientTiles(tiles, imageProcessorCache);
 
-		solveForGlobalCoefficients(coefficientTiles, ITERATIONS);
+		if (tiles.size() > 1) {
+			solveForGlobalCoefficients(coefficientTiles, ITERATIONS);
+		} else {
+			LOG.info("deriveIntensityFilterData: skipping solveForGlobalCoefficients because there is only 1 tile");
+		}
 
 		return coefficientTiles;
 	}

@@ -21,11 +21,10 @@ import org.apache.spark.storage.StorageLevel;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
-import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.DistributedAffineBlockSolver;
-import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
+import org.janelia.render.client.newsolver.AlternatingSolveUtils;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.DistributedSolveParameters;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
@@ -33,6 +32,7 @@ import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,12 +132,18 @@ public class DistributedAffineBlockSolverClient
 
                 // clean-up intermediate stacks for prior runs if requested
                 if (cleanUpIntermediateStacks && (runIndex > 0)) {
-                    setupListForRun.forEach(DistributedAffineBlockSolverClient::cleanUpIntermediateStack);
+                    setupListForRun.forEach(s -> AlternatingSolveUtils.cleanUpIntermediateStack(s.renderWeb,
+                                                                                                s.stack));
                 }
             }
 
         }
 
+    }
+
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.ALIGN_TILES;
     }
 
     @Nonnull
@@ -158,8 +164,10 @@ public class DistributedAffineBlockSolverClient
 
                 final AffineBlockSolverSetup runSetup = updatedSetup.clone();
                 runSetup.stack = runSourceStack;
-                runSetup.targetStack.stack = getStackName(originalTargetStack, runNumber, nRuns);
-                updateParameters(runSetup, runNumber);
+                runSetup.targetStack.stack = AlternatingSolveUtils.getStackNameForRun(originalTargetStack,
+                                                                                      runNumber,
+                                                                                      nRuns);
+                AlternatingSolveUtils.updateParametersForNextRun(runSetup, runNumber);
 
                 setupListForRun.add(runSetup);
 
@@ -179,7 +187,10 @@ public class DistributedAffineBlockSolverClient
 
         LOG.info("alignSetupList: entry, setupList={}", setupList);
 
-        final int parallelism = deriveParallelismValues(sparkContext, setupList);
+        final List<DistributedSolveParameters> solveParameters = setupList.stream()
+                .map(setup -> setup.distributedSolve)
+                .collect(Collectors.toList());
+        final int parallelism = SparkDistributedSolveUtils.deriveParallelismValues(sparkContext, solveParameters);
 
         final List<DistributedAffineBlockSolver> solverList = new ArrayList<>();
         final List<Tuple2<Integer, BlockData<AffineModel2D, ?>>> inputBlocksWithSetupIndexes = new ArrayList<>();
@@ -200,88 +211,6 @@ public class DistributedAffineBlockSolverClient
         }
 
         LOG.info("alignSetupList: exit");
-    }
-
-    // TODO: these methods are very close to those in ADDSolverClient, need to refactor to reuse as much as possible
-
-    private static String getStackName(final String name, final int runNumber, final int nTotalRuns) {
-        if (runNumber == nTotalRuns) {
-            return name;
-        } else {
-            return name + "_run" + runNumber;
-        }
-    }
-
-    private static void cleanUpIntermediateStack(final AffineBlockSolverSetup parameters) {
-        final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
-        try {
-            dataClient.deleteStack(parameters.stack, null);
-            LOG.info("cleanUpIntermediateStack: deleted stack {}", parameters.stack);
-        } catch (final IOException e) {
-            LOG.error("cleanUpIntermediateStack: error deleting stack {}", parameters.stack, e);
-        }
-    }
-
-    private static void updateParameters(final AffineBlockSolverSetup parameters, final int runNumber) {
-        // alternate block layout
-        parameters.blockPartition.shiftBlocks = (runNumber % 2 == 1);
-
-        // don't stitch or pre-align after first run
-        if (runNumber > 1) {
-            parameters.stitchFirst = false;
-            parameters.preAlign = FIBSEMAlignmentParameters.PreAlign.NONE;
-        }
-    }
-
-    private static int deriveParallelismValues(final JavaSparkContext sparkContext,
-                                               final List<AffineBlockSolverSetup> setupList) {
-
-        // From https://spark.apache.org/docs/3.4.1/configuration.html#execution-behavior ...
-        //   For these cluster managers, spark.default.parallelism is:
-        //   - Local mode: number of cores on the local machine
-        //   - Mesos fine grained mode: 8
-        //   - Others: total number of cores on all executor nodes or 2, whichever is larger.
-        int parallelism = sparkContext.defaultParallelism();
-        final DistributedSolveParameters firstSetupSolveParameters = setupList.get(0).distributedSolve;
-
-        LOG.info("deriveParallelismValues: entry, threadsGlobal={}, threadsWorker={}, parallelism={}",
-                 firstSetupSolveParameters.threadsGlobal, firstSetupSolveParameters.threadsWorker, parallelism);
-
-        if (firstSetupSolveParameters.deriveThreadsUsingSparkConfig) {
-
-            final SparkConf sparkConf = sparkContext.getConf();
-            final int driverCores = sparkConf.getInt("spark.driver.cores", 1);
-            final int executorCores = sparkConf.getInt("spark.executor.cores", 1);
-
-            // If only one setup, global solve will be run on driver so set threadsGlobal to driver core count.
-            // Otherwise, global solve is run on executors so set threadsGlobal to executor core count.
-            final int threadsGlobal = setupList.size() == 1 ? driverCores : executorCores;
-
-            setupList.forEach(setup -> {
-                setup.distributedSolve.threadsGlobal = threadsGlobal;
-                setup.distributedSolve.threadsWorker = executorCores;
-            });
-
-            try {
-                final int sleepSeconds = 15;
-                LOG.info("deriveParallelismValues: sleeping {} seconds to give workers a chance to connect",
-                         sleepSeconds);
-                Thread.sleep(sleepSeconds * 1000L);
-            } catch (final InterruptedException e) {
-                LOG.warn("deriveParallelismValues: interrupted while sleeping", e);
-            }
-
-            // set parallelism to number of worker executors
-            // see https://stackoverflow.com/questions/51342460/getexecutormemorystatus-size-not-outputting-correct-num-of-executors
-            final int numberOfExecutorsIncludingDriver = sparkContext.sc().getExecutorMemoryStatus().size();
-            final int numberOfWorkerExecutors = numberOfExecutorsIncludingDriver - 1;
-            parallelism = Math.max(numberOfWorkerExecutors, 2);
-
-            LOG.info("deriveParallelismValues: updated values, threadsGlobal={}, threadsWorker={}, parallelism={}",
-                     firstSetupSolveParameters.threadsGlobal, firstSetupSolveParameters.threadsWorker, parallelism);
-        }
-
-        return parallelism;
     }
 
     private static void buildSolversAndInputBlocks(final List<AffineBlockSolverSetup> setupList,

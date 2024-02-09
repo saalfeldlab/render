@@ -23,6 +23,7 @@ import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,6 +112,11 @@ public class ClusterCountClient
                                   " stacks have match connection issues:\n" +
                                   String.join("\n", problemStackSummaryStrings));
         }
+    }
+
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.FIND_UNCONNECTED_TILES_AND_EDGES;
     }
 
     private List<ConnectedTileClusterSummaryForStack> findConnectedClusters(final JavaSparkContext sparkContext,
