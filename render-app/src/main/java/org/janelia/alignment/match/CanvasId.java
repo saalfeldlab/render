@@ -1,13 +1,15 @@
 package org.janelia.alignment.match;
 
-import com.google.common.base.Objects;
-
 import java.io.Serializable;
+import java.util.Comparator;
+import java.util.Objects;
 
 import org.janelia.alignment.json.JsonUtils;
 
-import static org.janelia.alignment.match.MontageRelativePosition.LEFT;
-import static org.janelia.alignment.match.MontageRelativePosition.TOP;
+import jakarta.annotation.Nonnull;
+
+import static org.janelia.alignment.Utils.NULLS_FIRST_STRING_COMPARATOR;
+import static org.janelia.alignment.match.MontageRelativePosition.*;
 
 /**
  * Key identifiers for a canvas.
@@ -117,6 +119,10 @@ public class CanvasId
         }
     }
 
+    public CanvasId withRelativePosition(final MontageRelativePosition relativePosition) {
+        return new CanvasId(groupId, id, relativePosition);
+    }
+
     public CanvasId withoutRelativePosition() {
         return new CanvasId(groupId, id);
     }
@@ -130,30 +136,19 @@ public class CanvasId
             return false;
         }
         final CanvasId canvasId = (CanvasId) that;
-        return Objects.equal(id, canvasId.id) &&
-               Objects.equal(groupId, canvasId.groupId) &&
-               Objects.equal(relativePosition, canvasId.relativePosition);
+        return Objects.equals(id, canvasId.id) &&
+               Objects.equals(groupId, canvasId.groupId) &&
+               Objects.equals(relativePosition, canvasId.relativePosition);
     }
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(id, groupId, relativePosition);
+        return Objects.hash(id, groupId, relativePosition);
     }
 
     @Override
-    public int compareTo(final CanvasId that) {
-        int result = this.groupId.compareTo(that.groupId);
-        if (result == 0) {
-            result = this.id.compareTo(that.id);
-            if (result == 0) {
-                if (this.relativePosition == null) {
-                    result = that.relativePosition == null ? 0 : -1;
-                } else if (that.relativePosition != null) {
-                    result = this.relativePosition.compareTo(that.relativePosition);
-                }
-            }
-        }
-        return result;
+    public int compareTo(@Nonnull final CanvasId that) {
+        return CANVAS_ID_COMPARATOR.compare(this, that);
     }
 
     @Override
@@ -174,4 +169,8 @@ public class CanvasId
 
     public static final double[] ZERO_OFFSETS = { 0.0, 0.0 };
 
+    private static final Comparator<CanvasId> CANVAS_ID_COMPARATOR = Comparator
+            .comparing(CanvasId::getGroupId, NULLS_FIRST_STRING_COMPARATOR)
+            .thenComparing(CanvasId::getId, NULLS_FIRST_STRING_COMPARATOR)
+            .thenComparing(CanvasId::getRelativePosition, NULLS_FIRST_POSITION_COMPARATOR);
 }

@@ -54,7 +54,7 @@ public class WaferCrossZIntensityAdjustTest {
 
         try {
             final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTilesForZRange(alignedStack, minZ, maxZ);
-            final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
+            final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
             List<OnTheFlyIntensity> corrected = null;
             if (! onlyShowOriginal) {
@@ -87,8 +87,8 @@ public class WaferCrossZIntensityAdjustTest {
                     final double currentZ = z;
                     final OnTheFlyIntensity correctedTile =
                             corrected.stream()
-                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getTileId().contains(tileNumber))
-                                    .filter(otfi -> otfi.getMinimalTileSpecWrapper().getZ() == currentZ)
+                                    .filter(otfi -> otfi.getTileSpec().getTileId().contains(tileNumber))
+                                    .filter(otfi -> otfi.getTileSpec().getZ() == currentZ)
                                     .findFirst()
                                     .orElseThrow();
 

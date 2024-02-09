@@ -29,11 +29,11 @@ public class SameTileMatchCreatorAffine2D< R extends Affine2D< R > > implements 
 
 	@Override
 	public void addMatches(
-			TileSpec tileSpec,
-			R modelA, R modelB,
-			BlockData<?, R, ?> blockContextA,
-			BlockData<?, R, ?> blockContextB,
-			List<PointMatch> matchesAtoB)
+			final TileSpec tileSpec,
+			final R modelA, final R modelB,
+			final BlockData<R, ?> blockContextA,
+			final BlockData<R, ?> blockContextB,
+			final List<PointMatch> matchesAtoB)
 	{
 		// make a regular grid
 		final double sampleWidth = (tileSpec.getWidth() - 1.0) / (samplesPerDimension - 1.0);

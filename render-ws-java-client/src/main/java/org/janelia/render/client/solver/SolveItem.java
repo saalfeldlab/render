@@ -14,6 +14,7 @@ import mpicbg.models.Model;
 import mpicbg.models.Tile;
 import mpicbg.models.TranslationModel2D;
 import net.imglib2.util.Pair;
+import org.janelia.alignment.spec.TileSpec;
 
 /**
  * This is only instantiated inside the DistributedSolveWorker
@@ -72,7 +73,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 
 	public HashMap<String, Tile< B > > idToTileMap() { return idToTileMap; }
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return solveItemData.idToPreviousModel(); }
-	public HashMap<String, MinimalTileSpec> idToTileSpec() { return solveItemData.idToTileSpec(); }
+	public HashMap<String, TileSpec> idToTileSpec() { return solveItemData.idToTileSpec(); }
 	public HashMap<Integer, HashSet<String>> zToTileId() { return solveItemData.zToTileId(); }
 	public HashMap<String, AffineModel2D> idToNewModel() { return solveItemData.idToNewModel(); }
 	public HashMap<Integer, Double> zToDynamicLambda() { return solveItemData.zToDynamicLambda(); }

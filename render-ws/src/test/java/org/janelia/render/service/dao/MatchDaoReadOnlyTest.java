@@ -2,6 +2,8 @@ package org.janelia.render.service.dao;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,15 +14,19 @@ import java.util.Set;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.test.EmbeddedMongoDb;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import static org.janelia.render.service.dao.MatchDaoWithoutEmbeddedMongoTest.buildTileSpec;
+
 /**
  * Tests {@link MatchDao} methods or error cases that won't change stored data.
- * This allows the embedded database to be setup once for all of the tests and to be safely shared.
+ * This allows the embedded database to be setup once for all tests and to be safely shared.
  * Avoiding setting up the database for each test reduces the amount of time each test takes.
  *
  * @author Eric Trautman
@@ -104,7 +110,7 @@ public class MatchDaoReadOnlyTest {
             Assert.assertEquals("invalid owner", collectionId.getOwner(), retrievedCollectionId.getOwner());
             if (collectionId.getName().equals(retrievedCollectionId.getName())) {
                 foundFirstCollection = true;
-                Assert.assertEquals("invalid number of pairs", new Long(11), metaData.getPairCount());
+                Assert.assertEquals("invalid number of pairs", Long.valueOf(11), metaData.getPairCount());
             }
         }
         Assert.assertTrue("missing first collection", foundFirstCollection);
@@ -328,6 +334,52 @@ public class MatchDaoReadOnlyTest {
         }
     }
 
+    @Test
+    public void testWriteMatchesAndTileSpecs() throws Exception {
+
+        // add tile specs that have same ids as match.json test data (imported into collectionId)
+        final ResolvedTileSpecCollection tileSpecs = new ResolvedTileSpecCollection();
+        tileSpecs.addTileSpecToCollection(buildTileSpec("section1", "tile1.1"));
+        tileSpecs.addTileSpecToCollection(buildTileSpec("section2", "tile2.1"));
+
+        // tile1.1 has 3 pairs in match.json, one of those is with tile2.1 and
+        // tile2.1 only has one pair (the one with tile1.1)
+
+        // only 3 match pairs should be returned when all tiles are in same query
+        testWriteMatchesAndTileSpecsWithTileBatchSize("single batch",
+                                                      tileSpecs,
+                                                      2,
+                                                      3);
+
+        // 4 match pairs should be returned when tiles are split between in same query
+        testWriteMatchesAndTileSpecsWithTileBatchSize("split batches",
+                                                      tileSpecs,
+                                                      1,
+                                                      4);
+    }
+
+    private static void testWriteMatchesAndTileSpecsWithTileBatchSize(final String context,
+                                                                      final ResolvedTileSpecCollection tileSpecs,
+                                                                      final int maxTilesPerQuery,
+                                                                      final int expectedResultPairCount)
+            throws IOException {
+        final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
+
+        dao.writeMatchesAndTileSpecs(collectionId, tileSpecs, outputStream, maxTilesPerQuery);
+
+        final String json = outputStream.toString();
+        final ResolvedTileSpecsWithMatchPairs tilesWithPairs =
+                ResolvedTileSpecsWithMatchPairs.fromJson(new StringReader(json));
+
+        final ResolvedTileSpecCollection resultTiles = tilesWithPairs.getResolvedTileSpecs();
+        Assert.assertEquals(context + " tile counts do not match",
+                            tileSpecs.getTileCount(), resultTiles.getTileCount());
+
+        final List<CanvasMatches> resultPairs = tilesWithPairs.getMatchPairs();
+        Assert.assertEquals(context + " pair counts do not match",
+                            expectedResultPairCount, resultPairs.size());
+    }
+
     private List<CanvasMatches> getListFromStream(final ByteArrayOutputStream outputStream) {
         final String json = outputStream.toString();
         return CanvasMatches.fromJsonArray(json);
@@ -360,7 +412,7 @@ public class MatchDaoReadOnlyTest {
                 mergedTileCount++;
                 Assert.assertEquals(context + " invalid number of matches for " + canvasMatches,
                                     mergedFirstTileIdsToMatchCountMap.get(canvasMatches.getpId()),
-                                    new Integer(canvasMatches.size()));
+                                    Integer.valueOf(canvasMatches.size()));
             } else {
                 Assert.assertEquals(context + " invalid number of matches for " + canvasMatches,
                                     3, canvasMatches.size());

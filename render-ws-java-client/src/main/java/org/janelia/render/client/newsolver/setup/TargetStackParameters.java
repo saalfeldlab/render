@@ -5,6 +5,8 @@ import com.beust.jcommander.Parameters;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.spec.stack.StackId;
+
 /**
  * Parameters for target stack.
  *
@@ -30,8 +32,24 @@ public class TargetStackParameters implements Serializable {
 	public String stack;
 
 	@Parameter(
+			names = "--targetStackSuffix",
+			description = "Suffix to append to the target stack name when it is to be derived from the source stack name")
+	public String stackSuffix;
+
+	@Parameter(
 			names = "--completeTargetStack",
 			description = "Complete the target stack after processing",
 			arity = 0)
 	public boolean completeStack = false;
+
+	public void setValuesFromPipeline(final StackId sourceStackId,
+									  final String defaultSuffix) {
+		this.owner = sourceStackId.getOwner();
+		this.project = sourceStackId.getProject();
+		String suffix = defaultSuffix;
+		if (stackSuffix != null && (! stackSuffix.trim().isEmpty())) {
+			suffix = stackSuffix.trim();
+		}
+		this.stack = sourceStackId.getStack() + suffix;
+	}
 }

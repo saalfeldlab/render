@@ -9,6 +9,28 @@
       }
     ],
 
+    "bg_gaussian_rad1000_dsf0p05": [
+      {
+        "className" : "org.janelia.alignment.filter.BackgroundCorrectionFilter",
+        "parameters" : {
+          "radius" : "1000.0",
+          "downSamplingFactor" : "0.05",
+          "smoothMethod": "GAUSSIAN"
+        }
+      }
+    ],
+
+    "bg_median_rad1000_dsf0p05": [
+      {
+        "className" : "org.janelia.alignment.filter.BackgroundCorrectionFilter",
+        "parameters" : {
+          "radius" : "1000.0",
+          "downSamplingFactor" : "0.05",
+          "smoothMethod": "MEDIAN"
+        }
+      }
+    ],
+
     "Z0422_17_VNC_1" : [
       {
         "className" : "org.janelia.alignment.destreak.ConfigurableMaskStreakCorrector",

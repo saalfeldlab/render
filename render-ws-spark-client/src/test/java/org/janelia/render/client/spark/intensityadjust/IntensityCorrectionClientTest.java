@@ -24,19 +24,19 @@ public class IntensityCorrectionClientTest {
     public static void main(final String[] args) {
 
         final String[] testArgs = {
-                "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
+                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "cellmap",
                 "--project", "jrc_mus_thymus_1",
                 "--stack", "v2_acquire_align",
-                "--targetStack", "v2_acquire_test_intensity_ett3",
-                "--threadsWorker", "1",
-                "--minBlockSize", "2",  // TODO: figure out blockSize vs minBlockSize
-                "--blockSize", "3",
+                "--targetStack", "v2_acquire_test_intensity_ett1",
+                "--threadsWorker", "12",
+                "--blockSizeZ", "3",
                 "--completeTargetStack",
-                "--zDistance", "1", "--minZ", "1000", "--maxZ", "1010"
+//                "--zDistanceJson", "/Users/trautmane/Desktop/z-dist.json",
+                "--zDistance", "1", "--minZ", "1000", "--maxZ", "1002"
         };
 
-        final int numberOfConcurrentTasks = 12;
+        final int numberOfConcurrentTasks = 1; // note: because of small block size it is better to set this to 1
         final String master = "local[" + numberOfConcurrentTasks + "]";
         final SparkConf sparkConf = new SparkConf()
                 .setMaster(master)

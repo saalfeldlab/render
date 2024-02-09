@@ -317,7 +317,7 @@ public class RenderTilesClient {
             if (clientParameters.hackStack != null) {
                 final Set<String> tileIdsToKeep = new HashSet<>(tileIds);
                 for (final ResolvedTileSpecCollection resolvedTiles : zToResolvedTiles.values()) {
-                    resolvedTiles.removeDifferentTileSpecs(tileIdsToKeep);
+                    resolvedTiles.retainTileSpecs(tileIdsToKeep);
                 }
             }
         }

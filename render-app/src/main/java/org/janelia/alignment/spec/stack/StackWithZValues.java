@@ -9,7 +9,7 @@ import java.util.List;
 import io.swagger.annotations.ApiModelProperty;
 
 /**
- * Coupling of a stack id and and list of z values.
+ * Coupling of a stack id and a list of z values.
  *
  * @author Eric Trautman
  */
@@ -49,12 +49,12 @@ public class StackWithZValues implements Serializable {
 
     @JsonIgnore
     public Double getFirstZ() {
-        return zValues.size() == 0 ? null : zValues.get(0);
+        return zValues.isEmpty() ? null : zValues.get(0);
     }
 
     @JsonIgnore
     public Double getLastZ() {
-        return zValues.size() == 0 ? null : zValues.get(zValues.size() - 1);
+        return zValues.isEmpty() ? null : zValues.get(zValues.size() - 1);
     }
 
     public boolean hasSameStack(final StackWithZValues that) {

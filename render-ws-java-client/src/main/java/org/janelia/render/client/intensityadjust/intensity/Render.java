@@ -45,8 +45,9 @@ import java.util.ArrayList;
 
 import javax.imageio.ImageIO;
 
+import org.janelia.alignment.filter.FilterSpec;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
 import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 import ij.process.ByteProcessor;
@@ -183,7 +184,7 @@ public class Render
 	 * @param imageProcessorCache cache of loaded image processors.
 	 */
 	public static void render(
-			final MinimalTileSpecWrapper patch,
+			final TileSpec patch,
 			final int coefficientsWidth,
 			final int coefficientsHeight,
 			final FloatProcessor targetImage,
@@ -197,11 +198,15 @@ public class Render
 
 		// get the entire images at full scale
 		final ImageProcessorWithMasks impOriginal =
-				VisualizeTools.getUntransformedProcessorWithMasks(patch.getTileSpec(), imageProcessorCache);
+				VisualizeTools.getUntransformedProcessorWithMasks(patch, imageProcessorCache);
+
+		// apply filters if there are any
+		final FilterSpec filterSpec = patch.getFilterSpec();
+		if (filterSpec != null) {
+			filterSpec.buildInstance().process(impOriginal.ip, scale);
+		}
 
 		/* assemble coordinate transformations and add bounding box offset */
-		//final CoordinateTransformList< CoordinateTransform > ctl = new CoordinateTransformList< CoordinateTransform >();
-		//ctl.add( patch.getA() ); 
 		final CoordinateTransformList< CoordinateTransform > ctl = patch.getTransformList();
 		final AffineModel2D affineScale = new AffineModel2D();
 		affineScale.set( scale, 0, 0, scale, -x * scale, -y * scale );
@@ -212,11 +217,7 @@ public class Render
 		// TODO: the last parameter is an integer division; should this be a float dvision instead?
 		final double s = sampleAverageScale( ctl, width, height, width / meshResolution );
 		final int mipmapLevel = bestMipmapLevel( s );
-		//System.out.println( s +  " " + mipmapLevel );
 		final ImageProcessor ipMipmap = Downsampler.downsampleImageProcessor( impOriginal.ip, mipmapLevel );
-
-		//new ImagePlus( "impOriginal.ip", impOriginal.ip ).show();
-		//new ImagePlus( "ipMipmap", ipMipmap ).show();
 
 		/* create a target */
 		final ImageProcessor tp = ipMipmap.createProcessor( targetImage.getWidth(), targetImage.getHeight() );
@@ -265,11 +266,8 @@ public class Render
 			alphaPixels = ( byte[] )target.outside.getPixels();
 
 		/* convert */
-		//FloatProcessor fp = impOriginal.ip.convertToFloatProcessor();
-		//fp.resetMinAndMax();
-		final double min = 0;//fp.getMin();//patch.getMin();
-		final double max = 255;//fp.getMax();//patch.getMax();
-		//System.out.println( min + ", " + max );
+		final double min = 0;
+		final double max = 255;
 		final double a = 1.0 / ( max - min );
 		final double b = 1.0 / 255.0;
 

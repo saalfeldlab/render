@@ -114,7 +114,10 @@ public class UnconnectedCrossMFOVClient {
                 renderDataClient.getStackZToSectionIdsMap(renderStackId.getStack(),
                                                           null,
                                                           null,
-                                                          null);
+                                                          stackWithZ.getzValues());
+
+        LOG.info("findUnconnectedMFOVs: for {}, processing {} z values {}",
+                 renderStackId.getStack(), zToSectionIdsMap.size(), zToSectionIdsMap.keySet().stream().sorted());
 
         for (final Double pZ : zToSectionIdsMap.keySet().stream().sorted().collect(Collectors.toList())) {
             final Double qZ = pZ + 1.0;

@@ -17,17 +17,21 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.MatchTrial;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.util.ProcessTimer;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.slf4j.Logger;
@@ -194,23 +198,6 @@ public class MatchDao {
         MongoUtil.validateRequiredParameter("groupId", groupId);
 
         final Document query = new Document("pGroupId", groupId).append("qGroupId", groupId);
-
-        return getMatches(collection, query, excludeMatchDetails);
-    }
-
-    public List<CanvasMatches> getMatchesOutsideGroup(final MatchCollectionId collectionId,
-                                                      final String groupId,
-                                                      final boolean excludeMatchDetails)
-            throws IllegalArgumentException, ObjectNotFoundException {
-
-        LOG.debug("getMatchesOutsideGroup: entry, collectionId={}, groupId={}",
-                  collectionId, groupId);
-
-        final MongoCollection<Document> collection = getExistingCollection(collectionId);
-
-        MongoUtil.validateRequiredParameter("groupId", groupId);
-
-        final Document query = getOutsideGroupQuery(groupId);
 
         return getMatches(collection, query, excludeMatchDetails);
     }
@@ -393,7 +380,7 @@ public class MatchDao {
             throws IllegalArgumentException, ObjectNotFoundException {
 
         LOG.debug("removeMatchesBetweenGroups: entry, collectionId={}, pGroupId={}, qGroupId={}",
-                  collectionId, pGroupId,  qGroupId);
+                  collectionId, pGroupId, qGroupId);
 
         validateRequiredGroupIds(pGroupId, qGroupId);
         final MongoCollection<Document> collection = getExistingCollection(collectionId);
@@ -447,7 +434,7 @@ public class MatchDao {
         LOG.debug("saveMatches: entry, collectionId={}, matchesList.size()={}",
                   collectionId, matchesList.size());
 
-        if (matchesList.size() > 0) {
+        if (! matchesList.isEmpty()) {
 
             final MongoCollection<Document> collection =
                     matchDatabase.getCollection(collectionId.getDbCollectionName());
@@ -636,7 +623,146 @@ public class MatchDao {
         }
 
     }
-    
+
+    public void writeMatchesAndTileSpecs(final MatchCollectionId collectionId,
+                                         final ResolvedTileSpecCollection resolvedTileSpecCollection,
+                                         final OutputStream outputStream)
+            throws IOException {
+
+        // TODO: determine optimal maxTilesPerQuery value
+        // Mongodb docs ( https://www.mongodb.com/docs/manual/reference/operator/query/in/ ) state:
+        //   ... limit the number of parameters passed to the $in operator to tens of values.
+        final int maxTilesPerQuery = 80;
+        writeMatchesAndTileSpecs(collectionId, resolvedTileSpecCollection, outputStream, maxTilesPerQuery);
+    }
+
+    public void writeMatchesAndTileSpecs(final MatchCollectionId collectionId,
+                                         final ResolvedTileSpecCollection resolvedTileSpecCollection,
+                                         final OutputStream outputStream,
+                                         final int maxTilesPerQuery)
+            throws IllegalArgumentException, IOException, ObjectNotFoundException {
+
+        LOG.debug("writeMatchesAndTileSpecs: entry, collectionId={}, tileCount={}",
+                  collectionId, resolvedTileSpecCollection.getTileCount());
+
+        if (! resolvedTileSpecCollection.hasTileSpecs()) {
+            throw new IllegalArgumentException("must specify at least one tile spec");
+        }
+
+        final ProcessTimer timer = new ProcessTimer();
+
+        // TODO: consider reducing pairs by supporting flag indicating only pairs with both tiles in collection should be returned
+
+        // Need to research whether process to exclude "edge" pairs would cost more than using current process
+        // and simply filtering out unwanted data client side.
+
+        // Review of dev logs during initial testing revealed some unexpected results:
+        // - Write times were similar for pId only (1081 tiles, 5869 pairs) and pId+qId (1081 tiles, 12111 pairs)
+        //   indicating rate limiting component may be client-side.
+        // - Write times varied widely (9 seconds vs. 28 seconds) for same query indicating rate limiting component
+        //   may be client-side or (surprisingly) may not be strongly tied to pair data size.
+
+        final MongoCollection<Document> collection = getExistingCollection(collectionId);
+
+        final List<Document> queryList = buildMatchQueryListForTiles(resolvedTileSpecCollection,
+                                                                     maxTilesPerQuery);
+
+        outputStream.write("{\"resolvedTileSpecs\":".getBytes());
+        JsonUtils.FAST_MAPPER.writeValue(outputStream, resolvedTileSpecCollection);
+        outputStream.write(",\"matchPairs\":[".getBytes());
+
+        // note: ignore all ordering here to make it as fast as possible, sort client side if necessary
+        int pairCount = 0;
+        for (final Document query : queryList) {
+            try (final MongoCursor<Document> cursor = collection.find(query).projection(EXCLUDE_MONGO_ID_KEY).iterator()) {
+                while (cursor.hasNext()) {
+                    if (pairCount > 0) {
+                        outputStream.write(COMMA_WITH_NEW_LINE);
+                    }
+                    outputStream.write(cursor.next().toJson().getBytes());
+                    pairCount++;
+                }
+            }
+        }
+
+        outputStream.write("]}".getBytes());
+
+        if (LOG.isDebugEnabled()) {
+            final Document firstQuery = queryList.get(0);
+            LOG.debug("writeMatchesAndTileSpecs: wrote data for {} tiles and {} pairs returned by {} queries like {}.find({},{}), elapsedSeconds={}",
+                      resolvedTileSpecCollection.getTileCount(), pairCount, queryList.size(), MongoUtil.fullName(collection),
+                      firstQuery.toJson(), EXCLUDE_MONGO_ID_KEY.toJson(), timer.getElapsedSeconds());
+        }
+    }
+
+    public static List<Document> buildMatchQueryListForTiles(final ResolvedTileSpecCollection resolvedTileSpecCollection,
+                                                             final int maxTilesPerQuery) {
+
+        // organize by sectionId since that is needed to ensure queries use index
+        final Map<String, Set<String>> sectionIdToTileIds = resolvedTileSpecCollection.buildSectionIdToTileIdsMap();
+
+        List<String> sectionIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
+        List<String> tileIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
+        final List<Document> queryList = new ArrayList<>();
+
+        for (final String sectionId: sectionIdToTileIds.keySet()) {
+
+            sectionIdsForCurrentQuery.add(sectionId);
+            final List<String> tileIdsForSection = new ArrayList<>(sectionIdToTileIds.get(sectionId));
+
+            int remainingSlots = maxTilesPerQuery - tileIdsForCurrentQuery.size();
+
+            for (int fromIndex = 0; fromIndex < tileIdsForSection.size();)  {
+
+                final int toIndex = Math.min(tileIdsForSection.size(), (fromIndex + remainingSlots));
+                tileIdsForCurrentQuery.addAll(tileIdsForSection.subList(fromIndex, toIndex));
+
+                if (tileIdsForCurrentQuery.size() == maxTilesPerQuery) {
+
+                    addGroupAndIdInQueriesToList(sectionIdsForCurrentQuery,
+                                                 tileIdsForCurrentQuery,
+                                                 queryList);
+
+                    sectionIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
+                    if (toIndex < tileIdsForSection.size()) {
+                        sectionIdsForCurrentQuery.add(sectionId);
+                    }
+                    tileIdsForCurrentQuery = new ArrayList<>(maxTilesPerQuery);
+                    remainingSlots = maxTilesPerQuery;
+                }
+
+                fromIndex = toIndex;
+            }
+        }
+
+        if (! tileIdsForCurrentQuery.isEmpty()) {
+            addGroupAndIdInQueriesToList(sectionIdsForCurrentQuery,
+                                         tileIdsForCurrentQuery,
+                                         queryList);
+        }
+
+        return queryList;
+    }
+
+    private static void addGroupAndIdInQueriesToList(final List<String> groupIdList,
+                                                     final List<String> idList,
+                                                     final List<Document> queryList) {
+        final Document pQuery = getGroupAndIdInQuery(groupIdList, idList, "p");
+        final Document qQuery = getGroupAndIdInQuery(groupIdList, idList, "q");
+
+        queryList.add(new Document(MongoUtil.OP_OR, Arrays.asList(pQuery, qQuery)));
+    }
+
+    private static Document getGroupAndIdInQuery(final List<String> groupIdList,
+                                                 final List<String> idList,
+                                                 final String pOrQPrefix) {
+        final String groupIdKey = pOrQPrefix + "GroupId";
+        final String idKey = pOrQPrefix + "Id";
+        final Document pGroupIdIn = new Document(MongoUtil.OP_IN, groupIdList);
+        final Document pIdIn = new Document(MongoUtil.OP_IN, idList);
+        return new Document(groupIdKey, pGroupIdIn).append(idKey, pIdIn);
+    }
+
     private MongoCollection<Document> getMatchTrialCollection() {
         return matchDatabase.getCollection(MATCH_TRIAL_COLLECTION_NAME);
     }
@@ -656,7 +782,7 @@ public class MatchDao {
         collectionIdSet.add(collectionId);
         collectionList.add(getExistingCollection(collectionId));
 
-        if ((mergeCollectionIdList != null) && (mergeCollectionIdList.size() > 0)) {
+        if ((mergeCollectionIdList != null) && (! mergeCollectionIdList.isEmpty())) {
             for (final MatchCollectionId mergeCollectionId : mergeCollectionIdList) {
                 if (collectionIdSet.add(mergeCollectionId)) {
                     collectionList.add(getExistingCollection(mergeCollectionId));
@@ -812,7 +938,7 @@ public class MatchDao {
             }
 
             CanvasMatches mergedMatches;
-            while (matchesList.size() > 0) {
+            while (! matchesList.isEmpty()) {
                 if (count > 0) {
                     outputStream.write(COMMA_WITH_NEW_LINE);
                 }
@@ -1008,7 +1134,8 @@ public class MatchDao {
                                       "qId", 1),
                               MATCH_A_OPTIONS);
         MongoUtil.createIndex(collection,
-                              new Document("qGroupId", 1),
+                              new Document("qGroupId", 1).append(
+                                      "qId", 1),
                               MATCH_B_OPTIONS);
     }
 

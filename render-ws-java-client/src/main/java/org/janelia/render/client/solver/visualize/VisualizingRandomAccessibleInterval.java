@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.janelia.render.client.solver.MinimalTileSpec;
+import org.janelia.alignment.spec.TileSpec;
 
 import mpicbg.models.AffineModel2D;
 import net.imglib2.FinalInterval;
@@ -23,13 +23,13 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 	final Interval interval;
 
 	final HashMap<String, AffineModel2D> idToInvertedRenderModels;
-	final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec; // at full resolution
+	final HashMap<Integer, ArrayList<Pair<String, TileSpec>>> zToTileSpec; // at full resolution
 	final HashMap<String, Float> idToValue;
 	final double[] scale;
 
 	public VisualizingRandomAccessibleInterval(
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, TileSpec> idToTileSpec,
 			final HashMap<String, Float> idToValue,
 			final double[] scale)
 	{
@@ -45,7 +45,7 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 
 		for ( final String tileId : idToInvertedRenderModels.keySet() )
 		{
-			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final TileSpec tileSpec = idToTileSpec.get( tileId );
 			final int z = (int)Math.round( tileSpec.getZ() );
 			zToTileSpec.putIfAbsent(z, new ArrayList<>());
 			zToTileSpec.get( z ).add( new ValuePair<>( tileId, tileSpec ) );
@@ -59,7 +59,7 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 	}
 
 	@Override
-	public RandomAccess<FloatType> randomAccess(Interval interval)
+	public RandomAccess<FloatType> randomAccess(final Interval interval)
 	{
 		return randomAccess();
 	}
@@ -118,7 +118,7 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 	 */
 	public static Interval computeInterval(
 			final Map<String, AffineModel2D> idToModels,
-			final Map<String, MinimalTileSpec> idToTileSpec,
+			final Map<String, TileSpec> idToTileSpec,
 			final double[] scale )
 	{
 		return computeInterval( idToModels, idToTileSpec, null, scale );
@@ -134,7 +134,7 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 	 */
 	public static Interval computeInterval(
 			final Map<String, AffineModel2D> idToModels,
-			final Map<String, MinimalTileSpec> idToTileSpec,
+			final Map<String, TileSpec> idToTileSpec,
 			final Map<String, AffineModel2D> idToInvertedRenderModels,
 			final double[] scale )
 	{
@@ -150,7 +150,7 @@ public class VisualizingRandomAccessibleInterval implements RandomAccessibleInte
 		// get bounding box
 		for ( final String tileId : idToModels.keySet() )
 		{
-			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final TileSpec tileSpec = idToTileSpec.get( tileId );
 			min[ 2 ] = Math.min( min[ 2 ], tileSpec.getZ() * scale[ 2 ] );
 			max[ 2 ] = Math.max( max[ 2 ], tileSpec.getZ() * scale[ 2 ] );
 

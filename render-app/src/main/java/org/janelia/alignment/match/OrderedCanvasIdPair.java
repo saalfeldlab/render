@@ -1,8 +1,9 @@
 package org.janelia.alignment.match;
 
-import com.google.common.base.Objects;
-
 import java.io.Serializable;
+import java.util.Objects;
+
+import org.janelia.alignment.spec.TileBounds;
 
 /**
  * A pair of canvas identifiers with {@linkplain Comparable natural ordering}.
@@ -19,6 +20,8 @@ public class OrderedCanvasIdPair
     private final CanvasId q;
 
     private final Double absoluteDeltaZ;
+
+    // TODO: merge absoluteDeltaZ with montageRelativePosition into a single relativePosition class ( see https://github.com/saalfeldlab/render/pull/163#discussion_r1421439483 )
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -56,6 +59,44 @@ public class OrderedCanvasIdPair
         this.absoluteDeltaZ = deltaZ == null ? null : Math.abs(deltaZ);
     }
 
+    /**
+     * @param  oneTileBounds      identifiers and bounds for one canvas identifier.
+     * @param  anotherTileBounds  identifiers and bounds for another canvas identifier.
+     *
+     * @return an ordered pair where each CanvasId includes montage relative position information
+     *         based upon the specified tile bounds.
+     *         Assumes that the bounds are for the same layer so the pair's deltaZ is set to null.
+     *
+     * @throws IllegalArgumentException
+     *   if both tile identifiers are the same.
+     */
+    public static OrderedCanvasIdPair withRelativeMontagePositions(final TileBounds oneTileBounds,
+                                                                   final TileBounds anotherTileBounds)
+            throws IllegalArgumentException {
+
+        final CanvasId oneCanvasId = new CanvasId(oneTileBounds.getSectionId(), oneTileBounds.getTileId());
+        final CanvasId anotherCanvasId = new CanvasId(anotherTileBounds.getSectionId(), anotherTileBounds.getTileId());
+
+        MontageRelativePosition oneToAnother = MontageRelativePosition.of(oneTileBounds, anotherTileBounds);
+
+        final int comparisonResult = oneCanvasId.compareTo(anotherCanvasId);
+        // if the tile identifiers are not in natural order ...
+        if (comparisonResult > 0) {
+            final MontageRelativePosition anotherToOne = MontageRelativePosition.of(anotherTileBounds, oneTileBounds);
+            // and if both tiles are in the same position relative to each other ...
+            if (oneToAnother.equals(anotherToOne)) {
+                // then flip the first position to maintain consistency with natural order
+                oneToAnother = oneToAnother.getOpposite();
+            }
+        } else if (comparisonResult == 0) {
+            throw new IllegalArgumentException("both IDs are the same: '" + oneCanvasId + "'");
+        }
+
+        return new OrderedCanvasIdPair(oneCanvasId.withRelativePosition(oneToAnother),
+                                       anotherCanvasId.withRelativePosition(oneToAnother.getOpposite()),
+                                       null);
+    }
+
     public CanvasId getP() {
         return p;
     }
@@ -77,13 +118,13 @@ public class OrderedCanvasIdPair
             return false;
         }
         final OrderedCanvasIdPair that = (OrderedCanvasIdPair) o;
-        return Objects.equal(p, that.p) &&
-               Objects.equal(q, that.q);
+        return Objects.equals(p, that.p) &&
+               Objects.equals(q, that.q);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(p, q);
+        return Objects.hash(p, q);
     }
 
     @Override
@@ -97,11 +138,6 @@ public class OrderedCanvasIdPair
 
     @Override
     public String toString() {
-        if ((p.getGroupId() == null) && (q.getGroupId() == null)) {
-            return "[\"" + p.getId() + "\", \"" + q.getId() + "\"]";
-        } else {
-            return "{\"p\": [\"" + p.getGroupId() + "\", \"" + p.getId() + "\"], \"q\": [\"" +
-                   q.getGroupId() + "\", \"" + q.getId() + "\"]}";
-        }
+            return "{\"p\": \"" + p + "\", \"q\": \"" + q + "\"}";
     }
 }

@@ -42,12 +42,19 @@ import org.slf4j.LoggerFactory;
  *     after standard matching (typically because of substrate or resin borders).
  *   </li>
  *   <li>
- *     For each unconnected pair, the client first fetches any existing standard matches for the
- *     same SFOV pair in other z layers in the slab.
- *     The existing matches are then fit to a montage patch match model.
- *     Finally, montage patch matches for the pair are derived by applying the model to each SFOV tile's
- *     corners and the matches are stored with a specified weight (typically reduced to something
- *     like 0.1 to ensure that standard matches are given precedence in future solves).
+ *     For each unconnected pair, the client first tries to find existing matches for the same pair in another
+ *     MFOV in the same layer.  If found, the existing matches are copied to the unconnected pair and stored
+ *     with a specified weight (typically reduced to something like 0.15 to ensure that standard matches are
+ *     given precedence).
+ *   </li>
+ *   <li>
+ *     If not found (no other MFOVs in the same layer have matches for the unconnected pair),
+ *     the client collects matches for the unconnected pair in all other layers and fits them to a
+ *     "montage patch match model".  Montage patch matches are derived by applying the model to each SFOV tile's
+ *     corners and those matches are stored with a specified weight.
+ *   </li>
+ *   <li>
+ *       If no matches are found for the unconnected pair in any other layer, an exception is thrown.
  *   </li>
  * </ul>
  *
@@ -116,10 +123,15 @@ public class MFOVMontageMatchPatchClient {
         }
     }
 
-    public void deriveAndSaveMatchesForUnconnectedPairsInStack(final RenderDataClient defaultDataClient,
-                                                               final StackMFOVWithZValues stackMFOVWithZValues,
-                                                               final MatchCollectionId matchCollectionId,
-                                                               final String matchStorageCollectionName)
+    /**
+     * Derives and saves matches for all unconnected pairs in the specified stack MFOV.
+     *
+     * @return the number of tile pairs that had derived matches saved.
+     */
+    public int deriveAndSaveMatchesForUnconnectedPairsInStack(final RenderDataClient defaultDataClient,
+                                                              final StackMFOVWithZValues stackMFOVWithZValues,
+                                                              final MatchCollectionId matchCollectionId,
+                                                              final String matchStorageCollectionName)
             throws IOException, IllegalStateException {
 
         LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: entry, stackMFOVWithZValues={}", stackMFOVWithZValues);
@@ -177,10 +189,11 @@ public class MFOVMontageMatchPatchClient {
                                                                            patch.crossLayerDerivedMatchWeight));
         }
 
-        if (derivedMatchesForMFOV.size() > 0) {
+        final int numberOfDerivedMatchPairs = derivedMatchesForMFOV.size();
+        if (numberOfDerivedMatchPairs > 0) {
 
             LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}",
-                     derivedMatchesForMFOV.size(), stackMFOVWithZValues);
+                     numberOfDerivedMatchPairs, stackMFOVWithZValues);
 
             if (patch.matchStorageFile != null) {
                 final Path storagePath = Paths.get(patch.matchStorageFile).toAbsolutePath();
@@ -196,7 +209,10 @@ public class MFOVMontageMatchPatchClient {
                      stackMFOVWithZValues);
         }
 
-        LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: exit, stackWithZValues={}", stackMFOVWithZValues);
+        LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: exit, returning {} for {}",
+                 numberOfDerivedMatchPairs, stackMFOVWithZValues);
+
+        return derivedMatchesForMFOV.size();
     }
     
     public void updatePositionPairDataForZ(final String stack,
@@ -250,7 +266,7 @@ public class MFOVMontageMatchPatchClient {
 
         // query web service to find connected tile pairs and remove them from unconnected set
         final Map<String, OrderedCanvasIdPair> sameLayerPairsFromOtherMFOVs = new HashMap<>();
-        if (unconnectedPairsForMFOV.size() > 0) {
+        if (! unconnectedPairsForMFOV.isEmpty()) {
 
 
             for (final String groupId : sectionIds) {

@@ -240,7 +240,7 @@ public class SubstrateMaskGeneratorClient {
         final ResolvedTileSpecCollection resolvedTiles = sourceDataClient.getResolvedTiles(parameters.stack, z);
 
         if (explicitTileCount > 0) {
-            resolvedTiles.removeDifferentTileSpecs(explicitTileIds);
+            resolvedTiles.retainTileSpecs(explicitTileIds);
         }
 
         final Path maskDirectoryPath = Paths.get(parameters.getBaseMaskDirectoryPath(),

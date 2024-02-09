@@ -6,7 +6,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -16,9 +15,8 @@ import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.MinimalTileSpecWrapper;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.MultiResolutionSource;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +44,6 @@ import net.imglib2.RealRandomAccessible;
 import net.imglib2.cache.img.CellLoader;
 import net.imglib2.cache.img.ReadOnlyCachedCellImgFactory;
 import net.imglib2.cache.img.ReadOnlyCachedCellImgOptions;
-import net.imglib2.cache.img.SingleCellArrayImg;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgFactory;
@@ -73,9 +70,9 @@ public class VisualizeTools
 
 	public static BdvStackSource< ? > renderDynamicLambda(
 			final HashMap<Integer, Double> zToDynamicLambda,
-			final HashMap< String, AffineModel2D > idToModel,
-			final HashMap< String, MinimalTileSpec > idToTileSpec,
-			final double dynamicLambdaFactor )
+			final HashMap<String, AffineModel2D> idToModel,
+			final HashMap<String, TileSpec> idToTileSpec,
+			final double dynamicLambdaFactor)
 	{
 		return renderDynamicLambda( null, zToDynamicLambda, idToModel, idToTileSpec, dynamicLambdaFactor );
 	}
@@ -83,8 +80,8 @@ public class VisualizeTools
 	public static BdvStackSource< ? > renderDynamicLambda(
 			BdvStackSource< ? > source,
 			final HashMap<Integer, Double> zToDynamicLambda,
-			final HashMap< String, AffineModel2D > idToModel,
-			final HashMap< String, MinimalTileSpec > idToTileSpec,
+			final HashMap<String, AffineModel2D> idToModel,
+			final HashMap<String, TileSpec> idToTileSpec,
 			final double dynamicLambdaFactor )
 	{
 		final HashMap<String, Float> idToValue = new HashMap<>();
@@ -105,7 +102,7 @@ public class VisualizeTools
 
 	public static BdvStackSource< ? > visualize(
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, TileSpec> idToTileSpec,
 			final HashMap<String, Float> idToValue )
 	{
 		return visualize(idToModels, idToTileSpec, idToValue, new double[] { 1, 1, 1 }, Runtime.getRuntime().availableProcessors() );
@@ -113,7 +110,7 @@ public class VisualizeTools
 
 	public static BdvStackSource< ? > visualize(
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, TileSpec> idToTileSpec,
 			final HashMap<String, Float> idToValue,
 			final double[] scale,
 			final int numThreads )
@@ -129,14 +126,14 @@ public class VisualizeTools
 
 		final RandomAccessibleInterval< VolatileFloatType > volatileImg = VolatileViews.wrapAsVolatile( cachedImg );
 	
-		BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "Preview" ).numRenderingThreads( numThreads );
-		BdvStackSource< ? > preview = BdvFunctions.show( volatileImg, "weights", options );
+		final BdvOptions options = Bdv.options().numSourceGroups(1 ).frameTitle("Preview" ).numRenderingThreads(numThreads );
+		final BdvStackSource<?> preview = BdvFunctions.show(volatileImg, "weights", options );
 		preview.setDisplayRange( 0, 3 );
 
 		return preview;
 	}
 
-	public static final HashMap<String, Float> constantIdToValue( final Collection< String > tileIds )
+	public static HashMap<String, Float> constantIdToValue(final Collection<String> tileIds)
 	{
 		final HashMap<String, Float> idToValue = new HashMap<>();
 
@@ -150,7 +147,7 @@ public class VisualizeTools
 			final BdvStackSource< ? > source,
 			final String name,
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, TileSpec> idToTileSpec,
 			final HashMap<String, Float> idToValue )
 	{
 		return visualizeMultiRes( source, name, idToModels, idToTileSpec, idToValue, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
@@ -221,7 +218,7 @@ public class VisualizeTools
 
 	public static BdvStackSource< ? > visualizeMultiRes(
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, TileSpec> idToTileSpec,
 			final int minDS, final int maxDS, final int dsInc,
 			final int numThreads )
 	{
@@ -230,7 +227,7 @@ public class VisualizeTools
 
 	public static BdvStackSource< ? > visualizeMultiRes(
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, TileSpec> idToTileSpec,
 			final HashMap<String, Float> idToValue,
 			final int minDS, final int maxDS, final int dsInc,
 			final int numThreads )
@@ -241,7 +238,7 @@ public class VisualizeTools
 	public static BdvStackSource< ? > visualizeMultiRes(
 			final String name,
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, TileSpec> idToTileSpec,
 			final HashMap<String, Float> idToValue,
 			final int minDS, final int maxDS, final int dsInc,
 			final int numThreads )
@@ -253,7 +250,7 @@ public class VisualizeTools
 			BdvStackSource< ? > source,
 			final String name,
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
+			final HashMap<String, TileSpec> idToTileSpec,
 			final HashMap<String, Float> idToValue,
 			final int minDS, final int maxDS, final int dsInc,
 			final int numThreads )
@@ -276,7 +273,7 @@ public class VisualizeTools
 
 		if ( source == null )
 		{
-			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( "MultiResolution" ).numRenderingThreads( numThreads );
+			final BdvOptions options = Bdv.options().numSourceGroups(1).frameTitle("MultiResolution").numRenderingThreads(numThreads);
 			source = BdvFunctions.show( new MultiResolutionSource( createVolatileRAIs( multiRes ), name ), options );
 		}
 		else
@@ -336,20 +333,14 @@ public class VisualizeTools
 		final ReadOnlyCachedCellImgOptions options = new ReadOnlyCachedCellImgOptions().cellDimensions( cellDim ).maxCacheSize( maxCacheSize );
 		final ReadOnlyCachedCellImgFactory factory = new ReadOnlyCachedCellImgFactory( options );
 
-		final CellLoader< T > loader = new CellLoader< T >()
-		{
-			@Override
-			public void load( final SingleCellArrayImg< T, ? > cell ) throws Exception
-			{
-				final Cursor< T > cursor = cell.localizingCursor();
-				final RandomAccess< T > ra = in.randomAccess();
-				
-				while( cursor.hasNext() )
-				{
-					cursor.fwd();
-					ra.setPosition( cursor );
-					cursor.get().set( ra.get() );
-				}
+		final CellLoader<T> loader = cell -> {
+			final Cursor<T> cursor = cell.localizingCursor();
+			final RandomAccess<T> ra = in.randomAccess();
+
+			while(cursor.hasNext()) {
+				cursor.fwd();
+				ra.setPosition(cursor);
+				cursor.get().set(ra.get());
 			}
 		};
 
@@ -377,25 +368,20 @@ public class VisualizeTools
 	// TODO: rendering should take all models (including deformations, not only one affine)
 	public static ImagePlus renderTS( final HashMap<String, AffineModel2D> idToModels, final Map<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
 	{
-		final HashMap<String, MinimalTileSpec> idToTileSpecMinimal = new HashMap<>();
-
-		for ( final Entry<String, TileSpec> e : idToTileSpec.entrySet() )
-			idToTileSpecMinimal.put(e.getKey(), new MinimalTileSpec( e.getValue() ) );
-
-		return render(idToModels, idToTileSpecMinimal, scale, Integer.MIN_VALUE, Integer.MAX_VALUE );
+		return render(idToModels, idToTileSpec, scale, Integer.MIN_VALUE, Integer.MAX_VALUE );
 	}
 
 	// TODO: rendering should take all models (including deformations, not only one affine)
-	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, MinimalTileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
+	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModels, final HashMap<String, TileSpec> idToTileSpec, final double scale ) throws NoninvertibleModelException
 	{
 		return render(idToModels, idToTileSpec, scale, Integer.MIN_VALUE, Integer.MAX_VALUE );
 	}
 
 	// TODO: rendering should take all models (including deformations, not only one affine)
-	public static ImagePlus render( final HashMap<String, AffineModel2D> idToModelsIn, final HashMap<String, MinimalTileSpec> idToTileSpecIn, final double scale, final int minZ, final int maxZ ) throws NoninvertibleModelException
+	public static ImagePlus render(final Map<String, AffineModel2D> idToModelsIn, final Map<String, TileSpec> idToTileSpecIn, final double scale, final int minZ, final int maxZ) throws NoninvertibleModelException
 	{
-		final HashMap<String, AffineModel2D> idToModels = new HashMap<String, AffineModel2D>();
-		final HashMap<String, MinimalTileSpec> idToTileSpec = new HashMap<String, MinimalTileSpec>();
+		final HashMap<String, AffineModel2D> idToModels = new HashMap<>();
+		final HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
 
 		int count = 0;
 
@@ -403,7 +389,7 @@ public class VisualizeTools
 
 		for ( final String tileId : idToModelsIn.keySet() )
 		{
-			final MinimalTileSpec tileSpec = idToTileSpecIn.get( tileId );
+			final TileSpec tileSpec = idToTileSpecIn.get( tileId );
 			final AffineModel2D model = idToModelsIn.get( tileId );
 			
 			if ( tileSpec.getZ() >= minZ && tileSpec.getZ() <= maxZ )
@@ -438,7 +424,7 @@ public class VisualizeTools
 		// get bounding box
 		for ( final String tileId : idToModels.keySet() )
 		{
-			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final TileSpec tileSpec = idToTileSpec.get(tileId);
 			min[ 2 ] = Math.min( min[ 2 ], tileSpec.getZ() );
 			max[ 2 ] = Math.max( max[ 2 ], tileSpec.getZ() );
 
@@ -486,18 +472,18 @@ public class VisualizeTools
 		System.out.println( "BB z: " + minI[ 2 ] + " >>> " + maxI[ 2 ] + ", d=" + dimI[ 2 ]);
 
 		// init image
-		final ImagePlusImg< UnsignedByteType, ? > stack = new ImagePlusImgFactory<UnsignedByteType>( new UnsignedByteType()).create( dimI );
+		final ImagePlusImg<UnsignedByteType, ?> stack = new ImagePlusImgFactory<>(new UnsignedByteType()).create(dimI);
 		final RandomAccessibleInterval< UnsignedByteType > img = Views.translate( stack, minI );
 
 		final AffineModel2D invScaleModel = new AffineModel2D();
 		invScaleModel.set( 1.0/scale, 0, 0, 1.0/scale, 0, 0 );
 
 		// build the lookup z to tilespec for parallel rendering
-		final HashMap<Integer, ArrayList< Pair<String,MinimalTileSpec> > > zToTileSpec = new HashMap<>(); 
+		final HashMap<Integer, ArrayList<Pair<String, TileSpec>>> zToTileSpec = new HashMap<>();
 
 		for ( final String tileId : idToRenderModels.keySet() )
 		{
-			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final TileSpec tileSpec = idToTileSpec.get(tileId);
 			final int z = (int)Math.round( tileSpec.getZ() );
 			zToTileSpec.putIfAbsent(z, new ArrayList<>());
 			zToTileSpec.get( z ).add( new ValuePair<>( tileId, tileSpec ) );
@@ -509,69 +495,15 @@ public class VisualizeTools
 
 		for ( final int z : zToTileSpec.keySet() )
 		{
-			final ArrayList< Pair<String,MinimalTileSpec> > data = zToTileSpec.get( z );
+			final ArrayList<Pair<String, TileSpec>> data = zToTileSpec.get( z );
 
-			tasks.add( new Callable< Void >()
-			{
-				@Override
-				public Void call() throws Exception
-				{
-					for ( final Pair<String,MinimalTileSpec> pair : data )
-					{
-						final MinimalTileSpec tileSpec = pair.getB();
-						final AffineModel2D model = idToRenderModels.get( pair.getA() );
-
-						// scale the transform so it takes into account that the input images are scaled
-						model.concatenate( invScaleModel );
-
-						final ImageProcessorWithMasks imp = getImage( tileSpec, scale );
-						RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.ip) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-						RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
-						
-						// draw
-						final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
-						final Cursor< UnsignedByteType > c = slice.cursor();
-						
-						AffineTransform2D affine = new AffineTransform2D();
-						double[] array = new double[6];
-						model.toArray( array );
-						affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
-						final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), img ).cursor();
-						final Cursor< UnsignedByteType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), img ).cursor();
-						
-						while ( c.hasNext() )
-						{
-							c.fwd();
-							cMask.fwd();
-							cSrc.fwd();
-							if (cMask.get().get() == 255) {
-								FloatType srcType = cSrc.get();
-								float value = srcType.get();
-								if (value >= 0) {
-									UnsignedByteType type = c.get();
-									final float currentValue = type.get();
-									if ( currentValue > 0 )
-										type.setReal( ( value + currentValue ) / 2 );
-									else
-										type.setReal( value );
-								}
-							}
-						}
-
-						IJ.showProgress( ai.getAndIncrement(), idToRenderModels.keySet().size() - 1 );
-					}
-					return null;
-				}
-			});
+			tasks.add(() -> renderData(scale, z, data, idToRenderModels, invScaleModel, img, ai));
 		}
 
-		try
-		{
+		try {
 			taskExecutor.invokeAll( tasks );
-		}
-		catch (InterruptedException e)
-		{
-			e.printStackTrace();
+		} catch (final InterruptedException e) {
+			LOG.error("Error rendering", e);
 		}
 
 		taskExecutor.shutdown();
@@ -583,7 +515,7 @@ public class VisualizeTools
 		int i = 0;
 		for ( final String tileId : idToRenderModels.keySet() )
 		{
-			final MinimalTileSpec tileSpec = idToTileSpec.get( tileId );
+			final TileSpec tileSpec = idToTileSpec.get( tileId );
 			final long z = Math.round( tileSpec.getZ() );
 			final AffineModel2D model = idToRenderModels.get( tileId );
 
@@ -631,7 +563,7 @@ public class VisualizeTools
 		//final ImagePlus imp = ImageJFunctions.wrap( img, "stack", null );
 		final ImagePlus imp = stack.getImagePlus();
 
-		Calibration cal = new Calibration();
+		final Calibration cal = new Calibration();
 		cal.xOrigin = -minI[ 0 ];
 		cal.yOrigin = -minI[ 1 ];
 		cal.zOrigin = -minI[ 2 ];
@@ -646,9 +578,64 @@ public class VisualizeTools
 		return imp;
 	}
 
-	protected static FloatProcessor getFullResImage( final MinimalTileSpec tileSpec )
+	@Nullable
+	private static Void renderData(
+			final double scale,
+			final int z,
+			final ArrayList<Pair<String, TileSpec>> data,
+			final HashMap<String, AffineModel2D> idToRenderModels,
+			final AffineModel2D invScaleModel,
+			final RandomAccessibleInterval<UnsignedByteType> img,
+			final AtomicInteger ai)
 	{
-		final String fileName = tileSpec.getFileName();
+		for (final Pair<String, TileSpec> pair : data) {
+			final TileSpec tileSpec = pair.getB();
+			final AffineModel2D model = idToRenderModels.get(pair.getA());
+
+			// scale the transform so it takes into account that the input images are scaled
+			model.concatenate(invScaleModel);
+
+			final ImageProcessorWithMasks imp = getImage(tileSpec, scale);
+			final RealRandomAccessible<FloatType> interpolant = Views.interpolate(Views.extendValue((RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from(new ImagePlus("", imp.ip)), new FloatType(-1f)), new NLinearInterpolatorFactory<>());
+			final RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate(Views.extendZero((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from(new ImagePlus("", imp.mask))), new NearestNeighborInterpolatorFactory<>());
+
+			// draw
+			final IterableInterval<UnsignedByteType> slice = Views.iterable(Views.hyperSlice(img, 2, z));
+			final Cursor<UnsignedByteType> c = slice.cursor();
+
+			final AffineTransform2D affine = new AffineTransform2D();
+			final double[] array = new double[6];
+			model.toArray(array);
+			affine.set(array[0], array[2], array[4], array[1], array[3], array[5]);
+			final Cursor<FloatType> cSrc = Views.interval(RealViews.affine(interpolant, affine), img).cursor();
+			final Cursor<UnsignedByteType> cMask = Views.interval(RealViews.affine(interpolantMask, affine), img).cursor();
+
+			while (c.hasNext()) {
+				c.fwd();
+				cMask.fwd();
+				cSrc.fwd();
+				if (cMask.get().get() == 255) {
+					final FloatType srcType = cSrc.get();
+					final float value = srcType.get();
+					if (value >= 0) {
+						final UnsignedByteType type = c.get();
+						final float currentValue = type.get();
+						if ( currentValue > 0 )
+							type.setReal( ( value + currentValue ) / 2 );
+						else
+							type.setReal( value );
+					}
+				}
+			}
+
+			IJ.showProgress(ai.getAndIncrement(), idToRenderModels.keySet().size() - 1 );
+		}
+		return null;
+	}
+
+	protected static FloatProcessor getFullResImage(final TileSpec tileSpec)
+	{
+		final String fileName = tileSpec.getImagePath();
 
 		if ( new File( fileName ).exists() )
 			return new ImagePlus( fileName ).getProcessor().convertToFloatProcessor();
@@ -660,10 +647,10 @@ public class VisualizeTools
 
 	}
 
-	protected static ImageProcessor getFullResMask( final MinimalTileSpec tileSpec )
+	protected static ImageProcessor getFullResMask(final TileSpec tileSpec)
 	{
 	    ImageProcessor maskProcessor = null;
-		final String fileNameMask = tileSpec.getMaskFileName();
+		final String fileNameMask = tileSpec.getMaskPath();
 		if (fileNameMask != null) {
 			final File maskFile = new File(fileNameMask);
 			if (maskFile.exists()) {
@@ -675,12 +662,12 @@ public class VisualizeTools
 		return maskProcessor;
 	}
 
-	public static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale )
+	public static ImageProcessorWithMasks getImage(final TileSpec tileSpec, final double scale)
 	{
 		return getImage(tileSpec, scale, true );
 	}
 
-	public static ImageProcessorWithMasks getImage( final MinimalTileSpec tileSpec, final double scale, final boolean cacheOnDisk )
+	public static ImageProcessorWithMasks getImage(final TileSpec tileSpec, final double scale, final boolean cacheOnDisk)
 	{
 		// old code:
 		final File imageFile = new File( "tmp", tileSpec.getTileId() + "_" + scale + ".image.tif" );
@@ -714,9 +701,8 @@ public class VisualizeTools
 			*/
 			
 			// this gives a raw image
-			final TileSpec fullTileSpec = ((MinimalTileSpecWrapper) tileSpec).getTileSpec();
 			final ImageProcessorWithMasks fullScaleIpwm =
-					VisualizeTools.getUntransformedProcessorWithMasks(fullTileSpec, ImageProcessorCache.DISABLED_CACHE);
+					VisualizeTools.getUntransformedProcessorWithMasks(tileSpec, ImageProcessorCache.DISABLED_CACHE);
 			FloatProcessor imageFP = fullScaleIpwm.ip.convertToFloatProcessor();
 			ImageProcessor maskIP = fullScaleIpwm.mask;
 
@@ -755,6 +741,7 @@ public class VisualizeTools
 		return imp;
 	}
 
+	// TODO: this does not only visualize but also load data; move it somewhere else?
 	public static ImageProcessorWithMasks getUntransformedProcessorWithMasks(final TileSpec tileSpec,
 																			 final ImageProcessorCache imageProcessorCache) {
 		final String tileId = tileSpec.getTileId();

@@ -1,11 +1,14 @@
 package org.janelia.render.client.newsolver.assembly;
 
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,94 +25,80 @@ import mpicbg.models.Tile;
  */
 public class Assembler<Z, G extends Model<G>, R>
 {
-	final List<BlockData<?, R, ?>> blocks;
-	final BlockSolver<Z, G, R> blockSolver;
+	final GlobalSolver<G, R> globalSolver;
 	final BlockCombiner<Z, ?, G, R> blockCombiner;
 	final Function<R, Z> converter;
 
 	/**
-	 * @param blocks - all individually computed blocks
-	 * @param blockSolver - solver to use for the final assembly
+	 * @param globalSolver - solver to use for the final assembly
 	 * @param blockCombiner - fusion to use for the final assembly
 	 * @param converter - a converter from R to Z - for the trivial case of a single block
 	 */
 	public Assembler(
-			final List<BlockData<?, R, ?>> blocks,
-			final BlockSolver<Z, G, R> blockSolver,
+			final GlobalSolver<G, R> globalSolver,
 			final BlockCombiner<Z, ?, G, R> blockCombiner,
 			final Function<R, Z> converter )
 	{
-		this.blocks = blocks;
-		this.blockSolver = blockSolver;
+		this.globalSolver = globalSolver;
 		this.blockCombiner = blockCombiner;
 		this.converter = converter;
 	}
 
-	public AssemblyMaps< Z > createAssembly()
-	{
+	public ResultContainer<Z> createAssembly(final List<BlockData<R, ?>> blocks,
+											 final BlockFactory blockFactory) {
+
 		// the trivial case of a single block, would crash with the code below
-		if (isTrivialCase()) {
-			return buildTrivialAssembly();
+		if (isTrivialCase(blocks)) {
+			return buildTrivialAssembly(blocks.get(0));
 		}
 
-		final AssemblyMaps<Z> am = new AssemblyMaps<>();
+		final ResolvedTileSpecCollection cumulativeRtsc = mergeResolvedTileSpecCollections(blocks.stream().map(BlockData::rtsc).collect(Collectors.toList()));
+		final ResultContainer<Z> results = new ResultContainer<>();
+		results.init(cumulativeRtsc);
 
-		// add shared transforms to assembly so that they can be used later when building resolved tile spec collections
-		blocks.forEach(block -> am.sharedTransformSpecs.addAll(block.rtsc().getTransformSpecs()));
+		LOG.info("createAssembly: created cumulativeRtsc with {} tiles", cumulativeRtsc.getTileCount());
 
 		try {
 			// now compute the final alignment for each block
-			final HashMap<BlockData<?, R, ?>, Tile<G>> blockToTile =
-					blockSolver.globalSolve(blocks, am);
+			final HashMap<BlockData<R, ?>, Tile<G>> blockToTile =
+					globalSolver.globalSolve(blocks);
 
 			// now fuse blocks into a full assembly
-			blockCombiner.fuseGlobally(am, blockToTile);
+			blockCombiner.fuseGlobally(results, blockToTile, blockFactory);
 		} catch (final Exception e) {
 			throw new RuntimeException("failed assembly", e);
 		}
 
-		return am;
+		return results;
 	}
 
-	//public abstract void globalSolve();
-	//public abstract void assemble();
+	private static ResolvedTileSpecCollection mergeResolvedTileSpecCollections(final List<ResolvedTileSpecCollection> collections) {
+		final Iterator<ResolvedTileSpecCollection> it = collections.iterator();
+		final ResolvedTileSpecCollection first = it.next();
 
-	protected boolean isTrivialCase() {
+		final ResolvedTileSpecCollection cumulativeRtsc = new ResolvedTileSpecCollection(first.getTransformSpecs(), first.getTileSpecs());
+		while (it.hasNext()) {
+			cumulativeRtsc.merge(it.next());
+		}
+
+		return cumulativeRtsc;
+	}
+
+	protected boolean isTrivialCase(final List<BlockData<R, ?>> blocks) {
 		return blocks.size() == 1;
 	}
 
 	/**
 	 * @return - the result of the trivial case
 	 */
-	private AssemblyMaps< Z > buildTrivialAssembly()
-	{
+	private ResultContainer<Z> buildTrivialAssembly(final BlockData<R, ?> block) {
 		LOG.info("buildTrivialAssembly: entry, only a single block, no solve across blocks necessary.");
 
-		final AssemblyMaps< Z > globalData = new AssemblyMaps<>();
-
-		final BlockData< ?, R, ?> solveItem = blocks.get( 0 );
-
-		globalData.sharedTransformSpecs.addAll(solveItem.rtsc().getTransformSpecs());
-
-		for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
-		{
-			// there is no overlap with any other solveItem (should be beginning or end of the entire stack)
-			final HashSet< String > tileIds = solveItem.zToTileId().get( z );
-
-			// if there are none, we continue with the next
-			if (tileIds.isEmpty())
-				continue;
-
-			globalData.zToTileId.putIfAbsent(z, new HashSet<>());
-
-			for ( final String tileId : tileIds )
-			{
-				globalData.zToTileId.get(z).add(tileId);
-				globalData.idToTileSpec.put(tileId, solveItem.rtsc().getTileSpec(tileId));
-				globalData.idToModel.put(tileId, converter.apply(solveItem.idToNewModel().get(tileId)));
-			}
+		final ResultContainer<Z> globalData = new ResultContainer<>();
+		globalData.init(block.rtsc());
+		for (final String tileId : block.rtsc().getTileIds()) {
+			globalData.recordModel(tileId, converter.apply(block.getResults().getModelFor(tileId)));
 		}
-
 		return globalData;
 	}
 

@@ -260,7 +260,7 @@ public class ImportTransformChangesClient {
 
             LOG.info("updateTiles: filtering tile spec collection {}", tileSpecs);
 
-            tileSpecs.removeDifferentTileSpecs(tileIdToLoadedTransformMap.keySet());
+            tileSpecs.retainTileSpecs(tileIdToLoadedTransformMap.keySet());
 
             if (! tileSpecs.hasTileSpecs()) {
                 throw new IllegalArgumentException("after filtering out unreferenced source tiles, " +

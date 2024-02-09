@@ -16,7 +16,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasId;
-import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -197,7 +196,7 @@ public class TileBoundsRTree {
                                                        final boolean excludeSameSectionNeighbors) {
 
         String firstTileId = null;
-        if (sourceTileBoundsList.size() > 0) {
+        if (! sourceTileBoundsList.isEmpty()) {
             firstTileId = sourceTileBoundsList.get(0).getTileId();
         }
 
@@ -293,7 +292,6 @@ public class TileBoundsRTree {
 
         final CanvasId p = new CanvasId(fromTile.getSectionId(), pTileId);
         String qTileId;
-        MontageRelativePosition[] relativePositions;
         for (final TileBounds toTile : toTiles) {
             qTileId = toTile.getTileId();
             if (! pTileId.equals(qTileId)) {
@@ -304,21 +302,16 @@ public class TileBoundsRTree {
                         isNeighborCenterInRange(fromMinX, fromMaxX, toTile.getMinX(), toTile.getMaxX()) ||
                         isNeighborCenterInRange(fromMinY, fromMaxY, toTile.getMinY(), toTile.getMaxY())) {
 
+                        final OrderedCanvasIdPair pair;
                         if (includeRelativePosition) {
-                            relativePositions = MontageRelativePosition.getRelativePositions(fromTile, toTile);
-                            pairs.add(
-                                    new OrderedCanvasIdPair(
-                                            new CanvasId(fromTile.getSectionId(), pTileId, relativePositions[0]),
-                                            new CanvasId(toTile.getSectionId(), qTileId, relativePositions[1]),
-                                            null));
+                            pair = OrderedCanvasIdPair.withRelativeMontagePositions(fromTile, toTile);
                         } else {
                             final Double deltaZ = fromTile.getZ() - toTile.getZ();
-                            pairs.add(
-                                    new OrderedCanvasIdPair(
-                                            p,
-                                            new CanvasId(toTile.getSectionId(), qTileId),
-                                            deltaZ));
+                            pair = new OrderedCanvasIdPair(p,
+                                                           new CanvasId(toTile.getSectionId(), qTileId),
+                                                           deltaZ);
                         }
+                        pairs.add(pair);
                     }
 
                 }

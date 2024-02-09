@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -62,8 +63,8 @@ public class SolveTools
 	public static double computeAlignmentError(
 			final Model< ? > crossLayerModel,
 			final Model< ? > montageLayerModel,
-			final MinimalTileSpec pTileSpec,
-			final MinimalTileSpec qTileSpec,
+			final TileSpec pTileSpec,
+			final TileSpec qTileSpec,
 			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
 			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
 			final Matches matches )
@@ -74,28 +75,18 @@ public class SolveTools
 	public static double computeAlignmentError(
 			final Model< ? > crossLayerModel,
 			final Model< ? > montageLayerModel,
-			final MinimalTileSpec pTileSpec,
-			final MinimalTileSpec qTileSpec,
-			final Model< ? > pAlignmentModel, // solveItem.idToNewModel().get( pTileId ), // p
-			final Model< ? > qAlignmentModel, // solveItem.idToNewModel().get( qTileId ) ); // q
+			final TileSpec pTileSpec,
+			final TileSpec qTileSpec,
+			final CoordinateTransform pAlignmentTransform,
+			final CoordinateTransform qAlignmentTransform,
 			final Matches matches,
 			final int samplesPerDimension )
 	{
 		// for fitting local to global pair
-		final Model<?> relativeModel = new RigidModel2D();
-
-		final List< PointMatch > global = SolveTools.createFakeMatches(
-				pTileSpec.getWidth(),
-				pTileSpec.getHeight(),
-				pAlignmentModel, // p
-				qAlignmentModel,
-				samplesPerDimension ); // q
 
 		// the actual matches, local solve
 		final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( matches );
-
 		final Model< ? > model;
-
 		if ( pTileSpec.getZ() == qTileSpec.getZ() )
 			model = montageLayerModel;
 		else
@@ -107,17 +98,24 @@ public class SolveTools
 			LOG.info("Could not fit point matches", e);
 		}
 
+		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
+		// but do not change the transformations relative to each other (in local, global)
 		final List< PointMatch > local = SolveTools.createFakeMatches(
 				pTileSpec.getWidth(),
 				pTileSpec.getHeight(),
-				model, // p
+				model,
 				new IdentityModel(),
-				samplesPerDimension ); // q
+				samplesPerDimension);
 
-		// match the local solve to the global solve rigidly, as the entire stack is often slightly rotated
-		// but do not change the transformations relative to each other (in local, global)
+		final List< PointMatch > global = SolveTools.createFakeMatches(
+				pTileSpec.getWidth(),
+				pTileSpec.getHeight(),
+				pAlignmentTransform,
+				qAlignmentTransform,
+				samplesPerDimension);
+
+		final Model<?> relativeModel = new RigidModel2D();
 		final ArrayList< PointMatch > relativeMatches = new ArrayList<>();
-
 		for ( int i = 0; i < global.size(); ++i )
 		{
 			relativeMatches.add( new PointMatch( new Point( local.get( i ).getP1().getL().clone() ), new Point( global.get( i ).getP1().getL().clone() ) ) );
@@ -129,7 +127,6 @@ public class SolveTools
 		} catch (final Exception ignored){}
 
 		double vDiff = 0;
-
 		for ( int i = 0; i < global.size(); ++i )
 		{
 			final double dGx = global.get( i ).getP2().getL()[ 0 ] - global.get( i ).getP1().getL()[ 0 ];
@@ -168,12 +165,21 @@ public class SolveTools
 		return Math.sqrt( sum );
 	}
 
-	public static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel )
+	public static List< PointMatch > createFakeMatches(
+			final int w,
+			final int h,
+			final CoordinateTransform pTransform,
+			final CoordinateTransform qTransform)
 	{
-		return createFakeMatches( w, h, pModel, qModel, SolveItem.samplesPerDimension );
+		return createFakeMatches(w, h, pTransform, qTransform, SolveItem.samplesPerDimension);
 	}
 
-	public static List< PointMatch > createFakeMatches( final int w, final int h, final Model< ? > pModel, final Model< ? > qModel, final int samplesPerDimension )
+	public static List<PointMatch> createFakeMatches(
+			final int w,
+			final int h,
+			final CoordinateTransform pTransform,
+			final CoordinateTransform qTransform,
+			final int samplesPerDimension)
 	{
 		final List< PointMatch > matches = new ArrayList<>();
 		
@@ -188,8 +194,8 @@ public class SolveTools
 				final double[] p = new double[] { x * sampleWidth, sampleY };
 				final double[] q = new double[] { x * sampleWidth, sampleY };
 
-				pModel.applyInPlace( p );
-				qModel.applyInPlace( q );
+				pTransform.applyInPlace(p);
+				qTransform.applyInPlace(q);
 
 				matches.add(new PointMatch( new Point(p), new Point(q) ));
 			}
@@ -253,7 +259,7 @@ public class SolveTools
 			for ( final Tile< B > imageTile : solveItem.groupedTileToTiles().get( prevGroupedTile ) )
 			{
 				final String tileId = solveItem.tileToIdMap().get( imageTile );
-				final int tileCol = solveItem.idToTileSpec().get( tileId ).getImageCol();
+				final int tileCol = solveItem.idToTileSpec().get(tileId).getLayout().getImageCol();
 
 				prevTiles.add( new ValuePair<>( new ValuePair<>( tileCol, tileId ), prevGroupedTile ) );
 			}
@@ -480,8 +486,8 @@ public class SolveTools
 
 		try
 		{
-			double[] errors = computeErrors( tileConfig.getTiles() );
-			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+			DoubleSummaryStatistics errors = computeErrors( tileConfig.getTiles() );
+			LOG.info("errors: " + errors);
 
 			final Map< Tile< ? >, Integer > tileToZ = new HashMap<>();
 
@@ -495,7 +501,7 @@ public class SolveTools
 			//tileConfig.preAlign();
 			
 			errors = computeErrors( tileConfig.getTiles() );
-			LOG.info( "errors: " + errors[ 0 ] + "/" + errors[ 1 ] + "/" + errors[ 2 ] );
+			LOG.info("errors: " + errors);
 		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
 			LOG.info("pre-align failed: ", e);
 		}
@@ -519,7 +525,7 @@ public class SolveTools
 			for ( final Tile< ? > tile : solveItem.groupedTileToTiles().get( groupedTile ) )
 			{
 				final String tileId = solveItem.tileToIdMap().get( tile );
-				final MinimalTileSpec tileSpec = solveItem.idToTileSpec().get( tileId );
+				final TileSpec tileSpec = solveItem.idToTileSpec().get(tileId);
 
 				final AffineModel2D affine = solveItem.idToStitchingModel().get( tileId ).copy();
 				affine.preConcatenate( groupedModel );
@@ -547,26 +553,9 @@ public class SolveTools
 		return new double[] { minX, minY };
 	}
 
-	public static double[] computeErrors( final Collection< ? extends Tile< ? > > tiles )
-	{
-		double cd = 0.0;
-		double minError = Double.MAX_VALUE;
-		double maxError = 0.0;
-
-		for ( final Tile< ? > t : tiles )
-			t.update();
-		
-		for ( final Tile< ? > t : tiles )
-		{
-			t.update();
-			final double d = t.getDistance();
-			if ( d < minError ) minError = d;
-			if ( d > maxError ) maxError = d;
-			cd += d;
-		}
-		cd /= tiles.size();
-		
-		return new double[] { minError, cd, maxError };
+	public static DoubleSummaryStatistics computeErrors(final Collection<? extends Tile<?>> tiles) {
+		tiles.forEach(Tile::update);
+		return tiles.stream().mapToDouble(t -> {t.update(); return t.getDistance();}).summaryStatistics();
 	}
 
 	public static List< Tile< ? > > preAlignByLayerDistance(

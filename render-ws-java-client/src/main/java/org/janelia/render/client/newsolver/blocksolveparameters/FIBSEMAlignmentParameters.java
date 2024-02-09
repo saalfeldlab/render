@@ -1,6 +1,6 @@
 package org.janelia.render.client.newsolver.blocksolveparameters;
 
-import java.util.HashMap;
+import java.awt.Rectangle;
 import java.util.List;
 import java.util.function.Function;
 
@@ -8,6 +8,10 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.affine.AffineAlignBlockWorker;
+import org.janelia.render.client.parameter.BlockOptimizerParameters;
+import org.janelia.render.client.parameter.MatchCollectionParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.StitchingParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,21 +34,12 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	final private Function< Integer, S > stitchingModelSupplier;
 	final private Function< Integer, Integer > minStitchingInliersSupplier; // if it is less, it is not stitched first
 
-	final double maxAllowedErrorStitching;
-	final int maxIterationsStitching;
-	final int maxPlateauWidthStitching;
-
-	final private List<Double> blockOptimizerLambdasRigid;
-	final private List<Double> blockOptimizerLambdasTranslation;
-	final private List<Double> blockOptimizerLambdasRegularization;
-	final private List<Integer> blockOptimizerIterations;
-	final private List<Integer> blockMaxPlateauWidth;
+	final private StitchingParameters stitchingParameters;
+	final private BlockOptimizerParameters blockOptimizerParameters;
 
 	final int preAlignOrdinal; // storing the ordinal of the enum for serialization purposes
-	final private double blockMaxAllowedError;
 
-	final String matchOwner;
-	final String matchCollection;
+	final MatchCollectionParameters matchCollectionParameters;
 	final int maxNumMatches;
 	final int maxZRangeMatches;
 
@@ -52,136 +47,107 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	 * 
 	 * @param blockSolveModel - result model
 	 * @param stitchingModelSupplier - returns the stitching model as a function of z
-	 * @param maxAllowedErrorStitching - max error of stitching round for optimizer
-	 * @param maxIterationsStitching - max iterations of stitching round for optimizer
-	 * @param maxPlateauWidthStitching - max plateau width of stitching round for optimizer
 	 * @param minStitchingInliersSupplier - returns minNumStitchingInliers as a function of z (if smaller no stitching first)
-	 * @param blockOptimizerLambdasRigid - list of lambdas for rigid regularizer for optimizer
-	 * @param blockOptimizerLambdasTranslation - list of lambdas for translation regularizer for optimizer
-	 * @param blockOptimizerIterations - list of max num iterations for optimizer
-	 * @param blockMaxPlateauWidth - list of max plateau width for optimizer
-	 * @param blockMaxAllowedError - max error for optimizer
+	 * @param stitchingParameters - parameters for stitching
+	 * @param blockOptimizerParameters - parameters for block optimization
+	 * @param preAlign - if and how to pre-align the stack
+	 * @param webServiceParameters - url, owner, and project for the web service
+	 * @param stack - render stack
+	 * @param matchCollectionParameters - owner and collection for matches
 	 * @param maxNumMatches - maximal number of matches between two tiles -- will randomly be reduced if above (default: 0 - no limit)
 	 * @param maxZRangeMatches - max z-range in which to load matches (default: '-1' - no limit)
-	 * @param preAlign - if and how to pre-align the stack
-	 * @param baseDataUrl - render url
-	 * @param owner - render owner
-	 * @param project - render project
-	 * @param stack - render stack
-	 * @param matchOwner - render match owner
-	 * @param matchCollection - render match collection
 	 */
 	public FIBSEMAlignmentParameters(
 			final M blockSolveModel,
-			final Function< Integer, S > stitchingModelSupplier,
-			final Function< Integer, Integer > minStitchingInliersSupplier,
-			final double maxAllowedErrorStitching,
-			final int maxIterationsStitching,
-			final int maxPlateauWidthStitching,
-			final List<Double> blockOptimizerLambdasRigid,
-			final List<Double> blockOptimizerLambdasTranslation,
-			final List<Double> blockOptimizerLambdasRegularization,
-			final List<Integer> blockOptimizerIterations,
-			final List<Integer> blockMaxPlateauWidth,
-			final double blockMaxAllowedError,
-			final int maxNumMatches,
-			final int maxZRangeMatches,
+			final Function<Integer, S> stitchingModelSupplier,
+			final Function<Integer, Integer> minStitchingInliersSupplier,
+			final StitchingParameters stitchingParameters,
+			final BlockOptimizerParameters blockOptimizerParameters,
 			final PreAlign preAlign,
-			final String baseDataUrl,
-			final String owner,
-			final String project,
+			final RenderWebServiceParameters webServiceParameters,
 			final String stack,
-			final String matchOwner,
-			final String matchCollection )
+			final MatchCollectionParameters matchCollectionParameters,
+			final int maxNumMatches,
+			final int maxZRangeMatches)
 	{
-		super(baseDataUrl, owner, project, stack, blockSolveModel.copy());
+		super(webServiceParameters.baseDataUrl, webServiceParameters.owner, webServiceParameters.project, stack, blockSolveModel.copy());
 
 		this.stitchingModelSupplier = stitchingModelSupplier;
 		this.minStitchingInliersSupplier = minStitchingInliersSupplier;
-		this.maxAllowedErrorStitching = maxAllowedErrorStitching;
-		this.maxIterationsStitching = maxIterationsStitching;
-		this.maxPlateauWidthStitching = maxPlateauWidthStitching;
-		this.blockOptimizerLambdasRigid = blockOptimizerLambdasRigid;
-		this.blockOptimizerLambdasTranslation = blockOptimizerLambdasTranslation;
-		this.blockOptimizerLambdasRegularization = blockOptimizerLambdasRegularization;
-		this.blockOptimizerIterations = blockOptimizerIterations;
-		this.blockMaxPlateauWidth = blockMaxPlateauWidth;
-		this.blockMaxAllowedError = blockMaxAllowedError;
+		this.stitchingParameters = stitchingParameters;
+		this.blockOptimizerParameters = blockOptimizerParameters;
 		this.preAlignOrdinal = preAlign.ordinal();
+		this.matchCollectionParameters = matchCollectionParameters;
 		this.maxNumMatches = maxNumMatches;
 		this.maxZRangeMatches = maxZRangeMatches;
-		this.matchOwner = matchOwner;
-		this.matchCollection = matchCollection;
 	}
 
 	@Override
 	public M blockSolveModel() { return super.blockSolveModel().copy(); }
-	public S stitchingSolveModelInstance( final int z ) { return stitchingModelSupplier.apply( z ); }
-	public Function< Integer, S > stitchingModelSupplier() { return stitchingModelSupplier; }
+	public S stitchingSolveModelInstance(final int z) { return stitchingModelSupplier.apply(z); }
+	public Function<Integer, S> stitchingModelSupplier() { return stitchingModelSupplier; }
 
-	public Function< Integer, Integer > minStitchingInliersSupplier() { return minStitchingInliersSupplier; }
-	//public int minStitchingInliers( final int z ) { return minStitchingInliersSupplier.apply( z ); }
+	public Function<Integer, Integer> minStitchingInliersSupplier() { return minStitchingInliersSupplier; }
 
-	public List<Double> blockOptimizerLambdasRigid() { return blockOptimizerLambdasRigid; }
-	public List<Double> blockOptimizerLambdasTranslation() { return blockOptimizerLambdasTranslation; }
-	public List<Double> blockOptimizerLambdasRegularization() { return blockOptimizerLambdasRegularization; }
-	public List<Integer> blockOptimizerIterations() { return blockOptimizerIterations; }
-	public List<Integer> blockMaxPlateauWidth() {return blockMaxPlateauWidth; }
-	public double blockMaxAllowedError() { return blockMaxAllowedError; }
-	public PreAlign preAlign() { return PreAlign.values()[ preAlignOrdinal ]; }
+	public List<Double> blockOptimizerLambdasRigid() { return blockOptimizerParameters.lambdasRigid; }
+	public List<Double> blockOptimizerLambdasTranslation() { return blockOptimizerParameters.lambdasTranslation; }
+	public List<Double> blockOptimizerLambdasRegularization() { return blockOptimizerParameters.lambdasRegularization; }
+	public List<Integer> blockOptimizerIterations() { return blockOptimizerParameters.iterations; }
+	public List<Integer> blockMaxPlateauWidth() {return blockOptimizerParameters.maxPlateauWidth; }
+	public double blockMaxAllowedError() { return blockOptimizerParameters.maxAllowedError; }
+	public PreAlign preAlign() { return PreAlign.values()[preAlignOrdinal]; }
+	public BlockOptimizerParameters blockOptimizerParameters() { return blockOptimizerParameters; }
 
 	public int maxNumMatches() { return maxNumMatches; }
 	public int maxZRangeMatches() { return maxZRangeMatches; }
-	public String matchOwner() { return matchOwner; }
-	public String matchCollection() { return matchCollection; }
+	public String matchOwner() { return matchCollectionParameters.matchOwner; }
+	public String matchCollection() { return matchCollectionParameters.matchCollection; }
 
-	public double maxAllowedErrorStitching() { return maxAllowedErrorStitching; }
-	public int maxIterationsStitching() { return maxIterationsStitching; }
-	public int maxPlateauWidthStitching() { return maxPlateauWidthStitching; }
+	public double maxAllowedErrorStitching() { return stitchingParameters.maxAllowedError; }
+	public int maxIterationsStitching() { return stitchingParameters.maxIterations; }
+	public int maxPlateauWidthStitching() { return stitchingParameters.maxPlateauWidth; }
 
 	@Override
-	public Worker<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> createWorker(
-			final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
-			final int startId,
+	public Worker<AffineModel2D, FIBSEMAlignmentParameters<M, S>> createWorker(
+			final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData,
 			final int threadsWorker)
 	{
-		return new AffineAlignBlockWorker<>( blockData, startId, threadsWorker );
+		return new AffineAlignBlockWorker<>(blockData, threadsWorker);
 	}
 
 	@Override
-	public double[] centerOfMass(final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData)
+	public double[] centerOfMass(final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData)
 	{
-		if (blockData.idToNewModel() == null || blockData.idToNewModel().isEmpty())
-			return super.centerOfMass( blockData );
+		if (blockData.getResults().getModelMap() == null || blockData.getResults().getModelMap().isEmpty())
+			return super.centerOfMass(blockData);
 
 		// check that all TileSpecs are part of the idToNewModel map
-		for ( final TileSpec ts : blockData.rtsc().getTileSpecs() )
-			if ( !blockData.idToNewModel().containsKey( ts.getTileId() ) )
-			{
-				LOG.info( "WARNING: a TileSpec is not part of the idToNewModel() - that should not happen." );
-				return super.centerOfMass( blockData );
+		for (final TileSpec ts : blockData.rtsc().getTileSpecs())
+			if (!blockData.getResults().getModelMap().containsKey(ts.getTileId())) {
+				LOG.info("WARNING: a TileSpec is not part of the idToNewModel() - that should not happen.");
+				return super.centerOfMass(blockData);
 			}
-
-		final HashMap<String, AffineModel2D> models = blockData.idToNewModel();
 
 		final double[] c = new double[ 3 ];
 		int count = 0;
 
 		for ( final TileSpec ts : blockData.rtsc().getTileSpecs() )
 		{
-			final double[] coord = new double[] { (ts.getWidth() - 1) /2.0, (ts.getHeight() - 1) /2.0 };
+			final Rectangle r = ts.toTileBounds().toRectangle();
+			final double[] coord = new double[] { r.getCenterX(), r.getCenterY() };
 
-			models.get( ts.getTileId() ).applyInPlace( coord );
+			final AffineModel2D model = blockData.getResults().getModelFor(ts.getTileId());
+			model.applyInPlace(coord);
 
-			c[ 0 ] += coord[ 0 ];
-			c[ 1 ] += coord[ 1 ];
-			c[ 2 ] += ts.getZ();
+			c[0] += coord[0];
+			c[1] += coord[1];
+			c[2] += ts.getZ();
 			++count;
 		}
 
-		c[ 0 ] /= (double)count;
-		c[ 1 ] /= (double)count;
-		c[ 2 ] /= (double)count;
+		c[0] /= count;
+		c[1] /= count;
+		c[2] /= count;
 
 		return c;
 	}

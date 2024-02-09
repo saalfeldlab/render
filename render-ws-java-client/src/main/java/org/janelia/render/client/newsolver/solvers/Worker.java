@@ -2,6 +2,8 @@ package org.janelia.render.client.newsolver.solvers;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 
 import org.janelia.render.client.RenderDataClient;
@@ -14,27 +16,19 @@ import mpicbg.models.NoninvertibleModelException;
  * 
  * @author preibischs
  *
- * @param <M> - the compute model
  * @param <R> - the result model
  * @param <P> - the solve parameters
  */
-public abstract class Worker <M, R, P extends BlockDataSolveParameters<M, R, P>>
-{
-	// for assigning new id's when splitting BlockData
-	final protected int startId;
-
-	final protected BlockData<M, R, P> blockData;
+public abstract class Worker <R, P extends BlockDataSolveParameters<?, R, P>>
+		implements Callable<List<BlockData<R, P>>> {
+	final protected BlockData<R, P> blockData;
 	final protected RenderDataClient renderDataClient;
 	final protected String renderStack;
 
 	final protected int numThreads;
 
-	public Worker(
-			final int startId,
-			final BlockData<M, R, P> blockData,
-			final int numThreads )
-	{
-		this.startId = startId;
+	public Worker(final BlockData<R, P> blockData,
+				  final int numThreads) {
 		this.blockData = blockData;
 		this.renderDataClient =
 				new RenderDataClient(
@@ -47,12 +41,13 @@ public abstract class Worker <M, R, P extends BlockDataSolveParameters<M, R, P>>
 	}
 
 	/**
-	 * runs the Worker
-	 */
-	public abstract void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException;
-
-	/**
+	 * Runs the Worker
 	 * @return - the result(s) of the solve, multiple ones if they were not connected
 	 */
-	public abstract ArrayList<BlockData< M, R, P>> getBlockDataList();
+	public abstract List<BlockData<R, P>> call() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException;
+
+	@Override
+	public String toString() {
+		return "worker for block " + blockData;
+	}
 }

@@ -436,7 +436,7 @@ public class ImportMETClient {
 
             LOG.info("updateTiles: filtering tile spec collection {}", updatedTiles);
 
-            updatedTiles.removeDifferentTileSpecs(tileIdToAlignTransformMap.keySet());
+            updatedTiles.retainTileSpecs(tileIdToAlignTransformMap.keySet());
 
             if (!updatedTiles.hasTileSpecs()) {
                 throw new IllegalArgumentException("after filtering out non-aligned tiles, " +

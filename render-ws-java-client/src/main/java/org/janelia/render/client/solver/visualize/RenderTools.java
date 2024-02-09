@@ -1,5 +1,7 @@
 package org.janelia.render.client.solver.visualize;
 
+import ij.process.ImageProcessor;
+
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -9,12 +11,13 @@ import java.util.function.Function;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
+import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.solver.MinimalTileSpec;
 import org.janelia.render.client.solver.MultiResolutionSource;
 import org.janelia.render.client.solver.visualize.imglib2.VolatileTmp;
 import org.janelia.render.client.solver.visualize.lazy.Lazy;
@@ -54,28 +57,27 @@ public class RenderTools
 	final static public String boundingBoxFormat = stackFormat + "/z/%d/box/%d,%d,%d,%d,%f";
 	final static public String renderParametersFormat = boundingBoxFormat + "/render-parameters";
 
-	final public static StackMetaData openStackMetaData(
+	public static StackMetaData openStackMetaData(
 			final String baseUrl,
 			final String owner,
 			final String project,
-			final String stack ) throws IOException
+			final String stack) throws IOException
 	{
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		return renderDataClient.getStackMetaData( stack );
 	}
 
-	final static public int[] availableDownsamplings(
+	static public int[] availableDownsamplings(
 			final String baseUrl,
 			final String owner,
 			final String project,
-			final String stack ) throws IOException
+			final String stack) throws IOException
 	{
 		return availableDownsamplings( openStackMetaData( baseUrl, owner, project, stack ) );
 	}
 
-	final static public int[] availableDownsamplings(
-			final StackMetaData sourceStackMetaData ) throws IOException
-	{
+	static public int[] availableDownsamplings(
+			final StackMetaData sourceStackMetaData) {
 		// Say you have scalings of 0.5, 0.25, 0.1
 		// and I query 0.500000001
 		// will it use 1.0 then - yes
@@ -97,9 +99,9 @@ public class RenderTools
 		}
 	}
 
-	final static public Interval stackBounds( final StackMetaData sourceStackMetaData ) throws IOException
+	static public Interval stackBounds(final StackMetaData sourceStackMetaData) throws IOException
 	{
-		Bounds bounds = sourceStackMetaData.getStats().getStackBounds();
+		final Bounds bounds = sourceStackMetaData.getStats().getStackBounds();
 		
 		return new FinalInterval(
 				new long[] {
@@ -124,7 +126,7 @@ public class RenderTools
 	 * @param scale - the preexisting downsampled image as stored on disk
 	 * @return
 	 */
-	final static public BufferedImage renderImage(
+	static public BufferedImage renderImage(
 			final ImageProcessorCache ipCache,
 			final String baseUrl,
 			final String owner,
@@ -132,12 +134,12 @@ public class RenderTools
 			final String stack,
 			final String tileId,
 			final AffineTransform2D t,
-			final double scale )
+			final double scale)
 	{
 		return null;
 	}
 
-	final static public ImageProcessorWithMasks renderImage(
+	static public ImageProcessorWithMasks renderImage(
 			final ImageProcessorCache ipCache,
 			final String baseUrl,
 			final String owner,
@@ -178,6 +180,39 @@ public class RenderTools
 		return Renderer.renderImageProcessorWithMasks( renderParameters, ipCache );
 	}
 
+	public static ImageProcessorWithMasks renderRemoteImage(final ImageProcessorCache ipCache,
+															final String baseUrl,
+															final String owner,
+															final String project,
+															final String stack,
+															final long x,
+															final long y,
+															final long z,
+															final long w,
+															final long h,
+															final double scale,
+															final boolean filter) {
+		final String boxUrlString = String.format(boundingBoxFormat,
+												  baseUrl,
+												  owner,
+												  project,
+												  stack,
+												  z, // full res coordinates
+												  x, // full res coordinates
+												  y, // full res coordinates
+												  w, // full res coordinates
+												  h, // full res coordinates
+												  scale);
+		final String boxJpegImageUrlString = boxUrlString + "/jpeg-image?filter=" + filter + "&ijHack=box.jpg";
+		final ImageProcessor ip = ipCache.get(boxJpegImageUrlString,
+											  0,
+											  false,
+											  false,
+											  ImageLoader.LoaderType.IMAGEJ_DEFAULT,
+											  null);
+		return new ImageProcessorWithMasks(ip, null, null);
+	}
+
 	public static BdvStackSource< ? > renderMultiRes(
 			final ImageProcessorCache globalIpCache,
 			final String baseUrl,
@@ -185,8 +220,8 @@ public class RenderTools
 			final String project,
 			final String stack,
 			final HashMap<String, AffineModel2D> idToModels,
-			final HashMap<String, MinimalTileSpec> idToTileSpec,
-			BdvStackSource< ? > source,
+			final HashMap<String, TileSpec> idToTileSpec,
+			final BdvStackSource<?> source,
 			final int numThreads ) throws IOException
 	{
 		final Interval interval = VisualizingRandomAccessibleInterval.computeInterval(
@@ -208,7 +243,7 @@ public class RenderTools
 			final String project,
 			final String stack,
 			final Interval fullResInterval,
-			BdvStackSource< ? > source,
+			final BdvStackSource<?> source,
 			final int numRenderingThreads,
 			final int numFetchThreads ) throws IOException
 	{
@@ -279,7 +314,7 @@ public class RenderTools
 							min,
 							new FloatType(),
 							1.0/downsampling,
-							zToTransform ) :
+							zToTransform) :
 					new RenderRA<>(baseUrl,
 							owner,
 							project,
@@ -289,14 +324,14 @@ public class RenderTools
 							ipCache,
 							min,
 							new FloatType(),
-							1.0/downsampling );
+							1.0/downsampling);
 
 			// blockSize should be power-of-2 and at least the minimal downsampling
-			final int blockSizeXY = Math.max( 64, ds[ ds.length - 1 ] ); // does that make sense?
+			final int blockSizeXY = 4096; //Math.max( 64, ds[ ds.length - 1 ] ); // does that make sense?
 			final int[] blockSize = new int[] { blockSizeXY, blockSizeXY, 1 };
 
 			// TODO: return it for invalidation
-			CachedCellImg<FloatType, ?> cachedCellImg =
+			final CachedCellImg<FloatType, ?> cachedCellImg =
 					Lazy.process(
 						interval,
 						blockSize,
@@ -333,7 +368,7 @@ public class RenderTools
 		
 		if ( source == null )
 		{
-			BdvOptions options = Bdv.options().numSourceGroups( 1 ).frameTitle( project + "_" + stack ).numRenderingThreads( numRenderingThreads );
+			final BdvOptions options = Bdv.options().numSourceGroups(1).frameTitle(project + "_" + stack).numRenderingThreads(numRenderingThreads);
 			final String windowName = owner + " " + project + " " + stack;
 			source = BdvFunctions.show( new MultiResolutionSource( multiRes, windowName ), options );
 		}
@@ -349,16 +384,16 @@ public class RenderTools
 
 	public static void main(final String[] args) throws IOException
 	{
-		final String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
+		final String baseUrl = "http://renderer.int.janelia.org:8080/render-ws/v1";
 
-		final String owner = args.length < 1 ? "Z0720_07m_BR" : args[0];
-		final String project = args.length < 2 ? "Sec24" : args[1];
-		final String stack = args.length < 3 ? "v5_acquire_trimmed" : args[2];
+		final String owner = args.length < 1 ? "hess_wafer_53" : args[0];
+		final String project = args.length < 2 ? "cut_000_to_009" : args[1];
+		final String stack = args.length < 3 ? "c000_s095_v01" : args[2];
 
-		StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
+		final StackMetaData meta = openStackMetaData(baseUrl, owner, project, stack);
 		
 		final int[] ds = availableDownsamplings( meta );
-		Interval interval = stackBounds( meta );
+		final Interval interval = stackBounds(meta);
 //		Interval interval = new FinalInterval(
 //				new long[] { 2000L, -1300L, 5000L },
 //				new long[] { 3000L, -300L, 5002L } );
@@ -409,9 +444,14 @@ public class RenderTools
 		SimpleMultiThreading.threadHaltUnClean();
 		*/
 
-		BdvStackSource<?> img = RenderTools.renderMultiRes(
+		final BdvStackSource<?> img = RenderTools.renderMultiRes(
 				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads );
 		
 		img.setDisplayRange( 0, 256 );
+
+		final AffineTransform3D transform3d = new AffineTransform3D();
+		final Bounds stackBounds = meta.getStats().getStackBounds();
+		transform3d.translate(stackBounds.getMinX(), stackBounds.getMinY(), stackBounds.getMinZ());
+		img.getBdvHandle().getManualTransformEditor().transformChanged(transform3d);
 	}
 }

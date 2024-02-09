@@ -19,17 +19,17 @@ public class ClusterCountClientTest {
 
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[]{
                 "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
-                "--owner", "hess_wafer_53",
-                "--project", "cut_000_to_009",
-                "--stack", "c000_s095_v01",
-//                "c001_s145_v01",
-//                "--minZ", "1225", // 1226
-//                "--maxZ", "1241", // 1242
-//                "--matchCollection", "wafer_52_v2",
+                "--owner", "cellmap",
+                "--project", "jrc_mus_liv_zon_1",
+                "--stack", "v1_acquire",
+                "--minZ", "1",
+                "--maxZ", "2000",
+                "--matchCollection", "jrc_mus_liv_zon_1_v1",
                 "--maxSmallClusterSize", "0",
                 "--includeMatchesOutsideGroup",
                 "--maxLayersPerBatch", "1000",
-                "--maxOverlapLayers", "6"
+                "--maxOverlapLayers", "6",
+                "--maxUnconnectedLayers", "9"
         };
 
         ClusterCountClient.main(effectiveArgs);

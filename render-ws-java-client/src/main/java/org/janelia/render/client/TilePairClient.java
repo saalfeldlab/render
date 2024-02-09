@@ -48,6 +48,8 @@ import org.slf4j.LoggerFactory;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import jakarta.annotation.Nonnull;
+
 /**
  * Java client for calculating neighbor pairs for all tiles in a range of sections.
  *
@@ -86,7 +88,7 @@ public class TilePairClient {
 
         @Parameter(
                 names = "--z",
-                description = "Explicit z values for layers to be processed (only valid for generating montage pairs with --zNeighborDistance 0)",
+                description = "Explicit z values for layers to be processed",
                 variableArity = true) // e.g. --z 20.0 --z 21.0 --z 22.0
         public List<Double> zValues;
 
@@ -199,11 +201,6 @@ public class TilePairClient {
 
         this.renderDataClient = parameters.renderWeb.getDataClient();
 
-        if ((parameters.zValues != null) && (parameters.zValues.size() > 0) && (tpdp.zNeighborDistance != 0)) {
-            throw new IllegalArgumentException(
-                    "Explicit --z values can only be specified when --zNeighborDistance is zero (for montages).");
-        }
-
         if (tpdp.onlyIncludeTilesFromStack == null) {
             includeClient = null;
             includeStack = null;
@@ -269,19 +266,28 @@ public class TilePairClient {
             throws IllegalArgumentException, IOException {
 
         final List<Double> zValues = getZValues();
-        if (zValues.size() == 0) {
+        if (zValues.isEmpty()) {
             throw new IllegalArgumentException(
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
         Collections.sort(zValues);
 
-        deriveAndSaveSortedNeighborPairsForZValues(zValues);
+        final TilePairDerivationParameters tpdp = parameters.tpdp;
+        if (tpdp.zNeighborDistance == 0) {
+            deriveAndSaveSortedNeighborPairsForZValues(zValues);
+        } else {
+            final List<List<Double>> crossPairZValueLists = buildCrossPairZValueLists(zValues,
+                                                                                      tpdp.zNeighborDistance);
+            for (final List<Double> crossPairZValueList : crossPairZValueLists) {
+                deriveAndSaveSortedNeighborPairsForZValues(crossPairZValueList);
+            }
+        }
     }
 
-    public void deriveAndSaveSortedNeighborPairsForZValues(final List<Double> sortedZValues)
+    private void deriveAndSaveSortedNeighborPairsForZValues(final List<Double> sortedZValues)
             throws IllegalArgumentException, IOException {
 
-        if ((sortedZValues == null) || (sortedZValues.size() == 0)) {
+        if ((sortedZValues == null) || (sortedZValues.isEmpty())) {
             throw new IllegalArgumentException(
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
@@ -430,7 +436,7 @@ public class TilePairClient {
 
         }
 
-        if (neighborPairs.size() > 0) {
+        if (! neighborPairs.isEmpty()) {
             final List<OrderedCanvasIdPair> neighborPairsList = new ArrayList<>(neighborPairs);
             final String outputFileName = numberOfOutputFiles == 0 ? parameters.toJson : getOutputFileName();
             savePairs(neighborPairsList, renderParametersUrlTemplate, outputFileName);
@@ -672,6 +678,66 @@ public class TilePairClient {
         if (! toFile.canWrite()) {
             throw new IllegalArgumentException("cannot write to " + toFile.getAbsolutePath());
         }
+    }
+
+    /**
+     * When deriving cross layer pairs, each value in the zValues list
+     * must be at most zNeighborDistance from the prior value.
+     * Adjacent values that are too far apart should be processed separately (in their own list)
+     * and all lists should have at least two values.
+     *
+     * @param  zValues            list of all z values to process.
+     * @param  zNeighborDistance  look for neighbor tiles with z values less than or equal to this distance
+     *                            from the current tile's z value.
+     *
+     * @return list of z-value lists for cross pair derivation.
+     *
+     * @throws IllegalArgumentException
+     *   if the zValues list cannot be properly split into cross pair lists.
+     */
+    @Nonnull
+    public static List<List<Double>> buildCrossPairZValueLists(final List<Double> zValues,
+                                                               final int zNeighborDistance)
+            throws IllegalArgumentException {
+
+        final List<List<Double>> contiguousZValueLists = new ArrayList<>();
+        final List<Double> isolatedZValues = new ArrayList<>();
+
+        List<Double> contiguousZValues = new ArrayList<>();
+        int previousZ = zValues.get(0).intValue();
+
+        contiguousZValues.add((double) previousZ);
+
+        for (int zIndex = 1; zIndex < zValues.size(); zIndex++) {
+            final int currentZ = zValues.get(zIndex).intValue();
+            if (currentZ - previousZ > zNeighborDistance) {
+                if (contiguousZValues.size() > 1) {
+                    contiguousZValueLists.add(contiguousZValues);
+                    contiguousZValues = new ArrayList<>();
+                } else {
+                    isolatedZValues.add(contiguousZValues.get(0));
+                    contiguousZValues.clear();
+                }
+            }
+            contiguousZValues.add((double) currentZ);
+            previousZ = currentZ;
+        }
+
+        if (contiguousZValues.size() > 1) {
+            contiguousZValueLists.add(contiguousZValues);
+        } else {
+            isolatedZValues.add(contiguousZValues.get(0));
+        }
+
+        if (! isolatedZValues.isEmpty()) {
+            LOG.warn("buildCrossPairZValueLists: ignoring {} isolated z values {}, zNeighborDistance is {}",
+                     isolatedZValues.size(), isolatedZValues, zNeighborDistance);
+        }
+
+        LOG.info("buildCrossPairZValueLists: returning {} cross pair z value lists with zNeighborDistance {}",
+                 contiguousZValueLists.size(), zNeighborDistance);
+
+        return contiguousZValueLists;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TilePairClient.class);

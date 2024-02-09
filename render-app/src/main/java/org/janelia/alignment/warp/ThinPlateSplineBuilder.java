@@ -3,6 +3,8 @@ package org.janelia.alignment.warp;
 import java.util.Collection;
 
 import jitk.spline.ThinPlateR2LogRSplineKernelTransform;
+import net.imglib2.realtransform.ThinplateSplineTransform;
+
 import mpicbg.trakem2.transform.ThinPlateSplineTransform;
 
 import org.janelia.alignment.spec.TileSpec;
@@ -39,10 +41,8 @@ public class ThinPlateSplineBuilder extends AbstractWarpTransformBuilder<ThinPla
 
         LOG.info("call: entry");
 
-        final ThinPlateR2LogRSplineKernelTransform tpsKernelTransform =
-                new ThinPlateR2LogRSplineKernelTransform(2, p, q);
-        
-        tpsKernelTransform.solve();
+        final ThinplateSplineTransform tps = new ThinplateSplineTransform(p, q);
+        final ThinPlateR2LogRSplineKernelTransform tpsKernelTransform = tps.getKernelTransform();
 
         final double[][] TPSAffine = tpsKernelTransform.getAffine();
         for (int j = 0; j < TPSAffine.length; j++) {

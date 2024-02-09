@@ -92,8 +92,11 @@ public class GeometricDescriptorAndMatchFilterParameters
         geometricDescriptorParameters.setDefaults();
 
         commandLineMatchDerivationParameters.applyToMatchDerivationParameters(matchDerivationParameters);
-        validateMatchParametersAndSetDefaults("geometric descriptor",
-                                              matchDerivationParameters);
+
+        if (gdEnabled) {
+            validateMatchParametersAndSetDefaults("geometric descriptor",
+                                                  matchDerivationParameters);
+        }
     }
 
 }

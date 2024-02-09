@@ -26,7 +26,7 @@ public class TileBounds extends Bounds {
                       final Double minY,
                       final Double maxX,
                       final Double maxY) {
-        super(minX, minY, null, maxX, maxY, null);
+        super(minX, minY, z, maxX, maxY, z);
         this.tileId = tileId;
         this.sectionId = sectionId;
         this.z = z;

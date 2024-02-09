@@ -52,21 +52,35 @@ public class JsonUtils {
             setDefaultPrettyPrinter(getArraysOnNewLinePrettyPrinter()).
             enable(SerializationFeature.INDENT_OUTPUT);
 
+    public static final ObjectMapper STRICT_MAPPER = FAST_MAPPER.copy().
+            configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, true).
+            configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true).
+            setDefaultPrettyPrinter(getArraysOnNewLinePrettyPrinter()).
+            enable(SerializationFeature.INDENT_OUTPUT);
+
     public static class Helper<T> {
 
+        private final ObjectMapper mapper;
         private final Class<T> valueType;
         private final CollectionType collectionType;
 
+
         public Helper(final Class<T> valueType) {
+            this(MAPPER, valueType);
+        }
+
+        public Helper(final ObjectMapper mapper,
+                      final Class<T> valueType) {
+            this.mapper = mapper;
             this.valueType = valueType;
             // see https://www.baeldung.com/jackson-collection-array
-            this.collectionType = MAPPER.getTypeFactory().constructCollectionType(List.class, valueType);
+            this.collectionType = this.mapper.getTypeFactory().constructCollectionType(List.class, valueType);
         }
 
         public String toJson(final T value)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.writeValueAsString(value);
+                return mapper.writeValueAsString(value);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -75,7 +89,7 @@ public class JsonUtils {
         public T fromJson(final String json)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.readValue(json, valueType);
+                return mapper.readValue(json, valueType);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -84,7 +98,7 @@ public class JsonUtils {
         public T fromJson(final Reader json)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.readValue(json, valueType);
+                return mapper.readValue(json, valueType);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -93,7 +107,7 @@ public class JsonUtils {
         public List<T> fromJsonArray(final String json)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.readValue(json, collectionType);
+                return mapper.readValue(json, collectionType);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -102,7 +116,7 @@ public class JsonUtils {
         public List<T> fromJsonArray(final Reader json)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.readValue(json, collectionType);
+                return mapper.readValue(json, collectionType);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -112,16 +126,23 @@ public class JsonUtils {
 
     public static class GenericHelper<T> {
 
+        private final ObjectMapper mapper;
         private final TypeReference<T> typeReference;
 
         public GenericHelper(final TypeReference<T> typeReference) {
+            this(MAPPER, typeReference);
+        }
+
+        public GenericHelper(final ObjectMapper mapper,
+                             final TypeReference<T> typeReference) {
+            this.mapper = mapper;
             this.typeReference = typeReference;
         }
 
         public String toJson(final T value)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.writeValueAsString(value);
+                return mapper.writeValueAsString(value);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -130,7 +151,7 @@ public class JsonUtils {
         public T fromJson(final String json)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.readValue(json, typeReference);
+                return mapper.readValue(json, typeReference);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }
@@ -139,7 +160,7 @@ public class JsonUtils {
         public T fromJson(final Reader json)
                 throws IllegalArgumentException {
             try {
-                return MAPPER.readValue(json, typeReference);
+                return mapper.readValue(json, typeReference);
             } catch (final IOException e) {
                 throw new IllegalArgumentException(e);
             }

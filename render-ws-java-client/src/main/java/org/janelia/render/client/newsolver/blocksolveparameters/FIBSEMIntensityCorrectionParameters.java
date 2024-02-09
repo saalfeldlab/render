@@ -2,15 +2,15 @@ package org.janelia.render.client.newsolver.blocksolveparameters;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
+
+import mpicbg.models.AffineModel1D;
 
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.solvers.Worker;
 import org.janelia.render.client.newsolver.solvers.intensity.AffineIntensityCorrectionBlockWorker;
-
-import mpicbg.models.AffineModel1D;
 import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZDistanceParameters;
 
 /**
  * 
@@ -25,8 +25,10 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final double lambdaTranslation;
 	private final double lambdaIdentity;
 	private final double renderScale;
+	private final double crossLayerRenderScale;
 	private final int numCoefficients;
-	private final List<Integer> zDistance;
+	private final ZDistanceParameters zDistance;
+	private final double equilibrationWeight;
 
 	public FIBSEMIntensityCorrectionParameters(
 			final M blockSolveModel,
@@ -42,8 +44,10 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			 intensityAdjust.lambda1,
 			 intensityAdjust.lambda2,
 			 intensityAdjust.renderScale,
+			 intensityAdjust.crossLayerRenderScale,
 			 intensityAdjust.numCoefficients,
-			 intensityAdjust.zDistance);
+			 intensityAdjust.zDistance,
+			 intensityAdjust.equilibrationWeight);
 	}
 
 	public FIBSEMIntensityCorrectionParameters(
@@ -56,8 +60,10 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final double lambdaTranslation,
 			final double lambdaIdentity,
 			final double renderScale,
+			final double crossLayerRenderScale,
 			final int numCoefficients,
-			final List<Integer> zDistance) {
+			final ZDistanceParameters zDistance,
+			final double equilibrationWeight) {
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
@@ -65,24 +71,27 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.lambdaTranslation = lambdaTranslation;
 		this.lambdaIdentity = lambdaIdentity;
 		this.renderScale = renderScale;
+		this.crossLayerRenderScale = crossLayerRenderScale;
 		this.numCoefficients = numCoefficients;
 		this.zDistance = zDistance;
+		this.equilibrationWeight = equilibrationWeight;
 	}
 
 	public long maxNumberOfCachedPixels() { return maxNumberOfCachedPixels; }
 	public double lambdaTranslation() { return lambdaTranslation; }
 	public double lambdaIdentity() { return lambdaIdentity; }
 	public double renderScale() { return renderScale; }
+	public double crossLayerRenderScale() { return crossLayerRenderScale; }
 	public int numCoefficients() { return numCoefficients; }
-	public List<Integer> zDistance() { return zDistance; }
+	public ZDistanceParameters zDistance() { return zDistance; }
+	public double equilibrationWeight() { return equilibrationWeight; }
 
 	@Override
-	public Worker<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(
-			final BlockData<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
-			final int startId,
+	public Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(
+			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
 			final int threadsWorker) {
 		try {
-			return new AffineIntensityCorrectionBlockWorker<>(blockData, startId, threadsWorker);
+			return new AffineIntensityCorrectionBlockWorker<>(blockData, threadsWorker);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
 		}

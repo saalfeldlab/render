@@ -3,22 +3,25 @@ package org.janelia.render.client.newsolver.solvers.affine;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
-import org.janelia.alignment.match.Matches;
-import org.janelia.render.client.newsolver.BlockData;
-import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
+import java.util.Map;
+import java.util.Set;
 
 import mpicbg.models.Affine2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.Tile;
-import net.imglib2.util.Pair;
+
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.render.client.newsolver.BlockData;
+import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AffineBlockDataWrapper<M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
 {
 	final public static int samplesPerDimension = 2;
 
-	final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData;
+	final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData;
 
 	//
 	// local only variables needed for the block solve below
@@ -48,18 +51,14 @@ public class AffineBlockDataWrapper<M extends Model<M> & Affine2D<M>, S extends 
 	// contains the model as loaded from renderer (can go right now except for debugging)
 	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
 
-	// matches for error computation
-	final List< Pair< Pair< String, String>, Matches > > matches = new ArrayList<>();
-
-	public AffineBlockDataWrapper( final BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData )
+	public AffineBlockDataWrapper( final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData )
 	{
 		this.blockData = blockData;
 	}
 
-	public BlockData<M, AffineModel2D, FIBSEMAlignmentParameters<M, S>>  blockData() { return blockData; }
+	public BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>>  blockData() { return blockData; }
 
 	public HashMap<String, Tile< M > > idToTileMap() { return idToTileMap; }
-	public List< Pair< Pair< String, String>, Matches > > matches() { return matches; }
 	public HashMap<Tile< M >, String > tileToIdMap() { return tileToIdMap; }
 	public HashMap<String, AffineModel2D> idToStitchingModel() { return idToStitchingModel; }
 	public HashMap< Tile< M >, Tile< M > > tileToGroupedTile() { return tileToGroupedTile; }
@@ -67,4 +66,52 @@ public class AffineBlockDataWrapper<M extends Model<M> & Affine2D<M>, S extends 
 	//public HashSet< Integer > restarts() { return restarts; }
 	public HashMap<String, AffineModel2D> idToPreviousModel() { return idToPreviousModel; }
 
+	/**
+	 * Removes data associated with any tile not identified in the provided set.
+	 *
+	 * @param  tileIdsToKeep  identifies which tile data should be retained.
+	 */
+	public void retainTiles(final Set<String> tileIdsToKeep) {
+
+		final ResolvedTileSpecCollection rtsc = blockData.getResults().getResolvedTileSpecs();
+
+		LOG.info("retainTiles: entry, idToTileMap.size={}, idToStitchingModel.size={}, idToPreviousModel.size={}, tileToIdMap.size={}, tileToGroupedTile.size={}, resultTileCount={}",
+				 idToTileMap.size(),
+				 idToStitchingModel.size(),
+				 idToPreviousModel.size(),
+				 tileToIdMap.size(),
+				 tileToGroupedTile.size(),
+				 rtsc.getTileCount());
+
+		final List<Map.Entry<String, Tile<M>>> entriesToRemove = new ArrayList<>();
+		idToTileMap.entrySet().forEach(e -> {
+			if (! tileIdsToKeep.contains(e.getKey())) {
+				entriesToRemove.add(e);
+			}
+		});
+
+		entriesToRemove.forEach(e ->{
+			final String tileId = e.getKey();
+			idToTileMap.remove(tileId);
+			idToStitchingModel.remove(tileId);
+			idToPreviousModel.remove(tileId);
+			final Tile<M> tile = e.getValue();
+			tileToIdMap.remove(tile);
+			tileToGroupedTile.remove(tile);
+		});
+
+		rtsc.retainTileSpecs(tileIdsToKeep);
+
+		LOG.info("retainTiles: exit, idToTileMap.size={}, idToStitchingModel.size={}, idToPreviousModel.size={}, tileToIdMap.size={}, tileToGroupedTile.size={}, resultTileCount={}",
+				 idToTileMap.size(),
+				 idToStitchingModel.size(),
+				 idToPreviousModel.size(),
+				 tileToIdMap.size(),
+				 tileToGroupedTile.size(),
+				 rtsc.getTileCount());
+
+		// groupedTileToTiles is only referenced from worker so no need to clean it up (I hope)
+	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(AffineBlockDataWrapper.class);
 }

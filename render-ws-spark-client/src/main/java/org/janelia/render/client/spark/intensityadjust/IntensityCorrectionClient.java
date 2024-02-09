@@ -14,11 +14,10 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.DistributedIntensityCorrectionSolver;
-import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.newsolver.setup.RenderSetup;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,9 +72,6 @@ public class IntensityCorrectionClient
         // create all block instances
         final BlockCollection<?, ArrayList<AffineModel1D>, ?> blockCollection = intensitySolver.setupSolve();
 
-        // assign same id to each worker because it is required but not used in this case
-        final int hackBlockStartId = blockCollection.maxId() + 1;
-
         // allow multithread tasks but warn if Spark isn't configured properly to support them
         final int threadsForSparkTasks = cmdLineSetup.distributedSolve.threadsWorker;
         String taskCpusString = null;
@@ -93,35 +89,28 @@ public class IntensityCorrectionClient
             }
         }
 
-        final ArrayList<? extends BlockData<?, ArrayList<AffineModel1D>, ?>> blocks = blockCollection.allBlocks();
-        final JavaRDD<? extends BlockData<?, ArrayList<AffineModel1D>, ?>> rddBlocks = sparkContext.parallelize(blocks);
-        final JavaRDD<ArrayList<? extends BlockData<?, ArrayList<AffineModel1D>, ?>>> rddProcessedBlocks =
+        final List<? extends BlockData<ArrayList<AffineModel1D>, ?>> blocks = blockCollection.allBlocks();
+        final JavaRDD<? extends BlockData<ArrayList<AffineModel1D>, ?>> rddBlocks = sparkContext.parallelize(blocks);
+        final JavaRDD<ArrayList<? extends BlockData<ArrayList<AffineModel1D>, ?>>> rddProcessedBlocks =
                 rddBlocks.map(block -> {
-                    final Worker<?, ArrayList<AffineModel1D>, ?> worker = block.createWorker(
-                            hackBlockStartId,
-                            threadsForSparkTasks);
-                    worker.run();
-                    return worker.getBlockDataList();
+                    final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(threadsForSparkTasks);
+                    return new ArrayList<>(worker.call());
                 });
 
         LOG.info("runWithContext: processing {} blocks", blocks.size());
 
-        final List<ArrayList<? extends BlockData<?, ArrayList<AffineModel1D>, ?>>> listOfBlockLists =
+        final List<ArrayList<? extends BlockData<ArrayList<AffineModel1D>, ?>>> listOfBlockLists =
                 rddProcessedBlocks.collect();
 
-        final List<BlockData<?, ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
-        for (final ArrayList<? extends BlockData<?, ArrayList<AffineModel1D>, ?>> blockList: listOfBlockLists) {
+        final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems = new ArrayList<>();
+        for (final ArrayList<? extends BlockData<ArrayList<AffineModel1D>, ?>> blockList: listOfBlockLists) {
             allItems.addAll(blockList);
         }
 
-        // avoid duplicate id assigned while splitting solveitems in the workers
-        // but do keep ids that are smaller or equal to the maxId of the initial solveset
-        final int maxId = WorkerTools.fixIds(allItems, blockCollection.maxId());
+        LOG.info("runWithContext: computed {} blocks", allItems.size());
 
-        LOG.info("runWithContext: computed {} blocks, maxId={}", allItems.size(), maxId);
-
-        final AssemblyMaps<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
-        intensitySolver.saveResultsAsNeeded(finalizedItems);
+        final ResultContainer<ArrayList<AffineModel1D>> finalizedItems = intensitySolver.assembleBlocks(allItems);
+        DistributedIntensityCorrectionSolver.saveResultsAsNeeded(finalizedItems, cmdLineSetup);
 
         LOG.info("runWithContext: exit");
     }

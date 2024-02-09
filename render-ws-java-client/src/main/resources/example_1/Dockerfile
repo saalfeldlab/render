@@ -44,7 +44,7 @@ RUN git clone https://github.com/saalfeldlab/render.git
 WORKDIR /var/www/render/
 
 # Uncomment next line to switch to different source branch
-# RUN git checkout hierarchical
+# RUN git checkout ibeam_msem
 
 RUN ./render-ws/src/main/scripts/install.sh
 

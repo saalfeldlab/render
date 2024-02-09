@@ -1,17 +1,13 @@
 package org.janelia.render.client.parameter;
 
-import com.beust.jcommander.IValueValidator;
 import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
-import org.janelia.render.client.intensityadjust.AdjustBlock;
-import org.janelia.render.client.intensityadjust.AffineIntensityCorrectionStrategy;
+import com.beust.jcommander.ParametersDelegate;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
+
+import org.janelia.render.client.intensityadjust.AdjustBlock;
+import org.janelia.render.client.intensityadjust.AffineIntensityCorrectionStrategy;
 
 /**
  * Abstract algorithmic parameters for intensity adjustment.
@@ -38,22 +34,22 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 
 	@Parameter(
 			names = { "--maxPixelCacheGb" },
-			description = "Maximum number of gigabytes of pixels to cache"
+			description = "Maximum number of gigabytes of pixels to cache (default: 1Gb)"
 	)
 	public Integer maxPixelCacheGb = 1;
 
 	@Parameter(
 			names = "--renderScale",
-			description = "Scale for rendered tiles used during intensity comparison")
+			description = "Scale for rendered tiles in the same layer used during intensity comparison (default: 0.1)")
 	public double renderScale = 0.1;
 
 	@Parameter(
-			names = "--zDistance",
-			description = "Comma separated list of all relative distances of z-layers for which to apply correction. " +
-					"The current z-layer has relative distance 0 and is always corrected. " +
-					"(Omit this parameter to only correct in 2D)",
-			validateValueWith = ZDistanceValidator.class)
-	public List<Integer> zDistance = new ArrayList<>();
+			names = "--crossLayerRenderScale",
+			description = "Scale for rendered tiles in different layers used during intensity comparison. If not given, the same scale as --renderScale is used.")
+	public Double crossLayerRenderScale = null;
+
+	@ParametersDelegate
+	public ZDistanceParameters zDistance = new ZDistanceParameters();
 
 	@Parameter(
 			names = { "--numCoefficients" },
@@ -62,21 +58,18 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
 
+	@Parameter(
+			names = "--equilibrationWeight",
+			description = "Apply equilibration to every coefficient tile to make the mean intensity more uniform (default: 0.0 = no equilibration)"
+	)
+	public double equilibrationWeight = 0.0;
 
-	public static class ZDistanceValidator implements IValueValidator<List<Integer>> {
-		@Override
-		public void validate(final String name, final List<Integer> value) {
-			if (value.stream().anyMatch(z -> z < 0))
-				throw new ParameterException("Parameter --zDistance must not contain negative values");
 
-			if (value.size() == 1) {
-				// include whole range up to given value
-				value.addAll(IntStream.range(1, value.get(0)).boxed().collect(Collectors.toList()));
-			}
-
-			if (!value.contains(0))
-				value.add(0);
-			value.sort(Integer::compareTo);
+	public void initDefaultValues() throws IllegalArgumentException {
+		this.zDistance.initDefaultValues();
+		if (crossLayerRenderScale == null) {
+			crossLayerRenderScale = renderScale;
 		}
 	}
+
 }

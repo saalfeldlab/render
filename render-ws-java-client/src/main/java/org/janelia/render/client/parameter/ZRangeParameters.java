@@ -24,6 +24,15 @@ public class ZRangeParameters
             description = "Maximum Z value for layers to be processed")
     public Double maxZ;
 
+    public ZRangeParameters() {
+    }
+
+    public ZRangeParameters(final Double minZ,
+                            final Double maxZ) {
+        this.minZ = minZ;
+        this.maxZ = maxZ;
+    }
+
     public Bounds overrideBounds(final Bounds defaultBounds) {
         return new Bounds(defaultBounds.getMinX(),
                           defaultBounds.getMinY(),
@@ -33,4 +42,10 @@ public class ZRangeParameters
                           maxZ == null ? defaultBounds.getMaxZ() : Math.min(maxZ, defaultBounds.getMaxZ()));
     }
 
+    @Override
+    public String toString() {
+        return "{minZ=" + minZ +
+               ", maxZ=" + maxZ +
+               '}';
+    }
 }

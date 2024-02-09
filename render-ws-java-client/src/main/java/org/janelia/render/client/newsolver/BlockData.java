@@ -1,176 +1,119 @@
 package org.janelia.render.client.newsolver;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 
-import org.apache.commons.lang.math.IntRange;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
-import org.janelia.render.client.newsolver.assembly.AssemblyMaps;
-import org.janelia.render.client.newsolver.assembly.WeightFunction;
-import org.janelia.render.client.newsolver.blockfactories.BlockFactory;
+import org.janelia.render.client.newsolver.assembly.ResultContainer;
+import org.janelia.render.client.newsolver.blockfactories.BlockTileBoundsFilter;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 import org.janelia.render.client.newsolver.solvers.Worker;
-import org.janelia.render.client.solver.SerializableValuePair;
 
 /**
  * Should contain only geometric data, nothing specific to the type of solve
- * Will need to add this parameter object later rather than extending the class I think
- * 
+ *
  * @author preibischs
  *
- * @param <M> - the compute model
  * @param <R> - the result
  * @param <P> - the solve parameters
  */
-public class BlockData<M, R, P extends BlockDataSolveParameters<M, R, P>> implements Serializable
+public class BlockData<R, P extends BlockDataSolveParameters<?, R, P>> implements Serializable
 {
 	private static final long serialVersionUID = -6491517262420660476L;
 
-	private int id;
+	/**
+	 * The original bounds of this block (as assigned by its factory) which likely differs from the bounds
+	 * of all tiles in the block ( see {@link #getPopulatedBounds()} ).  Blocks that get split based upon
+	 * tile connectivity will have the same originalBounds, but different populatedBounds.
+	 */
+	private final Bounds originalBounds;
 
-	// the BlockFactory that created this BlockData
-	final private BlockFactory blockFactory;
+	/** Solve-specific parameters and models. */
+	private final P solveTypeParameters;
 
-	// contains solve-specific parameters and models
-	final private P solveTypeParameters;
+	/** Identifies which tiles within this block should be processed. */
+	private final BlockTileBoundsFilter blockTileBoundsFilter;
 
-	// used for saving and display
-	final private ResolvedTileSpecCollection rtsc;
+	/** Results populated by worker. */
+	private final ResultContainer<R> localResults;
 
-	// all z-layers as String map to List that only contains the z-layer as double
-	final protected Map<String, ArrayList<Double>> sectionIdToZMap; 
+	public BlockData(final P solveTypeParameters,
+					 final Bounds originalBounds,
+					 final BlockTileBoundsFilter blockTileBoundsFilter) {
+		this(originalBounds, solveTypeParameters, blockTileBoundsFilter, new ResultContainer<>());
+	}
 
-	// what z-range this block covers
-	final protected int minZ, maxZ;
-
-	//
-	// below are the results that the worker has to fill up
-	//
-	final private AssemblyMaps<R> localData = new AssemblyMaps<>();
-
-	// TODO: specifically collected should go into the Parameter objects? We need to make sure each has it's own instance then
-	// coefficient-tile intensity average for global intensity-correction
-	final HashMap<String, ArrayList<Double>> idToAverages = new HashMap<>();
-
-	// TODO: replace BlockFactory argument by WeightFunction?
-	public BlockData(
-			final BlockFactory blockFactory, // knows how it was created for assembly later?
-			final P solveTypeParameters,
-			final int id,
-			final ResolvedTileSpecCollection rtsc )
-	{
-		this.id = id;
-		this.blockFactory = blockFactory;
+	private BlockData(final Bounds originalBounds,
+					  final P solveTypeParameters,
+					  final BlockTileBoundsFilter blockTileBoundsFilter,
+					  final ResultContainer<R> localResults) {
+		this.originalBounds = originalBounds;
 		this.solveTypeParameters = solveTypeParameters;
-		this.rtsc = rtsc;
-
-		this.sectionIdToZMap = new HashMap<>();
-		localData.idToTileSpec.putAll(rtsc.getTileIdToSpecMap());
-		localData.sharedTransformSpecs.addAll(rtsc.getTransformSpecs());
-
-		// TODO: trautmane
-		final IntRange zRange = fetchRenderDetails( rtsc.getTileSpecs(), sectionIdToZMap );
-		this.minZ = zRange.getMinimumInteger();
-		this.maxZ = zRange.getMaximumInteger();
-	}
-
-	public int minZ() { return minZ; }
-	public int maxZ() { return maxZ; }
-	public Map<String, ArrayList<Double>> sectionIdToZMap() { return sectionIdToZMap; }
-
-	public int getId() { return id; }
-	public WeightFunction createWeightFunction() {
-		return blockFactory.createWeightFunction(this);
+		this.blockTileBoundsFilter = blockTileBoundsFilter;
+		this.localResults = localResults;
 	}
 
 	/**
-	 * @return - the center of mass of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
+	 * @return the original bounds of this block (as assigned by its factory).
 	 */
-	public double[] centerOfMass() { return solveTypeParameters().centerOfMass( this ); }
+	public Bounds getOriginalBounds() {
+		return originalBounds;
+	}
 
 	/**
-	 * @return - the bounding box of all tiles that are part of this solve. If the coordinates are changed, the current ones should be used.
+	 * @return the smallest bounds containing the union of the bounds of all tiles within this block.
+	 *         This is dynamically calculated, so call once and save if you need to use it repeatedly.
 	 */
-	public Bounds boundingBox() { return solveTypeParameters().boundingBox(this); }
+	public Bounds getPopulatedBounds() {
+		final ResolvedTileSpecCollection resolvedTiles = rtsc();
+		if (resolvedTiles == null) {
+			throw new IllegalStateException("localResults.getResolvedTileSpecs is null for block " + this.toDetailsString());
+		}
+		final Bounds populatedBounds = resolvedTiles.toBounds();
+		if (populatedBounds == null) {
+			throw new IllegalStateException("cannot derive populated bounds for block " + this.toDetailsString() +
+											" because it has no tiles");
+		}
+		return populatedBounds;
+	}
 
 	public P solveTypeParameters() { return solveTypeParameters; }
-	public BlockFactory blockFactory() { return blockFactory; }
 
-	public ResolvedTileSpecCollection rtsc() { return rtsc; }
-	public HashMap<String, R> idToNewModel() { return localData.idToModel; }
-	public HashMap<String, List<SerializableValuePair<String, Double>>> idToBlockErrorMap() { return localData.idToErrorMap; }
-	public HashMap<String, ArrayList<Double>> idToAverages() { return idToAverages; }
-
-	public HashMap<Integer, HashSet<String>> zToTileId() { return localData.zToTileId; }
-
-	public void assignUpdatedId( final int id ) { this.id = id; }
-
-	public Worker<M, R, P> createWorker( final int startId, final int threadsWorker )
-	{
-		return solveTypeParameters().createWorker( this , startId, threadsWorker );
+	public BlockTileBoundsFilter getBlockTileBoundsFilter() {
+		return blockTileBoundsFilter;
 	}
-
 
 	/**
-	 * Fetches basic data for all TileSpecs
-	 *
-	 * @param allTileSpecs - all TileSpec objects that are part of this solve
-	 * @param sectionIdToZMap - will be filled
-	 * @return an IntRange with the min and max z values
+	 * @return a copy of this block that only contains data for the specified tileIds.
 	 */
-	private static IntRange fetchRenderDetails(
-			final Collection< TileSpec > allTileSpecs,
-			final Map<String, ArrayList<Double>> sectionIdToZMap )
-	{
-		int minZ = Integer.MAX_VALUE;
-		int maxZ = Integer.MIN_VALUE;
-
-		for (final TileSpec t : allTileSpecs)
-		{
-			if ( sectionIdToZMap.containsKey( t.getSectionId() ))
-			{
-				final ArrayList<Double> z = sectionIdToZMap.get( t.getSectionId() );
-				
-				if ( !z.contains( t.getZ() ) )
-					z.add( t.getZ() );
-			}
-			else
-			{
-				final ArrayList<Double> z = new ArrayList<>();
-				z.add( t.getZ() );
-				sectionIdToZMap.put( t.getSectionId(), z );
-			}
-
-			final int z = (int)Math.round( t.getZ() );
-			minZ = Math.min( z, minZ );
-			maxZ = Math.max( z, maxZ );
-		}
-
-		return new IntRange(minZ, maxZ);
+	public BlockData<R, P> buildSplitBlock(final Set<String> withTileIds) {
+		final ResultContainer<R> splitResults = this.localResults.buildSplitResult(withTileIds);
+		return new BlockData<>(this.originalBounds,
+							   this.solveTypeParameters,
+							   this.blockTileBoundsFilter,
+							   splitResults);
 	}
 
+	public ResolvedTileSpecCollection rtsc() { return localResults.getResolvedTileSpecs(); }
+
+	public ResultContainer<R> getResults() { return localResults; }
+
+	public Worker<R, P> createWorker(final int threadsWorker) {
+		return solveTypeParameters().createWorker( this , threadsWorker );
+	}
+	
 	@Override
-	public int hashCode() {
-		return Objects.hash(id, maxZ, minZ, rtsc);
+	public String toString() {
+		// include hash code in toString to help differentiate between split blocks in logs
+		return originalBounds + "@" + Integer.toHexString(hashCode());
 	}
 
-	@Override
-	public boolean equals(final Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		final BlockData<?,?,?> other = (BlockData<?,?,?>) obj;
-		return id == other.id && maxZ == other.maxZ && minZ == other.minZ && Objects.equals(rtsc, other.rtsc);
+	public String toDetailsString() {
+		return "{\"hashCode\": \"" + Integer.toHexString(hashCode()) +
+			   "\", \"originalBounds\": " + originalBounds +
+			   "\", \"localResults\": " + localResults.toDetailsString() +
+			   ", \"solveTypeParametersClass\": \"" + solveTypeParameters.getClass() + '}';
 	}
+
 }

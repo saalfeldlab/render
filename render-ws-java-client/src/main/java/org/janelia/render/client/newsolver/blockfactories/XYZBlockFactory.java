@@ -1,26 +1,32 @@
 package org.janelia.render.client.newsolver.blockfactories;
 
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.WeightFunction;
 import org.janelia.render.client.newsolver.blocksolveparameters.BlockDataSolveParameters;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
 
+/**
+ * Factory for creating blocks by dividing a stack in x, y, and z.
+ * The blocks created by this factory have a linear weight function based on
+ * the distance from the block center. Blocks should be merged using random
+ * picking and used within an alternating block solve strategy with multiple
+ * steps.
+ *
+ * @author Michael Innerberger
+ */
 public class XYZBlockFactory extends BlockFactory implements Serializable {
 
 	private static final long serialVersionUID = 4436386605961332810L;
 
 	final int minX, maxX, minY, maxY;
 	final int minZ, maxZ;
-	final int minBlockSizeX, minBlockSizeY, minBlockSizeZ;
 	final int blockSizeX, blockSizeY, blockSizeZ;
 
 	public XYZBlockFactory(
@@ -29,10 +35,7 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 			final int minZ, final int maxZ,
 			final int blockSizeX,
 			final int blockSizeY,
-			final int blockSizeZ,
-			final int minBlockSizeX,
-			final int minBlockSizeY,
-			final int minBlockSizeZ
+			final int blockSizeZ
 	) {
 		this.minX = (int)Math.round(Math.floor(minX));
 		this.maxX = (int)Math.round(Math.ceil(maxX));
@@ -43,49 +46,42 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 		this.blockSizeX = blockSizeX;
 		this.blockSizeY = blockSizeY;
 		this.blockSizeZ = blockSizeZ;
-		this.minBlockSizeX = minBlockSizeX;
-		this.minBlockSizeY = minBlockSizeY;
-		this.minBlockSizeZ = minBlockSizeZ;
 	}
 
 	@Override
 	public <M, R, P extends BlockDataSolveParameters<M, R, P>> BlockCollection<M, R, P> defineBlockCollection(
-			final ParameterProvider<M, R, P> blockSolveParameterProvider)
+			final ParameterProvider<M, R, P> blockSolveParameterProvider,
+			final boolean shiftBlocks)
 	{
-		final List<Bounds> blockLayout = new BlockLayoutCreator(new int[]{minBlockSizeX, minBlockSizeY, minBlockSizeZ})
-				.regularGrid(In.X, minX, maxX, blockSizeX)
-				.regularGrid(In.Y, minY, maxY, blockSizeY)
-				.regularGrid(In.Z, minZ, maxZ, blockSizeZ)
-				.plus()
-				.shiftedGrid(In.X, minX, maxX, blockSizeX)
-				.shiftedGrid(In.Y, minY, maxY, blockSizeY)
-				.regularGrid(In.Z, minZ, maxZ, blockSizeZ)
-				.plus()
-				.regularGrid(In.X, minX, maxX, blockSizeX)
-				.regularGrid(In.Y, minY, maxY, blockSizeY)
-				.shiftedGrid(In.Z, minZ, maxZ, blockSizeZ)
-				.create();
+		final BlockLayoutCreator creator = new BlockLayoutCreator();
+		if (shiftBlocks) {
+			creator.shiftedGrid(In.X, minX, maxX, blockSizeX);
+			creator.shiftedGrid(In.Y, minY, maxY, blockSizeY);
+			creator.shiftedGrid(In.Z, minZ, maxZ, blockSizeZ);
+		} else {
+			creator.regularGrid(In.X, minX, maxX, blockSizeX);
+			creator.regularGrid(In.Y, minY, maxY, blockSizeY);
+			creator.regularGrid(In.Z, minZ, maxZ, blockSizeZ);
+		}
+		final List<Bounds> blockLayout = creator.create();
 
-		return blockCollectionFromLayout(blockLayout, blockSolveParameterProvider);
+		// grow blocks such that they overlap
+		final List<Bounds> scaledLayout = blockLayout.stream().map(b -> b.scaled(2.0, 2.0, 2.0)).collect(Collectors.toList());
+		return blockCollectionFromLayout(scaledLayout, blockSolveParameterProvider);
 	}
 
 	@Override
-	protected ResolvedTileSpecCollection fetchTileSpecs(
-			final Bounds bound,
-			final RenderDataClient dataClient,
-			final BlockDataSolveParameters<?, ?, ?> basicParameters) throws IOException {
-
-		return dataClient.getResolvedTiles(
-				basicParameters.stack(),
-				bound.getMinZ(), bound.getMaxZ(),
-				null, // groupId,
-				bound.getMinX(), bound.getMaxX(),
-				bound.getMinY(), bound.getMaxY(),
-				null); // matchPattern
+	protected BlockTileBoundsFilter getBlockTileFilter() {
+		return BlockTileBoundsFilter.XYZ_MIDPOINT;
 	}
 
 	@Override
-	public WeightFunction createWeightFunction(final BlockData<?, ?, ?> block) {
+	public MergingStrategy getMergingStrategy() {
+		return MergingStrategy.RANDOM_PICK;
+	}
+
+	@Override
+	public WeightFunction createWeightFunction(final BlockData<?, ?> block) {
 		final WeightFunction xyWeightFunction = new XYBlockFactory.XYDistanceWeightFunction(block, 0.01);
 		final WeightFunction zWeightFunction = new ZBlockFactory.ZDistanceWeightFunction(block, 0.01);
 		return (x, y, z) -> xyWeightFunction.compute(x, y, z) * zWeightFunction.compute(x, y, z);

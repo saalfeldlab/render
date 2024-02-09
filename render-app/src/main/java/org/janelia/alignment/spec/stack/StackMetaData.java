@@ -13,8 +13,11 @@ import java.util.List;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.spec.Bounds;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.annotation.Nonnull;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.*;
 
@@ -34,7 +37,6 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
     private Integer currentVersionNumber;
     private final StackVersion currentVersion;
     private StackStats stats;
-    private HierarchicalStack hierarchicalData;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
@@ -45,7 +47,6 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         this.currentVersionNumber = null;
         this.currentVersion = null;
         this.stats = null;
-        this.hierarchicalData = null;
     }
 
     public StackMetaData(final StackId stackId,
@@ -56,7 +57,6 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         this.currentVersionNumber = 0;
         this.currentVersion = currentVersion;
         this.stats = null;
-        this.hierarchicalData = null;
     }
 
     public StackId getStackId() {
@@ -118,9 +118,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
     }
 
     /**
-     * Validates the specified stack state change.
-     *
-     * Permitted state transitions are:
+     * Validates the specified stack state change.  Permitted state transitions are:
      * <pre>
      *         LOADING -> COMPLETE
      *
@@ -165,7 +163,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
 
     }
 
-    private String throwStackMustBeCompleteException(final StackState toState) throws IllegalArgumentException {
+    private void throwStackMustBeCompleteException(final StackState toState) throws IllegalArgumentException {
         final String stackName = stackId == null ? "" : stackId.getStack() + " ";
         throw new IllegalArgumentException(
                 "The " + stackName + "stack's state is currently " + state +
@@ -292,17 +290,27 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
         }
     }
 
-    public HierarchicalStack getHierarchicalData() {
-        return hierarchicalData;
+    /**
+     * @return bounds for this stack.
+     *
+     * @throws IllegalStateException
+     *   if the stack's bounds are not available.
+     */
+    public Bounds getStackBounds()
+            throws IllegalStateException {
+        final Bounds stackBounds = (stats == null) ? null : stats.getStackBounds();
+        if (stackBounds == null) {
+            throw new IllegalStateException("Stack bounds are missing for " + stackId +
+                                            ".  Stack may need to be completed.");
+        }
+        return stackBounds;
     }
 
-    public void setHierarchicalData(final HierarchicalStack hierarchicalData) {
-        this.hierarchicalData = hierarchicalData;
-    }
-
-    @SuppressWarnings({"ConstantConditions", "NullableProblems"})
     @Override
-    public int compareTo(final StackMetaData that) {
+    public int compareTo(@Nonnull final StackMetaData that) {
+        if ((this.stackId == null) || (that.stackId == null)) {
+            throw new IllegalStateException("stackId must be defined for both stackMetaData objects");
+        }
         return this.stackId.compareTo(that.stackId);
     }
 

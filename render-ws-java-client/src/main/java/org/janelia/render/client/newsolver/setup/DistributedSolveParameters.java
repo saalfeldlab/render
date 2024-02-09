@@ -41,8 +41,14 @@ public class DistributedSolveParameters implements Serializable {
 
 	@Parameter(
 			names = "--threadsGlobal",
-			description = "Number of threads to be used for global intensity correction (default: numProcessors/2)")
+			description = "Number of threads to be used for global coarse solve (default: numProcessors/2)")
 	public int threadsGlobal = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+
+	@Parameter(
+			names = "--deriveThreadsUsingSparkConfig",
+			description = "If specified, override threadsWorker and threadsGlobal based upon Spark configuration",
+			arity = 1)
+	public boolean deriveThreadsUsingSparkConfig = false;
 
 	public DistributedSolveParameters() {}
 
@@ -51,23 +57,26 @@ public class DistributedSolveParameters implements Serializable {
 			final Integer maxIterationsGlobal,
 			final Integer maxPlateauWidthGlobal,
 			final int threadsWorker,
-			final int threadsGlobal) {
+			final int threadsGlobal,
+			final boolean deriveThreadsUsingSparkConfig) {
 
 		if (maxAllowedErrorGlobal < 0)
 			throw new RuntimeException("MaxAllowedErrorGlobal has to be >= 0.");
-		if (maxIterationsGlobal < 1)
-			throw new RuntimeException("MaxIterationsGlobal has to be > 0.");
-		if (maxPlateauWidthGlobal < 1)
-			throw new RuntimeException("MaxPlateauWidthGlobal has to be > 0.");
-		if (threadsWorker < 1)
-			throw new RuntimeException("ThreadsWorker has to be > 0.");
-		if (threadsGlobal < 1)
-			throw new RuntimeException("ThreadsGlobal has to be > 0.");
+		ensurePositive(maxIterationsGlobal, "MaxIterationsGlobal");
+		ensurePositive(maxPlateauWidthGlobal, "MaxPlateauWidthGlobal");
+		ensurePositive(threadsWorker, "ThreadsWorker");
+		ensurePositive(threadsGlobal, "ThreadsGlobal");
 
 		this.maxAllowedErrorGlobal = maxAllowedErrorGlobal;
 		this.maxIterationsGlobal = maxIterationsGlobal;
 		this.maxPlateauWidthGlobal = maxPlateauWidthGlobal;
 		this.threadsWorker = threadsWorker;
 		this.threadsGlobal = threadsGlobal;
+		this.deriveThreadsUsingSparkConfig = deriveThreadsUsingSparkConfig;
+	}
+
+	protected static void ensurePositive(final Integer value, final String name) {
+		if (value < 1)
+			throw new RuntimeException(name + " has to be > 0.");
 	}
 }

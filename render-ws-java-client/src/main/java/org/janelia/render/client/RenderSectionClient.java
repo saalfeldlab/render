@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import org.janelia.alignment.ArgbRenderer;
+import org.janelia.alignment.ByteRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
@@ -142,6 +143,12 @@ public class RenderSectionClient {
                 description = "Use stack bounds instead of layer bounds for rendered canvas"
         )
         public boolean useStackBounds;
+
+        @Parameter(
+                names = "--convertToGray",
+                description = "convert all output to uint8 grayscale",
+                arity = 0)
+        public boolean convertToGray = false;
 
     }
 
@@ -281,6 +288,7 @@ public class RenderSectionClient {
         renderParameters.setFillWithNoise(clientParameters.fillWithNoise);
         renderParameters.setDoFilter(clientParameters.doFilter);
         renderParameters.setChannels(clientParameters.channels);
+        renderParameters.setConvertToGray(clientParameters.convertToGray);
 
         final File sectionFile = getSectionFile(z);
 
@@ -297,7 +305,11 @@ public class RenderSectionClient {
             cache = this.imageProcessorCache;
         }
 
-        ArgbRenderer.render(renderParameters, sectionImage, cache);
+        if (clientParameters.convertToGray) {
+            ByteRenderer.render(renderParameters, sectionImage, cache);
+        } else {
+            ArgbRenderer.render(renderParameters, sectionImage, cache);
+        }
 
         final boolean isTiffWithResolutionOutput = clientParameters.resolutionUnit != null &&
                                                    (Utils.TIFF_FORMAT.equals(clientParameters.format) ||

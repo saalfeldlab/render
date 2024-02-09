@@ -1,12 +1,11 @@
 package org.janelia.alignment.match;
 
-import com.google.common.base.Objects;
-
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
@@ -215,7 +214,7 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
 
     @Override
     public int hashCode() {
-        return Objects.hashCode(pGroupId, qGroupId, pId, qId);
+        return Objects.hash(pGroupId, qGroupId, pId, qId);
     }
 
     @Override
@@ -297,6 +296,12 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         } else {
             matchCount = 0;
         }
+    }
+
+    public OrderedCanvasIdPair toOrderedPair() {
+        final CanvasId p = new CanvasId(pGroupId, pId);
+        final CanvasId q = new CanvasId(qGroupId, qId);
+        return new OrderedCanvasIdPair(p, q, null);
     }
 
     public static CanvasMatches fromJson(final String json) {

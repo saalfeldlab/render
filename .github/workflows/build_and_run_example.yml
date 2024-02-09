@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Build an all-inclusive fat Docker image for example run
         run: docker build --tag render_example_1 - < render-ws-java-client/src/main/resources/example_1/Dockerfile

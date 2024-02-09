@@ -104,10 +104,10 @@ public class IntensityCorrectionWorker implements Serializable {
                                             true,
                                             false);
 
-            final List<MinimalTileSpecWrapper> wrappedTiles = AdjustBlock.wrapTileSpecs(resolvedTiles);
+            final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
             // TODO: make this also work with selective z-layers
-            final int maxZDistance = parameters.algorithmic.zDistance.stream().mapToInt(i -> i).max().orElse(0);
+            final int maxZDistance = parameters.algorithmic.zDistance.getMaxZDistance();
             final List<OnTheFlyIntensity> corrected =
                     AdjustBlock.correctIntensitiesForSliceTiles(wrappedTiles,
                                                                 parameters.algorithmic.renderScale,
@@ -118,7 +118,7 @@ public class IntensityCorrectionWorker implements Serializable {
                                                                 parameters.numThreads);
 
             for (final OnTheFlyIntensity onTheFlyIntensity : corrected) {
-                final String tileId = onTheFlyIntensity.getMinimalTileSpecWrapper().getTileId();
+                final String tileId = onTheFlyIntensity.getTileSpec().getTileId();
                 final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
                 final IntensityMap8BitFilter filter = onTheFlyIntensity.toFilter();
                 final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(),

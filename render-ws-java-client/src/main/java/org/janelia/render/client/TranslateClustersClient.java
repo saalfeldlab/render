@@ -194,7 +194,7 @@ public class TranslateClustersClient {
 
             if (tileIdsToKeep.size() > 0) {
                 final int numberOfTilesBeforeFilter = resolvedTiles.getTileCount();
-                resolvedTiles.removeDifferentTileSpecs(tileIdsToKeep);
+                resolvedTiles.retainTileSpecs(tileIdsToKeep);
                 final int numberOfTilesRemoved = numberOfTilesBeforeFilter - resolvedTiles.getTileCount();
                 LOG.info("translateLayerClusters: removed {} tiles not found in {}", numberOfTilesRemoved, filterStack);
             }

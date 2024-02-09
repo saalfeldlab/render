@@ -7,8 +7,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -30,10 +32,12 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.TilePairClient;
 import org.janelia.render.client.match.InMemoryTilePairClient;
-import org.janelia.render.client.parameter.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.spark.LogUtilities;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +47,7 @@ import org.slf4j.LoggerFactory;
  * @author Eric Trautman
  */
 public class MultiStagePointMatchClient
-        implements Serializable {
+        implements Serializable, AlignmentPipelineStep {
 
     public static class Parameters extends CommandLineParameters {
         @ParametersDelegate
@@ -53,87 +57,87 @@ public class MultiStagePointMatchClient
                 description = "JSON file where array of match run parameters are defined",
                 required = true)
         public String matchRunJson;
-
-        /** @return client specific parameters populated from specified alignment pipeline parameters. */
-        public static Parameters fromPipeline(final AlignmentPipelineParameters alignmentPipelineParameters) {
-            final Parameters derivedParameters = new Parameters();
-            derivedParameters.multiProject = alignmentPipelineParameters.getMultiProject();
-            // NOTE: matchRunParameters should/will be loaded from alignmentPipelineParameters directly
-            //       instead of from matchRunJson file
-            return derivedParameters;
-        }
-
     }
 
 
+    /** Run the client with command line parameters. */
     public static void main(final String[] args) {
-
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
             public void runClient(final String[] args) throws Exception {
-
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-
-                final MultiStagePointMatchClient client = new MultiStagePointMatchClient(parameters);
-                client.run();
-
+                final MultiStagePointMatchClient client = new MultiStagePointMatchClient();
+                client.createContextAndRun(parameters);
             }
         };
         clientRunner.run();
-
     }
 
-    private final Parameters parameters;
-
-    public MultiStagePointMatchClient(final Parameters parameters) throws IllegalArgumentException {
-        LOG.info("init: parameters={}", parameters);
-        this.parameters = parameters;
+    /** Empty constructor required for alignment pipeline steps. */
+    public MultiStagePointMatchClient() {
     }
 
-    public void run() throws IOException {
-
-        final SparkConf conf = new SparkConf().setAppName("MultiStagePointMatchClient");
-
+    /** Create a spark context and run the client with the specified parameters. */
+    public void createContextAndRun(final Parameters matchParameters) throws IOException {
+        final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
             final String sparkAppId = sparkContext.getConf().getAppId();
-            LOG.info("run: appId is {}", sparkAppId);
-            runWithContext(sparkContext);
+            LOG.info("createContextAndRun: appId is {}", sparkAppId);
+            final MultiProjectParameters multiProjectParameters = matchParameters.multiProject;
+            final List<StackWithZValues> batchedList = multiProjectParameters.buildListOfStackWithBatchedZ();
+            generatePairsAndMatchesForRunList(sparkContext,
+                                              multiProjectParameters,
+                                              batchedList,
+                                              MatchRunParameters.fromJsonArrayFile(matchParameters.matchRunJson));
         }
     }
 
-    public void runWithContext(final JavaSparkContext sparkContext)
+    /** Validates the specified pipeline parameters are sufficient. */
+    @Override
+    public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException {
+        AlignmentPipelineParameters.validateRequiredElementExists("matchRunList",
+                                                                  pipelineParameters.getMatchRunList());
+    }
+
+    /** Run the client as part of an alignment pipeline. */
+    public void runPipelineStep(final JavaSparkContext sparkContext,
+                                final AlignmentPipelineParameters pipelineParameters)
             throws IOException {
 
-        LOG.info("runWithContext: entry");
-
-        final RenderDataClient renderDataClient = new RenderDataClient(parameters.multiProject.baseDataUrl,
-                                                                       parameters.multiProject.owner,
-                                                                       parameters.multiProject.project);
-
-        final List<StackWithZValues> batchedList =
-                parameters.multiProject.stackIdWithZ.buildListOfStackWithBatchedZ(renderDataClient);
+        final MultiProjectParameters multiProjectParameters = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
+        final List<StackWithZValues> batchedList = multiProjectParameters.buildListOfStackWithBatchedZ();
         generatePairsAndMatchesForRunList(sparkContext,
+                                          multiProjectParameters,
                                           batchedList,
-                                          MatchRunParameters.fromJsonArrayFile(parameters.matchRunJson));
-
-        LOG.info("runWithContext: exit");
+                                          pipelineParameters.getMatchRunList());
     }
 
-    public void generatePairsAndMatchesForRunList(final JavaSparkContext sparkContext,
-                                                  final List<StackWithZValues> stackWithZValuesList,
-                                                  final List<MatchRunParameters> matchRunList) {
-        for (final MatchRunParameters matchRunParameters : matchRunList) {
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.DERIVE_TILE_MATCHES;
+    }
+
+    private void generatePairsAndMatchesForRunList(final JavaSparkContext sparkContext,
+                                                   final MultiProjectParameters multiProjectParameters,
+                                                   final List<StackWithZValues> stackWithZValuesList,
+                                                   final List<MatchRunParameters> matchRunList) {
+        for (int i = 0; i < matchRunList.size(); i++) {
+            LOG.info("generatePairsAndMatchesForRunList: starting run {} of {}", (i+1), matchRunList.size());
             generatePairsAndMatchesForRun(sparkContext,
+                                          multiProjectParameters,
                                           stackWithZValuesList,
-                                          matchRunParameters);
+                                          matchRunList.get(i));
             clearDataLoaders(sparkContext);
         }
+        LOG.info("generatePairsAndMatchesForRunList: exit");
     }
 
-    public void generatePairsAndMatchesForRun(final JavaSparkContext sparkContext,
-                                              final List<StackWithZValues> stackWithZValuesList,
-                                              final MatchRunParameters matchRunParameters) {
+    private void generatePairsAndMatchesForRun(final JavaSparkContext sparkContext,
+                                               final MultiProjectParameters multiProjectParameters,
+                                               final List<StackWithZValues> stackWithZValuesList,
+                                               final MatchRunParameters matchRunParameters) {
 
         LOG.info("generatePairsAndMatchesForRun: entry, {} stackWithZValuesList items, matchRunParameters={}",
                  stackWithZValuesList.size(), matchRunParameters.toJson());
@@ -142,20 +146,32 @@ public class MultiStagePointMatchClient
         final TilePairDerivationParameters tilePairDerivation = matchRunParameters.getTilePairDerivationParameters();
 
         List<StackWithZValues> effectiveStackWithZValuesList = stackWithZValuesList;
+
         if (tilePairDerivation.zNeighborDistance > 0) {
-            // for cross-match pair derivation, need to ensure stacks do not have specific z layers so reduce list here
-            effectiveStackWithZValuesList = stackWithZValuesList.stream()
-                    .map(StackWithZValues::getStackId)
-                    .distinct()
-                    .map(stackId -> new StackWithZValues(stackId, new ArrayList<>()))
+
+            // For cross-match pair derivation, group all z values for each stack
+            // and let tile pair client handle sub-batching.
+            // Don't worry about optimizing batch sizes since pair derivation is very fast.
+
+            final Map<StackId, List<Double>> stackToZValuesMap = new HashMap<>();
+            for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
+                final StackId stackId = stackWithZValues.getStackId();
+                final List<Double> zValues = stackToZValuesMap.computeIfAbsent(stackId, sid -> new ArrayList<>());
+                zValues.addAll(stackWithZValues.getzValues());
+            }
+
+            effectiveStackWithZValuesList = stackToZValuesMap.keySet().stream()
+                    .sorted()
+                    .map(stackId -> new StackWithZValues(stackId, stackToZValuesMap.get(stackId)))
                     .collect(Collectors.toList());
+
             LOG.info("generatePairsAndMatchesForRun: reduced stackWithZValuesList from {} to {} items for cross pair derivation",
                      stackWithZValuesList.size(), effectiveStackWithZValuesList.size());
         }
 
         final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairsWithDrift =
                 generateRenderableCanvasIdPairs(sparkContext,
-                                                parameters.multiProject,
+                                                multiProjectParameters,
                                                 effectiveStackWithZValuesList,
                                                 tilePairDerivation,
                                                 matchCommon.maxPairsPerStackBatch);
@@ -171,7 +187,7 @@ public class MultiStagePointMatchClient
 
         final JavaRDD<Integer> rddSavedMatchPairCounts =
                 generateAndStoreCanvasMatches(multiStageParameters,
-                                              parameters.multiProject.baseDataUrl,
+                                              multiProjectParameters.baseDataUrl,
                                               rddCanvasIdPairs);
         
         final List<Integer> matchPairCountList = rddSavedMatchPairCounts.collect();
@@ -187,11 +203,11 @@ public class MultiStagePointMatchClient
                  totalSaved, matchPairCountList.size(), matchRunParameters.getRunName());
     }
 
-    public JavaRDD<RenderableCanvasIdPairsForCollection> generateRenderableCanvasIdPairs(final JavaSparkContext sparkContext,
-                                                                                         final MultiProjectParameters multiProjectParameters,
-                                                                                         final List<StackWithZValues> stackWithZValuesList,
-                                                                                         final TilePairDerivationParameters tilePairDerivationParameters,
-                                                                                         final int maxPairsPerStackBatch) {
+    private JavaRDD<RenderableCanvasIdPairsForCollection> generateRenderableCanvasIdPairs(final JavaSparkContext sparkContext,
+                                                                                          final MultiProjectParameters multiProjectParameters,
+                                                                                          final List<StackWithZValues> stackWithZValuesList,
+                                                                                          final TilePairDerivationParameters tilePairDerivationParameters,
+                                                                                          final int maxPairsPerStackBatch) {
 
 
 
@@ -209,53 +225,64 @@ public class MultiStagePointMatchClient
 
                     final List<RenderableCanvasIdPairsForCollection> pairsList = new ArrayList<>();
 
-                    StackWithZValues stackWithZValues;
-                    MatchCollectionId matchCollectionId;
                     while (stackWithZValuesIterator.hasNext()) {
-
-                        stackWithZValues = stackWithZValuesIterator.next();
-                        final StackId stackId = stackWithZValues.getStackId();
-
-                        final TilePairClient.Parameters tilePairParameters =
-                                new TilePairClient.Parameters(multiProjectParameters.baseDataUrl,
-                                                              stackWithZValues,
-                                                              tilePairDerivationParameters,
-                                                              "/tmp/tile_pairs.json"); // ignored by in-memory client
-                        final InMemoryTilePairClient tilePairClient = new InMemoryTilePairClient(tilePairParameters);
-
-                        matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
-                        tilePairClient.overrideExcludePairsInMatchCollectionIfDefined(matchCollectionId);
-
-                        tilePairClient.deriveAndSaveSortedNeighborPairs();
-
-                        final RenderableCanvasIdPairs renderableCanvasIdPairs =
-                                new RenderableCanvasIdPairs(tilePairClient.getRenderParametersUrlTemplate(),
-                                                            tilePairClient.getNeighborPairs());
-
-
-                        final RenderableCanvasIdPairsForCollection pairsForCollection =
-                                new RenderableCanvasIdPairsForCollection(stackId,
-                                                                         renderableCanvasIdPairs,
-                                                                         matchCollectionId);
-
-                        for (final RenderableCanvasIdPairsForCollection batchPairs :
-                                pairsForCollection.splitPairsIntoBalancedBatches(maxPairsPerStackBatch)) {
-                            log.info("generateRenderableCanvasIdPairs: adding {}", batchPairs);
-                            pairsList.add(batchPairs);
-                        }
+                        generatePairsForBatch(multiProjectParameters,
+                                              tilePairDerivationParameters,
+                                              maxPairsPerStackBatch,
+                                              stackWithZValuesIterator.next(),
+                                              log,
+                                              pairsList);
                     }
 
                     log.info("generateRenderableCanvasIdPairs: exit");
 
                     return pairsList.iterator();
-
                 },
                 true
                 );
     }
 
-    public static JavaRDD<RenderableCanvasIdPairsForCollection> repartitionPairsForBalancedProcessing(final JavaSparkContext sparkContext,
-                                                                                                      final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairsWithDrift) {
+    @SuppressWarnings("ExtractMethodRecommender")
+    private static void generatePairsForBatch(final MultiProjectParameters multiProjectParameters,
+                                              final TilePairDerivationParameters tilePairDerivationParameters,
+                                              final int maxPairsPerStackBatch,
+                                              final StackWithZValues stackWithZValues,
+                                              final Logger log,
+                                              final List<RenderableCanvasIdPairsForCollection> pairsList)
+            throws IOException {
+
+        final StackId stackId = stackWithZValues.getStackId();
+
+        final TilePairClient.Parameters tilePairParameters =
+                new TilePairClient.Parameters(multiProjectParameters.baseDataUrl,
+                                              stackWithZValues,
+                                              tilePairDerivationParameters,
+                                              "/tmp/tile_pairs.json"); // ignored by in-memory client
+        final InMemoryTilePairClient tilePairClient = new InMemoryTilePairClient(tilePairParameters);
+
+        final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
+        tilePairClient.overrideExcludePairsInMatchCollectionIfDefined(matchCollectionId);
+
+        tilePairClient.deriveAndSaveSortedNeighborPairs();
+
+        final RenderableCanvasIdPairs renderableCanvasIdPairs =
+                new RenderableCanvasIdPairs(tilePairClient.getRenderParametersUrlTemplate(),
+                                            tilePairClient.getNeighborPairs());
+
+        final RenderableCanvasIdPairsForCollection pairsForCollection =
+                new RenderableCanvasIdPairsForCollection(stackId,
+                                                         renderableCanvasIdPairs,
+                                                         matchCollectionId);
+
+        for (final RenderableCanvasIdPairsForCollection batchPairs :
+                pairsForCollection.splitPairsIntoBalancedBatches(maxPairsPerStackBatch)) {
+            log.info("generatePairsForBatch: adding {}", batchPairs);
+            pairsList.add(batchPairs);
+        }
+    }
+
+    private static JavaRDD<RenderableCanvasIdPairsForCollection> repartitionPairsForBalancedProcessing(final JavaSparkContext sparkContext,
+                                                                                                       final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairsWithDrift) {
         // TODO: figure out how to repartition RDD without bringing all of the data back to the driver
         final List<RenderableCanvasIdPairsForCollection> batchedCanvasIdPairs =
                 rddCanvasIdPairsWithDrift.collect();
@@ -266,9 +293,9 @@ public class MultiStagePointMatchClient
         return rddCanvasIdPairs;
     }
 
-    public static JavaRDD<Integer> generateAndStoreCanvasMatches(final org.janelia.render.client.MultiStagePointMatchClient.Parameters multiStageParameters,
-                                                                 final String baseDataUrl,
-                                                                 final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairs) {
+    private static JavaRDD<Integer> generateAndStoreCanvasMatches(final org.janelia.render.client.MultiStagePointMatchClient.Parameters multiStageParameters,
+                                                                  final String baseDataUrl,
+                                                                  final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairs) {
         return rddCanvasIdPairs.mapPartitionsWithIndex(
                 (Function2<Integer, Iterator<RenderableCanvasIdPairsForCollection>, Iterator<Integer>>) (partitionIndex, pairIterator) -> {
 
@@ -328,7 +355,7 @@ public class MultiStagePointMatchClient
         );
     }
 
-    public static void clearDataLoaders(final JavaSparkContext sparkContext) {
+    private static void clearDataLoaders(final JavaSparkContext sparkContext) {
 
         final List<Integer> partitionRange = IntStream.rangeClosed(0, sparkContext.defaultParallelism())
                 .boxed().collect(Collectors.toList());

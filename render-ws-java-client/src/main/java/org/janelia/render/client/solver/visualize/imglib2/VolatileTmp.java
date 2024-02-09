@@ -31,6 +31,7 @@ import net.imglib2.cache.volatiles.LoadingStrategy;
 import net.imglib2.cache.volatiles.VolatileCache;
 import net.imglib2.img.WrappedImg;
 import net.imglib2.img.basictypeaccess.AccessFlags;
+import net.imglib2.img.basictypeaccess.DataAccess;
 import net.imglib2.img.basictypeaccess.volatiles.VolatileArrayDataAccess;
 import net.imglib2.img.cell.Cell;
 import net.imglib2.img.cell.CellGrid;
@@ -111,7 +112,7 @@ public class VolatileTmp {
 	}
 
 	@SuppressWarnings( "unchecked" )
-	private static < T extends NativeType< T >, V extends Volatile< T > & NativeType< V >, A > Pair< VolatileViewData< T, V >, VolatileCache< Long, Cell< A > > > wrapCachedCellImg(
+	private static < T extends NativeType< T >, V extends Volatile< T > & NativeType< V >, A extends DataAccess> Pair< VolatileViewData< T, V >, VolatileCache< Long, Cell< A > > > wrapCachedCellImg(
 			final CachedCellImg< T, A > cachedCellImg,
 			SharedQueue queue,
 			CacheHints hints )

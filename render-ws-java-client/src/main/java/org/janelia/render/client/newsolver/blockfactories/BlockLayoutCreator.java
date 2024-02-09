@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-class BlockLayoutCreator {
+public class BlockLayoutCreator {
 
 	public enum In {
 
@@ -33,23 +33,14 @@ class BlockLayoutCreator {
 	}
 
 
-	private final int[] minBlockSize;
 	private final List<List<IntegerInterval>> intervalCollections;
 	private final List<Bounds> blocks;
 
-	public BlockLayoutCreator(final int minBlockSize) {
-		this(new int[]{minBlockSize, minBlockSize, minBlockSize});
+	public BlockLayoutCreator() {
+		this(new ArrayList<>());
 	}
 
-	public BlockLayoutCreator(final int[] minBlockSize) {
-		this(minBlockSize, new ArrayList<>());
-	}
-
-	private BlockLayoutCreator(final int[] minBlockSize, final List<Bounds> existingBlocks) {
-		if (minBlockSize.length != 3)
-			throw new RuntimeException("minBlockSize has to be of length 3");
-
-		this.minBlockSize = minBlockSize;
+	private BlockLayoutCreator(final List<Bounds> existingBlocks) {
 		this.blocks = existingBlocks;
 		this.intervalCollections = Arrays.asList(null, null, null);
 	}
@@ -80,7 +71,7 @@ class BlockLayoutCreator {
 
 	/**
 	 * Specify a regular grid of blocks with given size in the given dimension. The size of the resulting blocks is
-	 * guaranteed to be {@code >= blockSize} except if the interval is smaller than {@code blockSize}.
+	 * guaranteed to be {@code blockSize <= size < 2*blockSize} except if the interval is smaller than {@code blockSize}.
 	 *
 	 * @param dimension - dimension to specify
 	 * @param min - left end of interval
@@ -97,8 +88,8 @@ class BlockLayoutCreator {
 	/**
 	 * Specify a regular grid of blocks with given size in the given dimension. The grid is shifted by half a block
 	 * size to the right and consists of one block less compared to {@link #regularGrid(In, int, int, int)}.
-	 * The size of the resulting blocks is guaranteed to be {@code >= blockSize} but the grid may be empty if the
-	 * size of the interval is smaller than {@code 2*blockSize}.
+	 * The size of the resulting blocks is guaranteed to be {@code blockSize <= size < 2*blockSize} but the grid may be
+	 * empty if the size of the interval is smaller than {@code 2*blockSize}.
 	 *
 	 * @param dimension - dimension to specify
 	 * @param min - left end of interval
@@ -123,7 +114,7 @@ class BlockLayoutCreator {
 	 * @return BlockLayoutCreator for chaining
 	 */
 	public BlockLayoutCreator plus() {
-		return new BlockLayoutCreator(minBlockSize, create());
+		return new BlockLayoutCreator(create());
 	}
 
 	/**
@@ -138,17 +129,11 @@ class BlockLayoutCreator {
 		final List<IntegerInterval> zIntervals = intervalCollections.get(In.Z.index);
 
 		for (final IntegerInterval xInterval : xIntervals) {
-			if (xInterval.size() < minBlockSize[In.X.index])
-				throw new RuntimeException(impossibleBlockErrorMessage(minBlockSize[In.X.index], xInterval, In.X));
-
+			ensureBlockIsNonempty(xInterval, In.X);
 			for (final IntegerInterval yInterval : yIntervals) {
-				if (yInterval.size() < minBlockSize[In.Y.index])
-					throw new RuntimeException(impossibleBlockErrorMessage(minBlockSize[In.Y.index], yInterval, In.Y));
-
+				ensureBlockIsNonempty(yInterval, In.Y);
 				for (final IntegerInterval zInterval : zIntervals) {
-					if (zInterval.size() < minBlockSize[In.Z.index])
-						throw new RuntimeException(impossibleBlockErrorMessage(minBlockSize[In.Z.index], zInterval, In.Z));
-
+					ensureBlockIsNonempty(zInterval, In.Z);
 					blocks.add(new Bounds(
 							xInterval.min(), yInterval.min(), zInterval.min(),
 							xInterval.max(), yInterval.max(), zInterval.max()));
@@ -196,13 +181,13 @@ class BlockLayoutCreator {
 	private List<IntegerInterval> getUnspecifiedIntervals(final In dimension) {
 		final List<IntegerInterval> targetInterval = new ArrayList<>();
 		if (intervalCollections.set(dimension.index, targetInterval) != null)
-			throw new RuntimeException("Intervals for dimension " + dimension + " already specified");
+			throw new RuntimeException("Intervals for " + dimension + " already specified");
 		return targetInterval;
 	}
 
-	private static String impossibleBlockErrorMessage(final int minBlockSize, final IntegerInterval interval, final In dimension) {
-		return "Could not create blocks with minimal blocksize " + minBlockSize
-				+ " for interval " + interval + " in dimension " + dimension;
+	private static void ensureBlockIsNonempty(final IntegerInterval interval, final In dimension) {
+		if (interval.size() <= 0)
+			throw new IllegalStateException("Encountered an empty block for interval " + interval + " in dimension " + dimension);
 	}
 
 

@@ -88,12 +88,12 @@ RUN mkdir -p /root/render-lib && \
 FROM jetty:10.0.13-jre11 as render-ws
 
 # add packages not included in base image:
-#   curl and coreutils are always needed for gnu readlink
+#   curl and coreutils are always needed for gnu readlink, tzdata is needed to set timezone
 #   other packages can be added from build command (e.g. docker build ... --build-arg EXTRA_JETTY_PACKAGES=vim )
 ARG EXTRA_JETTY_PACKAGES
 
 USER root
-RUN apt-get update && apt-get install -y curl coreutils $EXTRA_JETTY_PACKAGES
+RUN apt-get update && apt-get install -y curl coreutils tzdata $EXTRA_JETTY_PACKAGES
 
 WORKDIR $JETTY_BASE
 

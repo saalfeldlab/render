@@ -11,9 +11,9 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 
 import bdv.util.Affine3DHelpers;
+import bdv.viewer.OverlayRenderer;
 import bdv.viewer.ViewerPanel;
 import net.imglib2.realtransform.AffineTransform3D;
-import net.imglib2.ui.OverlayRenderer;
 
 /**
  * An overlay that draws many circles with different colors.

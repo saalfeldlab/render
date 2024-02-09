@@ -61,6 +61,15 @@ public class ConfigurableMaskStreakCorrector
         this.regionsToClear = regionsToClear;
     }
 
+    public ConfigurableMaskStreakCorrector(final ConfigurableMaskStreakCorrector corrector) {
+        super(corrector.getNumThreads());
+        this.fftWidth = corrector.fftWidth;
+        this.fftHeight = corrector.fftHeight;
+        this.extraX = corrector.extraX;
+        this.extraY = corrector.extraY;
+        this.regionsToClear = corrector.regionsToClear;
+    }
+
     public Img<FloatType> createMask(final Dimensions dim) {
 
         if (dim.dimension(0) != fftWidth || dim.dimension( 1) != fftHeight) {
@@ -141,8 +150,8 @@ public class ConfigurableMaskStreakCorrector
             throw new UnsupportedOperationException("this filter only supports full scale images");
         }
 
-        final ImagePlus imp = new ImagePlus("input", ip);
-        final Img<UnsignedByteType> img = ImageJFunctions.wrapByte(imp);
+        final ImagePlus imp = new ImagePlus("input", ip.convertToFloat());
+        final Img<FloatType> img = ImageJFunctions.wrapFloat(imp);
         if (img == null) {
             throw new IllegalArgumentException("failed to wrap " + ip.getClass().getName() +
                                                " as Img<UnsignedByteType>");
@@ -151,8 +160,13 @@ public class ConfigurableMaskStreakCorrector
         final double avg = StreakCorrector.avgIntensity(img);
         LOG.debug("process: average intensity is {}", avg);
 
-        final Img<UnsignedByteType> imgCorr = fftBandpassCorrection(img, false);
+        // remove streaking (but it'll introduce a wave pattern)
+        final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);
+
+        // create the wave pattern introduced by the filtering above
         final Img<FloatType> patternCorr = createPattern(imgCorr.dimensionsAsLongArray(), avg);
+
+        // removes the wave pattern from the corrected image
         final RandomAccessibleInterval<UnsignedByteType> fixed =
                 Converters.convertRAI(imgCorr,
                                       patternCorr,
@@ -163,7 +177,7 @@ public class ConfigurableMaskStreakCorrector
 
         // TODO: check with @StephanPreibisch to see if there is a better way to copy fixedIp to input
         final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
-        final ImageProcessor fixedIp = fixedImp.getProcessor();
+        final ImageProcessor fixedIp = fixedImp.getProcessor().convertToByteProcessor();
         for (int i = 0; i < ip.getPixelCount(); i++) {
             ip.set(i, fixedIp.get(i));
         }

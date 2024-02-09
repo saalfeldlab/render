@@ -350,7 +350,7 @@ public class UnconnectedTileRemovalClient {
         final ResolvedTileSpecCollection filteredTiles =
                 new ResolvedTileSpecCollection(allTiles.getTransformSpecs(),
                                                allTiles.getTileSpecs());
-        filteredTiles.removeDifferentTileSpecs(keepTileIds);
+        filteredTiles.retainTileSpecs(keepTileIds);
         return filteredTiles;
     }
 

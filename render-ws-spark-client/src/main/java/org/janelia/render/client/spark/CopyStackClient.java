@@ -345,7 +345,7 @@ public class CopyStackClient implements Serializable {
 
                 if (tileIdsToKeep.size() > 0) {
                     final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
-                    sourceCollection.removeDifferentTileSpecs(tileIdsToKeep);
+                    sourceCollection.retainTileSpecs(tileIdsToKeep);
                     final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
                     LOG.info("copyFunction: removed {} tiles not found in {}", numberOfTilesRemoved, filterStack);
                 }
