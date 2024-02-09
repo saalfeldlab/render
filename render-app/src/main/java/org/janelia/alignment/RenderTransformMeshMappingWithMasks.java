@@ -64,8 +64,12 @@ public class RenderTransformMeshMappingWithMasks {
                 }
             }
         } else {
+            Exception lastIgnoredException = null;
             for (final Pair<AffineModel2D, double[][]> triangle : av) {
-                mapTriangle(triangle, pixelMapper);
+                lastIgnoredException = mapTriangle(triangle, pixelMapper);
+            }
+            if (lastIgnoredException != null) {
+                LOG.warn("map: ignored exception(s), this is the last one ignored", lastIgnoredException);
             }
         }
     }
@@ -86,15 +90,19 @@ public class RenderTransformMeshMappingWithMasks {
         @Override
         final public void run() {
             int k = i.getAndIncrement();
+            Exception lastIgnoredException = null;
             while (!isInterrupted() && k < triangles.size()) {
-                mapTriangle(triangles.get(k), pixelMapper);
+                lastIgnoredException = mapTriangle(triangles.get(k), pixelMapper);
                 k = i.getAndIncrement();
+            }
+            if (lastIgnoredException != null) {
+                LOG.warn("map: ignored exception(s), this is the last one ignored", lastIgnoredException);
             }
         }
     }
 
-    private static void mapTriangle(final Pair<AffineModel2D, double[][]> ai,
-                                    final PixelMapper pixelMapper) {
+    private static Exception mapTriangle(final Pair<AffineModel2D, double[][]> ai,
+                                         final PixelMapper pixelMapper) {
 
         final int w = pixelMapper.getTargetWidth() - 1;
         final int h = pixelMapper.getTargetHeight() - 1;
@@ -112,6 +120,9 @@ public class RenderTransformMeshMappingWithMasks {
 
         final double[] source = new double[2];
 
+        // TODO: ask Saalfeld why we can't just throw the exception - are there common cases where ignoring makes sense?
+        Exception lastIgnoredException = null;
+        
         if (pixelMapper.isMappingInterpolated()) {
 
             for (int targetY = minY; targetY <= maxY; ++targetY) {
@@ -125,7 +136,7 @@ public class RenderTransformMeshMappingWithMasks {
                         try {
                             ai.a.applyInverseInPlace(source);
                         } catch (final Exception e) {
-                            LOG.warn("ignoring exception", e);
+                            lastIgnoredException = e;
                             continue;
                         }
 
@@ -147,7 +158,7 @@ public class RenderTransformMeshMappingWithMasks {
                         try {
                             ai.a.applyInverseInPlace(source);
                         } catch (final Exception e) {
-                            LOG.warn("ignoring exception", e);
+                            lastIgnoredException = e;
                             continue;
                         }
 
@@ -157,6 +168,8 @@ public class RenderTransformMeshMappingWithMasks {
             }
 
         }
+
+        return lastIgnoredException;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderTransformMeshMappingWithMasks.class);
