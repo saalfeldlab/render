@@ -179,13 +179,31 @@ public class Unbend
 		}
 	}
 
-	public static void main( String[] args ) throws IOException
+	public static void main(final String[] args) throws IOException
 	{
-		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "cellmap";
-		String project = "jrc_ut23_0590_100"; //"Z0419_25_Alpha3";
-		String stack = "v1_acquire_align"; //"v1_acquire_sp_nodyn_v2";
-		String targetStack = stack + "_straightened";
+		final String[] effectiveArgs;
+		if (args.length != 5) {
+			// to run in IDE, comment out following block and update effectiveArgs
+			System.out.println("Usage: java " + Unbend.class.getName() + " <baseUrl> <owner> <project> <stack> <targetStack>");
+			System.out.println("  e.g 'http://em-services-1.int.janelia.org:8080/render-ws/v1' cellmap jrc_ut23_0590_100 v1_acquire_align v1_acquire_align_straightened");
+			System.exit(1);
+
+			effectiveArgs = new String[] {
+				"http://em-services-1.int.janelia.org:8080/render-ws/v1",
+				"cellmap",
+				"jrc_ut23_0590_100",
+				"v1_acquire_align",
+				"v1_acquire_align_straightened"
+			};
+		} else {
+			effectiveArgs = args;
+		}
+
+		final String baseUrl = effectiveArgs[0];
+		final String owner = effectiveArgs[1];
+		final String project = effectiveArgs[2];
+		final String stack = effectiveArgs[3];
+		final String targetStack = effectiveArgs[4];
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		final StackMetaData meta =  renderDataClient.getStackMetaData( stack );
@@ -205,7 +223,7 @@ public class Unbend
 		final int numTotalThreads = (int) Math.floor(Runtime.getRuntime().availableProcessors() * totalThreadUsage);
 
 		// TODO: determine optimal distribution of threads between render and fetch (using half and half for now)
-		final int numFetchThreads = Math.max(64, 1);
+		final int numFetchThreads = Math.max(numTotalThreads / 2, 1);
 		final int numRenderingThreads = Math.max(numTotalThreads - numFetchThreads, 1);
 
 		// at first just identity transform, later update to use the 
