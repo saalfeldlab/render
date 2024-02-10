@@ -49,6 +49,15 @@
       }
     ],
 
+    "jrc_hum_airway_14953vc" : [
+      {
+        "className" : "org.janelia.alignment.destreak.ConfigurableMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "6161,8190,0,0,0,4089,5200,12,5200,4089,500,12,5700,4085,202,20,5902,4091,186,8,6088,4093,71,4"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
