@@ -97,6 +97,12 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 		return JSON_HELPER.fromJson(json);
 	}
 
+	public boolean is2DCorrectionWithoutXYPartitioning() {
+		return (intensityAdjust.zDistance.getMaxZDistance() == 0) &&
+			   (! blockPartition.hasXY()) &&
+			   (alternatingRuns.nRuns == 1);
+	}
+
 	private static final JsonUtils.Helper<IntensityCorrectionSetup> JSON_HELPER =
 			new JsonUtils.Helper<>(IntensityCorrectionSetup.class);
 }

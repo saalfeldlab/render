@@ -49,7 +49,7 @@ public class Assembler<Z, G extends Model<G>, R>
 
 		// the trivial case of a single block, would crash with the code below
 		if (isTrivialCase(blocks)) {
-			return buildTrivialAssembly(blocks.get(0));
+			return buildTrivialAssembly(blocks);
 		}
 
 		final ResolvedTileSpecCollection cumulativeRtsc = mergeResolvedTileSpecCollections(blocks.stream().map(BlockData::rtsc).collect(Collectors.toList()));
@@ -91,15 +91,22 @@ public class Assembler<Z, G extends Model<G>, R>
 	/**
 	 * @return - the result of the trivial case
 	 */
-	private ResultContainer<Z> buildTrivialAssembly(final BlockData<R, ?> block) {
-		LOG.info("buildTrivialAssembly: entry, only a single block, no solve across blocks necessary.");
+	public ResultContainer<Z> buildTrivialAssembly(final List<BlockData<R, ?>> blocks) {
 
-		final ResultContainer<Z> globalData = new ResultContainer<>();
-		globalData.init(block.rtsc());
-		for (final String tileId : block.rtsc().getTileIds()) {
-			globalData.recordModel(tileId, converter.apply(block.getResults().getModelFor(tileId)));
+		LOG.info("buildTrivialAssembly: entry, assuming no solve across blocks is necessary");
+
+		final ResolvedTileSpecCollection cumulativeRtsc = mergeResolvedTileSpecCollections(
+				blocks.stream().map(BlockData::rtsc).collect(Collectors.toList()));
+		final ResultContainer<Z> results = new ResultContainer<>();
+		results.init(cumulativeRtsc);
+
+		for (final BlockData<R, ?> block : blocks) {
+			for (final String tileId : block.rtsc().getTileIds()) {
+				results.recordModel(tileId, converter.apply(block.getResults().getModelFor(tileId)));
+			}
 		}
-		return globalData;
+
+		return results;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(Assembler.class);

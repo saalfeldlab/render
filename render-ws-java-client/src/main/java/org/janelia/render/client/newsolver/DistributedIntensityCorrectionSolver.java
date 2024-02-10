@@ -159,9 +159,16 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 					r.forEach(model -> rCopy.add(model.copy()));
 					return rCopy;});
 
+		final ResultContainer<ArrayList<AffineModel1D>> assembly;
+		if (solverSetup.is2DCorrectionWithoutXYPartitioning()) {
+			assembly = assembler.buildTrivialAssembly(allItems);
+		} else {
+			assembly = assembler.createAssembly(allItems, blockFactory);
+		}
+
 		LOG.info("assembleBlocks: exit");
 
-		return assembler.createAssembly(allItems, blockFactory);
+		return assembly;
 	}
 
 	private static BlockCombiner<ArrayList<AffineModel1D>, ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>>
