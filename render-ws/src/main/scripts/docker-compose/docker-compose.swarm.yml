@@ -34,14 +34,17 @@ services:
         failure_action: rollback
         delay: 10s
 
+    # TODO: debug why healthcheck causes the service to fail to start
+    #       see https://github.com/caprover/caprover/issues/844#issuecomment-702618580
+
     # Configure a check that's run to determine if containers for this service are "healthy".
     # See https://docs.docker.com/engine/reference/builder/#healthcheck
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/render-ws/v1/owners"]
-      interval: 5m
-      timeout: 60s
-      retries: 3
-      start_period: 1m
+    #healthcheck:
+    #  test: ["CMD", "curl", "-f", "http://localhost:8080/render-ws/v1/owners"]
+    #  interval: 5m
+    #  timeout: 60s
+    #  retries: 3
+    #  start_period: 1m
 
     # Mount host paths or named volumes, specified as sub-options to a service.
     volumes:
