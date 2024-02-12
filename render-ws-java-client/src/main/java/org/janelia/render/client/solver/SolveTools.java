@@ -991,6 +991,7 @@ public class SolveTools
 		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
 	}
 
+	// TODO: Bug, this method is not working
 	public static LeafTransformSpec getTransformSpec( final AffineTransform2D forModel )
 	{
 		final double[] m = new double[ 8 ]; //TODO:???? - array indices 0,1,3,4,6,7 are being set
