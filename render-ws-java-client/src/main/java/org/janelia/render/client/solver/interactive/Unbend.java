@@ -186,14 +186,14 @@ public class Unbend
 			// to run in IDE, comment out following block and update effectiveArgs
 			System.out.println("Usage: java " + Unbend.class.getName() + " <baseUrl> <owner> <project> <stack> <targetStack>");
 			System.out.println("  e.g 'http://em-services-1.int.janelia.org:8080/render-ws/v1' cellmap jrc_ut23_0590_100 v1_acquire_align v1_acquire_align_straightened");
-			System.exit(1);
+			//System.exit(1);
 
 			effectiveArgs = new String[] {
 				"http://em-services-1.int.janelia.org:8080/render-ws/v1",
 				"cellmap",
 				"jrc_ut23_0590_100",
 				"v1_acquire_align",
-				"v1_acquire_align_straightened"
+				"v1_acquire_align_straightened_sp"
 			};
 		} else {
 			effectiveArgs = args;
@@ -219,12 +219,12 @@ public class Unbend
 		final ImageProcessorCache ipCache = new ImageProcessorCache( cachedPixels, recordStats, cacheOriginalsForDownSampledImages );
 
 		// make most cores available for viewer
-		final double totalThreadUsage = 0.8;
+		final double totalThreadUsage = 1.0;
 		final int numTotalThreads = (int) Math.floor(Runtime.getRuntime().availableProcessors() * totalThreadUsage);
 
-		// TODO: determine optimal distribution of threads between render and fetch (using half and half for now)
-		final int numFetchThreads = Math.max(numTotalThreads / 2, 1);
-		final int numRenderingThreads = Math.max(numTotalThreads - numFetchThreads, 1);
+		// TODO: determine optimal distribution of threads between render and fetch
+		final int numFetchThreads = Math.max(numTotalThreads, 1); // they are not doing any compute
+		final int numRenderingThreads = Math.max(numTotalThreads, 1);
 
 		// at first just identity transform, later update to use the 
 		final Unbending unbending = new Unbending();
@@ -290,6 +290,7 @@ public class Unbend
 	
 					if ( model != null )
 					{
+						System.out.println( z + ": " + model );
 						resolvedTiles.addTransformSpecToTile( tileId,
 								SolveTools.getTransformSpec( model ),
 								TransformApplicationMethod.PRE_CONCATENATE_LAST );
