@@ -55,8 +55,8 @@ public abstract class StreakCorrector {
                 fft = new FourierTransform<>(input,
                                              new ArrayImgFactory<>(new ComplexFloatType()),
                                              new ComplexFloatType());
+        fft.setNumThreads(numThreads);
         fft.process();
-        fft.setNumThreads( numThreads );
         final Img<ComplexFloatType> fftImg = fft.getResult();
 
         LOG.info("fftBandpassCorrection: {}", Util.printInterval(fftImg));
@@ -71,9 +71,9 @@ public abstract class StreakCorrector {
             ImageJFunctions.show(fftImg).setTitle("fft bandpass");
         }
 
-        final InverseFourierTransform< T, ComplexFloatType > ifft = new InverseFourierTransform<>(fftImg, fft );
+        final InverseFourierTransform< T, ComplexFloatType > ifft = new InverseFourierTransform<>(fftImg, fft);
+        ifft.setNumThreads(numThreads);
         ifft.process();
-        ifft.setNumThreads( numThreads );
 
         @SuppressWarnings("UnnecessaryLocalVariable")
         final Img< T > templateInverse = ifft.getResult();
