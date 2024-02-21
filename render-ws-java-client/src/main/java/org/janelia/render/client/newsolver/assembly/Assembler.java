@@ -73,6 +73,10 @@ public class Assembler<Z, G extends Model<G>, R>
 	}
 
 	private static ResolvedTileSpecCollection mergeResolvedTileSpecCollections(final List<ResolvedTileSpecCollection> collections) {
+		if (collections.isEmpty()) {
+			throw new IllegalArgumentException("mergeResolvedTileSpecCollections: no collections to merge");
+		}
+
 		final Iterator<ResolvedTileSpecCollection> it = collections.iterator();
 		final ResolvedTileSpecCollection first = it.next();
 

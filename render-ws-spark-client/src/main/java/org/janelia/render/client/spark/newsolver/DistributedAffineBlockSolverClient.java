@@ -270,12 +270,17 @@ public class DistributedAffineBlockSolverClient
         final AffineBlockSolverSetup setup = setupList.get(setupIndex);
         final DistributedAffineBlockSolver solver = solverList.get(setupIndex);
 
-        LOG.info("globallySolveOneSetup: setup index {}, solving {} blocks with {} threads",
-                 setupIndex, outputBlocksForSetup.size(), setup.distributedSolve.threadsGlobal);
+        if (outputBlocksForSetup.isEmpty()) {
+            throw new IOException("no output blocks for setup index " + setupIndex +
+                                  " (source stack " + setup.stack + ")");
+        } else {
+            LOG.info("globallySolveOneSetup: setup index {}, solving {} blocks with {} threads",
+                     setupIndex, outputBlocksForSetup.size(), setup.distributedSolve.threadsGlobal);
 
-        DistributedAffineBlockSolver.solveCombineAndSaveBlocks(setup,
-                                                               outputBlocksForSetup,
-                                                               solver);
+            DistributedAffineBlockSolver.solveCombineAndSaveBlocks(setup,
+                                                                   outputBlocksForSetup,
+                                                                   solver);
+        }
     }
 
     private static void globallySolveMultipleSetups(final List<AffineBlockSolverSetup> setupList,
