@@ -186,7 +186,7 @@ public class Unbend
 			// to run in IDE, comment out following block and update effectiveArgs
 			System.out.println("Usage: java " + Unbend.class.getName() + " <baseUrl> <owner> <project> <stack> <targetStack>");
 			System.out.println("  e.g 'http://em-services-1.int.janelia.org:8080/render-ws/v1' cellmap jrc_ut23_0590_100 v1_acquire_align v1_acquire_align_straightened");
-			//System.exit(1);
+			System.exit(1);
 
 			effectiveArgs = new String[] {
 				"http://em-services-1.int.janelia.org:8080/render-ws/v1",
