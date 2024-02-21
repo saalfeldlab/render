@@ -192,8 +192,8 @@ public class Unbend
 				"http://em-services-1.int.janelia.org:8080/render-ws/v1",
 				"cellmap",
 				"jrc_ut23_0590_100",
-				"v1_acquire_align",
-				"v1_acquire_align_straightened_sp"
+				"v1_acquire_align_straightened_final",
+				"v1_acquire_align_straightened_final2"
 			};
 		} else {
 			effectiveArgs = args;

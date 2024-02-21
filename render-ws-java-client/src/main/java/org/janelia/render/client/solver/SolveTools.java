@@ -994,22 +994,32 @@ public class SolveTools
 	// TODO: Bug, this method is not working
 	public static LeafTransformSpec getTransformSpec( final AffineTransform2D forModel )
 	{
-		final double[] m = new double[ 8 ]; //TODO:???? - array indices 0,1,3,4,6,7 are being set
+		final double[] m = new double[ 6 ];
 		forModel.toArray( m );
 
 		// TODO: fix when bug in imglib2-realtransform is released
 		// https://github.com/imglib/imglib2-realtransform/commit/28986382280012a338cfed879956fbf6ac1f0f2e
 
 		/*
+		OLD:
 		data[ 0 ] = a.m00;
 		data[ 1 ] = a.m01;
 		data[ 3 ] = a.m02;
 		data[ 4 ] = a.m10;
 		data[ 6 ] = a.m11;
 		data[ 7 ] = a.m12;
+
+		NEW:
+		data[ 0 ] = a.m00;
+		data[ 1 ] = a.m01;
+		data[ 2 ] = a.m02;
+		data[ 3 ] = a.m10;
+		data[ 4 ] = a.m11;
+		data[ 5 ] = a.m12;
 		*/
 
-		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 4 ] + ' ' + m[ 1 ] + ' ' + m[ 6 ] + ' ' + m[ 3 ] + ' ' + m[ 7 ];
+		//final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 4 ] + ' ' + m[ 1 ] + ' ' + m[ 6 ] + ' ' + m[ 3 ] + ' ' + m[ 7 ];
+		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 3 ] + ' ' + m[ 1 ] + ' ' + m[ 4 ] + ' ' + m[ 2 ] + ' ' + m[ 5 ];
 		System.out.println( data );
 		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
 	}
