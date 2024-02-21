@@ -1058,12 +1058,13 @@ public class RenderDataClient {
     }
 
     /**
-     * @param  stack           name of stack.
-     * @param  bounds          optional bounds values for all tiles (null to exclude bounds).
-     * @param  collectionName  name of match collection.
-     * @param  groupId         group id for all tiles (or null).
-     * @param  matchPattern    only return tiles with ids that match this pattern (null for all tiles).
-     * @param  handleNotFound  if true, return empty object when 404 is returned for request instead of just raising exception.
+     * @param  stack                name of stack.
+     * @param  bounds               optional bounds values for all tiles (null to exclude bounds).
+     * @param  collectionName       name of match collection.
+     * @param  groupId              group id for all tiles (or null).
+     * @param  matchPattern         only return tiles with ids that match this pattern (null for all tiles).
+     * @param  handleTilesNotFound  if true, return empty object when 404 error with 'no tile specifications found'
+     *                              message is returned for request .
      *
      * @return the set of resolved tiles and transforms that match the specified criteria.
      *
@@ -1075,7 +1076,7 @@ public class RenderDataClient {
                                                                           final String collectionName,
                                                                           final String groupId,
                                                                           final String matchPattern,
-                                                                          final boolean handleNotFound)
+                                                                          final boolean handleTilesNotFound)
             throws IOException {
 
         final String baseUrlString = urls.getStackUrlString(stack);
@@ -1109,7 +1110,7 @@ public class RenderDataClient {
             result = httpClient.execute(httpGet, responseHandler);
         } catch (final IOException e) {
             final String msg = e.getMessage();
-            if (handleNotFound && (msg != null) && msg.contains(EXCEPTION_MSG_PREFIX_FOR_404)) {
+            if (handleTilesNotFound && (msg != null) && msg.contains("no tile specifications found")) {
                 LOG.info("getResolvedTilesWithMatchPairs: handling request exception: {}", msg);
                 result = new ResolvedTileSpecsWithMatchPairs(new ResolvedTileSpecCollection(new ArrayList<>(),
                                                                                             new ArrayList<>()),
