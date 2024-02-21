@@ -117,6 +117,11 @@ public class CopyStackClient implements Serializable {
                 arity = 0)
         public boolean completeToStackAfterCopy = false;
 
+        @Parameter(
+                names = "--problemZ",
+                description = "Set groupId to 'problem' for all tiles in these z layers",
+                variableArity = true) // e.g. --problemZ 515 3055
+        public List<Double> problemZValues;
 
         String getTargetOwner() {
             if (targetOwner == null) {
@@ -145,7 +150,7 @@ public class CopyStackClient implements Serializable {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final CopyStackClient client = new CopyStackClient(parameters);
-                client.run();
+                client.createContextAndRun();
             }
         };
         clientRunner.run();
@@ -157,17 +162,16 @@ public class CopyStackClient implements Serializable {
         this.parameters = parameters;
     }
 
-    public void run()
+    public void createContextAndRun() throws IOException {
+        final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
+        try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
+            LOG.info("run: appId is {}", sparkContext.getConf().getAppId());
+            run(sparkContext);
+        }
+    }
+
+    public void run(final JavaSparkContext sparkContext)
             throws IOException {
-
-        final SparkConf conf = new SparkConf().setAppName("CopyStackClient");
-        final JavaSparkContext sparkContext = new JavaSparkContext(conf);
-
-        final String sparkAppId = sparkContext.getConf().getAppId();
-        final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId);
-
-        LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
-
 
         final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
 
@@ -176,7 +180,7 @@ public class CopyStackClient implements Serializable {
                                                      parameters.layerRange.minZ,
                                                      parameters.layerRange.maxZ,
                                                      parameters.getZValues());
-        if (sectionDataList.size() == 0) {
+        if (sectionDataList.isEmpty()) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
@@ -335,7 +339,7 @@ public class CopyStackClient implements Serializable {
                                         .collect(Collectors.toList()));
 
                         // once a stack with tiles for the current z is found, use that as the filter
-                        if (tileIdsToKeep.size() > 0) {
+                        if (! tileIdsToKeep.isEmpty()) {
                             filterStack = tileIdStack;
                             break;
                         }
@@ -343,7 +347,7 @@ public class CopyStackClient implements Serializable {
 
                 }
 
-                if (tileIdsToKeep.size() > 0) {
+                if (! tileIdsToKeep.isEmpty()) {
                     final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
                     sourceCollection.retainTileSpecs(tileIdsToKeep);
                     final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
@@ -367,6 +371,12 @@ public class CopyStackClient implements Serializable {
                     }
                 }
 
+                if ((parameters.problemZValues != null) && (parameters.problemZValues.contains(z))) {
+                    for (final TileSpec tileSpec : sourceCollection.getTileSpecs()) {
+                        tileSpec.setGroupId("problem");
+                    }
+                }
+
                 localTargetDataClient.saveResolvedTiles(sourceCollection, parameters.targetStack, z);
 
                 processedTileCount += sourceCollection.getTileCount();
@@ -377,14 +387,9 @@ public class CopyStackClient implements Serializable {
 
         final JavaRDD<Long> rddTileCounts = rddZValues.map(copyFunction);
 
-        final List<Long> tileCountList = rddTileCounts.collect();
-        long total = 0;
-        for (final Long tileCount : tileCountList) {
-            total += tileCount;
-        }
+        final long tileCount = rddTileCounts.collect().stream().reduce(0L, Long::sum);
 
-        LOG.info("run: collected stats");
-        LOG.info("run: copied {} tiles", total);
+        LOG.info("run: copied {} tiles", tileCount);
 
         if (parameters.completeToStackAfterCopy) {
             final RenderDataClient driverTargetDataClient = new RenderDataClient(parameters.renderWeb.baseDataUrl,
@@ -392,8 +397,6 @@ public class CopyStackClient implements Serializable {
                                                                                  parameters.getTargetProject());
             driverTargetDataClient.setStackState(parameters.targetStack, StackState.COMPLETE);
         }
-
-        sparkContext.stop();
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CopyStackClient.class);
