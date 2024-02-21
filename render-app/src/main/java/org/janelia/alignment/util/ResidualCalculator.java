@@ -32,19 +32,19 @@ public class ResidualCalculator implements Serializable {
         private final String qTileId;
         private final StackId matchRenderStackId;
         private final MatchCollectionId matchCollectionId;
-        private final Boolean includeDetails;
+        private final boolean includeDetails;
 
         // empty ctor required for JSON
         @SuppressWarnings("unused")
         public InputData() {
-            this(null, null, null, null, null);
+            this(null, null, null, null, false);
         }
 
         InputData(final String pTileId,
                   final String qTileId,
                   final StackId matchRenderStackId,
                   final MatchCollectionId matchCollectionId,
-                  final Boolean includeDetails) {
+                  final boolean includeDetails) {
             this.matchCollectionId = matchCollectionId;
             this.matchRenderStackId = matchRenderStackId;
             this.pTileId = pTileId;
@@ -70,7 +70,7 @@ public class ResidualCalculator implements Serializable {
             return matchRenderStackId;
         }
 
-        Boolean getIncludeDetails() {
+        boolean getIncludeDetails() {
             return includeDetails;
         }
 
@@ -126,11 +126,7 @@ public class ResidualCalculator implements Serializable {
             }
         }
 
-        public Double getRootMeanSquareError() {
-            return rootMeanSquareError;
-        }
-
-        @Override
+       @Override
         public String toString() {
             final String totals = String.format("%25s, %40s, %6.2f, %6.2f, %6.2f, %6.2f",
                                                 alignedStackId.getProject(), alignedStackId.getStack(),
@@ -175,7 +171,7 @@ public class ResidualCalculator implements Serializable {
         }
 
         final Result result;
-        if (distanceList.size() > 0) {
+        if (! distanceList.isEmpty()) {
 
             Collections.sort(distanceList);
 

@@ -5,10 +5,12 @@ import java.util.List;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.PointMatch;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
+import org.junit.Assert;
 import org.junit.Test;
 
 /**
@@ -18,6 +20,28 @@ import org.junit.Test;
  */
 public class ResidualCalculatorTest {
 
+    @Test
+    public void testJson() {
+        final String json = "{\n" +
+                            "  \"matchRenderStackId\": {\n" +
+                            "    \"owner\": \"hess_wafer_53b\",\n" +
+                            "    \"project\": \"cut_140_to_149\",\n" +
+                            "    \"stack\": \"c143_s232_v01_align\"\n" +
+                            "  },\n" +
+                            "  \"matchCollectionId\": {\n" +
+                            "    \"owner\": \"hess_wafer_53b\",\n" +
+                            "    \"name\": \"c143_s232_v01_match_agg\"\n" +
+                            "  },\n" +
+                            "  \"pTileId\": \"232_000014_074_20220506_004353.6727.0\",\n" +
+                            "  \"qTileId\": \"232_000014_075_20220506_004353.6727.0\",\n" +
+                            "  \"includeDetails\": true\n" +
+                            "}";
+        final JsonUtils.Helper<ResidualCalculator.InputData> helper =
+                new JsonUtils.Helper<>(ResidualCalculator.InputData.class);
+        final ResidualCalculator.InputData inputData = helper.fromJson(json);
+        Assert.assertNotNull("deserialized inputData is null", inputData);
+    }
+    
     @Test
     public void testRun()
             throws NoninvertibleModelException {
