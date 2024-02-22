@@ -29,32 +29,21 @@ public class LocalConfigurableMaskStreakCorrector
         extends ConfigurableMaskStreakCorrector
         implements Filter {
 
-	private static int DOWN_SAMPLE_FACTOR = 2;
-	private static final int GAUSSIAN_BLUR_RADIUS = 100;
-	private static final float INITIAL_THRESHOLD = 20.0f;
-	private static final float FINAL_THRESHOLD = 0.1f;
+	private final int gaussianBlurRadius;
+	private final float initialThreshold;
+	private final float finalThreshold;
 
 
-    public LocalConfigurableMaskStreakCorrector() {
-        this(1);
-    }
-
-    public LocalConfigurableMaskStreakCorrector(final int numThreads) {
-        super(numThreads);
-    }
-
-    public LocalConfigurableMaskStreakCorrector(final int numThreads,
-												final int fftWidth,
-												final int fftHeight,
-												final int extraX,
-												final int extraY,
-												final int[][] regionsToClear) {
-        super(numThreads, fftWidth, fftHeight, extraX, extraY, regionsToClear);
-    }
-
-    public LocalConfigurableMaskStreakCorrector(final ConfigurableMaskStreakCorrector corrector) {
+    public LocalConfigurableMaskStreakCorrector(
+			final ConfigurableMaskStreakCorrector corrector,
+			final int gaussianBlurRadius,
+			final float initialThreshold,
+			final float finalThreshold) {
         super(corrector);
-    }
+		this.gaussianBlurRadius = gaussianBlurRadius;
+		this.initialThreshold = initialThreshold;
+		this.finalThreshold = finalThreshold;
+	}
 
     @Override
     public void process(final ImageProcessor ip, final double scale) {
@@ -68,25 +57,7 @@ public class LocalConfigurableMaskStreakCorrector
 		final ImagePlus fixedIP = new ImagePlus("fixed", ip);
 		final Img<UnsignedByteType> fixed = ImageJFunctions.wrapByte(fixedIP);
 
-
-		// resize to speed up processing
-//		final int targetWidth = DOWN_SAMPLE_FACTOR * ip.getWidth();
-//		final int targetHeight = DOWN_SAMPLE_FACTOR * ip.getHeight();
-//		final ImagePlus maskExtended = Scaler.resize(fixedIP, targetWidth, targetHeight, 1, "bilinear");
-//
-//		// median filtering for actual background computation
-//		final double downscaledRadius = GAUSSIAN_BLUR_RADIUS * DOWN_SAMPLE_FACTOR;
-//		final ImagePlus extendedBackground = extendBorder(maskExtended, downscaledRadius);
-//
-//		final GaussianBlur gaussianBlur = new GaussianBlur();
-//		gaussianBlur.blurGaussian(extendedBackground.getProcessor(), downscaledRadius);
-//		final ImagePlus filteredBackground = crop(extendedBackground, downscaledRadius);
-
-//		final ImagePlus fixedImagePlus = new ImagePlus("fixed", ip);
-//		gaussianBlur.blurGaussian(fixedImagePlus.getProcessor(), GAUSSIAN_BLUR_RADIUS);
-
-		// subtract fixed from original to get streaks and threshold
-		// has to be FloatType since there may be negative values
+		// subtract fixed from original to get streaks, which is where the correction should be applied
 		final RandomAccessibleInterval<FloatType> weight =
 				Converters.convertRAI(original,
 									  fixed,
@@ -96,39 +67,31 @@ public class LocalConfigurableMaskStreakCorrector
 		weigthedSum(ip, originalIP.getProcessor(), weight);
 	}
 
-	private static void weigthedSum(final ImageProcessor target,
+	private void weigthedSum(final ImageProcessor target,
 									final ImageProcessor original,
 									final RandomAccessibleInterval<FloatType> weight) {
 
 		final ImagePlus weigthIP = ImageJFunctions.wrapFloat(weight, "weight");
-		final ImagePlus extendedWeight = extendBorder(weigthIP, GAUSSIAN_BLUR_RADIUS);
-
 		final GaussianBlur gaussianBlur = new GaussianBlur();
-		threshold(extendedWeight.getProcessor(), INITIAL_THRESHOLD);
-//		threshold(extendedWeight.getProcessor(), 0);
-		gaussianBlur.blurGaussian(extendedWeight.getProcessor(), GAUSSIAN_BLUR_RADIUS);
-		threshold(extendedWeight.getProcessor(), FINAL_THRESHOLD);
-		gaussianBlur.blurGaussian(extendedWeight.getProcessor(), GAUSSIAN_BLUR_RADIUS);
-		final ImagePlus smoothedWeight = crop(extendedWeight, GAUSSIAN_BLUR_RADIUS);
+		final ImagePlus extendedWeight = extendBorder(weigthIP, gaussianBlurRadius);
+
+		// figure out where exactly the streaks are
+		threshold(extendedWeight.getProcessor(), initialThreshold);
+
+		// create neighborhood of the streaks
+		gaussianBlur.blurGaussian(extendedWeight.getProcessor(), gaussianBlurRadius);
+		threshold(extendedWeight.getProcessor(), finalThreshold);
+
+		// smooth the neighborhood
+		gaussianBlur.blurGaussian(extendedWeight.getProcessor(), gaussianBlurRadius);
+		final ImagePlus smoothedWeight = crop(extendedWeight, gaussianBlurRadius);
 		final ImageProcessor w = smoothedWeight.getProcessor();
 
-//		final ImageProcessor w = weigthIP.getProcessor();
-//		gaussianBlur.blurGaussian(w, GAUSSIAN_BLUR_RADIUS);
-
-		// reset min and max before converting to byte processor so that streaks are more easily viewed
+		// normalize the weight
 		w.resetMinAndMax();
-		final float maxValue = (float) w.getMax();
-		System.out.println("max value = " + maxValue);
-		for (int i = 0; i < w.getPixelCount(); i++) {
-			w.setf(i, w.getf(i) / maxValue);
-		}
 
 		for (int i = 0; i < w.getPixelCount(); i++) {
-//			if (weightImageProcessor.get(i) > 0) {
-//				System.out.println("image processor = " + weightImageProcessor.get(i) + ", float processor = " + w.getf(i));
-//			}
-//			final int value = (int) (target.get(i) * w.getf(i) + original.get(i) * (1 - w.getf(i)));
-			final int value = (int) (255 * w.getf(i));
+			final int value = (int) (target.get(i) * w.getf(i) + original.get(i) * (1 - w.getf(i)));
 			target.set(i, value);
 		}
 	}
@@ -140,6 +103,7 @@ public class LocalConfigurableMaskStreakCorrector
 		}
 	}
 
+	// TODO: this is copied from BackgroundCorrectionFilter and should be refactored
 	private static ImagePlus extendBorder(final ImagePlus input, final double padding) {
 		final Img<FloatType> in = ImageJFunctions.wrap(input);
 		final long extendSize = (long) Math.ceil(padding);
