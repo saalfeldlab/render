@@ -5,7 +5,6 @@ import ij.ImagePlus;
 
 import java.util.Map;
 
-import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterSpec;
 import org.junit.Assert;
 import org.junit.Test;
@@ -158,56 +157,49 @@ done
                                HUM_AIRWAY_FILE_NAMES[0]; // change file names index to test different images
 
 //        final ConfigurableMaskStreakCorrector corrector = new LocalConfigurableMaskStreakCorrector(HUM_AIRWAY_CORRECTOR, 100, 20.0f, 0.1f);
-		displayStreakCorrection(srcPath, SMOOTH_MASK_STREAK_CORRECTOR, false);
+		displayStreakCorrectionResult(srcPath, SMOOTH_MASK_STREAK_CORRECTOR);
+//        displayStreakCorrectionDetails(srcPath, HUM_AIRWAY_CORRECTOR);
     }
 
-    public static void displayStreakCorrection(final String srcPath,
-                                               final StreakCorrector corrector,
-                                               final boolean displayCorrectionData) {
-
+    public static void displayStreakCorrectionResult(final String srcPath, final StreakCorrector corrector) {
         final ImagePlus imp = new ImagePlus(srcPath);
+        corrector.process(imp.getProcessor(), 1.0);
+        imp.show();
+    }
 
-        if (displayCorrectionData) {
+    // this shows all steps of the correction process
+    // NOTE: this can only be used for ConfigurableMaskStreakCorrector as some of its logic is duplicated here
+    public static void displayStreakCorrectionDetails(final String srcPath, final StreakCorrector corrector) {
+        final ImagePlus imp = new ImagePlus(srcPath);
+        imp.setProcessor(imp.getProcessor().convertToFloat());
 
-            imp.setProcessor(imp.getProcessor().convertToFloat());
+        // original code from Preibisch that displays correction data
+        final Img<FloatType> img = ImageJFunctions.wrapFloat(imp);
 
-            // original code from Preibisch that displays correction data
-            final Img<FloatType> img = ImageJFunctions.wrapFloat(imp);
+        ImageJFunctions.show(img).setTitle("input");
+        final double avg = StreakCorrector.avgIntensity(img);
+        System.out.println(avg);
 
-            ImageJFunctions.show( img ).setTitle( "input" );
-            final double avg = StreakCorrector.avgIntensity(img);
-            System.out.println( avg );
+        // show FFT and bandpass images to manually find clear region rectangles for filtering
+        // (choose Macro > Record to see the numbers)
+        final boolean showFFTAndBandpass = true;
 
-            // show FFT and bandpass images to manually find clear region rectangles for filtering
-            // (choose Macro > Record to see the numbers)
-            final boolean showFFTAndBandpass = true;
+        // remove streaking (but it'll introduce a wave pattern)
+        final Img<FloatType> imgCorr = corrector.fftBandpassCorrection(img, showFFTAndBandpass);
 
-            // remove streaking (but it'll introduce a wave pattern)
-            final Img<FloatType> imgCorr = corrector.fftBandpassCorrection(img, showFFTAndBandpass);
+        // create the wave pattern introduced by the filtering above
+        final Img<FloatType> patternCorr = corrector.createPattern(imgCorr.dimensionsAsLongArray(), avg);
 
-            // create the wave pattern introduced by the filtering above
-            final Img<FloatType> patternCorr = corrector.createPattern(imgCorr.dimensionsAsLongArray(), avg);
+        // removes the wave pattern from the corrected image
+        final RandomAccessibleInterval<UnsignedByteType> fixed =
+                Converters.convertRAI(imgCorr,
+                                      patternCorr,
+                                      (i1,i2,o) -> o.set(Math.max(0, Math.min(255, Math.round(i1.get() - i2.get())))),
+                                      new UnsignedByteType());
 
-            // removes the wave pattern from the corrected image
-            final RandomAccessibleInterval<UnsignedByteType> fixed =
-                    Converters.convertRAI(imgCorr,
-                                          patternCorr,
-                                          (i1,i2,o) ->
-                                                  o.set(Math.max(0,
-                                                                 Math.min( 255, Math.round( i1.get() - i2.get() ) ) ) ),
-                                          new UnsignedByteType());
-
-            ImageJFunctions.show( imgCorr ).setTitle( "imgCorr" );
-            ImageJFunctions.show( patternCorr ).setTitle( "patternCorr" );
-            ImageJFunctions.show( fixed ).setTitle( "fixed" );
-
-        } else {
-
-            // simply display fixed result (using same logic copied into process method without correction display)
-            corrector.process(imp.getProcessor(), 1.0);
-            imp.show();
-
-        }
+        ImageJFunctions.show(imgCorr).setTitle("imgCorr");
+        ImageJFunctions.show(patternCorr).setTitle("patternCorr");
+        ImageJFunctions.show(fixed).setTitle("fixed");
     }
 
     public static String getToughResinPath(final int fileNameIndex) {
