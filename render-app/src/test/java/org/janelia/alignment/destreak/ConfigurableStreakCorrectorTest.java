@@ -101,7 +101,6 @@ public class ConfigurableStreakCorrectorTest {
                                           6161,
                                           8190,
                                           30,
-                                          5000,
                                           15,
                                           0.0);
 

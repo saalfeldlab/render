@@ -21,12 +21,11 @@ import java.util.stream.IntStream;
 
 /**
  * Streak corrector with a smooth parameterized mask that can also be used as {@link Filter}.
- * The mask is a difference of gaussian (dog) profile in the radial direction (given by angle)
+ * The mask is a smooth cutoff profile in the radial direction (given by angle)
  * multiplied by a small gaussian band in the orthogonal direction.
  * The tunable parameters are:
  * <ul>
- * <li>innerRadius: inner radius of the dog profile in px; smaller values may improve de-streaking, values that are too small tinker with the overall intensity of the image</li>
- * <li>outerRadius: outer radius of the dog profile in px; larger values may improve de-streaking, values that are too high ? </li>
+ * <li>innerCutoff: inner radius of the cutoff profile in px; smaller values may improve de-streaking, values that are too small tinker with the overall intensity of the image</li>
  * <li>bandWidth: width of the gaussian band in px; smaller values may improve de-streaking, values that are too high blur the image in the direction orthogonal to the angle</li>
  * <li>angle: angle of the band in deg; this should be orthogonal to the streaks (e.g., choose an angle of 0.0 for vertical streaks and 90.0 vor horizontal ones)</li>
  * </ul>
@@ -39,11 +38,8 @@ public class SmoothMaskStreakCorrector
 
     private int fftWidth;
     private int fftHeight;
-    private int extraX;
-    private int extraY;
-    
-    private int innerRadius;
-    private int outerRadius;
+
+    private int innerCutoff;
     private int bandWidth;
     private double angle;
 
@@ -60,15 +56,13 @@ public class SmoothMaskStreakCorrector
     public SmoothMaskStreakCorrector(final int numThreads,
                                      final int fftWidth,
                                      final int fftHeight,
-                                     final int innerRadius,
-                                     final int outerRadius,
+                                     final int innerCutoff,
                                      final int bandWidth,
                                      final double angle) {
         super(numThreads);
         this.fftWidth = fftWidth;
         this.fftHeight = fftHeight;
-        this.innerRadius = innerRadius;
-        this.outerRadius = outerRadius;
+        this.innerCutoff = innerCutoff;
         this.bandWidth = bandWidth;
         this.angle = angle;
     }
@@ -77,8 +71,7 @@ public class SmoothMaskStreakCorrector
         super(corrector.getNumThreads());
         this.fftWidth = corrector.fftWidth;
         this.fftHeight = corrector.fftHeight;
-        this.innerRadius = corrector.innerRadius;
-        this.outerRadius = corrector.outerRadius;
+        this.innerCutoff = corrector.innerCutoff;
         this.bandWidth = corrector.bandWidth;
         this.angle = corrector.angle;
     }
@@ -99,14 +92,13 @@ public class SmoothMaskStreakCorrector
                 .mapToDouble(y -> y - ((double) fftHeight - 1) / 2).toArray();
 
         final RandomAccess<FloatType> ra = mask.randomAccess();
-        final double outerSigma = 2 * outerRadius * outerRadius;
-        final double innerSigma = 2 * innerRadius * innerRadius;
+        final double innerSigma = 2 * innerCutoff * innerCutoff;
         final double bandSigma = 2 * bandWidth * bandWidth;
         final double rad = Math.toRadians(angle);
         final double s = Math.sin(rad);
         final double c = Math.cos(rad);
 
-        // smooth with a difference of gaussian (dog) profile in the radial direction (given by angle)
+        // the mask has a smooth cutoff profile in the radial direction (given by angle)
         // multiplied by a small gaussian band in the orthogonal direction
         for (int y = 0; y < fftHeight; y++) {
             for (int x = 0; x < fftWidth; x++) {
@@ -114,12 +106,12 @@ public class SmoothMaskStreakCorrector
                 final double newY = xCoords[x] * s + yCoords[y] * c;
                 final double newX2 = newX * newX;
                 final double newY2 = newY * newY;
-                final float dog = (float) (Math.exp(-newX2 / outerSigma) - Math.exp(-newX2 / innerSigma));
+                final float cutoff = (float) (1 - Math.exp(-newX2 / innerSigma));
                 final float band = (float) Math.exp(-newY2 / bandSigma);
 
                 ra.setPosition(x, 0);
                 ra.setPosition(y, 1);
-                ra.get().set(1 - dog * band);
+                ra.get().set(1 - cutoff * band);
             }
         }
 
