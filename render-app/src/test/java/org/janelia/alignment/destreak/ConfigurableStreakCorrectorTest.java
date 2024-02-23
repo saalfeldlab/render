@@ -5,6 +5,7 @@ import ij.ImagePlus;
 
 import java.util.Map;
 
+import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterSpec;
 import org.junit.Assert;
 import org.junit.Test;
@@ -94,6 +95,15 @@ public class ConfigurableStreakCorrectorTest {
                                                 0,
                                                 0,
                                                 HUM_AIRWAY_REGIONS_TO_CLEAR);
+
+    public static final SmoothMaskStreakCorrector SMOOTH_MASK_STREAK_CORRECTOR =
+            new SmoothMaskStreakCorrector(8,
+                                          6161,
+                                          8190,
+                                          50,
+                                          3000,
+                                          50,
+                                          0.0);
 
     public static final String[] HUM_AIRWAY_FILE_NAMES = {
             "23-12-04_185805_0-0-0.4664.0.tif",

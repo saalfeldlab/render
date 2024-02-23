@@ -36,6 +36,14 @@ public abstract class StreakCorrector {
         this.numThreads = numThreads;
     }
 
+    protected static void ensureDimensions(final Dimensions dim, final int width, final int height) {
+        if (dim.dimension(0) != width || dim.dimension(1) != height) {
+            throw new IllegalArgumentException(
+                    "mask is hard-coded for an FFT size of " + width + " x " + height +
+                    " but requested FFT size is " + dim.dimension(0) + " x " + dim.dimension(1));
+        }
+    }
+
     public int getNumThreads() {
         return numThreads;
     }

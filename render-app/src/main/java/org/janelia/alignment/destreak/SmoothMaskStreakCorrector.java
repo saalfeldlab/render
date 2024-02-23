@@ -2,24 +2,24 @@ package org.janelia.alignment.destreak;
 
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
-
-import java.util.HashMap;
-import java.util.Map;
-
+import net.imglib2.Dimensions;
+import net.imglib2.RandomAccess;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.converter.Converters;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.real.FloatType;
+import org.apache.commons.lang.math.DoubleRange;
+import org.apache.commons.lang.math.IntRange;
 import org.janelia.alignment.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.imglib2.Dimensions;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.converter.Converters;
-import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImg;
-import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.basictypeaccess.array.FloatArray;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.type.numeric.real.FloatType;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.IntStream;
 
 /**
  * Streak corrector with a configurable/parameterized mask that can also be used as {@link Filter}
@@ -28,7 +28,7 @@ import net.imglib2.type.numeric.real.FloatType;
  * @author Stephan Preibisch
  * @author Eric Trautman
  */
-public class ConfigurableMaskStreakCorrector
+public class SmoothMaskStreakCorrector
         extends StreakCorrector
         implements Filter {
 
@@ -36,38 +36,46 @@ public class ConfigurableMaskStreakCorrector
     private int fftHeight;
     private int extraX;
     private int extraY;
+    
+    private int innerRadius;
+    private int outerRadius;
+    private int bandWidth;
+    private double angle;
 
     private int[][] regionsToClear;
 
-    public ConfigurableMaskStreakCorrector() {
+    public SmoothMaskStreakCorrector() {
         this(1);
     }
 
-    public ConfigurableMaskStreakCorrector(final int numThreads) {
+    public SmoothMaskStreakCorrector(final int numThreads) {
         super(numThreads);
     }
 
-    public ConfigurableMaskStreakCorrector(final int numThreads,
-                                           final int fftWidth,
-                                           final int fftHeight,
-                                           final int extraX,
-                                           final int extraY,
-                                           final int[][] regionsToClear) {
+    public SmoothMaskStreakCorrector(final int numThreads,
+                                     final int fftWidth,
+                                     final int fftHeight,
+                                     final int innerRadius,
+                                     final int outerRadius,
+                                     final int bandWidth,
+                                     final double angle) {
         super(numThreads);
         this.fftWidth = fftWidth;
         this.fftHeight = fftHeight;
-        this.extraX = extraX;
-        this.extraY = extraY;
-        this.regionsToClear = regionsToClear;
+        this.innerRadius = innerRadius;
+        this.outerRadius = outerRadius;
+        this.bandWidth = bandWidth;
+        this.angle = angle;
     }
 
-    public ConfigurableMaskStreakCorrector(final ConfigurableMaskStreakCorrector corrector) {
+    public SmoothMaskStreakCorrector(final SmoothMaskStreakCorrector corrector) {
         super(corrector.getNumThreads());
         this.fftWidth = corrector.fftWidth;
         this.fftHeight = corrector.fftHeight;
-        this.extraX = corrector.extraX;
-        this.extraY = corrector.extraY;
-        this.regionsToClear = corrector.regionsToClear;
+        this.innerRadius = corrector.innerRadius;
+        this.outerRadius = corrector.outerRadius;
+        this.bandWidth = corrector.bandWidth;
+        this.angle = corrector.angle;
     }
 
     public Img<FloatType> createMask(final Dimensions dim) {
@@ -79,8 +87,33 @@ public class ConfigurableMaskStreakCorrector
             t.setOne();
         }
 
-        for (final int[] region : regionsToClear) {
-            clear(mask, region[0], region[1], region[2], region[3], extraX, extraY);
+        // get coordinates in [-fftWidth,0]x[-fftHeight/2,fftHeight/2] beginning from lower left corner
+        final double[] xCoords = IntStream.range(0, fftWidth)
+                .mapToDouble(x -> (double) x - fftWidth + 1).toArray();
+        final double[] yCoords = IntStream.range(0, fftHeight)
+                .mapToDouble(y -> y - ((double) fftHeight - 1) / 2).toArray();
+
+        final RandomAccess<FloatType> ra = mask.randomAccess();
+        final double outerSigma = 2 * outerRadius * outerRadius;
+        final double innerSigma = 2 * innerRadius * innerRadius;
+        final double s = Math.sin(angle);
+        final double c = Math.cos(angle);
+
+        // smooth with a difference of gaussian (dog) profile in the radial direction (given by angle)
+        // multiplied by a small gaussian band in the orthogonal direction
+        for (int y = 0; y < fftHeight; y++) {
+            for (int x = 0; x < fftWidth; x++) {
+                final double newX = xCoords[x] * c - yCoords[y] * s;
+                final double newY = xCoords[x] * s + yCoords[y] * c;
+                final double newX2 = newX * newX;
+                final double newY2 = newY * newY;
+                final float dog = (float) (Math.exp(-newX2 / outerSigma) - Math.exp(-newX2 / innerSigma));
+                final float band = (float) Math.exp(-newY2 / bandWidth);
+
+                ra.setPosition(x, 0);
+                ra.setPosition(y, 1);
+                ra.get().set(1 - dog * band);
+            }
         }
 
         return mask;
@@ -138,8 +171,7 @@ public class ConfigurableMaskStreakCorrector
     }
 
     @Override
-    public void process(final ImageProcessor ip,
-                        final double scale) {
+    public void process(final ImageProcessor ip, final double scale) {
         // TODO: check with @StephanPreibisch to see if it makes sense to scale clear regions
         if (scale != 1.0) {
             throw new UnsupportedOperationException("this filter only supports full scale images");
@@ -156,7 +188,7 @@ public class ConfigurableMaskStreakCorrector
         LOG.debug("process: average intensity is {}", avg);
 
         // remove streaking (but it'll introduce a wave pattern)
-        final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);
+        final Img<FloatType> imgCorr = fftBandpassCorrection(img, true);
 
         // create the wave pattern introduced by the filtering above
         final Img<FloatType> patternCorr = createPattern(imgCorr.dimensionsAsLongArray(), avg);
@@ -178,5 +210,5 @@ public class ConfigurableMaskStreakCorrector
         }
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(ConfigurableMaskStreakCorrector.class);
+    private static final Logger LOG = LoggerFactory.getLogger(SmoothMaskStreakCorrector.class);
 }
