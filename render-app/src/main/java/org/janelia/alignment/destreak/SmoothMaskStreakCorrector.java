@@ -12,6 +12,8 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import org.janelia.alignment.filter.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -34,12 +36,14 @@ public class SmoothMaskStreakCorrector
         extends StreakCorrector
         implements Filter {
 
-    private int fftWidth;
-    private int fftHeight;
+    private int fftWidth = 0;
+    private int fftHeight = 0;
 
-    private int innerCutoff;
-    private int bandWidth;
-    private double angle;
+    private int innerCutoff = 0;
+    private int bandWidth = 0;
+    private double angle = 0;
+
+    private Img<FloatType> mask = null;
 
 
     public SmoothMaskStreakCorrector() {
@@ -71,44 +75,55 @@ public class SmoothMaskStreakCorrector
         this.innerCutoff = corrector.innerCutoff;
         this.bandWidth = corrector.bandWidth;
         this.angle = corrector.angle;
+        this.mask = corrector.mask;
     }
 
     public Img<FloatType> createMask(final Dimensions dim) {
         ensureDimensions(dim, fftWidth, fftHeight);
 
-        final Img<FloatType> mask = ArrayImgs.floats(dim.dimensionsAsLongArray());
-
-        for (final FloatType t : mask) {
-            t.setOne();
+        if (fftWidth == 0 || fftHeight == 0) {
+            throw new IllegalStateException("Attempted to create mask before initialization of parameters.");
         }
 
-        // get coordinates in [-fftWidth,0]x[-fftHeight/2,fftHeight/2] beginning from lower left corner
-        final double[] xCoords = IntStream.range(0, fftWidth)
-                .mapToDouble(x -> (double) x - fftWidth + 1).toArray();
-        final double[] yCoords = IntStream.range(0, fftHeight)
-                .mapToDouble(y -> y - ((double) fftHeight - 1) / 2).toArray();
+        // cache mask since only one size is supported anyway
+        if (mask == null) {
+            LOG.info("Creating mask with parameters: fftWidth={}, fftHeight={}, innerCutoff={}, bandWidth={}, angle={}",
+                     fftWidth, fftHeight, innerCutoff, bandWidth, angle);
 
-        final RandomAccess<FloatType> ra = mask.randomAccess();
-        final double innerSigma = 2 * innerCutoff * innerCutoff;
-        final double bandSigma = 2 * bandWidth * bandWidth;
-        final double rad = Math.toRadians(angle);
-        final double s = Math.sin(rad);
-        final double c = Math.cos(rad);
+            mask = ArrayImgs.floats(dim.dimensionsAsLongArray());
 
-        // the mask has a smooth cutoff profile in the radial direction (given by angle)
-        // multiplied by a small gaussian band in the orthogonal direction
-        for (int y = 0; y < fftHeight; y++) {
-            for (int x = 0; x < fftWidth; x++) {
-                final double newX = xCoords[x] * c - yCoords[y] * s;
-                final double newY = xCoords[x] * s + yCoords[y] * c;
-                final double newX2 = newX * newX;
-                final double newY2 = newY * newY;
-                final float cutoff = (float) (1 - Math.exp(-newX2 / innerSigma));
-                final float band = (float) Math.exp(-newY2 / bandSigma);
+            for (final FloatType t : mask) {
+                t.setOne();
+            }
 
-                ra.setPosition(x, 0);
-                ra.setPosition(y, 1);
-                ra.get().set(1 - cutoff * band);
+            // get coordinates in [-fftWidth,0]x[-fftHeight/2,fftHeight/2] beginning from lower left corner
+            final double[] xCoords = IntStream.range(0, fftWidth)
+                    .mapToDouble(x -> (double) x - fftWidth + 1).toArray();
+            final double[] yCoords = IntStream.range(0, fftHeight)
+                    .mapToDouble(y -> y - ((double) fftHeight - 1) / 2).toArray();
+
+            final RandomAccess<FloatType> ra = mask.randomAccess();
+            final double innerSigma = 2 * innerCutoff * innerCutoff;
+            final double bandSigma = 2 * bandWidth * bandWidth;
+            final double rad = Math.toRadians(angle);
+            final double s = Math.sin(rad);
+            final double c = Math.cos(rad);
+
+            // the mask has a smooth cutoff profile in the radial direction (given by angle)
+            // multiplied by a small gaussian band in the orthogonal direction
+            for (int y = 0; y < fftHeight; y++) {
+                for (int x = 0; x < fftWidth; x++) {
+                    final double newX = xCoords[x] * c - yCoords[y] * s;
+                    final double newY = xCoords[x] * s + yCoords[y] * c;
+                    final double newX2 = newX * newX;
+                    final double newY2 = newY * newY;
+                    final float cutoff = (float) (1 - Math.exp(-newX2 / innerSigma));
+                    final float band = (float) Math.exp(-newY2 / bandSigma);
+
+                    ra.setPosition(x, 0);
+                    ra.setPosition(y, 1);
+                    ra.get().set(1 - cutoff * band);
+                }
             }
         }
 
@@ -128,6 +143,7 @@ public class SmoothMaskStreakCorrector
         this.innerCutoff = Integer.parseInt(values[2]);
         this.bandWidth = Integer.parseInt(values[3]);
         this.angle = Double.parseDouble(values[4]);
+        this.mask = null;
     }
 
     public String toDataString() {
@@ -179,4 +195,6 @@ public class SmoothMaskStreakCorrector
             ip.set(i, fixedIp.get(i));
         }
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(SmoothMaskStreakCorrector.class);
 }
