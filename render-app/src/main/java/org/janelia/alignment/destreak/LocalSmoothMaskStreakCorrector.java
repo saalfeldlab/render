@@ -25,20 +25,20 @@ import java.util.Map;
 
 /**
  * Streak corrector with a configurable/parameterized mask that can also be used as {@link Filter}.
- * This applies the mask of the {@link ConfigurableMaskStreakCorrector} to parts of the input image.
+ * This applies the mask of the {@link SmoothMaskStreakCorrector} to parts of the input image.
  *
  * @author Michael Innerberger
  */
-public class LocalConfigurableMaskStreakCorrector extends ConfigurableMaskStreakCorrector {
+public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
 
 	private int gaussianBlurRadius;
 	private float initialThreshold;
 	private float finalThreshold;
 
 
-	// TODO: this duplicates LocalSmoothMaskStreakCorrector; find a way to unify this
-    public LocalConfigurableMaskStreakCorrector(
-			final ConfigurableMaskStreakCorrector corrector,
+	// TODO: this duplicates LocalConfigurableMaskStreakCorrector; find a way to unify this
+    public LocalSmoothMaskStreakCorrector(
+			final SmoothMaskStreakCorrector corrector,
 			final int gaussianBlurRadius,
 			final float initialThreshold,
 			final float finalThreshold) {

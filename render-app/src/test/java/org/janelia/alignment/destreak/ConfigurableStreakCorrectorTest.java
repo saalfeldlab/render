@@ -156,8 +156,8 @@ done
         final String srcPath = "/Users/trautmane/Desktop/cellmap_cosem/jrc_hum-airway-14953vc/raw-images/" +
                                HUM_AIRWAY_FILE_NAMES[0]; // change file names index to test different images
 
-//        final ConfigurableMaskStreakCorrector corrector = new LocalConfigurableMaskStreakCorrector(HUM_AIRWAY_CORRECTOR, 100, 20.0f, 0.1f);
-		displayStreakCorrectionResult(srcPath, SMOOTH_MASK_STREAK_CORRECTOR);
+        final StreakCorrector corrector = new LocalSmoothMaskStreakCorrector(SMOOTH_MASK_STREAK_CORRECTOR, 100, 8.0f, 0.1f);
+        displayStreakCorrectionResult(srcPath, corrector);
 //        displayStreakCorrectionDetails(srcPath, HUM_AIRWAY_CORRECTOR);
     }
 
