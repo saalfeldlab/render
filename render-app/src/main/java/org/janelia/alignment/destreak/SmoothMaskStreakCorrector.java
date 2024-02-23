@@ -12,8 +12,6 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import org.janelia.alignment.filter.Filter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -43,7 +41,6 @@ public class SmoothMaskStreakCorrector
     private int bandWidth;
     private double angle;
 
-    private int[][] regionsToClear;
 
     public SmoothMaskStreakCorrector() {
         this(1);
@@ -122,39 +119,23 @@ public class SmoothMaskStreakCorrector
     public void init(final Map<String, String> params) {
         final String[] values = Filter.getCommaSeparatedStringParameter(DATA_STRING_NAME, params);
 
-        final int numberOfRegions = (values.length - 4) / 4;
-        if ((numberOfRegions < 1) || (values.length % 4 != 0)) {
-            throw new IllegalArgumentException(DATA_STRING_NAME +
-                                               " must have pattern <fftWidth>,<fftHeight>,<extraX>,<extraY>,<regionX>,<regionY>,<regionW>,<regionH>,[additional clear regions]...");
+        if (values.length != 5) {
+            throw new IllegalArgumentException(DATA_STRING_NAME + " must have pattern <fftWidth>,<fftHeight>,<innerCutoff>,<bandWidth>,<angle>");
         }
 
         this.fftWidth = Integer.parseInt(values[0]);
         this.fftHeight = Integer.parseInt(values[1]);
-        this.extraX = Integer.parseInt(values[2]);
-        this.extraY = Integer.parseInt(values[3]);
-
-        this.regionsToClear = new int[numberOfRegions][4];
-        int regionIndex = 0;
-        for (int i = 4; i < values.length; i+=4) {
-            for (int j = 0; j < 4; j++) {
-                this.regionsToClear[regionIndex][j] = Integer.parseInt(values[i+j]);
-            }
-            regionIndex++;
-        }
+        this.innerCutoff = Integer.parseInt(values[2]);
+        this.bandWidth = Integer.parseInt(values[3]);
+        this.angle = Double.parseDouble(values[4]);
     }
 
     public String toDataString() {
-        final StringBuilder sb = new StringBuilder();
-        sb.append(fftWidth).append(',');
-        sb.append(fftHeight).append(',');
-        sb.append(extraX).append(',');
-        sb.append(extraY);
-        for (final int[] region : regionsToClear) {
-            for (final int value : region) {
-                sb.append(',').append(value);
-            }
-        }
-        return sb.toString();
+		return String.valueOf(fftWidth) + ',' +
+				fftHeight + ',' +
+				innerCutoff + ',' +
+				bandWidth + ',' +
+				angle;
     }
 
     @Override
@@ -179,26 +160,16 @@ public class SmoothMaskStreakCorrector
         final ImagePlus imp = new ImagePlus("input", ip.convertToFloat());
         final Img<FloatType> img = ImageJFunctions.wrapFloat(imp);
         if (img == null) {
-            throw new IllegalArgumentException("failed to wrap " + ip.getClass().getName() +
-                                               " as Img<UnsignedByteType>");
+            throw new IllegalArgumentException("failed to wrap " + ip.getClass().getName() + " as Img<UnsignedByteType>");
         }
 
-        final double avg = StreakCorrector.avgIntensity(img);
-        LOG.debug("process: average intensity is {}", avg);
+        // remove streaking
+        final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);
 
-        // remove streaking (but it'll introduce a wave pattern)
-        final Img<FloatType> imgCorr = fftBandpassCorrection(img, true);
-
-        // create the wave pattern introduced by the filtering above
-        final Img<FloatType> patternCorr = createPattern(imgCorr.dimensionsAsLongArray(), avg);
-
-        // removes the wave pattern from the corrected image
+        // convert to 8-bit grayscale
         final RandomAccessibleInterval<UnsignedByteType> fixed =
                 Converters.convertRAI(imgCorr,
-                                      patternCorr,
-                                      (i1,i2,o) ->
-                                              o.set(Math.max(0,
-                                                             Math.min( 255, Math.round( i1.get() - i2.get() ) ) ) ),
+                                      (i,o) -> o.set(Math.max(0, Math.min(255, Math.round(i.get())))),
                                       new UnsignedByteType());
 
         // TODO: check with @StephanPreibisch to see if there is a better way to copy fixedIp to input
@@ -208,6 +179,4 @@ public class SmoothMaskStreakCorrector
             ip.set(i, fixedIp.get(i));
         }
     }
-
-    private static final Logger LOG = LoggerFactory.getLogger(SmoothMaskStreakCorrector.class);
 }
