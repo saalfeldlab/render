@@ -11,8 +11,6 @@ import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
-import org.apache.commons.lang.math.DoubleRange;
-import org.apache.commons.lang.math.IntRange;
 import org.janelia.alignment.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,11 +20,18 @@ import java.util.Map;
 import java.util.stream.IntStream;
 
 /**
- * Streak corrector with a configurable/parameterized mask that can also be used as {@link Filter}
- * (derived from original code to correct Z07422_17_VNC_1 volume).
+ * Streak corrector with a smooth parameterized mask that can also be used as {@link Filter}.
+ * The mask is a difference of gaussian (dog) profile in the radial direction (given by angle)
+ * multiplied by a small gaussian band in the orthogonal direction.
+ * The tunable parameters are:
+ * <ul>
+ * <li>innerRadius: inner radius of the dog profile in px; smaller values may improve de-streaking, values that are too small tinker with the overall intensity of the image</li>
+ * <li>outerRadius: outer radius of the dog profile in px; larger values may improve de-streaking, values that are too high ? </li>
+ * <li>bandWidth: width of the gaussian band in px; smaller values may improve de-streaking, values that are too high blur the image in the direction orthogonal to the angle</li>
+ * <li>angle: angle of the band in deg; this should be orthogonal to the streaks (e.g., choose an angle of 0.0 for vertical streaks and 90.0 vor horizontal ones)</li>
+ * </ul>
  *
- * @author Stephan Preibisch
- * @author Eric Trautman
+ * @author Michael Innerberger
  */
 public class SmoothMaskStreakCorrector
         extends StreakCorrector

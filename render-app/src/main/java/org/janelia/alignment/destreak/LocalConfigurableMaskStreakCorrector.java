@@ -38,6 +38,7 @@ public class LocalConfigurableMaskStreakCorrector
 	private float finalThreshold;
 
 
+	// TODO: find a way to make this work for all streak correctors
     public LocalConfigurableMaskStreakCorrector(
 			final ConfigurableMaskStreakCorrector corrector,
 			final int gaussianBlurRadius,
