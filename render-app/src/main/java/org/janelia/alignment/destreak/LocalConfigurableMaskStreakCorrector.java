@@ -19,6 +19,10 @@ import org.janelia.alignment.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Streak corrector with a configurable/parameterized mask that can also be used as {@link Filter}.
  * This applies the mask of the {@link ConfigurableMaskStreakExtractor} to parts of the input image.
@@ -29,9 +33,9 @@ public class LocalConfigurableMaskStreakCorrector
         extends ConfigurableMaskStreakCorrector
         implements Filter {
 
-	private final int gaussianBlurRadius;
-	private final float initialThreshold;
-	private final float finalThreshold;
+	private int gaussianBlurRadius;
+	private float initialThreshold;
+	private float finalThreshold;
 
 
     public LocalConfigurableMaskStreakCorrector(
@@ -43,6 +47,33 @@ public class LocalConfigurableMaskStreakCorrector
 		this.gaussianBlurRadius = gaussianBlurRadius;
 		this.initialThreshold = initialThreshold;
 		this.finalThreshold = finalThreshold;
+	}
+
+	@Override
+	public void init(final Map<String, String> params) {
+		final List<String> values = new LinkedList<>(List.of(Filter.getCommaSeparatedStringParameter(DATA_STRING_NAME, params)));
+
+		final int nParams = values.size();
+		final boolean canHoldAllParameters = (nParams >= 3);
+		if (! canHoldAllParameters) {
+			throw new IllegalArgumentException(DATA_STRING_NAME +
+													   " must have pattern <corrector arguments>,<gaussianBlurRadius>,<initialThreshold>,<finalThreshold>");
+		}
+
+		this.finalThreshold = Float.parseFloat(values.remove(nParams - 1));
+		this.initialThreshold = Float.parseFloat(values.remove(nParams - 2));
+		this.gaussianBlurRadius = Integer.parseInt(values.remove(nParams - 3));
+
+		final String remainingParams = String.join(",", values);
+		super.init(Map.of(DATA_STRING_NAME, remainingParams));
+	}
+
+	@Override
+	public String toDataString() {
+		return super.toDataString() + ',' +
+				gaussianBlurRadius + ',' +
+				initialThreshold + ',' +
+				finalThreshold;
 	}
 
     @Override
