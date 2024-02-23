@@ -100,9 +100,9 @@ public class ConfigurableStreakCorrectorTest {
             new SmoothMaskStreakCorrector(8,
                                           6161,
                                           8190,
-                                          50,
-                                          3000,
-                                          50,
+                                          30,
+                                          5000,
+                                          15,
                                           0.0);
 
     public static final String[] HUM_AIRWAY_FILE_NAMES = {
@@ -158,13 +158,14 @@ done
         final String srcPath = "/Users/trautmane/Desktop/cellmap_cosem/jrc_hum-airway-14953vc/raw-images/" +
                                HUM_AIRWAY_FILE_NAMES[0]; // change file names index to test different images
 
-        final ConfigurableMaskStreakCorrector corrector = new LocalConfigurableMaskStreakCorrector(HUM_AIRWAY_CORRECTOR, 100, 20.0f, 0.1f);
-        displayStreakCorrection(srcPath, corrector, false);
+//        final ConfigurableMaskStreakCorrector corrector = new LocalConfigurableMaskStreakCorrector(HUM_AIRWAY_CORRECTOR, 100, 20.0f, 0.1f);
+		displayStreakCorrection(srcPath, SMOOTH_MASK_STREAK_CORRECTOR, false);
     }
 
-    public static void displayStreakCorrection(final String srcPath,
-                                               final ConfigurableMaskStreakCorrector corrector,
-                                               final boolean displayCorrectionData) {
+    public static <T extends StreakCorrector & Filter>
+    void displayStreakCorrection(final String srcPath,
+                                 final T corrector,
+                                 final boolean displayCorrectionData) {
 
         final ImagePlus imp = new ImagePlus(srcPath);
 

@@ -96,6 +96,7 @@ public class SmoothMaskStreakCorrector
         final RandomAccess<FloatType> ra = mask.randomAccess();
         final double outerSigma = 2 * outerRadius * outerRadius;
         final double innerSigma = 2 * innerRadius * innerRadius;
+        final double bandSigma = 2 * bandWidth * bandWidth;
         final double rad = Math.toRadians(angle);
         final double s = Math.sin(rad);
         final double c = Math.cos(rad);
@@ -109,7 +110,7 @@ public class SmoothMaskStreakCorrector
                 final double newX2 = newX * newX;
                 final double newY2 = newY * newY;
                 final float dog = (float) (Math.exp(-newX2 / outerSigma) - Math.exp(-newX2 / innerSigma));
-                final float band = (float) Math.exp(-newY2 / bandWidth);
+                final float band = (float) Math.exp(-newY2 / bandSigma);
 
                 ra.setPosition(x, 0);
                 ra.setPosition(y, 1);
