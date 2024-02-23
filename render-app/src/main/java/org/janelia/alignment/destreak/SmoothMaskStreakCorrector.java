@@ -96,8 +96,9 @@ public class SmoothMaskStreakCorrector
         final RandomAccess<FloatType> ra = mask.randomAccess();
         final double outerSigma = 2 * outerRadius * outerRadius;
         final double innerSigma = 2 * innerRadius * innerRadius;
-        final double s = Math.sin(angle);
-        final double c = Math.cos(angle);
+        final double rad = Math.toRadians(angle);
+        final double s = Math.sin(rad);
+        final double c = Math.cos(rad);
 
         // smooth with a difference of gaussian (dog) profile in the radial direction (given by angle)
         // multiplied by a small gaussian band in the orthogonal direction
