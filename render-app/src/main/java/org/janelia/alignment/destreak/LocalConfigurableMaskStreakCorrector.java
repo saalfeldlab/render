@@ -29,9 +29,7 @@ import java.util.Map;
  *
  * @author Michael Innerberger
  */
-public class LocalConfigurableMaskStreakCorrector
-        extends ConfigurableMaskStreakCorrector
-        implements Filter {
+public class LocalConfigurableMaskStreakCorrector extends ConfigurableMaskStreakCorrector {
 
 	private int gaussianBlurRadius;
 	private float initialThreshold;

@@ -161,10 +161,9 @@ done
 		displayStreakCorrection(srcPath, SMOOTH_MASK_STREAK_CORRECTOR, false);
     }
 
-    public static <T extends StreakCorrector & Filter>
-    void displayStreakCorrection(final String srcPath,
-                                 final T corrector,
-                                 final boolean displayCorrectionData) {
+    public static void displayStreakCorrection(final String srcPath,
+                                               final StreakCorrector corrector,
+                                               final boolean displayCorrectionData) {
 
         final ImagePlus imp = new ImagePlus(srcPath);
 

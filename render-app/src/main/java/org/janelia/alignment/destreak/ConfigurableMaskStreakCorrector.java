@@ -28,9 +28,7 @@ import net.imglib2.type.numeric.real.FloatType;
  * @author Stephan Preibisch
  * @author Eric Trautman
  */
-public class ConfigurableMaskStreakCorrector
-        extends StreakCorrector
-        implements Filter {
+public class ConfigurableMaskStreakCorrector extends StreakCorrector {
 
     private int fftWidth;
     private int fftHeight;
