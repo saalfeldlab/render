@@ -2,24 +2,20 @@ package org.janelia.alignment.destreak;
 
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
-
-import java.util.HashMap;
-import java.util.Map;
-
-import org.janelia.alignment.filter.Filter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import net.imglib2.Dimensions;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
-import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.basictypeaccess.array.FloatArray;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
+import org.janelia.alignment.filter.Filter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Streak corrector with a configurable/parameterized mask that can also be used as {@link Filter}
