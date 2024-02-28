@@ -1,5 +1,6 @@
 package org.janelia.alignment.destreak;
 
+import org.janelia.alignment.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,12 +29,20 @@ import net.imglib2.view.Views;
  * @author Stephan Preibisch
  */
 @SuppressWarnings("CommentedOutCode")
-public abstract class StreakCorrector {
+public abstract class StreakCorrector implements Filter {
 
     private final int numThreads;
 
     public StreakCorrector(final int numThreads) {
         this.numThreads = numThreads;
+    }
+
+    protected static void ensureDimensions(final Dimensions dim, final int width, final int height) {
+        if (dim.dimension(0) != width || dim.dimension(1) != height) {
+            throw new IllegalArgumentException(
+                    "mask is hard-coded for an FFT size of " + width + " x " + height +
+                    " but requested FFT size is " + dim.dimension(0) + " x " + dim.dimension(1));
+        }
     }
 
     public int getNumThreads() {
