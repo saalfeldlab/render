@@ -33,7 +33,7 @@ public class ConfigurableMaskStreakExtractor
                         final double scale) {
 
         // save original image for later subtraction
-        final ImagePlus originalImagePlus = new ImagePlus("original", ip.duplicate());
+        final ImagePlus originalImagePlus = new ImagePlus("original", ip.convertToByteProcessor());
         final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalImagePlus);
 
         // de-streak image

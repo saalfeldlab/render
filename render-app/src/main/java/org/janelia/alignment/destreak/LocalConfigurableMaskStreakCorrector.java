@@ -76,7 +76,7 @@ public class LocalConfigurableMaskStreakCorrector extends ConfigurableMaskStreak
     @Override
     public void process(final ImageProcessor ip, final double scale) {
 		// save original image for later subtraction
-		final ImagePlus originalIP = new ImagePlus("original", ip.duplicate());
+		final ImagePlus originalIP = new ImagePlus("original", ip.convertToByteProcessor());
 		final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalIP);
 
 		// de-streak image
