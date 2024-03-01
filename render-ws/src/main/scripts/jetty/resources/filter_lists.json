@@ -58,6 +58,15 @@
       }
     ],
 
+    "jrc_hum_airway_14953vc_smooth" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "6161,8190,30,15,0.0,100,8.0,0.1"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
