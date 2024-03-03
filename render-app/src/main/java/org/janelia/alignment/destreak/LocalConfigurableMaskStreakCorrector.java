@@ -24,6 +24,10 @@ import java.util.Map;
 /**
  * Streak corrector with a configurable/parameterized mask that can also be used as {@link Filter}.
  * This applies the mask of the {@link ConfigurableMaskStreakCorrector} to parts of the input image.
+ * The maks is created by thresholding the difference between the original and corrected image:
+ * 1. The difference (=the streak pattern) is thresholded at initialThreshold (in [0, 255])
+ * 2. The thresholded difference is smoothed with a Gaussian blur of radius gaussianBlurRadius
+ * 3. The smoothed difference is thresholded at finalThreshold (in [0, 1])
  *
  * @author Michael Innerberger
  */
