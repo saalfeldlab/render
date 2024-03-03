@@ -173,7 +173,7 @@ public class SmoothMaskStreakCorrector
             throw new UnsupportedOperationException("this filter only supports full scale images");
         }
 
-        final Img<FloatType> img = coptyToFloatImg(ip, "input");
+        final Img<FloatType> img = copyToFloatImg(ip, "input");
 
         // remove streaking
         final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);

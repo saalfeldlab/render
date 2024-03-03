@@ -139,7 +139,7 @@ public class ConfigurableMaskStreakCorrector extends StreakCorrector {
             throw new UnsupportedOperationException("this filter only supports full scale images");
         }
 
-		final Img<FloatType> img = coptyToFloatImg(ip, "input");
+		final Img<FloatType> img = copyToFloatImg(ip, "input");
 
         final double avg = StreakCorrector.avgIntensity(img);
         LOG.debug("process: average intensity is {}", avg);

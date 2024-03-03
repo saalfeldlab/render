@@ -2,6 +2,7 @@ package org.janelia.alignment.destreak;
 
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
+import net.imglib2.img.imageplus.FloatImagePlus;
 import org.janelia.alignment.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,13 +48,13 @@ public abstract class StreakCorrector implements Filter {
         }
     }
 
-    protected static Img<FloatType> coptyToFloatImg(final ImageProcessor ip, final String name) {
+    protected static FloatImagePlus<FloatType> copyToFloatImg(final ImageProcessor ip, final String name) {
         final ImagePlus imp = new ImagePlus(name, ip.convertToFloat());
         final Img<FloatType> img = ImageJFunctions.wrapFloat(imp);
         if (img == null) {
             throw new IllegalArgumentException("failed to wrap " + ip.getClass().getName() + " as Img<FloatType>");
         }
-        return img;
+        return (FloatImagePlus<FloatType>) img;
     }
 
     public int getNumThreads() {

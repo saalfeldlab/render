@@ -7,7 +7,6 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 
 /**
@@ -33,14 +32,12 @@ public class ConfigurableMaskStreakExtractor
                         final double scale) {
 
         // save original image for later subtraction
-        final ImagePlus originalImagePlus = new ImagePlus("original", ip.duplicate());
-        final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalImagePlus);
+        final Img<FloatType> original = copyToFloatImg(ip, "original");
 
         // de-streak image
         super.process(ip, scale);
 
-        final ImagePlus fixedImagePlus = new ImagePlus("fixed", ip);
-        final Img<UnsignedByteType> fixed = ImageJFunctions.wrapByte(fixedImagePlus);
+        final Img<FloatType> fixed = copyToFloatImg(ip, "fixed");
 
         // subtract fixed from original to get streaks - has to be FloatType since there may be negative values
         final RandomAccessibleInterval<FloatType> streaks =
