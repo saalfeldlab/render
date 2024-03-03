@@ -29,10 +29,17 @@ import java.util.Map;
  */
 public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
 
-	private int gaussianBlurRadius;
-	private float initialThreshold;
-	private float finalThreshold;
+	private int gaussianBlurRadius = 0;
+	private float initialThreshold = 0.0f; // TODO: why is this a float instead of a double?
+	private float finalThreshold = 0.0f; // TODO: why is this a float instead of a double?
 
+	public LocalSmoothMaskStreakCorrector() {
+		this(1);
+	}
+
+	public LocalSmoothMaskStreakCorrector(final int numThreads) {
+		super(numThreads);
+	}
 
 	// TODO: this duplicates LocalConfigurableMaskStreakCorrector; find a way to unify this
     public LocalSmoothMaskStreakCorrector(
