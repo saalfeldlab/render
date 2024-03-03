@@ -90,12 +90,20 @@ public class LocalConfigurableMaskStreakCorrector extends ConfigurableMaskStreak
 		// save original image for later subtraction
 		final ImagePlus originalIP = new ImagePlus("original", ip.duplicate());
 		final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalIP);
+		if (original == null) {
+			throw new IllegalArgumentException("failed to wrap " + originalIP.getClass().getName() +
+													   " as Img<UnsignedByteType>");
+		}
 
 		// de-streak image
 		super.process(ip, scale);
 
 		final ImagePlus fixedIP = new ImagePlus("fixed", ip);
 		final Img<UnsignedByteType> fixed = ImageJFunctions.wrapByte(fixedIP);
+		if (fixed == null) {
+			throw new IllegalArgumentException("failed to wrap " + fixedIP.getClass().getName() +
+													   " as Img<UnsignedByteType>");
+		}
 
 		// subtract fixed from original to get streaks, which is where the correction should be applied
 		final RandomAccessibleInterval<FloatType> weight =
