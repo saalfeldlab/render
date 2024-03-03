@@ -173,11 +173,7 @@ public class SmoothMaskStreakCorrector
             throw new UnsupportedOperationException("this filter only supports full scale images");
         }
 
-        final ImagePlus imp = new ImagePlus("input", ip.convertToFloat());
-        final Img<FloatType> img = ImageJFunctions.wrapFloat(imp);
-        if (img == null) {
-            throw new IllegalArgumentException("failed to wrap " + ip.getClass().getName() + " as Img<UnsignedByteType>");
-        }
+        final Img<FloatType> img = coptyToFloatImg(ip, "input");
 
         // remove streaking
         final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);

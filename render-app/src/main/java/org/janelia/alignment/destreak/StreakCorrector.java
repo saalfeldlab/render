@@ -1,5 +1,7 @@
 package org.janelia.alignment.destreak;
 
+import ij.ImagePlus;
+import ij.process.ImageProcessor;
 import org.janelia.alignment.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +45,15 @@ public abstract class StreakCorrector implements Filter {
                     "mask is hard-coded for an FFT size of " + width + " x " + height +
                     " but requested FFT size is " + dim.dimension(0) + " x " + dim.dimension(1));
         }
+    }
+
+    protected static Img<FloatType> coptyToFloatImg(final ImageProcessor ip, final String name) {
+        final ImagePlus imp = new ImagePlus(name, ip.convertToFloat());
+        final Img<FloatType> img = ImageJFunctions.wrapFloat(imp);
+        if (img == null) {
+            throw new IllegalArgumentException("failed to wrap " + ip.getClass().getName() + " as Img<FloatType>");
+        }
+        return img;
     }
 
     public int getNumThreads() {
