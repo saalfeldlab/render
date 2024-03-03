@@ -83,7 +83,7 @@ public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
     @Override
     public void process(final ImageProcessor ip, final double scale) {
 		// save original image for later subtraction
-		final ImagePlus originalIP = new ImagePlus("original", ip.convertToByteProcessor());
+		final ImagePlus originalIP = new ImagePlus("original", ip.duplicate());
 		final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalIP);
 
 		// de-streak image
