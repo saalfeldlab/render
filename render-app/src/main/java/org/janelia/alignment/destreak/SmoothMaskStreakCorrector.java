@@ -173,9 +173,11 @@ public class SmoothMaskStreakCorrector
             throw new UnsupportedOperationException("this filter only supports full scale images");
         }
 
-        final Img<FloatType> img = copyToFloatImg(ip, "input");
+        final ImagePlus floatIP = new ImagePlus("input", ip.convertToFloat());
+        final Img<FloatType> img = ImageJFunctions.wrapFloat(floatIP);
+        checkWrappingSucceeded(img, ip, FloatType.class);
 
-        // remove streaking
+		// remove streaking
         final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);
 
         // convert to 8-bit grayscale
