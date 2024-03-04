@@ -67,6 +67,15 @@
       }
     ],
 
+    "jrc_22ak351-leaf-2lb-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "2521,5040,50,10,0.0,100,6.0,0.1"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
