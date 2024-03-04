@@ -36,14 +36,14 @@ public class ConfigurableMaskStreakExtractor
         final Img<FloatType> original = ImageJFunctions.wrapFloat(originalIP);
         checkWrappingSucceeded(original, ip, FloatType.class);
 
-		// de-streak image
+        // de-streak image
         super.process(ip, scale);
 
         final ImagePlus fixedIP = new ImagePlus("fixed", ip.convertToFloat());
         final Img<FloatType> fixed = ImageJFunctions.wrapFloat(fixedIP);
         checkWrappingSucceeded(fixed, ip, FloatType.class);
 
-		// subtract fixed from original to get streaks - has to be FloatType since there may be negative values
+        // subtract fixed from original to get streaks - has to be FloatType since there may be negative values
         final RandomAccessibleInterval<FloatType> streaks =
                 Converters.convertRAI(original,
                                       fixed,

@@ -177,7 +177,7 @@ public class SmoothMaskStreakCorrector
         final Img<FloatType> img = ImageJFunctions.wrapFloat(floatIP);
         checkWrappingSucceeded(img, ip, FloatType.class);
 
-		// remove streaking
+        // remove streaking
         final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);
 
         // convert to 8-bit grayscale
