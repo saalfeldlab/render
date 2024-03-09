@@ -180,10 +180,13 @@ public class StackIdWithZParameters
         final Predicate<String> projectInGroup = namingGroup.hasProjectPattern()
                 ? namingGroup.projectFilter() : defaultGroup.projectFilter();
 
-        final Predicate<String> stackNameExplicitlyGiven = (stackNames == null) ? s -> false : stackNames::contains;
-        final Predicate<String> stackInGroup = (namingGroup.hasStackPattern()
-                ? namingGroup.stackFilter() : defaultGroup.stackFilter())
-                .or(stackNameExplicitlyGiven);
+        final Predicate<String> stackInGroup;
+        if ((stackNames != null) && (! stackNames.isEmpty())) {
+            stackInGroup = stackNames::contains;
+        } else {
+            stackInGroup = namingGroup.hasStackPattern()
+                    ? namingGroup.stackFilter() : defaultGroup.stackFilter();
+        }
 
         return stackId -> projectInGroup.test(stackId.getProject()) && stackInGroup.test(stackId.getStack());
     }
