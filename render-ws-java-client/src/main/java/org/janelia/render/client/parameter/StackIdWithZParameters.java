@@ -185,7 +185,7 @@ public class StackIdWithZParameters
         if ((stackNames != null) && (! stackNames.isEmpty())) {
             stackInGroup = stackNames::contains;
             if ((namingGroup.hasStackPattern()) || (defaultGroup.hasStackPattern())) {
-                throw new IOException("because --stack is specified, --projectPattern and --stackPattern should not be");
+                throw new IOException("because --stack is specified, --stackPattern should not be");
             }
         } else {
             stackInGroup = namingGroup.hasStackPattern()
