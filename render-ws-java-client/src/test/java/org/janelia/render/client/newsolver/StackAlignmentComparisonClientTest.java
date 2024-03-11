@@ -5,6 +5,8 @@ import org.junit.Test;
 
 import java.io.IOException;
 
+import mpicbg.models.NoninvertibleModelException;
+
 /**
  * Tests the {@link StackAlignmentComparisonClient} class.
  *
@@ -58,7 +60,7 @@ public class StackAlignmentComparisonClientTest {
         params.parse(args);
         try {
             new StackAlignmentErrorClient(params).fetchAndComputeError();
-        } catch (final IOException e) {
+        } catch (final IOException | NoninvertibleModelException e) {
             throw new RuntimeException(e);
         }
     }
