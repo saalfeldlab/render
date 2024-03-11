@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 
 import java.io.Serializable;
 
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.render.client.RenderDataClient;
 
 /**
@@ -24,11 +25,17 @@ public class MatchCollectionParameters
             description = "Match collection name")
     public String matchCollection;
 
-    public RenderDataClient getMatchDataClient(final String baseDataUrl, final String defaultOwner) {
+    public MatchCollectionId getMatchCollectionId(final String defaultOwner) {
+        final String owner = matchOwner == null ? defaultOwner : matchOwner;
+        return new MatchCollectionId(owner, matchCollection);
+    }
+
+    public RenderDataClient getMatchDataClient(final String baseDataUrl,
+                                               final String defaultOwner) {
         RenderDataClient client = null;
         if (matchCollection != null) {
-            final String owner = matchOwner == null ? defaultOwner : matchOwner;
-            client = new RenderDataClient(baseDataUrl, owner, matchCollection);
+            final MatchCollectionId matchCollectionId = getMatchCollectionId(defaultOwner);
+            client = new RenderDataClient(baseDataUrl, matchCollectionId.getOwner(), matchCollectionId.getName());
         }
         return client;
     }
