@@ -30,8 +30,8 @@ import java.util.Map;
 public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
 
 	private int gaussianBlurRadius = 0;
-	private float initialThreshold = 0.0f; // TODO: why is this a float instead of a double?
-	private float finalThreshold = 0.0f; // TODO: why is this a float instead of a double?
+	private double initialThreshold = 0.0;
+	private double finalThreshold = 0.0;
 
 	public LocalSmoothMaskStreakCorrector() {
 		this(1);
@@ -64,8 +64,8 @@ public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
 													   " must have pattern <corrector arguments>,<gaussianBlurRadius>,<initialThreshold>,<finalThreshold>");
 		}
 
-		this.finalThreshold = Float.parseFloat(values.remove(nParams - 1));
-		this.initialThreshold = Float.parseFloat(values.remove(nParams - 2));
+		this.finalThreshold = Double.parseDouble(values.remove(nParams - 1));
+		this.initialThreshold = Double.parseDouble(values.remove(nParams - 2));
 		this.gaussianBlurRadius = Integer.parseInt(values.remove(nParams - 3));
 
 		final String remainingParams = String.join(",", values);
@@ -85,12 +85,14 @@ public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
 		// save original image for later subtraction
 		final ImagePlus originalIP = new ImagePlus("original", ip.convertToByteProcessor());
 		final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalIP);
+		checkWrappingSucceeded(original, ip, UnsignedByteType.class);
 
 		// de-streak image
 		super.process(ip, scale);
 
 		final ImagePlus fixedIP = new ImagePlus("fixed", ip);
 		final Img<UnsignedByteType> fixed = ImageJFunctions.wrapByte(fixedIP);
+		checkWrappingSucceeded(fixed, ip, UnsignedByteType.class);
 
 		// subtract fixed from original to get streaks, which is where the correction should be applied
 		final RandomAccessibleInterval<FloatType> weight =
@@ -99,16 +101,16 @@ public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
 									  (i1,i2,o) -> o.set(Math.abs(i1.get() - i2.get())),
 									  new FloatType());
 
-		weigthedSum(ip, originalIP.getProcessor(), weight);
+		weightedSum(ip, originalIP.getProcessor(), weight);
 	}
 
-	private void weigthedSum(final ImageProcessor target,
-									final ImageProcessor original,
-									final RandomAccessibleInterval<FloatType> weight) {
+	private void weightedSum(final ImageProcessor target,
+							 final ImageProcessor original,
+							 final RandomAccessibleInterval<FloatType> weight) {
 
-		final ImagePlus weigthIP = ImageJFunctions.wrapFloat(weight, "weight");
+		final ImagePlus weightIP = ImageJFunctions.wrapFloat(weight, "weight");
 		final GaussianBlur gaussianBlur = new GaussianBlur();
-		final ImagePlus extendedWeight = extendBorder(weigthIP, gaussianBlurRadius);
+		final ImagePlus extendedWeight = extendBorder(weightIP, gaussianBlurRadius);
 
 		// figure out where exactly the streaks are
 		threshold(extendedWeight.getProcessor(), initialThreshold);
@@ -131,7 +133,7 @@ public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
 		}
 	}
 
-	private static void threshold(final ImageProcessor ip, final float threshold) {
+	private static void threshold(final ImageProcessor ip, final double threshold) {
 		for (int i = 0; i < ip.getPixelCount(); i++) {
 			final int value = ip.getf(i) > threshold ? 1 : 0;
 			ip.setf(i, value);
