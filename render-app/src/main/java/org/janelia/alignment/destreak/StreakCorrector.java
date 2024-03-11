@@ -1,5 +1,7 @@
 package org.janelia.alignment.destreak;
 
+import ij.process.ImageProcessor;
+import net.imglib2.type.Type;
 import org.janelia.alignment.filter.Filter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +44,13 @@ public abstract class StreakCorrector implements Filter {
             throw new IllegalArgumentException(
                     "mask is hard-coded for an FFT size of " + width + " x " + height +
                     " but requested FFT size is " + dim.dimension(0) + " x " + dim.dimension(1));
+        }
+    }
+
+    protected static void checkWrappingSucceeded(final Img<?> img, final ImageProcessor ip, final Class<? extends Type<?>> typeClass) {
+        if (img == null) {
+            final String ipClass = ip.getClass().getName();
+            throw new IllegalArgumentException("failed to wrap " + ipClass + " as Img<" + typeClass + ">");
         }
     }
 

@@ -139,12 +139,9 @@ public class ConfigurableMaskStreakCorrector extends StreakCorrector {
             throw new UnsupportedOperationException("this filter only supports full scale images");
         }
 
-        final ImagePlus imp = new ImagePlus("input", ip.convertToFloat());
-        final Img<FloatType> img = ImageJFunctions.wrapFloat(imp);
-        if (img == null) {
-            throw new IllegalArgumentException("failed to wrap " + ip.getClass().getName() +
-                                               " as Img<UnsignedByteType>");
-        }
+        final ImagePlus floatIP = new ImagePlus("input", ip.convertToFloat());
+        final Img<FloatType> img = ImageJFunctions.wrapFloat(floatIP);
+        checkWrappingSucceeded(img, ip, FloatType.class);
 
         final double avg = StreakCorrector.avgIntensity(img);
         LOG.debug("process: average intensity is {}", avg);
