@@ -4,13 +4,12 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator;
 import org.junit.Test;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class BlockLayoutCreatorTest {
 
@@ -134,4 +133,40 @@ public class BlockLayoutCreatorTest {
 			assertEquals("Intervals for dimension x already specified", e.getMessage());
 		}
 	}
+
+	@Test
+	public void sameMaxZForRegularAndShiftedGrids() {
+
+		final int blockSizeXY = 9000;
+		final int blockSizeZ = 1;
+		final Bounds bounds = new Bounds(73.0, 164.0, 11986.0,
+										 83724.0, 85816.0, 12024.0);
+
+		final List<Bounds> regularBlocks = new BlockLayoutCreator()
+				.regularGrid(In.X, bounds.getX(), bounds.getMaxX().intValue(), blockSizeXY)
+				.regularGrid(In.Y, bounds.getY(), bounds.getMaxY().intValue(), blockSizeXY)
+				.regularGrid(In.Z, bounds.getMinZ().intValue(), bounds.getMaxZ().intValue(), blockSizeZ)
+				.create();
+
+		final Bounds regularBoundsWithMaxZ =
+				regularBlocks.stream().max(Comparator.comparing(Bounds::getMaxZ)).orElse(null);
+		assertNotNull("regularBoundsWithMaxZ is null",
+					  regularBoundsWithMaxZ);
+		assertEquals("regularBoundsWithMaxZ has invalid maxZ",
+					 bounds.getMaxZ(), regularBoundsWithMaxZ.getMaxZ(), 1e-1);
+
+		final List<Bounds> shiftedBlocks = new BlockLayoutCreator()
+				.shiftedGrid(In.X, bounds.getX(), bounds.getMaxX().intValue(), blockSizeXY)
+				.shiftedGrid(In.Y, bounds.getY(), bounds.getMaxY().intValue(), blockSizeXY)
+				.shiftedGrid(In.Z, bounds.getMinZ().intValue(), bounds.getMaxZ().intValue(), blockSizeZ)
+				.create();
+
+		final Bounds shiftedBoundsWithMaxZ =
+				shiftedBlocks.stream().max(Comparator.comparing(Bounds::getMaxZ)).orElse(null);
+		assertNotNull("shiftedBoundsWithMaxZ is null",
+					  shiftedBoundsWithMaxZ);
+		assertEquals("shiftedBoundsWithMaxZ has invalid maxZ",
+					 bounds.getMaxZ(), shiftedBoundsWithMaxZ.getMaxZ(), 1e-1);
+	}
+
 }
