@@ -109,7 +109,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	private HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> computeCoefficients(final List<TileSpec> tiles)
 			throws ExecutionException, InterruptedException {
 
-		LOG.info("deriveIntensityFilterData: entry");
+		LOG.info("computeCoefficients: entry");
 
 		final long maxCachedPixels = parameters.maxNumberOfCachedPixels();
 		final ImageProcessorCache imageProcessorCache = (maxCachedPixels == 0)
@@ -121,7 +121,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		if (tiles.size() > 1) {
 			solveForGlobalCoefficients(coefficientTiles, ITERATIONS);
 		} else {
-			LOG.info("deriveIntensityFilterData: skipping solveForGlobalCoefficients because there is only 1 tile");
+			LOG.info("computeCoefficients: skipping solveForGlobalCoefficients because there is only 1 tile");
 		}
 
 		return coefficientTiles;
