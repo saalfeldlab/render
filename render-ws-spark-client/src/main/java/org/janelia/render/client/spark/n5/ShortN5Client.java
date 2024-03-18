@@ -2,12 +2,13 @@ package org.janelia.render.client.spark.n5;
 
 import ij.process.ShortProcessor;
 
+import java.util.List;
+
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.ShortBoxRenderer;
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.util.Grid;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.ImageProcessorCacheSpec;
 import org.janelia.render.client.ClientRunner;
@@ -74,7 +75,8 @@ public class ShortN5Client
                             final long[] min,
                             final long[] dimensions,
                             final boolean is2DVolume,
-                            final ImageProcessorCacheSpec cacheSpec) {
+                            final ImageProcessorCacheSpec cacheSpec,
+                            final Long minZToRender) throws IllegalArgumentException {
 
         final N5Client.Parameters parameters = getParameters();
 
@@ -90,7 +92,7 @@ public class ShortN5Client
                                                                   parameters.exportMask);
 
         if (is2DVolume) {
-            throw new UnsupportedOperationException("2D export for 16-bit stacks is not implemented");
+            throw new IllegalArgumentException("2D export for 16-bit stacks is not implemented");
         } else {
             saveRenderStack(
                     sparkContext,
@@ -103,7 +105,8 @@ public class ShortN5Client
                     dimensions,
                     blockSize,
                     thicknessCorrectionData,
-                    cacheSpec);
+                    cacheSpec,
+                    minZToRender);
         }
     }
 
@@ -117,24 +120,12 @@ public class ShortN5Client
                                         final long[] dimensions,
                                         final int[] blockSize,
                                         final ThicknessCorrectionData thicknessCorrectionData,
-                                        final ImageProcessorCacheSpec cacheSpec) {
+                                        final ImageProcessorCacheSpec cacheSpec,
+                                        final Long minZToRender) {
 
-        // grid block size for parallelization to minimize double loading of tiles
-        final int[] gridBlockSize = new int[]{
-                Math.max(blockSize[0], tileWidth),
-                Math.max(blockSize[1], tileHeight),
-                blockSize[2]
-        };
+        final List<long[][]> gridBlocks = buildGridBlocks(tileWidth, tileHeight, dimensions, blockSize, minZToRender);
 
-        final JavaRDD<long[][]> rdd = sc.parallelize(
-                Grid.create(
-                        new long[] {
-                                dimensions[0],
-                                dimensions[1],
-                                dimensions[2]
-                        },
-                        gridBlockSize,
-                        blockSize));
+        final JavaRDD<long[][]> rdd = sc.parallelize(gridBlocks);
 
         final Broadcast<ImageProcessorCacheSpec> broadcastCacheSpec = sc.broadcast(cacheSpec);
 

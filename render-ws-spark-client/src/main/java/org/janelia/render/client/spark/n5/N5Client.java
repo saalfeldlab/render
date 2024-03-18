@@ -6,14 +6,17 @@ import com.beust.jcommander.ParametersDelegate;
 import ij.process.ByteProcessor;
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -35,15 +38,17 @@ import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.zspacing.ThicknessCorrectionData;
 import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.spark.downsample.N5DownsamplerSpark;
+import org.janelia.saalfeldlab.n5.spark.N5RemoveSpark;
 import org.janelia.saalfeldlab.n5.spark.supplier.N5WriterSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jakarta.annotation.Nonnull;
 import net.imglib2.Cursor;
 import net.imglib2.IterableInterval;
 import net.imglib2.img.array.ArrayImg;
@@ -110,16 +115,6 @@ public class N5Client {
         }
 
         @Parameter(
-                names = "--isoFactors",
-                description = "If specified, down samples the full resolution data with these factors " +
-                              "before (optionally) generating a scale pyramid, e.g. 1,1,2")
-        public String isoFactorsString;
-
-        public int[] getIsoFactors() {
-            return parseCSIntArray(isoFactorsString);
-        }
-
-        @Parameter(
                 names = "--factors",
                 description = "If specified, generates a scale pyramid with given factors, e.g. 2,2,2")
         public String downsampleFactorsString;
@@ -143,6 +138,11 @@ public class N5Client {
                 names = "--exportMask",
                 description = "Export mask volume instead of pixel volume")
         public boolean exportMask = false;
+
+        @Parameter(
+                names = "--appendToExisting",
+                description = "Only render new tiles and append to existing dataset (if it exists)")
+        public boolean appendToExisting = false;
 
         public Bounds getBoundsForRun(final Bounds defaultBounds,
                                       final ThicknessCorrectionData thicknessCorrectionData) {
@@ -245,7 +245,7 @@ public class N5Client {
     }
 
     public void run()
-            throws IOException {
+            throws IOException, IllegalArgumentException {
 
         final SparkConf conf = new SparkConf().setAppName("N5Client");
         final JavaSparkContext sparkContext = new JavaSparkContext(conf);
@@ -255,13 +255,13 @@ public class N5Client {
 
         LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
 
-        String datasetName = parameters.n5Dataset;
+        final String datasetName = parameters.n5Dataset;
         int[] blockSize = parameters.getBlockSize();
         final int[] downsampleFactors = parameters.getDownsampleFactors();
         final boolean downsampleStack = downsampleFactors != null;
 
-        String fullScaleDatasetName = downsampleStack ?
-                                      Paths.get(datasetName, "s" + 0).toString() : datasetName;
+        final String fullScaleDatasetName = downsampleStack ?
+                                            Paths.get(datasetName, "s" + 0).toString() : datasetName;
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
         final List<Double> resolutionValues = stackMetaData.getCurrentResolutionValues();
@@ -295,30 +295,29 @@ public class N5Client {
             blockSize = new int[] { blockSize[0], blockSize[1] };
             viewStackCommandOffsets = min[0] + "," + min[1];
         }
-        
+
+        // This "spec" is broadcast to Spark executors allowing each one to construct and share
+        // an ImageProcessor cache across each task assigned to the executor.
+        // This should be most useful for caching common masks but could also help
+        // when the same executor gets adjacent blocks.
+        // Cache parameters are hard-coded for now but could be exposed to command-line later if necessary.
+        final ImageProcessorCacheSpec cacheSpec =
+                new ImageProcessorCacheSpec(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+                                            true,
+                                            false);
+
+        LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",
+                 parameters.n5Path, datasetName, viewStackCommandOffsets);
+
         final File datasetDir = new File(Paths.get(parameters.n5Path, fullScaleDatasetName).toString());
         if (! datasetDir.exists()) {
 
-            LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",
-                     parameters.n5Path, datasetName, viewStackCommandOffsets);
-
-            // save full scale first ...
             setupFullScaleExportN5(parameters,
                                    fullScaleDatasetName,
                                    stackMetaData,
                                    dimensions,
                                    blockSize,
                                    getDataType());
-
-            // This "spec" is broadcast to Spark executors allowing each one to construct and share
-            // an ImageProcessor cache across each task assigned to the executor.
-            // This should be most useful for caching common masks but could also help
-            // when the same executor gets adjacent blocks.
-            // Cache parameters are hard-coded for now but could be exposed to command-line later if necessary.
-            final ImageProcessorCacheSpec cacheSpec =
-                    new ImageProcessorCacheSpec(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
-                                                true,
-                                                false);
 
             renderStack(sparkContext,
                         blockSize,
@@ -328,40 +327,54 @@ public class N5Client {
                         min,
                         dimensions,
                         is2DVolume,
-                        cacheSpec);
+                        cacheSpec,
+                        null); // always ignore minZToRender for initial render
+
+        } else if (parameters.appendToExisting) {
+
+            if (fullScaleDatasetName.endsWith("s0")) {
+                final File parentDir = datasetDir.getParentFile();
+                final File[] downsampledDirs = parentDir.listFiles(DOWNSAMPLED_DIR_FILTER);
+                if (downsampledDirs != null) {
+                    final int datasetStart = parameters.n5Path.length() + 1;
+                    for (final File downsampledDir : downsampledDirs) {
+                        if (downsampledDir.isDirectory()) {
+                            final String dsDatasetName = downsampledDir.getAbsolutePath().substring(datasetStart);
+                            LOG.info("run: removing previously downsampled dataset {}", dsDatasetName);
+                            N5RemoveSpark.remove(sparkContext,
+                                                 new N5PathSupplier(parameters.n5Path),
+                                                 dsDatasetName);
+                        }
+                    }
+                }
+            }
+
+            final Long minZToRender = setupAppendExportN5(parameters,
+                                                          fullScaleDatasetName,
+                                                          stackMetaData,
+                                                          dimensions,
+                                                          blockSize,
+                                                          getDataType());
+
+            renderStack(sparkContext,
+                        blockSize,
+                        fullScaleDatasetName,
+                        thicknessCorrectionData,
+                        boundsForRun,
+                        min,
+                        dimensions,
+                        is2DVolume,
+                        cacheSpec,
+                        minZToRender);
 
         } else {
+
             final File s1Dir = new File(datasetDir.getParent(), "s1");
             if ((! downsampleStack) || s1Dir.exists()) {
                 throw new IllegalArgumentException("Dataset " + datasetDir.getAbsolutePath() + " already exists.  " +
                                                    "Please remove the existing dataset if you wish to regenerate it.");
             }
-        }
 
-        if (parameters.isoFactorsString != null) {
-            final int[] isoFactors = parameters.getIsoFactors();
-
-            for (int i = 0; i < isoFactors.length; i++) {
-                resolutionValues.set(i, resolutionValues.get(i) * isoFactors[i]);
-            }
-
-            final N5WriterSupplier n5Supplier = new N5PathSupplier(parameters.n5Path);
-
-            final String isoDatasetName = datasetName + "___iso";
-            final String fullScaleIsoDatasetName = downsampleStack ?
-                                                   Paths.get(isoDatasetName, "s" + 0).toString() :
-                                                   isoDatasetName;
-
-            N5DownsamplerSpark.downsample(
-                    sparkContext,
-                    n5Supplier,
-                    fullScaleDatasetName,
-                    fullScaleIsoDatasetName,
-                    isoFactors
-            );
-
-            datasetName = isoDatasetName;
-            fullScaleDatasetName = fullScaleIsoDatasetName;
         }
 
         int numberOfDownSampledDatasets = 0;
@@ -405,7 +418,8 @@ public class N5Client {
                             final long[] min,
                             final long[] dimensions,
                             final boolean is2DVolume,
-                            final ImageProcessorCacheSpec cacheSpec) {
+                            final ImageProcessorCacheSpec cacheSpec,
+                            final Long minZToRender) throws IllegalArgumentException {
 
         final ByteBoxRenderer boxRenderer = new ByteBoxRenderer(parameters.renderWeb.baseDataUrl,
                                                                 parameters.renderWeb.owner,
@@ -419,6 +433,9 @@ public class N5Client {
                                                                 parameters.exportMask);
 
         if (is2DVolume) {
+            if (minZToRender != null) {
+                throw new IllegalArgumentException("minZToRender is not supported for 2D volumes");
+            }
             save2DRenderStack(
                     sparkContext,
                     boxRenderer,
@@ -443,7 +460,8 @@ public class N5Client {
                     dimensions,
                     blockSize,
                     thicknessCorrectionData,
-                    cacheSpec);
+                    cacheSpec,
+                    minZToRender);
         }
     }
 
@@ -452,10 +470,7 @@ public class N5Client {
                                               final StackMetaData stackMetaData,
                                               final long[] dimensions,
                                               final int[] blockSize,
-                                              final DataType dataType)
-            throws IOException {
-
-        String exportAttributesDatasetName = fullScaleDatasetName;
+                                              final DataType dataType) {
 
         try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
             n5.createDataset(fullScaleDatasetName,
@@ -463,7 +478,71 @@ public class N5Client {
                              blockSize,
                              dataType,
                              new GzipCompression());
+        }
 
+        updateFullScaleExportAttributes(parameters,
+                                        fullScaleDatasetName,
+                                        stackMetaData);
+    }
+
+    public static long setupAppendExportN5(final Parameters parameters,
+                                           final String fullScaleDatasetName,
+                                           final StackMetaData stackMetaData,
+                                           final long[] dimensions,
+                                           final int[] blockSize,
+                                           final DataType dataType) throws IllegalArgumentException {
+
+        final long minZToRender;
+        try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
+
+            final DatasetAttributes datasetAttributes = n5.getDatasetAttributes(fullScaleDatasetName);
+
+            if (! Arrays.equals(blockSize, datasetAttributes.getBlockSize())) {
+                throw new IllegalArgumentException("append blockSize " + Arrays.toString(blockSize) + " does not match existing dataset block size " + Arrays.toString(datasetAttributes.getBlockSize()));
+            }
+            if (dataType != datasetAttributes.getDataType()) {
+                throw new IllegalArgumentException("append dataType " + dataType + " does not match existing dataset data type " + datasetAttributes.getDataType());
+            }
+            final long[] existingDimensions = datasetAttributes.getDimensions();
+            if (dimensions.length != existingDimensions.length) {
+                throw new IllegalArgumentException("append dimensions " + Arrays.toString(dimensions) + " differ in length from existing dataset dimensions " + Arrays.toString(existingDimensions));
+            }
+            if (dimensions.length != 3) {
+                throw new IllegalArgumentException("append export not supported for " + dimensions.length + "D volumes");
+            }
+            for (int i = 0; i < dimensions.length; i++) {
+                if (dimensions[i] < existingDimensions[i]) {
+                    throw new IllegalArgumentException("append dimension " + i + " has shrunk, append dimensions are " + Arrays.toString(dimensions) + " but existing dataset dimensions are " + Arrays.toString(existingDimensions));
+                }
+            }
+            if (dimensions[2] == existingDimensions[2]) {
+                throw new IllegalArgumentException("nothing new to export since last z remains " + dimensions[2]);
+            }
+
+            n5.setDatasetAttributes(fullScaleDatasetName,
+                                    new DatasetAttributes(dimensions,
+                                                          blockSize,
+                                                          dataType,
+                                                          datasetAttributes.getCompression()));
+            minZToRender = existingDimensions[2] + 1;
+        }
+
+        updateFullScaleExportAttributes(parameters,
+                                        fullScaleDatasetName,
+                                        stackMetaData);
+
+        LOG.info("setupAppendExportN5: returning minZToRender value of {}", minZToRender);
+
+        return minZToRender;
+    }
+
+    public static void updateFullScaleExportAttributes(final Parameters parameters,
+                                                       final String fullScaleDatasetName,
+                                                       final StackMetaData stackMetaData) {
+
+        String exportAttributesDatasetName = fullScaleDatasetName;
+
+        try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
             final Map<String, Object> export_attributes = new HashMap<>();
             export_attributes.put("runTimestamp", new Date());
             export_attributes.put("runParameters", parameters);
@@ -479,7 +558,7 @@ public class N5Client {
             n5.setAttributes(exportAttributesDatasetName, attributes);
         }
 
-        LOG.info("setupFullScaleExportN5: saved {}",
+        LOG.info("updateFullScaleExportAttributes: saved {}",
                  Paths.get(parameters.n5Path, exportAttributesDatasetName, "attributes.json"));
     }
 
@@ -496,6 +575,43 @@ public class N5Client {
         }
     }
 
+    @Nonnull
+    public static List<long[][]> buildGridBlocks(final int tileWidth,
+                                                 final int tileHeight,
+                                                 final long[] dimensions,
+                                                 final int[] blockSize,
+                                                 final Long minZToRender) {
+
+        // grid block size for parallelization to minimize double loading of tiles
+        final int[] gridBlockSize = new int[]{
+                Math.max(blockSize[0], tileWidth),
+                Math.max(blockSize[1], tileHeight),
+                blockSize[2]
+        };
+
+        List<long[][]> gridBlocks = Grid.create(
+                new long[] {
+                        dimensions[0],
+                        dimensions[1],
+                        dimensions[2]
+                },
+                gridBlockSize,
+                blockSize);
+
+        if (minZToRender != null) {
+            final List<long[][]> gridBlocksToRender = new ArrayList<>();
+            for (final long[][] gridBlock : gridBlocks) {
+                final long maxZForBlock = gridBlock[0][2] + blockSize[2];
+                if (maxZForBlock >= minZToRender) {
+                    gridBlocksToRender.add(gridBlock);
+                }
+            }
+            gridBlocks = gridBlocksToRender;
+        }
+
+        return gridBlocks;
+    }
+
     private static void saveRenderStack(final JavaSparkContext sc,
                                         final ByteBoxRenderer boxRenderer,
                                         final int tileWidth,
@@ -506,24 +622,12 @@ public class N5Client {
                                         final long[] dimensions,
                                         final int[] blockSize,
                                         final ThicknessCorrectionData thicknessCorrectionData,
-                                        final ImageProcessorCacheSpec cacheSpec) {
+                                        final ImageProcessorCacheSpec cacheSpec,
+                                        final Long minZToRender) {
 
-        // grid block size for parallelization to minimize double loading of tiles
-        final int[] gridBlockSize = new int[]{
-                Math.max(blockSize[0], tileWidth),
-                Math.max(blockSize[1], tileHeight),
-                blockSize[2]
-        };
+        final List<long[][]> gridBlocks = buildGridBlocks(tileWidth, tileHeight, dimensions, blockSize, minZToRender);
 
-        final JavaRDD<long[][]> rdd = sc.parallelize(
-                Grid.create(
-                        new long[] {
-                                dimensions[0],
-                                dimensions[1],
-                                dimensions[2]
-                        },
-                        gridBlockSize,
-                        blockSize));
+        final JavaRDD<long[][]> rdd = sc.parallelize(gridBlocks);
 
         final Broadcast<ImageProcessorCacheSpec> broadcastCacheSpec = sc.broadcast(cacheSpec);
 
@@ -686,4 +790,7 @@ public class N5Client {
         LOG.info("save2DRenderStack: exit");
     }
 
+    private static final Pattern DOWNSAMPLED_DIR_PATTERN = Pattern.compile("s[1-9]\\d*");
+    private static final FileFilter DOWNSAMPLED_DIR_FILTER =
+            pathname -> DOWNSAMPLED_DIR_PATTERN.matcher(pathname.getName()).matches();
 }
