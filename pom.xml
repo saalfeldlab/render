@@ -132,7 +132,7 @@
           Use MPI-CBG 1.4.2 to pull in SIFT fix from Preibisch.
           See https://github.com/axtimwalde/mpicbg/commit/94fcf09d4a022245a24761f2977b1815002fa310 for details.
         -->
-        <mpicbg.version>1.4.2</mpicbg.version>
+        <mpicbg.version>1.6.0</mpicbg.version>
         <mpicbg_.version>${mpicbg.version}</mpicbg_.version>
 
         <!--
