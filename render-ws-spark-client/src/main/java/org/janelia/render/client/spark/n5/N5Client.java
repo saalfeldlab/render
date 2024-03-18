@@ -531,7 +531,7 @@ public class N5Client {
                                         fullScaleDatasetName,
                                         stackMetaData);
 
-        LOG.info("setupAppendExportN5: returning minZToRender value of {}", minZToRender);
+        LOG.info("setupAppendExportN5: returning minZToRender value of {}, maxZ is {}", minZToRender, dimensions[2]);
 
         return minZToRender;
     }
