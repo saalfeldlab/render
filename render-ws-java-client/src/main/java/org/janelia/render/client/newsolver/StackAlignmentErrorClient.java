@@ -53,6 +53,8 @@ public class StackAlignmentErrorClient {
 				arity=0)
 		private boolean calculateResiduals;
 
+		// TODO: define enum for different error types (Preibisch, RMSE, ...) and use that instead of boolean flag
+
 		public String getFileName() {
 			if (fileName == null) {
 				fileName = "errors_" + stack + ".json.gz";
