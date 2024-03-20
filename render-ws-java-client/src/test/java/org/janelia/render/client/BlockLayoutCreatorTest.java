@@ -135,17 +135,11 @@ public class BlockLayoutCreatorTest {
 	}
 
 	@Test
-	public void sameMaxZForRegularAndShiftedGrids() {
-
-		final int blockSizeXY = 9000;
-		final int blockSizeZ = 1;
-		final Bounds bounds = new Bounds(73.0, 164.0, 11986.0,
-										 83724.0, 85816.0, 12024.0);
-
+	public void maxZForRegularGrid() {
 		final List<Bounds> regularBlocks = new BlockLayoutCreator()
-				.regularGrid(In.X, bounds.getX(), bounds.getMaxX().intValue(), blockSizeXY)
-				.regularGrid(In.Y, bounds.getY(), bounds.getMaxY().intValue(), blockSizeXY)
-				.regularGrid(In.Z, bounds.getMinZ().intValue(), bounds.getMaxZ().intValue(), blockSizeZ)
+				.regularGrid(In.X, STACK_BOUNDS.getX(), STACK_BOUNDS.getMaxX().intValue(), BLOCK_SIZE_XY)
+				.regularGrid(In.Y, STACK_BOUNDS.getY(), STACK_BOUNDS.getMaxY().intValue(), BLOCK_SIZE_XY)
+				.regularGrid(In.Z, STACK_BOUNDS.getMinZ().intValue(), STACK_BOUNDS.getMaxZ().intValue(), BLOCK_SIZE_Z)
 				.create();
 
 		final Bounds regularBoundsWithMaxZ =
@@ -153,12 +147,15 @@ public class BlockLayoutCreatorTest {
 		assertNotNull("regularBoundsWithMaxZ is null",
 					  regularBoundsWithMaxZ);
 		assertEquals("regularBoundsWithMaxZ has invalid maxZ",
-					 bounds.getMaxZ(), regularBoundsWithMaxZ.getMaxZ(), 1e-1);
+					 STACK_BOUNDS.getMaxZ(), regularBoundsWithMaxZ.getMaxZ(), 1e-1);
+	}
 
+	@Test
+	public void maxZForShiftedGrid() {
 		final List<Bounds> shiftedBlocks = new BlockLayoutCreator()
-				.shiftedGrid(In.X, bounds.getX(), bounds.getMaxX().intValue(), blockSizeXY)
-				.shiftedGrid(In.Y, bounds.getY(), bounds.getMaxY().intValue(), blockSizeXY)
-				.shiftedGrid(In.Z, bounds.getMinZ().intValue(), bounds.getMaxZ().intValue(), blockSizeZ)
+				.shiftedGrid(In.X, STACK_BOUNDS.getX(), STACK_BOUNDS.getMaxX().intValue(), BLOCK_SIZE_XY)
+				.shiftedGrid(In.Y, STACK_BOUNDS.getY(), STACK_BOUNDS.getMaxY().intValue(), BLOCK_SIZE_XY)
+				.shiftedGrid(In.Z, STACK_BOUNDS.getMinZ().intValue(), STACK_BOUNDS.getMaxZ().intValue(), BLOCK_SIZE_Z)
 				.create();
 
 		final Bounds shiftedBoundsWithMaxZ =
@@ -166,7 +163,13 @@ public class BlockLayoutCreatorTest {
 		assertNotNull("shiftedBoundsWithMaxZ is null",
 					  shiftedBoundsWithMaxZ);
 		assertEquals("shiftedBoundsWithMaxZ has invalid maxZ",
-					 bounds.getMaxZ(), shiftedBoundsWithMaxZ.getMaxZ(), 1e-1);
+					 STACK_BOUNDS.getMaxZ(), shiftedBoundsWithMaxZ.getMaxZ(), 1e-1);
 	}
+
+	// wafer 53 block and stack size that demonstrated shifted grid problem
+	private static final int BLOCK_SIZE_XY = 9000;
+	private static final int BLOCK_SIZE_Z = 1;
+	private static final Bounds STACK_BOUNDS = new Bounds(73.0, 164.0, 11986.0,
+														  83724.0, 85816.0, 12024.0);
 
 }
