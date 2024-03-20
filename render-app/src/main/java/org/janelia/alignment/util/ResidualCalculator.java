@@ -40,11 +40,11 @@ public class ResidualCalculator implements Serializable {
             this(null, null, null, null, false);
         }
 
-        InputData(final String pTileId,
-                  final String qTileId,
-                  final StackId matchRenderStackId,
-                  final MatchCollectionId matchCollectionId,
-                  final boolean includeDetails) {
+        public InputData(final String pTileId,
+                         final String qTileId,
+                         final StackId matchRenderStackId,
+                         final MatchCollectionId matchCollectionId,
+                         final boolean includeDetails) {
             this.matchCollectionId = matchCollectionId;
             this.matchRenderStackId = matchRenderStackId;
             this.pTileId = pTileId;
@@ -146,6 +146,9 @@ public class ResidualCalculator implements Serializable {
             return String.format("%25s, %40s, %6s, %6s, %6s, %6s, details\n", "project", "stack", "median", "mean", "max", "RMSE");
         }
 
+        public Double getRootMeanSquareError() {
+            return rootMeanSquareError;
+        }
     }
 
     public Result run(final StackId alignedStackId,

@@ -4,13 +4,12 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator;
 import org.junit.Test;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public class BlockLayoutCreatorTest {
 
@@ -134,4 +133,43 @@ public class BlockLayoutCreatorTest {
 			assertEquals("Intervals for dimension x already specified", e.getMessage());
 		}
 	}
+
+	@Test
+	public void maxZForRegularGrid() {
+		final List<Bounds> regularBlocks = new BlockLayoutCreator()
+				.regularGrid(In.X, STACK_BOUNDS.getX(), STACK_BOUNDS.getMaxX().intValue(), BLOCK_SIZE_XY)
+				.regularGrid(In.Y, STACK_BOUNDS.getY(), STACK_BOUNDS.getMaxY().intValue(), BLOCK_SIZE_XY)
+				.regularGrid(In.Z, STACK_BOUNDS.getMinZ().intValue(), STACK_BOUNDS.getMaxZ().intValue(), BLOCK_SIZE_Z)
+				.create();
+
+		final Bounds regularBoundsWithMaxZ =
+				regularBlocks.stream().max(Comparator.comparing(Bounds::getMaxZ)).orElse(null);
+		assertNotNull("regularBoundsWithMaxZ is null",
+					  regularBoundsWithMaxZ);
+		assertEquals("regularBoundsWithMaxZ has invalid maxZ",
+					 STACK_BOUNDS.getMaxZ(), regularBoundsWithMaxZ.getMaxZ(), 1e-1);
+	}
+
+	@Test
+	public void maxZForShiftedGrid() {
+		final List<Bounds> shiftedBlocks = new BlockLayoutCreator()
+				.shiftedGrid(In.X, STACK_BOUNDS.getX(), STACK_BOUNDS.getMaxX().intValue(), BLOCK_SIZE_XY)
+				.shiftedGrid(In.Y, STACK_BOUNDS.getY(), STACK_BOUNDS.getMaxY().intValue(), BLOCK_SIZE_XY)
+				.shiftedGrid(In.Z, STACK_BOUNDS.getMinZ().intValue(), STACK_BOUNDS.getMaxZ().intValue(), BLOCK_SIZE_Z)
+				.create();
+
+		final Bounds shiftedBoundsWithMaxZ =
+				shiftedBlocks.stream().max(Comparator.comparing(Bounds::getMaxZ)).orElse(null);
+		assertNotNull("shiftedBoundsWithMaxZ is null",
+					  shiftedBoundsWithMaxZ);
+		assertEquals("shiftedBoundsWithMaxZ has invalid maxZ",
+					 STACK_BOUNDS.getMaxZ(), shiftedBoundsWithMaxZ.getMaxZ(), 1e-1);
+	}
+
+	// wafer 53 block and stack size that demonstrated shifted grid problem
+	private static final int BLOCK_SIZE_XY = 9000;
+	private static final int BLOCK_SIZE_Z = 1;
+	private static final Bounds STACK_BOUNDS = new Bounds(73.0, 164.0, 11986.0,
+														  83724.0, 85816.0, 12024.0);
+
 }

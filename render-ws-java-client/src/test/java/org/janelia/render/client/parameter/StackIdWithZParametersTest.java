@@ -42,7 +42,7 @@ public class StackIdWithZParametersTest {
     @Test
     public void testGetStackIdList() throws IOException {
 
-        final StackIdWithZParameters params = new StackIdWithZParameters();
+        StackIdWithZParameters params = new StackIdWithZParameters();
 
         params.projectPattern = ".*ProjectA$";
         List<StackId> stackIdList = params.getStackIdList(mockDataClient);
@@ -66,6 +66,12 @@ public class StackIdWithZParametersTest {
                 .filter(stackId -> stackId.getProject().equals(projectB)).count();
         Assert.assertEquals("all stacks should be from project B (naming group should override default)",
                             6, projectBStackCount);
+
+        params = new StackIdWithZParameters();
+        params.stackNames = List.of("stack2");
+        stackIdList = params.getStackIdList(mockDataClient);
+        Assert.assertEquals("incorrect number of stacks returned for explicit stack name",
+                            1, stackIdList.size());
     }
 
     private static class MockRenderDataClient extends RenderDataClient {

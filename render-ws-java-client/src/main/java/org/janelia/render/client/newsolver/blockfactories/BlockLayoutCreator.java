@@ -99,11 +99,13 @@ public class BlockLayoutCreator {
 	 */
 	public BlockLayoutCreator shiftedGrid(final In dimension, final int min, final int max, final int blockSize) {
 		final List<IntegerInterval> targetIntervals = getUnspecifiedIntervals(dimension);
-		if (max - min + 1 >= 2*blockSize) {
+		if ((blockSize > 1) && (max - min + 1 >= 2*blockSize)) {
 			// only do this if the grid is large enough to comfortably accommodate an "in-between" block
 			final int shift = blockSize / 2;
 			final int shrink = blockSize - shift;
 			targetIntervals.addAll(createGrid(min + shift, max - shrink, blockSize));
+		} else {
+			targetIntervals.addAll(createGrid(min, max, blockSize));
 		}
 		return this;
 	}
