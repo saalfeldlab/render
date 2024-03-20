@@ -147,7 +147,14 @@ public class StackAlignmentErrorClient {
 		// for local fits
 		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
 		final AlignmentErrors alignmentErrors = new AlignmentErrors();
+
 		final Map<String, TileSpec> tileIdToMatchTileSpec = new HashMap<>();
+		if (calculateResiduals) {
+			for (final TileSpec tileSpec : tilesAndMatches.getResolvedTileSpecs().getTileSpecs()) {
+				tileIdToMatchTileSpec.put(tileSpec.getTileId(),
+										  buildTileSpecUsedForMatchDerivation(tileSpec));
+			}
+		}
 
 		for (final CanvasMatches match : tilesAndMatches.getMatchPairs()) {
 			final String pTileId = match.getpId();
@@ -165,10 +172,11 @@ public class StackAlignmentErrorClient {
 			if (calculateResiduals) {
 				errorValue = deriveRootMeanSquaredError(stackId,
 														matchCollectionId,
-														match,
 														pTileSpec,
 														qTileSpec,
-														tileIdToMatchTileSpec);
+														match,
+														tileIdToMatchTileSpec.get(pTileSpec.getTileId()),
+														tileIdToMatchTileSpec.get(qTileSpec.getTileId()));
 			} else {
 				errorValue = WorkerTools.computeAlignmentError(crossLayerModel,
 															   stitchingModel,
@@ -190,10 +198,11 @@ public class StackAlignmentErrorClient {
 
 	private static double deriveRootMeanSquaredError(final StackId stackId,
 													 final MatchCollectionId matchCollectionId,
-													 final CanvasMatches match,
 													 final TileSpec pAlignedTileSpec,
 													 final TileSpec qAlignedTileSpec,
-													 final Map<String, TileSpec> tileIdToMatchTileSpec)
+													 final CanvasMatches match,
+													 final TileSpec pMatchTileSpec,
+													 final TileSpec qMatchTileSpec)
 			throws NoninvertibleModelException {
 
 		final String pTileId = pAlignedTileSpec.getTileId();
@@ -205,9 +214,6 @@ public class StackAlignmentErrorClient {
 																						matchCollectionId,
 																						false);
 		final List<PointMatch> worldMatchList = match.getMatches().createPointMatches();
-
-		final TileSpec pMatchTileSpec = getMatchTileSpec(pAlignedTileSpec, tileIdToMatchTileSpec);
-		final TileSpec qMatchTileSpec = getMatchTileSpec(qAlignedTileSpec, tileIdToMatchTileSpec);
 		final List<PointMatch> localMatchList = ResidualCalculator.convertMatchesToLocal(worldMatchList,
 																						 pMatchTileSpec,
 																						 qMatchTileSpec);
@@ -227,24 +233,18 @@ public class StackAlignmentErrorClient {
 		return result.getRootMeanSquareError();
 	}
 
-	private static TileSpec getMatchTileSpec(final TileSpec alignedTileSpec,
-											 final Map<String, TileSpec> tileIdToMatchTileSpec) {
+	private static TileSpec buildTileSpecUsedForMatchDerivation(final TileSpec alignedTileSpec) {
 
-		TileSpec matchTileSpec = tileIdToMatchTileSpec.get(alignedTileSpec.getTileId());
+		final TileSpec matchTileSpec = alignedTileSpec.slowClone();
 
-		if (matchTileSpec == null) {
-			matchTileSpec = alignedTileSpec.slowClone();
+		matchTileSpec.flattenTransforms();
 
-			matchTileSpec.flattenTransforms();
-			// Assume the last transform is an affine that positions the tile in the world and remove it.
+		// Assume the last transform is an affine that positions the tile in the world and remove it.
+		matchTileSpec.removeLastTransformSpec();
+		// If the tile still has more than 2 transforms, remove all but the first 2.
+		// This assumes that the first 2 transforms are for lens correction.
+		while (matchTileSpec.getTransforms().size() > 2) {
 			matchTileSpec.removeLastTransformSpec();
-			// If the tile still has more than 2 transforms, remove all but the first 2.
-			// This assumes that the first 2 transforms are for lens correction.
-			while (matchTileSpec.getTransforms().size() > 2) {
-				matchTileSpec.removeLastTransformSpec();
-			}
-
-			tileIdToMatchTileSpec.put(matchTileSpec.getTileId(), matchTileSpec);
 		}
 
 		return matchTileSpec;
