@@ -7,9 +7,12 @@ import java.io.Reader;
 import java.io.Serializable;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.MatchCollectionId;
+import org.janelia.alignment.multisem.StackMFOVWithZValues;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.multisem.Utilities;
 
@@ -78,6 +81,11 @@ public class MFOVMontageMatchPatchParameters
     )
     public String matchStorageFile;
 
+    @Parameter(
+            names = "--numberOfMFOVsPerBatch",
+            description = "Number of MFOVs to process in each batch")
+    public int numberOfMFOVsPerBatch = 1;
+
     public MFOVMontageMatchPatchParameters() {
     }
 
@@ -137,6 +145,25 @@ public class MFOVMontageMatchPatchParameters
      */
     public String toJson() {
         return JSON_HELPER.toJson(this);
+    }
+
+    /**
+     * @return the specified stackMFOVWithZValues list bundled into groups of numberOfMFOVsPerBatch.
+     */
+    public List<List<StackMFOVWithZValues>> bundleMFOVs(final List<StackMFOVWithZValues> stackMFOVWithZValues) {
+        final List<List<StackMFOVWithZValues>> bundles = new ArrayList<>();
+        List<StackMFOVWithZValues> currentBundle = new ArrayList<>();
+        for (final StackMFOVWithZValues stackMFOVWithZValue : stackMFOVWithZValues) {
+            currentBundle.add(stackMFOVWithZValue);
+            if (currentBundle.size() == numberOfMFOVsPerBatch) {
+                bundles.add(currentBundle);
+                currentBundle = new ArrayList<>();
+            }
+        }
+        if (! currentBundle.isEmpty()) {
+            bundles.add(currentBundle);
+        }
+        return bundles;
     }
 
     public static MFOVMontageMatchPatchParameters fromJson(final Reader json) {

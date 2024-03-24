@@ -135,35 +135,44 @@ public class MFOVMontageMatchPatchClient
         final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
                 multiProjectParameters.buildListOfStackMFOVWithAllZ(patchParameters.getMultiFieldOfViewId());
 
-        LOG.info("patchPairsForPass: {}, distributing tasks for {} MFOVs", passName, stackMFOVWithZValuesList.size());
+        final List<List<StackMFOVWithZValues>> bundledMFOVList = patchParameters.bundleMFOVs(stackMFOVWithZValuesList);
 
-        final JavaRDD<StackMFOVWithZValues> rddStackMFOVWithZValues = sparkContext.parallelize(stackMFOVWithZValuesList);
+        LOG.info("patchPairsForPass: {}, distributing tasks for {} bundles of {} MFOVs",
+                 passName, bundledMFOVList.size(), stackMFOVWithZValuesList.size());
 
-        final Function<StackMFOVWithZValues, Integer> patchFunction = stackMOFVWithZ -> {
+        final JavaRDD<List<StackMFOVWithZValues>> rddStackMFOVWithZValues = sparkContext.parallelize(bundledMFOVList);
 
-            LogUtilities.setupExecutorLog4j("MFOV:" + stackMOFVWithZ.getmFOVId() + ":" + passName);
+        final Function<List<StackMFOVWithZValues>, Integer> patchFunction = bundledMFOVs -> {
 
-            final org.janelia.render.client.multisem.MFOVMontageMatchPatchClient.Parameters javaPatchClientParameters =
-                    new org.janelia.render.client.multisem.MFOVMontageMatchPatchClient.Parameters();
+            int numberOfDerivedMatchPairs = 0;
+            for (final StackMFOVWithZValues stackMFOVWithZ : bundledMFOVs) {
 
-            javaPatchClientParameters.patch = patchParameters.withMultiFieldOfViewId(stackMOFVWithZ.getmFOVId());
+                LogUtilities.setupExecutorLog4j("MFOV:" + stackMFOVWithZ.getmFOVId() + ":" + passName);
 
-            final StackId stackId = stackMOFVWithZ.getStackId();
-            final RenderDataClient defaultDataClient = new RenderDataClient(baseDataUrl,
-                                                                            stackId.getOwner(),
-                                                                            stackId.getProject());
+                final org.janelia.render.client.multisem.MFOVMontageMatchPatchClient.Parameters
+                        javaPatchClientParameters =
+                        new org.janelia.render.client.multisem.MFOVMontageMatchPatchClient.Parameters();
 
-            final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
+                javaPatchClientParameters.patch = patchParameters.withMultiFieldOfViewId(stackMFOVWithZ.getmFOVId());
 
-            final org.janelia.render.client.multisem.MFOVMontageMatchPatchClient javaPatchClient =
-                    new org.janelia.render.client.multisem.MFOVMontageMatchPatchClient(javaPatchClientParameters);
+                final StackId stackId = stackMFOVWithZ.getStackId();
+                final RenderDataClient defaultDataClient = new RenderDataClient(baseDataUrl,
+                                                                                stackId.getOwner(),
+                                                                                stackId.getProject());
 
-            @SuppressWarnings("UnnecessaryLocalVariable")
-            final int numberOfDerivedMatchPairs =
-                    javaPatchClient.deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
-                                                                                   stackMOFVWithZ,
-                                                                                   matchCollectionId,
-                                                                                   matchCollectionId.getName());
+                final MatchCollectionId matchCollectionId =
+                        multiProjectParameters.getMatchCollectionIdForStack(stackId);
+
+                final org.janelia.render.client.multisem.MFOVMontageMatchPatchClient javaPatchClient =
+                        new org.janelia.render.client.multisem.MFOVMontageMatchPatchClient(javaPatchClientParameters);
+
+                numberOfDerivedMatchPairs +=
+                        javaPatchClient.deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
+                                                                                       stackMFOVWithZ,
+                                                                                       matchCollectionId,
+                                                                                       matchCollectionId.getName());
+            }
+
             return numberOfDerivedMatchPairs;
         };
 
