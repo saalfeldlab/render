@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -128,28 +129,40 @@ public class UnconnectedCrossMFOVClient
         final MultiProjectParameters multiProjectParameters = clientParameters.multiProject;
         final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
         final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
+        final List<List<StackWithZValues>> bundledStackList = clientParameters.core.bundleStacks(stackWithZValuesList);
 
-        LOG.info("findUnconnectedMFOVs: distributing tasks for {} stacks", stackWithZValuesList.size());
+        LOG.info("findUnconnectedMFOVs: distributing tasks for {} bundles of {} stacks",
+                 bundledStackList.size(), stackWithZValuesList.size());
 
-        final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
+        final JavaRDD<List<StackWithZValues>> rddStackWithZValues = sparkContext.parallelize(bundledStackList);
 
-        final Function<StackWithZValues, UnconnectedMFOVPairsForStack> findFunction = stackWithZ -> {
+        final Function<List<StackWithZValues>, List<UnconnectedMFOVPairsForStack>> findFunction = stackWithZList -> {
 
-            LogUtilities.setupExecutorLog4j(stackWithZ.toString());
+            final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForEachStack = new ArrayList<>();
 
-            final StackId stackId = stackWithZ.getStackId();
-            final RenderDataClient localDataClient = new RenderDataClient(baseDataUrl,
-                                                                          stackId.getOwner(),
-                                                                          stackId.getProject());
-            final org.janelia.render.client.multisem.UnconnectedCrossMFOVClient jClient = clientParameters.buildJavaClient();
+            for (final StackWithZValues stackWithZ : stackWithZList) {
 
-            return jClient.findUnconnectedMFOVs(stackWithZ,
-                                                multiProjectParameters.deriveMatchCollectionNamesFromProject,
-                                                localDataClient);
+                LogUtilities.setupExecutorLog4j(stackWithZ.toString());
+
+                final StackId stackId = stackWithZ.getStackId();
+                final RenderDataClient localDataClient = new RenderDataClient(baseDataUrl,
+                                                                              stackId.getOwner(),
+                                                                              stackId.getProject());
+                final org.janelia.render.client.multisem.UnconnectedCrossMFOVClient jClient =
+                        clientParameters.buildJavaClient();
+
+                unconnectedMFOVsForEachStack.add(
+                        jClient.findUnconnectedMFOVs(stackWithZ,
+                                                     multiProjectParameters.deriveMatchCollectionNamesFromProject,
+                                                     localDataClient));
+            }
+
+            return unconnectedMFOVsForEachStack;
         };
 
-        final JavaRDD<UnconnectedMFOVPairsForStack> rddUnconnected = rddStackWithZValues.map(findFunction);
-        final List<UnconnectedMFOVPairsForStack> possiblyEmptyUnconnectedList = rddUnconnected.collect();
+        final JavaRDD<List<UnconnectedMFOVPairsForStack>> rddUnconnected = rddStackWithZValues.map(findFunction);
+        final List<UnconnectedMFOVPairsForStack> possiblyEmptyUnconnectedList =
+                rddUnconnected.collect().stream().flatMap(List::stream).collect(Collectors.toList());
 
         LOG.info("findUnconnectedMFOVs: collected {} items from rddUnconnected", possiblyEmptyUnconnectedList.size());
 
