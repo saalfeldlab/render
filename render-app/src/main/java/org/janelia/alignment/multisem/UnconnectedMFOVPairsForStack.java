@@ -89,6 +89,15 @@ public class UnconnectedMFOVPairsForStack
         unconnectedMFOVPairs.add(unconnectedPair);
     }
 
+    @Override
+    public String toString() {
+        return "{'renderStackId': '" + renderStackId.toDevString() +
+               "', 'mFOVMontageStackName': '" + mFOVMontageStackName +
+               "', 'matchCollectionId': '" + matchCollectionId.toDevString() +
+               "', 'unconnectedMFOVPairs': [" + unconnectedMFOVPairs +
+               "]}";
+    }
+
     public static List<UnconnectedMFOVPairsForStack> load(final String dataFile)
             throws IOException, IllegalArgumentException {
 

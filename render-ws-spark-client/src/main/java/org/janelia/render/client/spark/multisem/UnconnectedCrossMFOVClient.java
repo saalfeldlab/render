@@ -26,6 +26,8 @@ import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.janelia.render.client.multisem.UnconnectedCrossMFOVClient.logUnconnectedMFOVPairs;
+
 /**
  * Spark client for patching matches missing from adjacent SFOV tile pairs within the same MFOV and z layer.
  * Core logic is implemented in {@link org.janelia.render.client.multisem.MFOVMontageMatchPatchClient}.
@@ -103,9 +105,9 @@ public class UnconnectedCrossMFOVClient
                 findUnconnectedMFOVs(sparkContext, clientParameters);
 
         if (! unconnectedMFOVsForAllStacks.isEmpty()) {
-            final String errorMessage =
-                    "found " + unconnectedMFOVsForAllStacks.size() + " stacks with unconnected MFOVs";
-            LOG.error("runPipelineStep: {}: {}", errorMessage, unconnectedMFOVsForAllStacks);
+            final String errorMessage = "found " + unconnectedMFOVsForAllStacks.size() + " stacks with unconnected MFOVs";
+            LOG.error("runPipelineStep: {}", errorMessage);
+            logUnconnectedMFOVPairs(unconnectedMFOVsForAllStacks);
             throw new IOException(errorMessage);
         } else {
             LOG.info("runPipelineStep: all MFOVs in all stacks are connected");

@@ -1,7 +1,6 @@
 package org.janelia.render.client.multisem;
 
 import com.beust.jcommander.ParametersDelegate;
-import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -14,7 +13,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.multisem.LayerMFOV;
@@ -146,10 +144,10 @@ public class UnconnectedCrossMFOVClient {
         }
     }
 
-    public static void logUnconnectedMFOVPairs(final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks)
-            throws JsonProcessingException {
-        LOG.info("findUnconnectedMFOVs: unconnected MFOV pairs for all stacks are: \n{}",
-                 JsonUtils.FAST_MAPPER.writeValueAsString(unconnectedMFOVsForAllStacks));
+    public static void logUnconnectedMFOVPairs(final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks) {
+        for (final UnconnectedMFOVPairsForStack unconnectedMFOVPairs : unconnectedMFOVsForAllStacks) {
+            LOG.info("found unconnected MFOV pairs {}", unconnectedMFOVPairs);
+        }
     }
 
     public static void storeUnconnectedMFOVPairs(final List<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks,
