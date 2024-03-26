@@ -88,10 +88,16 @@ public class ImageJDefaultLoader
         // If the URL opener did not work, try to open the file directly.
         if (imagePlus == null) {
             File file = null;
-            if (urlString.startsWith("file:")) {
-                file = new File(urlString.substring(5));
-            } else if (urlString.charAt(0) == '/' || urlString.charAt(0) == '\\') {
+            if (urlString.charAt(0) == '/' || urlString.charAt(0) == '\\') {
                 file = new File(urlString);
+            } else if (urlString.startsWith("file:")) {
+                int beginIndex = 5;
+                if (urlString.charAt(beginIndex) == '/') {
+                    while ((urlString.length() > (beginIndex + 1)) && (urlString.charAt(beginIndex + 1) == '/')) {
+                        beginIndex++;
+                    }
+                }
+                file = new File(urlString.substring(beginIndex));
             }
             if (file != null && file.exists()) {
                 // Try to open file directly since URL opener failed.
