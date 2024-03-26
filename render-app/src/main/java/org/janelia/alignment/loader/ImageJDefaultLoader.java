@@ -8,6 +8,7 @@ import ij.process.ImageProcessor;
 
 import java.awt.Image;
 import java.awt.Toolkit;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -36,7 +37,7 @@ public class ImageJDefaultLoader
     @SuppressWarnings("UnstableApiUsage")
     public ImageProcessor load(final String urlString) {
 
-        final ImagePlus imagePlus;
+        ImagePlus imagePlus;
 
         // openers keep state about the file being opened, so we need to create a new opener for each load
         final Opener opener = new Opener();
@@ -82,6 +83,21 @@ public class ImageJDefaultLoader
 
         } catch (final Throwable t) {
             throw new IllegalArgumentException(getErrorMessage(urlString), t);
+        }
+
+        // If the URL opener did not work, try to open the file directly.
+        if (imagePlus == null) {
+            File file = null;
+            if (urlString.startsWith("file:")) {
+                file = new File(urlString.substring(5));
+            } else if (urlString.charAt(0) == '/' || urlString.charAt(0) == '\\') {
+                file = new File(urlString);
+            }
+            if (file != null && file.exists()) {
+                // Try to open file directly since URL opener failed.
+                // This will handle FITS, PGM, BMP, AVI, and TEXT files that the URL opener cannot handle.
+                imagePlus = opener.openImage(file.getAbsolutePath());
+            }
         }
 
         if (imagePlus == null) {
