@@ -6,7 +6,7 @@
     <parent>
         <artifactId>modules-root</artifactId>
         <groupId>org.janelia.render</groupId>
-        <version>4.0.1-SNAPSHOT</version>
+        <version>4.0.2</version>
     </parent>
 
     <name>Render Web Service Spark Client</name>
