@@ -960,7 +960,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final BlockOptimizerParameters blockOptimizer = blockData.solveTypeParameters().blockOptimizerParameters();
 
 		for (final Tile<?> tile : tileConfig.getTiles()) {
-			final Map<String, Double> weights = blockOptimizer.setUpZeroWeights();
+			final Map<String, Double> weights = new HashMap<>(blockOptimizer.setUpZeroWeights());
 			weights.put(preAlignModelKey, 1.0);
 			final AlignmentModel model = (AlignmentModel) tile.getModel();
 			model.setWeights(weights);
