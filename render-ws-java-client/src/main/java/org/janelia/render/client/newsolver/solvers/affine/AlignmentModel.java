@@ -82,10 +82,13 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 		final double[] cFinal = new double[nCoefficients];
 
 		for (int k = 0; k < nModels(); ++k) {
-			models.get(k).asAffine2D().toArray(c);
 			final double w = weights.get(k);
-			for (int i = 0; i < nCoefficients; ++i)
-				cFinal[i] += w * c[i];
+			if (w != 0.0) {
+				models.get(k).asAffine2D().toArray(c);
+				for (int i = 0; i < nCoefficients; ++i) {
+					cFinal[i] += w * c[i];
+				}
+			}
 		}
 
 		affine.set(cFinal[0], cFinal[1], cFinal[2], cFinal[3], cFinal[4], cFinal[5]);
@@ -157,8 +160,9 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 
 	@Override
 	public <P extends PointMatch> void fit(final Collection<P> matches) throws NotEnoughDataPointsException, IllDefinedDataPointsException {
-		for (final AffineModel2DWrapper<?> model : models)
+		for (final AffineModel2DWrapper<?> model : models) {
 			model.asModel().fit(matches);
+		}
 		interpolate();
 	}
 
