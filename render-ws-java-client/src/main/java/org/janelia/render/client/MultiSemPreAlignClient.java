@@ -23,6 +23,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
+/**
+ * Coarsely aligns a multi-SEM stack by treating each mFOV layer as a single tile and using a rigid model.
+ *
+ * @author Michael Innerberger
+ */
 public class MultiSemPreAlignClient implements Serializable {
 
 	public static class Parameters extends CommandLineParameters {
