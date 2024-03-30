@@ -95,10 +95,6 @@ public class MultiSemPreAlignClient implements Serializable {
 				final MultiSemPreAlignClient client = new MultiSemPreAlignClient(parameters);
 
 				client.process();
-
-				if (parameters.completeTargetStack) {
-					client.completeTargetStack();
-				}
 			}
 		};
 		clientRunner.run();
@@ -118,7 +114,7 @@ public class MultiSemPreAlignClient implements Serializable {
 		dataClient.setupDerivedStack(stackMetaData, parameters.targetStack);
 	}
 
-	private void completeTargetStack() throws Exception {
+	private void completeTargetStack() throws IOException {
 		dataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
 	}
 
@@ -154,8 +150,12 @@ public class MultiSemPreAlignClient implements Serializable {
 		}
 
 		dataClient.saveResolvedTiles(rtsc, parameters.targetStack, null );
+		if (parameters.completeTargetStack) {
+			completeTargetStack();
+		}
 	}
 
+	// TODO: substitute with SolveTools.getTransformSpec(model.createAffine()) once this is fixed
 	public static LeafTransformSpec getTransformSpec(final RigidModel2D model) {
 		final double[] m = new double[6];
 		model.toArray(m);
