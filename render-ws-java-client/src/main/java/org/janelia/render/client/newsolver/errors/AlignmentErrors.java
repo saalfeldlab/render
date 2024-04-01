@@ -70,6 +70,9 @@ public class AlignmentErrors {
 	}
 
 	public enum MergingMethod {
+		ADD(Double::sum),
+		MAX(Math::max),
+		MIN(Math::min),
 		RELATIVE_CHANGE((a, b) -> b / a),
 		ABSOLUTE_CHANGE((a, b) -> b - a),
 		RELATIVE_DIFFERENCE((a, b) -> Math.abs(a - b) / a),
