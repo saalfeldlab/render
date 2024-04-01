@@ -29,7 +29,7 @@ import mpicbg.models.Model;
 public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S extends Model< S > & Affine2D< S > > extends BlockDataSolveParameters< M, AffineModel2D, FIBSEMAlignmentParameters< M, S > >
 {
 	private static final long serialVersionUID = 4247180309556813829L;
-	public enum PreAlign { NONE, TRANSLATION, RIGID }
+	public enum PreAlign { NONE, TRANSLATION, RIGID, MULTI_SEM }
 
 	final private Function< Integer, S > stitchingModelSupplier;
 	final private Function< Integer, Integer > minStitchingInliersSupplier; // if it is less, it is not stitched first

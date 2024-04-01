@@ -890,7 +890,26 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		}
 
 		if ((preAlign != null) && (preAlign != PreAlign.NONE)) {
-			preAlign(solveItem, tileConfig, preAlign.toString());
+			if (preAlign == PreAlign.MULTI_SEM) {
+				for (final Tile<?> tile : tileConfig.getTiles()) {
+					final Map<String, Double> weights = new HashMap<>(alignmentParameters.blockOptimizerParameters().setUpZeroWeights());
+					weights.put(AlignmentModelType.TRANSLATION.name(), 1.0);
+					final AlignmentModel model = (AlignmentModel) tile.getModel();
+					model.setWeights(weights);
+				}
+				try {
+					tileConfig.preAlign();
+				} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+					throw new RuntimeException(e);
+				}
+			} else {
+				preAlign(solveItem, tileConfig, preAlign.toString());
+			}
+
+			if (LOG.isInfoEnabled()) {
+				final DoubleSummaryStatistics preAlignErrors = SolveTools.computeErrors(tileConfig.getTiles());
+				LOG.info("solve: error stats after preAlign are {}", preAlignErrors);
+			}
 		}
 
 		final BlockOptimizerParameters blockOptimizer = alignmentParameters.blockOptimizerParameters();
@@ -976,10 +995,6 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			}
 			SolveTools.preAlignByLayerDistance(tileConfig, tileToZ);
 
-			if (LOG.isInfoEnabled()) {
-				final DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles());
-				LOG.info("preAlign: errors: {}", errors);
-			}
 			// TODO: else they should be in the right position
 		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
 			LOG.warn("block {}: pre-align failed: ", inputSolveItem.blockData(), e);
