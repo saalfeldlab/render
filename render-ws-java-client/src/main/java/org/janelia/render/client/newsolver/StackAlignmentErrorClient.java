@@ -49,12 +49,9 @@ public class StackAlignmentErrorClient {
 		@Parameter(names = "--fileName", description = "Name of file to write pairwise errors to (default: errors_<stack>.json.gz)")
 		private String fileName = null;
 		@Parameter(
-				names = "--calculateResiduals",
-				description = "Calculate root mean squared error for each pair of tiles (default: calculate Preibisch error)",
-				arity=0)
-		private boolean calculateResiduals;
-
-		// TODO: define enum for different error types (Preibisch, RMSE, ...) and use that instead of boolean flag
+				names = "--errorMetric",
+				description = "Error metric to use for computing errors (default: GLOBAL_LOCAL_DIFFERENCE)")
+		private ErrorMetric errorMetric;
 
 		public String getFileName() {
 			if (fileName == null) {
@@ -117,7 +114,7 @@ public class StackAlignmentErrorClient {
 																	  matchCollectionId,
 																	  tiles,
 																	  z,
-																	  params.calculateResiduals);
+																	  params.errorMetric);
 			errors.absorb(errorsForZ);
 		}
 
@@ -136,21 +133,21 @@ public class StackAlignmentErrorClient {
 														  final MatchCollectionId matchCollectionId,
 														  final ResolvedTileSpecsWithMatchPairs tilesAndMatches,
 														  final Double currentZ,
-														  final boolean calculateResiduals)
+														  final ErrorMetric errorMetric)
 			throws NoninvertibleModelException {
 
-		LOG.info("computeSolveItemErrors: entry, processing {} tiles ({} pairs) in z {}, calculateResiduals={}",
+		LOG.info("computeSolveItemErrors: entry, processing {} tiles ({} pairs) in z {}, errorMetric={}",
 				 tilesAndMatches.getResolvedTileSpecs().getTileCount(),
 				 tilesAndMatches.getMatchPairCount(),
 				 currentZ,
-				 calculateResiduals);
+				 errorMetric);
 
 		// for local fits
 		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
 		final AlignmentErrors alignmentErrors = new AlignmentErrors();
 
 		final Map<String, TileSpec> tileIdToMatchTileSpec = new HashMap<>();
-		if (calculateResiduals) {
+		if (errorMetric == ErrorMetric.RMSE) {
 			for (final TileSpec tileSpec : tilesAndMatches.getResolvedTileSpecs().getTileSpecs()) {
 				tileIdToMatchTileSpec.put(tileSpec.getTileId(),
 										  buildTileSpecUsedForMatchDerivation(tileSpec));
@@ -170,7 +167,7 @@ public class StackAlignmentErrorClient {
 
 			final double errorValue;
 
-			if (calculateResiduals) {
+			if (errorMetric == ErrorMetric.RMSE) {
 				errorValue = deriveRootMeanSquaredError(stackId,
 														matchCollectionId,
 														pTileSpec,
@@ -249,6 +246,11 @@ public class StackAlignmentErrorClient {
 		}
 
 		return matchTileSpec;
+	}
+
+	public enum ErrorMetric {
+		GLOBAL_LOCAL_DIFFERENCE,
+		RMSE
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(StackAlignmentErrorClient.class);
