@@ -28,6 +28,7 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ResidualCalculator;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.newsolver.errors.AlignmentErrors;
 import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
