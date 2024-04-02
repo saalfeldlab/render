@@ -299,6 +299,7 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
     }
 
     public OrderedCanvasIdPair toOrderedPair() {
+        // TODO: consider moving to OrderedCanvasIdPair as static construction method
         final CanvasId p = new CanvasId(pGroupId, pId);
         final CanvasId q = new CanvasId(qGroupId, qId);
         return new OrderedCanvasIdPair(p, q, null);

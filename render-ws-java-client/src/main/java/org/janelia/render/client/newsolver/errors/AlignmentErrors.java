@@ -1,4 +1,4 @@
-package org.janelia.render.client.newsolver;
+package org.janelia.render.client.newsolver.errors;
 
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.OrderedCanvasIdPairWithValue;
@@ -12,7 +12,7 @@ import java.util.Map;
 import java.util.function.DoubleBinaryOperator;
 import java.util.stream.Collectors;
 
-class AlignmentErrors {
+public class AlignmentErrors {
 	private final List<OrderedCanvasIdPairWithValue> pairwiseErrors = new ArrayList<>();
 
 	public void addError(final OrderedCanvasIdPair pair, final double error) {
@@ -70,6 +70,9 @@ class AlignmentErrors {
 	}
 
 	public enum MergingMethod {
+		ADD(Double::sum),
+		MAX(Math::max),
+		MIN(Math::min),
 		RELATIVE_CHANGE((a, b) -> b / a),
 		ABSOLUTE_CHANGE((a, b) -> b - a),
 		RELATIVE_DIFFERENCE((a, b) -> Math.abs(a - b) / a),
