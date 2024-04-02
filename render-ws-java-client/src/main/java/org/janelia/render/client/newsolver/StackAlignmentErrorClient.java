@@ -54,13 +54,13 @@ public class StackAlignmentErrorClient {
 		private String stack;
 		@Parameter(
 				names = "--errorMetric",
-				description = "Error metric to use for computing errors (default: GLOBAL_LOCAL_DIFFERENCE)")
+				description = "Error metric to use for computing errors")
 		private ErrorMetric errorMetric = ErrorMetric.GLOBAL_LOCAL_DIFFERENCE;
 		@Parameter(names = "--compareTo", description = "Stack for which to compare errors to")
 		private String baselineStack = null;
-		@Parameter(names = "--comparisonMetric", description = "Metric to use for comparing errors (default: ABSOLUTE_CHANGE)")
+		@Parameter(names = "--comparisonMetric", description = "Metric to use for comparing errors")
 		private MergingMethod comparisonMetric = MergingMethod.ABSOLUTE_CHANGE;
-		@Parameter(names = "--reportWorstPairs", description = "Report the worst n pairs (default: 20)")
+		@Parameter(names = "--reportWorstPairs", description = "Report the worst n pairs")
 		private int reportWorstPairs = 20;
 	}
 
