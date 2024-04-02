@@ -72,7 +72,7 @@ public class StackAlignmentErrorClient {
 		this.params = params;
 	}
 
-	public static void main(final String[] args) throws Exception {
+	public static void main(final String[] args) {
 		final ClientRunner clientRunner = new ClientRunner(args) {
 			@Override
 			public void runClient(final String[] args) throws Exception {
@@ -92,6 +92,7 @@ public class StackAlignmentErrorClient {
 
 		final AlignmentErrors errors;
 		if (params.baselineStack != null) {
+			// TODO: re-use the same matches for both stacks and also accept multiple errorMetrics at once
 			final AlignmentErrors baseline = computeErrorsFor(params.baselineStack);
 			final AlignmentErrors other = computeErrorsFor(params.stack);
 			errors = AlignmentErrors.merge(baseline, other, params.comparisonMetric);

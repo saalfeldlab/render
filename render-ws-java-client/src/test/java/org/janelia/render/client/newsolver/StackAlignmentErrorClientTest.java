@@ -49,8 +49,6 @@ public class StackAlignmentErrorClientTest {
     }
 
     private static void showErrorsFor(final String[] args) throws IOException {
-        final StackAlignmentErrorClient.Parameters params = new StackAlignmentErrorClient.Parameters();
-        params.parse(args);
-        new StackAlignmentErrorClient(params).compareAndLogErrors();
+        StackAlignmentErrorClient.main(args);
     }
 }
