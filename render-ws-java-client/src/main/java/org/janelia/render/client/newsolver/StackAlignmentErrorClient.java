@@ -8,7 +8,6 @@ import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
-import mpicbg.models.TranslationModel2D;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
@@ -29,14 +28,12 @@ import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.janelia.render.client.solver.StabilizingAffineModel2D;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,18 +64,9 @@ public class StackAlignmentErrorClient {
 		private int reportWorstPairs = 20;
 	}
 
-	private static final List<Double> blockOptimizerLambdasRigid = Arrays.asList(1.0, 1.0, 0.9, 0.3, 0.01);
-	private static final List<Double> blockOptimizerLambdasTranslation = Arrays.asList(1.0, 0.0, 0.0, 0.0, 0.0);
-	private static final AffineModel2D stitchingModel = new InterpolatedAffineModel2D<>(
-			new InterpolatedAffineModel2D<>(
-					new InterpolatedAffineModel2D<>(
-							new AffineModel2D(),
-							new RigidModel2D(), blockOptimizerLambdasRigid.get(0)),
-					new TranslationModel2D(), blockOptimizerLambdasTranslation.get(0)),
-			new StabilizingAffineModel2D<>(new RigidModel2D()), 0.0).createAffineModel2D();
-
 
 	private final Parameters params;
+
 
 	public StackAlignmentErrorClient(final Parameters params) {
 		this.params = params;
@@ -136,6 +124,7 @@ public class StackAlignmentErrorClient {
 			throw new RuntimeException(e);
 		}
 	}
+
 	public AlignmentErrors fetchAndComputeError(final String stack) throws IOException, NoninvertibleModelException {
 
 		final RenderDataClient renderClient = params.renderParams.getDataClient();
@@ -186,6 +175,7 @@ public class StackAlignmentErrorClient {
 
 		// for local fits
 		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
+		final Model<?> stitchingModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.01);
 		final AlignmentErrors alignmentErrors = new AlignmentErrors();
 
 		final Map<String, TileSpec> tileIdToMatchTileSpec = new HashMap<>();
