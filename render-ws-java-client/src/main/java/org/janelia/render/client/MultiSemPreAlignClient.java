@@ -4,7 +4,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import mpicbg.models.RigidModel2D;
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
@@ -14,6 +13,7 @@ import org.janelia.render.client.newsolver.solvers.affine.MultiSemPreAligner;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -150,7 +150,7 @@ public class MultiSemPreAlignClient implements Serializable {
 
 		for (final Map.Entry<String, RigidModel2D> entry : tileIdToModel.entrySet()) {
 			final String tileId = entry.getKey();
-			final TransformSpec transformSpec = getTransformSpec(entry.getValue());
+			final TransformSpec transformSpec = SolveTools.getTransformSpec(entry.getValue());
 			rtsc.addTransformSpecToTile(tileId, transformSpec, TransformApplicationMethod.REPLACE_LAST);
 		}
 
@@ -158,15 +158,6 @@ public class MultiSemPreAlignClient implements Serializable {
 		if (parameters.completeTargetStack) {
 			completeTargetStack();
 		}
-	}
-
-	// TODO: substitute with SolveTools.getTransformSpec(model.createAffine()) once this is fixed
-	public static LeafTransformSpec getTransformSpec(final RigidModel2D model) {
-		final double[] m = new double[6];
-		model.toArray(m);
-
-		final String data = String.valueOf(m[0]) + ' ' + m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[5];
-		return new LeafTransformSpec(mpicbg.trakem2.transform.AffineModel2D.class.getName(), data);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(MultiSemPreAlignClient.class);

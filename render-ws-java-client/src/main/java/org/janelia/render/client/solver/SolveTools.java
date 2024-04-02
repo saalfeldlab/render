@@ -973,22 +973,24 @@ public class SolveTools
 		LOG.info( "saveTargetStackTiles: exit" );
 	}
 
-	public static LeafTransformSpec getTransformSpec( final AffineModel2D forModel )
-	{
-		final double[] m = new double[ 6 ];
-		forModel.toArray( m );
+	/**
+	 * Note: this method relies on the internal structure of Affine2D
+	 * as such, it is fragile and may break if the internal structure of Affine2D changes.
+	 * <p>
+	 * Current layout:
+	 * data[0] = m00;
+	 * data[1] = m10;
+	 * data[2] = m01;
+	 * data[3] = m11;
+	 * data[4] = m02;
+	 * data[5] = m12;
+	 */
+	public static LeafTransformSpec getTransformSpec(final Affine2D<?> forModel) {
+		final double[] m = new double[6];
+		forModel.toArray(m);
 
-		/*
-		data[ 0 ] = m00;
-		data[ 1 ] = m10;
-		data[ 2 ] = m01;
-		data[ 3 ] = m11;
-		data[ 4 ] = m02;
-		data[ 5 ] = m12;
-		*/
-		
-		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 1 ] + ' ' + m[ 2 ] + ' ' + m[ 3 ] + ' ' + m[ 4 ] + ' ' + m[ 5 ];
-		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
+		final String data = String.valueOf(m[0]) + ' ' + m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[5];
+		return new LeafTransformSpec(mpicbg.trakem2.transform.AffineModel2D.class.getName(), data);
 	}
 
 	/**
