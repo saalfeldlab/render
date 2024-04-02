@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import mpicbg.models.NoninvertibleModelException;
 import org.janelia.alignment.match.OrderedCanvasIdPairWithValue;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -14,6 +15,7 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.errors.AlignmentErrors;
 import org.janelia.render.client.newsolver.errors.AlignmentErrors.MergingMethod;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,18 +30,20 @@ public class StackAlignmentComparisonClient {
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
 		private final RenderWebServiceParameters renderParams = new RenderWebServiceParameters();
+		@ParametersDelegate
+		private final MatchCollectionParameters matchParams = new MatchCollectionParameters();
 		@Parameter(names = "--stack", description = "Stack for which to compute errors", required = true)
 		private String stack;
-		@Parameter(names = "--baselineFile", description = "Name of file from which to read pairwise errors as baseline", required = true)
-		private String baselineFile;
-		@Parameter(names = "--otherFile", description = "Name of file from which to read other pairwise errors", required = true)
-		private String otherFile;
-		@Parameter(names = "--metric", description = "Metric to use for comparing errors (default: ABSOLUTE_CHANGE)")
-		private MergingMethod metric = MergingMethod.ABSOLUTE_CHANGE;
-		@Parameter(names = "--outFileName", description = "Name of file to write pairwise error differences to (not written if not specified)")
-		private String outFileName = null;
-		@Parameter(names = "--reportWorstPairs", description = "Report the worst n pairs (default: 50)")
-		private int reportWorstPairs = 50;
+		@Parameter(
+				names = "--errorMetric",
+				description = "Error metric to use for computing errors (default: GLOBAL_LOCAL_DIFFERENCE)")
+		private StackAlignmentErrorClient.ErrorMetric errorMetric = StackAlignmentErrorClient.ErrorMetric.GLOBAL_LOCAL_DIFFERENCE;
+		@Parameter(names = "--compareTo", description = "Stack for which to compare errors to")
+		private String baselineStack;
+		@Parameter(names = "--comparisonMetric", description = "Metric to use for comparing errors (default: ABSOLUTE_CHANGE)")
+		private MergingMethod comparisonMetric = MergingMethod.ABSOLUTE_CHANGE;
+		@Parameter(names = "--reportWorstPairs", description = "Report the worst n pairs (default: 20)")
+		private int reportWorstPairs = 20;
 	}
 
 
@@ -59,18 +63,18 @@ public class StackAlignmentComparisonClient {
 				LOG.info("runClient: entry, parameters={}", parameters);
 
 				final StackAlignmentComparisonClient client = new StackAlignmentComparisonClient(parameters);
-				client.compareErrors();
+				client.compareAndLogErrors();
 			}
 		};
 		clientRunner.run();
 	}
 
-	public void compareErrors() throws IOException {
+	public void compareAndLogErrors() throws IOException {
 
-		final AlignmentErrors baseline = AlignmentErrors.loadFromFile(params.baselineFile);
-		final AlignmentErrors other = AlignmentErrors.loadFromFile(params.otherFile);
+		final AlignmentErrors baseline = computeErrorsFor(params.baselineStack);
+		final AlignmentErrors other = computeErrorsFor(params.stack);
 
-		final AlignmentErrors differences = AlignmentErrors.merge(baseline, other, params.metric);
+		final AlignmentErrors differences = AlignmentErrors.merge(baseline, other, params.comparisonMetric);
 
 		final List<OrderedCanvasIdPairWithValue> worstPairs = differences.getWorstPairs(params.reportWorstPairs);
 		final RenderDataClient dataClient = params.renderParams.getDataClient();
@@ -88,13 +92,27 @@ public class StackAlignmentComparisonClient {
 			final String url = buildProblemAreaNgUrl(renderUrl, stackMetaData, pairBounds);
 			LOG.info("Error: {} ({} layer)- {}", error, layer, url);
 		}
+	}
 
-		if (params.outFileName != null) {
-			AlignmentErrors.writeToFile(differences, params.outFileName);
+	private AlignmentErrors computeErrorsFor(final String stack){
+		final String[] errorArgs = new String[] {
+				"--baseDataUrl", params.renderParams.baseDataUrl,
+				"--owner", params.renderParams.owner,
+				"--project", params.renderParams.project,
+				"--matchCollection", params.matchParams.matchCollection,
+				"--stack", stack,
+				"--errorMetric", params.errorMetric.name()};
+		final StackAlignmentErrorClient.Parameters errorParams = new StackAlignmentErrorClient.Parameters();
+		errorParams.parse(errorArgs);
+		final StackAlignmentErrorClient errorClient = new StackAlignmentErrorClient(errorParams);
+		try {
+			return errorClient.fetchAndComputeError();
+		} catch (final IOException | NoninvertibleModelException e) {
+			throw new RuntimeException(e);
 		}
 	}
 
-	public static String buildProblemAreaNgUrl(final String rendererUrl,
+	private static String buildProblemAreaNgUrl(final String rendererUrl,
 											   final StackMetaData stackMetaData,
 											   final Bounds bounds) {
 		final List<Double> res = stackMetaData.getCurrentResolutionValues();

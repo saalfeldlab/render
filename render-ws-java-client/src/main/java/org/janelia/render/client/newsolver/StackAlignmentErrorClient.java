@@ -46,19 +46,10 @@ public class StackAlignmentErrorClient {
 		private final MatchCollectionParameters matchParams = new MatchCollectionParameters();
 		@Parameter(names = "--stack", description = "Stack for which to compute errors", required = true)
 		private String stack;
-		@Parameter(names = "--fileName", description = "Name of file to write pairwise errors to (default: errors_<stack>.json.gz)")
-		private String fileName = null;
 		@Parameter(
 				names = "--errorMetric",
 				description = "Error metric to use for computing errors (default: GLOBAL_LOCAL_DIFFERENCE)")
 		private ErrorMetric errorMetric = ErrorMetric.GLOBAL_LOCAL_DIFFERENCE;
-
-		public String getFileName() {
-			if (fileName == null) {
-				fileName = "errors_" + stack + ".json.gz";
-			}
-			return fileName;
-		}
 	}
 
 
@@ -94,7 +85,7 @@ public class StackAlignmentErrorClient {
 		clientRunner.run();
 	}
 
-	public void fetchAndComputeError() throws IOException, NoninvertibleModelException {
+	public AlignmentErrors fetchAndComputeError() throws IOException, NoninvertibleModelException {
 
 		final RenderDataClient renderClient = params.renderParams.getDataClient();
 		final StackMetaData stackMetaData = renderClient.getStackMetaData(params.stack);
@@ -118,7 +109,7 @@ public class StackAlignmentErrorClient {
 			errors.absorb(errorsForZ);
 		}
 
-		AlignmentErrors.writeToFile(errors, params.getFileName());
+		return errors;
 	}
 
 	private ResolvedTileSpecsWithMatchPairs getResolvedTilesWithMatchPairsForZ(
