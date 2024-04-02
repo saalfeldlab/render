@@ -28,7 +28,7 @@ public class MultiSemPreAlignClientTest {
                 "--maxAllowedError", "10.0",
                 "--maxIterations", "1000",
                 "--maxPlateauWidth", "250",
-                "--maxNumMatches", "100",
+                "--maxNumMatches", "1000",
                 "--numThreads", "8"
         };
 

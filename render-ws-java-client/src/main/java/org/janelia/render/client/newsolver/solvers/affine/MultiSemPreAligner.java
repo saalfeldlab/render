@@ -124,7 +124,7 @@ public class MultiSemPreAligner<M extends Model<M> & Affine2D<M>> implements Ser
 		}
 
 		// accumulate matches for each pair of mFOV layers
-		final Map<Pair<Tile<M>, Tile<M>>, List<PointMatch>> pairsToMatches = new HashMap<>();
+		final Map<Pair<String, String>, List<PointMatch>> pairsToMatches = new HashMap<>();
 		for (final CanvasMatches canvasMatch : canvasMatches) {
 			final String mFovLayerP = tileIdToMFovLayer.get(canvasMatch.getpId());
 			final String mFovLayerQ = tileIdToMFovLayer.get(canvasMatch.getqId());
@@ -134,21 +134,25 @@ public class MultiSemPreAligner<M extends Model<M> & Affine2D<M>> implements Ser
 				continue;
 			}
 
-			final Tile<M> p = mFovLayerToTile.get(mFovLayerP);
-			final Tile<M> q = mFovLayerToTile.get(mFovLayerQ);
-			final List<PointMatch> layerMatches = pairsToMatches.computeIfAbsent(new ValuePair<>(p, q), k -> new ArrayList<>());
+			final Pair<String, String> pair = new ValuePair<>(mFovLayerP, mFovLayerQ);
+			final List<PointMatch> layerMatches = pairsToMatches.computeIfAbsent(pair, k -> new ArrayList<>());
 
 			final List<PointMatch> tileMatches = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatch.getMatches());
 			layerMatches.addAll(tileMatches);
 		}
 
 		// reduce the number of matches to a maximal number (choose randomly)
-		for (final Map.Entry<Pair<Tile<M>, Tile<M>>, List<PointMatch>> entry : pairsToMatches.entrySet()) {
-			final Tile<M> p = entry.getKey().getA();
-			final Tile<M> q = entry.getKey().getB();
+		for (final Map.Entry<Pair<String, String>, List<PointMatch>> entry : pairsToMatches.entrySet()) {
+			final String mFoVLayerP = entry.getKey().getA();
+			final String mFoVLayerQ = entry.getKey().getB();
+			final Tile<M> p = mFovLayerToTile.get(mFoVLayerP);
+			final Tile<M> q = mFovLayerToTile.get(mFoVLayerQ);
 			final List<PointMatch> pointMatches = entry.getValue();
 			final List<PointMatch> reducedMatches = getRandomElements(pointMatches, maxNumMatches);
+
 			p.connect(q, reducedMatches);
+			LOG.info("initializeAndConnectTiles: connected {} and {} with {} of {} matches",
+					 mFoVLayerP, mFoVLayerQ, reducedMatches.size(), pointMatches.size());
 		}
 
 		return mFovLayerToTile;

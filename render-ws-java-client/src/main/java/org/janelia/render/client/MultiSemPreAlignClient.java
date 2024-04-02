@@ -76,9 +76,9 @@ public class MultiSemPreAlignClient implements Serializable {
 
 		@Parameter(
 				names = "--maxNumMatches",
-				description = "Max number of matches between mFOV layers (default:100)"
+				description = "Max number of matches between mFOV layers (default:1000)"
 		)
-		public Integer maxNumMatches = 100;
+		public Integer maxNumMatches = 1000;
 
 		@Parameter(
 				names = "--numThreads",
@@ -151,7 +151,7 @@ public class MultiSemPreAlignClient implements Serializable {
 		for (final Map.Entry<String, RigidModel2D> entry : tileIdToModel.entrySet()) {
 			final String tileId = entry.getKey();
 			final TransformSpec transformSpec = SolveTools.getTransformSpec(entry.getValue());
-			rtsc.addTransformSpecToTile(tileId, transformSpec, TransformApplicationMethod.REPLACE_LAST);
+			rtsc.addTransformSpecToTile(tileId, transformSpec, TransformApplicationMethod.PRE_CONCATENATE_LAST);
 		}
 
 		dataClient.saveResolvedTiles(rtsc, parameters.targetStack, null );
