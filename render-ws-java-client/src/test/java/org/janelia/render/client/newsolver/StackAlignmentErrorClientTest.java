@@ -1,24 +1,19 @@
 package org.janelia.render.client.newsolver;
 
-import org.janelia.render.client.newsolver.errors.AlignmentErrors;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
-import java.io.IOException;
-
-import mpicbg.models.NoninvertibleModelException;
-
 /**
- * Tests the {@link StackAlignmentComparisonClient} class.
+ * Tests the {@link StackAlignmentErrorClient} class.
  *
  * @author Michael Innerberger
  */
 @SuppressWarnings("SameParameterValue")
-public class StackAlignmentComparisonClientTest {
+public class StackAlignmentErrorClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new StackAlignmentComparisonClient.Parameters());
+        CommandLineParameters.parseHelp(new StackAlignmentErrorClient.Parameters());
     }
 
     // --------------------------------------------------------------
@@ -36,8 +31,8 @@ public class StackAlignmentComparisonClientTest {
                 "--comparisonMetric", "ABSOLUTE_CHANGE",
                 "--reportWorstPairs", "20"};
 
-        final StackAlignmentComparisonClient.Parameters params = new StackAlignmentComparisonClient.Parameters();
+        final StackAlignmentErrorClient.Parameters params = new StackAlignmentErrorClient.Parameters();
         params.parse(comparisonArgs);
-        new StackAlignmentComparisonClient(params).compareAndLogErrors();
+        new StackAlignmentErrorClient(params).compareAndLogErrors();
     }
 }

@@ -41,7 +41,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class StackAlignmentComparisonClient {
+public class StackAlignmentErrorClient {
 
 	public enum ErrorMetric {
 		GLOBAL_LOCAL_DIFFERENCE,
@@ -80,7 +80,7 @@ public class StackAlignmentComparisonClient {
 
 	private final Parameters params;
 
-	public StackAlignmentComparisonClient(final Parameters params) {
+	public StackAlignmentErrorClient(final Parameters params) {
 		this.params = params;
 	}
 
@@ -93,7 +93,7 @@ public class StackAlignmentComparisonClient {
 				parameters.parse(args);
 				LOG.info("runClient: entry, parameters={}", parameters);
 
-				final StackAlignmentComparisonClient client = new StackAlignmentComparisonClient(parameters);
+				final StackAlignmentErrorClient client = new StackAlignmentErrorClient(parameters);
 				client.compareAndLogErrors();
 			}
 		};
@@ -310,5 +310,5 @@ public class StackAlignmentComparisonClient {
 		return rendererUrl + "/ng/#!" + URLEncoder.encode(ngJson, StandardCharsets.UTF_8);
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(StackAlignmentComparisonClient.class);
+	private static final Logger LOG = LoggerFactory.getLogger(StackAlignmentErrorClient.class);
 }
