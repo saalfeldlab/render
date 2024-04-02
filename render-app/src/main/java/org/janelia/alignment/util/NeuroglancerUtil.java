@@ -23,7 +23,7 @@ public class NeuroglancerUtil {
      *
      * @return 2D neuroglancer URL for specified stack.
      */
-    public static String buildRenderStackUrlString(final String rendererUrl, //
+    public static String buildRenderStackUrlString(final String rendererUrl,
                                                    final StackMetaData stackMetaData) {
 
         final List<Double> res = stackMetaData.getCurrentResolutionValues();

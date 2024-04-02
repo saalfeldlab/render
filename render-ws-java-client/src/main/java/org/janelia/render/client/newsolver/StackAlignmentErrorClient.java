@@ -51,7 +51,7 @@ public class StackAlignmentErrorClient {
 		@Parameter(
 				names = "--errorMetric",
 				description = "Error metric to use for computing errors (default: GLOBAL_LOCAL_DIFFERENCE)")
-		private ErrorMetric errorMetric;
+		private ErrorMetric errorMetric = ErrorMetric.GLOBAL_LOCAL_DIFFERENCE;
 
 		public String getFileName() {
 			if (fileName == null) {
