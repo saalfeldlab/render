@@ -15,7 +15,7 @@ import java.io.Serializable;
 public class StitchingParameters implements Serializable {
 	@Parameter(
 			names = "--lambdaStitching",
-			description = "Lambda, used if modelTypeStitchingRegularizer is not null (default:0.0)"
+			description = "Regularization parameter: translation model with rigid regularization (default:0.0)"
 	)
 	public Double lambda = 0.0;
 
