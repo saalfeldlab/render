@@ -34,6 +34,4 @@ public class MultiSemPreAlignClientTest {
 
         MultiSemPreAlignClient.main(effectiveArgs);
     }
-
-
 }
