@@ -60,7 +60,7 @@ public class StackAlignmentErrorClient {
 				description = "Error metric to use for computing errors (default: GLOBAL_LOCAL_DIFFERENCE)")
 		private ErrorMetric errorMetric = ErrorMetric.GLOBAL_LOCAL_DIFFERENCE;
 		@Parameter(names = "--compareTo", description = "Stack for which to compare errors to")
-		private String baselineStack;
+		private String baselineStack = null;
 		@Parameter(names = "--comparisonMetric", description = "Metric to use for comparing errors (default: ABSOLUTE_CHANGE)")
 		private MergingMethod comparisonMetric = MergingMethod.ABSOLUTE_CHANGE;
 		@Parameter(names = "--reportWorstPairs", description = "Report the worst n pairs (default: 20)")
@@ -102,12 +102,16 @@ public class StackAlignmentErrorClient {
 
 	public void compareAndLogErrors() throws IOException {
 
-		final AlignmentErrors baseline = computeErrorsFor(params.baselineStack);
-		final AlignmentErrors other = computeErrorsFor(params.stack);
+		final AlignmentErrors errors;
+		if (params.baselineStack != null) {
+			final AlignmentErrors baseline = computeErrorsFor(params.baselineStack);
+			final AlignmentErrors other = computeErrorsFor(params.stack);
+			errors = AlignmentErrors.merge(baseline, other, params.comparisonMetric);
+		} else {
+			errors = computeErrorsFor(params.stack);
+		}
 
-		final AlignmentErrors differences = AlignmentErrors.merge(baseline, other, params.comparisonMetric);
-
-		final List<OrderedCanvasIdPairWithValue> worstPairs = differences.getWorstPairs(params.reportWorstPairs);
+		final List<OrderedCanvasIdPairWithValue> worstPairs = errors.getWorstPairs(params.reportWorstPairs);
 		final RenderDataClient dataClient = params.renderParams.getDataClient();
 		final ResolvedTileSpecCollection rtsc = dataClient.getResolvedTiles(params.stack, null);
 		final StackMetaData stackMetaData = dataClient.getStackMetaData(params.stack);
