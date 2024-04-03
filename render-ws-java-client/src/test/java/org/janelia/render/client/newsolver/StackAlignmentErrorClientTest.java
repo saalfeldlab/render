@@ -22,7 +22,7 @@ public class StackAlignmentErrorClientTest {
     // The following methods support ad-hoc interactive testing with external render web services.
     // Consequently, they aren't included in the unit test suite.
 
-    public static void main(final String[] args) throws Exception {
+    public static void main(final String[] args) throws IOException {
         final String[] singleStackArgs = new String[] {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "hess_wafer_53",
@@ -32,7 +32,7 @@ public class StackAlignmentErrorClientTest {
                 "--errorMetric", "RMSE",
                 "--reportWorstPairs", "20"};
 
-        showErrorsFor(singleStackArgs);
+        StackAlignmentErrorClient.main(singleStackArgs);
 
         final String[] multiStackArgs = new String[] {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
@@ -45,10 +45,6 @@ public class StackAlignmentErrorClientTest {
                 "--comparisonMetric", "ABSOLUTE_CHANGE",
                 "--reportWorstPairs", "20"};
 
-        showErrorsFor(multiStackArgs);
-    }
-
-    private static void showErrorsFor(final String[] args) throws IOException {
-        StackAlignmentErrorClient.main(args);
+        StackAlignmentErrorClient.main(multiStackArgs);
     }
 }
