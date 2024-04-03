@@ -28,6 +28,7 @@ import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -217,13 +218,10 @@ public class StackAlignmentErrorClient {
 														tileIdToMatchTileSpec.get(pTileSpec.getTileId()),
 														tileIdToMatchTileSpec.get(qTileSpec.getTileId()));
 			} else {
-				errorValue = WorkerTools.computeAlignmentError(crossLayerModel,
-															   stitchingModel,
-															   pTileSpec,
-															   qTileSpec,
-															   pTileSpec.getLastTransform().getNewInstance(),
-															   qTileSpec.getLastTransform().getNewInstance(),
-															   match.getMatches());
+				errorValue = SolveTools.computeDifferenceToOptimalFit(stitchingModel,
+																	  pTileSpec.getLastTransform().getNewInstance(),
+																	  qTileSpec.getLastTransform().getNewInstance(),
+																	  match.getMatches());
 			}
 
 			final OrderedCanvasIdPair pair = match.toOrderedPair();

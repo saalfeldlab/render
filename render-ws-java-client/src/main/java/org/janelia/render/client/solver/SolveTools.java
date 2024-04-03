@@ -72,6 +72,39 @@ public class SolveTools
 		return computeAlignmentError( crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, pAlignmentModel, qAlignmentModel, matches, 10 );
 	}
 
+	public static double computeDifferenceToOptimalFit(
+		final Model<?> model,
+		final CoordinateTransform pAlignmentTransform,
+		final CoordinateTransform qAlignmentTransform,
+		final Matches matches
+	) {
+		// to a pairwise (=optimal) fit between the two tiles of a match
+		final List<PointMatch> pointMatches = CanvasMatchResult.convertMatchesToPointMatchList(matches);
+		try {
+			model.fit(pointMatches);
+		} catch (final Exception e) {
+			LOG.info("Could not fit point matches", e);
+		}
+
+		// compare global to local fit
+		double diff = 0;
+		for (int i = 0; i < pointMatches.size(); ++i) {
+			final PointMatch pm = pointMatches.get(i);
+
+			final double[] p = pm.getP1().getL();
+			// move p relative to q (which is locally fixed) and then move both to q's global position
+			final double[] localPoint = qAlignmentTransform.apply(model.apply(p));
+			// move p to its real global position as determined by the alignment model
+			final double[] globalPoint = pAlignmentTransform.apply(p);
+
+			diff += SolveTools.distance(localPoint[0], localPoint[1], globalPoint[0], globalPoint[1]);
+		}
+
+		diff /= pointMatches.size();
+
+		return diff;
+	}
+
 	public static double computeAlignmentError(
 			final Model< ? > crossLayerModel,
 			final Model< ? > montageLayerModel,
