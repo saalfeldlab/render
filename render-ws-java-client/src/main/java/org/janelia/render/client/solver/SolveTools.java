@@ -87,7 +87,7 @@ public class SolveTools
 		// the actual matches, local solve
 		final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( matches );
 		final Model< ? > model;
-		if ( pTileSpec.getZ() == qTileSpec.getZ() )
+		if (pTileSpec.getZ().intValue() == qTileSpec.getZ().intValue())
 			model = montageLayerModel;
 		else
 			model = crossLayerModel;
