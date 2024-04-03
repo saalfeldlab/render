@@ -78,7 +78,7 @@ public class MultiSemPreAligner<M extends Model<M> & Affine2D<M>> implements Ser
 						tileId -> tileId,
 						MultiSemPreAligner::extractMFovLayerId
 				));
-		final Map<String, Tile<M>> mFovLayerToTile = initializeAndConnectTiles(tileIdToMFovLayer, canvasMatches);
+		final Map<String, Tile<M>> mFovLayerToTile = initializeAndConnectTiles(rtsc, tileIdToMFovLayer, canvasMatches);
 
 		// optimize the models
 		final TileConfiguration tileConfig = new TileConfiguration();
@@ -114,6 +114,7 @@ public class MultiSemPreAligner<M extends Model<M> & Affine2D<M>> implements Ser
 	}
 
 	private Map<String, Tile<M>> initializeAndConnectTiles(
+			final ResolvedTileSpecCollection rtsc,
 			final Map<String, String> tileIdToMFovLayer,
 			final List<CanvasMatches> canvasMatches
 	) {
@@ -137,8 +138,13 @@ public class MultiSemPreAligner<M extends Model<M> & Affine2D<M>> implements Ser
 			final Pair<String, String> pair = new ValuePair<>(mFovLayerP, mFovLayerQ);
 			final List<PointMatch> layerMatches = pairsToMatches.computeIfAbsent(pair, k -> new ArrayList<>());
 
+			final TileSpec p = rtsc.getTileSpec(canvasMatch.getpId());
+			final TileSpec q = rtsc.getTileSpec(canvasMatch.getqId());
+			p.getLastTransform().getNewInstance();
+
 			final List<PointMatch> tileMatches = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatch.getMatches());
-			layerMatches.addAll(tileMatches);
+			final List<PointMatch> relativeMatches = SolveTools.createRelativePointMatches(tileMatches, p.getLastTransform().getNewInstance(), q.getLastTransform().getNewInstance());
+			layerMatches.addAll(relativeMatches);
 		}
 
 		// reduce the number of matches to a maximal number (choose randomly)
@@ -147,12 +153,12 @@ public class MultiSemPreAligner<M extends Model<M> & Affine2D<M>> implements Ser
 			final String mFoVLayerQ = entry.getKey().getB();
 			final Tile<M> p = mFovLayerToTile.get(mFoVLayerP);
 			final Tile<M> q = mFovLayerToTile.get(mFoVLayerQ);
-			final List<PointMatch> pointMatches = entry.getValue();
-			final List<PointMatch> reducedMatches = getRandomElements(pointMatches, maxNumMatches);
 
+			final List<PointMatch> reducedMatches = getRandomElements(entry.getValue(), maxNumMatches);
 			p.connect(q, reducedMatches);
+
 			LOG.info("initializeAndConnectTiles: connected {} and {} with {} of {} matches",
-					 mFoVLayerP, mFoVLayerQ, reducedMatches.size(), pointMatches.size());
+					 mFoVLayerP, mFoVLayerQ, reducedMatches.size(), entry.getValue().size());
 		}
 
 		return mFovLayerToTile;
