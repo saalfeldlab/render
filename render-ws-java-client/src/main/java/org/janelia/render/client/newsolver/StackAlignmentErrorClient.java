@@ -120,7 +120,8 @@ public class StackAlignmentErrorClient {
 
 				final double error = pairWithError.getValue();
 				final String url = buildProblemAreaNgUrl(renderUrl, stackMetaData, pairBounds);
-				LOG.info("pZ: {}, qZ: {}, error: {}, ng: {}", p.getZ(), q.getZ(), error, url);
+				LOG.info("pZ: {}, pTileId: {}, qZ: {}, qTileId: {}, error: {}, ng: {}",
+						 p.getZ(), p.getTileId(), q.getZ(), q.getTileId(), error, url);
 			}
 		}
 	}
