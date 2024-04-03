@@ -704,39 +704,44 @@ public class SolveTools
 		return copy;
 	}
 
-	public static List< PointMatch > createRelativePointMatches(
-			final List< PointMatch > absolutePMs,
-			final Model< ? > pModel,
-			final Model< ? > qModel )
-	{
-		final List< PointMatch > relativePMs = new ArrayList<>( absolutePMs.size() );
+	public static List<PointMatch> createRelativePointMatches(
+			final List<PointMatch> absolutePMs,
+			final CoordinateTransform pTransform,
+			final CoordinateTransform qTransform) {
 
+		final List<PointMatch> relativePMs = new ArrayList<>(absolutePMs.size());
 		if (absolutePMs.isEmpty())
 			return relativePMs;
 
-		final int n = absolutePMs.get( 0 ).getP1().getL().length;
+		final PointMatch firstMatch = absolutePMs.get(0);
+		final int n = firstMatch.getP1().getL().length;
 
-		for ( final PointMatch absPM : absolutePMs )
-		{
-			final double[] pLocal = new double[ n ];
-			final double[] qLocal = new double[ n ];
+		for (final PointMatch absPM : absolutePMs) {
+			final double[] pLocal = fastClone(absPM.getP1().getL(), n);
+			final double[] qLocal = fastClone(absPM.getP2().getL(), n);
 
-			for (int d = 0; d < n; ++d )
-			{
-				pLocal[ d ] = absPM.getP1().getL()[ d ];
-				qLocal[ d ] = absPM.getP2().getL()[ d ];
-			}
+			if (pTransform != null)
+				pTransform.applyInPlace(pLocal);
 
-			if ( pModel != null )
-				pModel.applyInPlace( pLocal );
+			if (qTransform != null)
+				qTransform.applyInPlace(qLocal);
 
-			if ( qModel != null )
-				qModel.applyInPlace( qLocal );
-
-			relativePMs.add( new PointMatch( new Point( pLocal ), new Point( qLocal ), absPM.getWeight() ) );
+			relativePMs.add(new PointMatch(new Point(pLocal), new Point(qLocal), absPM.getWeight()));
 		}
 
 		return relativePMs;
+	}
+
+	// JMH micro-benchmarking suggests that this is the fastest way to clone an array:
+	// the benchmark is indecisive whether replacing the loop with System.arraycopy() is beneficial, but both
+	// are faster than Arrays.copyOf() and double[]::clone
+	@SuppressWarnings("ManualArrayCopy")
+	private static double[] fastClone(final double[] in, final int length) {
+		final double[] out = new double[length];
+		for (int i = 0; i < length; i++) {
+			out[i] = in[i];
+		}
+		return out;
 	}
 
 
