@@ -43,6 +43,16 @@ public class AlignmentErrors {
 		return tileToError;
 	}
 
+	public Map<String, AlignmentErrors> splitByPGroupId() {
+		final Map<String, AlignmentErrors> errorsByPGroupId = new HashMap<>();
+		pairwiseErrors.forEach(pairWithValue -> {
+			final String pGroupId = pairWithValue.getP().getGroupId();
+			final AlignmentErrors errors = errorsByPGroupId.computeIfAbsent(pGroupId, k -> new AlignmentErrors());
+			errors.pairwiseErrors.add(pairWithValue);
+		});
+		return errorsByPGroupId;
+	}
+
 	public static AlignmentErrors merge(final AlignmentErrors baseline, final AlignmentErrors other, final MergingMethod mergingMethod) {
 		final AlignmentErrors differences = new AlignmentErrors();
 		final Map<OrderedCanvasIdPair, Double> errorLookup = other.pairwiseErrors.stream()

@@ -37,6 +37,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class StackAlignmentErrorClient {
 
@@ -100,21 +101,27 @@ public class StackAlignmentErrorClient {
 			errors = computeErrorsFor(params.stack);
 		}
 
-		final List<OrderedCanvasIdPairWithValue> worstPairs = errors.getWorstPairs(params.reportWorstPairs);
 		final RenderDataClient dataClient = params.renderParams.getDataClient();
 		final ResolvedTileSpecCollection rtsc = dataClient.getResolvedTiles(params.stack, null);
 		final StackMetaData stackMetaData = dataClient.getStackMetaData(params.stack);
 		final String renderUrl = dataClient.getBaseDataUrl().replace("/render-ws/v1", "");
 
-		for (final OrderedCanvasIdPairWithValue pairWithError : worstPairs) {
-			final TileSpec p = rtsc.getTileSpec(pairWithError.getP().getId());
-			final TileSpec q = rtsc.getTileSpec(pairWithError.getQ().getId());
-			final Bounds pairBounds = p.toTileBounds().union(q.toTileBounds());
+		final Map<String, AlignmentErrors> errorsByPGroupId = errors.splitByPGroupId();
+		final List<Double> sortedPZs = errorsByPGroupId.keySet().stream()
+				.mapToDouble(Double::parseDouble).sorted().boxed().collect(Collectors.toList());
 
-			final double error = pairWithError.getValue();
-			final String layer = (p.getZ().equals(q.getZ())) ? "same" : "cross";
-			final String url = buildProblemAreaNgUrl(renderUrl, stackMetaData, pairBounds);
-			LOG.info("Error: {} ({} layer)- {}", error, layer, url);
+		for (final Double pZ : sortedPZs) {
+			final AlignmentErrors errorsForPZ = errorsByPGroupId.get(pZ.toString());
+			final List<OrderedCanvasIdPairWithValue> worstPairs = errorsForPZ.getWorstPairs(params.reportWorstPairs);
+			for (final OrderedCanvasIdPairWithValue pairWithError : worstPairs) {
+				final TileSpec p = rtsc.getTileSpec(pairWithError.getP().getId());
+				final TileSpec q = rtsc.getTileSpec(pairWithError.getQ().getId());
+				final Bounds pairBounds = p.toTileBounds().union(q.toTileBounds());
+
+				final double error = pairWithError.getValue();
+				final String url = buildProblemAreaNgUrl(renderUrl, stackMetaData, pairBounds);
+				LOG.info("pZ: {}, qZ: {}, error: {}, ng: {}", p.getZ(), q.getZ(), error, url);
+			}
 		}
 	}
 
