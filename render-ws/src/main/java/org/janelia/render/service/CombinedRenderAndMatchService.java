@@ -278,6 +278,9 @@ public class CombinedRenderAndMatchService {
                                             pAlignedTileSpec,
                                             qAlignedTileSpec);
 
+            LOG.info("calculateResidualDistancesForPair: rmse is {}, distanceList.size is {} for pid {} and qId {}",
+                     result.getRootMeanSquareError(), result.getDistanceListSize(), inputData.getPTileId(), inputData.getQTileId());
+
         } catch (final Throwable t) {
             RenderServiceUtil.throwServiceException(t);
         }

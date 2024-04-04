@@ -149,6 +149,10 @@ public class ResidualCalculator implements Serializable {
         public Double getRootMeanSquareError() {
             return rootMeanSquareError;
         }
+
+        public int getDistanceListSize() {
+            return distanceList.size();
+        }
     }
 
     public Result run(final StackId alignedStackId,
@@ -203,9 +207,6 @@ public class ResidualCalculator implements Serializable {
             result = new Result(alignedStackId, inputData);
 
         }
-
-        LOG.info("run: exit, rmse is {}, distanceList.size is {} for pid {} and qId {}",
-                 result.rootMeanSquareError, distanceList.size(), inputData.pTileId, inputData.qTileId);
 
         return result;
     }
