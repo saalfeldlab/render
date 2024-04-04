@@ -25,12 +25,13 @@ public class StackAlignmentErrorClientTest {
     public static void main(final String[] args) throws IOException {
         final String[] singleStackArgs = new String[] {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--owner", "hess_wafer_53",
-                "--project", "cut_000_to_009",
-                "--matchCollection", "c009_s310_v01_match",
-                "--stack", "c009_s310_v01_mfov_08",
-                "--errorMetric", "RMSE",
-                "--reportWorstPairs", "20"};
+                "--owner", "hess_wafer_53d",
+                "--project", "slab_070_to_079",
+                "--matchCollection", "s070_m104_match",
+                "--stack", "s070_m104_align",
+                "--errorMetric", "GLOBAL_LOCAL_DIFFERENCE",
+                "--reportWorstPairs", "20",
+                "--zDistance", "1"};
 
         StackAlignmentErrorClient.main(singleStackArgs);
 

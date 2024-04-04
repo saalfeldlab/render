@@ -205,6 +205,10 @@ public class Bounds implements Serializable {
         return new Bounds(this.minX, this.minY, z, this.maxX, this.maxY, z);
     }
 
+    public Bounds withZRange(final Double minZ, final Double maxZ) {
+        return new Bounds(this.minX, this.minY, minZ, this.maxX, this.maxY, maxZ);
+    }
+
     public Bounds scaled(final double scaleX, final double scaleY, final double scaleZ) {
         final double padX = getDeltaX() * (scaleX - 1.0) / 2.0;
         final double padY = getDeltaY() * (scaleY - 1.0) / 2.0;

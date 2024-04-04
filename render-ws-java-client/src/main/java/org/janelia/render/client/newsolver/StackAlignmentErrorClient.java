@@ -67,6 +67,8 @@ public class StackAlignmentErrorClient {
 		private MergingMethod comparisonMetric = MergingMethod.ABSOLUTE_CHANGE;
 		@Parameter(names = "--reportWorstPairs", description = "Report the worst n pairs")
 		private int reportWorstPairs = 20;
+		@Parameter(names = "--zDistance", description = "Number of subsequent z layers to include when pulling match data for each z")
+		private int zDistance = 0;
 	}
 
 
@@ -190,7 +192,7 @@ public class StackAlignmentErrorClient {
 																							 stack,
 																							 stackBounds,
 																							 z);
-			tiles.normalize();
+			tiles.normalize(params.zDistance);
 			final Map<ErrorMetric, AlignmentErrors> metricToErrorsForZ = computeSolveItemErrors(stackId,
 																								matchCollectionId,
 																								tiles,
@@ -207,7 +209,13 @@ public class StackAlignmentErrorClient {
 			final String stackName,
 			final Bounds stackBounds,
 			final Double z) throws IOException {
-		return renderClient.getResolvedTilesWithMatchPairs(stackName, stackBounds.withZ(z), params.matchParams.matchCollection, null, null, false);
+		final double maxZ = z + params.zDistance;
+		return renderClient.getResolvedTilesWithMatchPairs(stackName,
+														   stackBounds.withZRange(z, maxZ),
+														   params.matchParams.matchCollection,
+														   null,
+														   null,
+														   false);
 	}
 
 	private static Map<ErrorMetric, AlignmentErrors> computeSolveItemErrors(final StackId stackId,
