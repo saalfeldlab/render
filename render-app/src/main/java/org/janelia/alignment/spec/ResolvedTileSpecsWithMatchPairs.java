@@ -90,7 +90,26 @@ public class ResolvedTileSpecsWithMatchPairs
      * @throws IllegalArgumentException
      *   if maxZDistance < 0
      */
-    public void normalize(final Integer maxZDistance)
+    public void normalize(final Integer maxZDistance) {
+        normalize(maxZDistance, null);
+    }
+
+    /**
+     * Normalizes this collection using the specified parameters by resolving all tile specs for client-side usage,
+     * removing tiles and match pairs that are too far from each other in z and only keeping distinct pairs.
+     * If keepSameLayerPairsWithZ is not null, then same layer pairs with other z values will also be excluded.
+     *
+     * @param  maxZDistance   maximum non-negative integral z distance for all retained pairs
+     *                        (or null to accept all pairs).
+     *
+     * @param  keepSameLayerPairsWithZ  for same layer payers, only keep those with this z
+     *                                  (or null to accept all same layer pairs).
+     *
+     * @throws IllegalArgumentException
+     *   if maxZDistance < 0
+     */
+    public void normalize(final Integer maxZDistance,
+                          final Double keepSameLayerPairsWithZ)
             throws IllegalArgumentException {
 
         LOG.info("normalize: entry, process {} tiles and {} pairs with maxZDistance {}",
@@ -109,11 +128,16 @@ public class ResolvedTileSpecsWithMatchPairs
             final TileSpec pTileSpec = resolvedTileSpecs.getTileSpec(pair.getpId());
             final TileSpec qTileSpec = resolvedTileSpecs.getTileSpec(pair.getqId());
             if ((pTileSpec != null) && (qTileSpec != null)) {
-                if (maxZDistance == null) {
-                    distinctCoreMatchPairs.add(pair);
-                } else {
-                    if (pTileSpec.zDistanceFrom(qTileSpec) <= maxZDistance) {
+                final boolean excludeSameLayerPair = (keepSameLayerPairsWithZ != null) &&
+                                                     (! keepSameLayerPairsWithZ.equals(pTileSpec.getZ())) &&
+                                                     (pTileSpec.getZ().equals(qTileSpec.getZ()));
+                if (! excludeSameLayerPair) {
+                    if (maxZDistance == null) {
                         distinctCoreMatchPairs.add(pair);
+                    } else {
+                        if (pTileSpec.zDistanceFrom(qTileSpec) <= maxZDistance) {
+                            distinctCoreMatchPairs.add(pair);
+                        }
                     }
                 }
             }

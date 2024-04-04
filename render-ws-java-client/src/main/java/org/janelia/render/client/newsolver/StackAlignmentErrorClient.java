@@ -204,7 +204,7 @@ public class StackAlignmentErrorClient {
 																							 stack,
 																							 stackBounds,
 																							 z);
-			tiles.normalize(params.zDistance);
+			tiles.normalize(params.zDistance, z);
 			final Map<ErrorMetric, AlignmentErrors> metricToErrorsForZ = computeSolveItemErrors(stackId,
 																								matchCollectionId,
 																								tiles,

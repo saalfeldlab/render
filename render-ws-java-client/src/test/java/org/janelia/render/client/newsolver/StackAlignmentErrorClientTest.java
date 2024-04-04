@@ -29,7 +29,7 @@ public class StackAlignmentErrorClientTest {
                 "--project", "slab_070_to_079",
                 "--matchCollection", "s070_m104_match",
                 "--stack", "s070_m104_align",
-                "--errorMetric", "GLOBAL_LOCAL_DIFFERENCE",
+                "--errorMetric", "GLOBAL_LOCAL_DIFFERENCE", "RMSE",
                 "--reportWorstPairs", "20",
                 "--zDistance", "1"};
 
