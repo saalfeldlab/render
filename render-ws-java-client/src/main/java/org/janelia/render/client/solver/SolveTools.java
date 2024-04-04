@@ -72,40 +72,6 @@ public class SolveTools
 		return computeAlignmentError( crossLayerModel, montageLayerModel, pTileSpec, qTileSpec, pAlignmentModel, qAlignmentModel, matches, 10 );
 	}
 
-	public static double computeDifferenceToOptimalFit(
-		final Model<?> model,
-		final CoordinateTransform pAlignmentTransform,
-		final CoordinateTransform qAlignmentTransform,
-		final Matches matches
-	) {
-		// to a pairwise (=optimal) fit between the two tiles of a match
-		final List<PointMatch> pointMatches = CanvasMatchResult.convertMatchesToPointMatchList(matches);
-		try {
-			model.fit(pointMatches);
-		} catch (final Exception e) {
-			LOG.info("Could not fit point matches", e);
-			throw new RuntimeException(e);
-		}
-
-		// compare global to local fit
-		double diff = 0;
-		for (int i = 0; i < pointMatches.size(); ++i) {
-			final PointMatch pm = pointMatches.get(i);
-
-			final double[] p = pm.getP1().getL();
-			// move p relative to q (which is locally fixed) and then move both to q's global position
-			final double[] localPoint = qAlignmentTransform.apply(model.apply(p));
-			// move p to its real global position as determined by the alignment model
-			final double[] globalPoint = pAlignmentTransform.apply(p);
-
-			diff += SolveTools.distance(localPoint[0], localPoint[1], globalPoint[0], globalPoint[1]);
-		}
-
-		diff /= pointMatches.size();
-
-		return diff;
-	}
-
 	public static double computeAlignmentError(
 			final Model< ? > crossLayerModel,
 			final Model< ? > montageLayerModel,
@@ -184,6 +150,60 @@ public class SolveTools
 		vDiff /= global.size();
 
 		return vDiff;
+	}
+
+	public static double computeDifferenceToOptimalFit(
+		final Model<?> model,
+		final CoordinateTransform pAlignmentTransform,
+		final CoordinateTransform qAlignmentTransform,
+		final Matches matches
+	) {
+		// to a pairwise (=optimal) fit between the two tiles of a match
+		final List<PointMatch> pointMatches = CanvasMatchResult.convertMatchesToPointMatchList(matches);
+		try {
+			model.fit(pointMatches);
+		} catch (final Exception e) {
+			LOG.info("Could not fit point matches", e);
+			throw new RuntimeException(e);
+		}
+
+		// compare global to local fit
+		double diff = 0;
+		for (int i = 0; i < pointMatches.size(); ++i) {
+			final PointMatch pm = pointMatches.get(i);
+
+			final double[] p = pm.getP1().getL();
+			// move p relative to q (which is locally fixed) and then move both to q's global position
+			final double[] localPoint = qAlignmentTransform.apply(model.apply(p));
+			// move p to its real global position as determined by the alignment model
+			final double[] globalPoint = pAlignmentTransform.apply(p);
+
+			diff += SolveTools.distance(localPoint[0], localPoint[1], globalPoint[0], globalPoint[1]);
+		}
+
+		diff /= pointMatches.size();
+
+		return diff;
+	}
+
+	public static double computeRMSE(
+			final CoordinateTransform pAlignmentTransform,
+			final CoordinateTransform qAlignmentTransform,
+			final Matches matches
+	) {
+		final List<PointMatch> pointMatches = CanvasMatchResult.convertMatchesToPointMatchList(matches);
+
+		double error = 0;
+		for (final PointMatch pm : pointMatches) {
+			final double[] p = pAlignmentTransform.apply(pm.getP1().getL());
+			final double[] q = qAlignmentTransform.apply(pm.getP2().getL());
+
+			error += SolveTools.distance(p[0], p[1], q[0], q[1]);
+		}
+
+		error /= pointMatches.size();
+
+		return error;
 	}
 
 	static public double distance(final double px, final double py, final double qx, final double qy)

@@ -44,8 +44,20 @@ import org.slf4j.LoggerFactory;
 public class StackAlignmentErrorClient {
 
 	public enum ErrorMetric {
+		/**
+		 * Difference between the global (i.e., actual) alignment and a local (i.e., optimal) fit.
+		 */
 		GLOBAL_LOCAL_DIFFERENCE,
-		RMSE
+		/**
+		 * Root mean squared error between the matches after alignment; assumes that the
+		 * transform that puts the matches on the aligned tiles is an affine transform.
+		 */
+		RMSE,
+		/**
+		 * Root mean squared error between the matches after alignment; does not assume any
+		 * particular transform for the matches, but is more computationally expensive.
+		 */
+		NONLINEAR_RMSE
 	}
 
 	public static class Parameters extends CommandLineParameters {
@@ -239,7 +251,7 @@ public class StackAlignmentErrorClient {
 		errorMetricList.forEach(metric -> metricToErrors.put(metric, new AlignmentErrors()));
 
 		final Map<String, TileSpec> tileIdToMatchTileSpec = new HashMap<>();
-		if (errorMetricList.contains(ErrorMetric.RMSE)) {
+		if (errorMetricList.contains(ErrorMetric.NONLINEAR_RMSE)) {
 			for (final TileSpec tileSpec : tilesAndMatches.getResolvedTileSpecs().getTileSpecs()) {
 				tileIdToMatchTileSpec.put(tileSpec.getTileId(),
 										  buildTileSpecUsedForMatchDerivation(tileSpec));
@@ -260,6 +272,13 @@ public class StackAlignmentErrorClient {
 			final OrderedCanvasIdPair pair = match.toOrderedPair();
 
 			if (errorMetricList.contains(ErrorMetric.RMSE)) {
+				final double errorValue = SolveTools.computeRMSE(pTileSpec.getLastTransform().getNewInstance(),
+																 qTileSpec.getLastTransform().getNewInstance(),
+																 match.getMatches());
+				metricToErrors.get(ErrorMetric.RMSE).addError(pair, errorValue);
+			}
+
+			if (errorMetricList.contains(ErrorMetric.NONLINEAR_RMSE)) {
 				final double errorValue = deriveRootMeanSquaredError(stackId,
 																	 matchCollectionId,
 																	 pTileSpec,
@@ -267,7 +286,7 @@ public class StackAlignmentErrorClient {
 																	 match,
 																	 tileIdToMatchTileSpec.get(pTileSpec.getTileId()),
 																	 tileIdToMatchTileSpec.get(qTileSpec.getTileId()));
-				metricToErrors.get(ErrorMetric.RMSE).addError(pair, errorValue);
+				metricToErrors.get(ErrorMetric.NONLINEAR_RMSE).addError(pair, errorValue);
 			}
 
 			if (errorMetricList.contains(ErrorMetric.GLOBAL_LOCAL_DIFFERENCE)) {
