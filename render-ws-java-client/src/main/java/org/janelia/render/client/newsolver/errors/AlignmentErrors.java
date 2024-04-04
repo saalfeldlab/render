@@ -53,6 +53,12 @@ public class AlignmentErrors {
 		return errorsByPGroupId;
 	}
 
+    public Map<OrderedCanvasIdPair, Double> buildPairToErrorMap() {
+		return pairwiseErrors.stream()
+				.collect(Collectors.toMap(OrderedCanvasIdPairWithValue::getPair,
+										  OrderedCanvasIdPairWithValue::getValue));
+	}
+
 	public static AlignmentErrors merge(final AlignmentErrors baseline, final AlignmentErrors other, final MergingMethod mergingMethod) {
 		final AlignmentErrors differences = new AlignmentErrors();
 		final Map<OrderedCanvasIdPair, Double> errorLookup = other.pairwiseErrors.stream()

@@ -2,12 +2,22 @@ package org.janelia.render.client.newsolver;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InterpolatedAffineModel2D;
 import mpicbg.models.Model;
 import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
+
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
@@ -24,21 +34,12 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.errors.AlignmentErrors;
 import org.janelia.render.client.newsolver.errors.AlignmentErrors.MergingMethod;
-import org.janelia.render.client.newsolver.solvers.WorkerTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 public class StackAlignmentErrorClient {
 
@@ -56,8 +57,10 @@ public class StackAlignmentErrorClient {
 		private String stack;
 		@Parameter(
 				names = "--errorMetric",
-				description = "Error metric to use for computing errors")
-		private ErrorMetric errorMetric = ErrorMetric.GLOBAL_LOCAL_DIFFERENCE;
+				description = "Error metric to use for computing errors",
+				variableArity = true,
+				required = true)
+		private List<ErrorMetric> errorMetricList;
 		@Parameter(names = "--compareTo", description = "Stack for which to compare errors to")
 		private String baselineStack = null;
 		@Parameter(names = "--comparisonMetric", description = "Metric to use for comparing errors")
@@ -92,14 +95,20 @@ public class StackAlignmentErrorClient {
 
 	public void compareAndLogErrors() throws IOException {
 
-		final AlignmentErrors errors;
+		final Map<ErrorMetric, AlignmentErrors> metricToErrors;
 		if (params.baselineStack != null) {
-			// TODO: re-use the same matches for both stacks and also accept multiple errorMetrics at once
-			final AlignmentErrors baseline = computeErrorsFor(params.baselineStack);
-			final AlignmentErrors other = computeErrorsFor(params.stack);
-			errors = AlignmentErrors.merge(baseline, other, params.comparisonMetric);
+			// TODO: re-use the same matches for both stacks
+			final Map<ErrorMetric, AlignmentErrors> baseline = computeErrorsFor(params.baselineStack);
+			final Map<ErrorMetric, AlignmentErrors> other = computeErrorsFor(params.stack);
+			metricToErrors = new HashMap<>();
+			for (final ErrorMetric metric : baseline.keySet()) {
+				metricToErrors.put(metric,
+								   AlignmentErrors.merge(baseline.get(metric),
+														 other.get(metric),
+														 params.comparisonMetric));
+			}
 		} else {
-			errors = computeErrorsFor(params.stack);
+			metricToErrors = computeErrorsFor(params.stack);
 		}
 
 		final RenderDataClient dataClient = params.renderParams.getDataClient();
@@ -107,27 +116,56 @@ public class StackAlignmentErrorClient {
 		final StackMetaData stackMetaData = dataClient.getStackMetaData(params.stack);
 		final String renderUrl = dataClient.getBaseDataUrl().replace("/render-ws/v1", "");
 
-		final Map<String, AlignmentErrors> errorsByPGroupId = errors.splitByPGroupId();
-		final List<Double> sortedPZs = errorsByPGroupId.keySet().stream()
-				.mapToDouble(Double::parseDouble).sorted().boxed().collect(Collectors.toList());
+		final int numberOfErrorMetrics = metricToErrors.size();
+		final Map<ErrorMetric, Map<OrderedCanvasIdPair, Double>> metricToPairMap = new HashMap<>();
+		if (numberOfErrorMetrics > 1) {
+			for (final ErrorMetric metric : metricToErrors.keySet()) {
+				metricToPairMap.put(metric, metricToErrors.get(metric).buildPairToErrorMap());
+			}
+		}
+		final List<ErrorMetric> sortedMetrics = metricToErrors.keySet().stream().sorted().collect(Collectors.toList());
 
-		for (final Double pZ : sortedPZs) {
-			final AlignmentErrors errorsForPZ = errorsByPGroupId.get(pZ.toString());
-			final List<OrderedCanvasIdPairWithValue> worstPairs = errorsForPZ.getWorstPairs(params.reportWorstPairs);
-			for (final OrderedCanvasIdPairWithValue pairWithError : worstPairs) {
-				final TileSpec p = rtsc.getTileSpec(pairWithError.getP().getId());
-				final TileSpec q = rtsc.getTileSpec(pairWithError.getQ().getId());
-				final Bounds pairBounds = p.toTileBounds().union(q.toTileBounds());
+		for (final ErrorMetric metric : metricToErrors.keySet()) {
 
-				final double error = pairWithError.getValue();
-				final String url = buildProblemAreaNgUrl(renderUrl, stackMetaData, pairBounds);
-				LOG.info("pZ: {}, pTileId: {}, qZ: {}, qTileId: {}, error: {}, ng: {}",
-						 p.getZ(), p.getTileId(), q.getZ(), q.getTileId(), error, url);
+			final AlignmentErrors errors = metricToErrors.get(metric);
+
+			final Map<String, AlignmentErrors> errorsByPGroupId = errors.splitByPGroupId();
+			final List<Double> sortedPZs = errorsByPGroupId.keySet().stream()
+					.mapToDouble(Double::parseDouble).sorted().boxed().collect(Collectors.toList());
+
+			for (final Double pZ : sortedPZs) {
+				final AlignmentErrors errorsForPZ = errorsByPGroupId.get(pZ.toString());
+				final List<OrderedCanvasIdPairWithValue> worstPairs =
+						errorsForPZ.getWorstPairs(params.reportWorstPairs);
+				for (final OrderedCanvasIdPairWithValue pairWithError : worstPairs) {
+					final TileSpec p = rtsc.getTileSpec(pairWithError.getP().getId());
+					final TileSpec q = rtsc.getTileSpec(pairWithError.getQ().getId());
+					final Bounds pairBounds = p.toTileBounds().union(q.toTileBounds());
+
+					final double error = pairWithError.getValue();
+					final String url = buildProblemAreaNgUrl(renderUrl, stackMetaData, pairBounds);
+
+					final StringBuilder otherErrorValues = new StringBuilder();
+					if (numberOfErrorMetrics > 1) {
+						otherErrorValues.append(", ");
+						for (final ErrorMetric otherMetric : sortedMetrics) {
+							if (! otherMetric.equals(metric)) {
+								final Map<OrderedCanvasIdPair, Double> otherErrors = metricToPairMap.get(otherMetric);
+								final double otherError = otherErrors.get(pairWithError.getPair());
+								otherErrorValues.append(otherMetric).append("-error: ").append(otherError).append(", ");
+							}
+						}
+						otherErrorValues.delete(otherErrorValues.length() - 2, otherErrorValues.length());
+					}
+
+					LOG.info("pZ: {}, pTileId: {}, qZ: {}, qTileId: {}, {}-error: {}{}, ng: {}",
+							 p.getZ(), p.getTileId(), q.getZ(), q.getTileId(), metric, error, otherErrorValues, url);
+				}
 			}
 		}
 	}
 
-	private AlignmentErrors computeErrorsFor(final String stack){
+	private Map<ErrorMetric, AlignmentErrors> computeErrorsFor(final String stack){
 		try {
 			return fetchAndComputeError(stack);
 		} catch (final IOException | NoninvertibleModelException e) {
@@ -135,7 +173,7 @@ public class StackAlignmentErrorClient {
 		}
 	}
 
-	public AlignmentErrors fetchAndComputeError(final String stack) throws IOException, NoninvertibleModelException {
+	public Map<ErrorMetric, AlignmentErrors> fetchAndComputeError(final String stack) throws IOException, NoninvertibleModelException {
 
 		final RenderDataClient renderClient = params.renderParams.getDataClient();
 		final StackMetaData stackMetaData = renderClient.getStackMetaData(stack);
@@ -144,22 +182,24 @@ public class StackAlignmentErrorClient {
 		final List<Double> zValues = renderClient.getStackZValues(stack);
 		final MatchCollectionId matchCollectionId = params.matchParams.getMatchCollectionId(stackId.getOwner());
 
-		final AlignmentErrors errors = new AlignmentErrors();
+		final Map<ErrorMetric, AlignmentErrors> metricToErrors = new HashMap<>();
+		params.errorMetricList.forEach(metric -> metricToErrors.put(metric, new AlignmentErrors()));
+
 		for (final Double z : zValues) {
 			final ResolvedTileSpecsWithMatchPairs tiles = getResolvedTilesWithMatchPairsForZ(renderClient,
 																							 stack,
 																							 stackBounds,
 																							 z);
 			tiles.normalize();
-			final AlignmentErrors errorsForZ = computeSolveItemErrors(stackId,
-																	  matchCollectionId,
-																	  tiles,
-																	  z,
-																	  params.errorMetric);
-			errors.absorb(errorsForZ);
+			final Map<ErrorMetric, AlignmentErrors> metricToErrorsForZ = computeSolveItemErrors(stackId,
+																								matchCollectionId,
+																								tiles,
+																								z,
+																								params.errorMetricList);
+			metricToErrorsForZ.forEach((metric, errorsForZ) -> metricToErrors.get(metric).absorb(errorsForZ));
 		}
 
-		return errors;
+		return metricToErrors;
 	}
 
 	private ResolvedTileSpecsWithMatchPairs getResolvedTilesWithMatchPairsForZ(
@@ -170,26 +210,28 @@ public class StackAlignmentErrorClient {
 		return renderClient.getResolvedTilesWithMatchPairs(stackName, stackBounds.withZ(z), params.matchParams.matchCollection, null, null, false);
 	}
 
-	private static AlignmentErrors computeSolveItemErrors(final StackId stackId,
-														  final MatchCollectionId matchCollectionId,
-														  final ResolvedTileSpecsWithMatchPairs tilesAndMatches,
-														  final Double currentZ,
-														  final ErrorMetric errorMetric)
+	private static Map<ErrorMetric, AlignmentErrors> computeSolveItemErrors(final StackId stackId,
+																			final MatchCollectionId matchCollectionId,
+																			final ResolvedTileSpecsWithMatchPairs tilesAndMatches,
+																			final Double currentZ,
+																			final List<ErrorMetric> errorMetricList)
 			throws NoninvertibleModelException {
 
-		LOG.info("computeSolveItemErrors: entry, processing {} tiles ({} pairs) in z {}, errorMetric={}",
+		LOG.info("computeSolveItemErrors: entry, processing {} tiles ({} pairs) in z {}, errorMetricList={}",
 				 tilesAndMatches.getResolvedTileSpecs().getTileCount(),
 				 tilesAndMatches.getMatchPairCount(),
 				 currentZ,
-				 errorMetric);
+				 errorMetricList);
 
 		// for local fits
-		final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
+		// final Model<?> crossLayerModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
 		final Model<?> stitchingModel = new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.01);
-		final AlignmentErrors alignmentErrors = new AlignmentErrors();
+
+		final Map<ErrorMetric, AlignmentErrors> metricToErrors = new HashMap<>();
+		errorMetricList.forEach(metric -> metricToErrors.put(metric, new AlignmentErrors()));
 
 		final Map<String, TileSpec> tileIdToMatchTileSpec = new HashMap<>();
-		if (errorMetric == ErrorMetric.RMSE) {
+		if (errorMetricList.contains(ErrorMetric.RMSE)) {
 			for (final TileSpec tileSpec : tilesAndMatches.getResolvedTileSpecs().getTileSpecs()) {
 				tileIdToMatchTileSpec.put(tileSpec.getTileId(),
 										  buildTileSpecUsedForMatchDerivation(tileSpec));
@@ -207,30 +249,31 @@ public class StackAlignmentErrorClient {
 			if (pTileSpec == null || qTileSpec == null)
 				continue;
 
-			final double errorValue;
+			final OrderedCanvasIdPair pair = match.toOrderedPair();
 
-			if (errorMetric == ErrorMetric.RMSE) {
-				errorValue = deriveRootMeanSquaredError(stackId,
-														matchCollectionId,
-														pTileSpec,
-														qTileSpec,
-														match,
-														tileIdToMatchTileSpec.get(pTileSpec.getTileId()),
-														tileIdToMatchTileSpec.get(qTileSpec.getTileId()));
-			} else {
-				errorValue = SolveTools.computeDifferenceToOptimalFit(stitchingModel,
-																	  pTileSpec.getLastTransform().getNewInstance(),
-																	  qTileSpec.getLastTransform().getNewInstance(),
-																	  match.getMatches());
+			if (errorMetricList.contains(ErrorMetric.RMSE)) {
+				final double errorValue = deriveRootMeanSquaredError(stackId,
+																	 matchCollectionId,
+																	 pTileSpec,
+																	 qTileSpec,
+																	 match,
+																	 tileIdToMatchTileSpec.get(pTileSpec.getTileId()),
+																	 tileIdToMatchTileSpec.get(qTileSpec.getTileId()));
+				metricToErrors.get(ErrorMetric.RMSE).addError(pair, errorValue);
 			}
 
-			final OrderedCanvasIdPair pair = match.toOrderedPair();
-			alignmentErrors.addError(pair, errorValue);
+			if (errorMetricList.contains(ErrorMetric.GLOBAL_LOCAL_DIFFERENCE)) {
+				final double errorValue = SolveTools.computeDifferenceToOptimalFit(stitchingModel,
+																				   pTileSpec.getLastTransform().getNewInstance(),
+																				   qTileSpec.getLastTransform().getNewInstance(),
+																				   match.getMatches());
+				metricToErrors.get(ErrorMetric.GLOBAL_LOCAL_DIFFERENCE).addError(pair, errorValue);
+			}
 		}
 
 		LOG.info("computeSolveItemErrors, exit");
 
-		return alignmentErrors;
+		return metricToErrors;
 	}
 
 	private static double deriveRootMeanSquaredError(final StackId stackId,
