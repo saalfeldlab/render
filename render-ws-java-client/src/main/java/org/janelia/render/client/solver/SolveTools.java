@@ -84,6 +84,7 @@ public class SolveTools
 			model.fit(pointMatches);
 		} catch (final Exception e) {
 			LOG.info("Could not fit point matches", e);
+			throw new RuntimeException(e);
 		}
 
 		// compare global to local fit
