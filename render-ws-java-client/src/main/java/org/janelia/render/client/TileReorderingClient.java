@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.function.IntBinaryOperator;
 import java.util.regex.Pattern;
 
 /**
@@ -24,6 +25,8 @@ public class TileReorderingClient {
 
 	private static final int MFOVS_PER_STACK = 19;
 	private static final int SFOVS_PER_MFOV = 91;
+	private static final int SFOV_INDEX = 2;
+	private static final int MFOV_INDEX = 1;
 	private static final Pattern TILE_ID_SEPARATOR = Pattern.compile("_");
 
 	// The new order of the tiles in the multi-sem stack:
@@ -59,6 +62,12 @@ public class TileReorderingClient {
 				description = "Name of target stack",
 				required = true)
 		public String targetStack;
+
+		@Parameter(
+				names = "--renderingOrder",
+				description = "Rendering order",
+				required = false)
+		public RenderingOrder renderingOrder = RenderingOrder.HORIZONTAL_SCAN;
 	}
 
 	public static void main(final String[] args) {
@@ -121,7 +130,7 @@ public class TileReorderingClient {
 
 		for (final String tileId : sourceCollection.getTileIds()) {
 			final TileSpec tileSpec = sourceCollection.getTileSpec(tileId);
-			tileSpec.setTileId(prependRenderOrder(tileId));
+			tileSpec.setTileId(parameters.renderingOrder.serialNumberFor(tileId) + "_" + tileId);
 		}
 
 		if (sourceCollection.getTileCount() > 0) {
@@ -129,12 +138,28 @@ public class TileReorderingClient {
 		}
 	}
 
-	private static String prependRenderOrder(final String tileId) {
-		final String[] tileIdComponents = TILE_ID_SEPARATOR.split(tileId);
-		final int sFov = Integer.parseInt(tileIdComponents[2]);
-		final int mFov = Integer.parseInt(tileIdComponents[1]);
-		final String renderOrder = String.format("%04d", (MFOVS_PER_STACK - mFov) * SFOVS_PER_MFOV + newNumber[sFov - 1]);
-		return renderOrder + "_" + tileId;
+
+	public enum RenderingOrder {
+		// mFOVs by number, sFOVs by number (= spiraling outwards)
+		ORIGINAL((mFov, sFov) -> sFov + (mFov - 1) * SFOVS_PER_MFOV),
+		// mFOVs by reverse number, sFOVs linearly indexed from left to right, top to bottom (= the "correct" order)
+		HORIZONTAL_SCAN((mFov, sFov) -> (MFOVS_PER_STACK - mFov) * SFOVS_PER_MFOV + newNumber[sFov - 1]),
+		// mFOVs by number, sFOVs linearly indexed from right to left, bottom to top (= the reverse of the "correct" order)
+		REVERSE_SCAN((mFov, sFov) -> (mFov - 1) * SFOVS_PER_MFOV + (SFOVS_PER_MFOV - newNumber[sFov - 1]));
+
+		private final IntBinaryOperator mAndSFovToSerialNumber;
+
+
+		RenderingOrder(final IntBinaryOperator mAndSFovToSerialNumber) {
+			this.mAndSFovToSerialNumber = mAndSFovToSerialNumber;
+		}
+
+		public String serialNumberFor(final String tileId) {
+			final String[] tileIdComponents = TILE_ID_SEPARATOR.split(tileId);
+			final int mFov = Integer.parseInt(tileIdComponents[1]);
+			final int sFov = Integer.parseInt(tileIdComponents[2]);
+			return String.format("%04d", mAndSFovToSerialNumber.applyAsInt(mFov, sFov));
+		}
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(TileReorderingClient.class);
