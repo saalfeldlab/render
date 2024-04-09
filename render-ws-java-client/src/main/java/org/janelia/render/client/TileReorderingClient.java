@@ -65,20 +65,12 @@ public class TileReorderingClient {
 
 		@Parameter(
 				names = "--renderingOrder",
-				description = "Rendering order",
-				required = false)
+				description = "Rendering order")
 		public RenderingOrder renderingOrder = RenderingOrder.HORIZONTAL_SCAN;
 	}
 
 	public static void main(final String[] args) {
-		final String[] xargs = {
-				"--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-				"--owner", "hess_wafer_53b",
-				"--project", "cut_070_to_079",
-				"--stack", "c070_s032_v01_align_ic",
-				"--targetStack", "c070_s032_v01_mi_reordering_test_scan_order"
-		};
-		final ClientRunner clientRunner = new ClientRunner(xargs) {
+		final ClientRunner clientRunner = new ClientRunner(args) {
 			@Override
 			public void runClient(final String[] args) throws Exception {
 
@@ -156,8 +148,8 @@ public class TileReorderingClient {
 
 		public String serialNumberFor(final String tileId) {
 			final String[] tileIdComponents = TILE_ID_SEPARATOR.split(tileId);
-			final int mFov = Integer.parseInt(tileIdComponents[1]);
-			final int sFov = Integer.parseInt(tileIdComponents[2]);
+			final int mFov = Integer.parseInt(tileIdComponents[MFOV_INDEX]);
+			final int sFov = Integer.parseInt(tileIdComponents[SFOV_INDEX]);
 			return String.format("%04d", mAndSFovToSerialNumber.applyAsInt(mFov, sFov));
 		}
 	}
