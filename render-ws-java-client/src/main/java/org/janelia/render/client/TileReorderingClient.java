@@ -10,10 +10,8 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 /**
  * This client reorders the tiles in a multi-sem stack in a way that the rendering order
@@ -23,6 +21,28 @@ import java.util.stream.Collectors;
  * @author Michael Innerberger
  */
 public class TileReorderingClient {
+
+	private static final int MFOVS_PER_STACK = 19;
+	private static final int SFOVS_PER_MFOV = 91;
+	private static final Pattern TILE_ID_SEPARATOR = Pattern.compile("_");
+
+	// The new order of the tiles in the multi-sem stack:
+	// Number the tiles in an SFOV from 1 to 91, starting in the top left corner and going
+	// row by row. Then, record these numbers in the original order of the tiles (i.e.,
+	// starting in the middle of the SFOV and spiraling outwards counterclockwise).
+	private static final int[] newNumber = {
+			46, 47, 36, 35, 45, 56, 57, 48, 37, 27,
+			26, 25, 34, 44, 55, 65, 66, 67, 58, 49,
+			38, 28, 19, 18, 17, 16, 24, 33, 43, 54,
+			64, 73, 74, 75, 76, 68, 59, 50, 39, 29,
+			20, 12, 11, 10,  9,  8, 15, 23, 32, 42,
+			53, 63, 72, 80, 81, 82, 83, 84, 77, 69,
+			60, 51, 40, 30, 21, 13,  6,  5,  4,  3,
+			2,  1,  7, 14, 22, 31, 41, 52, 62, 71,
+			79, 86, 87, 88, 89, 90, 91, 85, 78, 70, 61
+	};
+
+
 	public static class Parameters extends CommandLineParameters {
 
 		@ParametersDelegate
@@ -71,21 +91,6 @@ public class TileReorderingClient {
 	private final Parameters parameters;
 	private final RenderDataClient dataClient;
 
-	// The new order of the tiles in the multi-sem stack:
-	// Number the tiles in an SFOV from 1 to 91, starting in the top left corner and going
-	// row by row. Then, record these numbers in the original order of the tiles (i.e.,
-	// starting in the middle of the SFOV and spiraling outwards counterclockwise).
-	private final int[] newNumber = {
-			46, 47, 36, 35, 45, 56, 57, 48, 37, 27,
-			26, 25, 34, 44, 55, 65, 66, 67, 58, 49,
-			38, 28, 19, 18, 17, 16, 24, 33, 43, 54,
-			64, 73, 74, 75, 76, 68, 59, 50, 39, 29,
-			20, 12, 11, 10,  9,  8, 15, 23, 32, 42,
-			53, 63, 72, 80, 81, 82, 83, 84, 77, 69,
-			60, 51, 40, 30, 21, 13,  6,  5,  4,  3,
-			 2,  1,  7, 14, 22, 31, 41, 52, 62, 71,
-			79, 86, 87, 88, 89, 90, 91, 85, 78, 70, 61
-	};
 
 	private TileReorderingClient(final Parameters parameters) {
 		this.parameters = parameters;
@@ -116,7 +121,7 @@ public class TileReorderingClient {
 
 		for (final String tileId : sourceCollection.getTileIds()) {
 			final TileSpec tileSpec = sourceCollection.getTileSpec(tileId);
-			tileSpec.setTileId(updateSfovNumber(tileId));
+			tileSpec.setTileId(prependRenderOrder(tileId));
 		}
 
 		if (sourceCollection.getTileCount() > 0) {
@@ -124,11 +129,12 @@ public class TileReorderingClient {
 		}
 	}
 
-	private String updateSfovNumber(final String tileId) {
-		final String[] tileIdComponents = tileId.split("_");
-		final int oldNumber = Integer.parseInt(tileIdComponents[2]);
-		tileIdComponents[2] = String.format("%03d", newNumber[oldNumber - 1]);
-		return String.join("_", tileIdComponents);
+	private static String prependRenderOrder(final String tileId) {
+		final String[] tileIdComponents = TILE_ID_SEPARATOR.split(tileId);
+		final int sFov = Integer.parseInt(tileIdComponents[2]);
+		final int mFov = Integer.parseInt(tileIdComponents[1]);
+		final String renderOrder = String.format("%04d", (MFOVS_PER_STACK - mFov) * SFOVS_PER_MFOV + newNumber[sFov - 1]);
+		return renderOrder + "_" + tileId;
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(TileReorderingClient.class);
