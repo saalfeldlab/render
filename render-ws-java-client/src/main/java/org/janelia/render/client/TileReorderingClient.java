@@ -10,12 +10,10 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.function.IntBinaryOperator;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * This client reorders the tiles in a multi-sem stack in a way that the rendering order
@@ -26,8 +24,6 @@ import java.util.regex.Pattern;
  */
 public class TileReorderingClient {
 
-	private static final int MFOVS_PER_STACK = 19;
-	private static final int SFOVS_PER_MFOV = 91;
 	private static final int SFOV_INDEX = 2;
 	private static final int MFOV_INDEX = 1;
 	private static final Pattern TILE_ID_SEPARATOR = Pattern.compile("_");
@@ -123,9 +119,13 @@ public class TileReorderingClient {
 		final ResolvedTileSpecCollection sourceCollection = dataClient.getResolvedTiles(parameters.stack, z);
 		LOG.info("transferLayer: transferring layer {} with {} tiles", z, sourceCollection.getTileCount());
 
-		for (final String tileId : sourceCollection.getTileIds()) {
-			final TileSpec tileSpec = sourceCollection.getTileSpec(tileId);
-			tileSpec.setTileId(parameters.renderingOrder.serialNumberFor(tileId) + "_" + tileId);
+		final List<TileSpec> orderedTileSpecs = sourceCollection.getTileSpecs().stream()
+				.sorted(parameters.renderingOrder)
+				.collect(Collectors.toList());
+
+		for (int i = 0; i < orderedTileSpecs.size(); i++) {
+			final TileSpec tileSpec = orderedTileSpecs.get(i);
+			tileSpec.setTileId(String.format("%4d_%s", i, tileSpec.getTileId()));
 		}
 
 		if (sourceCollection.getTileCount() > 0) {
@@ -134,26 +134,50 @@ public class TileReorderingClient {
 	}
 
 
-	public enum RenderingOrder {
-		// mFOVs by number, sFOVs by number (= spiraling outwards)
-		ORIGINAL((mFov, sFov) -> sFov + (mFov - 1) * SFOVS_PER_MFOV),
+	public enum RenderingOrder implements Comparator<TileSpec> {
+		// mFOVs by number, sFOVs by number; this is the original order used to name tile specs (spiraling outwards)
+		ORIGINAL((ts1, ts2) -> String.CASE_INSENSITIVE_ORDER.compare(ts1.getTileId(), ts2.getTileId())),
+
 		// mFOVs by reverse number, sFOVs linearly indexed from left to right, top to bottom (= the "correct" order)
-		HORIZONTAL_SCAN((mFov, sFov) -> (MFOVS_PER_STACK - mFov) * SFOVS_PER_MFOV + newNumber[sFov - 1]),
+		HORIZONTAL_SCAN((ts1, ts2) -> {
+			final int mFovOrder = Double.compare(getMFov(ts1), getMFov(ts2));
+			if (mFovOrder != 0) {
+				return reverse(mFovOrder);
+			} else {
+				return Double.compare(newNumber[getSFov(ts1) - 1], newNumber[getSFov(ts2) - 1]);
+			}
+		}),
+
 		// mFOVs by number, sFOVs linearly indexed from right to left, bottom to top (= the reverse of the "correct" order)
-		REVERSE_SCAN((mFov, sFov) -> (mFov - 1) * SFOVS_PER_MFOV + (SFOVS_PER_MFOV - newNumber[sFov - 1]));
+		REVERSE_SCAN(HORIZONTAL_SCAN.reversed());
 
-		private final IntBinaryOperator mAndSFovToSerialNumber;
+		private final Comparator<TileSpec> tileSpecComparator;
 
 
-		RenderingOrder(final IntBinaryOperator mAndSFovToSerialNumber) {
-			this.mAndSFovToSerialNumber = mAndSFovToSerialNumber;
+		RenderingOrder(final Comparator<TileSpec> tileSpecComparator) {
+			this.tileSpecComparator = tileSpecComparator;
 		}
 
-		public String serialNumberFor(final String tileId) {
-			final String[] tileIdComponents = TILE_ID_SEPARATOR.split(tileId);
-			final int mFov = Integer.parseInt(tileIdComponents[MFOV_INDEX]);
-			final int sFov = Integer.parseInt(tileIdComponents[SFOV_INDEX]);
-			return String.format("%04d", mAndSFovToSerialNumber.applyAsInt(mFov, sFov));
+		@Override
+		public int compare(final TileSpec ts1, final TileSpec ts2) {
+			return tileSpecComparator.compare(ts1, ts2);
+		}
+
+		private static int getMFov(final TileSpec ts) {
+			return getConstituent(ts, MFOV_INDEX);
+		}
+
+		private static int getSFov(final TileSpec ts) {
+			return getConstituent(ts, SFOV_INDEX);
+		}
+
+		private static int getConstituent(final TileSpec ts, final int index) {
+			final String tileId = ts.getTileId();
+			return Integer.parseInt(TILE_ID_SEPARATOR.split(tileId)[index]);
+		}
+
+		private static int reverse(final int order) {
+			return - order;
 		}
 	}
 
