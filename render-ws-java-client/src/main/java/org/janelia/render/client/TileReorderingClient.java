@@ -24,27 +24,6 @@ import java.util.stream.Collectors;
  */
 public class TileReorderingClient {
 
-	private static final int SFOV_INDEX = 2;
-	private static final int MFOV_INDEX = 1;
-	private static final Pattern TILE_ID_SEPARATOR = Pattern.compile("_");
-
-	// The new order of the tiles in the multi-sem stack:
-	// Number the tiles in an SFOV from 1 to 91, starting in the top left corner and going
-	// row by row. Then, record these numbers in the original order of the tiles (i.e.,
-	// starting in the middle of the SFOV and spiraling outwards counterclockwise).
-	private static final int[] newNumber = {
-			46, 47, 36, 35, 45, 56, 57, 48, 37, 27,
-			26, 25, 34, 44, 55, 65, 66, 67, 58, 49,
-			38, 28, 19, 18, 17, 16, 24, 33, 43, 54,
-			64, 73, 74, 75, 76, 68, 59, 50, 39, 29,
-			20, 12, 11, 10,  9,  8, 15, 23, 32, 42,
-			53, 63, 72, 80, 81, 82, 83, 84, 77, 69,
-			60, 51, 40, 30, 21, 13,  6,  5,  4,  3,
-			2,  1,  7, 14, 22, 31, 41, 52, 62, 71,
-			79, 86, 87, 88, 89, 90, 91, 85, 78, 70, 61
-	};
-
-
 	public static class Parameters extends CommandLineParameters {
 
 		@ParametersDelegate
@@ -144,12 +123,43 @@ public class TileReorderingClient {
 			if (mFovOrder != 0) {
 				return reverse(mFovOrder);
 			} else {
-				return Double.compare(newNumber[getSFov(ts1) - 1], newNumber[getSFov(ts2) - 1]);
+				return Double.compare(linearIndex(getSFov(ts1)), linearIndex(getSFov(ts2)));
 			}
 		}),
 
 		// mFOVs by number, sFOVs linearly indexed from right to left, bottom to top (= the reverse of the "correct" order)
-		REVERSE_SCAN(HORIZONTAL_SCAN.reversed());
+		REVERSE_SCAN(HORIZONTAL_SCAN.reversed()),
+
+		// mFOVs by number, sFOVs by the y-coordinate of the upper edge midpoint
+		BY_Y_COORDINATE((ts1, ts2) -> {
+			final int mFovOrder = Double.compare(getMFov(ts1), getMFov(ts2));
+			if (mFovOrder != 0) {
+				return reverse(mFovOrder);
+			}
+
+			final double[] midpoint1 = getUpperEdgeMidpoint(ts1);
+			final double[] midpoint2 = getUpperEdgeMidpoint(ts2);
+			return Double.compare(midpoint1[1], midpoint2[1]);
+		});
+
+
+		// The new order of the tiles in the multi-sem stack:
+		// Number the tiles in an SFOV from 1 to 91, starting in the top left corner and going
+		// row by row. Then, record these numbers in the original order of the tiles (i.e.,
+		// starting in the middle of the SFOV and spiraling outwards counterclockwise).
+		private static final int[] newNumber = {
+				46, 47, 36, 35, 45, 56, 57, 48, 37, 27,
+				26, 25, 34, 44, 55, 65, 66, 67, 58, 49,
+				38, 28, 19, 18, 17, 16, 24, 33, 43, 54,
+				64, 73, 74, 75, 76, 68, 59, 50, 39, 29,
+				20, 12, 11, 10,  9,  8, 15, 23, 32, 42,
+				53, 63, 72, 80, 81, 82, 83, 84, 77, 69,
+				60, 51, 40, 30, 21, 13,  6,  5,  4,  3,
+				2,  1,  7, 14, 22, 31, 41, 52, 62, 71,
+				79, 86, 87, 88, 89, 90, 91, 85, 78, 70, 61
+		};
+
+		private static final Pattern TILE_ID_SEPARATOR = Pattern.compile("_");
 
 		private final Comparator<TileSpec> tileSpecComparator;
 
@@ -164,11 +174,11 @@ public class TileReorderingClient {
 		}
 
 		private static int getMFov(final TileSpec ts) {
-			return getConstituent(ts, MFOV_INDEX);
+			return getConstituent(ts, 1);
 		}
 
 		private static int getSFov(final TileSpec ts) {
-			return getConstituent(ts, SFOV_INDEX);
+			return getConstituent(ts, 2);
 		}
 
 		private static int getConstituent(final TileSpec ts, final int index) {
@@ -178,6 +188,18 @@ public class TileReorderingClient {
 
 		private static int reverse(final int order) {
 			return - order;
+		}
+
+		private static int linearIndex(final int sFov) {
+			return newNumber[sFov - 1];
+		}
+
+		private static double[] getUpperEdgeMidpoint(final TileSpec tileSpec) {
+			final double[][] corners = tileSpec.getRawCornerLocations();
+			final double[] topLeft = tileSpec.getTransformList().apply(corners[2]);
+			final double[] topRight = tileSpec.getTransformList().apply(corners[3]);
+			final double[] rawMidpoint = new double[] { (topLeft[0] + topRight[0]) / 2, (topLeft[1] + topRight[1]) / 2 };
+			return tileSpec.getTransformList().apply(rawMidpoint);
 		}
 	}
 
