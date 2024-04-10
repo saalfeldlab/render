@@ -10,7 +10,10 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.function.IntBinaryOperator;
 import java.util.regex.Pattern;
 
@@ -82,7 +85,7 @@ public class TileReorderingClient {
 				final TileReorderingClient client = new TileReorderingClient(parameters);
 
 				client.setUpTargetStack();
-				client.transferTileSpecs();
+				client.reorderTileSpecs();
 				client.completeTargetStack();
 			}
 		};
@@ -109,14 +112,14 @@ public class TileReorderingClient {
 		LOG.info("completeTargetStack: setup stack {}", parameters.targetStack);
 	}
 
-	private void transferTileSpecs() throws Exception {
+	private void reorderTileSpecs() throws Exception {
 		final List<Double> zValues = dataClient.getStackZValues(parameters.stack);
 		for (final Double z : zValues) {
-			transferLayer(z);
+			reorderLayer(z);
 		}
 	}
 
-	private void transferLayer(final Double z) throws Exception {
+	private void reorderLayer(final Double z) throws Exception {
 		final ResolvedTileSpecCollection sourceCollection = dataClient.getResolvedTiles(parameters.stack, z);
 		LOG.info("transferLayer: transferring layer {} with {} tiles", z, sourceCollection.getTileCount());
 
