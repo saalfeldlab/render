@@ -12,16 +12,20 @@ import java.util.stream.IntStream;
 
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.BoundsBatch;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.solver.visualize.RenderTools;
 import org.janelia.render.client.zspacing.loader.LayerLoader;
 import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
+import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
+import org.janelia.render.client.zspacing.loader.ResinMaskParameters;
 import org.janelia.thickness.inference.Options;
 import org.junit.Test;
 
 import ij.ImageJ;
+import ij.ImagePlus;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import net.imglib2.Interval;
@@ -46,29 +50,92 @@ public class HeadlessZPositionCorrectionTest {
     public static void main(final String[] args) throws IOException {
 
         // testEstimationsForShiftedSlices();
-        testEstimationsForRenderSlices();
+        // testEstimationsForRenderSlices();
+        testPancreas6();
 
         SimpleMultiThreading.threadHaltUnClean();
 
         System.exit(0); // HACK: exit here to skip "normal" test
 
-        final String runDirectory =
-                "/Users/trautmane/Desktop/zcorr/Z0720_07m_VNC/Sec32/v1_acquire_trimmed_sp1/run_20210223_015048";
-        final String imagePaths = runDirectory + "/debug-images";
-        final String outputFile = runDirectory + "/Zcoords.from-files.txt";
+//        final String runDirectory =
+//                "/Users/trautmane/Desktop/zcorr/Z0720_07m_VNC/Sec32/v1_acquire_trimmed_sp1/run_20210223_015048";
+//        final String imagePaths = runDirectory + "/debug-images";
+//        final String outputFile = runDirectory + "/Zcoords.from-files.txt";
+//
+//        final String[] effectiveArgs = {
+////                "--imagePaths", "/Users/trautmane/Desktop/zcorr/matt",
+////                "--imagePaths", "/Users/trautmane/Desktop/zcorr/crop/0125/002",
+////                "--imagePaths", "/Users/trautmane/Desktop/zcorr/crop/05/002",
+////                "--imagePaths", "/Users/trautmane/Desktop/zcorr/matt_Sec08",
+////                "--optionsJson", "/Users/trautmane/Desktop/zcorr/test-options.json",
+//                "--imagePaths", imagePaths,
+//                "--outputFile", outputFile,
+//                "--zOffset", "12201"
+//        };
+//
+//        HeadlessZPositionCorrection.main(effectiveArgs);
+    }
 
-        final String[] effectiveArgs = {
-//                "--imagePaths", "/Users/trautmane/Desktop/zcorr/matt",
-//                "--imagePaths", "/Users/trautmane/Desktop/zcorr/crop/0125/002",
-//                "--imagePaths", "/Users/trautmane/Desktop/zcorr/crop/05/002",
-//                "--imagePaths", "/Users/trautmane/Desktop/zcorr/matt_Sec08",
-//                "--optionsJson", "/Users/trautmane/Desktop/zcorr/test-options.json",
-                "--imagePaths", imagePaths,
-                "--outputFile", outputFile,
-                "--zOffset", "12201"
-        };
+    private static void testPancreas6() throws IOException {
 
-        HeadlessZPositionCorrection.main(effectiveArgs);
+        // TODO: don't forget to mount /nrs/cellmap
+
+        final String host = "renderer-dev.int.janelia.org:8080";
+        final String owner = "cellmap";
+        final String project = "jrc_mus_pancreas_6";
+        final String stack = "v2_acquire_align";
+        final double regionSize = 2000.0;
+
+//        final double[] tileCenter = { 40.0,  -3900.0 }; // cross correlation 0.0
+        final double[] tileCenter = { 40.0,  -2130.0 }; // cross correlation 0.9855741858482361
+
+        final double z = 2850.0;
+        final Bounds testBoundsCenter = new Bounds(tileCenter[0], tileCenter[1], z,
+                                                   tileCenter[0], tileCenter[1], z);
+
+        final String baseDataUrl = "http://" + host + "/render-ws/v1";
+        final StackMetaData stackMetaData = RenderTools.openStackMetaData(baseDataUrl, owner, project, stack);
+        final Bounds boundsForRun = stackMetaData.getStackBounds();
+        final int regionRowsForRun = (int) Math.ceil(boundsForRun.getDeltaY() / regionSize);
+        final int regionColumnsForRun = (int) Math.ceil(boundsForRun.getDeltaX() / regionSize);;
+
+        final List<BoundsBatch> batchList = BoundsBatch.batchByAdjacentZThenXY(boundsForRun,
+                                                                               regionRowsForRun,
+                                                                               regionColumnsForRun,
+                                                                               1);
+        final List<Bounds> boundsList = batchList.stream()
+                .flatMap(batch -> batch.getList().stream())
+                .filter(bounds -> bounds.containsInt(testBoundsCenter))
+                .map(bounds -> bounds.withZ(testBoundsCenter.getMinZ()))
+                .collect(Collectors.toList());
+        final Bounds bounds = boundsList.get(0).withZRange(z, z + 1.0);
+        final String stackUrlString = String.format("%s/owner/%s/project/%s/stack/%s",
+                                                    baseDataUrl, owner, project, stack);
+        final double renderScale = 0.22;
+        final String layerUrlPattern = String.format("%s/z/%s/box/%d,%d,%d,%d,%s/render-parameters",
+                                                     stackUrlString, "%s",
+                                                     bounds.getX(), bounds.getY(),
+                                                     bounds.getWidth(), bounds.getHeight(),
+                                                     renderScale);
+        final List<Double> sortedZList = List.of(bounds.getMinZ(), bounds.getMaxZ());
+        final ResinMaskParameters resinMaskParameters = new ResinMaskParameters();
+        final RenderLayerLoader layerLoader = resinMaskParameters.buildLoader(layerUrlPattern,
+                                                                              sortedZList,
+                                                                              null,
+                                                                              renderScale);
+        final CrossCorrelationData crossCorrelationData =
+                HeadlessZPositionCorrection.deriveCrossCorrelation(layerLoader, 1, 0);
+
+        final double cc = crossCorrelationData.getCrossCorrelationValue(0,0);
+
+        final LayerLoader.FloatProcessors floatProcessors0 = layerLoader.getProcessors(0);
+        new ImagePlus("z " + bounds.getMinZ(), floatProcessors0.image).show();
+
+        final LayerLoader.FloatProcessors floatProcessors1 = layerLoader.getProcessors(1);
+        new ImagePlus("z " + bounds.getMaxZ(), floatProcessors1.image).show();
+
+        // Cross-correlation value: 0.9890881180763245
+        System.out.println("Cross-correlation value: " + cc);
     }
 
     private static void testEstimationsForShiftedSlices() {
