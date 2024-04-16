@@ -134,7 +134,6 @@ public class HeadlessZPositionCorrectionTest {
         final LayerLoader.FloatProcessors floatProcessors1 = layerLoader.getProcessors(1);
         new ImagePlus("z " + bounds.getMaxZ(), floatProcessors1.image).show();
 
-        // Cross-correlation value: 0.9890881180763245
         System.out.println("Cross-correlation value: " + cc);
     }
 
