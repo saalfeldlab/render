@@ -374,8 +374,11 @@ public abstract class DistributedSolve
 						final HashSet< String > tileIds = solveItemA.zToTileId().get( z );
 
 						// if there are none, we continue with the next
-						if (tileIds.isEmpty())
+						if ((tileIds == null) || tileIds.isEmpty()) {
+							LOG.info("globalSolve: no tileIds for z {} in solveItemA with range {} to {}",
+									 z, solveItemA.minZ(), solveItemA.maxZ());
 							continue;
+						}
 	
 						gs.zToTileIdGlobal.putIfAbsent( z, new HashSet<>() );
 						zToSolveItemPairs.putIfAbsent( z, new ArrayList<>() );
