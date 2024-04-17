@@ -1,6 +1,7 @@
 package org.janelia.render.client.zspacing;
 
 import com.beust.jcommander.Parameter;
+import com.fasterxml.jackson.core.JsonProcessingException;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -166,6 +167,10 @@ public class HeadlessZPositionCorrection {
                 final float[] pixelsB = (float[]) processorsB.image.getPixels();
                 final float[] masksB = processorsB.mask == null ? null : (float[]) processorsB.mask.getPixels();
 
+                if (pixelsA.length != pixelsB.length) {
+                    throw new IllegalArgumentException(buildSizeErrorMessage(processorsA, processorsB, pixelsA, pixelsB));
+                }
+
                 final float val;
                 if ((masksA == null) || (masksB == null)) {
                     val = new RealSumFloatNCC(pixelsA, pixelsB).call().floatValue();
@@ -315,6 +320,26 @@ public class HeadlessZPositionCorrection {
             return optionsJson == null ? generateDefaultFIBSEMOptions() : Options.read(optionsJson);
         }
 
+    }
+
+    private static String buildSizeErrorMessage(final FloatProcessors processorsA,
+                                                final FloatProcessors processorsB,
+                                                final float[] pixelsA,
+                                                final float[] pixelsB) {
+        String renderParametersA = null;
+        String renderParametersB = null;
+        try {
+            renderParametersA = processorsA.getRenderParameters().toJson();
+            renderParametersB = processorsB.getRenderParameters().toJson();
+        } catch (final JsonProcessingException e) {
+            LOG.error("failed to serialize render parameters", e);
+        }
+        return "mismatched image sizes (" +
+               pixelsA.length + " vs. " + pixelsB.length +
+               "), A: " + processorsA.image +
+               ", B: " + processorsB.image +
+               ", A parameters: " + renderParametersA +
+               ", B parameters: " + renderParametersB;
     }
 
     public static void main(final String[] args) {

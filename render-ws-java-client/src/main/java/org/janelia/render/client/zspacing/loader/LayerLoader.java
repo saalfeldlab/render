@@ -38,6 +38,9 @@ public interface LayerLoader {
             this.renderParameters = renderParameters;
         }
 
+        public RenderParameters getRenderParameters() {
+            return renderParameters;
+        }
     }
 
     /**

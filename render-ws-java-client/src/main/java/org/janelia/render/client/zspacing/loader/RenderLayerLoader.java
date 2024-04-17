@@ -71,8 +71,9 @@ public class RenderLayerLoader implements LayerLoader, Serializable {
 
         if (imageProcessorWithMasks == null) {
             LOG.info("getProcessors: render parameters do not contain any tile specs, providing empty source");
-            imageProcessorWithMasks = new ImageProcessorWithMasks(new ByteProcessor(renderParameters.getWidth(),
-                                                                                    renderParameters.getHeight()),
+            final int scaledWidth = (int) Math.round(renderParameters.getWidth() * renderParameters.getScale());
+            final int scaledHeight = (int) Math.round(renderParameters.getHeight() * renderParameters.getScale());
+            imageProcessorWithMasks = new ImageProcessorWithMasks(new ByteProcessor(scaledWidth, scaledHeight),
                                                                   null,
                                                                   null);
 
