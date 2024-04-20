@@ -7,7 +7,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.render.client.parameter.TileSpecValidatorParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +73,7 @@ public class FlatfieldVisualizationClient {
 					originalLayout.getCamera(),
 					originalLayout.getImageRow() - rowOffset,
 					originalLayout.getImageCol(),
-					originalLayout.getImageCol() * width,
+					originalLayout.getImageCol() * width / 2,
 					(originalLayout.getImageRow() - rowOffset) * height,
 					0.0
 			);
