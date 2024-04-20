@@ -3,16 +3,18 @@ package org.janelia.render.client;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.stack.MipmapPathBuilder;
+import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.*;
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -21,7 +23,7 @@ import java.util.TreeMap;
  */
 public class FlatfieldVisualizationClient {
 	// the path to the data (converted to 8-bit PNGs; must be on a shared filesystem accessible to the web server)
-	private static final String DATA_PATH = "/nrs/hess/render/flatfield/flatfields_n2000";
+	private static final String DATA_PATH = "/nrs/hess/render/flatfield/flatfields_n2000_8bit";
 	// the format for the files (fill in z and sfov number for the placeholders, in order)
 	private static final String NAME_FORMAT = "flat_field_z%03d_sfov%03d_n2000.png";
 	// the number of z slices
@@ -31,7 +33,7 @@ public class FlatfieldVisualizationClient {
 	private static final String BASE_URL = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
 	private static final String OWNER = "hess_wafer_53d";
 	private static final String PROJECT = "slab_000_to_009";
-	private static final String STACK = "flatfield_test1";
+	private static final String STACK = "flatfield_estimate";
 	// reuse metadata from random stack in same project to set up new stack
 	private static final String TEMPLATE_STACK = "s000_m209";
 
@@ -114,21 +116,24 @@ public class FlatfieldVisualizationClient {
 			tileSpec.setHeight((double) template.getHeight());
 			tileSpec.setZ((double) z);
 
+			// transform image
+			final String translationData = String.format("1 0 0 1 %d %d", tileSpec.getLayout().getStageX().intValue(), tileSpec.getLayout().getStageY().intValue());
+			final TransformSpec translation = new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D", translationData);
+			tileSpec.addTransformSpecs(List.of(translation));
+
 			// set image
 			final String imagePath = DATA_PATH + "/" + String.format(NAME_FORMAT, z, sfov);
 			final ChannelSpec channelSpec = createChannelSpec(imagePath);
 			tileSpec.addChannel(channelSpec);
-			tileSpec.getFirstMipmapEntry();
 			slice.addTileSpecToCollection(tileSpec);
 		}
 		return slice;
 	}
 
-	private static ChannelSpec createChannelSpec(String imagePath) {
-		final MipmapPathBuilder mipmapPathBuilder = new MipmapPathBuilder(imagePath, 0, ".png", null);
+	private static ChannelSpec createChannelSpec(final String imagePath) {
 		final TreeMap<Integer, ImageAndMask> mipmapLevels = new TreeMap<>();
 		mipmapLevels.put(0, new ImageAndMask(imagePath, null));
-		return new ChannelSpec("default", null, null, mipmapLevels, mipmapPathBuilder, null);
+		return new ChannelSpec("default", null, null, mipmapLevels, null, null);
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(FlatfieldVisualizationClient.class);
