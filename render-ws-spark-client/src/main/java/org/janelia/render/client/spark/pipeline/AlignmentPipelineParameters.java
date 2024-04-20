@@ -15,6 +15,7 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
+import org.janelia.render.client.parameter.MaskHackParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
@@ -45,10 +46,12 @@ public class AlignmentPipelineParameters
     private final AffineBlockSolverSetup affineBlockSolverSetup;
     private final IntensityCorrectionSetup intensityCorrectionSetup;
     private final ZSpacingParameters zSpacing;
+    private final MaskHackParameters maskHack;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -73,7 +76,8 @@ public class AlignmentPipelineParameters
                                        final MatchCopyParameters matchCopy,
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
                                        final IntensityCorrectionSetup intensityCorrectionSetup,
-                                       final ZSpacingParameters zSpacing) {
+                                       final ZSpacingParameters zSpacing,
+                                       final MaskHackParameters maskHack) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -86,6 +90,7 @@ public class AlignmentPipelineParameters
         this.affineBlockSolverSetup = affineBlockSolverSetup;
         this.intensityCorrectionSetup = intensityCorrectionSetup;
         this.zSpacing = zSpacing;
+        this.maskHack = maskHack;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -145,12 +150,17 @@ public class AlignmentPipelineParameters
         return zSpacing;
     }
 
+    public MaskHackParameters getMaskHack() {
+        return maskHack;
+    }
+
     /**
      * @return a list of clients for each specified pipeline step.
      *
      * @throws IllegalArgumentException
      *   if no steps are defined or if any of the parameters are invalid.
      */
+
     public List<AlignmentPipelineStep> buildStepClients()
             throws IllegalArgumentException {
 
