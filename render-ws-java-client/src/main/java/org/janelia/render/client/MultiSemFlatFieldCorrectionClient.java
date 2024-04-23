@@ -85,8 +85,7 @@ public class MultiSemFlatFieldCorrectionClient {
 			final StackMetaData stackMetaData = renderClient.getStackMetaData(stack.getStack());
 			renderClient.setupDerivedStack(stackMetaData, stack.getStack() + params.targetStackSuffix);
 
-//			for (int z = (int) zStatistics.getMin(); z <= (int) zStatistics.getMax(); z++) {
-			for (int z = 1; z <= 1; z++) {
+			for (int z = (int) zStatistics.getMin(); z <= (int) zStatistics.getMax(); z++) {
 				final ResolvedTileSpecCollection tileSpecs = renderClient.getResolvedTiles(stack.getStack(), (double) z);
 
 				for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
