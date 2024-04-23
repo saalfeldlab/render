@@ -51,6 +51,8 @@ public class MultiSemFlatFieldCorrectionClient {
 		private String targetStackSuffix = "_corrected";
 		@Parameter(names = "--inputRoot", description = "Root folder for input data; if given, the structure under this root is replicated in the output folder")
 		private String inputRoot = null;
+		@Parameter(names = "--flatFieldConstantFromZ", description = "Maximum z-layer of flat field estimates to consider. All subsequent z-layers get corrected with the maxium, since the estimates can be bad for the last few z-layers. If not given, all z-layers are considered")
+		private Integer flatFieldConstantFromZ = Integer.MAX_VALUE;
 	}
 
 	public static void main(final String[] args) {
@@ -90,7 +92,7 @@ public class MultiSemFlatFieldCorrectionClient {
 				for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
 					final ImageProcessor ip = loadImageTile(tileSpec);
 					final int sfov = extractSfovNumber(tileSpec);
-					final ImageProcessor flatFieldEstimate = loadFlatFieldEstimate(z, sfov);
+					final ImageProcessor flatFieldEstimate = loadFlatFieldEstimate(Math.min(z, params.flatFieldConstantFromZ), sfov);
 
 					applyFlatFieldCorrection(ip, flatFieldEstimate);
 
