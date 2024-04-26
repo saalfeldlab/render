@@ -31,11 +31,11 @@ import java.util.List;
  */
 public class MultiSemFlatFieldCorrectionClient {
 
-	// make cache large enough to hold all flat field estimates for one layer
-	private static final ImageProcessorCache CACHE = new ImageProcessorCache(91L * 2000L * 1748L + 1, false, false);
 
+	// make cache large enough to hold all flat field estimates for one layer
 	private final Parameters params;
 	private final RenderDataClient renderClient;
+	private final ImageProcessorCache cache;
 
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
@@ -52,6 +52,8 @@ public class MultiSemFlatFieldCorrectionClient {
 		private String inputRoot = null;
 		@Parameter(names = "--flatFieldConstantFromZ", description = "Maximum z-layer of flat field estimates to consider. All subsequent z-layers get corrected with the maxium, since the estimates can be bad for the last few z-layers. If not given, all z-layers are considered")
 		private Integer flatFieldConstantFromZ = Integer.MAX_VALUE;
+		@Parameter(names = "--cacheSizeGb", description = "Size of the image processor cache in GB (should be enough to hold one layer of flat field estimates)")
+		private double cacheSizeGb = 1.5;
 	}
 
 	public static void main(final String[] args) {
@@ -73,6 +75,8 @@ public class MultiSemFlatFieldCorrectionClient {
 	public MultiSemFlatFieldCorrectionClient(final Parameters parameters) {
 		this.params = parameters;
 		this.renderClient = new RenderDataClient(parameters.multiProject.baseDataUrl, parameters.multiProject.owner, parameters.multiProject.project);
+		final double cacheSizeInBytes = 1_000_000_000 * parameters.cacheSizeGb;
+		this.cache = new ImageProcessorCache((long) cacheSizeInBytes, false, false);
 	}
 
 	public void correctTiles() throws IOException {
@@ -110,7 +114,7 @@ public class MultiSemFlatFieldCorrectionClient {
 		final Path imagePath = Path.of(params.flatFieldLocation, String.format(params.flatFieldFormat, (int) z, sfov));
 		final String imageUrl = "file:" + imagePath;
 		final ImageLoader.LoaderType loaderType = ImageLoader.LoaderType.IMAGEJ_DEFAULT;
-		return CACHE.get(imageUrl, 0, false, false, loaderType, null);
+		return cache.get(imageUrl, 0, false, false, loaderType, null);
 	}
 
 	private int extractSfovNumber(final TileSpec tileSpec) {
