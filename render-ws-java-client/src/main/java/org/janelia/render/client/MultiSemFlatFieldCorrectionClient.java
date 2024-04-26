@@ -16,6 +16,7 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -105,7 +106,9 @@ public class MultiSemFlatFieldCorrectionClient {
 
 					applyFlatFieldCorrection(ip, flatFieldEstimate);
 
-					patchTileSpec(tileSpec);
+					final Path newPath = getNewPath(tileSpec);
+					ensureFolderExists(newPath.getParent());
+					patchTileSpec(tileSpec, newPath);
 					saveImage(ip, tileSpec);
 				}
 
@@ -147,21 +150,21 @@ public class MultiSemFlatFieldCorrectionClient {
 		ip.setPixels(0, fp);
 	}
 
-	private void patchTileSpec(final TileSpec tileSpec) {
-		final Path originalPath = Path.of(tileSpec.getTileImageUrl().replaceFirst("file:", ""));
-		final Path newPath;
-
-		if (params.inputRoot != null) {
-			final Path relativePath = Path.of(params.inputRoot).relativize(originalPath);
-			newPath = Path.of(params.outputFolder).resolve(relativePath);
-		} else {
-			newPath = Path.of(params.outputFolder).resolve(originalPath.getFileName());
-		}
-
+	private void patchTileSpec(final TileSpec tileSpec, final Path newPath) {
 		final ChannelSpec firstChannel = tileSpec.getAllChannels().get(0);
 		final ImageAndMask originalImage = firstChannel.getFirstMipmapEntry().getValue();
 		final ImageAndMask newImage = originalImage.copyWithImage(newPath.toString(), null, null);
 		firstChannel.putMipmap(0, newImage);
+	}
+
+	private Path getNewPath(final TileSpec tileSpec) {
+		final Path originalPath = Path.of(tileSpec.getTileImageUrl().replaceFirst("file:", ""));
+		if (params.inputRoot != null) {
+			final Path relativePath = Path.of(params.inputRoot).relativize(originalPath);
+			return Path.of(params.outputFolder).resolve(relativePath);
+		} else {
+			return Path.of(params.outputFolder).resolve(originalPath.getFileName());
+		}
 	}
 
 	private void ensureFolderExists(final Path folder) {
@@ -187,11 +190,9 @@ public class MultiSemFlatFieldCorrectionClient {
 	}
 
 	private void saveImage(final ImageProcessor ip, final TileSpec tileSpec) {
-		final Path imagePath = Path.of(tileSpec.getImagePath());
-		ensureFolderExists(imagePath.getParent());
 		final String tileId = tileSpec.getTileId();
 		final ImagePlus imp = new ImagePlus(tileId, ip);
-		IJ.save(imp, imagePath.toString());
+		IJ.save(imp, tileSpec.getImagePath());
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(MultiSemFlatFieldCorrectionClient.class);
