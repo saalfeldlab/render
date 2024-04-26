@@ -16,13 +16,14 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
+
+import org.janelia.render.client.multisem.Utilities;
 
 /**
  * Apply a previously computed flat field estimate to correct shading in a Multi-SEM project.
@@ -101,7 +102,7 @@ public class MultiSemFlatFieldCorrectionClient {
 
 				for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
 					final ImageProcessor ip = loadImageTile(tileSpec);
-					final int sfov = extractSfovNumber(tileSpec);
+					final int sfov = Integer.parseInt(Utilities.getSFOVForTileId(tileSpec.getTileId()));
 					final ImageProcessor flatFieldEstimate = loadFlatFieldEstimate(Math.min(z, (double) params.flatFieldConstantFromZ), sfov);
 
 					applyFlatFieldCorrection(ip, flatFieldEstimate);
@@ -122,12 +123,6 @@ public class MultiSemFlatFieldCorrectionClient {
 		final String imageUrl = "file:" + imagePath;
 		final ImageLoader.LoaderType loaderType = ImageLoader.LoaderType.IMAGEJ_DEFAULT;
 		return cache.get(imageUrl, 0, false, false, loaderType, null);
-	}
-
-	private int extractSfovNumber(final TileSpec tileSpec) {
-		final String tileId = tileSpec.getTileId();
-		final String[] parts = tileId.split("_");
-		return Integer.parseInt(parts[1].substring(4));
 	}
 
 	/**
