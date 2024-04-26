@@ -58,31 +58,31 @@ public class MultiSemPreAlignClient implements Serializable {
 
 		@Parameter(
 				names = "--maxAllowedError",
-				description = "Max allowed error (default:10.0)"
+				description = "Max allowed error"
 		)
 		public Double maxAllowedError = 10.0;
 
 		@Parameter(
 				names = "--maxIterations",
-				description = "Max iterations (default:1000)"
+				description = "Max iterations"
 		)
 		public Integer maxIterations = 1000;
 
 		@Parameter(
 				names = "--maxPlateauWidth",
-				description = "Max plateau width (default:250)"
+				description = "Max plateau width"
 		)
 		public Integer maxPlateauWidth = 250;
 
 		@Parameter(
 				names = "--maxNumMatches",
-				description = "Max number of matches between mFOV layers (default:1000)"
+				description = "Max number of matches between mFOV layers"
 		)
 		public Integer maxNumMatches = 1000;
 
 		@Parameter(
 				names = "--numThreads",
-				description = "Number of threads (default:8)"
+				description = "Number of threads"
 		)
 		public Integer numThreads = 8;
 	}
