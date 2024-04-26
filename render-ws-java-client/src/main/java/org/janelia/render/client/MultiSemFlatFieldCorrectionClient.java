@@ -34,7 +34,6 @@ public class MultiSemFlatFieldCorrectionClient {
 
 	// make cache large enough to hold all flat field estimates for one layer
 	private final Parameters params;
-	private final RenderDataClient renderClient;
 	private final ImageProcessorCache cache;
 
 	public static class Parameters extends CommandLineParameters {
@@ -74,24 +73,30 @@ public class MultiSemFlatFieldCorrectionClient {
 
 	public MultiSemFlatFieldCorrectionClient(final Parameters parameters) {
 		this.params = parameters;
-		this.renderClient = new RenderDataClient(parameters.multiProject.baseDataUrl, parameters.multiProject.owner, parameters.multiProject.project);
 		final double cacheSizeInBytes = 1_000_000_000 * parameters.cacheSizeGb;
 		this.cache = new ImageProcessorCache((long) cacheSizeInBytes, false, false);
 	}
 
 	public void correctTiles() throws IOException {
+		final RenderDataClient renderClient = new RenderDataClient(params.multiProject.baseDataUrl, params.multiProject.owner, params.multiProject.project);
 		final List<StackId> stacks = params.multiProject.stackIdWithZ.getStackIdList(renderClient);
 
 		// TODO: iterate by z-layer first to re-use the flat field estimate for all stacks?
 		for (final StackId stack : stacks) {
-			final List<Double> zValues = renderClient.getStackZValues(stack.getStack());
-			LOG.info("Considering {} with {} z-layers", stack, zValues.size());
+			correctTilesForStack(params.multiProject.baseDataUrl, stack);
+		}
+	}
 
-			final StackMetaData stackMetaData = renderClient.getStackMetaData(stack.getStack());
-			renderClient.setupDerivedStack(stackMetaData, stack.getStack() + params.targetStackSuffix);
+	public void correctTilesForStack(final String baseDataUrl, final StackId stack) throws IOException {
+			final RenderDataClient stackClient = new RenderDataClient(baseDataUrl, stack.getOwner(), stack.getProject());
+			final List<Double> zValues = stackClient.getStackZValues(stack.getStack());
+			LOG.info("Correcting tiles for {} with {} z-layers", stack, zValues.size());
+
+			final StackMetaData stackMetaData = stackClient.getStackMetaData(stack.getStack());
+			stackClient.setupDerivedStack(stackMetaData, stack.getStack() + params.targetStackSuffix);
 
 			for (final double z : zValues) {
-				final ResolvedTileSpecCollection tileSpecs = renderClient.getResolvedTiles(stack.getStack(), z);
+				final ResolvedTileSpecCollection tileSpecs = stackClient.getResolvedTiles(stack.getStack(), z);
 
 				for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
 					final ImageProcessor ip = loadImageTile(tileSpec);
@@ -104,10 +109,9 @@ public class MultiSemFlatFieldCorrectionClient {
 					saveImage(ip, tileSpec);
 				}
 
-				renderClient.saveResolvedTiles(tileSpecs, stack.getStack() + params.targetStackSuffix, z);
+				stackClient.saveResolvedTiles(tileSpecs, stack.getStack() + params.targetStackSuffix, z);
 			}
-			renderClient.setStackState(stack.getStack() + params.targetStackSuffix, StackMetaData.StackState.COMPLETE);
-		}
+			stackClient.setStackState(stack.getStack() + params.targetStackSuffix, StackMetaData.StackState.COMPLETE);
 	}
 
 	private ImageProcessor loadFlatFieldEstimate(final double z, final int sfov) {
@@ -154,7 +158,6 @@ public class MultiSemFlatFieldCorrectionClient {
 			newPath = Path.of(params.outputFolder).resolve(originalPath.getFileName());
 		}
 
-		ensureFolderExists(newPath.getParent());
 		final ChannelSpec firstChannel = tileSpec.getAllChannels().get(0);
 		final ImageAndMask originalImage = firstChannel.getFirstMipmapEntry().getValue();
 		final ImageAndMask newImage = originalImage.copyWithImage(newPath.toString(), null, null);
@@ -184,9 +187,11 @@ public class MultiSemFlatFieldCorrectionClient {
 	}
 
 	private void saveImage(final ImageProcessor ip, final TileSpec tileSpec) {
+		final Path imagePath = Path.of(tileSpec.getImagePath());
+		ensureFolderExists(imagePath.getParent());
 		final String tileId = tileSpec.getTileId();
 		final ImagePlus imp = new ImagePlus(tileId, ip);
-		IJ.save(imp, tileSpec.getImagePath());
+		IJ.save(imp, imagePath.toString());
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(MultiSemFlatFieldCorrectionClient.class);
