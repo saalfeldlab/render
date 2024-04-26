@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.DoubleSummaryStatistics;
 import java.util.List;
 
 /**
@@ -81,17 +80,19 @@ public class MultiSemFlatFieldCorrectionClient {
 
 		// TODO: iterate by z-layer first to re-use the flat field estimate for all stacks?
 		for (final StackId stack : stacks) {
-			final DoubleSummaryStatistics zStatistics = getZStatistics(stack);
+			final List<Double> zValues = renderClient.getStackZValues(stack.getStack());
+			LOG.info("Considering {} with {} z-layers", stack, zValues.size());
+
 			final StackMetaData stackMetaData = renderClient.getStackMetaData(stack.getStack());
 			renderClient.setupDerivedStack(stackMetaData, stack.getStack() + params.targetStackSuffix);
 
-			for (int z = (int) zStatistics.getMin(); z <= (int) zStatistics.getMax(); z++) {
-				final ResolvedTileSpecCollection tileSpecs = renderClient.getResolvedTiles(stack.getStack(), (double) z);
+			for (final double z : zValues) {
+				final ResolvedTileSpecCollection tileSpecs = renderClient.getResolvedTiles(stack.getStack(), z);
 
 				for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
 					final ImageProcessor ip = loadImageTile(tileSpec);
 					final int sfov = extractSfovNumber(tileSpec);
-					final ImageProcessor flatFieldEstimate = loadFlatFieldEstimate(Math.min(z, params.flatFieldConstantFromZ), sfov);
+					final ImageProcessor flatFieldEstimate = loadFlatFieldEstimate(Math.min(z, (double) params.flatFieldConstantFromZ), sfov);
 
 					applyFlatFieldCorrection(ip, flatFieldEstimate);
 
@@ -99,21 +100,14 @@ public class MultiSemFlatFieldCorrectionClient {
 					saveImage(ip, tileSpec);
 				}
 
-				renderClient.saveResolvedTiles(tileSpecs, stack.getStack() + params.targetStackSuffix, (double) z);
+				renderClient.saveResolvedTiles(tileSpecs, stack.getStack() + params.targetStackSuffix, z);
 			}
 			renderClient.setStackState(stack.getStack() + params.targetStackSuffix, StackMetaData.StackState.COMPLETE);
 		}
 	}
 
-	private DoubleSummaryStatistics getZStatistics(final StackId stack) throws IOException {
-		final List<Double> zValues = renderClient.getStackZValues(stack.getStack());
-		final DoubleSummaryStatistics zStatistics = zValues.stream().mapToDouble(Double::doubleValue).summaryStatistics();
-		LOG.info("Considering {} with {} z-layers", stack, zStatistics.getCount());
-		return zStatistics;
-	}
-
-	private ImageProcessor loadFlatFieldEstimate(final int z, final int sfov) {
-		final Path imagePath = Path.of(params.flatFieldLocation, String.format(params.flatFieldFormat, z, sfov));
+	private ImageProcessor loadFlatFieldEstimate(final double z, final int sfov) {
+		final Path imagePath = Path.of(params.flatFieldLocation, String.format(params.flatFieldFormat, (int) z, sfov));
 		final String imageUrl = "file:" + imagePath;
 		final ImageLoader.LoaderType loaderType = ImageLoader.LoaderType.IMAGEJ_DEFAULT;
 		return CACHE.get(imageUrl, 0, false, false, loaderType, null);
