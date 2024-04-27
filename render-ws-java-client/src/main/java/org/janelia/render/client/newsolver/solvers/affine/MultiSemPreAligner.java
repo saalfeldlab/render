@@ -131,7 +131,7 @@ public class MultiSemPreAligner<M extends Model<M> & Affine2D<M>> implements Ser
 			final String mFovLayerQ = tileIdToMFovLayer.get(canvasMatch.getqId());
 			final boolean tileIsMissing = mFovLayerToTile.get(mFovLayerP) == null || mFovLayerToTile.get(mFovLayerQ) == null;
 			if (tileIsMissing || mFovLayerP.equals(mFovLayerQ)) {
-				// only connect tiles from different layers and different mFOVs
+				// only connect tiles from different mFOVs
 				continue;
 			}
 
