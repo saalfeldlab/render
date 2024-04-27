@@ -25,6 +25,7 @@ import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ScriptUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -548,7 +549,7 @@ public class Trakem2SolverPreAlignClient{
 
                     if (tile != null) {
                         resolvedTiles.addTransformSpecToTile(tileId,
-                                                             getTransformSpec(tile.getModel()),
+                                                             SolveTools.getTransformSpec(tile.getModel()),
                                                              REPLACE_LAST);
                     }
 
@@ -565,13 +566,6 @@ public class Trakem2SolverPreAlignClient{
         }
 
         LOG.info("saveTargetStackTiles: exit");
-    }
-
-    private LeafTransformSpec getTransformSpec(final TranslationModel2D forModel) {
-        final double[] m = new double[6];
-        forModel.toArray(m);
-        final String data = String.valueOf(m[0]) + ' ' + m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[5];
-        return new LeafTransformSpec(mpicbg.trakem2.transform.AffineModel2D.class.getName(), data);
     }
 
     private TileSpec getTileSpec(final String sectionId,

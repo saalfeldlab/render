@@ -27,6 +27,7 @@ import org.janelia.alignment.util.ZFilter;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,9 +128,9 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 	
 					if ( model != null )
 					{
-						resolvedTiles.addTransformSpecToTile( tileId,
-								getTransformSpec( model ),
-								applyMethod );
+						resolvedTiles.addTransformSpecToTile(tileId,
+															 SolveTools.getTransformSpec(model),
+															 applyMethod );
 					}
 				}
 			}
@@ -141,14 +142,6 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 		}
 
 		LOG.info( "saveTargetStackTiles: exit" );
-	}
-
-	private LeafTransformSpec getTransformSpec( final AffineModel2D forModel )
-	{
-		final double[] m = new double[ 6 ];
-		forModel.toArray( m );
-		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 1 ] + ' ' + m[ 2 ] + ' ' + m[ 3 ] + ' ' + m[ 4 ] + ' ' + m[ 5 ];
-		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
 	}
 
 	public ImagePlus render( final HashMap<String, AffineModel2D> idToModels,

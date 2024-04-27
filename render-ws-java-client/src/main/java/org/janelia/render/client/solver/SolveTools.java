@@ -758,39 +758,44 @@ public class SolveTools
 		return copy;
 	}
 
-	public static List< PointMatch > createRelativePointMatches(
-			final List< PointMatch > absolutePMs,
-			final Model< ? > pModel,
-			final Model< ? > qModel )
-	{
-		final List< PointMatch > relativePMs = new ArrayList<>( absolutePMs.size() );
+	public static List<PointMatch> createRelativePointMatches(
+			final List<PointMatch> absolutePMs,
+			final CoordinateTransform pTransform,
+			final CoordinateTransform qTransform) {
 
+		final List<PointMatch> relativePMs = new ArrayList<>(absolutePMs.size());
 		if (absolutePMs.isEmpty())
 			return relativePMs;
 
-		final int n = absolutePMs.get( 0 ).getP1().getL().length;
+		final PointMatch firstMatch = absolutePMs.get(0);
+		final int n = firstMatch.getP1().getL().length;
 
-		for ( final PointMatch absPM : absolutePMs )
-		{
-			final double[] pLocal = new double[ n ];
-			final double[] qLocal = new double[ n ];
+		for (final PointMatch absPM : absolutePMs) {
+			final double[] pLocal = fastClone(absPM.getP1().getL(), n);
+			final double[] qLocal = fastClone(absPM.getP2().getL(), n);
 
-			for (int d = 0; d < n; ++d )
-			{
-				pLocal[ d ] = absPM.getP1().getL()[ d ];
-				qLocal[ d ] = absPM.getP2().getL()[ d ];
-			}
+			if (pTransform != null)
+				pTransform.applyInPlace(pLocal);
 
-			if ( pModel != null )
-				pModel.applyInPlace( pLocal );
+			if (qTransform != null)
+				qTransform.applyInPlace(qLocal);
 
-			if ( qModel != null )
-				qModel.applyInPlace( qLocal );
-
-			relativePMs.add( new PointMatch( new Point( pLocal ), new Point( qLocal ), absPM.getWeight() ) );
+			relativePMs.add(new PointMatch(new Point(pLocal), new Point(qLocal), absPM.getWeight()));
 		}
 
 		return relativePMs;
+	}
+
+	// JMH micro-benchmarking suggests that this is the fastest way to clone an array:
+	// the benchmark is indecisive whether replacing the loop with System.arraycopy() is beneficial, but both
+	// are faster than Arrays.copyOf() and double[]::clone
+	@SuppressWarnings("ManualArrayCopy")
+	private static double[] fastClone(final double[] in, final int length) {
+		final double[] out = new double[length];
+		for (int i = 0; i < length; i++) {
+			out[i] = in[i];
+		}
+		return out;
 	}
 
 
@@ -1027,52 +1032,44 @@ public class SolveTools
 		LOG.info( "saveTargetStackTiles: exit" );
 	}
 
-	public static LeafTransformSpec getTransformSpec( final AffineModel2D forModel )
-	{
-		final double[] m = new double[ 6 ];
-		forModel.toArray( m );
+	/**
+	 * Note: this method relies on the internal structure of Affine2D
+	 * as such, it is fragile and may break if the internal structure of Affine2D changes.
+	 * <p>
+	 * Current layout:
+	 * data[0] = m00;
+	 * data[1] = m10;
+	 * data[2] = m01;
+	 * data[3] = m11;
+	 * data[4] = m02;
+	 * data[5] = m12;
+	 */
+	public static LeafTransformSpec getTransformSpec(final Affine2D<?> forModel) {
+		final double[] m = new double[6];
+		forModel.toArray(m);
 
-		/*
-		data[ 0 ] = m00;
-		data[ 1 ] = m10;
-		data[ 2 ] = m01;
-		data[ 3 ] = m11;
-		data[ 4 ] = m02;
-		data[ 5 ] = m12;
-		*/
-		
-		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 1 ] + ' ' + m[ 2 ] + ' ' + m[ 3 ] + ' ' + m[ 4 ] + ' ' + m[ 5 ];
-		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
+		final String data = String.valueOf(m[0]) + ' ' + m[1] + ' ' + m[2] + ' ' + m[3] + ' ' + m[4] + ' ' + m[5];
+		return new LeafTransformSpec(mpicbg.trakem2.transform.AffineModel2D.class.getName(), data);
 	}
 
-	// TODO: Bug, this method is not working
+	/**
+	 * Note: this method relies on the internal structure of AffineTransform2D
+	 * as such, it is fragile and may break if the internal structure of AffineTransform2D changes, see, e.g.,
+	 * <a href="https://github.com/imglib/imglib2-realtransform/commit/28986382280012a338cfed879956fbf6ac1f0f2e">this commit</a>
+	 * <p>
+	 * OLD:               NEW:
+	 * data[0] = a.m00;   data[0] = a.m00;
+	 * data[1] = a.m01;   data[1] = a.m01;
+	 * data[3] = a.m02;   data[2] = a.m02;
+	 * data[4] = a.m10;   data[3] = a.m10;
+	 * data[6] = a.m11;   data[4] = a.m11;
+	 * data[7] = a.m12;   data[5] = a.m12;
+	 */
 	public static LeafTransformSpec getTransformSpec( final AffineTransform2D forModel )
 	{
 		final double[] m = new double[ 6 ];
 		forModel.toArray( m );
 
-		// TODO: fix when bug in imglib2-realtransform is released
-		// https://github.com/imglib/imglib2-realtransform/commit/28986382280012a338cfed879956fbf6ac1f0f2e
-
-		/*
-		OLD:
-		data[ 0 ] = a.m00;
-		data[ 1 ] = a.m01;
-		data[ 3 ] = a.m02;
-		data[ 4 ] = a.m10;
-		data[ 6 ] = a.m11;
-		data[ 7 ] = a.m12;
-
-		NEW:
-		data[ 0 ] = a.m00;
-		data[ 1 ] = a.m01;
-		data[ 2 ] = a.m02;
-		data[ 3 ] = a.m10;
-		data[ 4 ] = a.m11;
-		data[ 5 ] = a.m12;
-		*/
-
-		//final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 4 ] + ' ' + m[ 1 ] + ' ' + m[ 6 ] + ' ' + m[ 3 ] + ' ' + m[ 7 ];
 		final String data = String.valueOf( m[ 0 ] ) + ' ' + m[ 3 ] + ' ' + m[ 1 ] + ' ' + m[ 4 ] + ' ' + m[ 2 ] + ' ' + m[ 5 ];
 		System.out.println( data );
 		return new LeafTransformSpec( mpicbg.trakem2.transform.AffineModel2D.class.getName(), data );
