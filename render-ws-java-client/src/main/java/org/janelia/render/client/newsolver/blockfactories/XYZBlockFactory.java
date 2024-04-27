@@ -63,11 +63,14 @@ public class XYZBlockFactory extends BlockFactory implements Serializable {
 			creator.regularGrid(In.Y, minY, maxY, blockSizeY);
 			creator.regularGrid(In.Z, minZ, maxZ, blockSizeZ);
 		}
-		final List<Bounds> blockLayout = creator.create();
+		List<Bounds> blockLayout = creator.create();
 
-		// grow blocks such that they overlap
-		final List<Bounds> scaledLayout = blockLayout.stream().map(b -> b.scaled(2.0, 2.0, 2.0)).collect(Collectors.toList());
-		return blockCollectionFromLayout(scaledLayout, blockSolveParameterProvider);
+		if (blockLayout.size() > 1) {
+			// when there is more than one block, grow blocks such that they overlap
+			blockLayout = blockLayout.stream().map(b -> b.scaled(2.0, 2.0, 2.0)).collect(Collectors.toList());
+		}
+
+		return blockCollectionFromLayout(blockLayout, blockSolveParameterProvider);
 	}
 
 	@Override

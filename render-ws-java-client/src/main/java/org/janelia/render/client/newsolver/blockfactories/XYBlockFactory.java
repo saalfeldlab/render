@@ -80,11 +80,14 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 		}
 
 		creator.singleBlock(In.Z, minZ, maxZ);
-		final List<Bounds> blockLayout = creator.create();
+		List<Bounds> blockLayout = creator.create();
 
-		// grow blocks such that they overlap
-		final List<Bounds> scaledLayout = blockLayout.stream().map(b -> b.scaled(2.0, 2.0, 1.0)).collect(Collectors.toList());
-		return blockCollectionFromLayout(scaledLayout, blockSolveParameterProvider);
+		if (blockLayout.size() > 1) {
+			// when there is more than one block, grow blocks such that they overlap
+			blockLayout = blockLayout.stream().map(b -> b.scaled(2.0, 2.0, 1.0)).collect(Collectors.toList());
+		}
+
+		return blockCollectionFromLayout(blockLayout, blockSolveParameterProvider);
 	}
 
 	@Override
