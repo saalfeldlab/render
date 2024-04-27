@@ -279,9 +279,9 @@ public class N5Client {
                 boundsForRun.getMinZ().longValue()
         };
         long[] dimensions = {
-                Double.valueOf(boundsForRun.getDeltaX()).longValue(),
-                Double.valueOf(boundsForRun.getDeltaY()).longValue(),
-                Double.valueOf(boundsForRun.getDeltaZ()).longValue()
+                Double.valueOf(boundsForRun.getDeltaX() + 1).longValue(),
+                Double.valueOf(boundsForRun.getDeltaY() + 1).longValue(),
+                Double.valueOf(boundsForRun.getDeltaZ() + 1).longValue()
         };
 
         String viewStackCommandOffsets = min[0] + "," + min[1] + "," + min[2];
