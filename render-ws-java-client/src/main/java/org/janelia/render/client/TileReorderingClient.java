@@ -17,9 +17,14 @@ import java.util.stream.Collectors;
 
 /**
  * This client reorders the tiles in a multi-sem stack in a way that the rendering order
- * causes overlapping tiles to be rendered in the correct order. (I.e., the tile where
+ * causes overlapping tiles to be rendered in different orders. (I.e., the tile where
  * the overlapping region is imaged first is on top.)
- *
+ * <br/>
+ * Reordering is done by changing tile IDs.  This is sufficient to change the rendering
+ * order for a "final export", but changing tile IDs decouples tiles from their
+ * match data.  This means that reordered tiles cannot subsequently be used in
+ * tasks/pipelines that rely upon match data.
+ * 
  * @author Michael Innerberger
  */
 public class TileReorderingClient {
