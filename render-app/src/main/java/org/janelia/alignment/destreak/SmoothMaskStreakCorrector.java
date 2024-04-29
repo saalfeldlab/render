@@ -26,7 +26,7 @@ import java.util.stream.IntStream;
  * The tunable parameters are:
  * <ul>
  * <li>innerCutoff: inner radius of the cutoff profile in px; smaller values may improve de-streaking, values that are too small tinker with the overall intensity of the image</li>
- * <li>bandWidth: width of the gaussian band in px; smaller values may improve de-streaking, values that are too high blur the image in the direction orthogonal to the angle</li>
+ * <li>bandWidth: width of the gaussian band in px; larger values may improve de-streaking, values that are too high blur the image in the direction orthogonal to the angle</li>
  * <li>angle: angle of the band in deg; this should be orthogonal to the streaks (e.g., choose an angle of 0.0 for vertical streaks and 90.0 vor horizontal ones)</li>
  * </ul>
  *
