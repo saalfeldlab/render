@@ -6,9 +6,12 @@ import ij.process.ImageProcessor;
 import net.imglib2.algorithm.localization.FitFunction;
 import net.imglib2.algorithm.localization.FunctionFitter;
 import net.imglib2.algorithm.localization.LevenbergMarquardtSolver;
+import org.janelia.alignment.filter.ExponentialIntensityFilter;
+import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -51,7 +54,7 @@ public class ExponentialFitClient {
 		public String targetStack;
 		@Parameter(names = "--coefficientsFile", description = "File name for storing the estimated coefficients in the csv format; If not given, coefficients are not stored")
 		private String coefficientsFile = null;
-		@Parameter(names = "--averageOverLayer", description = "If true, average all estimated models and apply the average to the tiles", arity = 0)
+		@Parameter(names = "--averageOverLayer", description = "If true, average all estimated models and apply the average to the tiles (outliers are filtered)", arity = 0)
 		public boolean averageOverLayer = true;
 		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after fitting", arity = 0)
 		public boolean completeTargetStack = false;
@@ -85,6 +88,9 @@ public class ExponentialFitClient {
 		final RenderDataClient renderClient = params.renderWeb.getDataClient();
 		final List<Double> zValues = renderClient.getStackZValues(params.stack);
 
+		final StackMetaData stackMetaData = renderClient.getStackMetaData(params.stack);
+		renderClient.setupDerivedStack(stackMetaData, params.targetStack);
+
 		final PrintWriter writer = getWriterIfDesired();
 		if (writer != null) {
 			writer.println("tileId,a,b,c");
@@ -98,10 +104,19 @@ public class ExponentialFitClient {
 				LOG.info("process: writing coefficients for z={} to file {}", z, params.coefficientsFile);
 				appendCoefficients(coefficients, writer);
 			}
+
+			final Map<String, double[]> filterCoefficients = convertToMultiplicativeFactors(coefficients, params.averageOverLayer);
+			applyExponentialCorrection(tileSpecs, filterCoefficients);
+
+			renderClient.saveResolvedTiles(tileSpecs, params.targetStack, z);
 		}
 
 		if (writer != null) {
 			writer.close();
+		}
+		
+		if (params.completeTargetStack) {
+			renderClient.setStackState(params.targetStack, StackMetaData.StackState.COMPLETE);
 		}
 	}
 
@@ -165,6 +180,48 @@ public class ExponentialFitClient {
 			writer.println(tileId + "," + coeff[0] + "," + coeff[1] + "," + coeff[2]);
 		}
 	}
+
+	private Map<String, double[]> convertToMultiplicativeFactors(final Map<String, double[]> coefficients, final boolean averageOverLayer) {
+		final Map<String, double[]> filterCoefficients = new HashMap<>();
+		final double[] average = new double[2];
+
+		for (final Map.Entry<String, double[]> entry : coefficients.entrySet()) {
+			final String tileId = entry.getKey();
+			final double[] coeff = entry.getValue();
+
+			// first coefficient is the baseline intensity, which is discarded
+			if (averageOverLayer) {
+				if (coeff[0] > 100 || coeff[1] > 100 || coeff[2] > 100) {
+					LOG.debug("convertToMultiplicativeFactors: skipping outlier tile {}", tileId);
+					continue;
+				}
+				average[0] += coeff[1];
+				average[1] += coeff[2];
+				filterCoefficients.put(tileId, average);
+			} else {
+				filterCoefficients.put(tileId, new double[] {coeff[1], coeff[2]});
+			}
+		}
+
+		if (averageOverLayer) {
+			average[0] /= coefficients.size();
+			average[1] /= coefficients.size();
+		}
+
+		return filterCoefficients;
+	}
+
+	private void applyExponentialCorrection(final ResolvedTileSpecCollection tileSpecs, final Map<String, double[]> filterCoefficients) {
+		for (final Map.Entry<String, double[]> entry : filterCoefficients.entrySet()) {
+			final String tileId = entry.getKey();
+			final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
+			final double[] coeff = entry.getValue();
+
+			final Filter filter = new ExponentialIntensityFilter(coeff[0], coeff[1]);
+			tileSpec.addFilter(filter);
+		}
+	}
+
 
 	/**
 	 * Sigmoidal model of the form y = a / (1 + exp(-b * (x - c))).
