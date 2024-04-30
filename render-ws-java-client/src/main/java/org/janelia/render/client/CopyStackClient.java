@@ -113,7 +113,7 @@ public class CopyStackClient {
 
         @Parameter(
                 names = "--includeTileIdsWithPattern",
-                description = "JSON file containing array of tileIds to be included (.json, .gz, or .zip)"
+                description = "Copy only tiles with ids that match this pattern"
         )
         public String includeTileIdsWithPattern;
 
