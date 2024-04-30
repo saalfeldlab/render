@@ -4,6 +4,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchAggregator;
@@ -57,7 +58,7 @@ public class CopyMatchClient {
         final RenderDataClient sourceMatchClient = parameters.matchClient.getDataClient();
         final RenderDataClient targetMatchClient = parameters.matchCopy.buildTargetMatchClient(sourceMatchClient);
         final List<String> pGroupIds;
-        if ((parameters.matchCopy.pGroupIds == null) || (parameters.matchCopy.pGroupIds.size() == 0)) {
+        if ((parameters.matchCopy.pGroupIds == null) || parameters.matchCopy.pGroupIds.isEmpty()) {
             pGroupIds = sourceMatchClient.getMatchPGroupIds();
         } else {
             pGroupIds = parameters.matchCopy.pGroupIds;
@@ -73,13 +74,29 @@ public class CopyMatchClient {
                                    final String pGroupId,
                                    final MatchCopyParameters matchCopy) throws Exception {
 
-        final List<CanvasMatches> groupMatches =
-                sourceMatchClient.getMatchesWithPGroupId(pGroupId, false);
+        List<CanvasMatches> groupMatches = sourceMatchClient.getMatchesWithPGroupId(pGroupId, false);
 
-        if (groupMatches.size() > 0) {
+        if (! groupMatches.isEmpty()) {
 
             if (matchCopy.removeExisting) {
                 targetMatchClient.deleteMatchesWithPGroupId(pGroupId);
+            }
+
+            if (matchCopy.excludePairsWithTileIdPattern != null) {
+                final Pattern excludePattern = Pattern.compile(matchCopy.excludePairsWithTileIdPattern);
+                final List<CanvasMatches> matchesToKeep = new ArrayList<>(groupMatches.size());
+                final long originalPairCount = groupMatches.size();
+                for (final CanvasMatches match : groupMatches) {
+                    final String pTileId = match.getpId();
+                    final String qTileId = match.getqId();
+                    if (! excludePattern.matcher(pTileId).matches() && ! excludePattern.matcher(qTileId).matches()) {
+                        matchesToKeep.add(match);
+                    }
+                }
+                groupMatches = matchesToKeep;
+
+                LOG.info("copyMatches: reduced {} to {} pairs that do not include a tileId with the pattern {}",
+                         originalPairCount, groupMatches.size(), matchCopy.excludePairsWithTileIdPattern);
             }
 
             if (matchCopy.isAggregationRequested()) {

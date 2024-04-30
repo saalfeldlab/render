@@ -68,6 +68,13 @@ public class MatchCopyParameters
             description = "Pixel radius for cross layer match filtering")
     public Double matchAggregationRadiusCross;
 
+    @Parameter(
+            names = "--excludePairsWithTileIdPattern",
+            description = "Do not copy match pairs that include at least one tile with an ID matching this pattern, " +
+                          "e.g. .*_0000(01|02|03|04|07|08|12|13|16|17|18|19)_.*",
+            variableArity = true)
+    public String excludePairsWithTileIdPattern;
+
     public MatchCopyParameters() {
     }
 
