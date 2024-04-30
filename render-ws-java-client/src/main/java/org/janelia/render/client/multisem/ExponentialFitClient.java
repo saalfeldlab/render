@@ -17,8 +17,13 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Arrays;
+import java.io.PrintWriter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Fits an exponential model in y to the image data of the given stack. This should correct an exponential
@@ -33,6 +38,9 @@ import java.util.Arrays;
 public class ExponentialFitClient {
 
 	private static final ImageProcessorCache IMAGE_LOADER = ImageProcessorCache.DISABLED_CACHE;
+	private static final ImageLoader.LoaderType LOADER_TYPE = ImageLoader.LoaderType.IMAGEJ_DEFAULT;
+	private static final FunctionFitter FITTER = new LevenbergMarquardtSolver(100000, 1e-3, 1e-6);
+	private static final FitFunction MODEL = new SigmoidalModel();
 
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
@@ -75,40 +83,88 @@ public class ExponentialFitClient {
 	public void process() throws IOException {
 		LOG.info("process: entry");
 		final RenderDataClient renderClient = params.renderWeb.getDataClient();
-		final ResolvedTileSpecCollection tileSpecs = renderClient.getResolvedTiles(params.stack, 2.0);
-		final ImageLoader.LoaderType loaderType = ImageLoader.LoaderType.IMAGEJ_DEFAULT;
+		final List<Double> zValues = renderClient.getStackZValues(params.stack);
 
-		final TileSpec firstTileSpec = tileSpecs.getTileSpecs().stream().findFirst().orElseThrow();
-		final int height = firstTileSpec.getHeight();
-		final double[][] pixels = new double[height][];
-		for (int y = 0; y < height; y++) {
-			pixels[y] = new double[] { y };
+		final PrintWriter writer = getWriterIfDesired();
+		if (writer != null) {
+			writer.println("tileId,a,b,c");
 		}
 
-		final TileSpec tileSpec = tileSpecs.getTileSpecs().stream().findFirst().orElseThrow();
-		final ImageProcessor image = IMAGE_LOADER.get(tileSpec.getTileImageUrl(), 0, false, false, loaderType, null);
-		final double[] average = new double[image.getHeight()];
+//		for (final double z : zValues) {
+		for (final double z : zValues.subList(1, 2)) {
+			final ResolvedTileSpecCollection tileSpecs = renderClient.getResolvedTiles(params.stack, z);
+			final Map<String, double[]> coefficients = estimateCoefficients(tileSpecs);
+
+			if (writer != null) {
+				LOG.info("process: writing coefficients for z={} to file {}", z, params.coefficientsFile);
+				appendCoefficients(coefficients, writer);
+			}
+		}
+
+		if (writer != null) {
+			writer.close();
+		}
+	}
+
+	private PrintWriter getWriterIfDesired() throws FileNotFoundException {
+		if (params.coefficientsFile == null) {
+			return null;
+		}
+		final File coefficientsFile = new File(params.coefficientsFile);
+		if (coefficientsFile.exists()) {
+			LOG.error("process: coefficients file {} already exists", params.coefficientsFile);
+			System.exit(1);
+		}
+		return new PrintWriter(coefficientsFile);
+	}
+
+	private static Map<String, double[]> estimateCoefficients(final ResolvedTileSpecCollection tileSpecs) {
+		final TileSpec firstTileSpec = tileSpecs.getTileSpecs().stream().findFirst().orElseThrow();
+		final int height = firstTileSpec.getHeight();
+		final double[][] pixels = getEvaluationPoints(height);
+		final double[] averages = new double[height];
+		final Map<String, double[]> coefficients = new HashMap<>();
+
+		for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
+			final ImageProcessor image = IMAGE_LOADER.get(tileSpec.getTileImageUrl(), 0, false, false, LOADER_TYPE, null);
+			updateAverages(image, averages);
+
+			final double[] parameters = new double[] {averages[0], 1, 0};
+			try {
+				FITTER.fit(pixels, averages, parameters, MODEL);
+			} catch (final Exception e) {
+				LOG.error("process: error fitting model", e);
+			}
+
+			coefficients.put(tileSpec.getTileId(), parameters);
+		}
+		return coefficients;
+	}
+
+	private static void updateAverages(final ImageProcessor image, final double[] average) {
 		for (int y = 0; y < image.getHeight(); y++) {
 			double sum = 0;
 			for (int x = 0; x < image.getWidth(); x++) {
 				sum += image.getf(x, y);
 			}
 			average[y] = sum / image.getHeight();
-			pixels[y] = new double[] { y };
 		}
-		System.out.println("average = " + Arrays.toString(average));
+	}
 
-		final FunctionFitter fitter = new LevenbergMarquardtSolver();
-		final FitFunction model = new SigmoidalModel();
-		final double[] parameters = new double[]{average[0], 1, 0};
-
-		try {
-			fitter.fit(pixels, average, parameters, model);
-		} catch (final Exception e) {
-			LOG.error("process: error fitting model", e);
+	private static double[][] getEvaluationPoints(final int n) {
+		final double[][] pixels = new double[n][];
+		for (int y = 0; y < n; y++) {
+			pixels[y] = new double[] {y + 0.5};
 		}
+		return pixels;
+	}
 
-		System.out.println("fitted parameters = " + Arrays.toString(parameters));
+	private void appendCoefficients(final Map<String, double[]> coefficients, final PrintWriter writer) {
+		for (final Map.Entry<String, double[]> entry : coefficients.entrySet()) {
+			final String tileId = entry.getKey();
+			final double[] coeff = entry.getValue();
+			writer.println(tileId + "," + coeff[0] + "," + coeff[1] + "," + coeff[2]);
+		}
 	}
 
 	/**
@@ -118,6 +174,7 @@ public class ExponentialFitClient {
 
 		@Override
 		public double val(final double[] x, final double[] a) {
+			// b(1) ./ (1 + exp(- b(2) * (x - b(3))));
 			return a[0] / (1 + Math.exp(-a[1] * (x[0] - a[2])));
 		}
 

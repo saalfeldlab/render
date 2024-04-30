@@ -22,6 +22,7 @@ public class ExponentialFitClientTest {
                 "--project", "slab_070_to_079",
                 "--stack", "s070_m104_align",
                 "--targetStack", "s070_m104_align_exp_test01",
+                "--coefficientsFile", "./coefficients.csv",
                 "--completeTargetStack",
         };
 
