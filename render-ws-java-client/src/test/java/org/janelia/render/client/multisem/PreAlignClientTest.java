@@ -1,18 +1,18 @@
-package org.janelia.render.client;
+package org.janelia.render.client.multisem;
 
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
- * Tests the {@link MultiSemPreAlignClient} class.
+ * Tests the {@link PreAlignClient} class.
  *
  * @author Michael Innerberger
  */
-public class MultiSemPreAlignClientTest {
+public class PreAlignClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new MultiSemPreAlignClient.Parameters());
+        CommandLineParameters.parseHelp(new PreAlignClient.Parameters());
     }
 
     public static void main(final String[] args) {
@@ -32,6 +32,6 @@ public class MultiSemPreAlignClientTest {
                 "--numThreads", "8"
         };
 
-        MultiSemPreAlignClient.main(effectiveArgs);
+        PreAlignClient.main(effectiveArgs);
     }
 }
