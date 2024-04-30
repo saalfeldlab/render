@@ -39,7 +39,7 @@ public class ExponentialFitClient {
 
 	private static final ImageProcessorCache IMAGE_LOADER = ImageProcessorCache.DISABLED_CACHE;
 	private static final ImageLoader.LoaderType LOADER_TYPE = ImageLoader.LoaderType.IMAGEJ_DEFAULT;
-	private static final FunctionFitter FITTER = new LevenbergMarquardtSolver(100000, 1e-3, 1e-6);
+	private static final FunctionFitter FITTER = new LevenbergMarquardtSolver(1000, 1e-3, 1e-6);
 	private static final FitFunction MODEL = new SigmoidalModel();
 
 	public static class Parameters extends CommandLineParameters {
@@ -90,8 +90,7 @@ public class ExponentialFitClient {
 			writer.println("tileId,a,b,c");
 		}
 
-//		for (final double z : zValues) {
-		for (final double z : zValues.subList(1, 2)) {
+		for (final double z : zValues) {
 			final ResolvedTileSpecCollection tileSpecs = renderClient.getResolvedTiles(params.stack, z);
 			final Map<String, double[]> coefficients = estimateCoefficients(tileSpecs);
 
@@ -121,7 +120,7 @@ public class ExponentialFitClient {
 	private static Map<String, double[]> estimateCoefficients(final ResolvedTileSpecCollection tileSpecs) {
 		final TileSpec firstTileSpec = tileSpecs.getTileSpecs().stream().findFirst().orElseThrow();
 		final int height = firstTileSpec.getHeight();
-		final double[][] pixels = getEvaluationPoints(height);
+		final double[][] evaluationPoints = getPixelMidpoints(height);
 		final double[] averages = new double[height];
 		final Map<String, double[]> coefficients = new HashMap<>();
 
@@ -131,7 +130,7 @@ public class ExponentialFitClient {
 
 			final double[] parameters = new double[] {averages[0], 1, 0};
 			try {
-				FITTER.fit(pixels, averages, parameters, MODEL);
+				FITTER.fit(evaluationPoints, averages, parameters, MODEL);
 			} catch (final Exception e) {
 				LOG.error("process: error fitting model", e);
 			}
@@ -147,11 +146,11 @@ public class ExponentialFitClient {
 			for (int x = 0; x < image.getWidth(); x++) {
 				sum += image.getf(x, y);
 			}
-			average[y] = sum / image.getHeight();
+			average[y] = sum / image.getWidth();
 		}
 	}
 
-	private static double[][] getEvaluationPoints(final int n) {
+	private static double[][] getPixelMidpoints(final int n) {
 		final double[][] pixels = new double[n][];
 		for (int y = 0; y < n; y++) {
 			pixels[y] = new double[] {y + 0.5};
@@ -174,7 +173,6 @@ public class ExponentialFitClient {
 
 		@Override
 		public double val(final double[] x, final double[] a) {
-			// b(1) ./ (1 + exp(- b(2) * (x - b(3))));
 			return a[0] / (1 + Math.exp(-a[1] * (x[0] - a[2])));
 		}
 
