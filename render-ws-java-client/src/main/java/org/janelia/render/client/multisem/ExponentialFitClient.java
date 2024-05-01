@@ -8,6 +8,7 @@ import net.imglib2.algorithm.localization.FunctionFitter;
 import net.imglib2.algorithm.localization.LevenbergMarquardtSolver;
 import org.janelia.alignment.filter.ExponentialIntensityFilter;
 import org.janelia.alignment.filter.Filter;
+import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -184,6 +185,7 @@ public class ExponentialFitClient {
 	private Map<String, double[]> convertToMultiplicativeFactors(final Map<String, double[]> coefficients, final boolean averageOverLayer) {
 		final Map<String, double[]> filterCoefficients = new HashMap<>();
 		final double[] average = new double[2];
+		final double threshold = 100.0;
 
 		for (final Map.Entry<String, double[]> entry : coefficients.entrySet()) {
 			final String tileId = entry.getKey();
@@ -191,7 +193,7 @@ public class ExponentialFitClient {
 
 			// first coefficient is the baseline intensity, which is discarded
 			if (averageOverLayer) {
-				if (coeff[0] > 100 || coeff[1] > 100 || coeff[2] > 100) {
+				if (coeff[0] > threshold || coeff[1] > threshold || coeff[2] > threshold) {
 					LOG.debug("convertToMultiplicativeFactors: skipping outlier tile {}", tileId);
 					continue;
 				}
@@ -218,7 +220,8 @@ public class ExponentialFitClient {
 			final double[] coeff = entry.getValue();
 
 			final Filter filter = new ExponentialIntensityFilter(coeff[0], coeff[1]);
-			tileSpec.addFilter(filter);
+			final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
+			tileSpec.setFilterSpec(filterSpec);
 		}
 	}
 
