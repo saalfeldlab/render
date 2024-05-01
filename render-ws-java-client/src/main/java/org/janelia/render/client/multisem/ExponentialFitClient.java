@@ -106,7 +106,7 @@ public class ExponentialFitClient {
 				appendCoefficients(coefficients, writer);
 			}
 
-			final Map<String, double[]> filterCoefficients = convertToMultiplicativeFactors(coefficients, params.averageOverLayer);
+			final Map<String, double[]> filterCoefficients = convertToMultiplicativeFactors(coefficients);
 			applyExponentialCorrection(tileSpecs, filterCoefficients);
 
 			renderClient.saveResolvedTiles(tileSpecs, params.targetStack, z);
@@ -182,35 +182,50 @@ public class ExponentialFitClient {
 		}
 	}
 
-	private Map<String, double[]> convertToMultiplicativeFactors(final Map<String, double[]> coefficients, final boolean averageOverLayer) {
+	private Map<String, double[]> convertToMultiplicativeFactors(final Map<String, double[]> coefficients) {
 		final Map<String, double[]> filterCoefficients = new HashMap<>();
-		final double[] average = new double[2];
-		final double threshold = 100.0;
+		final double[] average = computeAverageCoefficients(coefficients);
 
 		for (final Map.Entry<String, double[]> entry : coefficients.entrySet()) {
 			final String tileId = entry.getKey();
 			final double[] coeff = entry.getValue();
 
 			// first coefficient is the baseline intensity, which is discarded
-			if (averageOverLayer) {
-				if (coeff[0] > threshold || coeff[1] > threshold || coeff[2] > threshold) {
-					LOG.debug("convertToMultiplicativeFactors: skipping outlier tile {}", tileId);
-					continue;
-				}
-				average[0] += coeff[1];
-				average[1] += coeff[2];
+			if (average != null) {
 				filterCoefficients.put(tileId, average);
 			} else {
 				filterCoefficients.put(tileId, new double[] {coeff[1], coeff[2]});
 			}
 		}
 
-		if (averageOverLayer) {
-			average[0] /= coefficients.size();
-			average[1] /= coefficients.size();
+		return filterCoefficients;
+	}
+
+	private double[] computeAverageCoefficients(final Map<String, double[]> coefficients) {
+		if (! params.averageOverLayer) {
+			return null;
 		}
 
-		return filterCoefficients;
+		LOG.info("computeAverage: enter");
+		final double[] average = new double[2];
+		int count = 0;
+		for (final Map.Entry<String, double[]> entry : coefficients.entrySet()) {
+			final String tileId = entry.getKey();
+			final double[] coeff = entry.getValue();
+			
+			if (coeff[1] > 10.0 || Math.abs(coeff[2]) > 50.0) {
+				LOG.debug("convertToMultiplicativeFactors: skipping outlier tile {}", tileId);
+				continue;
+			}
+			
+			average[0] += coeff[1];
+			average[1] += coeff[2];
+			count++;
+		}
+		
+		average[0] /= count;
+		average[1] /= count;
+		return average;
 	}
 
 	private void applyExponentialCorrection(final ResolvedTileSpecCollection tileSpecs, final Map<String, double[]> filterCoefficients) {
