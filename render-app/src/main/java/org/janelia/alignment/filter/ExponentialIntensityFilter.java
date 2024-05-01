@@ -1,6 +1,5 @@
 package org.janelia.alignment.filter;
 
-import ij.plugin.ContrastEnhancer;
 import ij.process.ImageProcessor;
 
 import java.util.LinkedHashMap;
