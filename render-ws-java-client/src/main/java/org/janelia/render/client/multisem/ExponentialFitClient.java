@@ -127,8 +127,7 @@ public class ExponentialFitClient {
 		}
 		final File coefficientsFile = new File(params.coefficientsFile);
 		if (coefficientsFile.exists()) {
-			LOG.error("process: coefficients file {} already exists", params.coefficientsFile);
-			System.exit(1);
+			throw new IllegalArgumentException("process: coefficients file '" + params.coefficientsFile + "' already exists");
 		}
 		return new PrintWriter(coefficientsFile);
 	}
@@ -191,11 +190,8 @@ public class ExponentialFitClient {
 			final double[] coeff = entry.getValue();
 
 			// first coefficient is the baseline intensity, which is discarded
-			if (average != null) {
-				filterCoefficients.put(tileId, average);
-			} else {
-				filterCoefficients.put(tileId, new double[] {coeff[1], coeff[2]});
-			}
+			final double[] filterCoefficient = (average != null) ? average : new double[] {coeff[1], coeff[2]};
+			filterCoefficients.put(tileId, filterCoefficient);
 		}
 
 		return filterCoefficients;
@@ -206,7 +202,7 @@ public class ExponentialFitClient {
 			return null;
 		}
 
-		LOG.info("computeAverage: enter");
+		LOG.info("computeAverageCoefficients: enter");
 		final double[] average = new double[2];
 		int count = 0;
 		for (final Map.Entry<String, double[]> entry : coefficients.entrySet()) {
@@ -214,7 +210,7 @@ public class ExponentialFitClient {
 			final double[] coeff = entry.getValue();
 			
 			if (coeff[1] > 10.0 || Math.abs(coeff[2]) > 50.0) {
-				LOG.debug("convertToMultiplicativeFactors: skipping outlier tile {}", tileId);
+				LOG.debug("computeAverageCoefficients: skipping outlier tile {}", tileId);
 				continue;
 			}
 			
