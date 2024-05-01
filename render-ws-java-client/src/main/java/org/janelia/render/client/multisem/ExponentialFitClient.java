@@ -7,7 +7,6 @@ import net.imglib2.algorithm.localization.FitFunction;
 import net.imglib2.algorithm.localization.FunctionFitter;
 import net.imglib2.algorithm.localization.LevenbergMarquardtSolver;
 import org.janelia.alignment.filter.ExponentialIntensityFilter;
-import org.janelia.alignment.filter.Filter;
 import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -230,8 +229,7 @@ public class ExponentialFitClient {
 			final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
 			final double[] coeff = entry.getValue();
 
-			final Filter filter = new ExponentialIntensityFilter(coeff[0], coeff[1]);
-			final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
+			final FilterSpec filterSpec = FilterSpec.forFilter(new ExponentialIntensityFilter(coeff[0], coeff[1]));
 			tileSpec.setFilterSpec(filterSpec);
 		}
 	}
