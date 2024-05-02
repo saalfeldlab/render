@@ -18,11 +18,10 @@ public class ExponentialFitClientTest {
     public static void main(final String[] args) {
         final String[] effectiveArgs = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--owner", "hess_wafer_53d",
+                "--owner", "hess_wafer_53_center7",
                 "--project", "slab_070_to_079",
-                "--stack", "s070_m104_align",
-                "--targetStack", "s070_m104_align_exp_test01",
-                "--coefficientsFile", "./coefficients.csv",
+                "--stack", "s070_m104_align_no35_horiz",
+                "--targetStack", "s070_m104_align_no35_horiz_exp",
                 "--completeTargetStack",
         };
 

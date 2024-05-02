@@ -24,6 +24,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ public class ExponentialFitClient {
 	private static final ImageLoader.LoaderType LOADER_TYPE = ImageLoader.LoaderType.IMAGEJ_DEFAULT;
 	private static final FunctionFitter FITTER = new LevenbergMarquardtSolver(1000, 1e-3, 1e-6);
 	private static final FitFunction MODEL = new SigmoidalModel();
+	private static final int MAX_PIXELS_TO_FIT = 128;
 
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
@@ -56,7 +58,7 @@ public class ExponentialFitClient {
 		private String coefficientsFile = null;
 		@Parameter(names = "--averageOverLayer", description = "If true, average all estimated models and apply the average to the tiles (outliers are filtered)")
 		public boolean averageOverLayer = false;
-		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after fitting", arity = 0)
+		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after fitting")
 		public boolean completeTargetStack = false;
 	}
 
@@ -133,29 +135,42 @@ public class ExponentialFitClient {
 
 	private static Map<String, double[]> estimateCoefficients(final ResolvedTileSpecCollection tileSpecs) {
 		final TileSpec firstTileSpec = tileSpecs.getTileSpecs().stream().findFirst().orElseThrow();
-		final int height = firstTileSpec.getHeight();
-		final double[][] evaluationPoints = getPixelMidpoints(height);
-		final double[] averages = new double[height];
+		final int n_pixels = Math.min(MAX_PIXELS_TO_FIT, firstTileSpec.getHeight());
+		final double[][] evaluationPoints = getPixelMidpoints(n_pixels);
+		final double[] averages = new double[n_pixels];
 		final Map<String, double[]> coefficients = new HashMap<>();
 
 		for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
 			final ImageProcessor image = IMAGE_LOADER.get(tileSpec.getTileImageUrl(), 0, false, false, LOADER_TYPE, null);
 			updateAverages(image, averages);
 
-			final double[] parameters = new double[] {averages[0], 1, 0};
-			try {
-				FITTER.fit(evaluationPoints, averages, parameters, MODEL);
-			} catch (final Exception e) {
-				LOG.error("process: error fitting model", e);
+			// adaptively try to find good parameters; if not possible, skip this tile
+			double[] parameters = null;
+			for (int n = MAX_PIXELS_TO_FIT; n >= 32; n /= 2) {
+				parameters = new double[] {averages[0], 1, 0};
+				try {
+					FITTER.fit(Arrays.copyOfRange(evaluationPoints, 0, n), Arrays.copyOfRange(averages, 0, n), parameters, MODEL);
+				} catch (final Exception e) {
+					LOG.error("process: error fitting model", e);
+				}
+
+				if (! isOutlier(parameters)) {
+					break;
+				}
+				parameters = null;
 			}
 
-			coefficients.put(tileSpec.getTileId(), parameters);
+			if (parameters == null) {
+				LOG.warn("estimateCoefficients: could not fit model for tile {}", tileSpec.getTileId());
+			} else {
+				coefficients.put(tileSpec.getTileId(), parameters);
+			}
 		}
 		return coefficients;
 	}
 
 	private static void updateAverages(final ImageProcessor image, final double[] average) {
-		for (int y = 0; y < image.getHeight(); y++) {
+		for (int y = 0; y < average.length; y++) {
 			double sum = 0;
 			for (int x = 0; x < image.getWidth(); x++) {
 				sum += image.getf(x, y);
@@ -200,26 +215,16 @@ public class ExponentialFitClient {
 		if (! params.averageOverLayer) {
 			return null;
 		}
+		LOG.info("computeAverageCoefficients: start computation");
 
-		LOG.info("computeAverageCoefficients: enter");
 		final double[] average = new double[2];
-		int count = 0;
-		for (final Map.Entry<String, double[]> entry : coefficients.entrySet()) {
-			final String tileId = entry.getKey();
-			final double[] coeff = entry.getValue();
-			
-			if (isOutlier(coeff)) {
-				LOG.debug("computeAverageCoefficients: skipping outlier tile {}", tileId);
-				continue;
-			}
-			
+		for (final double[] coeff : coefficients.values()) {
 			average[0] += coeff[1];
 			average[1] += coeff[2];
-			count++;
 		}
 		
-		average[0] /= count;
-		average[1] /= count;
+		average[0] /= coefficients.size();
+		average[1] /= coefficients.size();
 		return average;
 	}
 
