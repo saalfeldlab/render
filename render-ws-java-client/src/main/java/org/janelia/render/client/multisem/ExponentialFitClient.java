@@ -54,8 +54,8 @@ public class ExponentialFitClient {
 		public String targetStack;
 		@Parameter(names = "--coefficientsFile", description = "File name for storing the estimated coefficients in the csv format; If not given, coefficients are not stored")
 		private String coefficientsFile = null;
-		@Parameter(names = "--averageOverLayer", description = "If true, average all estimated models and apply the average to the tiles (outliers are filtered)", arity = 0)
-		public boolean averageOverLayer = true;
+		@Parameter(names = "--averageOverLayer", description = "If true, average all estimated models and apply the average to the tiles (outliers are filtered)")
+		public boolean averageOverLayer = false;
 		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after fitting", arity = 0)
 		public boolean completeTargetStack = false;
 	}
@@ -208,7 +208,7 @@ public class ExponentialFitClient {
 			final String tileId = entry.getKey();
 			final double[] coeff = entry.getValue();
 			
-			if (coeff[1] > 10.0 || Math.abs(coeff[2]) > 50.0) {
+			if (isOutlier(coeff)) {
 				LOG.debug("computeAverageCoefficients: skipping outlier tile {}", tileId);
 				continue;
 			}
@@ -221,6 +221,11 @@ public class ExponentialFitClient {
 		average[0] /= count;
 		average[1] /= count;
 		return average;
+	}
+
+	private static boolean isOutlier(final double[] c) {
+		// c[0] = saturation value, c[1] = steepness, c[2] = center
+		return c[0] > 255 || c[1] > 10.0 || Math.abs(c[2]) > 50.0;
 	}
 
 	private void applyExponentialCorrection(final ResolvedTileSpecCollection tileSpecs, final Map<String, double[]> filterCoefficients) {
