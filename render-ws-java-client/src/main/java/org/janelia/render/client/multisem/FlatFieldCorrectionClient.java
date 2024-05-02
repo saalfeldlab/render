@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.multisem;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -14,9 +14,10 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,8 +31,7 @@ import java.util.List;
  *
  * @author Michael Innerberger
  */
-public class MultiSemFlatFieldCorrectionClient {
-
+public class FlatFieldCorrectionClient {
 
 	// make cache large enough to hold all flat field estimates for one layer
 	private final Parameters params;
@@ -50,7 +50,7 @@ public class MultiSemFlatFieldCorrectionClient {
 		private String targetStackSuffix = "_corrected";
 		@Parameter(names = "--inputRoot", description = "Root folder for input data; if given, the structure under this root is replicated in the output folder")
 		private String inputRoot = null;
-		@Parameter(names = "--flatFieldConstantFromZ", description = "Maximum z-layer of flat field estimates to consider. All subsequent z-layers get corrected with the maxium, since the estimates can be bad for the last few z-layers. If not given, all z-layers are considered")
+		@Parameter(names = "--flatFieldConstantFromZ", description = "Maximum z-layer of flat field estimates to consider. All subsequent z-layers get corrected with the maximum, since the estimates can be bad for the last few z-layers. If not given, all z-layers are considered")
 		private Integer flatFieldConstantFromZ = Integer.MAX_VALUE;
 		@Parameter(names = "--cacheSizeGb", description = "Size of the image processor cache in GB (should be enough to hold one layer of flat field estimates)")
 		private double cacheSizeGb = 1.5;
@@ -65,14 +65,14 @@ public class MultiSemFlatFieldCorrectionClient {
 				parameters.parse(args);
 				LOG.info("runClient: entry, parameters={}", parameters);
 
-				final MultiSemFlatFieldCorrectionClient client = new MultiSemFlatFieldCorrectionClient(parameters);
+				final FlatFieldCorrectionClient client = new FlatFieldCorrectionClient(parameters);
 				client.correctTiles();
 			}
 		};
 		clientRunner.run();
 	}
 
-	public MultiSemFlatFieldCorrectionClient(final Parameters parameters) {
+	public FlatFieldCorrectionClient(final Parameters parameters) {
 		this.params = parameters;
 		final double cacheSizeInBytes = 1_000_000_000 * parameters.cacheSizeGb;
 		this.cache = new ImageProcessorCache((long) cacheSizeInBytes, false, false);
@@ -195,5 +195,5 @@ public class MultiSemFlatFieldCorrectionClient {
 		IJ.save(imp, tileSpec.getImagePath());
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(MultiSemFlatFieldCorrectionClient.class);
+	private static final Logger LOG = LoggerFactory.getLogger(FlatFieldCorrectionClient.class);
 }

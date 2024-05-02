@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.multisem;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
@@ -9,6 +9,8 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicatio
 import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.solvers.affine.MultiSemPreAligner;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MatchCollectionParameters;
@@ -28,7 +30,7 @@ import java.util.concurrent.ExecutionException;
  *
  * @author Michael Innerberger
  */
-public class MultiSemPreAlignClient implements Serializable {
+public class PreAlignClient implements Serializable {
 
 	public static class Parameters extends CommandLineParameters {
 
@@ -97,7 +99,7 @@ public class MultiSemPreAlignClient implements Serializable {
 
 				LOG.info("runClient: entry, parameters={}", parameters);
 
-				final MultiSemPreAlignClient client = new MultiSemPreAlignClient(parameters);
+				final PreAlignClient client = new PreAlignClient(parameters);
 
 				client.process();
 			}
@@ -109,7 +111,7 @@ public class MultiSemPreAlignClient implements Serializable {
 	private final Parameters parameters;
 	private final RenderDataClient dataClient;
 
-	public MultiSemPreAlignClient(final Parameters parameters) {
+	public PreAlignClient(final Parameters parameters) {
 		this.parameters = parameters;
 		this.dataClient = parameters.renderWeb.getDataClient();
 	}
@@ -160,5 +162,5 @@ public class MultiSemPreAlignClient implements Serializable {
 		}
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(MultiSemPreAlignClient.class);
+	private static final Logger LOG = LoggerFactory.getLogger(PreAlignClient.class);
 }

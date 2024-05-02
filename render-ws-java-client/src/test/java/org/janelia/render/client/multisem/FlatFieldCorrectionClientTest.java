@@ -1,18 +1,18 @@
-package org.janelia.render.client;
+package org.janelia.render.client.multisem;
 
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
- * Tests the {@link MultiSemFlatFieldCorrectionClient} class.
+ * Tests the {@link FlatFieldCorrectionClient} class.
  *
  * @author Michael Innerberger
  */
-public class MultiSemFlatFieldCorrectionClientTest {
+public class FlatFieldCorrectionClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new MultiSemFlatFieldCorrectionClient.Parameters());
+        CommandLineParameters.parseHelp(new FlatFieldCorrectionClient.Parameters());
     }
 
     public static void main(String[] args) {
@@ -28,7 +28,7 @@ public class MultiSemFlatFieldCorrectionClientTest {
                 "--flatFieldFormat", "flat_field_z%03d_sfov%03d_n2000.tif",
         };
 
-        MultiSemFlatFieldCorrectionClient.main(args);
+        FlatFieldCorrectionClient.main(args);
     }
 
 }
