@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Holds a collection of {@link Filter}s to be applied in sequence.
+ * Holds a list of {@link Filter}s to be applied in sequence (first to last).
  *
  * @author Michael Innerberger
  */
@@ -33,7 +33,8 @@ public class CompositeFilter implements Filter {
     @Override
     public void init(final Map<String, String> params) {
         filters = new ArrayList<>(params.size());
-        for (final String serializedFilter : params.values()) {
+        for (int i = 0; i < params.size(); i++) {
+            final String serializedFilter = params.get(filterKey(i));
             final FilterSpec filterSpec = FilterSpec.fromJson(serializedFilter);
             filters.add(filterSpec.buildInstance());
         }
@@ -44,9 +45,13 @@ public class CompositeFilter implements Filter {
         final Map<String, String> map = new LinkedHashMap<>();
         for (int i = 0; i < filters.size(); i++) {
             final FilterSpec filterSpec = FilterSpec.forFilter(filters.get(i));
-            map.put(String.valueOf(i), filterSpec.toJson());
+            map.put(filterKey(i), filterSpec.toJson());
         }
         return map;
+    }
+
+    private static String filterKey(final int i) {
+        return "filter" + i;
     }
 
     @Override
