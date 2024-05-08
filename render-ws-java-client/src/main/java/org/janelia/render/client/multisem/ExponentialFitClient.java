@@ -29,6 +29,7 @@ import java.io.PrintWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BinaryOperator;
 
 /**
  * Fits an exponential model in y to the image data of the given stack. This should correct an exponential
@@ -46,6 +47,7 @@ public class ExponentialFitClient {
 	private static final ImageLoader.LoaderType LOADER_TYPE = ImageLoader.LoaderType.IMAGEJ_DEFAULT;
 	private static final FunctionFitter FITTER = new LevenbergMarquardtSolver(1000, 1e-3, 1e-6);
 	private static final FitFunction MODEL = new SigmoidalModel();
+	private static final double[] DUMMY_VALUE = new double[3];
 
 	/**
 	 * Minimal intensity drop (in percent) that is allowed to be corrected. E.g., if the value is 0.75, any fitted
@@ -63,14 +65,19 @@ public class ExponentialFitClient {
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
 		private final RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
+
 		@Parameter(names = "--stack", description = "Name of source stack", required = true)
 		private String stack;
+
 		@Parameter(names = "--targetStack", description = "Name of target stack", required = true)
 		private String targetStack;
+
 		@Parameter(names = "--coefficientsFile", description = "File name for storing the estimated coefficients in the csv format; If not given, coefficients are not stored")
 		private String coefficientsFile = null;
-		@Parameter(names = "--averageOverLayer", description = "If true, average all estimated models and apply the average to the tiles (outliers are filtered)")
-		private boolean averageOverLayer = false;
+
+		@Parameter(names = "--outlierPolicy", description = "How to treat outliers (i.e., tiles for which the model could not be fitted)")
+		private OutlierPolicy outlierPolicy = OutlierPolicy.REPLACE_OUTLIERS;
+
 		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after fitting")
 		private boolean completeTargetStack = false;
 	}
@@ -107,10 +114,8 @@ public class ExponentialFitClient {
 		renderClient.setupDerivedStack(stackMetaData, params.targetStack);
 
 		final PrintWriter writer = getWriterIfDesired();
-		if (writer != null) {
-			writer.println("tileId,a,b,c");
-		}
 
+		// process the stack by layer (since averaging is done on the layer level)
 		for (final double z : zValues) {
 			final ResolvedTileSpecCollection tileSpecs = renderClient.getResolvedTiles(params.stack, z);
 			final Map<String, double[]> coefficients = estimateCoefficients(tileSpecs);
@@ -120,8 +125,8 @@ public class ExponentialFitClient {
 				appendCoefficients(coefficients, writer);
 			}
 
-			final Map<String, double[]> filterCoefficients = convertToMultiplicativeFactors(coefficients);
-			applyExponentialCorrection(tileSpecs, filterCoefficients);
+			final Map<String, Filter> filters = convertToFilters(coefficients);
+			applyExponentialCorrection(tileSpecs, filters);
 
 			renderClient.saveResolvedTiles(tileSpecs, params.targetStack, z);
 		}
@@ -129,7 +134,7 @@ public class ExponentialFitClient {
 		if (writer != null) {
 			writer.close();
 		}
-		
+
 		if (params.completeTargetStack) {
 			renderClient.setStackState(params.targetStack, StackMetaData.StackState.COMPLETE);
 		}
@@ -143,37 +148,52 @@ public class ExponentialFitClient {
 		if (coefficientsFile.exists()) {
 			throw new IllegalArgumentException("process: coefficients file '" + params.coefficientsFile + "' already exists");
 		}
-		return new PrintWriter(coefficientsFile);
+		final PrintWriter writer = new PrintWriter(coefficientsFile);
+		writer.println("tileId,a,b,c");
+		return writer;
 	}
 
-	private static Map<String, double[]> estimateCoefficients(final ResolvedTileSpecCollection tileSpecs) {
+	private Map<String, double[]> estimateCoefficients(final ResolvedTileSpecCollection tileSpecs) {
 		final TileSpec firstTileSpec = tileSpecs.getTileSpecs().stream().findFirst().orElseThrow();
 		final int n_pixels = firstTileSpec.getHeight();
 		final double[][] evaluationPoints = getPixelMidpoints(n_pixels);
 		final double[] averages = new double[n_pixels];
-		final Map<String, double[]> coefficients = new HashMap<>();
+		final Map<String, double[]> rawCoefficients = new HashMap<>();
 
+		// fit the model on all tiles
 		for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
 			final ImageProcessor image = IMAGE_LOADER.get(tileSpec.getTileImageUrl(), 0, false, false, LOADER_TYPE, null);
 			updateAverages(image, averages);
 
-			// adaptively try to find good parameters; if not possible, skip this tile
-			final double[] parameters = new double[] {averages[0], 1, 0};
+			double[] parameters = new double[] {averages[0], 1, 0};
 			try {
 				FITTER.fit(evaluationPoints, averages, parameters, MODEL);
 			} catch (final Exception e) {
-				LOG.error("process: error fitting model", e);
+				// if we don't keep outliers, these values are being discarded anyway, so no need for an exception
+				if (params.outlierPolicy == OutlierPolicy.KEEP_OUTLIERS) {
+					throw new IllegalStateException("estimateCoefficients: could not fit model for tile " + tileSpec.getTileId(), e);
+				}
+				parameters = DUMMY_VALUE;
 			}
 
-			if (isOutlier(parameters)) {
-				LOG.warn("estimateCoefficients: could not fit model for tile {}", tileSpec.getTileId());
-			} else {
-				coefficients.put(tileSpec.getTileId(), parameters);
+			if (OutlierPolicy.isNotAcceptable(parameters)) {
+				LOG.warn("detected outlier for tile {}", tileSpec.getTileId());
 			}
-
-			break;
+			rawCoefficients.put(tileSpec.getTileId(), parameters);
 		}
-		return coefficients;
+
+		// remove outliers or replace them with the average as dictated by the policy
+		final double[] average = computeAverageCoefficients(rawCoefficients);
+		LOG.info("average coefficients for layer {}: a={}, b={}, c={}", firstTileSpec.getZ(), average[0], average[1], average[2]);
+
+		final Map<String, double[]> sanitizedCoefficients = new HashMap<>();
+		rawCoefficients.forEach((tileId, coeff) -> {
+			final double[] newCoeff = params.outlierPolicy.apply(coeff, average);
+			if (newCoeff != DUMMY_VALUE) {
+				sanitizedCoefficients.put(tileId, newCoeff);
+			}
+		});
+		return sanitizedCoefficients;
 	}
 
 	private static void updateAverages(final ImageProcessor image, final double[] average) {
@@ -202,59 +222,41 @@ public class ExponentialFitClient {
 		}
 	}
 
-	private Map<String, double[]> convertToMultiplicativeFactors(final Map<String, double[]> coefficients) {
-		final Map<String, double[]> filterCoefficients = new HashMap<>();
-		final double[] average = computeAverageCoefficients(coefficients);
-
-		for (final Map.Entry<String, double[]> entry : coefficients.entrySet()) {
-			final String tileId = entry.getKey();
-			final double[] coeff = entry.getValue();
-
-			// first coefficient is the baseline intensity, which is discarded
-			final double[] filterCoefficient = (average != null) ? average : new double[] {coeff[1], coeff[2]};
-			filterCoefficients.put(tileId, filterCoefficient);
-		}
-
-		return filterCoefficients;
+	private Map<String, Filter> convertToFilters(final Map<String, double[]> coefficients) {
+		final Map<String, Filter> filters = new HashMap<>();
+		coefficients.forEach((tileId, coeff) -> filters.put(tileId, new ExponentialIntensityFilter(coeff[1], coeff[2])));
+		return filters;
 	}
 
 	private double[] computeAverageCoefficients(final Map<String, double[]> coefficients) {
-		if (! params.averageOverLayer) {
-			return null;
+		final double[] average = new double[3];
+		int count = 0;
+		for (final double[] c : coefficients.values()) {
+			if (! OutlierPolicy.isNotAcceptable(c)) {
+				for (int i = 0; i < 3; i++) {
+					average[i] += c[i];
+				}
+				count++;
+			}
 		}
-		LOG.info("computeAverageCoefficients: start computation");
 
-		final double[] average = new double[2];
-		for (final double[] coeff : coefficients.values()) {
-			average[0] += coeff[1];
-			average[1] += coeff[2];
+		for (int i = 0; i < 3; i++) {
+			average[i] /= count;
 		}
-		
-		average[0] /= coefficients.size();
-		average[1] /= coefficients.size();
 		return average;
 	}
 
-	private static boolean isOutlier(final double[] c) {
-		final double fInfinity = c[0];
-		final double f0 = MODEL.val(new double[] {0}, c) / fInfinity;
-		final double fTop = MODEL.val(new double[] {MAX_CORRECTION_PIXELS}, c) / fInfinity;
-		return f0 < MIN_CORRECTION_PERCENTAGE || fTop < 0.99;
-	}
-
-	private void applyExponentialCorrection(final ResolvedTileSpecCollection tileSpecs, final Map<String, double[]> filterCoefficients) {
-		for (final Map.Entry<String, double[]> entry : filterCoefficients.entrySet()) {
-			final String tileId = entry.getKey();
+	private void applyExponentialCorrection(final ResolvedTileSpecCollection tileSpecs, final Map<String, Filter> filters) {
+		filters.forEach((tileId, filter) -> {
 			final TileSpec tileSpec = tileSpecs.getTileSpec(tileId);
-			final double[] coeff = entry.getValue();
-
-			Filter filter = new ExponentialIntensityFilter(coeff[0], coeff[1]);
 			final FilterSpec existingFilterSpec = tileSpec.getFilterSpec();
+
 			if (existingFilterSpec != null) {
 				filter = new CompositeFilter(existingFilterSpec.buildInstance(), filter);
 			}
+
 			tileSpec.setFilterSpec(FilterSpec.forFilter(filter));
-		}
+		});
 	}
 
 
@@ -289,6 +291,50 @@ public class ExponentialFitClient {
 		public double hessian(final double[] x, final double[] a, final int i, final int j) {
 			throw new UnsupportedOperationException("Hessian not implemented for sigmoidal model");
 		}
+	}
+
+
+	public enum OutlierPolicy {
+		/**
+		 * Don't add any filters for tiles that are outliers.
+		 */
+		SKIP_OUTLIERS((coeff, avg) -> DUMMY_VALUE),
+		/**
+		 * Keep the filters for tiles that are outliers (mainly for testing purposes).
+		 */
+		KEEP_OUTLIERS((coeff, avg) -> coeff),
+		/**
+		 * Replace the filters for tiles that are outliers with the average filter for that layer (outliers
+		 * are not included in the average).
+		 */
+		REPLACE_OUTLIERS((coeff, avg) -> isNotAcceptable(coeff) ? avg : coeff),
+		/**
+		 * Replace all filters with the average filter for that layer (outliers are not included in the average).
+		 */
+		REPLACE_ALL((coeff, avg) -> avg);
+
+		final private BinaryOperator<double[]> action;
+
+
+		OutlierPolicy(final BinaryOperator<double[]> action) {
+			this.action = action;
+		}
+
+		public double[] apply(final double[] coeff, final double[] avg) {
+			return action.apply(coeff, avg);
+		}
+
+		static boolean isNotAcceptable(final double[] c) {
+			final double fInfinity = c[0];
+			final double f0 = MODEL.val(new double[] {0}, c) / fInfinity;
+			final double fTop = MODEL.val(new double[] {MAX_CORRECTION_PIXELS}, c) / fInfinity;
+			final boolean functionValuesAreBad = f0 < MIN_CORRECTION_PERCENTAGE || fTop < 0.99;
+			// fInfinity == 0 means that the model could not be fitted and a dummy value was used
+			final boolean saturationIsBad = fInfinity <= 0 || fInfinity > 255;
+			final boolean otherParametersAreBad = c[1] > 5 || c[2] > 100;
+			return saturationIsBad || otherParametersAreBad || functionValuesAreBad;
+		}
+
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(ExponentialFitClient.class);
