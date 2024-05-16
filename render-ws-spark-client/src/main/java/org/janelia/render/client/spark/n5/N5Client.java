@@ -332,6 +332,8 @@ public class N5Client {
 
         } else if (parameters.appendToExisting) {
 
+            checkConsistency(fullScaleDatasetName, dimensions, blockSize);
+
             if (fullScaleDatasetName.endsWith("s0")) {
                 final File parentDir = datasetDir.getParentFile();
                 final File[] downsampledDirs = parentDir.listFiles(DOWNSAMPLED_DIR_FILTER);
@@ -408,6 +410,35 @@ public class N5Client {
                            Paths.get(fullScaleDatasetName));
 
         sparkContext.close();
+    }
+
+    private void checkConsistency(final String fullScaleDatasetName, final long[] dimensions, final int[] blockSize) {
+        try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
+            final DatasetAttributes datasetAttributes = n5.getDatasetAttributes(fullScaleDatasetName);
+            final DataType dataType = getDataType();
+
+            if (! Arrays.equals(blockSize, datasetAttributes.getBlockSize())) {
+                throw new IllegalArgumentException("append blockSize " + Arrays.toString(blockSize) + " does not match existing dataset block size " + Arrays.toString(datasetAttributes.getBlockSize()));
+            }
+            if (dataType != datasetAttributes.getDataType()) {
+                throw new IllegalArgumentException("append dataType " + dataType + " does not match existing dataset data type " + datasetAttributes.getDataType());
+            }
+            final long[] existingDimensions = datasetAttributes.getDimensions();
+            if (dimensions.length != existingDimensions.length) {
+                throw new IllegalArgumentException("append dimensions " + Arrays.toString(dimensions) + " differ in length from existing dataset dimensions " + Arrays.toString(existingDimensions));
+            }
+            if (dimensions.length != 3) {
+                throw new IllegalArgumentException("append export not supported for " + dimensions.length + "D volumes");
+            }
+            for (int i = 0; i < dimensions.length; i++) {
+                if (dimensions[i] < existingDimensions[i]) {
+                    throw new IllegalArgumentException("append dimension " + i + " has shrunk, append dimensions are " + Arrays.toString(dimensions) + " but existing dataset dimensions are " + Arrays.toString(existingDimensions));
+                }
+            }
+            if (dimensions[2] == existingDimensions[2]) {
+                throw new IllegalArgumentException("nothing new to export since last z remains " + dimensions[2]);
+            }
+        }
     }
 
     public void renderStack(final JavaSparkContext sparkContext,
@@ -494,43 +525,15 @@ public class N5Client {
 
         final long minZToRender;
         try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
+            final DatasetAttributes existingAttributes = n5.getDatasetAttributes(fullScaleDatasetName);
+            final DatasetAttributes newDatasetAttributes = new DatasetAttributes(dimensions, blockSize, dataType, existingAttributes.getCompression());
 
-            final DatasetAttributes datasetAttributes = n5.getDatasetAttributes(fullScaleDatasetName);
-
-            if (! Arrays.equals(blockSize, datasetAttributes.getBlockSize())) {
-                throw new IllegalArgumentException("append blockSize " + Arrays.toString(blockSize) + " does not match existing dataset block size " + Arrays.toString(datasetAttributes.getBlockSize()));
-            }
-            if (dataType != datasetAttributes.getDataType()) {
-                throw new IllegalArgumentException("append dataType " + dataType + " does not match existing dataset data type " + datasetAttributes.getDataType());
-            }
-            final long[] existingDimensions = datasetAttributes.getDimensions();
-            if (dimensions.length != existingDimensions.length) {
-                throw new IllegalArgumentException("append dimensions " + Arrays.toString(dimensions) + " differ in length from existing dataset dimensions " + Arrays.toString(existingDimensions));
-            }
-            if (dimensions.length != 3) {
-                throw new IllegalArgumentException("append export not supported for " + dimensions.length + "D volumes");
-            }
-            for (int i = 0; i < dimensions.length; i++) {
-                if (dimensions[i] < existingDimensions[i]) {
-                    throw new IllegalArgumentException("append dimension " + i + " has shrunk, append dimensions are " + Arrays.toString(dimensions) + " but existing dataset dimensions are " + Arrays.toString(existingDimensions));
-                }
-            }
-            if (dimensions[2] == existingDimensions[2]) {
-                throw new IllegalArgumentException("nothing new to export since last z remains " + dimensions[2]);
-            }
-
-            n5.setDatasetAttributes(fullScaleDatasetName,
-                                    new DatasetAttributes(dimensions,
-                                                          blockSize,
-                                                          dataType,
-                                                          datasetAttributes.getCompression()));
+            n5.setDatasetAttributes(fullScaleDatasetName, newDatasetAttributes);
+            final long[] existingDimensions = existingAttributes.getDimensions();
             minZToRender = existingDimensions[2] + 1;
         }
 
-        updateFullScaleExportAttributes(parameters,
-                                        fullScaleDatasetName,
-                                        stackMetaData);
-
+        updateFullScaleExportAttributes(parameters, fullScaleDatasetName, stackMetaData);
         LOG.info("setupAppendExportN5: returning minZToRender value of {}, maxZ is {}", minZToRender, dimensions[2]);
 
         return minZToRender;
