@@ -332,13 +332,6 @@ public class N5Client {
 
         } else if (parameters.appendToExisting) {
 
-            final Long minZToRender = setupAppendExportN5(parameters,
-                                                          fullScaleDatasetName,
-                                                          stackMetaData,
-                                                          dimensions,
-                                                          blockSize,
-                                                          getDataType());
-
             if (fullScaleDatasetName.endsWith("s0")) {
                 final File parentDir = datasetDir.getParentFile();
                 final File[] downsampledDirs = parentDir.listFiles(DOWNSAMPLED_DIR_FILTER);
@@ -355,6 +348,13 @@ public class N5Client {
                     }
                 }
             }
+
+            final Long minZToRender = setupAppendExportN5(parameters,
+                                                          fullScaleDatasetName,
+                                                          stackMetaData,
+                                                          dimensions,
+                                                          blockSize,
+                                                          getDataType());
 
             renderStack(sparkContext,
                         blockSize,
