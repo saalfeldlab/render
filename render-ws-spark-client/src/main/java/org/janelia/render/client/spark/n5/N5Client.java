@@ -40,7 +40,9 @@ import org.janelia.render.client.zspacing.ThicknessCorrectionData;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
+import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
+import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.spark.N5RemoveSpark;
@@ -332,12 +334,14 @@ public class N5Client {
 
         } else if (parameters.appendToExisting) {
 
-            final Long minZToRender = setupAppendExportN5(parameters,
-                                                          fullScaleDatasetName,
-                                                          stackMetaData,
-                                                          dimensions,
-                                                          blockSize,
-                                                          getDataType());
+            final DatasetAttributes datasetAttributes = readDatasetAttributes(parameters, fullScaleDatasetName);
+            final long minZToRender = findMinZToRender(datasetAttributes,
+                                                       dimensions,
+                                                       blockSize,
+                                                       getDataType());
+            if (dimensions[2] <= minZToRender) {
+                throw new IllegalArgumentException("nothing new to export since last z remains " + dimensions[2]);
+            }
 
             if (fullScaleDatasetName.endsWith("s0")) {
                 final File parentDir = datasetDir.getParentFile();
@@ -355,6 +359,18 @@ public class N5Client {
                     }
                 }
             }
+
+            try (final N5Writer n5Writer = new N5FSWriter(parameters.n5Path)) {
+                n5Writer.setDatasetAttributes(fullScaleDatasetName,
+                                              new DatasetAttributes(dimensions,
+                                                                    blockSize,
+                                                                    datasetAttributes.getDataType(),
+                                                                    datasetAttributes.getCompression()));
+            }
+
+            updateFullScaleExportAttributes(parameters,
+                                            fullScaleDatasetName,
+                                            stackMetaData);
 
             renderStack(sparkContext,
                         blockSize,
@@ -485,53 +501,41 @@ public class N5Client {
                                         stackMetaData);
     }
 
-    public static long setupAppendExportN5(final Parameters parameters,
-                                           final String fullScaleDatasetName,
-                                           final StackMetaData stackMetaData,
-                                           final long[] dimensions,
-                                           final int[] blockSize,
-                                           final DataType dataType) throws IllegalArgumentException {
-
-        final long minZToRender;
-        try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
-
-            final DatasetAttributes datasetAttributes = n5.getDatasetAttributes(fullScaleDatasetName);
-
-            if (! Arrays.equals(blockSize, datasetAttributes.getBlockSize())) {
-                throw new IllegalArgumentException("append blockSize " + Arrays.toString(blockSize) + " does not match existing dataset block size " + Arrays.toString(datasetAttributes.getBlockSize()));
-            }
-            if (dataType != datasetAttributes.getDataType()) {
-                throw new IllegalArgumentException("append dataType " + dataType + " does not match existing dataset data type " + datasetAttributes.getDataType());
-            }
-            final long[] existingDimensions = datasetAttributes.getDimensions();
-            if (dimensions.length != existingDimensions.length) {
-                throw new IllegalArgumentException("append dimensions " + Arrays.toString(dimensions) + " differ in length from existing dataset dimensions " + Arrays.toString(existingDimensions));
-            }
-            if (dimensions.length != 3) {
-                throw new IllegalArgumentException("append export not supported for " + dimensions.length + "D volumes");
-            }
-            for (int i = 0; i < dimensions.length; i++) {
-                if (dimensions[i] < existingDimensions[i]) {
-                    throw new IllegalArgumentException("append dimension " + i + " has shrunk, append dimensions are " + Arrays.toString(dimensions) + " but existing dataset dimensions are " + Arrays.toString(existingDimensions));
-                }
-            }
-            if (dimensions[2] == existingDimensions[2]) {
-                throw new IllegalArgumentException("nothing new to export since last z remains " + dimensions[2]);
-            }
-
-            n5.setDatasetAttributes(fullScaleDatasetName,
-                                    new DatasetAttributes(dimensions,
-                                                          blockSize,
-                                                          dataType,
-                                                          datasetAttributes.getCompression()));
-            minZToRender = existingDimensions[2] + 1;
+    private static DatasetAttributes readDatasetAttributes(final Parameters parameters,
+                                                           final String fullScaleDatasetName) {
+        final DatasetAttributes datasetAttributes;
+        try (final N5Reader n5Reader = new N5FSReader(parameters.n5Path)) {
+            datasetAttributes = n5Reader.getDatasetAttributes(fullScaleDatasetName);
         }
+        return datasetAttributes;
+    }
 
-        updateFullScaleExportAttributes(parameters,
-                                        fullScaleDatasetName,
-                                        stackMetaData);
+    private static long findMinZToRender(final DatasetAttributes datasetAttributes,
+                                         final long[] dimensions,
+                                         final int[] blockSize,
+                                         final DataType dataType) throws IllegalArgumentException {
 
-        LOG.info("setupAppendExportN5: returning minZToRender value of {}, maxZ is {}", minZToRender, dimensions[2]);
+        if (! Arrays.equals(blockSize, datasetAttributes.getBlockSize())) {
+            throw new IllegalArgumentException("append blockSize " + Arrays.toString(blockSize) + " does not match existing dataset block size " + Arrays.toString(datasetAttributes.getBlockSize()));
+        }
+        if (dataType != datasetAttributes.getDataType()) {
+            throw new IllegalArgumentException("append dataType " + dataType + " does not match existing dataset data type " + datasetAttributes.getDataType());
+        }
+        final long[] existingDimensions = datasetAttributes.getDimensions();
+        if (dimensions.length != existingDimensions.length) {
+            throw new IllegalArgumentException("append dimensions " + Arrays.toString(dimensions) + " differ in length from existing dataset dimensions " + Arrays.toString(existingDimensions));
+        }
+        if (dimensions.length != 3) {
+            throw new IllegalArgumentException("append export not supported for " + dimensions.length + "D volumes");
+        }
+        for (int i = 0; i < dimensions.length; i++) {
+            if (dimensions[i] < existingDimensions[i]) {
+                throw new IllegalArgumentException("append dimension " + i + " has shrunk, append dimensions are " + Arrays.toString(dimensions) + " but existing dataset dimensions are " + Arrays.toString(existingDimensions));
+            }
+        }
+        final long minZToRender = existingDimensions[2] + 1;
+
+        LOG.info("findMinZToRender: returning {}, maxZ is {}", minZToRender, dimensions[2]);
 
         return minZToRender;
     }
