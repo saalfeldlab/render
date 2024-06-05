@@ -165,11 +165,11 @@ public class ConfigurableStreakCorrectorTest {
         displayParameterRange(srcPath, parameters, "initialThreshold", 1.0, 3, true);
         displayParameterRange(srcPath, parameters, "finalThreshold", 0.01, 3, true);
 
+        // this shows the final result of the correction process as well as the end result
+        displayParameterRange(srcPath, parameters, "numThreads", 1.0, 0, true);
         final ImagePlus imp = new ImagePlus(srcPath);
         imp.setTitle("Original");
         imp.show();
-        // this shows the final result of the correction process
-        displayParameterRange(srcPath, parameters, "numThreads", 1.0, 0, true);
         // displayStreakCorrectionDetails(srcPath, HUM_AIRWAY_CORRECTOR);
     }
 
