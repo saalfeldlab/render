@@ -80,7 +80,25 @@
       {
         "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
-          "dataString" : "5545,10920,15,10,0.0,100,15.0,0.1"
+          "dataString" : "5545,10920,15,8,0.0,20,7.0,0.05"
+        }
+      }
+    ],
+
+    "jrc_mus_pancreas-6-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "5545,8190,15,12,0.0,20,13.0,0.05"
+        }
+      }
+    ],
+
+    "jrc_sepia_mpi-s1a-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "6161,8190,15,6,0.0,20,13.0,0.05"
         }
       }
     ],
