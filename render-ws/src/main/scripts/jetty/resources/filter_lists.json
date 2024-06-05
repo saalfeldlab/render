@@ -85,6 +85,15 @@
       }
     ],
 
+    "jrc_mus_pancreas-6-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "5545,8190,15,12,0.0,20,13.0,0.05"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
