@@ -80,7 +80,7 @@
       {
         "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
-          "dataString" : "5545,10920,15,10,0.0,100,15.0,0.1"
+          "dataString" : "5545,10920,15,8,0.0,20,7.0,0.05"
         }
       }
     ],
