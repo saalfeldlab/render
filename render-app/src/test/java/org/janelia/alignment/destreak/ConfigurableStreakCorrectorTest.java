@@ -151,34 +151,36 @@ public class ConfigurableStreakCorrectorTest {
         parameters.put("numThreads", 8.0);
         parameters.put("fftWidth", 5545.0);
         parameters.put("fftHeight", 10920.0);
-        parameters.put("innerCutoff", 15.0);
-        parameters.put("bandWidth", 10.0);
+        parameters.put("innerCutoff", 18.0);
+        parameters.put("bandWidth", 8.0);
         parameters.put("angle", 0.0);
-        parameters.put("gaussianBlurRadius", 100.0);
-        parameters.put("initialThreshold", 15.0);
-        parameters.put("finalThreshold", 0.1);
+        parameters.put("gaussianBlurRadius", 20.0);
+        parameters.put("initialThreshold", 7.0);
+        parameters.put("finalThreshold", 0.05);
 
-        displayParameterRange(srcPath, parameters, "innerCutoff", 15.0, 3.0, 3, false);
-        displayParameterRange(srcPath, parameters, "bandWidth", 10.0, 3.0, 3, false);
+        displayParameterRange(srcPath, parameters, "innerCutoff", 3.0, 3, false);
+        displayParameterRange(srcPath, parameters, "bandWidth", 2.0, 3, false);
         // displayParameterRange(srcPath, parameters, "angle", 0.0, 1.0, 3, false);
-        displayParameterRange(srcPath, parameters, "gaussianBlurRadius", 100.0, 20.0, 3, true);
-        displayParameterRange(srcPath, parameters, "initialThreshold", 15.0, 3.0, 3, true);
-        displayParameterRange(srcPath, parameters, "finalThreshold", 0.1, 0.02, 3, true);
+        displayParameterRange(srcPath, parameters, "gaussianBlurRadius", 20.0, 3, true);
+        displayParameterRange(srcPath, parameters, "initialThreshold", 1.0, 3, true);
+        displayParameterRange(srcPath, parameters, "finalThreshold", 0.01, 3, true);
 
         final ImagePlus imp = new ImagePlus(srcPath);
         imp.setTitle("Original");
         imp.show();
+        // this shows the final result of the correction process
+        displayParameterRange(srcPath, parameters, "numThreads", 1.0, 0, true);
         // displayStreakCorrectionDetails(srcPath, HUM_AIRWAY_CORRECTOR);
     }
 
     /**
      * Displays a range of parameter values for a given parameter. The parameter values are centered around the midpoint
-     * and steps are taken in both directions from the midpoint. The results are displayed in a stack.
+     * (the pre-set parameter value) and steps are taken in both directions from the midpoint. The results are displayed
+     * in a stack.
      *
      * @param srcPath the path to the source image.
      * @param parameters a map of parameters for both {@link SmoothMaskStreakCorrector} and {@link LocalSmoothMaskStreakCorrector}.
      * @param parameterToVary the name of the parameter to vary.
-     * @param midpoint the default value for the parameter.
      * @param stepsize the size of the steps to take in both directions from the midpoint.
      * @param steps the number of steps to take in both directions from the midpoint.
      * @param localizeCorrection whether to use {@link LocalSmoothMaskStreakCorrector} or not.
@@ -187,13 +189,13 @@ public class ConfigurableStreakCorrectorTest {
             final String srcPath,
             final Map<String, Double> parameters,
             final String parameterToVary,
-            final double midpoint,
             final double stepsize,
             final int steps,
             final boolean localizeCorrection) {
 
         final int n = 2 * steps + 1;
         final List<ImagePlus> images = new ArrayList<>(n);
+        final double midpoint = parameters.get(parameterToVary);
         final double start = midpoint - steps * stepsize;
         final double end = midpoint + steps * stepsize;
         for (double val = start; val <= end; val += stepsize) {
