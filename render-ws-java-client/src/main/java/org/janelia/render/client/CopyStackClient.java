@@ -19,6 +19,7 @@ import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
 import org.janelia.alignment.spec.TileBounds;
@@ -49,6 +50,11 @@ import mpicbg.trakem2.transform.AffineModel2D;
  * @author Eric Trautman
  */
 public class CopyStackClient {
+
+    public enum StageTransformReplacementMode {
+        REPLACE_LAST,
+        REPLACE_ALL
+    }
 
     public static class Parameters extends CommandLineParameters {
 
@@ -136,10 +142,9 @@ public class CopyStackClient {
         public boolean completeToStackAfterCopy = false;
 
         @Parameter(
-                names = "--replaceLastTransformWithStage",
-                description = "Replace the last transform in each tile space with a 'stage identity' transform",
-                arity = 0)
-        public boolean replaceLastTransformWithStage = false;
+                names = "--replaceWithStageTransformMode",
+                description = "Replace each tile's last or all transforms with a 'stage identity' transform")
+        public StageTransformReplacementMode replaceWithStageTransformMode;
 
         @Parameter(
                 names = "--addToZ",
@@ -267,9 +272,9 @@ public class CopyStackClient {
 
         if (parameters.moveToOrigin) {
 
-            if (parameters.replaceLastTransformWithStage) {
+            if (parameters.replaceWithStageTransformMode != null) {
                 throw new IllegalArgumentException(
-                        "please choose either --moveToOrigin or --replaceLastTransformWithStage but not both");
+                        "please choose either --moveToOrigin or --replaceWithStageTransformMode but not both");
             }
 
             final StackMetaData sourceStackMetaData = fromDataClient.getStackMetaData(parameters.fromStack);
@@ -337,7 +342,7 @@ public class CopyStackClient {
             sourceCollection.retainTileSpecs(tileIdsToKeep);
         }
 
-        if (parameters.replaceLastTransformWithStage) {
+        if (parameters.replaceWithStageTransformMode != null) {
             replaceLastTransformWithStage(sourceCollection);
         }
 
@@ -488,6 +493,10 @@ public class CopyStackClient {
             final String dataString = "1 0 0 1 " + layoutData.getStageX() + " " + layoutData.getStageY();
             final TransformSpec transformSpec = new LeafTransformSpec(AffineModel2D.class.getName(),
                                                                       dataString);
+
+            if (parameters.replaceWithStageTransformMode.equals(StageTransformReplacementMode.REPLACE_ALL)) {
+                tileSpec.setTransforms(new ListTransformSpec()); // remove all existing transforms
+            }
 
             sourceCollection.addTransformSpecToTile(tileSpec.getTileId(),
                                                     transformSpec,
