@@ -1,5 +1,7 @@
 package org.janelia.alignment.spec.transfer;
 
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -39,6 +41,10 @@ public class VolumeTransferInfoTest {
         final Connect connect = renderDataSet.getConnect();
         Assert.assertNotNull("connect is null", connect);
         Assert.assertEquals("invalid host parsed", HOST, connect.getHost());
+
+        final List<TransferTask> transferTasks = volumeTransferInfo.getTransferTasks();
+        Assert.assertNotNull("transfer_tasks is null", transferTasks);
+        Assert.assertEquals("invalid number of transfer tasks parsed", 7, transferTasks.size());
     }
 
     private static final String FIRST_DAT_NAME = "Merlin-6049_24-05-09_000312_0-0-0.dat";
