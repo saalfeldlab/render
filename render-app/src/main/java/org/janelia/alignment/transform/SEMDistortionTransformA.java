@@ -40,4 +40,8 @@ public class SEMDistortionTransformA
                                            coefficients[3],
                                            dimension);
     }
+
+    /** Default correction transform for all FIBSEM volumes. */
+    public static final SEMDistortionTransformA DEFAULT_FIBSEM_CORRECTION_TRANSFORM =
+            new SEMDistortionTransformA(19.4, 64.8, 24.4, 972.0, 0);
 }
