@@ -2,12 +2,14 @@ package org.janelia.alignment.spec.transfer;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
 
+import java.io.Serializable;
+
 /**
  * Information about a scope data set.
  *
  * @author Eric Trautman
  */
-public class ScopeDataSet {
+public class ScopeDataSet implements Serializable {
 
     private final String host;
     private final String rootDatPath;

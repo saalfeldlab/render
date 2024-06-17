@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,7 +22,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-public class ClusterRootPaths {
+public class ClusterRootPaths implements Serializable {
 
     private final String rawDat;
     private final String rawH5;

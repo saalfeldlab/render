@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonGetter;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.Serializable;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.List;
@@ -16,7 +17,7 @@ import org.janelia.alignment.util.FileUtil;
  *
  * @author Eric Trautman
  */
-public class VolumeTransferInfo {
+public class VolumeTransferInfo implements Serializable {
 
     private final ScopeDataSet scopeDataSet;
     private final ClusterRootPaths clusterRootPaths;
@@ -65,6 +66,10 @@ public class VolumeTransferInfo {
     @JsonGetter(value = "transfer_tasks")
     public List<TransferTask> getTransferTasks() {
         return transferTasks;
+    }
+
+    public boolean hasApplyFibsemCorrectionTransformTask() {
+        return transferTasks != null && transferTasks.contains(TransferTask.APPLY_FIBSEM_CORRECTION_TRANSFORM);
     }
 
     public static VolumeTransferInfo fromJson(final String json) {

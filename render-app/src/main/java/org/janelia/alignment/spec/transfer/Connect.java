@@ -1,11 +1,13 @@
 package org.janelia.alignment.spec.transfer;
 
+import java.io.Serializable;
+
 /**
  * Connection information for render web services.
  *
  * @author Eric Trautman
  */
-public class Connect {
+public class Connect implements Serializable {
 
     private final String host;
     private final Integer port;

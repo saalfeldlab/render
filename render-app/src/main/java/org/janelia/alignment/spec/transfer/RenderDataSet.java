@@ -2,12 +2,14 @@ package org.janelia.alignment.spec.transfer;
 
 import com.fasterxml.jackson.annotation.JsonGetter;
 
+import java.io.Serializable;
+
 /**
  * Render data set information.
  *
  * @author Eric Trautman
  */
-public class RenderDataSet {
+public class RenderDataSet implements Serializable {
 
     private final String owner;
     private final String project;
