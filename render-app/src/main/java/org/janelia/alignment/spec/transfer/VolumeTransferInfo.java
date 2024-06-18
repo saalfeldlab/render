@@ -72,6 +72,10 @@ public class VolumeTransferInfo implements Serializable {
         return transferTasks != null && transferTasks.contains(TransferTask.APPLY_FIBSEM_CORRECTION_TRANSFORM);
     }
 
+    public boolean hasExportPreviewVolumeTask() {
+        return transferTasks != null && transferTasks.contains(TransferTask.EXPORT_PREVIEW_VOLUME);
+    }
+
     public static VolumeTransferInfo fromJson(final String json) {
         return JSON_HELPER.fromJson(json);
     }
