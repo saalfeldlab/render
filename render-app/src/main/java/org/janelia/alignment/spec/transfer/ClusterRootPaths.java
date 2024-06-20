@@ -60,23 +60,33 @@ public class ClusterRootPaths implements Serializable {
     /**
      * @return sorted list of paths to all h5 files in the align_h5 directory.
      *
+     * @throws IllegalArgumentException
+     *   if any required input data is missing.
+     *
      * @throws IOException
-     *   if the align_h5 directory does not exist.
+     *   if the align_h5 directory can not be walked.
      */
     @JsonIgnore
-    public List<Path> getSortedAlignH5Paths()
-            throws IOException {
+    public List<Path> getSortedAlignH5Paths(final String firstDatName,
+                                            final String lastDatName)
+            throws IllegalArgumentException, IOException {
 
-        LOG.info("getSortedAlignH5Paths: entry");
+        LOG.info("getSortedAlignH5Paths: entry, firstDatName={}, lastDatName={}", firstDatName, lastDatName);
 
-        if (alignH5 == null) {
-            throw new IOException("cluster_root_paths.align_h5 is null");
+        if (firstDatName == null) {
+            throw new IllegalArgumentException("firstDatName is null");
+        } else if (alignH5 == null) {
+            throw new IllegalArgumentException("cluster_root_paths.align_h5 is null");
         }
 
         final Path rootPath = Paths.get(alignH5);
         if (! Files.exists(rootPath)) {
-            throw new IOException("cluster_root_paths.align_h5 '" + alignH5 + "' does not exist");
+            throw new IllegalArgumentException("cluster_root_paths.align_h5 '" + alignH5 + "' does not exist");
         }
+
+        final String firstH5Name = getAlignH5NameForDat(firstDatName);
+        final String lastH5Name = getAlignH5NameForDat(lastDatName);
+        LOG.info("getSortedAlignH5Paths: firstH5Name={}, lastH5Name={}", firstDatName, lastDatName);
 
         // align_h5:
         //   (rootPath): /nrs/fibsem/data/jrc_celegans-20240415/align
@@ -101,7 +111,10 @@ public class ClusterRootPaths implements Serializable {
 
         final List<Path> paths = new ArrayList<>();
         for (final Path hourlyDirectory : hourlyDirectories) {
-            final File[] h5Files = hourlyDirectory.toFile().listFiles((dir, name) -> name.endsWith(".h5"));
+            final File[] h5Files = hourlyDirectory.toFile().listFiles(
+                    (dir, name) -> name.endsWith(".h5") &&
+                                   (name.compareTo(firstH5Name) >= 0) &&
+                                   ((lastH5Name == null) || (name.compareTo(lastH5Name) <= 0)));
             if (h5Files != null) {
                 paths.addAll(
                         Stream.of(h5Files)
@@ -116,10 +129,15 @@ public class ClusterRootPaths implements Serializable {
         return paths;
     }
 
+    private static String getAlignH5NameForDat(final String forDatName) {
+        // Merlin-6282_24-03-11_144200_0-0-0.dat -> Merlin-6282_24-03-11_14_144200.uint8.h5
+        return forDatName == null ? null : forDatName.substring(0, forDatName.lastIndexOf('_')) + ".uint8.h5";
+    }
+
     public static void main(final String[] args) throws Exception {
         final String alignH5 = args.length == 0 ? "/nrs/fibsem/data/jrc_celegans-20240415/align" : args[0];
         final ClusterRootPaths clusterRootPaths = new ClusterRootPaths(null, null, alignH5);
-        clusterRootPaths.getSortedAlignH5Paths().forEach(System.out::println);
+        clusterRootPaths.getSortedAlignH5Paths("Merlin-6049_24-05-09_000312_0-0-0.dat", null).forEach(System.out::println);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ClusterRootPaths.class);
