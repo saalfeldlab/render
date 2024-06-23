@@ -67,10 +67,9 @@ public class H5TileToN5PreviewClient {
 
         @Parameter(
                 names = "--transferInfo",
-                description = "List of transfer info JSON files for which previews should be generated.",
-                variableArity = true,
+                description = "Transfer info JSON file for which previews should be generated.",
                 required = true)
-        public List<String> transferInfoPaths;
+        public String transferInfoPath;
 
     }
 
@@ -90,18 +89,17 @@ public class H5TileToN5PreviewClient {
                 final SparkConf conf = new SparkConf().setAppName("PreviewClient");
                 final JavaSparkContext sparkContext = new JavaSparkContext(conf);
 
-                for (final String transferInfoPath : parameters.transferInfoPaths) {
-                    try {
-                        final VolumeTransferInfo volumeTransferInfo = VolumeTransferInfo.fromJsonFile(transferInfoPath);
-                        if (volumeTransferInfo.hasExportPreviewVolumeTask()) {
-                            client.buildAndExportPreview(sparkContext, volumeTransferInfo);
-                        } else {
-                            LOG.info("no export preview volume task defined in {}", transferInfoPath);
-                        }
-                    } catch (final Exception e) {
-                        final String errorMessage = "failed to build preview for " + transferInfoPath;
-                        LOG.error(errorMessage, e);
+                final String transferInfoPath = parameters.transferInfoPath;
+                try {
+                    final VolumeTransferInfo volumeTransferInfo = VolumeTransferInfo.fromJsonFile(transferInfoPath);
+                    if (volumeTransferInfo.hasExportPreviewVolumeTask()) {
+                        client.buildAndExportPreview(sparkContext, volumeTransferInfo);
+                    } else {
+                        LOG.info("no export preview volume task defined in {}", transferInfoPath);
                     }
+                } catch (final Exception e) {
+                    final String errorMessage = "failed to build preview for " + transferInfoPath;
+                    LOG.error(errorMessage, e);
                 }
 
                 sparkContext.close();
