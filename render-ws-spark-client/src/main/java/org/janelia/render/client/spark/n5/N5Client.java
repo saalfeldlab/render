@@ -6,7 +6,6 @@ import com.beust.jcommander.ParametersDelegate;
 import ij.process.ByteProcessor;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -16,7 +15,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -38,14 +36,10 @@ import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.zspacing.ThicknessCorrectionData;
 import org.janelia.saalfeldlab.n5.DataType;
-import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.GzipCompression;
-import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
-import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.spark.N5RemoveSpark;
 import org.janelia.saalfeldlab.n5.spark.supplier.N5WriterSupplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -140,11 +134,6 @@ public class N5Client {
                 names = "--exportMask",
                 description = "Export mask volume instead of pixel volume")
         public boolean exportMask = false;
-
-        @Parameter(
-                names = "--appendToExisting",
-                description = "Only render new tiles and append to existing dataset (if it exists)")
-        public boolean appendToExisting = false;
 
         public Bounds getBoundsForRun(final Bounds defaultBounds,
                                       final ThicknessCorrectionData thicknessCorrectionData) {
@@ -298,16 +287,6 @@ public class N5Client {
             viewStackCommandOffsets = min[0] + "," + min[1];
         }
 
-        // This "spec" is broadcast to Spark executors allowing each one to construct and share
-        // an ImageProcessor cache across each task assigned to the executor.
-        // This should be most useful for caching common masks but could also help
-        // when the same executor gets adjacent blocks.
-        // Cache parameters are hard-coded for now but could be exposed to command-line later if necessary.
-        final ImageProcessorCacheSpec cacheSpec =
-                new ImageProcessorCacheSpec(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
-                                            true,
-                                            false);
-
         LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",
                  parameters.n5Path, datasetName, viewStackCommandOffsets);
 
@@ -329,59 +308,8 @@ public class N5Client {
                         min,
                         dimensions,
                         is2DVolume,
-                        cacheSpec,
+                        buildImageProcessorCacheSpec(),
                         null); // always ignore minZToRender for initial render
-
-        } else if (parameters.appendToExisting) {
-
-            final DatasetAttributes datasetAttributes = readDatasetAttributes(parameters, fullScaleDatasetName);
-            final long minZToRender = findMinZToRender(datasetAttributes,
-                                                       dimensions,
-                                                       blockSize,
-                                                       getDataType());
-            if (dimensions[2] <= minZToRender) {
-                throw new IllegalArgumentException("nothing new to export since last z remains " + dimensions[2]);
-            }
-
-            if (fullScaleDatasetName.endsWith("s0")) {
-                final File parentDir = datasetDir.getParentFile();
-                final File[] downsampledDirs = parentDir.listFiles(DOWNSAMPLED_DIR_FILTER);
-                if (downsampledDirs != null) {
-                    final int datasetStart = parameters.n5Path.length() + 1;
-                    for (final File downsampledDir : downsampledDirs) {
-                        if (downsampledDir.isDirectory()) {
-                            final String dsDatasetName = downsampledDir.getAbsolutePath().substring(datasetStart);
-                            LOG.info("run: removing previously downsampled dataset {}", dsDatasetName);
-                            N5RemoveSpark.remove(sparkContext,
-                                                 new N5PathSupplier(parameters.n5Path),
-                                                 dsDatasetName);
-                        }
-                    }
-                }
-            }
-
-            try (final N5Writer n5Writer = new N5FSWriter(parameters.n5Path)) {
-                n5Writer.setDatasetAttributes(fullScaleDatasetName,
-                                              new DatasetAttributes(dimensions,
-                                                                    blockSize,
-                                                                    datasetAttributes.getDataType(),
-                                                                    datasetAttributes.getCompression()));
-            }
-
-            updateFullScaleExportAttributes(parameters,
-                                            fullScaleDatasetName,
-                                            stackMetaData);
-
-            renderStack(sparkContext,
-                        blockSize,
-                        fullScaleDatasetName,
-                        thicknessCorrectionData,
-                        boundsForRun,
-                        min,
-                        dimensions,
-                        is2DVolume,
-                        cacheSpec,
-                        minZToRender);
 
         } else {
 
@@ -501,45 +429,6 @@ public class N5Client {
                                         stackMetaData);
     }
 
-    private static DatasetAttributes readDatasetAttributes(final Parameters parameters,
-                                                           final String fullScaleDatasetName) {
-        final DatasetAttributes datasetAttributes;
-        try (final N5Reader n5Reader = new N5FSReader(parameters.n5Path)) {
-            datasetAttributes = n5Reader.getDatasetAttributes(fullScaleDatasetName);
-        }
-        return datasetAttributes;
-    }
-
-    private static long findMinZToRender(final DatasetAttributes datasetAttributes,
-                                         final long[] dimensions,
-                                         final int[] blockSize,
-                                         final DataType dataType) throws IllegalArgumentException {
-
-        if (! Arrays.equals(blockSize, datasetAttributes.getBlockSize())) {
-            throw new IllegalArgumentException("append blockSize " + Arrays.toString(blockSize) + " does not match existing dataset block size " + Arrays.toString(datasetAttributes.getBlockSize()));
-        }
-        if (dataType != datasetAttributes.getDataType()) {
-            throw new IllegalArgumentException("append dataType " + dataType + " does not match existing dataset data type " + datasetAttributes.getDataType());
-        }
-        final long[] existingDimensions = datasetAttributes.getDimensions();
-        if (dimensions.length != existingDimensions.length) {
-            throw new IllegalArgumentException("append dimensions " + Arrays.toString(dimensions) + " differ in length from existing dataset dimensions " + Arrays.toString(existingDimensions));
-        }
-        if (dimensions.length != 3) {
-            throw new IllegalArgumentException("append export not supported for " + dimensions.length + "D volumes");
-        }
-        for (int i = 0; i < dimensions.length; i++) {
-            if (dimensions[i] < existingDimensions[i]) {
-                throw new IllegalArgumentException("append dimension " + i + " has shrunk, append dimensions are " + Arrays.toString(dimensions) + " but existing dataset dimensions are " + Arrays.toString(existingDimensions));
-            }
-        }
-        final long minZToRender = existingDimensions[2] + 1;
-
-        LOG.info("findMinZToRender: returning {}, maxZ is {}", minZToRender, dimensions[2]);
-
-        return minZToRender;
-    }
-
     public static void updateFullScaleExportAttributes(final Parameters parameters,
                                                        final String fullScaleDatasetName,
                                                        final StackMetaData stackMetaData) {
@@ -614,6 +503,21 @@ public class N5Client {
         }
 
         return gridBlocks;
+    }
+
+    /**
+     * This "spec" can be broadcast to Spark executors allowing each one to construct and share
+     * an ImageProcessor cache across each task assigned to the executor.
+     * This should be most useful for caching common masks but could also help
+     * when the same executor gets adjacent blocks.
+     * Cache parameters are hard-coded for now but could be exposed to command-line later if necessary.
+     *
+     * @return default cache spec.
+     */
+    public static ImageProcessorCacheSpec buildImageProcessorCacheSpec() {
+        return new ImageProcessorCacheSpec(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
+                                           true,
+                                           false);
     }
 
     private static void saveRenderStack(final JavaSparkContext sc,
@@ -794,7 +698,4 @@ public class N5Client {
         LOG.info("save2DRenderStack: exit");
     }
 
-    private static final Pattern DOWNSAMPLED_DIR_PATTERN = Pattern.compile("s[1-9]\\d*");
-    private static final FileFilter DOWNSAMPLED_DIR_FILTER =
-            pathname -> DOWNSAMPLED_DIR_PATTERN.matcher(pathname.getName()).matches();
 }
