@@ -103,6 +103,15 @@
       }
     ],
 
+    "jrc_p3-e2-d1-lip4-19-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "4369,7920,18,14,0.0,20,7.0,0.05"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
