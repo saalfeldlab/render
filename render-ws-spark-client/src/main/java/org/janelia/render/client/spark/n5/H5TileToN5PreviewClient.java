@@ -67,7 +67,7 @@ public class H5TileToN5PreviewClient {
 
         @Parameter(
                 names = "--transferInfo",
-                description = "Transfer info JSON file for which previews should be generated.",
+                description = "Transfer info JSON file for which preview should be generated.",
                 required = true)
         public String transferInfoPath;
 
