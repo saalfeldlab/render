@@ -413,7 +413,6 @@ public class H5TileToN5PreviewClient {
         private final String fullScaleDatasetName;
         private final File fullScaleDataSetDir;
         private final N5Client.Parameters parameters;
-        private final N5Client n5Client;
 
         public ExportInfo(final String baseDataUrl,
                           final StackMetaData stackMetaData,
@@ -457,8 +456,6 @@ public class H5TileToN5PreviewClient {
 
             // bumped preview block size up to 256x256 from 128x128 to reduce number of blocks
             this.parameters.blockSizeString = "256,256,64";
-
-            this.n5Client = new N5Client(parameters);
         }
 
         public String getViewParametersString() {
@@ -476,6 +473,8 @@ public class H5TileToN5PreviewClient {
             throws IllegalArgumentException, IOException {
 
         final ExportInfo exportInfo = new ExportInfo(baseDataUrl, stackMetaData, alignH5Path);
+        final N5Client n5Client = new N5Client(exportInfo.parameters);
+        final DataType dataType = n5Client.getDataType();
         final int[] blockSize = exportInfo.parameters.getBlockSize();
 
         LOG.info("exportPreview: view stack command is n5_view.sh {}", exportInfo.getViewParametersString());
@@ -493,7 +492,7 @@ public class H5TileToN5PreviewClient {
             final long minZToRender = findMinZToRender(datasetAttributes,
                                                        exportInfo.dimensions,
                                                        exportInfo.parameters.getBlockSize(),
-                                                       exportInfo.n5Client.getDataType());
+                                                       dataType);
 
             // TODO: instead of removing all downsampled results, only remove subset that will be replaced
             removeDownsampledDatasets(sparkContext,
@@ -503,6 +502,7 @@ public class H5TileToN5PreviewClient {
             appendToExistingPreviewExport(sparkContext,
                                           datasetAttributes,
                                           exportInfo,
+                                          n5Client,
                                           blockSize,
                                           minZToRender);
 
@@ -514,21 +514,21 @@ public class H5TileToN5PreviewClient {
                                             stackMetaData,
                                             exportInfo.dimensions,
                                             blockSize,
-                                            exportInfo.n5Client.getDataType());
+                                            dataType);
 
             LOG.info("exportPreview: rendering {}{} for the first time with dimensions {}",
                      exportInfo.n5PathString, exportInfo.fullScaleDatasetName, exportInfo.dimensions);
 
-            exportInfo.n5Client.renderStack(sparkContext,
-                                            blockSize,
-                                            exportInfo.fullScaleDatasetName,
-                                            null,
-                                            exportInfo.getBounds(),
-                                            exportInfo.min,
-                                            exportInfo.dimensions,
-                                            false,
-                                            N5Client.buildImageProcessorCacheSpec(),
-                                            null); // always ignore minZToRender for initial render
+            n5Client.renderStack(sparkContext,
+                                 blockSize,
+                                 exportInfo.fullScaleDatasetName,
+                                 null,
+                                 exportInfo.getBounds(),
+                                 exportInfo.min,
+                                 exportInfo.dimensions,
+                                 false,
+                                 N5Client.buildImageProcessorCacheSpec(),
+                                 null); // always ignore minZToRender for initial render
         }
 
         final int[] downsampleFactors = exportInfo.parameters.getDownsampleFactors();
@@ -618,6 +618,7 @@ public class H5TileToN5PreviewClient {
     private static void appendToExistingPreviewExport(final JavaSparkContext sparkContext,
                                                       final DatasetAttributes datasetAttributes,
                                                       final ExportInfo exportInfo,
+                                                      final N5Client n5Client,
                                                       final int[] blockSize,
                                                       final long minZToRender)
             throws IllegalArgumentException {
@@ -637,16 +638,16 @@ public class H5TileToN5PreviewClient {
         LOG.info("appendToExistingPreviewExport: rendering {}{} with minZToRender {} and dimensions {}",
                  exportInfo.n5PathString, exportInfo.fullScaleDatasetName, minZToRender, exportInfo.dimensions);
 
-        exportInfo.n5Client.renderStack(sparkContext,
-                                        blockSize,
-                                        exportInfo.fullScaleDatasetName,
-                                        null,
-                                        exportInfo.getBounds(),
-                                        exportInfo.min,
-                                        exportInfo.dimensions,
-                                        false,
-                                        N5Client.buildImageProcessorCacheSpec(),
-                                        minZToRender);
+        n5Client.renderStack(sparkContext,
+                             blockSize,
+                             exportInfo.fullScaleDatasetName,
+                             null,
+                             exportInfo.getBounds(),
+                             exportInfo.min,
+                             exportInfo.dimensions,
+                             false,
+                             N5Client.buildImageProcessorCacheSpec(),
+                             minZToRender);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(H5TileToN5PreviewClient.class);
