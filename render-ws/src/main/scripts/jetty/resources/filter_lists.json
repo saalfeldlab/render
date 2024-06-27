@@ -112,6 +112,15 @@
       }
     ],
 
+    "jrc_atla52-b10-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "3277,6552,30,6,0.0,10,5.0,0.1"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
