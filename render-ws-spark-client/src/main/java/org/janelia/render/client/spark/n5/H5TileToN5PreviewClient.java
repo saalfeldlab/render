@@ -6,13 +6,17 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -200,8 +204,9 @@ public class H5TileToN5PreviewClient {
         final ClusterRootPaths clusterRootPaths = volumeTransferInfo.getClusterRootPaths();
         final ScopeDataSet scopeDataSet = volumeTransferInfo.getScopeDataSet();
 
-        final List<Path> sortedAlignH5Paths = clusterRootPaths.getSortedAlignH5Paths(scopeDataSet.getFirstDatName(),
-                                                                                     scopeDataSet.getLastDatName());
+        final List<Path> sortedAlignH5Paths = buildSortedAlignH5Paths(scopeDataSet.getFirstDatName(),
+                                                                      scopeDataSet.getLastDatName(),
+                                                                      clusterRootPaths);
 
         final StackStats previewStackStats = previewStackMetaData.getStats();
         final Long existingSectionCount = previewStackStats == null ? null : previewStackStats.getSectionCount();
@@ -285,6 +290,8 @@ public class H5TileToN5PreviewClient {
                             }
                         }
                     }
+                } catch (final Exception e) {
+                    throw new IOException("failed to import h5 file " + h5PathString, e);
                 }
 
             }
@@ -313,6 +320,60 @@ public class H5TileToN5PreviewClient {
                  stackMetaDataAfterImport.getStackBounds());
         
         return stackMetaDataAfterImport;
+    }
+
+    private static List<Path> buildSortedAlignH5Paths(final String firstDatName,
+                                                      final String lastDatName,
+                                                      final ClusterRootPaths clusterRootPaths)
+            throws IllegalArgumentException, IOException {
+
+        List<Path> sortedAlignH5Paths = clusterRootPaths.getSortedAlignH5Paths(firstDatName, lastDatName);
+
+        if (sortedAlignH5Paths.isEmpty()) {
+            throw new IllegalArgumentException("no h5 files found in " + clusterRootPaths.getAlignH5());
+        }
+
+        final List<Path> sortedParentDirs =
+                sortedAlignH5Paths.stream().map(Path::getParent).distinct().sorted().collect(Collectors.toList());
+
+        final FileTime twoHoursAgo = FileTime.from(Instant.now().minus(java.time.Duration.ofHours(2)));
+
+        FileTime parentLastModifyTime = null;
+        String firstRecentlyModifiedParentDirString = null;
+        int indexOfFirstExcludedPath = sortedAlignH5Paths.size();
+        for (final Path parentDir : sortedParentDirs) {
+
+            parentLastModifyTime = Files.getLastModifiedTime(parentDir);
+            if (parentLastModifyTime.compareTo(twoHoursAgo) < 0) {
+
+                firstRecentlyModifiedParentDirString = parentDir.toString();
+
+                for (int i = sortedAlignH5Paths.size() - 1; i >= 0; i--) {
+                    final Path alignH5Path = sortedAlignH5Paths.get(i);
+                    final String parentDirString = alignH5Path.getParent().toString();
+                    if (parentDirString.compareTo(firstRecentlyModifiedParentDirString) >= 0) {
+                        indexOfFirstExcludedPath = i;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+
+        final int numberOfExcludedFiles = sortedAlignH5Paths.size() - indexOfFirstExcludedPath;
+        if (numberOfExcludedFiles > 0) {
+
+            LOG.info("buildSortedAlignH5Paths: excluding {} h5 files from {} (or later) since it was last modified at {}",
+                     numberOfExcludedFiles, firstRecentlyModifiedParentDirString, parentLastModifyTime);
+
+            sortedAlignH5Paths = sortedAlignH5Paths.subList(0, indexOfFirstExcludedPath);
+
+            if (sortedAlignH5Paths.isEmpty()) {
+                throw new IllegalArgumentException("no h5 files remain in " + clusterRootPaths.getAlignH5());
+            }
+        }
+
+        return sortedAlignH5Paths;
     }
 
     private static class BatchedH5Paths implements Serializable {
