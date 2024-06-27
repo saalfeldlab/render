@@ -76,6 +76,11 @@ public class VolumeTransferInfo implements Serializable {
         return transferTasks != null && transferTasks.contains(TransferTask.EXPORT_PREVIEW_VOLUME);
     }
 
+    @Override
+    public String toString() {
+        return JSON_HELPER.toJson(this);
+    }
+
     public static VolumeTransferInfo fromJson(final String json) {
         return JSON_HELPER.fromJson(json);
     }
