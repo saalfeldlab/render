@@ -27,19 +27,22 @@ public class ClusterRootPaths implements Serializable {
     private final String rawDat;
     private final String rawH5;
     private final String alignH5;
+    private final String exportN5;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private ClusterRootPaths() {
-        this(null, null, null);
+        this(null, null, null, null);
     }
 
     public ClusterRootPaths(final String rawDat,
                             final String rawH5,
-                            final String alignH5) {
+                            final String alignH5,
+                            final String exportN5) {
         this.rawDat = rawDat;
         this.rawH5 = rawH5;
         this.alignH5 = alignH5;
+        this.exportN5 = exportN5;
     }
 
     @JsonGetter(value = "raw_dat")
@@ -55,6 +58,16 @@ public class ClusterRootPaths implements Serializable {
     @JsonGetter(value = "align_h5")
     public String getAlignH5() {
         return alignH5;
+    }
+
+    @JsonGetter(value = "export_n5")
+    public String getExportN5() {
+        return exportN5;
+    }
+
+    @JsonIgnore
+    public boolean isExportN5Defined() {
+        return exportN5 != null;
     }
 
     /**
@@ -132,12 +145,6 @@ public class ClusterRootPaths implements Serializable {
     private static String getAlignH5NameForDat(final String forDatName) {
         // Merlin-6282_24-03-11_144200_0-0-0.dat -> Merlin-6282_24-03-11_14_144200.uint8.h5
         return forDatName == null ? null : forDatName.substring(0, forDatName.lastIndexOf('_')) + ".uint8.h5";
-    }
-
-    public static void main(final String[] args) throws Exception {
-        final String alignH5 = args.length == 0 ? "/nrs/fibsem/data/jrc_celegans-20240415/align" : args[0];
-        final ClusterRootPaths clusterRootPaths = new ClusterRootPaths(null, null, alignH5);
-        clusterRootPaths.getSortedAlignH5Paths("Merlin-6049_24-05-09_000312_0-0-0.dat", null).forEach(System.out::println);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ClusterRootPaths.class);

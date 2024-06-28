@@ -150,9 +150,14 @@ public class H5TileToN5PreviewClient {
             LOG.warn("buildAndExportPreview: skipping export for {}, no z layers exist and none were imported",
                      stackMetaDataAfterImport.getStackId());
         } else {
-            exportPreview(sparkContext,
-                          Paths.get(volumeTransferInfo.getClusterRootPaths().getAlignH5()).toAbsolutePath(),
-                          stackMetaDataAfterImport);
+            final ClusterRootPaths clusterRootPaths = volumeTransferInfo.getClusterRootPaths();
+            if (clusterRootPaths.isExportN5Defined()) {
+                final Path exportN5Path = Paths.get(clusterRootPaths.getExportN5()).toAbsolutePath();
+                exportPreview(sparkContext, exportN5Path, stackMetaDataAfterImport);
+            } else {
+                LOG.warn("buildAndExportPreview: skipping export for {}, no exportN5 defined",
+                         stackMetaDataAfterImport.getStackId());
+            }
         }
 
         LOG.info("buildAndExportPreview: exit");
@@ -416,7 +421,7 @@ public class H5TileToN5PreviewClient {
 
         public ExportInfo(final String baseDataUrl,
                           final StackMetaData stackMetaData,
-                          final Path alignH5Path) {
+                          final Path exportN5Path) {
 
             this.stackMetaData = stackMetaData;
 
@@ -434,9 +439,7 @@ public class H5TileToN5PreviewClient {
                     (long) bounds.getDeltaZ() + 1
             };
 
-            final Path alignH5Parent = alignH5Path.getParent();                                     // /nrs/cellmap/data/jrc_mus-liver-zon-3
-            final String n5BaseName = alignH5Parent.toFile().getName() + ".n5";                     // jrc_mus-liver-zon-3.n5
-            this.n5PathString = alignH5Parent + "/" + n5BaseName;                                   // /nrs/cellmap/data/jrc_mus-liver-zon-3/jrc_mus-liver-zon-3.n5
+            this.n5PathString = exportN5Path.toString();                                            // /nrs/cellmap/data/jrc_mus-liver-zon-3/jrc_mus-liver-zon-3.n5
             final String n5Dataset = "/render/" + stackId.getProject() + "/" + stackId.getStack();  // /render/jrc_mus_liver_zon_3/imaging_preview
             this.fullScaleDatasetName = n5Dataset + "/s0";                                          // /render/jrc_mus_liver_zon_3/imaging_preview/s0
 
@@ -468,11 +471,11 @@ public class H5TileToN5PreviewClient {
     }
 
     private void exportPreview(final JavaSparkContext sparkContext,
-                               final Path alignH5Path,
+                               final Path exportN5Path,
                                final StackMetaData stackMetaData)
             throws IllegalArgumentException, IOException {
 
-        final ExportInfo exportInfo = new ExportInfo(baseDataUrl, stackMetaData, alignH5Path);
+        final ExportInfo exportInfo = new ExportInfo(baseDataUrl, stackMetaData, exportN5Path);
         final N5Client n5Client = new N5Client(exportInfo.parameters);
         final DataType dataType = n5Client.getDataType();
         final int[] blockSize = exportInfo.parameters.getBlockSize();
