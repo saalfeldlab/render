@@ -130,6 +130,15 @@
       }
     ],
 
+    "jrc_mus-liver-zon-3-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "6161,8190,25,10,0.0,15,22.0,0.1"
+        }
+      }
+    ],
+
     "jrc_celegans-20240415-destreak" : [
       {
         "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
