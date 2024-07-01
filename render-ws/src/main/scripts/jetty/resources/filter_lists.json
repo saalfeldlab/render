@@ -121,6 +121,15 @@
       }
     ],
 
+    "jrc_atla52-b10-2-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "3961,7920,50,8,0.0,10,7.0,0.15"
+        }
+      }
+    ],
+
     "jrc_celegans-20240415-destreak" : [
       {
         "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
