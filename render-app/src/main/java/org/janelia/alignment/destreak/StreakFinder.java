@@ -12,25 +12,24 @@ public class StreakFinder {
 		final String srcPath = "/home/innerbergerm@hhmi.org/big-data/streak-correction/jrc_mus-liver-zon-3/z00032-0-0-1.png";
 
 		final ImagePlus backup = new ImagePlus(srcPath);
-		final ImagePlus imp = maskStreaks(srcPath);
+		final ImagePlus mask = createStreakMask(backup);
 
 		new ImageJ();
-		imp.show();
+		mask.show();
 		backup.show();
 	}
 
-	private static ImagePlus maskStreaks(final String srcPath) {
-		final ImagePlus imp = new ImagePlus(srcPath);
+	private static ImagePlus createStreakMask(final ImagePlus input) {
 		final String meanFilterCoefficients = "text1=" + "1\n".repeat(MEAN_FILTER_SIZE) + " normalize";
+		final ImagePlus converted = new ImagePlus("mask", input.getProcessor().convertToFloatProcessor());
 
-		IJ.run(imp, "32-bit", "");
-		IJ.run(imp, "Convolve...", "text1=[-1 0 1\n] normalize");
-		IJ.run(imp, "Convolve...", meanFilterCoefficients);
-		IJ.setAutoThreshold(imp, "Default dark no-reset");
-		IJ.setThreshold(imp, -10.0000, 10.0000);
+		IJ.run(converted, "Convolve...", "text1=[-1 0 1\n] normalize");
+		IJ.run(converted, "Convolve...", meanFilterCoefficients);
+		IJ.setAutoThreshold(converted, "Default dark no-reset");
+		IJ.setThreshold(converted, -10.0000, 10.0000);
 		Prefs.blackBackground = false;
-		IJ.run(imp, "Convert to Mask", "");
-		IJ.run(imp, "Gaussian Blur...", "sigma=3");
-		return imp;
+		IJ.run(converted, "Convert to Mask", "");
+		IJ.run(converted, "Gaussian Blur...", "sigma=3");
+		return converted;
 	}
 }
