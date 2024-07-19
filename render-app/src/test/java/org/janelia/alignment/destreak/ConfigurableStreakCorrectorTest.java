@@ -148,7 +148,7 @@ public class ConfigurableStreakCorrectorTest {
                                HUM_AIRWAY_FILE_NAMES[0]; // change file names index to test different images
 
         final Map<String, Double> parameters = new HashMap<>();
-        parameters.put("numThreads", 8.0);
+        parameters.put("numThreads", 12.0);
         parameters.put("fftWidth", 5545.0);
         parameters.put("fftHeight", 10920.0);
         parameters.put("innerCutoff", 18.0);
@@ -158,12 +158,16 @@ public class ConfigurableStreakCorrectorTest {
         parameters.put("initialThreshold", 7.0);
         parameters.put("finalThreshold", 0.05);
 
+        // this shows the effect of varying the parameters on the correction process (symmetrically around the value set above)
+        // a good strategy for finding a good parameter set is to start with the actual correction parameters "innerCutoff" and "bandWidth"
+        // once good parameters for correction are found, the locality of correction can be adjusted by varying "gaussianBlurRadius",
+        // "initialThreshold" and "finalThreshold"; the angle only needs to be adjusted if the streaks are not vertical
         displayParameterRange(srcPath, parameters, "innerCutoff", 3.0, 3, false);
         displayParameterRange(srcPath, parameters, "bandWidth", 2.0, 3, false);
         // displayParameterRange(srcPath, parameters, "angle", 0.0, 1.0, 3, false);
-        displayParameterRange(srcPath, parameters, "gaussianBlurRadius", 20.0, 3, true);
+        displayParameterRange(srcPath, parameters, "gaussianBlurRadius", 3.0, 3, true);
         displayParameterRange(srcPath, parameters, "initialThreshold", 1.0, 3, true);
-        displayParameterRange(srcPath, parameters, "finalThreshold", 0.01, 3, true);
+        displayParameterRange(srcPath, parameters, "finalThreshold", 0.03, 3, true);
 
         // this shows the final result of the correction process as well as the end result
         displayParameterRange(srcPath, parameters, "numThreads", 1.0, 0, true);
