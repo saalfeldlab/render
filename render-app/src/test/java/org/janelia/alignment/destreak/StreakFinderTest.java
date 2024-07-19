@@ -7,27 +7,37 @@ import ij.process.ImageProcessor;
 public class StreakFinderTest {
 	public static void main(final String[] args) {
 		final StreakFinder finder = new StreakFinder(201, 10.0, 3);
+		final StreakCorrector corrector = new SmoothMaskStreakCorrector(12, 6161, 8190, 10, 10, 0);
 		final String srcPath = "/home/innerbergerm@hhmi.org/big-data/streak-correction/jrc_mus-liver-zon-3/z00032-0-0-1.png";
 
-		final ImagePlus backup = new ImagePlus(srcPath);
-		final ImagePlus corrected = new ImagePlus(srcPath);
-		final ImagePlus mask = finder.createStreakMask(backup);
+		final ImagePlus original = new ImagePlus(srcPath);
+		final ImagePlus mask = finder.createStreakMask(original);
+		final ImagePlus corrected = streakCorrectLocally(corrector, original, mask);
 
 		new ImageJ();
 		mask.show();
-		backup.show();
+		original.show();
+		corrected.show();
+	}
 
-		final StreakCorrector corrector = new SmoothMaskStreakCorrector(12, 6161, 8190, 10, 10, 0);
+	private static ImagePlus streakCorrectLocally(
+			final StreakCorrector corrector,
+			final ImagePlus original,
+			final ImagePlus mask) {
+
+		final ImagePlus corrected = original.duplicate();
+		corrected.setTitle("Corrected");
 		corrector.process(corrected.getProcessor(), 1.0);
 
-		final ImageProcessor correctedProcessor = corrected.getProcessor();
-		final ImageProcessor maskProcessor = mask.getProcessor();
-		final ImageProcessor backupProcessor = backup.getProcessor();
+		final ImageProcessor proc = corrected.getProcessor();
+		final ImageProcessor maskProc = mask.getProcessor();
+		final ImageProcessor originalProc = original.getProcessor();
 		for (int i = 0; i < corrected.getWidth() * corrected.getHeight(); i++) {
-			final float lambda = maskProcessor.getf(i) / 255.0f;
-			final float mergedValue = backupProcessor.getf(i) * lambda + correctedProcessor.getf(i) * (1.0f - lambda);
-			correctedProcessor.setf(i, mergedValue);
+			final float lambda = maskProc.getf(i) / 255.0f;
+			final float mergedValue = originalProc.getf(i) * lambda + proc.getf(i) * (1.0f - lambda);
+			proc.setf(i, mergedValue);
 		}
-		corrected.show();
+
+		return corrected;
 	}
 }

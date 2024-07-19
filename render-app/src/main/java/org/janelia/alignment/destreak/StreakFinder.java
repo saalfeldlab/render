@@ -36,7 +36,7 @@ public class StreakFinder {
 	}
 
 	public ImagePlus createStreakMask(final ImagePlus input) {
-		final ImagePlus converted = new ImagePlus("mask", input.getProcessor().convertToFloatProcessor());
+		final ImagePlus converted = new ImagePlus("Mask", input.getProcessor().convertToFloatProcessor());
 
 		IJ.run(converted, "Convolve...", "text1=[-1 0 1\n] normalize");
 		IJ.run(converted, "Convolve...", meanFilterCoefficients);
