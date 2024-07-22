@@ -10,7 +10,6 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealLocalizable;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 
@@ -49,21 +48,20 @@ public class Inpainter {
 	 * @param img the image to inpaint
 	 * @param mask the mask
 	 */
-	public void inpaint(final RandomAccessibleInterval<FloatType> img, final RandomAccessibleInterval<UnsignedByteType> mask) {
+	public void inpaint(final RandomAccessibleInterval<FloatType> img, final RandomAccessibleInterval<FloatType> mask) {
 		final Cursor<FloatType> imgCursor = Views.iterable(img).localizingCursor();
 
 		final RealRandomAccess<FloatType> imageAccess = Views.interpolate(Views.extendBorder(img), new NLinearInterpolatorFactory<>()).realRandomAccess();
-		final RealRandomAccess<UnsignedByteType> maskAccess = Views.interpolate(Views.extendBorder(mask), new NLinearInterpolatorFactory<>()).realRandomAccess();
+		final RealRandomAccess<FloatType> maskAccess = Views.interpolate(Views.extendBorder(mask), new NLinearInterpolatorFactory<>()).realRandomAccess();
 
 		while (imgCursor.hasNext()) {
 			final FloatType o = imgCursor.next();
-			final UnsignedByteType m = maskAccess.setPositionAndGet(imgCursor);
-			if (m.get() < 255) {
+			final float m = maskAccess.setPositionAndGet(imgCursor).get();
+			if (m == 255.0) {
 				// pixel not masked, no inpainting necessary
 				continue;
 			}
 
-			System.out.println("Inpainting pixel at " + imgCursor.getFloatPosition(0) + ", " + imgCursor.getFloatPosition(1));
 			double weightSum = 0;
 			double valueSum = 0;
 
@@ -80,8 +78,10 @@ public class Inpainter {
 			}
 
 			final float v = (float) (valueSum / weightSum);
-			final float w = m.get() / 255.0f;
-			o.set(v * w + o.get() * (1 - w));
+			final float w = m / 255.0f;
+			final float oldValue = o.get();
+			final float newValue = v * (1 - w) + oldValue * w;
+			o.set(newValue);
 		}
 	}
 
@@ -111,7 +111,7 @@ public class Inpainter {
 		 * @return the result of the ray casting or null if the ray exited the image boundary without hitting a
 		 * 		   non-masked pixel
 		 */
-		public Result cast(final RealRandomAccess<UnsignedByteType> mask, final Interval interval, final RealLocalizable position) {
+		public Result cast(final RealRandomAccess<FloatType> mask, final Interval interval, final RealLocalizable position) {
 			mask.setPosition(position);
 			initializeRandomDirection();
 			long steps = 0;
@@ -125,8 +125,8 @@ public class Inpainter {
 					return null;
 				}
 
-				final int value = mask.get().get();
-				if (value != 255) {
+				final float value = mask.get().get();
+				if (value > 254.0) {
 					// the ray reached a non-masked pixel
 					mask.localize(result.position);
 					result.distance = steps;
