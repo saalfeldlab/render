@@ -1,17 +1,27 @@
 package org.janelia.render.client.multisem;
 
+import java.awt.Rectangle;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import ij.ImagePlus;
+import ij.io.FileSaver;
+import ij.process.ImageProcessor;
 import mpicbg.models.TranslationModel2D;
 import mpicbg.models.TranslationModel3D;
 import mpicbg.stitching.ImageCollectionElement;
 import mpicbg.stitching.TextFileAccess;
+import mpicbg.trakem2.transform.CoordinateTransform;
+import mpicbg.trakem2.transform.CoordinateTransformList;
+import mpicbg.trakem2.transform.TransformMesh;
+import mpicbg.trakem2.transform.TransformMeshMapping;
 import stitching.utils.Log;
 
 public class RecapKensAlignmentTools
@@ -170,4 +180,91 @@ public class RecapKensAlignmentTools
 		return elements;
 	}
 
+	// from: register_virtual_stack_slices/src/main/java/register_virtual_stack/Transform_Virtual_Stack_MT.java
+	/**
+	 * Read coordinate transform from file (generated in Register_Virtual_Stack)
+	 *
+	 * @param filename  complete file name (including path)
+	 * @return true if the coordinate transform was properly read, false otherwise.
+	 */
+	public static CoordinateTransformList<CoordinateTransform> readCoordinateTransform( String filename )
+	{
+		final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<CoordinateTransform>();
+		try 
+		{
+			final FileReader fr = new FileReader(filename);
+			final BufferedReader br = new BufferedReader(fr);
+			String line = null;
+			while ((line = br.readLine()) != null) 
+			{
+				int index = -1;
+				if( (index = line.indexOf("class=")) != -1)
+				{
+					// skip "class"
+					index+= 5;
+					// read coordinate transform class name
+					final int index2 = line.indexOf("\"", index+2); 
+					final String ct_class = line.substring(index+2, index2);
+					final CoordinateTransform ct = (CoordinateTransform) Class.forName(ct_class).newInstance();
+					// read coordinate transform info
+					final int index3 = line.indexOf("=", index2+1);
+					final int index4 = line.indexOf("\"", index3+2); 
+					final String data = line.substring(index3+2, index4);
+					ct.init(data);
+					ctl.add(ct);
+				}
+			}
+			br.close();
+		
+		} catch (FileNotFoundException e) {
+			System.err.println("File not found exception" + e);
+			
+		} catch (IOException e) {
+			System.err.println("IOException exception" + e);
+			
+		} catch (NumberFormatException e) {
+			System.err.println("Number format exception" + e);
+			
+		} catch (InstantiationException e) {
+			System.err.println("Instantiation exception" + e);
+			
+		} catch (IllegalAccessException e) {
+			System.err.println("Illegal access exception" + e);
+			
+		} catch (ClassNotFoundException e) {
+			System.err.println("Class not found exception" + e);
+			
+		}
+		return ctl;
+	}
+
+	// adapted from register_virtual_stack_slices/src/main/java/register_virtual_stack/Register_Virtual_Stack_MT.applyTransformAndSave()
+	// to only return the bounding box
+	public static Rectangle getBoundingBox(
+			final int width,
+			final int height,
+			final CoordinateTransform transform)
+	{
+		// Open next image
+		//final ImagePlus imp2 = readImage(source_dir + file_name);
+
+		// Calculate transform mesh
+		final TransformMesh mesh = new TransformMesh(transform, 32, width, height);
+		//TransformMeshMapping mapping = new TransformMeshMapping(mesh);
+
+		// Create interpolated deformed image with black background
+		//imp2.getProcessor().setValue(0);
+		//final ImageProcessor ip2 = interpolate ? mapping.createMappedImageInterpolated(imp2.getProcessor()) : mapping.createMappedImage(imp2.getProcessor()); 
+		//imp2.setProcessor(imp2.getTitle(), ip2);
+		
+		//imp2.show();
+
+		// Accumulate bounding boxes, so in the end they can be reopened and re-saved with an enlarged canvas.
+		final Rectangle currentBounds = mesh.getBoundingBox();
+		return currentBounds;
+		//bounds[i] = currentBounds;
+		
+		// Save target image
+		//return new FileSaver(imp2).saveAsTiff(makeTargetPath(target_dir, file_name));
+	}
 }
