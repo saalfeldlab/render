@@ -1,8 +1,12 @@
 package org.janelia.render.client.multisem;
 
 import java.io.File;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 
+import loci.common.DebugTools;
 import mpicbg.stitching.ImageCollectionElement;
 
 public class RecapKensAlignment
@@ -31,11 +35,12 @@ public class RecapKensAlignment
 
 	public static void reconstruct( final int slab )
 	{
-		// find out numSlices
+		// find out numSlices and indices
 		final ArrayList< Integer > slices = numSlices( slab );
 		final int numSlices = slices.size();
 
 		System.out.println( "Slab " + slab + " has " + numSlices + " z-layers in Ken's alignment.");
+
 
 		// TODO: scan correction
 		// needs to go into Render (the wrong, inverse version Thomas did)
@@ -51,8 +56,28 @@ public class RecapKensAlignment
 			final File f = new File( basePath, String.format( "scan_corrected_equalized_target_dir/scan_%03d/%03d_/000010", z, slab ) );//scan_corrected_equalized_target_dir/scan_001/001_/000010;
 			System.out.println( "Processing: " + f.getAbsolutePath() );
 
-			final ArrayList<ImageCollectionElement> stitchingTransforms = RecapKensAlignmentTools.getLayoutFromFile( f.getAbsolutePath(), "fiji_stitch_start.registered.txt" );
+			final ArrayList<ImageCollectionElement> stitchingTransforms =
+					RecapKensAlignmentTools.getLayoutFromFile( f.getAbsolutePath(), "fiji_stitch_start.registered.txt" );
+
+			// disable Bioformats debug messages
+			DebugTools.setRootLevel("OFF");
+
+			for ( final ImageCollectionElement e : stitchingTransforms )
+			{
+				// e.open( true ); // only to get dimensions, is always be 1996x1748
+				// instead we use reflections to set it
+				try {
+					final Field field2 = e.getClass().getDeclaredField( "size" );
+					field2.setAccessible(true);
+					field2.set(e,new int[] { 1996, 1748 } );
+				} catch (Exception e1) {}
+
+				//System.out.println( e.getFile().getAbsolutePath() );
+				//System.out.println( Arrays.toString( e.getOffset() ) + ", " + e.getDimensionality() );
+				//System.out.println( Arrays.toString( e.getDimensions() ) );
+			}
 		}
+
 	}
 
 	public static void main( String[] args )
