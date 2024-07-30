@@ -163,7 +163,7 @@ public class RecapKensAlignment
 
 			// the second transformation (translation, only exists from the 2nd z layer on) is the bounding offset of the previous z layer
 			// I think the idea is that the offset is ignored for each individual z-plane, and rather the next one is moved accordingly
-			// I guess Albert did not care that a bit of the data is potentially cut off(?)
+			// I guess Albert did not care that a bit of the data is potentially cut off(?) <<< NO, nothing is cut, I am missing something still
 			final int numTransforms = transforms.getList( new ArrayList<>() ).size();
 			//System.out.println( "Number of transforms: " + numTransforms );
 
