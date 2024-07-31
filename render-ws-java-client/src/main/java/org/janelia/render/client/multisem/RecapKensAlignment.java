@@ -1,10 +1,7 @@
 package org.janelia.render.client.multisem;
 
 import java.awt.Rectangle;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -56,39 +53,6 @@ public class RecapKensAlignment
 		}
 
 		return zLayers;
-	}
-
-	public static double parseMagCFile( final File magCFile, final int slab )
-	{
-		try
-		{
-			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
-
-			String line = reader.readLine().trim();
-
-			while (line != null)
-			{
-				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
-				{
-					String[] entries = line.split( "," );
-					if ( Integer.parseInt( entries[ 4 ] ) == ( slab - 1) )
-					{
-						reader.close();
-						return Double.parseDouble( entries[ 6 ] );
-					}
-				}
-	
-				line = reader.readLine();
-			}
-
-			reader.close();
-		}
-		catch (IOException e)
-		{
-			e.printStackTrace();
-		}
-
-		return Double.NaN;
 	}
 
 	public static void reconstruct( final int slab )
@@ -279,8 +243,8 @@ public class RecapKensAlignment
 		}
 
 		// if we wanted to render, should be zero-min with the following size
-		final int slabWidth = commonBounds.width;
-		final int slabHeight = commonBounds.height;
+		int slabWidth = commonBounds.width;
+		int slabHeight = commonBounds.height;
 
 
 		//
@@ -299,6 +263,9 @@ public class RecapKensAlignment
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
 			models.get( slices.get( zIndex ) ).transformedImages.forEach( ti -> ti.models.add( canvasResizeModel ) );
 
+		// if we wanted to render, should be zero-min with the following size
+		slabWidth = slabHeight = 22000;
+
 		// rotate by MagC angle (grid=1)
 		// (ij.plugin.filter.Rotator)
 
@@ -306,7 +273,7 @@ public class RecapKensAlignment
 		final File file = new File( magC, "scan_005.csv" );
 		System.out.println( "Loading: " + file.getAbsolutePath() );
 
-		final double angle = parseMagCFile( file, slab );
+		final double angle = RecapKensAlignmentTools.parseMagCFile( file, slab );
 		System.out.println( "Angle: " + angle );
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
@@ -314,7 +281,22 @@ public class RecapKensAlignment
 			final int z = slices.get( zIndex );
 			final TransformedZLayer tzl = models.get( z );
 
-			
+			final double centerX = (slabWidth-1)/2.0;
+			final double centerY = (slabHeight-1)/2.0;
+
+			final TranslationModel2D toOrigin = new TranslationModel2D();
+			final RigidModel2D rotate = new RigidModel2D();
+			final TranslationModel2D fromOrigin = new TranslationModel2D();
+	
+			toOrigin.set( -centerX, -centerY );
+			rotate.set( Math.toRadians( angle ), 0, 0 ); // TODO: is this angle correct?
+			fromOrigin.set( centerX, centerY );
+
+			tzl.transformedImages.forEach( ti -> {
+				ti.models.add( toOrigin );
+				ti.models.add( rotate );
+				ti.models.add( fromOrigin );
+			} );
 		}
 	}
 

@@ -7,13 +7,10 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.Callable;
+import java.util.List;
 
-import ij.ImagePlus;
-import ij.io.FileSaver;
-import ij.process.ImageProcessor;
+import org.janelia.render.client.multisem.RecapKensAlignment.TransformedImage;
+
 import mpicbg.models.TranslationModel2D;
 import mpicbg.models.TranslationModel3D;
 import mpicbg.stitching.ImageCollectionElement;
@@ -21,11 +18,52 @@ import mpicbg.stitching.TextFileAccess;
 import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
-import mpicbg.trakem2.transform.TransformMeshMapping;
+import net.imglib2.Interval;
 import stitching.utils.Log;
 
 public class RecapKensAlignmentTools
 {
+	public static void render(
+			final List< TransformedImage > transformedImages,
+			final Interval interval )
+	{
+		
+		//RealViews.
+	}
+
+	public static double parseMagCFile( final File magCFile, final int slab )
+	{
+		try
+		{
+			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
+
+			String line = reader.readLine().trim();
+
+			while (line != null)
+			{
+				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
+				{
+					String[] entries = line.split( "," );
+					if ( Integer.parseInt( entries[ 4 ] ) == ( slab - 1) )
+					{
+						reader.close();
+						return Double.parseDouble( entries[ 6 ] );
+					}
+				}
+	
+				line = reader.readLine();
+			}
+
+			reader.close();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+		return Double.NaN;
+	}
+
 	/*
 	 * From stitching code
 	 */
@@ -41,7 +79,7 @@ public class RecapKensAlignmentTools
 		// the map doesn't get used in the case of single series files below!
 		// TODO: check performance on large datasets! Use an array for the
 		// ImagePlus'es otherwise and store the index number in the hash map!
-		Map<String, ImagePlus[]> multiSeriesMap = new HashMap<String, ImagePlus[]>();
+		//Map<String, ImagePlus[]> multiSeriesMap = new HashMap<String, ImagePlus[]>();
 		String pfx = "Stitching_Grid.getLayoutFromFile: ";
 		try {
 			final BufferedReader in = TextFileAccess.openFileRead( new File( directory, layoutFile ) );
@@ -205,6 +243,7 @@ public class RecapKensAlignmentTools
 					// read coordinate transform class name
 					final int index2 = line.indexOf("\"", index+2); 
 					final String ct_class = line.substring(index+2, index2);
+					@SuppressWarnings("deprecation")
 					final CoordinateTransform ct = (CoordinateTransform) Class.forName(ct_class).newInstance();
 					// read coordinate transform info
 					final int index3 = line.indexOf("=", index2+1);
@@ -250,7 +289,7 @@ public class RecapKensAlignmentTools
 
 		// Calculate transform mesh
 		final TransformMesh mesh = new TransformMesh(transform, 32, width, height);
-		TransformMeshMapping mapping = new TransformMeshMapping(mesh);
+		//TransformMeshMapping mapping = new TransformMeshMapping(mesh);
 
 		// Create interpolated deformed image with black background
 		//imp2.getProcessor().setValue(0);
