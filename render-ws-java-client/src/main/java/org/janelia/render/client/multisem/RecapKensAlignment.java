@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import ij.IJ;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InvertibleBoundable;
 import mpicbg.models.RigidModel2D;
@@ -162,39 +163,35 @@ public class RecapKensAlignment
 			final CoordinateTransformList<CoordinateTransform> transforms = RecapKensAlignmentTools.readCoordinateTransform( fn );
 
 			// the second transformation (translation, only exists from the 2nd z layer on) is the bounding offset of the previous z layer
-			// I think the idea is that the offset is ignored for each individual z-plane, and rather the next one is moved accordingly
-			// I guess Albert did not care that a bit of the data is potentially cut off(?) <<< NO, nothing is cut, I am missing something still
+			// it's an additional movement to correct for the offset of the previous plane that is baked into the transformation (somehow);
+			// each "applyTransformAndSave()" applies the transform and sets it's min to (0,0)
+
 			final int numTransforms = transforms.getList( new ArrayList<>() ).size();
 			//System.out.println( "Number of transforms: " + numTransforms );
 
-			// update the transformation list of all images in this z-plane
+			final Rectangle boundingbox = RecapKensAlignmentTools.getBoundingBox( tzl.width, tzl.height, transforms );
+			final TranslationModel2D bbTransform = new TranslationModel2D();
+			bbTransform.set( -boundingbox.getMinX(), -boundingbox.getMinY() );
+
+			System.out.println( "Bounding box = " + boundingbox);
+
+			// update the transformation list of all images in this z-plane (apply transform and shift min to 0,0)
+			// TODO: is the order of transforms correct?
 			for ( int t = 0; t < numTransforms; ++t )
 			{
 				final CoordinateTransform m = transforms.get( t );
 
 				if ( mpicbg.trakem2.transform.RigidModel2D.class.isInstance( m ) )
-				{
-					//System.out.println( "rigid: " + m );
 					models.get( z ).transformedImages.forEach( ti -> ti.models.add( (RigidModel2D)m ) );
-				}
 				else if ( mpicbg.trakem2.transform.TranslationModel2D.class.isInstance( m ) )
-				{
-					//System.out.println( "translation: " + m );
 					models.get( z ).transformedImages.forEach( ti -> ti.models.add( (TranslationModel2D)m ) );
-				}
 				else if ( mpicbg.trakem2.transform.AffineModel2D.class.isInstance( m ) )
-				{
-					//System.out.println( "affine: " + m );
 					models.get( z ).transformedImages.forEach( ti -> ti.models.add( (AffineModel2D)m ) );
-				}
 				else
-				{
 					throw new RuntimeException( "Don't know how to process model: " + m.getClass().getName() );
-				}
 			}
 
-			final Rectangle boundingbox = RecapKensAlignmentTools.getBoundingBox( tzl.width, tzl.height, transforms );
-			System.out.println( "Bounding box = " + boundingbox);
+			models.get( z ).transformedImages.forEach( ti -> ti.models.add( bbTransform ) );
 
 			// Update common bounds
 			int min_x = commonBounds.x;
@@ -216,6 +213,9 @@ public class RecapKensAlignment
 			commonBounds.width = max_x - min_x;
 			commonBounds.height = max_y - min_y;
 		}
+
+		System.out.println("\nFinal common bounding box = [" + commonBounds.x + " " + commonBounds.y + " " + commonBounds.width + " " + commonBounds.height + "]");
+		// TODO: apply common bounding box to all; equivalent to resizeAndSaveImage()
 	}
 
 	public static void main( String[] args )

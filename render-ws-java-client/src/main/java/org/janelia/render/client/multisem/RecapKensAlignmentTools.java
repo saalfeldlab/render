@@ -250,7 +250,7 @@ public class RecapKensAlignmentTools
 
 		// Calculate transform mesh
 		final TransformMesh mesh = new TransformMesh(transform, 32, width, height);
-		//TransformMeshMapping mapping = new TransformMeshMapping(mesh);
+		TransformMeshMapping mapping = new TransformMeshMapping(mesh);
 
 		// Create interpolated deformed image with black background
 		//imp2.getProcessor().setValue(0);
