@@ -1,12 +1,14 @@
 package org.janelia.render.client.multisem;
 
 import java.awt.Rectangle;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import ij.IJ;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InvertibleBoundable;
 import mpicbg.models.RigidModel2D;
@@ -21,6 +23,7 @@ public class RecapKensAlignment
 	public static String basePath = "/nrs/hess/from_mdas/Hayworth/Wafer53/";
 	public static String stitchedSlabs = "/scan_corrected_equalized_target_dir/stitched_stacks";
 	public static String rigidSlabs = "/scan_corrected_equalized_target_dir/stitched_stacks_substrate_replaced";
+	public static String magC = "/nrs/hess/from_mdas/ufomsem/acquisition/base/wafer_53/ordering";
 
 	public static class TransformedImage
 	{
@@ -53,6 +56,39 @@ public class RecapKensAlignment
 		}
 
 		return zLayers;
+	}
+
+	public static double parseMagCFile( final File magCFile, final int slab )
+	{
+		try
+		{
+			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
+
+			String line = reader.readLine().trim();
+
+			while (line != null)
+			{
+				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
+				{
+					String[] entries = line.split( "," );
+					if ( Integer.parseInt( entries[ 4 ] ) == ( slab - 1) )
+					{
+						reader.close();
+						return Double.parseDouble( entries[ 6 ] );
+					}
+				}
+	
+				line = reader.readLine();
+			}
+
+			reader.close();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+		return Double.NaN;
 	}
 
 	public static void reconstruct( final int slab )
@@ -172,6 +208,7 @@ public class RecapKensAlignment
 			// the second transformation (translation, only exists from the 2nd z layer on) is the bounding offset of the previous z layer
 			// it's an additional movement to correct for the offset of the previous plane that is baked into the transformation (somehow);
 			// each "applyTransformAndSave()" applies the transform and sets it's min to (0,0)
+			// NOTE: Register_Virtual_Stack applies the transformation using meshes, so slight differences are expected(!)
 
 			final int numTransforms = transforms.getList( new ArrayList<>() ).size();
 			//System.out.println( "Number of transforms: " + numTransforms );
@@ -249,10 +286,41 @@ public class RecapKensAlignment
 		//
 		// Global Rotation
 		//
+
+		// canvas size 22000x22000 (position=center)
+		// half pixels are processed in int's, e.g. 21350x18603 >> 22000x22000 (ij.plugin.CanvasResizer):
+
+		final int xC = (22000 - slabWidth)/2;// offset for centered
+		final int yC = (22000 - slabHeight)/2;// offset for centered
+
+		final TranslationModel2D canvasResizeModel = new TranslationModel2D();
+		canvasResizeModel.set( xC, yC );
+
+		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
+			models.get( slices.get( zIndex ) ).transformedImages.forEach( ti -> ti.models.add( canvasResizeModel ) );
+
+		// rotate by MagC angle (grid=1)
+		// (ij.plugin.filter.Rotator)
+
+		// first load the rotation angle
+		final File file = new File( magC, "scan_005.csv" );
+		System.out.println( "Loading: " + file.getAbsolutePath() );
+
+		final double angle = parseMagCFile( file, slab );
+		System.out.println( "Angle: " + angle );
+
+		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
+		{
+			final int z = slices.get( zIndex );
+			final TransformedZLayer tzl = models.get( z );
+
+			
+		}
 	}
 
 	public static void main( String[] args )
 	{
+		// 5 is not the slab but some serial number I believe, we need to figure out the actual slab number from that
 		reconstruct( 5 );
 	}
 }
