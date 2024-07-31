@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import ij.ImageJ;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InvertibleBoundable;
 import mpicbg.models.RigidModel2D;
@@ -14,6 +15,10 @@ import mpicbg.stitching.ImageCollectionElement;
 import mpicbg.stitching.fusion.Fusion;
 import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.CoordinateTransformList;
+import net.imglib2.FinalInterval;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
 
 public class RecapKensAlignment
 {
@@ -302,7 +307,11 @@ public class RecapKensAlignment
 
 	public static void main( String[] args )
 	{
+		new ImageJ();
+		RandomAccessibleInterval<UnsignedByteType> img = RecapKensAlignmentTools.render( null, new FinalInterval( new long[] { -100, -200 }, new long[] { 3000, 3000 } ) );
+		ImageJFunctions.show( img );
+
 		// 5 is not the slab but some serial number I believe, we need to figure out the actual slab number from that
-		reconstruct( 5 );
+		//reconstruct( 5 );
 	}
 }

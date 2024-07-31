@@ -7,9 +7,15 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.janelia.render.client.multisem.RecapKensAlignment.TransformedImage;
+import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 
 import mpicbg.models.TranslationModel2D;
 import mpicbg.models.TranslationModel3D;
@@ -18,17 +24,81 @@ import mpicbg.stitching.TextFileAccess;
 import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
+import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.util.Intervals;
+import net.imglib2.util.Util;
+import net.imglib2.view.Views;
 import stitching.utils.Log;
 
 public class RecapKensAlignmentTools
 {
-	public static void render(
+	public static RandomAccessibleInterval<UnsignedByteType> render(
 			final List< TransformedImage > transformedImages,
 			final Interval interval )
 	{
-		
-		//RealViews.
+		final RandomAccessibleInterval<UnsignedByteType> output =
+				Views.translate(
+						ArrayImgs.unsignedBytes( interval.dimensionsAsLongArray() ),
+						Intervals.minAsLongArray( interval ) );
+
+		final List<long[][]> grid =
+				Grid.create(
+						interval.dimensionsAsLongArray(),
+						new int[] { 512, 512 } );
+
+		System.out.println( "num blocks = " + grid.size() );
+
+		long time = System.currentTimeMillis();
+		final ExecutorService ex = Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() );
+		final Random rnd = new Random( 354 );
+
+		//
+		// fuse data block by block
+		//
+		ex.submit(() ->
+			grid.parallelStream().forEach(
+					gridBlock -> {
+						try {
+							final Interval block =
+									Intervals.translate(
+											Intervals.translate(
+													new FinalInterval( gridBlock[1] ), // blocksize
+													gridBlock[0] ), // block offset
+											Intervals.minAsLongArray( interval ) ); // offset of global interval
+	
+							final RandomAccessibleInterval< UnsignedByteType > target = Views.interval( output, block );
+
+							final int value = rnd.nextInt( 255 );
+							Views.iterable( target ).forEach( type -> type.set( value ) );
+						}
+						catch (Exception e) 
+						{
+							System.out.println( "Error fusing block offset=" + Util.printCoordinates( gridBlock[0] ) + "' ... " );
+							e.printStackTrace();
+						}
+					} )
+			);
+
+		try
+		{
+			ex.shutdown();
+			ex.awaitTermination( Long.MAX_VALUE, TimeUnit.HOURS);
+		}
+		catch (InterruptedException e)
+		{
+			System.out.println( "Failed to fuse. Error: " + e );
+			e.printStackTrace();
+			return null;
+		}
+
+		//System.out.println( "Saved, e.g. view with './n5-view -i " + n5Path + " -d " + n5Dataset );
+		System.out.println( "Fused, took: " + (System.currentTimeMillis() - time ) + " ms." );
+
+		return output;
 	}
 
 	public static double parseMagCFile( final File magCFile, final int slab )
@@ -305,5 +375,181 @@ public class RecapKensAlignmentTools
 		
 		// Save target image
 		//return new FileSaver(imp2).saveAsTiff(makeTargetPath(target_dir, file_name));
+	}
+
+	/**
+	 * copied for convenience
+	 *
+	 * @author Stephan Saalfeld &lt;saalfelds@janelia.hhmi.org&gt;
+	 */
+	public static class Grid
+	{
+		private Grid() {}
+
+		/*
+		 * Crops the dimensions of a {@link DataBlock} at a given offset to fit
+		 * into and {@link Interval} of given dimensions.  Fills long and int
+		 * version of cropped block size.  Also calculates the grid raster position
+		 * assuming that the offset divisible by block size without remainder.
+		 *
+		 * @param max
+		 * @param offset
+		 * @param blockSize
+		 * @param croppedBlockSize
+		 * @param intCroppedBlockDimensions
+		 * @param gridPosition
+		 */
+		static void cropBlockDimensions(
+				final long[] dimensions,
+				final long[] offset,
+				final int[] outBlockSize,
+				final int[] blockSize,
+				final long[] croppedBlockSize,
+				final long[] gridPosition) {
+
+			for (int d = 0; d < dimensions.length; ++d) {
+				croppedBlockSize[d] = Math.min(blockSize[d], dimensions[d] - offset[d]);
+				gridPosition[d] = offset[d] / outBlockSize[d];
+			}
+		}
+
+		/*
+		 * Create a {@link List} of grid blocks that, for each grid cell, contains
+		 * the world coordinate offset, the size of the grid block, and the
+		 * grid-coordinate offset.  The spacing for input grid and output grid
+		 * are independent, i.e. world coordinate offsets and cropped block-sizes
+		 * depend on the input grid, and the grid coordinates of the block are
+		 * specified on an independent output grid.  It is assumed that
+		 * gridBlockSize is an integer multiple of outBlockSize.
+		 *
+		 * @param dimensions
+		 * @param gridBlockSize
+		 * @param outBlockSize
+		 * @return
+		 */
+		public static List<long[][]> create(
+				final long[] dimensions,
+				final int[] gridBlockSize,
+				final int[] outBlockSize) {
+
+			final int n = dimensions.length;
+			final ArrayList<long[][]> gridBlocks = new ArrayList<>();
+
+			final long[] offset = new long[n];
+			final long[] gridPosition = new long[n];
+			final long[] longCroppedGridBlockSize = new long[n];
+			for (int d = 0; d < n;) {
+				cropBlockDimensions(dimensions, offset, outBlockSize, gridBlockSize, longCroppedGridBlockSize, gridPosition);
+					gridBlocks.add(
+							new long[][]{
+								offset.clone(),
+								longCroppedGridBlockSize.clone(),
+								gridPosition.clone()
+							});
+
+				for (d = 0; d < n; ++d) {
+					offset[d] += gridBlockSize[d];
+					if (offset[d] < dimensions[d])
+						break;
+					else
+						offset[d] = 0;
+				}
+			}
+			return gridBlocks;
+		}
+
+		/*
+		 * Create a {@link List} of grid blocks that, for each grid cell, contains
+		 * the world coordinate offset, the size of the grid block, and the
+		 * grid-coordinate offset.
+		 *
+		 * @param dimensions
+		 * @param blockSize
+		 * @return
+		 */
+		public static List<long[][]> create(
+				final long[] dimensions,
+				final int[] blockSize) {
+
+			return create(dimensions, blockSize, blockSize);
+		}
+
+
+		/*
+		 * Create a {@link List} of grid block offsets in world coordinates
+		 * covering an {@link Interval} at a given spacing.
+		 *
+		 * @param interval
+		 * @param spacing
+		 * @return
+		 */
+		public static List<long[]> createOffsets(
+				final Interval interval,
+				final int[] spacing) {
+
+			final int n = interval.numDimensions();
+			final ArrayList<long[]> offsets = new ArrayList<>();
+
+			final long[] offset = Intervals.minAsLongArray(interval);
+			for (int d = 0; d < n;) {
+				offsets.add(offset.clone());
+
+				for (d = 0; d < n; ++d) {
+					offset[d] += spacing[d];
+					if (offset[d] <= interval.max(d))
+						break;
+					else
+						offset[d] = interval.min(d);
+				}
+			}
+			return offsets;
+		}
+
+		/*
+		 * Returns the grid coordinates of a given offset for a min coordinate and
+		 * a grid spacing.
+		 *
+		 * @param offset
+		 * @param min
+		 * @param spacing
+		 * @return
+		 */
+		public static long[] gridCell(
+				final long[] offset,
+				final long[] min,
+				final int[] spacing) {
+
+			final long[] gridCell = new long[offset.length];
+			Arrays.setAll(gridCell, i -> (offset[i] - min[i]) / spacing[i]);
+			return gridCell;
+		}
+
+		/*
+		 * Returns the long coordinates smaller or equal scaled double coordinates.
+		 *
+		 * @param doubles
+		 * @param scale
+		 * @return
+		 */
+		public static long[] floorScaled(final double[] doubles, final double scale) {
+
+			final long[] floorScaled = new long[doubles.length];
+			Arrays.setAll(floorScaled, i -> (long)Math.floor(doubles[i] * scale));
+			return floorScaled;
+		}
+
+		/*	
+		 * Returns the long coordinate greater or equal scaled double coordinates.
+		 *
+		 * @param doubles
+		 * @param scale
+		 * @return
+		 */
+		public static long[] ceilScaled(final double[] doubles, final double scale) {
+
+			final long[] ceilScaled = new long[doubles.length];
+			Arrays.setAll(ceilScaled, i -> (long)Math.ceil(doubles[i] * scale));
+			return ceilScaled;
+		}
 	}
 }
