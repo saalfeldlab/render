@@ -334,19 +334,19 @@ public class RecapKensAlignment
 		// half_crop_width = int(crop_width/2) <<< crop_width=12500
 		// my_cropped_image = my_image[ center_r - half_crop_width:center_r + half_crop_width, center_c - half_crop_width:center_c + half_crop_width] <<< left inclusive, right exclusive
 
-		// TODO: move top-left corner to 0,0
+		// move top-left corner to 0,0
 		final TranslationModel2D resize12500 = new TranslationModel2D();
 		canvasResizeModel.set( -( (22000/2) - (12500/2) ), -( (22000/2) - (12500/2) ) );
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
 			models.get( slices.get( zIndex ) ).transformedImages.forEach( ti -> ti.models.add( resize12500 ) );
 
-		RandomAccessibleInterval<UnsignedByteType> img =
-				RecapKensAlignmentTools.render(
-						models.get( slices.get( 2 ) ).transformedImages,
-						new FinalInterval( new long[] { 0, 0 }, new long[] { 12500 - 1, 12500 - 1 } ) );
-		ImageJFunctions.show( img );
-		SimpleMultiThreading.threadHaltUnClean();
+		//RandomAccessibleInterval<UnsignedByteType> img =
+		//		RecapKensAlignmentTools.render(
+		//				models.get( slices.get( 2 ) ).transformedImages,
+		//				new FinalInterval( new long[] { 0, 0 }, new long[] { 12500 - 1, 12500 - 1 } ) );
+		//ImageJFunctions.show( img );
+		//SimpleMultiThreading.threadHaltUnClean();
 
 		return models;
 	}
