@@ -241,6 +241,11 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+        	<groupId>net.preibisch</groupId>
+        	<artifactId>BigStitcher-Spark</artifactId>
+        	<version>0.0.2-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <!--

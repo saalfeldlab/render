@@ -7,7 +7,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import ij.ImageJ;
-import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InvertibleBoundable;
@@ -17,10 +16,6 @@ import mpicbg.stitching.ImageCollectionElement;
 import mpicbg.stitching.fusion.Fusion;
 import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.CoordinateTransformList;
-import net.imglib2.FinalInterval;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
 
 public class RecapKensAlignment
 {
@@ -63,7 +58,7 @@ public class RecapKensAlignment
 		return zLayers;
 	}
 
-	public static void reconstruct( final int slab )
+	public static HashMap< Integer, TransformedZLayer > reconstruct( final int slab )
 	{
 		final HashMap< Integer, TransformedZLayer > models = new HashMap<>();
 
@@ -309,7 +304,7 @@ public class RecapKensAlignment
 			final TranslationModel2D fromOrigin = new TranslationModel2D();
 	
 			toOrigin.set( -centerX, -centerY );
-			rotate.set( Math.toRadians( angle ), 0, 0 ); // TODO: is this angle correct?
+			rotate.set( Math.toRadians( angle ), 0, 0 ); // is this angle correct?
 			fromOrigin.set( centerX, centerY );
 
 			tzl.transformedImages.forEach( ti -> {
@@ -325,6 +320,18 @@ public class RecapKensAlignment
 		//				new FinalInterval( new long[] { 0, 0 }, new long[] { slabWidth - 1, slabHeight - 1 } ) );
 		//ImageJFunctions.show( img );
 		//SimpleMultiThreading.threadHaltUnClean();
+
+		//
+		// Crop to 12500 x 12500
+		//
+		// center_r = int(shape_r/2)
+		// center_c = int(shape_c/2) <<< what happens to half pixels <<< we don't care, it is 22000
+		// half_crop_width = int(crop_width/2) <<< crop_width=12500
+		// my_cropped_image = my_image[ center_r - half_crop_width:center_r + half_crop_width, center_c - half_crop_width:center_c + half_crop_width] <<< left inclusive, right exclusive
+
+		// TODO: move top-left corner to 0,0
+
+		return models;
 	}
 
 	public static void main( String[] args )
@@ -333,7 +340,16 @@ public class RecapKensAlignment
 		//RandomAccessibleInterval<UnsignedByteType> img = RecapKensAlignmentTools.render( null, new FinalInterval( new long[] { -100, -200 }, new long[] { 3000, 3000 } ) );
 		//ImageJFunctions.show( img );
 
-		// 5 is not the slab but some serial number I believe, we need to figure out the actual slab number from that
-		reconstruct( 5 );
+		// TODO: 5 is not the slab but some serial number I believe, we need to figure out the actual slab number from that
+		HashMap<Integer, TransformedZLayer> models = reconstruct( 5 );
+
+		// TODO: save to render geruest
+		// TODO: scan correction is missing (here we are starting with wrongly scan-corrected images)
+		models.forEach( (z,tzl) -> {
+			tzl.transformedImages.forEach( tI -> {
+				String fileName = tI.fileName; // to map to correct image
+				ArrayList< AbstractAffineModel2D< ? > > m = tI.models; // list of affine transformations (translation, rigid, affine)
+			});
+		});
 	}
 }
