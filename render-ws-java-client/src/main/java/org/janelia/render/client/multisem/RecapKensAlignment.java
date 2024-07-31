@@ -33,6 +33,7 @@ public class RecapKensAlignment
 	{
 		public ArrayList< TransformedImage > transformedImages;
 		public int width, height;
+		public Rectangle boundsVirtualStackAlignment;
 	}
 
 	/**
@@ -169,11 +170,11 @@ public class RecapKensAlignment
 			final int numTransforms = transforms.getList( new ArrayList<>() ).size();
 			//System.out.println( "Number of transforms: " + numTransforms );
 
-			final Rectangle boundingbox = RecapKensAlignmentTools.getBoundingBox( tzl.width, tzl.height, transforms );
+			tzl.boundsVirtualStackAlignment = RecapKensAlignmentTools.getBoundingBox( tzl.width, tzl.height, transforms );
 			final TranslationModel2D bbTransform = new TranslationModel2D();
-			bbTransform.set( -boundingbox.getMinX(), -boundingbox.getMinY() );
+			bbTransform.set( -tzl.boundsVirtualStackAlignment.getMinX(), -tzl.boundsVirtualStackAlignment.getMinY() );
 
-			System.out.println( "Bounding box = " + boundingbox);
+			System.out.println( "Bounding box = " + tzl.boundsVirtualStackAlignment);
 
 			// update the transformation list of all images in this z-plane (apply transform and shift min to 0,0)
 			// TODO: is the order of transforms correct?
@@ -182,16 +183,16 @@ public class RecapKensAlignment
 				final CoordinateTransform m = transforms.get( t );
 
 				if ( mpicbg.trakem2.transform.RigidModel2D.class.isInstance( m ) )
-					models.get( z ).transformedImages.forEach( ti -> ti.models.add( (RigidModel2D)m ) );
+					tzl.transformedImages.forEach( ti -> ti.models.add( (RigidModel2D)m ) );
 				else if ( mpicbg.trakem2.transform.TranslationModel2D.class.isInstance( m ) )
-					models.get( z ).transformedImages.forEach( ti -> ti.models.add( (TranslationModel2D)m ) );
+					tzl.transformedImages.forEach( ti -> ti.models.add( (TranslationModel2D)m ) );
 				else if ( mpicbg.trakem2.transform.AffineModel2D.class.isInstance( m ) )
-					models.get( z ).transformedImages.forEach( ti -> ti.models.add( (AffineModel2D)m ) );
+					tzl.transformedImages.forEach( ti -> ti.models.add( (AffineModel2D)m ) );
 				else
 					throw new RuntimeException( "Don't know how to process model: " + m.getClass().getName() );
 			}
 
-			models.get( z ).transformedImages.forEach( ti -> ti.models.add( bbTransform ) );
+			tzl.transformedImages.forEach( ti -> ti.models.add( bbTransform ) );
 
 			// Update common bounds
 			int min_x = commonBounds.x;
@@ -199,14 +200,14 @@ public class RecapKensAlignment
 			int max_x = commonBounds.x + commonBounds.width;
 			int max_y = commonBounds.y + commonBounds.height;
 			
-			if(boundingbox.x < commonBounds.x)
-				min_x = boundingbox.x;
-			if(boundingbox.y < commonBounds.y)
-				min_y = boundingbox.y;
-			if(boundingbox.x + boundingbox.width > max_x)
-				max_x = boundingbox.x + boundingbox.width;
-			if(boundingbox.y + boundingbox.height > max_y)
-				max_y = boundingbox.y + boundingbox.height;
+			if(tzl.boundsVirtualStackAlignment.x < commonBounds.x)
+				min_x = tzl.boundsVirtualStackAlignment.x;
+			if(tzl.boundsVirtualStackAlignment.y < commonBounds.y)
+				min_y = tzl.boundsVirtualStackAlignment.y;
+			if(tzl.boundsVirtualStackAlignment.x + tzl.boundsVirtualStackAlignment.width > max_x)
+				max_x = tzl.boundsVirtualStackAlignment.x + tzl.boundsVirtualStackAlignment.width;
+			if(tzl.boundsVirtualStackAlignment.y + tzl.boundsVirtualStackAlignment.height > max_y)
+				max_y = tzl.boundsVirtualStackAlignment.y + tzl.boundsVirtualStackAlignment.height;
 			
 			commonBounds.x = min_x;
 			commonBounds.y = min_y;
@@ -214,8 +215,25 @@ public class RecapKensAlignment
 			commonBounds.height = max_y - min_y;
 		}
 
-		System.out.println("\nFinal common bounding box = [" + commonBounds.x + " " + commonBounds.y + " " + commonBounds.width + " " + commonBounds.height + "]");
-		// TODO: apply common bounding box to all; equivalent to resizeAndSaveImage()
+		System.out.println("\nFinal common bounding box = [x=" + commonBounds.x + ", y=" + commonBounds.y + "; " + commonBounds.width + "x" + commonBounds.height + "]");
+
+		// apply common bounding box to all; equivalent to resizeAndSaveImage()
+		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
+		{
+			final int z = slices.get( zIndex );
+			final TransformedZLayer tzl = models.get( z );
+
+			final TranslationModel2D commonBBTransform = new TranslationModel2D();
+			commonBBTransform.set( tzl.boundsVirtualStackAlignment.x - commonBounds.x, tzl.boundsVirtualStackAlignment.y - commonBounds.y ); // strictly positive
+
+			tzl.transformedImages.forEach( ti -> ti.models.add( commonBBTransform ) );
+
+			System.out.println( "Adjustment for " + slices.get( zIndex ) + ": " + commonBBTransform );
+			/*
+			b.x -= commonBounds.x;
+			b.y -= commonBounds.y; // strictly positive
+			*/
+		}
 	}
 
 	public static void main( String[] args )
