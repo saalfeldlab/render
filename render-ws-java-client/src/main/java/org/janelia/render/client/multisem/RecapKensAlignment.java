@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import ij.ImageJ;
+import mpicbg.imglib.multithreading.SimpleMultiThreading;
+import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InvertibleBoundable;
 import mpicbg.models.RigidModel2D;
@@ -31,7 +33,8 @@ public class RecapKensAlignment
 	{
 		public String fileName;
 		public int slab, z, width, height;
-		public ArrayList< InvertibleBoundable > models = new ArrayList<>();
+		public ArrayList< AbstractAffineModel2D< ? > > models = new ArrayList<>();
+		public ImageCollectionElement e; // to load the images
 	}
 
 	public static class TransformedZLayer
@@ -85,7 +88,7 @@ public class RecapKensAlignment
 			final int z = slices.get( zIndex );
 
 			// all models extracted for this z-layer
-			final ArrayList< TransformedImage > modelsZ = new ArrayList<>();
+			final ArrayList< TransformedImage > transformedImage = new ArrayList<>();
 
 			// load the TileConfiguration.txt that contains the translations that they used to stich each z-layer
 			final File f = new File( basePath, String.format( "scan_corrected_equalized_target_dir/scan_%03d/%03d_/000010", z, slab ) );//scan_corrected_equalized_target_dir/scan_001/001_/000010;
@@ -115,11 +118,12 @@ public class RecapKensAlignment
 				tI.z = z;
 				tI.width = imgSizes[ i ][ 0 ];
 				tI.height = imgSizes[ i ][ 1 ];
-				tI.models.add( t );
+				tI.models.add( t ); // add the stitching model
+				tI.e = e;
 
 				++i;
 
-				modelsZ.add( tI );
+				transformedImage.add( tI );
 				//System.out.println( e.getFile().getAbsolutePath() );
 				//System.out.println( Arrays.toString( e.getOffset() ) + ", " + e.getDimensionality() );
 				//System.out.println( Arrays.toString( e.getDimensions() ) );
@@ -137,14 +141,18 @@ public class RecapKensAlignment
 			final TranslationModel2D bbStitching = new TranslationModel2D();
 			bbStitching.set( -offset[ 0 ], -offset[ 1 ] );
 
-			modelsZ.forEach( m -> m.models.add( bbStitching ) );
+			transformedImage.forEach( m -> m.models.add( bbStitching ) );
 
 			final TransformedZLayer tzl = new TransformedZLayer();
-			tzl.transformedImages = modelsZ;
+			tzl.transformedImages = transformedImage;
 
 			// if we wanted to render, should be zero-min with the following size
 			tzl.width = size[ 0 ];
 			tzl.height = size[ 1 ];
+
+			RandomAccessibleInterval<UnsignedByteType> img = RecapKensAlignmentTools.render( transformedImage, new FinalInterval( new long[] { 0, 0 }, new long[] { tzl.width - 1, tzl.height - 1 } ) );
+			ImageJFunctions.show( img );
+			SimpleMultiThreading.threadHaltUnClean();
 
 			models.put( z, tzl );
 		}
@@ -308,10 +316,10 @@ public class RecapKensAlignment
 	public static void main( String[] args )
 	{
 		new ImageJ();
-		RandomAccessibleInterval<UnsignedByteType> img = RecapKensAlignmentTools.render( null, new FinalInterval( new long[] { -100, -200 }, new long[] { 3000, 3000 } ) );
-		ImageJFunctions.show( img );
+		//RandomAccessibleInterval<UnsignedByteType> img = RecapKensAlignmentTools.render( null, new FinalInterval( new long[] { -100, -200 }, new long[] { 3000, 3000 } ) );
+		//ImageJFunctions.show( img );
 
 		// 5 is not the slab but some serial number I believe, we need to figure out the actual slab number from that
-		//reconstruct( 5 );
+		reconstruct( 5 );
 	}
 }

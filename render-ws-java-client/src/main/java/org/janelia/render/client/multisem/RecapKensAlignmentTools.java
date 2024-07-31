@@ -1,6 +1,7 @@
 package org.janelia.render.client.multisem;
 
 import java.awt.Rectangle;
+import java.awt.geom.AffineTransform;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -15,8 +16,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.janelia.render.client.multisem.RecapKensAlignment.TransformedImage;
-import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 
+import ij.ImagePlus;
+import loci.common.DebugTools;
+import mpicbg.models.AbstractAffineModel2D;
+import mpicbg.models.AffineModel2D;
 import mpicbg.models.TranslationModel2D;
 import mpicbg.models.TranslationModel3D;
 import mpicbg.stitching.ImageCollectionElement;
@@ -24,10 +28,16 @@ import mpicbg.stitching.TextFileAccess;
 import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.CoordinateTransformList;
 import mpicbg.trakem2.transform.TransformMesh;
+import net.imglib2.Cursor;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.RealPoint;
+import net.imglib2.RealRandomAccess;
+import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Util;
@@ -53,8 +63,44 @@ public class RecapKensAlignmentTools
 		System.out.println( "num blocks = " + grid.size() );
 
 		long time = System.currentTimeMillis();
+
+		// open images & assemble transforms into a single one
+		final ArrayList< Img< UnsignedByteType > > images = new ArrayList<>();
+		final ArrayList< AffineModel2D > models = new ArrayList<>();
+		final ArrayList< Interval > boundingBoxes = new ArrayList<>();
+
+		// disable bioformats logging
+		DebugTools.setRootLevel("OFF");
+
+		for ( final TransformedImage tI : transformedImages )
+		{
+			final ImagePlus imp = tI.e.open( false );
+			images.add( ImageJFunctions.wrapByte( imp ) );
+
+			final AffineModel2D fullModel = new AffineModel2D();
+			final AffineModel2D tmp = new AffineModel2D();
+
+			for ( final AbstractAffineModel2D< ? > affine : tI.models )
+			{
+				tmp.set( affine.createAffine() );
+				fullModel.preConcatenate( tmp );
+			}
+
+			models.add( fullModel.createInverse() ); // we only need the inverse
+
+			final double[] min = new double[] { 0, 0 };
+			final double[] max = new double[] { imp.getWidth() - 1, imp.getHeight() - 1 };
+			fullModel.estimateBounds( min, max );
+
+			boundingBoxes.add( new FinalInterval(
+					new long[] { Math.round( Math.floor( min[ 0 ] ) ), Math.round( Math.floor( min[ 1 ] ) ) },
+					new long[] { Math.round( Math.ceil( max[ 0 ] ) ), Math.round( Math.ceil( max[ 1 ] ) ) }) );
+		}
+
+		System.out.println( "loaded images (took " + ( System.currentTimeMillis() - time )/1000 + " sec), starting ... " );
+
+		time = System.currentTimeMillis();
 		final ExecutorService ex = Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() );
-		final Random rnd = new Random( 354 );
 
 		//
 		// fuse data block by block
@@ -69,11 +115,47 @@ public class RecapKensAlignmentTools
 													new FinalInterval( gridBlock[1] ), // blocksize
 													gridBlock[0] ), // block offset
 											Intervals.minAsLongArray( interval ) ); // offset of global interval
-	
+
 							final RandomAccessibleInterval< UnsignedByteType > target = Views.interval( output, block );
 
-							final int value = rnd.nextInt( 255 );
-							Views.iterable( target ).forEach( type -> type.set( value ) );
+							// test which which images we actually overlap
+							final ArrayList< RealRandomAccess< UnsignedByteType > > myImages = new ArrayList<>();
+							final ArrayList< AffineModel2D > myModels = new ArrayList<>();
+							final ArrayList< Interval > myRawIntervals = new ArrayList<>();
+
+							for ( int i = 0; i < images.size(); ++i )
+							{
+								if ( !Intervals.isEmpty( Intervals.intersect( target, boundingBoxes.get( i ) ) ) )
+								{
+									myImages.add( Views.interpolate( Views.extendZero( images.get( i ) ), new NLinearInterpolatorFactory<>() ).realRandomAccess() );
+									myModels.add( models.get( i ) );
+									myRawIntervals.add( new FinalInterval( images.get( i ) ) );
+								}
+							}
+
+							final Cursor< UnsignedByteType > cursor = Views.iterable( target ).localizingCursor();
+							final double[] tmp = new double[ cursor.numDimensions() ];
+
+							while ( cursor.hasNext() )
+							{
+								final UnsignedByteType type = cursor.next();
+								cursor.localize( tmp );
+
+								for ( int i = 0; i < myImages.size(); ++i )
+								{
+									myModels.get( i ).applyInPlace( tmp );
+
+									if ( Intervals.contains( myRawIntervals.get( i ), new RealPoint( tmp ) ) )
+									{
+										myImages.get( i ).setPosition( tmp );
+										type.set( myImages.get( i ).get() );
+										break; // just take the first best
+									}
+								}
+							}
+
+							//final int value = rnd.nextInt( 255 );
+							//Views.iterable( target ).forEach( type -> type.set( value ) );
 						}
 						catch (Exception e) 
 						{
