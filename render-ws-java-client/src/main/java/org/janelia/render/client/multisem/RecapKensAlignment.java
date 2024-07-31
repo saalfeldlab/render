@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import ij.ImageJ;
+import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InvertibleBoundable;
@@ -16,6 +17,10 @@ import mpicbg.stitching.ImageCollectionElement;
 import mpicbg.stitching.fusion.Fusion;
 import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.CoordinateTransformList;
+import net.imglib2.FinalInterval;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
 
 public class RecapKensAlignment
 {
@@ -330,6 +335,18 @@ public class RecapKensAlignment
 		// my_cropped_image = my_image[ center_r - half_crop_width:center_r + half_crop_width, center_c - half_crop_width:center_c + half_crop_width] <<< left inclusive, right exclusive
 
 		// TODO: move top-left corner to 0,0
+		final TranslationModel2D resize12500 = new TranslationModel2D();
+		canvasResizeModel.set( -( (22000/2) - (12500/2) ), -( (22000/2) - (12500/2) ) );
+
+		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
+			models.get( slices.get( zIndex ) ).transformedImages.forEach( ti -> ti.models.add( resize12500 ) );
+
+		RandomAccessibleInterval<UnsignedByteType> img =
+				RecapKensAlignmentTools.render(
+						models.get( slices.get( 2 ) ).transformedImages,
+						new FinalInterval( new long[] { 0, 0 }, new long[] { 12500 - 1, 12500 - 1 } ) );
+		ImageJFunctions.show( img );
+		SimpleMultiThreading.threadHaltUnClean();
 
 		return models;
 	}
