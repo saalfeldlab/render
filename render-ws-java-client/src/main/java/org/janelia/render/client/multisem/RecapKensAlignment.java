@@ -88,7 +88,7 @@ public class RecapKensAlignment
 			final int z = slices.get( zIndex );
 
 			// all models extracted for this z-layer
-			final ArrayList< TransformedImage > transformedImage = new ArrayList<>();
+			final ArrayList< TransformedImage > transformedImages = new ArrayList<>();
 
 			// load the TileConfiguration.txt that contains the translations that they used to stich each z-layer
 			final File f = new File( basePath, String.format( "scan_corrected_equalized_target_dir/scan_%03d/%03d_/000010", z, slab ) );//scan_corrected_equalized_target_dir/scan_001/001_/000010;
@@ -123,7 +123,7 @@ public class RecapKensAlignment
 
 				++i;
 
-				transformedImage.add( tI );
+				transformedImages.add( tI );
 				//System.out.println( e.getFile().getAbsolutePath() );
 				//System.out.println( Arrays.toString( e.getOffset() ) + ", " + e.getDimensionality() );
 				//System.out.println( Arrays.toString( e.getDimensions() ) );
@@ -141,18 +141,18 @@ public class RecapKensAlignment
 			final TranslationModel2D bbStitching = new TranslationModel2D();
 			bbStitching.set( -offset[ 0 ], -offset[ 1 ] );
 
-			transformedImage.forEach( m -> m.models.add( bbStitching ) );
+			transformedImages.forEach( m -> m.models.add( bbStitching ) );
 
 			final TransformedZLayer tzl = new TransformedZLayer();
-			tzl.transformedImages = transformedImage;
+			tzl.transformedImages = transformedImages;
 
 			// if we wanted to render, should be zero-min with the following size
 			tzl.width = size[ 0 ];
 			tzl.height = size[ 1 ];
 
-			RandomAccessibleInterval<UnsignedByteType> img = RecapKensAlignmentTools.render( transformedImage, new FinalInterval( new long[] { 0, 0 }, new long[] { tzl.width - 1, tzl.height - 1 } ) );
-			ImageJFunctions.show( img );
-			SimpleMultiThreading.threadHaltUnClean();
+			//RandomAccessibleInterval<UnsignedByteType> img = RecapKensAlignmentTools.render( transformedImage, new FinalInterval( new long[] { 0, 0 }, new long[] { tzl.width - 1, tzl.height - 1 } ) );
+			//ImageJFunctions.show( img );
+			//SimpleMultiThreading.threadHaltUnClean();
 
 			models.put( z, tzl );
 		}
@@ -259,6 +259,13 @@ public class RecapKensAlignment
 		int slabWidth = commonBounds.width;
 		int slabHeight = commonBounds.height;
 
+		//RandomAccessibleInterval<UnsignedByteType> img =
+		//		RecapKensAlignmentTools.render(
+		//				models.get( slices.get( 2 ) ).transformedImages,
+		//				new FinalInterval( new long[] { 0, 0 }, new long[] { slabWidth - 1, slabHeight - 1 } ) );
+		//ImageJFunctions.show( img );
+		//SimpleMultiThreading.threadHaltUnClean();
+
 
 		//
 		// Global Rotation
@@ -311,6 +318,13 @@ public class RecapKensAlignment
 				ti.models.add( fromOrigin );
 			} );
 		}
+
+		//RandomAccessibleInterval<UnsignedByteType> img =
+		//		RecapKensAlignmentTools.render(
+		//				models.get( slices.get( 2 ) ).transformedImages,
+		//				new FinalInterval( new long[] { 0, 0 }, new long[] { slabWidth - 1, slabHeight - 1 } ) );
+		//ImageJFunctions.show( img );
+		//SimpleMultiThreading.threadHaltUnClean();
 	}
 
 	public static void main( String[] args )
