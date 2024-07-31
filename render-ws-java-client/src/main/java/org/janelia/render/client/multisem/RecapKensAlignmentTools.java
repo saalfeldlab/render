@@ -139,10 +139,10 @@ public class RecapKensAlignmentTools
 							while ( cursor.hasNext() )
 							{
 								final UnsignedByteType type = cursor.next();
-								cursor.localize( tmp );
 
 								for ( int i = 0; i < myImages.size(); ++i )
 								{
+									cursor.localize( tmp );
 									myModels.get( i ).applyInPlace( tmp );
 
 									if ( Intervals.contains( myRawIntervals.get( i ), new RealPoint( tmp ) ) )
