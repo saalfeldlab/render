@@ -70,7 +70,9 @@ public class RecapKensAlignment
 		// needs to go into Render (the wrong, inverse version Thomas did)
 
 
+		//
 		// Stitching
+		//
 		System.out.println( "\nSTITCHING" );
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
@@ -134,6 +136,8 @@ public class RecapKensAlignment
 
 			final TransformedZLayer tzl = new TransformedZLayer();
 			tzl.transformedImages = modelsZ;
+
+			// if we wanted to render, should be zero-min with the following size
 			tzl.width = size[ 0 ];
 			tzl.height = size[ 1 ];
 
@@ -141,7 +145,9 @@ public class RecapKensAlignment
 		}
 
 
-		// Rigid registration
+		//
+		// Rigid registration (Register_Virtual_Stack)
+		//
 		System.out.println( "\nRIGID REGISTRATION" );
 
 		// this directory contains all XML's of FIJI Register_Virtual_Stack_MT
@@ -234,6 +240,15 @@ public class RecapKensAlignment
 			b.y -= commonBounds.y; // strictly positive
 			*/
 		}
+
+		// if we wanted to render, should be zero-min with the following size
+		final int slabWidth = commonBounds.width;
+		final int slabHeight = commonBounds.height;
+
+
+		//
+		// Global Rotation
+		//
 	}
 
 	public static void main( String[] args )
