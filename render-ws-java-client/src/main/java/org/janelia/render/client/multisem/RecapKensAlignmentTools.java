@@ -183,6 +183,43 @@ public class RecapKensAlignmentTools
 		return output;
 	}
 
+	public static int findStageIdPlus1( final File magCFile, final int slab )
+	{
+		try
+		{
+			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
+
+			String line = reader.readLine().trim();
+			int count = 0;
+
+			while (line != null)
+			{
+				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
+				{
+					String[] entries = line.split( "," );
+					if ( Integer.parseInt( entries[ 5 ] ) == slab )
+					{
+						reader.close();
+
+						return count;
+					}
+				}
+
+				++count;
+
+				line = reader.readLine();
+			}
+
+			reader.close();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+		return Integer.MIN_VALUE;
+	}
+
 	public static double parseMagCFile( final File magCFile, final int slab )
 	{
 		try

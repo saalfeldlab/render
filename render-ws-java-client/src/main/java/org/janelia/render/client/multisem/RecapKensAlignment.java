@@ -32,7 +32,7 @@ public class RecapKensAlignment
 	public static class TransformedImage
 	{
 		public String fileName;
-		public int slab, z, width, height;
+		public int z, width, height;
 		public ArrayList< AbstractAffineModel2D< ? > > models = new ArrayList<>();
 		public ImageCollectionElement e; // to load the images
 	}
@@ -63,15 +63,15 @@ public class RecapKensAlignment
 		return zLayers;
 	}
 
-	public static HashMap< Integer, TransformedZLayer > reconstruct( final int slab )
+	public static HashMap< Integer, TransformedZLayer > reconstruct( final int stageIdPlus1 )
 	{
 		final HashMap< Integer, TransformedZLayer > models = new HashMap<>();
 
 		// find out numSlices and indices
-		final ArrayList< Integer > slices = numSlices( slab );
+		final ArrayList< Integer > slices = numSlices( stageIdPlus1 );
 		final int numSlices = slices.size();
 
-		System.out.println( "Slab " + slab + " has " + numSlices + " z-layers in Ken's alignment.");
+		System.out.println( "StageIdPlus1 " + stageIdPlus1 + " has " + numSlices + " z-layers in Ken's alignment.");
 
 
 		// TODO: scan correction
@@ -91,7 +91,7 @@ public class RecapKensAlignment
 			final ArrayList< TransformedImage > transformedImages = new ArrayList<>();
 
 			// load the TileConfiguration.txt that contains the translations that they used to stich each z-layer
-			final File f = new File( basePath, String.format( "scan_corrected_equalized_target_dir/scan_%03d/%03d_/000010", z, slab ) );//scan_corrected_equalized_target_dir/scan_001/001_/000010;
+			final File f = new File( basePath, String.format( "scan_corrected_equalized_target_dir/scan_%03d/%03d_/000010", z, stageIdPlus1 ) );//scan_corrected_equalized_target_dir/scan_001/001_/000010;
 			System.out.println( "Processing: " + f.getAbsolutePath() );
 
 			final ArrayList<ImageCollectionElement> stitchingTransforms =
@@ -114,7 +114,6 @@ public class RecapKensAlignment
 
 				final TransformedImage tI = new TransformedImage();
 				tI.fileName = e.getFile().getAbsolutePath();
-				tI.slab = slab;
 				tI.z = z;
 				tI.width = imgSizes[ i ][ 0 ];
 				tI.height = imgSizes[ i ][ 1 ];
@@ -164,7 +163,7 @@ public class RecapKensAlignment
 		System.out.println( "\nRIGID REGISTRATION" );
 
 		// this directory contains all XML's of FIJI Register_Virtual_Stack_MT
-		final File dir = new File( basePath, String.format( "%s/%03d_Enhanced_Transforms", rigidSlabs, slab ) );
+		final File dir = new File( basePath, String.format( "%s/%03d_Enhanced_Transforms", rigidSlabs, stageIdPlus1 ) );
 
 		System.out.println( dir.getAbsolutePath() );
 		System.out.println( Arrays.toString( dir.list( (d,fn) -> fn.toLowerCase().endsWith(".xml" ) ) ) );
@@ -293,7 +292,7 @@ public class RecapKensAlignment
 		final File file = new File( magC, "scan_005.csv" );
 		System.out.println( "Loading: " + file.getAbsolutePath() );
 
-		final double angle = RecapKensAlignmentTools.parseMagCFile( file, slab );
+		final double angle = RecapKensAlignmentTools.parseMagCFile( file, stageIdPlus1 );
 		System.out.println( "Angle: " + angle );
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
@@ -319,12 +318,12 @@ public class RecapKensAlignment
 			} );
 		}
 
-		//RandomAccessibleInterval<UnsignedByteType> img =
-		//		RecapKensAlignmentTools.render(
-		//				models.get( slices.get( 2 ) ).transformedImages,
-		//				new FinalInterval( new long[] { 0, 0 }, new long[] { slabWidth - 1, slabHeight - 1 } ) );
-		//ImageJFunctions.show( img );
-		//SimpleMultiThreading.threadHaltUnClean();
+		RandomAccessibleInterval<UnsignedByteType> img =
+				RecapKensAlignmentTools.render(
+						models.get( slices.get( 2 ) ).transformedImages,
+						new FinalInterval( new long[] { 0, 0 }, new long[] { slabWidth - 1, slabHeight - 1 } ) );
+		ImageJFunctions.show( img );
+		SimpleMultiThreading.threadHaltUnClean();
 
 		//
 		// Crop to 12500 x 12500
@@ -354,11 +353,22 @@ public class RecapKensAlignment
 	public static void main( String[] args )
 	{
 		new ImageJ();
-		//RandomAccessibleInterval<UnsignedByteType> img = RecapKensAlignmentTools.render( null, new FinalInterval( new long[] { -100, -200 }, new long[] { 3000, 3000 } ) );
-		//ImageJFunctions.show( img );
 
-		// TODO: 5 is not the slab but some serial number I believe, we need to figure out the actual slab number from that
-		HashMap<Integer, TransformedZLayer> models = reconstruct( 5 );
+		for ( int i = 0; i < 3; ++i )
+			System.out.println(  );
+
+		// the slab (in real image order)
+		final int slab = 1;
+
+		// the filename/directoryname to load data from
+		final int stageIdPlus1 = RecapKensAlignmentTools.findStageIdPlus1( new File( magC, "scan_005.csv" ), slab );
+
+		// this number is not the slab but a stage id + 1, we need to figure out the actual slab number from that
+		HashMap<Integer, TransformedZLayer> models = reconstruct( stageIdPlus1 );
+
+		// 096 is real 0 (doesn't exist)
+		// 146 is real 1
+		// 020 is real 2
 
 		// TODO: save to render geruest
 		// TODO: scan correction is missing (here we are starting with wrongly scan-corrected images)
