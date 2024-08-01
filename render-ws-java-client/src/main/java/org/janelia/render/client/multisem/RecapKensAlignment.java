@@ -318,12 +318,12 @@ public class RecapKensAlignment
 			} );
 		}
 
-		RandomAccessibleInterval<UnsignedByteType> img =
-				RecapKensAlignmentTools.render(
-						models.get( slices.get( 2 ) ).transformedImages,
-						new FinalInterval( new long[] { 0, 0 }, new long[] { slabWidth - 1, slabHeight - 1 } ) );
-		ImageJFunctions.show( img );
-		SimpleMultiThreading.threadHaltUnClean();
+		//RandomAccessibleInterval<UnsignedByteType> img =
+		//		RecapKensAlignmentTools.render(
+		//				models.get( slices.get( 2 ) ).transformedImages,
+		//				new FinalInterval( new long[] { 0, 0 }, new long[] { slabWidth - 1, slabHeight - 1 } ) );
+		//ImageJFunctions.show( img );
+		//SimpleMultiThreading.threadHaltUnClean();
 
 		//
 		// Crop to 12500 x 12500
@@ -352,16 +352,15 @@ public class RecapKensAlignment
 
 	public static void main( String[] args )
 	{
-		new ImageJ();
-
-		for ( int i = 0; i < 3; ++i )
-			System.out.println(  );
+		//new ImageJ();
 
 		// the slab (in real image order)
-		final int slab = 1;
+		final int slab = 2;
 
 		// the filename/directoryname to load data from
 		final int stageIdPlus1 = RecapKensAlignmentTools.findStageIdPlus1( new File( magC, "scan_005.csv" ), slab );
+
+		System.out.println( "slab: " + slab + ", stageId+1: " + stageIdPlus1 );
 
 		// this number is not the slab but a stage id + 1, we need to figure out the actual slab number from that
 		HashMap<Integer, TransformedZLayer> models = reconstruct( stageIdPlus1 );
