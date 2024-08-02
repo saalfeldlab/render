@@ -7,10 +7,10 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 import mpicbg.models.AbstractAffineModel2D;
-import mpicbg.models.AffineModel2D;
 import mpicbg.models.InvertibleBoundable;
-import mpicbg.models.RigidModel2D;
-import mpicbg.models.TranslationModel2D;
+import mpicbg.trakem2.transform.AffineModel2D;
+import mpicbg.trakem2.transform.RigidModel2D;
+import mpicbg.trakem2.transform.TranslationModel2D;
 import mpicbg.stitching.ImageCollectionElement;
 import mpicbg.stitching.fusion.Fusion;
 import mpicbg.trakem2.transform.CoordinateTransform;
