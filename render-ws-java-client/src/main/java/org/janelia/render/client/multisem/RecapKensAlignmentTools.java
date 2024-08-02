@@ -215,7 +215,7 @@ public class RecapKensAlignmentTools
 						String[] entries = line.split( "," );
 						final int stageIdPlus1 = Integer.parseInt( entries[ 4 ]);
 						reader.close();
-						return stageIdPlus1
+						return stageIdPlus1;
 
 					}
 				}
@@ -261,7 +261,7 @@ public class RecapKensAlignmentTools
 						String[] entries = line.split( "," );
 						final int slab = Integer.parseInt( entries[ 5 ]) + 1;
 						reader.close();
-						return slab
+						return slab;
 
 					}
 				}
@@ -297,7 +297,7 @@ public class RecapKensAlignmentTools
 						String[] entries = line.split( "," );
 						final int angle = Integer.parseInt( entries[ 6 ]);
 						reader.close();
-						return angle
+						return angle;
 
 					}
 				}
