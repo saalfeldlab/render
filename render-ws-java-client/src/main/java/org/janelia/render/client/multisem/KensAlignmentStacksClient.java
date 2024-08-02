@@ -125,6 +125,7 @@ public class KensAlignmentStacksClient {
         }
 
         tileSpec.setTransforms(transforms);
+        tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
     }
 
     // In the original alignment, the scan correction transform was applied with the wrong sign
