@@ -184,18 +184,19 @@ public class RecapKensAlignmentTools
 	}
 
 	/**
-	 * Get StageIdPlus1 from slab.
+	 * Get stageIdPlus1 from slab.
 	 *
 	 * Nomenclature:
-	 * stageId:  order in which the wafer is traversed during acquisition. 0-indexed
+	 * stageId:  order in which the slabs are traversed during acquisition. 0-indexed
 	 * serialId: order in which the slabs were mechanically cut. 0-indexed.
-	 * 			 This repo uses the variable slab to refer to the serialId,
-	 * 			 but slab is 1-indexed. So we have serialId = slab - 1
-	 * All the IDs defined in the .csv file are 0-indexed.
+	 * slab:     order in which the slabs were mechanically cut. 1-indexed.
+	 * 			 We have serialId = slab - 1
+	 * 
+	 * The IDs defined in the .csv file are 0-indexed.
 	 * 
 	 * @param magCFile .csv file, e.g. File( root, "scan_005.csv" )
 	 * @param slab slab represents the serial order. See nomenclature above for details.
-	 * @return the stage ID + 1.
+	 * @return stageIdPlus1 the stage ID + 1.
 	 */
 	public static int findStageIdPlus1( final File magCFile, final int slab )
 	{
@@ -241,7 +242,7 @@ public class RecapKensAlignmentTools
 	 * 
 	 * @param magCFile .csv file, e.g. File( root, "scan_005.csv" )
 	 * @param stageIdPlus1 the stageIdPlus1
-	 * @return slab it refers to the serial order. We have id_serial = slab - 1
+	 * @return slab it refers to the serial order. We have serialId = slab - 1
 	 */
 	public static int findSlab( final File magCFile, final int stageIdPlus1 )
 	{
@@ -270,12 +271,22 @@ public class RecapKensAlignmentTools
 				line = reader.readLine();
 			}
 
+			reader.close();
+		}
+		catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+
+		return Integer.MIN_VALUE;
+	}
+
 	/**
 	 * Get slabAngle from the stageIdPlus1.
 	 *
 	 * @param magCFile .csv file, e.g. File( root, "scan_005.csv" )
 	 * @param stageIdPlus1 the stage ID + 1. See nomenclature in findStageIdPlus1.
-	 * @return the angle of the slab, in degrees
+	 * @return angle the angle of the slab, in degrees
 	 */
 
 	public static double getSlabAngle( final File magCFile, final int stageIdPlus1 )
