@@ -1,7 +1,6 @@
 package org.janelia.render.client.multisem;
 
 import java.awt.Rectangle;
-import java.awt.geom.AffineTransform;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -10,7 +9,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -157,7 +155,7 @@ public class RecapKensAlignmentTools
 							//final int value = rnd.nextInt( 255 );
 							//Views.iterable( target ).forEach( type -> type.set( value ) );
 						}
-						catch (Exception e) 
+						catch (final Exception e)
 						{
 							System.out.println( "Error fusing block offset=" + Util.printCoordinates( gridBlock[0] ) + "' ... " );
 							e.printStackTrace();
@@ -170,7 +168,7 @@ public class RecapKensAlignmentTools
 			ex.shutdown();
 			ex.awaitTermination( Long.MAX_VALUE, TimeUnit.HOURS);
 		}
-		catch (InterruptedException e)
+		catch (final InterruptedException e)
 		{
 			System.out.println( "Failed to fuse. Error: " + e );
 			e.printStackTrace();
@@ -196,7 +194,7 @@ public class RecapKensAlignmentTools
 			{
 				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
 				{
-					String[] entries = line.split( "," );
+					final String[] entries = line.split("," );
 					if ( Integer.parseInt( entries[ 5 ] ) == slab )
 					{
 						reader.close();
@@ -212,7 +210,7 @@ public class RecapKensAlignmentTools
 
 			reader.close();
 		}
-		catch (IOException e)
+		catch (final IOException e)
 		{
 			e.printStackTrace();
 		}
@@ -232,7 +230,7 @@ public class RecapKensAlignmentTools
 			{
 				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
 				{
-					String[] entries = line.split( "," );
+					final String[] entries = line.split("," );
 					if ( Integer.parseInt( entries[ 4 ] ) == ( slab - 1) )
 					{
 						reader.close();
@@ -245,7 +243,7 @@ public class RecapKensAlignmentTools
 
 			reader.close();
 		}
-		catch (IOException e)
+		catch (final IOException e)
 		{
 			e.printStackTrace();
 		}
@@ -258,7 +256,7 @@ public class RecapKensAlignmentTools
 	 */
 	public static ArrayList< ImageCollectionElement > getLayoutFromFile( final String directory, final String layoutFile )
 	{
-		final ArrayList< ImageCollectionElement > elements = new ArrayList< ImageCollectionElement >();
+		final ArrayList< ImageCollectionElement > elements = new ArrayList<>();
 		int dim = -1;
 		int index = 0;
 		boolean multiSeries = false;
@@ -270,8 +268,7 @@ public class RecapKensAlignmentTools
 		// ImagePlus'es otherwise and store the index number in the hash map!
 		//Map<String, ImagePlus[]> multiSeriesMap = new HashMap<String, ImagePlus[]>();
 		String pfx = "Stitching_Grid.getLayoutFromFile: ";
-		try {
-			final BufferedReader in = TextFileAccess.openFileRead( new File( directory, layoutFile ) );
+		try (final BufferedReader in = TextFileAccess.openFileRead(new File(directory, layoutFile))) {
 			if ( in == null ) {
 				Log.error(pfx + "Cannot find tileconfiguration file '" + new File( directory, layoutFile ).getAbsolutePath() + "'");
 				return null;
@@ -279,11 +276,11 @@ public class RecapKensAlignmentTools
 			int lineNo = 0;
 			pfx += "Line ";
 			while ( in.ready() ) {
-				String line = in.readLine().trim();
+				final String line = in.readLine().trim();
 				lineNo++;
 				if ( !line.startsWith( "#" ) && line.length() > 3 ) {
 					if ( line.startsWith( "dim" ) ) {  // dimensionality parsing
-						String entries[] = line.split( "=" );
+						final String[] entries = line.split("=" );
 						if ( entries.length != 2 ) {
 							Log.error(pfx + lineNo + " does not look like [ dim = n ]: " + line);
 							return null;						
@@ -292,13 +289,13 @@ public class RecapKensAlignmentTools
 						try {
 							dim = Integer.parseInt( entries[1].trim() );
 						}
-						catch ( NumberFormatException e ) {
+						catch (final NumberFormatException e) {
 							Log.error(pfx + lineNo + ": Cannot parse dimensionality: " + entries[1].trim());
 							return null;														
 						}
 
 					} else if ( line.startsWith( "multiseries" ) )  {
-						String entries[] = line.split( "=" );
+						final String[] entries = line.split("=" );
 						if ( entries.length != 2 ) {
 							Log.error(pfx + lineNo + " does not look like [ multiseries = (true|false) ]: " + line);
 							return null;
@@ -321,29 +318,29 @@ public class RecapKensAlignmentTools
 						}
 						
 						// read image tiles
-						String entries[] = line.split(";");
+						final String[] entries = line.split(";");
 						if (entries.length != 3) {
 							Log.error(pfx + lineNo + " does not have 3 entries! [fileName; seriesNr; (x,y,...)]");
 							return null;						
 						}
 
-						String imageName = entries[0].trim();
-						if (imageName.length() == 0) {
+						final String imageName = entries[0].trim();
+						if (imageName.isEmpty()) {
 							Log.error(pfx + lineNo + ": You have to give a filename [fileName; ; (x,y,...)]: " + line);
 							return null;						
 						}
 						
-						int seriesNr = -1;
+						final int seriesNr;
 						if (multiSeries) {
-							String imageSeries = entries[1].trim();  // sub-volume (series nr)
-							if (imageSeries.length() == 0) {
+							final String imageSeries = entries[1].trim();  // sub-volume (series nr)
+							if (imageSeries.isEmpty()) {
 								Log.info(pfx + lineNo + ": Series index required [fileName; series; (x,y,...)" );
 							} else {
 								try {
 									seriesNr = Integer.parseInt( imageSeries );
 									Log.info(pfx + lineNo + ": Series nr (sub-volume): " + seriesNr);
 								}
-								catch ( NumberFormatException e ) {
+								catch (final NumberFormatException e) {
 									Log.error(pfx + lineNo + ": Cannot parse series nr: " + imageSeries);
 									return null;
 								}
@@ -357,7 +354,7 @@ public class RecapKensAlignmentTools
 						}
 						
 						point = point.substring(1, point.length() - 1);  // crop enclosing braces
-						String points[] = point.split(",");
+						final String[] points = point.split(",");
 						if (points.length != dim) {
 							Log.error(pfx + lineNo + ": Wrong format of coordinates: (x,y,z,...), dim = " + dim + ": " + point);
 							return null;
@@ -367,14 +364,14 @@ public class RecapKensAlignmentTools
 							try {
 								offset[ i ] = Float.parseFloat( points[i].trim() ); 
 							}
-							catch (NumberFormatException e) {
+							catch (final NumberFormatException e) {
 								Log.error(pfx + lineNo + ": Cannot parse number: " + points[i].trim());
 								return null;							
 							}
 						}
 						
 						// now we can assemble the ImageCollectionElement:
-						ImageCollectionElement element = new ImageCollectionElement(
+						final ImageCollectionElement element = new ImageCollectionElement(
 								new File( directory, imageName ), index++ );
 						element.setDimensionality( dim );
 						if ( dim == 3 )
@@ -398,8 +395,7 @@ public class RecapKensAlignmentTools
 					}
 				}
 			}
-		}
-		catch ( IOException e ) {
+		} catch (final IOException e) {
 			Log.error( "Stitching_Grid.getLayoutFromFile: " + e );
 			return null;
 		}
@@ -411,20 +407,20 @@ public class RecapKensAlignmentTools
 	/**
 	 * Read coordinate transform from file (generated in Register_Virtual_Stack)
 	 *
-	 * @param filename  complete file name (including path)
-	 * @return true if the coordinate transform was properly read, false otherwise.
+	 * @param filename Complete file name (including path)
+	 * @return The list of coordinate transforms
 	 */
-	public static CoordinateTransformList<CoordinateTransform> readCoordinateTransform( String filename )
+	public static CoordinateTransformList<CoordinateTransform> readCoordinateTransform(final String filename)
 	{
-		final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<CoordinateTransform>();
+		final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<>();
 		try 
 		{
 			final FileReader fr = new FileReader(filename);
 			final BufferedReader br = new BufferedReader(fr);
-			String line = null;
+			String line;
 			while ((line = br.readLine()) != null) 
 			{
-				int index = -1;
+				int index;
 				if( (index = line.indexOf("class=")) != -1)
 				{
 					// skip "class"
@@ -443,25 +439,18 @@ public class RecapKensAlignmentTools
 				}
 			}
 			br.close();
-		
-		} catch (FileNotFoundException e) {
+		} catch (final FileNotFoundException e) {
 			System.err.println("File not found exception" + e);
-			
-		} catch (IOException e) {
+		} catch (final IOException e) {
 			System.err.println("IOException exception" + e);
-			
-		} catch (NumberFormatException e) {
+		} catch (final NumberFormatException e) {
 			System.err.println("Number format exception" + e);
-			
-		} catch (InstantiationException e) {
+		} catch (final InstantiationException e) {
 			System.err.println("Instantiation exception" + e);
-			
-		} catch (IllegalAccessException e) {
+		} catch (final IllegalAccessException e) {
 			System.err.println("Illegal access exception" + e);
-			
-		} catch (ClassNotFoundException e) {
+		} catch (final ClassNotFoundException e) {
 			System.err.println("Class not found exception" + e);
-			
 		}
 		return ctl;
 	}

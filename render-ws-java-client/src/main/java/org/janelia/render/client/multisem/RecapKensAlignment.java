@@ -6,8 +6,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 
-import ij.ImageJ;
-import mpicbg.imglib.multithreading.SimpleMultiThreading;
 import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.InvertibleBoundable;
@@ -17,10 +15,6 @@ import mpicbg.stitching.ImageCollectionElement;
 import mpicbg.stitching.fusion.Fusion;
 import mpicbg.trakem2.transform.CoordinateTransform;
 import mpicbg.trakem2.transform.CoordinateTransformList;
-import net.imglib2.FinalInterval;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
 
 public class RecapKensAlignment
 {
@@ -201,11 +195,11 @@ public class RecapKensAlignment
 			{
 				final CoordinateTransform m = transforms.get( t );
 
-				if ( mpicbg.trakem2.transform.RigidModel2D.class.isInstance( m ) )
+				if (m instanceof mpicbg.trakem2.transform.RigidModel2D)
 					tzl.transformedImages.forEach( ti -> ti.models.add( (RigidModel2D)m ) );
-				else if ( mpicbg.trakem2.transform.TranslationModel2D.class.isInstance( m ) )
+				else if (m instanceof mpicbg.trakem2.transform.TranslationModel2D)
 					tzl.transformedImages.forEach( ti -> ti.models.add( (TranslationModel2D)m ) );
-				else if ( mpicbg.trakem2.transform.AffineModel2D.class.isInstance( m ) )
+				else if (m instanceof mpicbg.trakem2.transform.AffineModel2D)
 					tzl.transformedImages.forEach( ti -> ti.models.add( (AffineModel2D)m ) );
 				else
 					throw new RuntimeException( "Don't know how to process model: " + m.getClass().getName() );
@@ -335,7 +329,9 @@ public class RecapKensAlignment
 
 		// move top-left corner to 0,0
 		final TranslationModel2D resize12500 = new TranslationModel2D();
-		canvasResizeModel.set( -( (22000/2) - (12500/2) ), -( (22000/2) - (12500/2) ) );
+		final int offsetX = (22000 - 12500) / 2;
+		final int offsetY = (22000 - 12500) / 2;
+		canvasResizeModel.set(-offsetX, -offsetY);
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
 			models.get( slices.get( zIndex ) ).transformedImages.forEach( ti -> ti.models.add( resize12500 ) );
@@ -350,7 +346,7 @@ public class RecapKensAlignment
 		return models;
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args)
 	{
 		//new ImageJ();
 
@@ -363,7 +359,7 @@ public class RecapKensAlignment
 		System.out.println( "slab: " + slab + ", stageId+1: " + stageIdPlus1 );
 
 		// this number is not the slab but a stage id + 1, we need to figure out the actual slab number from that
-		HashMap<Integer, TransformedZLayer> models = reconstruct( stageIdPlus1 );
+		final HashMap<Integer, TransformedZLayer> models = reconstruct(stageIdPlus1);
 
 		// 096 is real 0 (doesn't exist)
 		// 146 is real 1
@@ -371,11 +367,9 @@ public class RecapKensAlignment
 
 		// TODO: save to render geruest
 		// TODO: scan correction is missing (here we are starting with wrongly scan-corrected images)
-		models.forEach( (z,tzl) -> {
-			tzl.transformedImages.forEach( tI -> {
-				String fileName = tI.fileName; // to map to correct image
-				ArrayList< AbstractAffineModel2D< ? > > m = tI.models; // list of affine transformations (translation, rigid, affine)
-			});
-		});
+		models.forEach((z,tzl) -> tzl.transformedImages.forEach(tI -> {
+			final String fileName = tI.fileName; // to map to correct image
+			final ArrayList<AbstractAffineModel2D<?>> m = tI.models; // list of affine transformations (translation, rigid, affine)
+		}));
 	}
 }
