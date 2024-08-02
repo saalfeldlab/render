@@ -196,7 +196,7 @@ public class RecapKensAlignmentTools
 	 * 
 	 * @param magCFile .csv file, e.g. File( root, "scan_005.csv" )
 	 * @param slab slab represents the serial order. See nomenclature above for details.
-	 * @return stageIdPlus1 the stage ID + 1.
+	 * @return stageIdPlus1 the stageId + 1.
 	 */
 	public static int findStageIdPlus1( final File magCFile, final int slab )
 	{
@@ -205,13 +205,13 @@ public class RecapKensAlignmentTools
 			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
 
 			String line = reader.readLine().trim();
-			int id_line = -1; // for a 0-indexed id_line after skipping the header
+			int lineId = -1; // for a 0-indexed lineId after skipping the header
 
 			while (line != null)
 			{
 				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
 				{
-					if ( id_line == slab - 1 )
+					if ( lineId == slab - 1 )
 					{
 						String[] entries = line.split( "," );
 						final int stageIdPlus1 = Integer.parseInt( entries[ 4 ]);
@@ -221,7 +221,7 @@ public class RecapKensAlignmentTools
 					}
 				}
 
-				++id_line;
+				++lineId;
 				line = reader.readLine();
 			}
 
@@ -251,13 +251,13 @@ public class RecapKensAlignmentTools
 			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
 
 			String line = reader.readLine().trim();
-			int id_line = -1; // for a 0-indexed id_line after skipping the header 
+			int lineId = -1; // for a 0-indexed lineId after skipping the header 
 
 			while (line != null)
 			{
 				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
 				{
-					if ( id_line == stageIdPlus1 - 1 )
+					if ( lineId == stageIdPlus1 - 1 )
 					{
 						String[] entries = line.split( "," );
 						final int slab = Integer.parseInt( entries[ 5 ]) + 1;
@@ -267,7 +267,7 @@ public class RecapKensAlignmentTools
 					}
 				}
 
-				++id_line;
+				++lineId;
 				line = reader.readLine();
 			}
 
@@ -285,7 +285,7 @@ public class RecapKensAlignmentTools
 	 * Get slabAngle from the stageIdPlus1.
 	 *
 	 * @param magCFile .csv file, e.g. File( root, "scan_005.csv" )
-	 * @param stageIdPlus1 the stage ID + 1. See nomenclature in findStageIdPlus1.
+	 * @param stageIdPlus1 the stageId + 1. See nomenclature in findStageIdPlus1.
 	 * @return angle the angle of the slab, in degrees
 	 */
 
@@ -297,13 +297,13 @@ public class RecapKensAlignmentTools
 			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
 
 			String line = reader.readLine().trim();
-			int id_line = -1;
+			int lineId = -1;
 
 			while (line != null)
 			{
 				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
 				{
-					if ( id_line == slab - 1 )
+					if ( lineId == slab - 1 )
 					{
 						String[] entries = line.split( "," );
 						final int angle = Integer.parseInt( entries[ 6 ]);
@@ -313,7 +313,7 @@ public class RecapKensAlignmentTools
 					}
 				}
 
-				++id_line;
+				++lineId;
 				line = reader.readLine();
 
 			}
