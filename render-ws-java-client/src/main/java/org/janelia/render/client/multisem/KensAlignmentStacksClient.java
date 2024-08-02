@@ -2,11 +2,15 @@ package org.janelia.render.client.multisem;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
-import org.janelia.alignment.ImageAndMask;
-import org.janelia.alignment.spec.ChannelSpec;
+import mpicbg.models.AbstractAffineModel2D;
+import mpicbg.trakem2.transform.CoordinateTransform;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.transform.ExponentialFunctionOffsetTransformWithWrongSign;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -14,14 +18,13 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
+import java.util.HashSet;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Set;
 
 /**
- * Java client to create a stack that has the same tiles and transforms as Ken's original prototype alignment of the
- * central MFOV of wafer 53.
+ * Java client to create a stack that has the same transforms as Ken's original prototype alignment of the central
+ * MFOV of wafer 53.
  */
 public class KensAlignmentStacksClient {
 
@@ -63,8 +66,8 @@ public class KensAlignmentStacksClient {
         clientRunner.run();
     }
 
-    private final Parameters parameters;
 
+    private final Parameters parameters;
     private final RenderDataClient renderDataClient;
 
     private KensAlignmentStacksClient(final Parameters parameters) {
@@ -74,65 +77,82 @@ public class KensAlignmentStacksClient {
 
     private void fixStackData() throws Exception {
         final StackMetaData fromStackMetaData = renderDataClient.getStackMetaData(parameters.stack);
-
-        // remove mipmap path builder if it is defined since we did not generate mipmaps for the hacked source images
-        fromStackMetaData.setCurrentMipmapPathBuilder(null);
+        final int stageId = extractStageId(parameters.stack);
+        final Map<Integer, RecapKensAlignment.TransformedZLayer> transformedZLayers = RecapKensAlignment.reconstruct(stageId + 1);
 
         renderDataClient.setupDerivedStack(fromStackMetaData, parameters.targetStack);
 
         for (final Double z : renderDataClient.getStackZValues(parameters.stack)) {
             final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
-            for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
-                fixTileSpec(tileSpec);
+            final RecapKensAlignment.TransformedZLayer transformedZLayer = transformedZLayers.get(z.intValue());
+            final Set<String> tileIdsToRemove = new HashSet<>();
+
+            if (transformedZLayer == null) {
+                // no transform for this z layer (some were skipped in the original alignment)
+                continue;
             }
+
+            for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
+                final String[] mfovAndSfov = Utilities.getSFOVForTileId(tileSpec.getTileId()).split("_");
+                final int mfov = Integer.parseInt(mfovAndSfov[1]);
+                final int sfov = Integer.parseInt(mfovAndSfov[2]);
+
+                if (mfov == 10) {
+                    // only the central MFOV (number 10) is aligned
+                    fixTileSpec(tileSpec, transformedZLayer.transformedImages.get(sfov - 1));
+                } else {
+                    tileIdsToRemove.add(tileSpec.getTileId());
+                }
+            }
+            resolvedTiles.removeTileSpecs(tileIdsToRemove);
             renderDataClient.saveResolvedTiles(resolvedTiles, parameters.targetStack, z);
         }
 
         renderDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
     }
 
-    private void fixTileSpec(final TileSpec tileSpec) {
+    private void fixTileSpec(final TileSpec tileSpec, final RecapKensAlignment.TransformedImage transformedImage) {
 
-        final Integer zeroLevelKey = 0;
+        final ListTransformSpec transforms = new ListTransformSpec();
 
-        for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
+        final TransformSpec firstTransformSpec = tileSpec.getTransforms().getSpec(0);
+        final TransformSpec scanCorrectionSpec = convertToCorrectScanCorrection(firstTransformSpec);
+        transforms.addSpec(scanCorrectionSpec);
 
-            final Map.Entry<Integer, ImageAndMask> entry = channelSpec.getFirstMipmapEntry();
-
-            if ((entry != null) && zeroLevelKey.equals(entry.getKey())) {
-
-                final ImageAndMask sourceImageAndMask = entry.getValue();
-
-                // file:/nrs/hess/data/hess_wafer_53/raw/imaging/msem/scan_001/wafer_53_scan_001_20220427_23-16-30/402_/000005/402_000005_001_2022-04-28T1457426331720.png
-                final String imageUrl = sourceImageAndMask.getImageUrl();
-
-                final Matcher m = PATH_PATTERN.matcher(imageUrl);
-                if (m.matches()) {
-
-                    // file:/nrs/hess/data/hess_wafer_53/msem_with_hayworth_contrast/scan_001/402_/000005/402_000005_001_2022-04-28T1457426331720.png
-                    final File hackFile = new File("/nrs/hess/data/hess_wafer_53/msem_with_hayworth_contrast/" +
-                                                   m.group(1) +  m.group(2));
-                    if (! hackFile.exists()) {
-                        throw new IllegalArgumentException("file does not exist: " + hackFile);
-                    }
-
-                    final ImageAndMask hackedImageAndMask =
-                            sourceImageAndMask.copyWithDerivedUrls("file:" + hackFile.getAbsolutePath(),
-                                                                   sourceImageAndMask.getMaskUrl());
-
-                    channelSpec.putMipmap(zeroLevelKey, hackedImageAndMask);
-
-                } else {
-                    throw new IllegalArgumentException("invalid image URL: " + imageUrl);
-                }
-
-            }
-
+        for (final AbstractAffineModel2D<?> model : transformedImage.models) {
+            final TransformSpec transformSpec = TransformSpec.create(model);
+            transforms.addSpec(transformSpec);
         }
 
+        tileSpec.setTransforms(transforms);
     }
 
-    private final Pattern PATH_PATTERN = Pattern.compile("^file:/nrs.*/(scan_\\d\\d\\d/)wafer.*/(\\d\\d\\d_/.*png)$");
+    // In the original alignment, the scan correction transform was applied with the wrong sign
+    // This method converts our correct scan correction transform to the one used in the original alignment
+    private static TransformSpec convertToCorrectScanCorrection(final TransformSpec firstTransformSpec) {
+        if (! (firstTransformSpec instanceof LeafTransformSpec)) {
+            throw new IllegalArgumentException("first transform spec is not a leaf transform spec");
+        }
 
-    private static final Logger LOG = LoggerFactory.getLogger(KensAlignmentStacksClient.class);
+        final LeafTransformSpec oldScanCorrection = (LeafTransformSpec) firstTransformSpec;
+        if (!oldScanCorrection.getClassName().equals("org.janelia.alignment.transform.ExponentialFunctionOffsetTransform")) {
+            throw new IllegalArgumentException("first transform spec is not a scan correction transform");
+        }
+
+        final String[] coefficients = oldScanCorrection.getDataString().split(",");
+        final CoordinateTransform scanCorrection = new ExponentialFunctionOffsetTransformWithWrongSign(
+                Double.parseDouble(coefficients[0]),
+                Double.parseDouble(coefficients[1]),
+                Double.parseDouble(coefficients[2]),
+                Integer.parseInt(coefficients[3]));
+
+		return TransformSpec.create(scanCorrection);
+    }
+
+    private int extractStageId(final String stack) {
+        final String[] parts = stack.split("_");
+        return Integer.parseInt(parts[0].substring(1));
+    }
+
+	private static final Logger LOG = LoggerFactory.getLogger(KensAlignmentStacksClient.class);
 }
