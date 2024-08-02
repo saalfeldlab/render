@@ -183,6 +183,20 @@ public class RecapKensAlignmentTools
 		return output;
 	}
 
+	/**
+	 * Get StageIdPlus1 from slab.
+	 *
+	 * Nomenclature:
+	 * stageId:  order in which the wafer is traversed during acquisition. 0-indexed
+	 * serialId: order in which the slabs were mechanically cut. 0-indexed.
+	 * 			 This repo uses the variable slab to refer to the serialId,
+	 * 			 but slab is 1-indexed. So we have serialId = slab - 1
+	 * All the IDs defined in the .csv file are 0-indexed.
+	 * 
+	 * @param magCFile .csv file, e.g. File( root, "scan_005.csv" )
+	 * @param slab slab represents the serial order. See nomenclature above for details.
+	 * @return the stage ID + 1.
+	 */
 	public static int findStageIdPlus1( final File magCFile, final int slab )
 	{
 		try
@@ -190,23 +204,23 @@ public class RecapKensAlignmentTools
 			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
 
 			String line = reader.readLine().trim();
-			int count = 0;
+			int id_line = -1; // for a 0-indexed id_line after skipping the header
 
 			while (line != null)
 			{
 				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
 				{
-					String[] entries = line.split( "," );
-					if ( Integer.parseInt( entries[ 5 ] ) == slab )
+					if ( id_line == slab - 1 )
 					{
+						String[] entries = line.split( "," );
+						final int stageIdPlus1 = Integer.parseInt( entries[ 4 ]);
 						reader.close();
+						return stageIdPlus1
 
-						return count;
 					}
 				}
 
-				++count;
-
+				++id_line;
 				line = reader.readLine();
 			}
 
@@ -220,27 +234,77 @@ public class RecapKensAlignmentTools
 		return Integer.MIN_VALUE;
 	}
 
-	public static double parseMagCFile( final File magCFile, final int slab )
+	/**
+	 * Get slab from stageIdPlus1.
+	 *
+	 * See findStageIdPlus1 for nomenclature.
+	 * 
+	 * @param magCFile .csv file, e.g. File( root, "scan_005.csv" )
+	 * @param stageIdPlus1 the stageIdPlus1
+	 * @return slab it refers to the serial order. We have id_serial = slab - 1
+	 */
+	public static int findSlab( final File magCFile, final int stageIdPlus1 )
 	{
 		try
 		{
 			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
 
 			String line = reader.readLine().trim();
+			int id_line = -1; // for a 0-indexed id_line after skipping the header 
 
 			while (line != null)
 			{
 				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
 				{
-					String[] entries = line.split( "," );
-					if ( Integer.parseInt( entries[ 4 ] ) == ( slab - 1) )
+					if ( id_line == stageIdPlus1 - 1 )
 					{
+						String[] entries = line.split( "," );
+						final int slab = Integer.parseInt( entries[ 5 ]) + 1;
 						reader.close();
-						return Double.parseDouble( entries[ 6 ] );
+						return slab
+
 					}
 				}
-	
+
+				++id_line;
 				line = reader.readLine();
+			}
+
+	/**
+	 * Get slabAngle from the stageIdPlus1.
+	 *
+	 * @param magCFile .csv file, e.g. File( root, "scan_005.csv" )
+	 * @param stageIdPlus1 the stage ID + 1. See nomenclature in findStageIdPlus1.
+	 * @return the angle of the slab, in degrees
+	 */
+
+	public static double getSlabAngle( final File magCFile, final int stageIdPlus1 )
+	{
+		try
+		{
+			final int slab = findSlab(magCFile, stageIdPlus1);
+			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
+
+			String line = reader.readLine().trim();
+			int id_line = -1;
+
+			while (line != null)
+			{
+				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
+				{
+					if ( id_line == slab - 1 )
+					{
+						String[] entries = line.split( "," );
+						final int angle = Integer.parseInt( entries[ 6 ]);
+						reader.close();
+						return angle
+
+					}
+				}
+
+				++id_line;
+				line = reader.readLine();
+
 			}
 
 			reader.close();
