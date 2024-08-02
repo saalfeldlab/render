@@ -292,7 +292,7 @@ public class RecapKensAlignment
 		final File file = new File( magC, "scan_005.csv" );
 		System.out.println( "Loading: " + file.getAbsolutePath() );
 
-		final double angle = RecapKensAlignmentTools.parseMagCFile( file, stageIdPlus1 );
+		final double angle = RecapKensAlignmentTools.getSlabAngle( file, stageIdPlus1 );
 		System.out.println( "Angle: " + angle );
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
