@@ -16,17 +16,17 @@ import net.imglib2.util.Util;
 public class VisualizeIJ
 {
 
-	public static void main( String[] args ) throws IOException
+	public static void main(final String[] args) throws IOException
 	{
-		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "Z0720_07m_BR"; //"flyem";
-		String project = "Sec24"; //"Z0419_25_Alpha3";
-		String stack = "v3_acquire_trimmed_align_adaptive"; //"v1_acquire_sp_nodyn_v2";
+		final String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
+		final String owner = "Z0720_07m_BR"; //"flyem";
+		final String project = "Sec24"; //"Z0419_25_Alpha3";
+		final String stack = "v3_acquire_trimmed_align_adaptive"; //"v1_acquire_sp_nodyn_v2";
 
-		StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
+		final StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
 		
 		final int[] ds = RenderTools.availableDownsamplings( meta );
-		Interval interval = RenderTools.stackBounds( meta );
+		final Interval interval = RenderTools.stackBounds(meta);
 
 		System.out.println( Util.printCoordinates( ds ) );
 		System.out.println( Util.printInterval( interval ) );
@@ -41,11 +41,11 @@ public class VisualizeIJ
 
 		final boolean filter = false;
 
-		int w = (int)interval.dimension( 0 );
-		int h = (int)interval.dimension( 1 );
-		int x = (int)interval.min( 0 );
-		int y = (int)interval.min( 1 );
-		double scale = 1.0 / 7.5;
+		final int w = (int) interval.dimension(0);
+		final int h = (int) interval.dimension(1);
+		final int x = (int) interval.min(0);
+		final int y = (int) interval.min(1);
+		final double scale = 1.0 / 7.5;
 		System.out.println( scale );
 
 		ImageStack imagestack = null ;
@@ -56,7 +56,7 @@ public class VisualizeIJ
 		for ( int z = from; z <= to; ++z )
 		{
 			System.out.println( z + " ... " );
-			ImageProcessorWithMasks img1 = RenderTools.renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, filter );
+			final ImageProcessorWithMasks img1 = RenderTools.renderImage(ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, filter);
 			if ( imagestack == null )
 				imagestack = new ImageStack( img1.ip.getWidth(), img1.ip.getHeight() );
 			imagestack.addSlice( img1.ip );
@@ -65,7 +65,7 @@ public class VisualizeIJ
 		new ImageJ();
 		final ImagePlus imp1 = new ImagePlus( project + "-" + stack , imagestack );
 
-		Calibration cal = new Calibration();
+		final Calibration cal = new Calibration();
 		cal.xOrigin = -(int)interval.min(0);
 		cal.yOrigin = -(int)interval.min(1);
 		cal.zOrigin = -from;
