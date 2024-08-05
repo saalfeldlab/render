@@ -84,7 +84,7 @@ public class RecapKensAlignment
 			// all models extracted for this z-layer
 			final ArrayList< TransformedImage > transformedImages = new ArrayList<>();
 
-			// load the TileConfiguration.txt that contains the translations that they used to stich each z-layer
+			// load the TileConfiguration.txt that contains the translations that they used to stitch each z-layer
 			final File f = new File( basePath, String.format( "scan_corrected_equalized_target_dir/scan_%03d/%03d_/000010", z, stageIdPlus1 ) );//scan_corrected_equalized_target_dir/scan_001/001_/000010;
 			System.out.println( "Processing: " + f.getAbsolutePath() );
 
@@ -346,6 +346,11 @@ public class RecapKensAlignment
 		return models;
 	}
 
+	public static int stageIdPlus1FromSlab(final int slab) {
+		final File f = new File(magC, "scan_005.csv");
+		return RecapKensAlignmentTools.findStageIdPlus1(f, slab);
+	}
+
 	public static void main(final String[] args)
 	{
 		//new ImageJ();
@@ -354,7 +359,7 @@ public class RecapKensAlignment
 		final int slab = 2;
 
 		// the filename/directoryname to load data from
-		final int stageIdPlus1 = RecapKensAlignmentTools.findStageIdPlus1( new File( magC, "scan_005.csv" ), slab );
+		final int stageIdPlus1 = stageIdPlus1FromSlab(slab);
 
 		System.out.println( "slab: " + slab + ", stageId+1: " + stageIdPlus1 );
 

@@ -265,7 +265,7 @@ public class RecapKensAlignmentTools
 		// it's very easy to check if a file has already been opened. Note that
 		// the map doesn't get used in the case of single series files below!
 		// TODO: check performance on large datasets! Use an array for the
-		// ImagePlus'es otherwise and store the index number in the hash map!
+		// ImagePluses otherwise and store the index number in the hash map!
 		//Map<String, ImagePlus[]> multiSeriesMap = new HashMap<String, ImagePlus[]>();
 		String pfx = "Stitching_Grid.getLayoutFromFile: ";
 		try (final BufferedReader in = TextFileAccess.openFileRead(new File(directory, layoutFile))) {

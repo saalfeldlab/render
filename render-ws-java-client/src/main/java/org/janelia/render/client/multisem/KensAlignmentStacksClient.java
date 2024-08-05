@@ -79,8 +79,9 @@ public class KensAlignmentStacksClient {
 
     private void fixStackData() throws Exception {
         final StackMetaData fromStackMetaData = renderDataClient.getStackMetaData(parameters.stack);
-        final int stageId = extractStageId(parameters.stack);
-        final Map<Integer, RecapKensAlignment.TransformedZLayer> transformedZLayers = RecapKensAlignment.reconstruct(stageId + 1);
+        final int slab = extractSlabNumber(parameters.stack);
+        final int stageIdPlus1 = RecapKensAlignment.stageIdPlus1FromSlab(slab);
+        final Map<Integer, RecapKensAlignment.TransformedZLayer> transformedZLayers = RecapKensAlignment.reconstruct(stageIdPlus1);
 
         renderDataClient.setupDerivedStack(fromStackMetaData, parameters.targetStack);
 
@@ -157,7 +158,7 @@ public class KensAlignmentStacksClient {
 		return TransformSpec.create(scanCorrection);
     }
 
-    private int extractStageId(final String stack) {
+    private int extractSlabNumber(final String stack) {
         // stack name is of the form s001_m239_*
         return Integer.parseInt(stack.substring(1, 4));
     }
