@@ -18,6 +18,8 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -92,14 +94,19 @@ public class KensAlignmentStacksClient {
                 continue;
             }
 
+            final Map<Integer, RecapKensAlignment.TransformedImage> sfovToTransformedImage = new HashMap<>();
+            transformedZLayer.transformedImages.forEach(tI -> {
+                final String fileId = Path.of(tI.fileName).getFileName().toString();
+                sfovToTransformedImage.put(extractSfovId(fileId), tI);
+            });
+
             for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
-                final String[] mfovAndSfov = Utilities.getSFOVForTileId(tileSpec.getTileId()).split("_");
-                final int mfov = Integer.parseInt(mfovAndSfov[1]);
-                final int sfov = Integer.parseInt(mfovAndSfov[2]);
+                final int mfov = extractMfovId(tileSpec.getTileId());
+                final int sfov = extractSfovId(tileSpec.getTileId());
 
                 if (mfov == 10) {
                     // only the central MFOV (number 10) is aligned
-                    fixTileSpec(tileSpec, transformedZLayer.transformedImages.get(sfov - 1));
+                    fixTileSpec(tileSpec, sfovToTransformedImage.get(sfov));
                 } else {
                     tileIdsToRemove.add(tileSpec.getTileId());
                 }
@@ -151,8 +158,18 @@ public class KensAlignmentStacksClient {
     }
 
     private int extractStageId(final String stack) {
-        final String[] parts = stack.split("_");
-        return Integer.parseInt(parts[0].substring(1));
+        // stack name is of the form s001_m239_*
+        return Integer.parseInt(stack.substring(1, 4));
+    }
+
+    private int extractMfovId(final String tileId) {
+        // tileId is of the form xxx_mmmmmm_sss_*
+        return Integer.parseInt(tileId.substring(4, 10));
+    }
+
+    private int extractSfovId(final String tileId) {
+        // tileId is of the form xxx_mmmmmm_sss_*
+        return Integer.parseInt(tileId.substring(11, 14));
     }
 
 	private static final Logger LOG = LoggerFactory.getLogger(KensAlignmentStacksClient.class);
