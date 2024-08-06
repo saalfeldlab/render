@@ -67,11 +67,6 @@ public class RecapKensAlignment
 
 		System.out.println( "StageIdPlus1 " + stageIdPlus1 + " has " + numSlices + " z-layers in Ken's alignment.");
 
-
-		// TODO: scan correction
-		// needs to go into Render (the wrong, inverse version Thomas did)
-
-
 		//
 		// Stitching
 		//
@@ -190,7 +185,6 @@ public class RecapKensAlignment
 			System.out.println( "Bounding box = " + tzl.boundsVirtualStackAlignment);
 
 			// update the transformation list of all images in this z-plane (apply transform and shift min to 0,0)
-			// TODO: is the order of transforms correct?
 			for ( int t = 0; t < numTransforms; ++t )
 			{
 				final CoordinateTransform m = transforms.get( t );
@@ -319,6 +313,7 @@ public class RecapKensAlignment
 		//ImageJFunctions.show( img );
 		//SimpleMultiThreading.threadHaltUnClean();
 
+		/* The offset is much simpler if this final step is not applied
 		//
 		// Crop to 12500 x 12500
 		//
@@ -335,6 +330,7 @@ public class RecapKensAlignment
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
 			models.get( slices.get( zIndex ) ).transformedImages.forEach( ti -> ti.models.add( resize12500 ) );
+		 */
 
 		//RandomAccessibleInterval<UnsignedByteType> img =
 		//		RecapKensAlignmentTools.render(
@@ -370,11 +366,13 @@ public class RecapKensAlignment
 		// 146 is real 1
 		// 020 is real 2
 
-		// TODO: save to render geruest
-		// TODO: scan correction is missing (here we are starting with wrongly scan-corrected images)
-		models.forEach((z,tzl) -> tzl.transformedImages.forEach(tI -> {
-			final String fileName = tI.fileName; // to map to correct image
-			final ArrayList<AbstractAffineModel2D<?>> m = tI.models; // list of affine transformations (translation, rigid, affine)
-		}));
+		// save as render stack (use `KensAlignmentStacksClient.main(renderArgs);`)
+		final String[] renderArgs = {
+				"--baseDataUrl", "http://10.40.3.113:8080/render-ws/v1",
+				"--owner", "hess_wafer_53_center7",
+				"--project", "slab_000_to_009",
+				"--stack", "s001_m239_align_no35_hayworth_ic",
+				"--targetStack", "s001_m239_hayworth_alignment_replica"
+		};
 	}
 }

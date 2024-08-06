@@ -127,12 +127,25 @@ public class KensAlignmentStacksClient {
         final TransformSpec scanCorrectionSpec = verifyCorrectScanCorrection(firstTransformSpec);
         transforms.addSpec(scanCorrectionSpec);
 
-        // translate 3px in -x direction to simulate the cropping after scan correction (applied before other transformations)
-        final TranslationModel2D cropTransform = new TranslationModel2D();
-        cropTransform.set(-3, 0);
-
+        // concatenate all alignment transforms
         final AffineModel2D concatenatedTransform = RecapKensAlignmentTools.concatenateModels(transformedImage);
+
+        // translate 3px in -x direction to simulate the cropping after scan correction (applied before all other transformations)
+        final int pxShift = 3;
+        final TranslationModel2D cropTransform = new TranslationModel2D();
+        cropTransform.set(-pxShift, 0);
+
+        // adjust stack bounding box resulting from the crop (applied after all other transformations)
+        final double[] origin = new double[] {0, 0};
+        final double[] corner = new double[] {-pxShift, 0};
+        concatenatedTransform.applyInPlace(origin);
+        concatenatedTransform.applyInPlace(corner);
+        final TranslationModel2D correctCropTransform = new TranslationModel2D();
+        correctCropTransform.set(origin[0] - corner[0], origin[1] - corner[1]);
+
         concatenatedTransform.concatenate(cropTransform);
+        concatenatedTransform.preConcatenate(correctCropTransform);
+
         final TransformSpec concatenatedTransformSpec = TransformSpec.create(concatenatedTransform);
         transforms.addSpec(concatenatedTransformSpec);
 
