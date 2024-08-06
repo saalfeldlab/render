@@ -4,13 +4,14 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.trakem2.transform.CoordinateTransform;
+import mpicbg.trakem2.transform.TranslationModel2D;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.transform.ExponentialFunctionOffsetTransformWithWrongSign;
+import org.janelia.alignment.transform.ExponentialFunctionOffsetTransform;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -123,9 +124,16 @@ public class KensAlignmentStacksClient {
 
         final ListTransformSpec transforms = new ListTransformSpec();
 
+        // scan correction
         final TransformSpec firstTransformSpec = tileSpec.getTransforms().getSpec(0);
         final TransformSpec scanCorrectionSpec = convertToCorrectScanCorrection(firstTransformSpec);
         transforms.addSpec(scanCorrectionSpec);
+
+        // translate 3px in -x direction to simulate the cropping after scan correction
+        final TranslationModel2D cropTransform = new TranslationModel2D();
+        cropTransform.set(-3, 0);
+        final TransformSpec cropTransformSpec = TransformSpec.create(cropTransform);
+        transforms.addSpec(cropTransformSpec);
 
         for (final AbstractAffineModel2D<?> model : transformedImage.models) {
             final TransformSpec transformSpec = TransformSpec.create(model);
@@ -149,7 +157,7 @@ public class KensAlignmentStacksClient {
         }
 
         final String[] coefficients = oldScanCorrection.getDataString().split(",");
-        final CoordinateTransform scanCorrection = new ExponentialFunctionOffsetTransformWithWrongSign(
+        final CoordinateTransform scanCorrection = new ExponentialFunctionOffsetTransform(
                 Double.parseDouble(coefficients[0]),
                 Double.parseDouble(coefficients[1]),
                 Double.parseDouble(coefficients[2]),

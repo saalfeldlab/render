@@ -5,8 +5,8 @@ import mpicbg.trakem2.transform.CoordinateTransform;
 /**
  * Transform that adds <pre> a * exp(-b*x) + c </pre> to all x (or <pre> a * exp(-b*y) + c </pre> from all y).
  * This is the same as ExponentialFunctionOffsetTransform, but with a different sign. This transform does **not**
- * correctly address the multi-SEM scanning artifacts, but is used to recapitulate Ken's original prototype alignment
- * for the wafer_53 data.
+ * correctly address the multi-SEM scanning artifacts, but was thought to be needed to recapitulate Ken's original
+ * prototype alignment for the wafer_53 data (it was not needed - they do the correct sign and crop afterward).
  */
 public class ExponentialFunctionOffsetTransformWithWrongSign
         extends MultiParameterSingleDimensionTransform {
