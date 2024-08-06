@@ -2,8 +2,7 @@ package org.janelia.render.client.multisem;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
-import mpicbg.models.AbstractAffineModel2D;
-import mpicbg.trakem2.transform.CoordinateTransform;
+import mpicbg.trakem2.transform.AffineModel2D;
 import mpicbg.trakem2.transform.TranslationModel2D;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
@@ -11,7 +10,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.transform.ExponentialFunctionOffsetTransform;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -126,27 +124,24 @@ public class KensAlignmentStacksClient {
 
         // scan correction
         final TransformSpec firstTransformSpec = tileSpec.getTransforms().getSpec(0);
-        final TransformSpec scanCorrectionSpec = convertToCorrectScanCorrection(firstTransformSpec);
+        final TransformSpec scanCorrectionSpec = verifyCorrectScanCorrection(firstTransformSpec);
         transforms.addSpec(scanCorrectionSpec);
 
-        // translate 3px in -x direction to simulate the cropping after scan correction
+        // translate 3px in -x direction to simulate the cropping after scan correction (applied before other transformations)
         final TranslationModel2D cropTransform = new TranslationModel2D();
         cropTransform.set(-3, 0);
-        final TransformSpec cropTransformSpec = TransformSpec.create(cropTransform);
-        transforms.addSpec(cropTransformSpec);
 
-        for (final AbstractAffineModel2D<?> model : transformedImage.models) {
-            final TransformSpec transformSpec = TransformSpec.create(model);
-            transforms.addSpec(transformSpec);
-        }
+        final AffineModel2D concatenatedTransform = RecapKensAlignmentTools.concatenateModels(transformedImage);
+        concatenatedTransform.concatenate(cropTransform);
+        final TransformSpec concatenatedTransformSpec = TransformSpec.create(concatenatedTransform);
+        transforms.addSpec(concatenatedTransformSpec);
 
         tileSpec.setTransforms(transforms);
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
     }
 
-    // In the original alignment, the scan correction transform was applied with the wrong sign
-    // This method converts our correct scan correction transform to the one used in the original alignment
-    private static TransformSpec convertToCorrectScanCorrection(final TransformSpec firstTransformSpec) {
+    // Make sure the correct scan correction transform is the first transform in the list
+    private static TransformSpec verifyCorrectScanCorrection(final TransformSpec firstTransformSpec) {
         if (! (firstTransformSpec instanceof LeafTransformSpec)) {
             throw new IllegalArgumentException("first transform spec is not a leaf transform spec");
         }
@@ -156,14 +151,7 @@ public class KensAlignmentStacksClient {
             throw new IllegalArgumentException("first transform spec is not a scan correction transform");
         }
 
-        final String[] coefficients = oldScanCorrection.getDataString().split(",");
-        final CoordinateTransform scanCorrection = new ExponentialFunctionOffsetTransform(
-                Double.parseDouble(coefficients[0]),
-                Double.parseDouble(coefficients[1]),
-                Double.parseDouble(coefficients[2]),
-                Integer.parseInt(coefficients[3]));
-
-		return TransformSpec.create(scanCorrection);
+		return firstTransformSpec;
     }
 
     private int extractSlabNumber(final String stack) {

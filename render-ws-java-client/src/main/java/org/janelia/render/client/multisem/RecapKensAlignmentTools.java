@@ -18,9 +18,9 @@ import org.janelia.render.client.multisem.RecapKensAlignment.TransformedImage;
 import ij.ImagePlus;
 import loci.common.DebugTools;
 import mpicbg.models.AbstractAffineModel2D;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.TranslationModel2D;
-import mpicbg.models.TranslationModel3D;
+import mpicbg.trakem2.transform.AffineModel2D;
+import mpicbg.trakem2.transform.TranslationModel2D;
+import mpicbg.trakem2.transform.TranslationModel3D;
 import mpicbg.stitching.ImageCollectionElement;
 import mpicbg.stitching.TextFileAccess;
 import mpicbg.trakem2.transform.CoordinateTransform;
@@ -75,20 +75,12 @@ public class RecapKensAlignmentTools
 			final ImagePlus imp = tI.e.open( false );
 			images.add( ImageJFunctions.wrapByte( imp ) );
 
-			final AffineModel2D fullModel = new AffineModel2D();
-			final AffineModel2D tmp = new AffineModel2D();
-
-			for ( final AbstractAffineModel2D< ? > affine : tI.models )
-			{
-				tmp.set( affine.createAffine() );
-				fullModel.preConcatenate( tmp );
-			}
-
-			models.add( fullModel.createInverse() ); // we only need the inverse
+			final AffineModel2D concatenatedModel = concatenateModels(tI);
+			models.add(concatenatedModel.createInverse()); // we only need the inverse
 
 			final double[] min = new double[] { 0, 0 };
 			final double[] max = new double[] { imp.getWidth() - 1, imp.getHeight() - 1 };
-			fullModel.estimateBounds( min, max );
+			concatenatedModel.estimateBounds(min, max);
 
 			boundingBoxes.add( new FinalInterval(
 					new long[] { Math.round( Math.floor( min[ 0 ] ) ), Math.round( Math.floor( min[ 1 ] ) ) },
@@ -179,6 +171,17 @@ public class RecapKensAlignmentTools
 		System.out.println( "Fused, took: " + (System.currentTimeMillis() - time ) + " ms." );
 
 		return output;
+	}
+
+	public static AffineModel2D concatenateModels(final TransformedImage transformedImage) {
+		final AffineModel2D fullModel = new AffineModel2D();
+		final AffineModel2D singleModel = new AffineModel2D();
+
+		for (final AbstractAffineModel2D<?> currentModel : transformedImage.models) {
+			singleModel.set(currentModel.createAffine());
+			fullModel.preConcatenate(singleModel);
+		}
+		return fullModel;
 	}
 
 	public static int findStageIdPlus1( final File magCFile, final int slab )
