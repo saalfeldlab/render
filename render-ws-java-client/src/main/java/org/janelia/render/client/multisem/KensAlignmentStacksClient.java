@@ -71,12 +71,12 @@ public class KensAlignmentStacksClient {
     private final Parameters parameters;
     private final RenderDataClient renderDataClient;
 
-    private KensAlignmentStacksClient(final Parameters parameters) {
+    public KensAlignmentStacksClient(final Parameters parameters) {
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
     }
 
-    private void fixStackData() throws Exception {
+    void fixStackData() throws Exception {
         final StackMetaData fromStackMetaData = renderDataClient.getStackMetaData(parameters.stack);
         final int slab = extractSlabNumber(parameters.stack);
         final int stageIdPlus1 = RecapKensAlignment.stageIdPlus1FromSlab(slab);
