@@ -25,14 +25,19 @@ public class StreakFinder {
 	private final String meanFilterCoefficients;
 
 	public StreakFinder(final int meanFilterSize, final double threshold, final int blurRadius) {
+		if (threshold < 1) {
+			throw new IllegalArgumentException("threshold must be positive");
+		}
+		if (blurRadius < 1) {
+			throw new IllegalArgumentException("blurRadius must be positive");
+		}
+		if (meanFilterSize < 1 || meanFilterSize % 2 == 0) {
+			throw new IllegalArgumentException("meanFilterSize must be positive and odd");
+		}
+		
 		this.threshold = threshold;
 		this.blurRadius = blurRadius;
-
-		if (meanFilterSize % 2 == 0) {
-			throw new IllegalArgumentException("meanFilterSize must be odd");
-		} else {
-			meanFilterCoefficients = "text1=" + "1\n".repeat(meanFilterSize) + " normalize";
-		}
+		meanFilterCoefficients = "text1=" + "1\n".repeat(meanFilterSize) + " normalize";
 	}
 
 	public ImagePlus createStreakMask(final ImagePlus input) {
