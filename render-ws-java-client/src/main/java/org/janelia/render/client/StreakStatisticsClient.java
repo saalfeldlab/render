@@ -27,11 +27,9 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * Client for computing statistics on streaks in a stack.
+ * Client for computing statistics on streaks (in y-direction) in a stack.
  */
 public class StreakStatisticsClient {
-	public enum Direction {X, Y}
-
 	public static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
 		public StreakFinderParameters streakFinder = new StreakFinderParameters();
@@ -57,11 +55,6 @@ public class StreakStatisticsClient {
 		public Integer context = 3;
 
 		@Parameter(
-				names = "--streakDirection",
-				description = "Direction of the streaks (X or Y)")
-		public Direction streakDirection = Direction.Y;
-
-		@Parameter(
 				names = "--outputFileFormat",
 				description = "Output file format for statistics (must contain exactly one %d for the z value)")
 		public String outputFileFormat = "streak_statistics_z%d.csv";
@@ -79,11 +72,10 @@ public class StreakStatisticsClient {
 		final String[] testArgs = {
 				"--baseDataUrl", "http://10.40.3.113:8080/render-ws/v1",
 				"--owner", "cellmap",
-				"--project", "jrc_mus_pancreas_5",
-				"--stack", "v3_acquire_align",
-				"--zValues", "10",
-				"--context", "3",
-				"--streakDirection", "Y",
+				"--project", "jrc_atla52_b10_2",
+				"--stack", "v1_acquire_align",
+				"--zValues", "1000",
+				"--context", "5",
 				"--outputFileFormat", "streak_statistics_z%d.csv",
 				"--maskStorageLocation", "masks",
 				"--meanFilterSize", "201",
@@ -125,7 +117,7 @@ public class StreakStatisticsClient {
 	}
 
 	private void computeStreakStatisticsForZValue(final int zValue) throws IOException {
-		// Get tiles (cut at stack boundaries)
+		// Get tiles (cut at stack boundaries) and meta data
 		final double zMin = zValue - parameters.context;
 		final double zMax = zValue + parameters.context;
 		final ResolvedTileSpecCollection rtsc = renderDataClient.getResolvedTilesForZRange(parameters.stack, zMin, zMax);
@@ -133,64 +125,30 @@ public class StreakStatisticsClient {
 		rtsc.recalculateBoundingBoxes();
 		final Bounds regionBounds = rtsc.toBounds();
 		LOG.info("Region bounds={}", regionBounds);
-		final int statisticsWidth = (parameters.streakDirection == Direction.Y) ? regionBounds.getHeight() : regionBounds.getWidth();
+		final int statisticsWidth = regionBounds.getHeight();
 
+		// Accumulate pixel values for each tile in a global coordinate system orthogonal to streaks with averaging in z
 		final double[] pixelwiseSum = new double[statisticsWidth];
 		final int[] pixelwiseCount = new int[statisticsWidth];
 		for (final TileSpec tileSpec : rtsc.getTileSpecs()) {
 			LOG.info("Creating mask for tileId={}", tileSpec.getTileId());
-			final String tileImageUrl = tileSpec.getTileImageUrl();
 
-			final List<ChannelSpec> channels = tileSpec.getAllChannels();
-			if (channels.size() != 1) {
-				LOG.warn("Skipping tile {} with {} channels (only 1 channel allowed)", tileSpec.getTileId(), channels.size());
-				continue;
+			final ImagePlus streakMask = computeMaskFor(tileSpec);
+			if (streakMask == null) {
+				throw new RuntimeException("Failed to create mask for tile " + tileSpec.getTileId());
 			}
-			final ChannelSpec channelSpec = channels.get(0);
-			final ImageAndMask imageAndMask = channelSpec.getFirstMipmapImageAndMask(tileSpec.getTileId());
-
-			final ImageProcessor sourceImageProcessor =
-					ImageProcessorCache.DISABLED_CACHE.get(imageAndMask.getImageUrl(),
-														   0,
-														   false,
-														   false,
-														   imageAndMask.getImageLoaderType(),
-														   imageAndMask.getImageSliceNumber());
-
-			final ImagePlus image = new ImagePlus("Image", sourceImageProcessor);
-			final ImagePlus streakMask = streakFinder.createStreakMask(image);
 			final ImageProcessor processor = streakMask.getProcessor();
 
 			if (parameters.maskStorageLocation != null) {
-				final Path maskPath = Path.of(parameters.maskStorageLocation, String.format("z%05d", zValue), tileSpec.getTileId() + ".png");
-				if (maskPath.toFile().exists()) {
-					LOG.warn("Mask file {} already exists, not overwriting", maskPath);
-				} else {
-					final File parentFolder = maskPath.getParent().toFile();
-					if (!(parentFolder.exists() || parentFolder.mkdirs())) {
-						LOG.warn("Failed to create parent directories for mask file {}", maskPath);
-					} else {
-						LOG.info("Writing mask to file {}", maskPath);
-						IJ.save(streakMask, maskPath.toString());
-					}
-				}
-
+				storeMask(zValue, tileSpec, streakMask);
 			}
 
 			LOG.info("tile bounds={}", tileSpec.toTileBounds());
-			final IntRange recordingRange = getRecordingRange(tileSpec.toTileBounds(), regionBounds, tileSpec.getHeight(), parameters.streakDirection);
-			for (int j = 0; j < processor.getHeight(); j++) {
-				final int idx = recordingRange.getMinimumInteger() + j;
-				for (int i = 0; i < processor.getWidth(); i++) {
-					final int value = processor.get(i, j);
-					pixelwiseSum[idx] += value;
-					pixelwiseCount[idx]++;
-				}
-			}
-
+			final IntRange recordingRange = getRecordingRange(tileSpec.toTileBounds(), regionBounds, tileSpec.getHeight());
+			recordPixelValues(processor, recordingRange, pixelwiseSum, pixelwiseCount);
 		}
 
-		// Compute statistics by summing streak masks orthogonal to streaks and averaging in z
+		// Compute statistics
 		final double[] statistics = new double[statisticsWidth];
 		for (int i = 0; i < statisticsWidth; i++) {
 			if (pixelwiseCount[i] == 0) {
@@ -200,32 +158,57 @@ public class StreakStatisticsClient {
 			}
 		}
 
-		// Write statistics to file
-		final String outputFile = String.format(parameters.outputFileFormat, zValue);
-		LOG.info("Writing statistics to file {}", outputFile);
-		try (final FileWriter fileWriter = new FileWriter(outputFile)) {
-			fileWriter.write("pixel,mean\n");
-			for (int i = 0; i < statisticsWidth; i++) {
-				fileWriter.write(String.format("%d,%f\n", (int) (regionBounds.getMinY() + i), statistics[i]));
+		writeStatistics(zValue, statisticsWidth, regionBounds, statistics);
+	}
+
+	private ImagePlus computeMaskFor(final TileSpec tileSpec) {
+		final List<ChannelSpec> channels = tileSpec.getAllChannels();
+		if (channels.size() != 1) {
+			LOG.warn("Skipping tile {} with {} channels (only 1 channel allowed)", tileSpec.getTileId(), channels.size());
+			return null;
+		}
+		final ChannelSpec channelSpec = channels.get(0);
+		final ImageAndMask imageAndMask = channelSpec.getFirstMipmapImageAndMask(tileSpec.getTileId());
+
+		final ImageProcessor sourceImageProcessor =
+				ImageProcessorCache.DISABLED_CACHE.get(imageAndMask.getImageUrl(),
+													   0,
+													   false,
+													   false,
+													   imageAndMask.getImageLoaderType(),
+													   imageAndMask.getImageSliceNumber());
+
+		final ImagePlus image = new ImagePlus("Image", sourceImageProcessor);
+		return streakFinder.createStreakMask(image);
+	}
+
+	// Write mask to disk
+	private void storeMask(final int zValue, final TileSpec tileSpec, final ImagePlus streakMask) {
+		final Path maskPath = Path.of(parameters.maskStorageLocation, String.format("z%05d", zValue), tileSpec.getTileId() + ".png");
+
+		if (maskPath.toFile().exists()) {
+			LOG.warn("Mask file {} already exists, not overwriting", maskPath);
+		} else {
+			final File parentFolder = maskPath.getParent().toFile();
+			if (!(parentFolder.exists() || parentFolder.mkdirs())) {
+				LOG.warn("Failed to create parent directories for mask file {}", maskPath);
+			} else {
+				LOG.info("Writing mask to file {}", maskPath);
+				IJ.save(streakMask, maskPath.toString());
 			}
 		}
 	}
 
 	// Figure out which part of the statistics index range the tile is responsible for
-	private IntRange getRecordingRange(final TileBounds tileBounds, final Bounds bounds, final int size, final Direction direction) {
+	private IntRange getRecordingRange(final TileBounds tileBounds, final Bounds bounds, final int size) {
 		// Get the ranges in the correct direction
-		final IntRange tileRange = (direction == Direction.Y)
-				? new IntRange(tileBounds.getMinY(), tileBounds.getMaxY())
-				: new IntRange(tileBounds.getMinX(), tileBounds.getMaxX());
-		final IntRange regionRange = (direction == Direction.Y)
-				? new IntRange(bounds.getMinY(), bounds.getMaxY())
-				: new IntRange(bounds.getMinX(), bounds.getMaxX());
+		final IntRange regionRange = new IntRange(bounds.getMinY(), bounds.getMaxY());
 
 		// Adjust the tile range so that it's the same size as the original image's pixel range
-		final int pixelsToAdjust = (int) (tileRange.getMaximumInteger() - tileRange.getMinimumInteger() - size);
+		final int pixelsToAdjust = (int) (tileBounds.getDeltaY() - size);
 		final int shiftLeft = pixelsToAdjust / 2;
 		final int shiftRight = pixelsToAdjust - shiftLeft;
-		final IntRange recordingRange = new IntRange(tileRange.getMinimumInteger() + shiftLeft, tileRange.getMaximumInteger() - shiftRight);
+		final IntRange recordingRange = new IntRange(tileBounds.getMinY() + shiftLeft, tileBounds.getMaxY() - shiftRight);
 
 		// Check that the recording range is contained in the region range and make the recording range relative to the region range
 		if (!regionRange.containsRange(recordingRange)) {
@@ -235,6 +218,39 @@ public class StreakStatisticsClient {
 							recordingRange.getMaximumInteger() - regionRange.getMinimumInteger());
 	}
 
+	// Record mask pixel values in the statistics arrays
+	private static void recordPixelValues(
+			final ImageProcessor processor,
+			final IntRange recordingRange,
+			final double[] pixelwiseSum,
+			final int[] pixelwiseCount
+	) {
+		for (int j = 0; j < processor.getHeight(); j++) {
+			final int idx = recordingRange.getMinimumInteger() + j;
+			for (int i = 0; i < processor.getWidth(); i++) {
+				final int value = processor.get(i, j);
+				pixelwiseSum[idx] += value;
+				pixelwiseCount[idx]++;
+			}
+		}
+	}
+
+	// Write statistics in CSV format with pixel location and mean value as columns
+	private void writeStatistics(
+			final int zValue,
+			final int statisticsWidth,
+			final Bounds regionBounds,
+			final double[] statistics
+	) throws IOException {
+		final String outputFile = String.format(parameters.outputFileFormat, zValue);
+		LOG.info("Writing statistics to file {}", outputFile);
+		try (final FileWriter fileWriter = new FileWriter(outputFile)) {
+			fileWriter.write("pixel,mean\n");
+			for (int i = 0; i < statisticsWidth; i++) {
+				fileWriter.write(String.format("%d,%f\n", (int) (regionBounds.getMinY() + i), statistics[i]));
+			}
+		}
+	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(StreakStatisticsClient.class);
 }
