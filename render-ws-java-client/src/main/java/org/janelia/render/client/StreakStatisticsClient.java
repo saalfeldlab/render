@@ -98,6 +98,7 @@ public class StreakStatisticsClient {
 
 	public void computeStreakStatistics() throws IOException {
 		for (final Integer zValue : parameters.zValues) {
+			LOG.info("Computing statistics for zValue={}", zValue);
 			computeStreakStatisticsForZValue(zValue);
 		}
 	}
@@ -110,7 +111,7 @@ public class StreakStatisticsClient {
 
 		rtsc.recalculateBoundingBoxes();
 		final Bounds regionBounds = rtsc.toBounds();
-		LOG.info("Region bounds={}", regionBounds);
+		LOG.debug("Region bounds={}", regionBounds);
 		final int statisticsWidth = regionBounds.getHeight();
 
 		// Accumulate pixel values for each tile in a global coordinate system orthogonal to streaks with averaging in z
@@ -126,10 +127,11 @@ public class StreakStatisticsClient {
 			final ImageProcessor processor = streakMask.getProcessor();
 
 			if (parameters.maskStorageLocation != null) {
+				LOG.info("Storing mask in directory '{}'", parameters.maskStorageLocation);
 				storeMask(zValue, tileSpec, streakMask);
 			}
 
-			LOG.info("tile bounds={}", tileSpec.toTileBounds());
+			LOG.debug("Record statistics with tile bounds={}", tileSpec.toTileBounds());
 			final IntRange recordingRange = getRecordingRange(tileSpec.toTileBounds(), regionBounds, tileSpec.getHeight());
 			recordPixelValues(processor, recordingRange, pixelwiseSum, pixelwiseCount);
 		}
