@@ -10,6 +10,8 @@ import ij.Prefs;
  * The finder first applies a derivative filter in the x-direction to detect vertical edges. Then, it applies a mean
  * filter in the y-direction to smooth out the edges in the y-direction. The resulting image is then thresholded
  * (from above and below) to create a mask of the streaks. Finally, a Gaussian blur is applied to the mask to smooth it.
+ * The mask is 0 where there are no streaks and 255 where there are streaks. Note that there is typically a small region
+ * at the top and bottom of the image where the mask is not reliable.
  * <p>
  * There are three parameters that can be set:
  * <ul>

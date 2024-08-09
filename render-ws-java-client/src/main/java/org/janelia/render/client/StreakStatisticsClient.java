@@ -2,6 +2,7 @@ package org.janelia.render.client;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import ij.IJ;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
 import org.apache.commons.lang.math.IntRange;
@@ -19,11 +20,11 @@ import org.janelia.render.client.parameter.StreakFinderParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 /**
  * Client for computing statistics on streaks in a stack.
@@ -66,9 +67,9 @@ public class StreakStatisticsClient {
 		public String outputFileFormat = "streak_statistics_z%d.csv";
 
 		@Parameter(
-				names = "--storeMasks",
-				description = "Store masks for debugging")
-		public boolean storeMasks = false;
+				names = "--maskStorageLocation",
+				description = "Place to store masks (masks are not stored if not given)")
+		public String maskStorageLocation = null;
 	}
 
 	/**
@@ -83,7 +84,8 @@ public class StreakStatisticsClient {
 				"--zValues", "10",
 				"--context", "3",
 				"--streakDirection", "Y",
-				"--outputFileFormat", "streak_statistics.csv",
+				"--outputFileFormat", "streak_statistics_z%d.csv",
+				"--maskStorageLocation", "masks",
 				"--meanFilterSize", "201",
 				"--threshold", "10.0",
 				"--blurRadius", "3"
@@ -127,7 +129,6 @@ public class StreakStatisticsClient {
 		final double zMin = zValue - parameters.context;
 		final double zMax = zValue + parameters.context;
 		final ResolvedTileSpecCollection rtsc = renderDataClient.getResolvedTilesForZRange(parameters.stack, zMin, zMax);
-		final Map<String, Set<String>> zToTileIds = rtsc.buildSectionIdToTileIdsMap();
 
 		rtsc.recalculateBoundingBoxes();
 		final Bounds regionBounds = rtsc.toBounds();
@@ -160,6 +161,22 @@ public class StreakStatisticsClient {
 			final ImagePlus streakMask = streakFinder.createStreakMask(image);
 			final ImageProcessor processor = streakMask.getProcessor();
 
+			if (parameters.maskStorageLocation != null) {
+				final Path maskPath = Path.of(parameters.maskStorageLocation, String.format("z%05d", zValue), tileSpec.getTileId() + ".png");
+				if (maskPath.toFile().exists()) {
+					LOG.warn("Mask file {} already exists, not overwriting", maskPath);
+				} else {
+					final File parentFolder = maskPath.getParent().toFile();
+					if (!(parentFolder.exists() || parentFolder.mkdirs())) {
+						LOG.warn("Failed to create parent directories for mask file {}", maskPath);
+					} else {
+						LOG.info("Writing mask to file {}", maskPath);
+						IJ.save(streakMask, maskPath.toString());
+					}
+				}
+
+			}
+
 			LOG.info("tile bounds={}", tileSpec.toTileBounds());
 			final IntRange recordingRange = getRecordingRange(tileSpec.toTileBounds(), regionBounds, tileSpec.getHeight(), parameters.streakDirection);
 			for (int j = 0; j < processor.getHeight(); j++) {
@@ -179,7 +196,7 @@ public class StreakStatisticsClient {
 			if (pixelwiseCount[i] == 0) {
 				statistics[i] = 0.0;
 			} else {
-				statistics[i] = pixelwiseSum[i] / pixelwiseCount[i];
+				statistics[i] = 1 - (pixelwiseSum[i] / pixelwiseCount[i]) / 255.0;
 			}
 		}
 
@@ -189,7 +206,7 @@ public class StreakStatisticsClient {
 		try (final FileWriter fileWriter = new FileWriter(outputFile)) {
 			fileWriter.write("pixel,mean\n");
 			for (int i = 0; i < statisticsWidth; i++) {
-				fileWriter.write(String.format("%d,%f", (int) (regionBounds.getMinY() + i), statistics[i]));
+				fileWriter.write(String.format("%d,%f\n", (int) (regionBounds.getMinY() + i), statistics[i]));
 			}
 		}
 	}
