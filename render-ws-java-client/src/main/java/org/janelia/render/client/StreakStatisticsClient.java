@@ -69,21 +69,7 @@ public class StreakStatisticsClient {
 	 * @param  args  see {@link StreakStatisticsClient.Parameters} for command line argument details.
 	 */
 	public static void main(final String[] args) {
-		final String[] testArgs = {
-				"--baseDataUrl", "http://10.40.3.113:8080/render-ws/v1",
-				"--owner", "cellmap",
-				"--project", "jrc_atla52_b10_2",
-				"--stack", "v1_acquire_align",
-				"--zValues", "1000",
-				"--context", "5",
-				"--outputFileFormat", "streak_statistics_z%d.csv",
-				"--maskStorageLocation", "masks",
-				"--meanFilterSize", "201",
-				"--threshold", "10.0",
-				"--blurRadius", "3"
-		};
-
-		final ClientRunner clientRunner = new ClientRunner(testArgs) {
+		final ClientRunner clientRunner = new ClientRunner(args) {
 			@Override
 			public void runClient(final String[] args) throws Exception {
 
