@@ -89,7 +89,8 @@ public class KensAlignmentStacksCreator {
             + "s370_m159 s371_m087 s372_m402 s373_m258 s374_m077 s375_m284 s376_m398 s377_m202 s378_m376 s379_m229 "
             + "s380_m382 s381_m377 s382_m328 s383_m004 s384_m384 s385_m227 s386_m270 s387_m187 s388_m072 s389_m322 "
             + "s390_m273 s391_m393 s392_m168 s393_m138 s394_m360 s395_m113 s396_m153 s397_m148 s398_m183 s399_m185 "
-            + "s400_m152 s401_m353 s402_m399";
+            + "s400_m152";
+            // Note: the stacks s401_m353 and s402_m399 were not present in Ken's original prototype alignment
 
     private static final Logger LOG = LoggerFactory.getLogger(KensAlignmentStacksCreator.class);
 }
