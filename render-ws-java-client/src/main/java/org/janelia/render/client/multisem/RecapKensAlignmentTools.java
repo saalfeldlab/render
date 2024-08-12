@@ -3,10 +3,9 @@ package org.janelia.render.client.multisem;
 import java.awt.Rectangle;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -40,7 +39,6 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.util.Intervals;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 import stitching.utils.Log;
 
@@ -120,7 +118,6 @@ public class RecapKensAlignmentTools {
 		ex.submit(() ->
 			grid.parallelStream().forEach(
 					gridBlock -> {
-						try {
 							final Interval block =
 									Intervals.translate(
 											Intervals.translate(
@@ -130,7 +127,7 @@ public class RecapKensAlignmentTools {
 
 							final RandomAccessibleInterval< UnsignedByteType > target = Views.interval( output, block );
 
-							// test which which images we actually overlap
+							// test which images we actually overlap
 							final ArrayList< RealRandomAccess< UnsignedByteType > > myImages = new ArrayList<>();
 							final ArrayList< AffineModel2D > myModels = new ArrayList<>();
 							final ArrayList< Interval > myRawIntervals = new ArrayList<>();
@@ -165,28 +162,14 @@ public class RecapKensAlignmentTools {
 									}
 								}
 							}
-
-							//final int value = rnd.nextInt( 255 );
-							//Views.iterable( target ).forEach( type -> type.set( value ) );
-						}
-						catch (final Exception e)
-						{
-							System.out.println( "Error fusing block offset=" + Util.printCoordinates( gridBlock[0] ) + "' ... " );
-							e.printStackTrace();
-						}
 					} )
 			);
 
-		try
-		{
+		try {
 			ex.shutdown();
 			ex.awaitTermination( Long.MAX_VALUE, TimeUnit.HOURS);
-		}
-		catch (final InterruptedException e)
-		{
-			System.out.println( "Failed to fuse. Error: " + e );
-			e.printStackTrace();
-			return null;
+		} catch (final InterruptedException e) {
+			throw new RuntimeException("Failed to fuse.", e);
 		}
 
 		//System.out.println( "Saved, e.g. view with './n5-view -i " + n5Path + " -d " + n5Dataset );
@@ -225,7 +208,7 @@ public class RecapKensAlignmentTools {
 			final String[] entries = targetLine.split(",");
 			final int stageId = Integer.parseInt(entries[4]);
 			final double angle = Double.parseDouble(entries[6]);
-			
+
 			return new SlabInfo(slab, stageId, angle);
 		} catch (final IOException e) {
 			throw new RuntimeException(e);
@@ -362,14 +345,7 @@ public class RecapKensAlignmentTools {
 						element.setOffset( offset );
 
 						if (multiSeries) {
-							throw new RuntimeException( "not supported");
-							/*
-							final String imageNameFull = element.getFile().getAbsolutePath();
-							if (multiSeriesMap.get(imageNameFull) == null) {
-								Log.info(pfx + lineNo + ": Loading MultiSeries file: " + imageNameFull);
-								multiSeriesMap.put(imageNameFull, openBFDefault(imageNameFull));
-							}
-							element.setImagePlus(multiSeriesMap.get(imageNameFull)[seriesNr]);*/
+							throw new RuntimeException("not supported");
 						}
 
 						elements.add( element );
@@ -394,44 +370,33 @@ public class RecapKensAlignmentTools {
 	public static CoordinateTransformList<CoordinateTransform> readCoordinateTransform(final String filename)
 	{
 		final CoordinateTransformList<CoordinateTransform> ctl = new CoordinateTransformList<>();
-		try 
-		{
-			final FileReader fr = new FileReader(filename);
-			final BufferedReader br = new BufferedReader(fr);
-			String line;
-			while ((line = br.readLine()) != null) 
-			{
+		try (final Stream<String> lines = Files.lines(Path.of(filename))) {
+			lines.forEach(line -> {
 				int index;
-				if( (index = line.indexOf("class=")) != -1)
-				{
+				if ((index = line.indexOf("class=")) != -1) {
 					// skip "class"
-					index+= 5;
+					index += 5;
+
 					// read coordinate transform class name
-					final int index2 = line.indexOf("\"", index+2); 
-					final String ct_class = line.substring(index+2, index2);
-					@SuppressWarnings("deprecation")
-					final CoordinateTransform ct = (CoordinateTransform) Class.forName(ct_class).newInstance();
+					final int index2 = line.indexOf("\"", index + 2);
+					final String ct_class = line.substring(index + 2, index2);
+					final CoordinateTransform ct;
+					try {
+						ct = (CoordinateTransform) Class.forName(ct_class).getDeclaredConstructor().newInstance();
+					} catch (final Exception e) {
+						throw new RuntimeException(e);
+					}
+
 					// read coordinate transform info
-					final int index3 = line.indexOf("=", index2+1);
-					final int index4 = line.indexOf("\"", index3+2); 
-					final String data = line.substring(index3+2, index4);
+					final int index3 = line.indexOf("=", index2 + 1);
+					final int index4 = line.indexOf("\"", index3 + 2);
+					final String data = line.substring(index3 + 2, index4);
 					ct.init(data);
 					ctl.add(ct);
 				}
-			}
-			br.close();
-		} catch (final FileNotFoundException e) {
-			System.err.println("File not found exception" + e);
+			});
 		} catch (final IOException e) {
-			System.err.println("IOException exception" + e);
-		} catch (final NumberFormatException e) {
-			System.err.println("Number format exception" + e);
-		} catch (final InstantiationException e) {
-			System.err.println("Instantiation exception" + e);
-		} catch (final IllegalAccessException e) {
-			System.err.println("Illegal access exception" + e);
-		} catch (final ClassNotFoundException e) {
-			System.err.println("Class not found exception" + e);
+			throw new RuntimeException(e);
 		}
 		return ctl;
 	}
@@ -443,26 +408,7 @@ public class RecapKensAlignmentTools {
 			final int height,
 			final CoordinateTransform transform)
 	{
-		// Open next image
-		//final ImagePlus imp2 = readImage(source_dir + file_name);
-
-		// Calculate transform mesh
 		final TransformMesh mesh = new TransformMesh(transform, 32, width, height);
-		//TransformMeshMapping mapping = new TransformMeshMapping(mesh);
-
-		// Create interpolated deformed image with black background
-		//imp2.getProcessor().setValue(0);
-		//final ImageProcessor ip2 = interpolate ? mapping.createMappedImageInterpolated(imp2.getProcessor()) : mapping.createMappedImage(imp2.getProcessor()); 
-		//imp2.setProcessor(imp2.getTitle(), ip2);
-		
-		//imp2.show();
-
-		// Accumulate bounding boxes, so in the end they can be reopened and re-saved with an enlarged canvas.
-		final Rectangle currentBounds = mesh.getBoundingBox();
-		return currentBounds;
-		//bounds[i] = currentBounds;
-		
-		// Save target image
-		//return new FileSaver(imp2).saveAsTiff(makeTargetPath(target_dir, file_name));
+		return mesh.getBoundingBox();
 	}
 }
