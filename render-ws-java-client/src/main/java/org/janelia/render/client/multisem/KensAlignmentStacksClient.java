@@ -79,8 +79,8 @@ public class KensAlignmentStacksClient {
     void fixStackData() throws Exception {
         final StackMetaData fromStackMetaData = renderDataClient.getStackMetaData(parameters.stack);
         final int slab = extractSlabNumber(parameters.stack);
-        final int stageIdPlus1 = RecapKensAlignment.stageIdPlus1FromSlab(slab);
-        final Map<Integer, RecapKensAlignment.TransformedZLayer> transformedZLayers = RecapKensAlignment.reconstruct(stageIdPlus1);
+        final RecapKensAlignmentTools.SlabInfo slabInfo = RecapKensAlignment.slabInfoForSlab(slab);
+        final Map<Integer, RecapKensAlignment.TransformedZLayer> transformedZLayers = RecapKensAlignment.reconstruct(slabInfo);
 
         renderDataClient.setupDerivedStack(fromStackMetaData, parameters.targetStack);
 

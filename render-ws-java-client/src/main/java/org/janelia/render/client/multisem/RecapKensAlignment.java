@@ -57,15 +57,14 @@ public class RecapKensAlignment
 		return zLayers;
 	}
 
-	public static HashMap< Integer, TransformedZLayer > reconstruct( final int stageIdPlus1 )
-	{
+	public static HashMap<Integer, TransformedZLayer> reconstruct(final RecapKensAlignmentTools.SlabInfo slabInfo) {
 		final HashMap< Integer, TransformedZLayer > models = new HashMap<>();
 
 		// find out numSlices and indices
-		final ArrayList< Integer > slices = numSlices( stageIdPlus1 );
+		final ArrayList<Integer> slices = numSlices(slabInfo.stageIdPlus1());
 		final int numSlices = slices.size();
 
-		System.out.println( "StageIdPlus1 " + stageIdPlus1 + " has " + numSlices + " z-layers in Ken's alignment.");
+		System.out.println("StageIdPlus1 " + slabInfo.stageIdPlus1() + " has " + numSlices + " z-layers in Ken's alignment.");
 
 		//
 		// Stitching
@@ -80,7 +79,7 @@ public class RecapKensAlignment
 			final ArrayList< TransformedImage > transformedImages = new ArrayList<>();
 
 			// load the TileConfiguration.txt that contains the translations that they used to stitch each z-layer
-			final File f = new File( basePath, String.format( "scan_corrected_equalized_target_dir/scan_%03d/%03d_/000010", z, stageIdPlus1 ) );//scan_corrected_equalized_target_dir/scan_001/001_/000010;
+			final File f = new File(basePath, String.format("scan_corrected_equalized_target_dir/scan_%03d/%03d_/000010", z, slabInfo.stageIdPlus1()));//scan_corrected_equalized_target_dir/scan_001/001_/000010;
 			System.out.println( "Processing: " + f.getAbsolutePath() );
 
 			final ArrayList<ImageCollectionElement> stitchingTransforms =
@@ -152,7 +151,7 @@ public class RecapKensAlignment
 		System.out.println( "\nRIGID REGISTRATION" );
 
 		// this directory contains all XML's of FIJI Register_Virtual_Stack_MT
-		final File dir = new File( basePath, String.format( "%s/%03d_Enhanced_Transforms", rigidSlabs, stageIdPlus1 ) );
+		final File dir = new File(basePath, String.format("%s/%03d_Enhanced_Transforms", rigidSlabs, slabInfo.stageIdPlus1()));
 
 		System.out.println( dir.getAbsolutePath() );
 		System.out.println( Arrays.toString( dir.list( (d,fn) -> fn.toLowerCase().endsWith(".xml" ) ) ) );
@@ -280,8 +279,7 @@ public class RecapKensAlignment
 		final File file = new File( magC, "scan_005.csv" );
 		System.out.println( "Loading: " + file.getAbsolutePath() );
 
-		final double angle = RecapKensAlignmentTools.parseMagCFile( file, stageIdPlus1 );
-		System.out.println( "Angle: " + angle );
+		System.out.println("Angle: " + slabInfo.angle);
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
 		{
@@ -296,7 +294,7 @@ public class RecapKensAlignment
 			final TranslationModel2D fromOrigin = new TranslationModel2D();
 	
 			toOrigin.set( -centerX, -centerY );
-			rotate.set( Math.toRadians( angle ), 0, 0 ); // is this angle correct?
+			rotate.set(Math.toRadians(slabInfo.angle), 0, 0);
 			fromOrigin.set( centerX, centerY );
 
 			tzl.transformedImages.forEach( ti -> {
@@ -342,9 +340,9 @@ public class RecapKensAlignment
 		return models;
 	}
 
-	public static int stageIdPlus1FromSlab(final int slab) {
+	public static RecapKensAlignmentTools.SlabInfo slabInfoForSlab(final int slab) {
 		final File f = new File(magC, "scan_005.csv");
-		return RecapKensAlignmentTools.findStageIdPlus1(f, slab);
+		return RecapKensAlignmentTools.getSlabInfo(f, slab);
 	}
 
 	public static void main(final String[] args)
@@ -355,12 +353,12 @@ public class RecapKensAlignment
 		final int slab = 2;
 
 		// the filename/directoryname to load data from
-		final int stageIdPlus1 = stageIdPlus1FromSlab(slab);
+		final RecapKensAlignmentTools.SlabInfo slabInfo = slabInfoForSlab(slab);
 
-		System.out.println( "slab: " + slab + ", stageId+1: " + stageIdPlus1 );
+		System.out.println("slab: " + slab + ", stageId+1: " + slabInfo.stageIdPlus1());
 
 		// this number is not the slab but a stage id + 1, we need to figure out the actual slab number from that
-		final HashMap<Integer, TransformedZLayer> models = reconstruct(stageIdPlus1);
+		final HashMap<Integer, TransformedZLayer> models = reconstruct(slabInfo);
 
 		// 096 is real 0 (doesn't exist)
 		// 146 is real 1

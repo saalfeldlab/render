@@ -6,11 +6,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 
 import org.janelia.alignment.util.Grid;
 import org.janelia.render.client.multisem.RecapKensAlignment.TransformedImage;
@@ -42,8 +44,28 @@ import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 import stitching.utils.Log;
 
-public class RecapKensAlignmentTools
-{
+public class RecapKensAlignmentTools {
+
+	public static class SlabInfo {
+		public final int serialId;
+		public final int stageId;
+		public final double angle;
+
+		public SlabInfo(final int serialId, final int stageId, final double angle) {
+			this.serialId = serialId;
+			this.stageId = stageId;
+			this.angle = angle;
+		}
+
+		public int slabNumber() {
+			return serialId;
+		}
+
+		public int stageIdPlus1() {
+			return stageId + 1;
+		}
+	}
+
 	public static RandomAccessibleInterval<UnsignedByteType> render(
 			final List< TransformedImage > transformedImages,
 			final Interval interval )
@@ -184,74 +206,30 @@ public class RecapKensAlignmentTools
 		return fullModel;
 	}
 
-	public static int findStageIdPlus1( final File magCFile, final int slab )
-	{
-		try
-		{
-			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
+	/**
+	 * Get {@link SlabInfo} from slab. Nomenclature:
+	 * stageId:  order in which the slabs are traversed during acquisition. 0-indexed
+	 * serialId: order in which the slabs were mechanically cut. 0-indexed.
+	 * The IDs defined in the .csv file are 0-indexed.
+	 *
+	 * @param magCFile .csv file, e.g. File(root, "scan_005.csv")
+	 * @param slab the slab number in serial order; see nomenclature above for details.
+	 * @return {@link SlabInfo} with serialId, stageId, and angle.
+	 */
+	public static SlabInfo getSlabInfo(final File magCFile, final int slab) {
+		try (final Stream<String> lines = Files.lines(magCFile.toPath())) {
+			// There's one header line and slab is 0-indexed
+			final String targetLine = lines.skip(slab + 1).findFirst().orElseThrow();
 
-			String line = reader.readLine().trim();
-			int count = 0;
-
-			while (line != null)
-			{
-				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
-				{
-					final String[] entries = line.split("," );
-					if ( Integer.parseInt( entries[ 5 ] ) == slab )
-					{
-						reader.close();
-
-						return count;
-					}
-				}
-
-				++count;
-
-				line = reader.readLine();
-			}
-
-			reader.close();
+			// Important columns (0-based) in the .csv file are: 4 (serial_to_stage) and 6 (angle)
+			final String[] entries = targetLine.split(",");
+			final int stageId = Integer.parseInt(entries[4]);
+			final double angle = Double.parseDouble(entries[6]);
+			
+			return new SlabInfo(slab, stageId, angle);
+		} catch (final IOException e) {
+			throw new RuntimeException(e);
 		}
-		catch (final IOException e)
-		{
-			e.printStackTrace();
-		}
-
-		return Integer.MIN_VALUE;
-	}
-
-	public static double parseMagCFile( final File magCFile, final int slab )
-	{
-		try
-		{
-			final BufferedReader reader = new BufferedReader(new FileReader( magCFile ));
-
-			String line = reader.readLine().trim();
-
-			while (line != null)
-			{
-				if ( !line.startsWith( "magc_to_serial" ) && line.length() > 1 ) // header or empty, ignore
-				{
-					final String[] entries = line.split("," );
-					if ( Integer.parseInt( entries[ 4 ] ) == ( slab - 1) )
-					{
-						reader.close();
-						return Double.parseDouble( entries[ 6 ] );
-					}
-				}
-	
-				line = reader.readLine();
-			}
-
-			reader.close();
-		}
-		catch (final IOException e)
-		{
-			e.printStackTrace();
-		}
-
-		return Double.NaN;
 	}
 
 	/*
