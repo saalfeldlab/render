@@ -97,8 +97,10 @@ public class KensAlignmentStacksClient {
             final TileSpec firstTileSpec = resolvedTiles.getTileSpecs().stream().findFirst().orElseThrow();
             // z values in the stack might be reassigned; the section id should carry the original z value
             final int realZ = Double.valueOf(firstTileSpec.getSectionId()).intValue();
+            // layer 36 was skipped in the ingestion, so Ken's layers have an offset of 1 after layer 35
+            final int kensZ = (realZ > 35) ? realZ + 1 : realZ;
 
-            final RecapKensAlignment.TransformedZLayer transformedZLayer = transformedZLayers.get(realZ);
+            final RecapKensAlignment.TransformedZLayer transformedZLayer = transformedZLayers.get(kensZ);
             final Set<String> tileIdsToRemove = new HashSet<>();
 
             if (transformedZLayer == null) {
