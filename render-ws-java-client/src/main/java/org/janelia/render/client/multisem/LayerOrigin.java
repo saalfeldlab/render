@@ -89,6 +89,12 @@ class LayerOrigin {
 			dataClient.getStackZValues(kensAlignmentStack).stream()
 					.map(zLayer -> stackBaseName + "," + zLayer.intValue())
 					.forEach(stacksAndLayers::add);
+
+			if (slab == 213) {
+				// Add an extra layer (38 of 42) for slab 213 that didn't get ingested
+				final int index = stacksAndLayers.size() - 4;
+				stacksAndLayers.add(index, "MISSING,-1");
+			}
 		}
 
 		Files.write(Path.of(csvFile), stacksAndLayers);

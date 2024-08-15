@@ -97,10 +97,9 @@ public class KensAlignmentStacksClient {
             final TileSpec firstTileSpec = resolvedTiles.getTileSpecs().stream().findFirst().orElseThrow();
             // z values in the stack might be reassigned; the section id should carry the original z value
             final int realZ = Double.valueOf(firstTileSpec.getSectionId()).intValue();
-            // layer 36 was skipped in the ingestion, so Ken's layers have an offset of 1 after layer 35
-            final int kensZ = (realZ > 35) ? realZ + 1 : realZ;
+            final int scan = getScanNumberWithSpecialCases(realZ);
 
-            final RecapKensAlignment.TransformedZLayer transformedZLayer = transformedZLayers.get(kensZ);
+            final RecapKensAlignment.TransformedZLayer transformedZLayer = transformedZLayers.get(scan);
             final Set<String> tileIdsToRemove = new HashSet<>();
 
             if (transformedZLayer == null) {
@@ -130,6 +129,19 @@ public class KensAlignmentStacksClient {
         }
 
         renderDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
+    }
+
+    private int getScanNumberWithSpecialCases(final int z) {
+        int scan = z;
+        if (z > 35) {
+            // Scan 36 was skipped in the ingestion, so scan numbers have an offset of 1 after layer 35
+            scan += 1;
+        }
+        if (parameters.stack.startsWith("s213") && scan >= 38) {
+            // Scan 38 in slab 213 didn't get ingested because of a missing full_image_coordinates.txt file
+            scan += 1;
+        }
+        return scan;
     }
 
     private void fixTileSpec(final TileSpec tileSpec, final RecapKensAlignment.TransformedImage transformedImage, final int realZ) {
