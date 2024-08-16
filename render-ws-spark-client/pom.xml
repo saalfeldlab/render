@@ -165,6 +165,14 @@
                     <groupId>com.google.http-client</groupId>
                     <artifactId>google-http-client-xml</artifactId>
                 </exclusion>
+                <!--
+                     filter out mbknor-jackson-jsonschema_2.12 jar which causes missing scala.Tuple2 errors
+                     because it uses older 2.12.8 scala-library (all other scala dependencies are 2.13.*)
+                -->
+                <exclusion>
+                    <groupId>com.kjetland</groupId>
+                    <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
