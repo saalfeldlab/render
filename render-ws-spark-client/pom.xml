@@ -156,6 +156,10 @@
                     <groupId>com.esotericsoftware</groupId>
                     <artifactId>kryo</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>javax.validation</groupId>
+                    <artifactId>validation-api</artifactId>
+                </exclusion>
                 <!-- filter out unneeded google-http-client jar which causes overlap issue in shaded jar -->
                 <exclusion>
                     <groupId>com.google.http-client</groupId>

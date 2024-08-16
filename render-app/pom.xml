@@ -211,6 +211,13 @@
             <groupId>com.github.PreibischLab</groupId>
             <artifactId>FunctionFit</artifactId>
             <version>157ab01</version>
+            <exclusions>
+                <!-- filter out unneeded google version of old ejml jar which causes duplicate class failures -->
+                <exclusion>
+                    <groupId>com.googlecode.efficient-java-matrix-library</groupId>
+                    <artifactId>ejml</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
     </dependencies>
