@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -55,6 +56,22 @@ class LayerOrigin {
 		final Map<Integer, LayerOrigin> layerOriginMap = new HashMap<>();
 		for (int i = 0; i < actualElementsRead; i++) {
 			layerOriginMap.put(start + i, layerOrigins.get(i));
+		}
+		return layerOriginMap;
+	}
+
+	public static Map<Integer, LayerOrigin> getRangeForStack(final String csvFile, final String stack) throws IOException{
+		final Map<Integer, LayerOrigin> layerOriginMap = new HashMap<>();
+		final AtomicInteger index = new AtomicInteger(0);
+		try (final Stream<String> lines = Files.lines(Path.of(csvFile))) {
+			lines.forEachOrdered(line -> {
+				final int i = index.getAndIncrement();
+				if (line.startsWith(stack)) {
+					final String[] parts = line.split(",");
+					final LayerOrigin layerOrigin = new LayerOrigin(parts[0], Integer.parseInt(parts[1]));
+					layerOriginMap.put(i, layerOrigin);
+				}
+			});
 		}
 		return layerOriginMap;
 	}
