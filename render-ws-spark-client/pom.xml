@@ -155,13 +155,6 @@
             <groupId>org.janelia.saalfeldlab</groupId>
             <artifactId>n5</artifactId>
             <version>${n5-version}</version>
-            <exclusions>
-                <!-- filter out dependencies that cause duplicate class failures -->
-                <exclusion>
-                    <groupId>com.esotericsoftware</groupId>
-                    <artifactId>kryo</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
