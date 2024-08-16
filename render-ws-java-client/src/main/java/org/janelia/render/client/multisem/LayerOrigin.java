@@ -36,7 +36,7 @@ class LayerOrigin {
 	}
 
 	public String project() {
-		final int slabNumber = Integer.parseInt(stack.substring(0, stack.indexOf('_')));
+		final int slabNumber = Integer.parseInt(stack.substring(1, 4));
 		return getProjectForSlab(slabNumber);
 	}
 
@@ -86,15 +86,23 @@ class LayerOrigin {
 					.findAny().orElseThrow();
 			final String stackBaseName = kensAlignmentStack.substring(0, 9);
 
-			dataClient.getStackZValues(kensAlignmentStack).stream()
+			final List<String> currentLayers = dataClient.getStackZValues(kensAlignmentStack).stream()
 					.map(zLayer -> stackBaseName + "," + zLayer.intValue())
-					.forEach(stacksAndLayers::add);
+					.collect(Collectors.toList());
 
 			if (slab == 213) {
 				// Add an extra layer (38 of 42) for slab 213 that didn't get ingested
-				final int index = stacksAndLayers.size() - 4;
-				stacksAndLayers.add(index, "MISSING,-1");
+				final int lastLayer = currentLayers.size();
+				currentLayers.add(lastLayer - 4, "MISSING,-1");
 			}
+
+			final RecapKensAlignmentTools.SlabInfo slabInfo = RecapKensAlignment.slabInfoForSlab(slab);
+			final int nOriginalLayers = RecapKensAlignment.numSlices(slabInfo.stageIdPlus1()).size();
+			if (currentLayers.size() != nOriginalLayers) {
+				throw new IllegalStateException("Mismatch in number of layers for slab " + slab + ": " + currentLayers.size() + " vs " + nOriginalLayers);
+			}
+
+			stacksAndLayers.addAll(currentLayers);
 		}
 
 		Files.write(Path.of(csvFile), stacksAndLayers);
