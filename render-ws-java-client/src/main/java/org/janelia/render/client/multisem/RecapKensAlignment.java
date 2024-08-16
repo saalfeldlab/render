@@ -41,11 +41,15 @@ public class RecapKensAlignment
 	/**
 	 * This already ignores slices that were dropped at a later point
 	 */
-	public static ArrayList< Integer > numSlices( final int slab )
+	public static ArrayList<Integer> numSlices(final int stageIdPlus1)
 	{
-		final File f = new File( basePath, String.format( "%s/%03d_", stitchedSlabs, slab ) );
+		final File f = new File(basePath, String.format("%s/%03d_", stitchedSlabs, stageIdPlus1));
 
 		final String[] files = f.list( (dir,fn) -> fn.toLowerCase().endsWith(".tif") );
+
+		if (files == null) {
+			throw new RuntimeException("No files found in " + f.getAbsolutePath());
+		}
 
 		final ArrayList< Integer > zLayers = new ArrayList<>();
 		for ( final String file : files )
