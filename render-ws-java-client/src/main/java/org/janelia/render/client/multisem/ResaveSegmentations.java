@@ -7,11 +7,11 @@ import mpicbg.trakem2.transform.AffineModel2D;
 import net.imglib2.Cursor;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
-import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.type.numeric.integer.UnsignedLongType;
@@ -36,7 +36,6 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -113,7 +112,7 @@ public class ResaveSegmentations {
 //		ex.submit(() -> grid.parallelStream().forEach(
 //				gridBlock -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, output, gridBlock))
 //		);
-		fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, output, grid.stream().findAny().orElseThrow());
+		fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, grid.stream().findAny().orElseThrow(), layerOrigins, targetN5, stackNumber);
 
 		try {
 			ex.shutdown();
@@ -130,48 +129,67 @@ public class ResaveSegmentations {
 			final Map<String, TileSpec> sourceTiles,
 			final Map<String, TileSpec> targetTiles,
 			final RandomAccessibleInterval<UnsignedLongType> segmentations,
-			final RandomAccessibleInterval<UnsignedLongType> output,
-			final long[][] gridBlock
+			final long[][] gridBlock,
+			final Map<Integer, LayerOrigin> layerOrigins,
+			final String n5path,
+			final String dataset
 	) {
 		final long[] blockSize = gridBlock[1];
 		final long[] blockOffset = gridBlock[0];
-		final Interval block = Intervals.translate(Intervals.translate(new FinalInterval(blockSize), blockOffset));
+		final Interval block = Intervals.translate(new FinalInterval(blockSize), blockOffset);
+		final Img<UnsignedLongType> blockData = ArrayImgs.unsignedLongs(blockSize);
 
-		final RandomAccessibleInterval<UnsignedLongType> target = Views.interval(output, block);
+		for (final Map.Entry<Integer, LayerOrigin> entry : layerOrigins.entrySet()) {
+			final int zInExport = entry.getKey();
+			final LayerOrigin layerOrigin = entry.getValue();
+			// In the stacks, layer 35 was omitted
+			final int stackZValue = (layerOrigin.zLayer() > 34) ? layerOrigin.zLayer() - 1 : layerOrigin.zLayer();
 
-		final List<Interval> rawBoundingBoxes = new ArrayList<>();
-		final List<AffineModel2D> fromTargetTransforms = new ArrayList<>();
-		final List<AffineModel2D> toSourceTransforms = new ArrayList<>();
-		for (final TileSpec targetTileSpec : targetTiles.values()) {
-			final TileBounds targetBounds = targetTileSpec.toTileBounds();
-			final Interval targetBoundingBox = new FinalInterval(new long[]{targetBounds.getMinX().longValue(), targetBounds.getMinY().longValue()},
-																 new long[]{targetBounds.getMaxX().longValue() - 1, targetBounds.getMaxY().longValue() - 1});
-			if (! Intervals.isEmpty(Intervals.intersect(targetBoundingBox, block))) {
-				rawBoundingBoxes.add(new FinalInterval(new long[]{0, 0}, new long[]{targetTileSpec.getWidth(), targetTileSpec.getHeight()}));
-				fromTargetTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()).createInverse());
-				toSourceTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()));
+			final RandomAccessibleInterval<UnsignedLongType> segmentationLayer = Views.dropSingletonDimensions(Views.hyperSlice(segmentations, 2, zInExport));
+			final RandomAccessibleInterval<UnsignedLongType> blockLayer = Views.hyperSlice(blockData, 2, stackZValue);
+
+			final List<Interval> rawBoundingBoxes = new ArrayList<>();
+			final List<AffineModel2D> fromTargetTransforms = new ArrayList<>();
+			final List<AffineModel2D> toSourceTransforms = new ArrayList<>();
+			for (final TileSpec targetTileSpec : targetTiles.values()) {
+				if (targetTileSpec.getIntegerZ() != stackZValue) {
+					// We are only interested in the current layer
+					continue;
+				}
+				final TileBounds targetBounds = targetTileSpec.toTileBounds();
+				final Interval targetBoundingBox = new FinalInterval(new long[]{targetBounds.getMinX().longValue(), targetBounds.getMinY().longValue()},
+																	 new long[]{targetBounds.getMaxX().longValue() - 1, targetBounds.getMaxY().longValue() - 1});
+				if (! Intervals.isEmpty(Intervals.intersect(targetBoundingBox, block))) {
+					rawBoundingBoxes.add(new FinalInterval(new long[]{0, 0}, new long[]{targetTileSpec.getWidth(), targetTileSpec.getHeight()}));
+					fromTargetTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()).createInverse());
+					toSourceTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()));
+				}
+			}
+
+			final Cursor<UnsignedLongType> targetCursor = Views.iterable(blockLayer).localizingCursor();
+			final RealRandomAccess<UnsignedLongType> sourceRa = Views.interpolate(segmentationLayer, new NearestNeighborInterpolatorFactory<>()).realRandomAccess();
+			final double[] currentPoint = new double[targetCursor.numDimensions()];
+
+			while (targetCursor.hasNext()) {
+				final UnsignedLongType pixel = targetCursor.next();
+
+				for (int i = 0; i < rawBoundingBoxes.size(); ++i) {
+					targetCursor.localize(currentPoint);
+					fromTargetTransforms.get(i).applyInPlace(currentPoint);
+
+					if (Intervals.contains(rawBoundingBoxes.get(i), new RealPoint(currentPoint))) {
+						toSourceTransforms.get(i).applyInPlace(currentPoint);
+						sourceRa.setPosition(currentPoint);
+						pixel.set(sourceRa.get());
+						// Take the first hit
+						break;
+					}
+				}
 			}
 		}
 
-		final Cursor<UnsignedLongType> targetCursor = Views.iterable(target).localizingCursor();
-		final RealRandomAccess<UnsignedLongType> sourceRa = Views.interpolate(segmentations, new NearestNeighborInterpolatorFactory<>()).realRandomAccess();
-		final double[] currentPoint = new double[targetCursor.numDimensions()];
-
-		while (targetCursor.hasNext()) {
-			final UnsignedLongType pixel = targetCursor.next();
-
-			for (int i = 0; i < rawBoundingBoxes.size(); ++i) {
-				targetCursor.localize(currentPoint);
-				fromTargetTransforms.get(i).applyInPlace(currentPoint);
-
-				if (Intervals.contains(rawBoundingBoxes.get(i), new RealPoint(currentPoint))) {
-					toSourceTransforms.get(i).applyInPlace(currentPoint);
-					sourceRa.setPosition(currentPoint);
-					pixel.set(sourceRa.get());
-					// Take the first hit
-					break;
-				}
-			}
+		try (final N5Writer writer = new N5FSWriter(n5path)) {
+			N5Utils.saveNonEmptyBlock(blockData, writer, dataset, blockOffset, new UnsignedLongType(0));
 		}
 	}
 
