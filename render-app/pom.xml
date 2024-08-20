@@ -15,6 +15,10 @@
     <build>
         <plugins>
             <plugin>
+                <!-- TODO: Need to switch from assembly plugin to shade plugin if we ever need to handle
+                           multiple org.janelia.saalfeldlab.n5.Compression$CompressionType implementations.
+                           See render-ws-java-client pom.xml for example.
+                -->
                 <artifactId>maven-assembly-plugin</artifactId>
                 <executions>
                     <execution>

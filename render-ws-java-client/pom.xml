@@ -32,9 +32,28 @@
                             <outputFile>target/${project.artifactId}-${project.version}-standalone.jar</outputFile>
 
                             <transformers>
+
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.janelia.render.client.RenderClient</mainClass>
                                 </transformer>
+
+                                <!--
+                                    Compression implementations defined in org.janelia.saalfeldlab:n5,
+                                    org.janelia.saalfeldlab:n5-blosc, and org.janelia:n5-zstandard get built/serialized
+                                    into META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType files by
+                                    https://github.com/scijava/scijava-common/blob/master/src/main/java/org/scijava/annotations/AnnotationCombiner.java
+
+                                    The serializations need to be combined into a single resource for this fat jar
+                                    ( see https://imagej.net/imagej-wiki-static/Uber-JAR ).
+
+                                    Note that the org.janelia.saalfeldlab:n5-blosc implementation is excluded in the
+                                    filters area below because we don't currently need it.
+                                -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"
+                                             combine.children="append">
+                                    <resource>META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType</resource>
+                                </transformer>
+
                             </transformers>
 
                             <filters>
@@ -96,6 +115,19 @@
                                     <artifact>org.scijava:scijava-table</artifact>
                                     <excludes>
                                         <exclude>META-INF/json/org.scijava.plugin.Plugin</exclude>
+                                    </excludes>
+                                </filter>
+
+                                <!--
+                                    Filter out org.janelia.saalfeldlab:n5-blosc compression support because
+                                    we don't currently need it.
+                                    It produces distracting java.lang.UnsatisfiedLinkError warning messages in
+                                    environments where blosc is not independently installed.
+                                -->
+                                <filter>
+                                    <artifact>org.janelia.saalfeldlab:n5-blosc</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType</exclude>
                                     </excludes>
                                 </filter>
 
