@@ -187,6 +187,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>org.janelia</groupId>
+            <artifactId>n5-zstandard</artifactId>
+			<version>${n5-zstandard.version}</version>
+        </dependency>
+
         <!-- Overridden SciJava Dependencies -->
 
         <dependency>
