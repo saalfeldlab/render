@@ -6,7 +6,7 @@
     <parent>
         <artifactId>modules-root</artifactId>
         <groupId>org.janelia.render</groupId>
-        <version>4.1.0-SNAPSHOT</version>
+        <version>4.2.0-SNAPSHOT</version>
     </parent>
 
     <name>Render Web Service Spark Client</name>
@@ -31,6 +31,25 @@
                         <configuration>
 
                             <outputFile>target/${project.artifactId}-${project.version}-standalone.jar</outputFile>
+
+                            <!--
+                                Compression implementations defined in org.janelia.saalfeldlab:n5,
+                                org.janelia.saalfeldlab:n5-blosc, and org.janelia:n5-zstandard get built/serialized
+                                into META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType files by
+                                https://github.com/scijava/scijava-common/blob/master/src/main/java/org/scijava/annotations/AnnotationCombiner.java
+
+                                The serializations need to be combined into a single resource for this fat jar
+                                ( see https://imagej.net/imagej-wiki-static/Uber-JAR ).
+
+                                Note that the org.janelia.saalfeldlab:n5-blosc implementation is excluded in the
+                                filters area below because we don't currently need it.
+                            -->
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"
+                                             combine.children="append">
+                                    <resource>META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType</resource>
+                                </transformer>
+                            </transformers>
 
                             <filters>
                                 <!-- filter out overlapping resources and classes -->
@@ -73,10 +92,16 @@
                                         <exclude>*.jq</exclude>
                                     </excludes>
                                 </filter>
+                                <!--
+                                    Filter out org.janelia.saalfeldlab:n5-blosc compression support because
+                                    we don't currently need it.
+                                    It produces distracting java.lang.UnsatisfiedLinkError warning messages in
+                                    environments where blosc is not independently installed.
+                                -->
                                 <filter>
-                                    <artifact>org.janelia.saalfeldlab:n5-*</artifact>
+                                    <artifact>org.janelia.saalfeldlab:n5-blosc</artifact>
                                     <excludes>
-                                        <exclude>META-INF/json/org.janelia.saalfeldlab.n5.Compression*</exclude>
+                                        <exclude>META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
@@ -156,10 +181,22 @@
                     <groupId>com.esotericsoftware</groupId>
                     <artifactId>kryo</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>javax.validation</groupId>
+                    <artifactId>validation-api</artifactId>
+                </exclusion>
                 <!-- filter out unneeded google-http-client jar which causes overlap issue in shaded jar -->
                 <exclusion>
                     <groupId>com.google.http-client</groupId>
                     <artifactId>google-http-client-xml</artifactId>
+                </exclusion>
+                <!--
+                     filter out mbknor-jackson-jsonschema_2.12 jar which causes missing scala.Tuple2 errors
+                     because it uses older 2.12.8 scala-library (all other scala dependencies are 2.13.*)
+                -->
+                <exclusion>
+                    <groupId>com.kjetland</groupId>
+                    <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
