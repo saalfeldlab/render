@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -111,7 +112,10 @@ public class ResaveSegmentations {
 //		ex.submit(() -> grid.parallelStream().forEach(
 //				gridBlock -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, output, gridBlock))
 //		);
+		int count = 0;
 		for (final long[][] gridBlock : grid) {
+			++count;
+			LOG.info("Processing block: {} of {}", count, grid.size());
 			fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber);
 		}
 
@@ -140,12 +144,14 @@ public class ResaveSegmentations {
 		final Interval block = Intervals.translate(new FinalInterval(blockSize), blockOffset);
 		final Img<UnsignedLongType> blockData = ArrayImgs.unsignedLongs(blockSize);
 		final Interval rawBoundingBox = createRawBoundingBox(targetTiles.values().stream().findAny().orElseThrow());
+		boolean blockIsEmpty = true;
 
 		for (final Map.Entry<Integer, LayerOrigin> entry : layerOrigins.entrySet()) {
 			final int zInExport = entry.getKey();
 			final LayerOrigin layerOrigin = entry.getValue();
 			// In the stacks, layer 35 was omitted
-			final int stackZValue = (layerOrigin.zLayer() > 34) ? layerOrigin.zLayer() - 1 : layerOrigin.zLayer();
+			final int sectionId = layerOrigin.zLayer();
+			final int stackZValue = (sectionId > 34) ? sectionId - 1 : sectionId;
 			if (layerOrigin.stack().equals("MISSING")) {
 				// Skip the one missing layer
 				continue;
@@ -158,7 +164,7 @@ public class ResaveSegmentations {
 			final List<AffineModel2D> toSourceTransforms = new ArrayList<>();
 
 			for (final TileSpec targetTileSpec : targetTiles.values()) {
-				if (targetTileSpec.getIntegerZ() != stackZValue) {
+				if (targetTileSpec.getZ().intValue() != stackZValue) {
 					// We are only interested in the current layer
 					continue;
 				}
@@ -191,6 +197,7 @@ public class ResaveSegmentations {
 						toSourceTransforms.get(i).applyInPlace(currentPoint);
 						sourceRa.setPosition(currentPoint);
 						pixel.set(sourceRa.get());
+						blockIsEmpty = false;
 						// Take the first hit
 						break;
 					}
@@ -198,8 +205,10 @@ public class ResaveSegmentations {
 			}
 		}
 
-		try (final N5Writer writer = new N5FSWriter(n5path)) {
-			N5Utils.saveNonEmptyBlock(blockData, writer, dataset, blockOffset, new UnsignedLongType(0));
+		if (! blockIsEmpty) {
+			try (final N5Writer writer = new N5FSWriter(n5path)) {
+				N5Utils.saveNonEmptyBlock(blockData, writer, dataset, blockOffset, new UnsignedLongType(0));
+			}
 		}
 	}
 
