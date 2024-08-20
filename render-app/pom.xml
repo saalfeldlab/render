@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.janelia.render</groupId>
         <artifactId>modules-root</artifactId>
-        <version>4.1.0-SNAPSHOT</version>
+        <version>4.2.0-SNAPSHOT</version>
     </parent>
 
     <name>Render Application</name>
@@ -15,6 +15,10 @@
     <build>
         <plugins>
             <plugin>
+                <!-- TODO: Need to switch from assembly plugin to shade plugin if we ever need to handle
+                           multiple org.janelia.saalfeldlab.n5.Compression$CompressionType implementations.
+                           See render-ws-java-client pom.xml for example.
+                -->
                 <artifactId>maven-assembly-plugin</artifactId>
                 <executions>
                     <execution>
@@ -211,6 +215,13 @@
             <groupId>com.github.PreibischLab</groupId>
             <artifactId>FunctionFit</artifactId>
             <version>157ab01</version>
+            <exclusions>
+                <!-- filter out unneeded google version of old ejml jar which causes duplicate class failures -->
+                <exclusion>
+                    <groupId>com.googlecode.efficient-java-matrix-library</groupId>
+                    <artifactId>ejml</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
     </dependencies>
