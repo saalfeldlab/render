@@ -13,7 +13,6 @@ import net.imglib2.RealRandomAccess;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
-import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.type.numeric.integer.UnsignedLongType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.Views;
@@ -112,7 +111,9 @@ public class ResaveSegmentations {
 //		ex.submit(() -> grid.parallelStream().forEach(
 //				gridBlock -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, output, gridBlock))
 //		);
-		fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, grid.stream().findAny().orElseThrow(), layerOrigins, targetN5, stackNumber);
+		for (final long[][] gridBlock : grid) {
+			fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber);
+		}
 
 		try {
 			ex.shutdown();
@@ -138,19 +139,24 @@ public class ResaveSegmentations {
 		final long[] blockOffset = gridBlock[0];
 		final Interval block = Intervals.translate(new FinalInterval(blockSize), blockOffset);
 		final Img<UnsignedLongType> blockData = ArrayImgs.unsignedLongs(blockSize);
+		final Interval rawBoundingBox = createRawBoundingBox(targetTiles.values().stream().findAny().orElseThrow());
 
 		for (final Map.Entry<Integer, LayerOrigin> entry : layerOrigins.entrySet()) {
 			final int zInExport = entry.getKey();
 			final LayerOrigin layerOrigin = entry.getValue();
 			// In the stacks, layer 35 was omitted
 			final int stackZValue = (layerOrigin.zLayer() > 34) ? layerOrigin.zLayer() - 1 : layerOrigin.zLayer();
+			if (layerOrigin.stack().equals("MISSING")) {
+				// Skip the one missing layer
+				continue;
+			}
 
 			final RandomAccessibleInterval<UnsignedLongType> segmentationLayer = Views.dropSingletonDimensions(Views.hyperSlice(segmentations, 2, zInExport));
 			final RandomAccessibleInterval<UnsignedLongType> blockLayer = Views.hyperSlice(blockData, 2, stackZValue);
 
-			final List<Interval> rawBoundingBoxes = new ArrayList<>();
 			final List<AffineModel2D> fromTargetTransforms = new ArrayList<>();
 			final List<AffineModel2D> toSourceTransforms = new ArrayList<>();
+
 			for (final TileSpec targetTileSpec : targetTiles.values()) {
 				if (targetTileSpec.getIntegerZ() != stackZValue) {
 					// We are only interested in the current layer
@@ -160,10 +166,14 @@ public class ResaveSegmentations {
 				final Interval targetBoundingBox = new FinalInterval(new long[]{targetBounds.getMinX().longValue(), targetBounds.getMinY().longValue()},
 																	 new long[]{targetBounds.getMaxX().longValue() - 1, targetBounds.getMaxY().longValue() - 1});
 				if (! Intervals.isEmpty(Intervals.intersect(targetBoundingBox, block))) {
-					rawBoundingBoxes.add(new FinalInterval(new long[]{0, 0}, new long[]{targetTileSpec.getWidth(), targetTileSpec.getHeight()}));
 					fromTargetTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()).createInverse());
 					toSourceTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()));
 				}
+			}
+
+			if (fromTargetTransforms.isEmpty()) {
+				// No tiles in this block
+				continue;
 			}
 
 			final Cursor<UnsignedLongType> targetCursor = Views.iterable(blockLayer).localizingCursor();
@@ -173,11 +183,11 @@ public class ResaveSegmentations {
 			while (targetCursor.hasNext()) {
 				final UnsignedLongType pixel = targetCursor.next();
 
-				for (int i = 0; i < rawBoundingBoxes.size(); ++i) {
+				for (int i = 0; i < fromTargetTransforms.size(); ++i) {
 					targetCursor.localize(currentPoint);
 					fromTargetTransforms.get(i).applyInPlace(currentPoint);
 
-					if (Intervals.contains(rawBoundingBoxes.get(i), new RealPoint(currentPoint))) {
+					if (Intervals.contains(rawBoundingBox, new RealPoint(currentPoint))) {
 						toSourceTransforms.get(i).applyInPlace(currentPoint);
 						sourceRa.setPosition(currentPoint);
 						pixel.set(sourceRa.get());
@@ -193,49 +203,25 @@ public class ResaveSegmentations {
 		}
 	}
 
-	/**
-	 * Takes two transform lists that realize A->B and A->C and creates a single affine transformation B->C.
-	 *
-	 * @param transformsAB transform list A->B
-	 * @param transformsAC transform list A->C
-	 * @return affine transformation B->C
-	 */
-	private static AffineTransform2D getConnectingTransformation(
-			final CoordinateTransformList<CoordinateTransform> transformsAB,
-			final CoordinateTransformList<CoordinateTransform> transformsAC
-	) {
-		final CoordinateTransform trafo1 = transformsAB.get(0);
-		final CoordinateTransform trafo2 = transformsAC.get(0);
-		if (trafo1.getClass().getName().equals("org.janelia.alignment.transform.ExponentialFunctionOffsetTransform")
-				&& trafo2.getClass().getName().equals("org.janelia.alignment.transform.ExponentialFunctionOffsetTransform")) {
-			// since we use the same scanning correction as the first step in all stacks, we can just skip
-			// the first transform in both stacks (especially since there is no implemented inverse)
-			transformsAB.remove(0);
-			transformsAC.remove(0);
+	// This uses that the first transform is the scanning correction, which is the same for all tiles
+	// Since this is not invertible, we forward-transform the original tile bounds and skip this transform when applying
+	// the inverse transforms
+	private Interval createRawBoundingBox(final TileSpec tileSpec) {
+		final List<CoordinateTransform> transforms = tileSpec.getTransformList().getList(null);
+		final CoordinateTransform scanTransform = transforms.get(0);
+		if (! scanTransform.getClass().getName().equals("org.janelia.alignment.transform.ExponentialFunctionOffsetTransform")) {
+			throw new IllegalArgumentException("First transform is not the scan correction");
 		}
 
-		final AffineModel2D modelBC = new AffineModel2D();
-		final AffineModel2D singleModel = new AffineModel2D();
-
-		// Transformations for B->A
-		for (final CoordinateTransform currentTransform : transformsAB.getList(null)) {
-			final AbstractAffineModel2D<?> currentModel = ensureAbstractAffineModel2D(currentTransform);
-			singleModel.set(currentModel.createInverseAffine());
-			modelBC.concatenate(singleModel);
+		final TileSpec tsWithOnlyScanCorrection = tileSpec.slowClone();
+		for (int i = 1; i < transforms.size(); ++i) {
+			tsWithOnlyScanCorrection.removeLastTransformSpec();
 		}
 
-		// Transformations for A->C
-		for (final CoordinateTransform currentTransform : transformsAC.getList(null)) {
-			final AbstractAffineModel2D<?> currentModel = ensureAbstractAffineModel2D(currentTransform);
-			singleModel.set(currentModel.createAffine());
-			modelBC.preConcatenate(singleModel);
-		}
-
-		final double[][] coefficientsBC = new double[2][3];
-		modelBC.toMatrix(coefficientsBC);
-		final AffineTransform2D transformAC = new AffineTransform2D();
-		transformAC.set(coefficientsBC);
-		return transformAC;
+		tsWithOnlyScanCorrection.deriveBoundingBox(tsWithOnlyScanCorrection.getMeshCellSize(), true);
+		final TileBounds bounds = tsWithOnlyScanCorrection.toTileBounds();
+		return new FinalInterval(new long[]{bounds.getMinX().longValue(), bounds.getMinY().longValue()},
+								 new long[]{bounds.getMaxX().longValue() - 1, bounds.getMaxY().longValue() - 1});
 	}
 
 	/**
@@ -247,9 +233,7 @@ public class ResaveSegmentations {
 	private static AffineModel2D concatenateTransforms(final CoordinateTransformList<CoordinateTransform> transforms) {
 		final CoordinateTransform firstTransform = transforms.get(0);
 		if (firstTransform.getClass().getName().equals("org.janelia.alignment.transform.ExponentialFunctionOffsetTransform")) {
-			// TODO: that's not true
-			// since we use the same scanning correction as the first step in all stacks, we can just skip
-			// the first transform in both stacks (especially since there is no implemented inverse)
+			// The scan correction is not an affine transformation and taken care of by transforming the original tile bounds elsewhere
 			transforms.remove(0);
 		}
 
