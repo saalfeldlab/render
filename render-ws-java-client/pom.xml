@@ -54,15 +54,17 @@
                                     <resource>META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType</resource>
                                 </transformer>
 
+                                <!-- copied these transformers from hot-knife pom.xml -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>META-INF/json/org.scijava.plugin.Plugin</resource>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>META-INF/json/mpicbg.spim.data.generic.sequence.ImgLoaderIo</resource>
+                                </transformer>
+
                             </transformers>
 
                             <filters>
-                                <filter>
-                                    <artifact>sc.fiji:scijava-common</artifact>
-                                    <includes>
-                                        <include>META-INF/json/org.scijava.plugin.Plugin</include>
-                                    </includes>
-                                </filter>
                                 <!-- filter out overlapping resources and classes -->
                                 <filter>
                                     <artifact>*:*</artifact>
@@ -90,31 +92,6 @@
                                     <artifact>org.janelia.render:render-app</artifact>
                                     <excludes>
                                         <exclude>git.properties</exclude> <!-- will get pulled in from render-ws-java-client -->
-                                    </excludes>
-                                </filter>
-
-                                <!--
-                                  Avoid IllegalArgumentException: No compatible service: org.scijava.plugin.PluginService
-                                  when running tools that rely upon bigdataviewer-vistools by excluding all copies
-                                  of META-INF/json/org.scijava.plugin.Plugin except the one from scijava-common.
-                                  Wish there was an easier/simpler way to do this ...
-                                -->
-                                <filter>
-                                    <artifact>sc.fiji:bigdataviewer-core</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/json/org.scijava.plugin.Plugin</exclude>
-                                    </excludes>
-                                </filter>
-                                <filter>
-                                    <artifact>net.imagej:imagej-common</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/json/org.scijava.plugin.Plugin</exclude>
-                                    </excludes>
-                                </filter>
-                                <filter>
-                                    <artifact>org.scijava:scijava-table</artifact>
-                                    <excludes>
-                                        <exclude>META-INF/json/org.scijava.plugin.Plugin</exclude>
                                     </excludes>
                                 </filter>
 

@@ -32,23 +32,33 @@
 
                             <outputFile>target/${project.artifactId}-${project.version}-standalone.jar</outputFile>
 
-                            <!--
-                                Compression implementations defined in org.janelia.saalfeldlab:n5,
-                                org.janelia.saalfeldlab:n5-blosc, and org.janelia:n5-zstandard get built/serialized
-                                into META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType files by
-                                https://github.com/scijava/scijava-common/blob/master/src/main/java/org/scijava/annotations/AnnotationCombiner.java
-
-                                The serializations need to be combined into a single resource for this fat jar
-                                ( see https://imagej.net/imagej-wiki-static/Uber-JAR ).
-
-                                Note that the org.janelia.saalfeldlab:n5-blosc implementation is excluded in the
-                                filters area below because we don't currently need it.
-                            -->
                             <transformers>
+
+                                <!--
+                                    Compression implementations defined in org.janelia.saalfeldlab:n5,
+                                    org.janelia.saalfeldlab:n5-blosc, and org.janelia:n5-zstandard get built/serialized
+                                    into META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType files by
+                                    https://github.com/scijava/scijava-common/blob/master/src/main/java/org/scijava/annotations/AnnotationCombiner.java
+
+                                    The serializations need to be combined into a single resource for this fat jar
+                                    ( see https://imagej.net/imagej-wiki-static/Uber-JAR ).
+
+                                    Note that the org.janelia.saalfeldlab:n5-blosc implementation is excluded in the
+                                    filters area below because we don't currently need it.
+                                -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"
                                              combine.children="append">
                                     <resource>META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType</resource>
                                 </transformer>
+
+                                <!-- copied these transformers from hot-knife pom.xml -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>META-INF/json/org.scijava.plugin.Plugin</resource>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>META-INF/json/mpicbg.spim.data.generic.sequence.ImgLoaderIo</resource>
+                                </transformer>
+
                             </transformers>
 
                             <filters>
@@ -60,7 +70,6 @@
                                         <exclude>plugins.config</exclude>
                                         <exclude>LICENSE</exclude>
                                         <exclude>META-INF/*</exclude>
-                                        <exclude>META-INF/json/org.scijava.plugin.Plugin</exclude>
                                         <exclude>META-INF/services/**</exclude>
                                         <exclude>META-INF/versions/**</exclude>
                                     </excludes>
