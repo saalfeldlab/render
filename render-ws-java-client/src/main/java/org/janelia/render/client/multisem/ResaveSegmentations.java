@@ -38,7 +38,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -58,6 +57,7 @@ public class ResaveSegmentations {
 	private final String dataset;
 	private final String layerOriginCsv;
 	private final int[] blockSize;
+	private Interval rawBoundingBox;
 
 	public ResaveSegmentations() {
 		baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
@@ -78,22 +78,24 @@ public class ResaveSegmentations {
 	}
 
 	public void run() throws IOException {
-		// Create dataset in output N5 container
-		final N5Reader sourceReader = new N5FSReader(sourceN5);
-
+		// Get mapping "layer in exported stack" -> "stack name + layer" for the stack under consideration
 		final Map<Integer, LayerOrigin> layerOrigins = LayerOrigin.getRangeForStack(layerOriginCsv, stackNumber);
 		final LayerOrigin firstLayerOrigin = layerOrigins.values().stream().findFirst().orElseThrow();
 		final String stackNumber = firstLayerOrigin.stack();
 		final RenderDataClient dataClient = new RenderDataClient(baseDataUrl, owner, firstLayerOrigin.project());
 
+		// Get the stack bounds for the target stack to create the target dataset
 		final String targetStack = stackNumber + targetStackSuffix;
 		final StackMetaData targetStackMetaData = dataClient.getStackMetaData(targetStack);
 		final Bounds targetBounds = targetStackMetaData.getStackBounds();
 
+		// Get other attributes for the target dataset from the source dataset
 		LOG.info("Resaving segmentations from {}/{} to {}/{}", sourceN5, dataset, targetN5, stackNumber);
+		final N5Reader sourceReader = new N5FSReader(sourceN5);
 		final DatasetAttributes attributes = sourceReader.getDatasetAttributes(dataset);
 		final RandomAccessibleInterval<UnsignedLongType> segmentations = N5Utils.open(sourceReader, dataset);
 
+		// Create dataset in output N5 container
 		final DatasetAttributes targetAttributes = new DatasetAttributes(
 				new long[] {targetBounds.getWidth(), targetBounds.getHeight(), (long) targetStackMetaData.getStackBounds().getDeltaZ()},
 				blockSize,
@@ -103,27 +105,15 @@ public class ResaveSegmentations {
 			targetWriter.createDataset(stackNumber, targetAttributes);
 		}
 
-		final List<long[][]> grid = Grid.create(targetAttributes.getDimensions(), targetAttributes.getBlockSize());
-
+		// Create a grid over the relevant part of the target stack
 		final ResolvedTileSpecCollection sourceTiles = dataClient.getResolvedTiles(stackNumber + sourceStackSuffix, null);
 		final ResolvedTileSpecCollection targetTiles = dataClient.getResolvedTiles(targetStack, null);
-		// Only keep tiles that are in the source stack, since there are no transformations for the others
-		targetTiles.retainTileSpecs(sourceTiles.getTileIds());
-		targetTiles.recalculateBoundingBoxes();
-		final Rectangle remainingStackBounds = targetTiles.toBounds().toRectangle();
-		final List<long[][]> relevantGridBlocks = grid.stream()
-				.filter(gridBlock -> {
-					final long[] blockOffset = gridBlock[0];
-					final long[] blockSize = gridBlock[1];
-					return remainingStackBounds.intersects(blockOffset[0], blockOffset[1], blockSize[0], blockSize[1]);
-				}).collect(Collectors.toList());
+		final List<long[][]> grid = createGridOverRelevantTiles(targetAttributes, targetTiles, sourceTiles);
+		rawBoundingBox = createRawBoundingBox(targetTiles.getTileSpecs().stream().findAny().orElseThrow());
 
-		LOG.info("Resaving {} (relevant) of {} (total) blocks", relevantGridBlocks.size(), grid.size());
-
+		// Fuse data block by block
 		final ExecutorService ex = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() );
-
-		// fuse data block by block
-		ex.submit(() -> relevantGridBlocks.parallelStream().forEach(
+		ex.submit(() -> grid.parallelStream().forEach(
 				gridBlock -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber))
 		);
 
@@ -137,10 +127,27 @@ public class ResaveSegmentations {
 		}
 	}
 
-	private boolean intersects(final long[][] gridBlock, final Bounds bounds) {
-		final long[] blockSize = gridBlock[1];
-		final long[] blockOffset = gridBlock[0];
-		return bounds.toRectangle().intersects(blockOffset[0], blockOffset[1], blockSize[0], blockSize[1]);
+	private static List<long[][]> createGridOverRelevantTiles(
+			final DatasetAttributes targetAttributes,
+			final ResolvedTileSpecCollection targetTiles,
+			final ResolvedTileSpecCollection sourceTiles
+	) {
+		// Start with a grid over the full dimensions, then only keep blocks that intersect with tiles that will be used in writing
+		final List<long[][]> fullGrid = Grid.create(targetAttributes.getDimensions(), targetAttributes.getBlockSize());
+
+		// Only keep tiles that are in the source stack, since there are no transformations for the others and hence there can be no data
+		targetTiles.retainTileSpecs(sourceTiles.getTileIds());
+		targetTiles.recalculateBoundingBoxes();
+		final Rectangle remainingStackBounds = targetTiles.toBounds().toRectangle();
+		final List<long[][]> relevantGridBlocks = fullGrid.stream()
+				.filter(gridBlock -> {
+					final long[] blockOffset = gridBlock[0];
+					final long[] blockSize = gridBlock[1];
+					return remainingStackBounds.intersects(blockOffset[0], blockOffset[1], blockSize[0], blockSize[1]);
+				}).collect(Collectors.toList());
+
+		LOG.info("Resaving {} (relevant) of {} (total) blocks", relevantGridBlocks.size(), fullGrid.size());
+		return relevantGridBlocks;
 	}
 
 	private void fuseBlock(
@@ -156,37 +163,28 @@ public class ResaveSegmentations {
 		final long[] blockOffset = gridBlock[0];
 		final Interval block = Intervals.translate(new FinalInterval(blockSize), blockOffset);
 		final Img<UnsignedLongType> blockData = ArrayImgs.unsignedLongs(blockSize);
-		final Interval rawBoundingBox = createRawBoundingBox(targetTiles.values().stream().findAny().orElseThrow());
 		boolean blockIsEmpty = true;
 
 		for (final Map.Entry<Integer, LayerOrigin> entry : layerOrigins.entrySet()) {
+			// Extract the corresponding z values in the exported stack and the target render stack
 			final int zInExport = entry.getKey();
-			final LayerOrigin layerOrigin = entry.getValue();
-			// In the stacks, layer 35 was omitted
-			final int sectionId = layerOrigin.zLayer();
-			final int stackZValue = (sectionId > 34) ? sectionId - 1 : sectionId;
-			if (layerOrigin.stack().equals("MISSING")) {
-				// Skip the one missing layer
+			final int zInRender = getStackZValue(entry.getValue());
+			if (zInRender < 0) {
 				continue;
 			}
 
-			final RandomAccessibleInterval<UnsignedLongType> segmentationLayer = Views.dropSingletonDimensions(Views.hyperSlice(segmentations, 2, zInExport));
-			final RandomAccessibleInterval<UnsignedLongType> blockLayer = Views.translate(Views.hyperSlice(blockData, 2, stackZValue), blockOffset[0], blockOffset[1]);
-
+			// Find transformations for all tiles in the target stack that intersect with the current block
 			final List<AffineModel2D> fromTargetTransforms = new ArrayList<>();
 			final List<AffineModel2D> toSourceTransforms = new ArrayList<>();
 
 			for (final TileSpec sourceTileSpec : sourceTiles.values()) {
 				final TileSpec targetTileSpec = targetTiles.get(sourceTileSpec.getTileId());
-				if (targetTileSpec.getZ().intValue() != stackZValue) {
+				if (targetTileSpec.getZ().intValue() != zInRender) {
 					// We are only interested in the current layer
 					continue;
 				}
 
-				final TileBounds targetBounds = targetTileSpec.toTileBounds();
-				final Interval targetBoundingBox = new FinalInterval(new long[]{targetBounds.getMinX().longValue(), targetBounds.getMinY().longValue()},
-																	 new long[]{targetBounds.getMaxX().longValue() - 1, targetBounds.getMaxY().longValue() - 1});
-				if (! Intervals.isEmpty(Intervals.intersect(targetBoundingBox, block))) {
+				if (! intersect(targetTileSpec, block)) {
 					fromTargetTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()).createInverse());
 					toSourceTransforms.add(concatenateTransforms(sourceTileSpec.getTransformList()));
 				}
@@ -197,10 +195,24 @@ public class ResaveSegmentations {
 				continue;
 			}
 
+			// Extract the current z layer from the segmentations and the block data
+			final int cropOffset = 6250;
+			final RandomAccessibleInterval<UnsignedLongType> segmentationLayer =
+					Views.translate(
+							Views.dropSingletonDimensions(
+									Views.hyperSlice(segmentations, 2, zInExport)
+							),
+							cropOffset, cropOffset);
+			final RandomAccessibleInterval<UnsignedLongType> blockLayer =
+					Views.translate(
+							Views.hyperSlice(blockData, 2, zInRender),
+							blockOffset[0], blockOffset[1]);
+
 			final Cursor<UnsignedLongType> targetCursor = Views.iterable(blockLayer).localizingCursor();
-			final RealRandomAccess<UnsignedLongType> sourceRa = Views.interpolate(Views.extendZero(Views.translate(segmentationLayer, 6250, 6250)), new NearestNeighborInterpolatorFactory<>()).realRandomAccess();
+			final RealRandomAccess<UnsignedLongType> sourceRa = Views.interpolate(Views.extendZero(segmentationLayer), new NearestNeighborInterpolatorFactory<>()).realRandomAccess();
 			final double[] currentPoint = new double[targetCursor.numDimensions()];
 
+			// Fill the target z-layer pixel by pixel
 			while (targetCursor.hasNext()) {
 				final UnsignedLongType pixel = targetCursor.next();
 
@@ -223,6 +235,7 @@ public class ResaveSegmentations {
 			}
 		}
 
+		// Write block if it's not empty
 		if (! blockIsEmpty) {
 			try (final N5Writer writer = new N5FSWriter(n5path)) {
 				N5Utils.saveNonEmptyBlock(blockData, writer, dataset, blockOffset, new UnsignedLongType(0));
@@ -230,9 +243,27 @@ public class ResaveSegmentations {
 		}
 	}
 
+	private int getStackZValue(final LayerOrigin layerOrigin) {
+		if (layerOrigin.stack().equals("MISSING")) {
+			// Skip the one missing layer
+			return -1;
+		}
+		final int sectionId = layerOrigin.zLayer();
+		// In the stacks, layer 35 was omitted
+		return (sectionId > 34) ? sectionId - 1 : sectionId;
+	}
+
+	private static boolean intersect(final TileSpec tileSpec, final Interval interval) {
+		final TileBounds tileBounds = tileSpec.toTileBounds();
+		final Interval tileBoundingBox = new FinalInterval(new long[]{tileBounds.getMinX().longValue(), tileBounds.getMinY().longValue()},
+														   new long[]{tileBounds.getMaxX().longValue() - 1, tileBounds.getMaxY().longValue() - 1});
+		return Intervals.isEmpty(Intervals.intersect(tileBoundingBox, interval));
+	}
+
 	// This uses that the first transform is the scanning correction, which is the same for all tiles
 	// Since this is not invertible, we forward-transform the original tile bounds and skip this transform when applying
 	// the inverse transforms
+	// I.e., instead of going source -> tile -> target, we go source -> scan corrected tile -> target
 	private Interval createRawBoundingBox(final TileSpec tileSpec) {
 		final List<CoordinateTransform> transforms = tileSpec.getTransformList().getList(null);
 		final CoordinateTransform scanTransform = transforms.get(0);
