@@ -33,6 +33,7 @@ import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +42,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 public class ResaveSegmentations {
 
@@ -67,6 +69,7 @@ public class ResaveSegmentations {
 		targetN5 = "/home/innerbergerm@hhmi.org/big-data/kens-alignment/segmentations.n5";
 		dataset = "/n5";
 		blockSize = new int[] {512, 512, 64};
+		// Create with LayerOrigin.main()
 		layerOriginCsv = "layerOrigins.csv";
 	}
 
@@ -102,25 +105,27 @@ public class ResaveSegmentations {
 
 		final List<long[][]> grid = Grid.create(targetAttributes.getDimensions(), targetAttributes.getBlockSize());
 
-		LOG.info("Resaving {} blocks", grid.size());
-
 		final ResolvedTileSpecCollection sourceTiles = dataClient.getResolvedTiles(stackNumber + sourceStackSuffix, null);
 		final ResolvedTileSpecCollection targetTiles = dataClient.getResolvedTiles(targetStack, null);
+		// Only keep tiles that are in the source stack, since there are no transformations for the others
+		targetTiles.retainTileSpecs(sourceTiles.getTileIds());
+		targetTiles.recalculateBoundingBoxes();
+		final Rectangle remainingStackBounds = targetTiles.toBounds().toRectangle();
+		final List<long[][]> relevantGridBlocks = grid.stream()
+				.filter(gridBlock -> {
+					final long[] blockOffset = gridBlock[0];
+					final long[] blockSize = gridBlock[1];
+					return remainingStackBounds.intersects(blockOffset[0], blockOffset[1], blockSize[0], blockSize[1]);
+				}).collect(Collectors.toList());
+
+		LOG.info("Resaving {} (relevant) of {} (total) blocks", relevantGridBlocks.size(), grid.size());
 
 		final ExecutorService ex = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() );
 
-//		// fuse data block by block
-//		ex.submit(() -> grid.parallelStream().forEach(
-//				gridBlock -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, output, gridBlock))
-//		);
-		int count = 0;
-		for (final long[][] gridBlock : grid) {
-			++count;
-			if (count == 3814) {
-				LOG.info("Processing block: {} of {}", count, grid.size());
-				fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber);
-			}
-		}
+		// fuse data block by block
+		ex.submit(() -> relevantGridBlocks.parallelStream().forEach(
+				gridBlock -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber))
+		);
 
 		try {
 			ex.shutdown();
@@ -130,6 +135,12 @@ public class ResaveSegmentations {
 		} finally {
 			sourceReader.close();
 		}
+	}
+
+	private boolean intersects(final long[][] gridBlock, final Bounds bounds) {
+		final long[] blockSize = gridBlock[1];
+		final long[] blockOffset = gridBlock[0];
+		return bounds.toRectangle().intersects(blockOffset[0], blockOffset[1], blockSize[0], blockSize[1]);
 	}
 
 	private void fuseBlock(
@@ -160,7 +171,7 @@ public class ResaveSegmentations {
 			}
 
 			final RandomAccessibleInterval<UnsignedLongType> segmentationLayer = Views.dropSingletonDimensions(Views.hyperSlice(segmentations, 2, zInExport));
-			final RandomAccessibleInterval<UnsignedLongType> blockLayer = Views.translate(Views.hyperSlice(blockData, 2, stackZValue), blockOffset);
+			final RandomAccessibleInterval<UnsignedLongType> blockLayer = Views.translate(Views.hyperSlice(blockData, 2, stackZValue), blockOffset[0], blockOffset[1]);
 
 			final List<AffineModel2D> fromTargetTransforms = new ArrayList<>();
 			final List<AffineModel2D> toSourceTransforms = new ArrayList<>();
@@ -187,7 +198,7 @@ public class ResaveSegmentations {
 			}
 
 			final Cursor<UnsignedLongType> targetCursor = Views.iterable(blockLayer).localizingCursor();
-			final RealRandomAccess<UnsignedLongType> sourceRa = Views.interpolate(Views.extendZero(segmentationLayer), new NearestNeighborInterpolatorFactory<>()).realRandomAccess();
+			final RealRandomAccess<UnsignedLongType> sourceRa = Views.interpolate(Views.extendZero(Views.translate(segmentationLayer, 6250, 6250)), new NearestNeighborInterpolatorFactory<>()).realRandomAccess();
 			final double[] currentPoint = new double[targetCursor.numDimensions()];
 
 			while (targetCursor.hasNext()) {
@@ -200,10 +211,13 @@ public class ResaveSegmentations {
 					if (Intervals.contains(rawBoundingBox, new RealPoint(currentPoint))) {
 						toSourceTransforms.get(i).applyInPlace(currentPoint);
 						sourceRa.setPosition(currentPoint);
-						pixel.set(sourceRa.get());
-						blockIsEmpty = false;
-						// Take the first hit
-						break;
+						final UnsignedLongType sourcePixel = sourceRa.get();
+						if (sourcePixel.get() != 0) {
+							pixel.set(sourcePixel);
+							blockIsEmpty = false;
+							// Take the first hit
+							break;
+						}
 					}
 				}
 			}
