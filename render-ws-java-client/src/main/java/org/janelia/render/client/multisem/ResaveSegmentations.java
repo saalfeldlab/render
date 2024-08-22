@@ -167,7 +167,8 @@ public class ResaveSegmentations {
 
 		for (final Map.Entry<Integer, LayerOrigin> entry : layerOrigins.entrySet()) {
 			// Extract the corresponding z values in the exported stack and the target render stack
-			final int zInExport = entry.getKey();
+			// The export starts with a blank layer
+			final int zInExport = entry.getKey() + 1;
 			final int zInRender = getStackZValue(entry.getValue());
 			if (zInRender < 0) {
 				continue;
