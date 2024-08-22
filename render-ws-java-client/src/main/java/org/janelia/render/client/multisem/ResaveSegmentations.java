@@ -57,7 +57,7 @@ public class ResaveSegmentations {
 	private final String dataset;
 	private final String layerOriginCsv;
 	private final int[] blockSize;
-	private Interval rawBoundingBox;
+	private Interval scanTransformedTemplateTile;
 
 	public ResaveSegmentations() {
 		baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
@@ -109,7 +109,7 @@ public class ResaveSegmentations {
 		final ResolvedTileSpecCollection sourceTiles = dataClient.getResolvedTiles(stackNumber + sourceStackSuffix, null);
 		final ResolvedTileSpecCollection targetTiles = dataClient.getResolvedTiles(targetStack, null);
 		final List<long[][]> grid = createGridOverRelevantTiles(targetAttributes, targetTiles, sourceTiles);
-		rawBoundingBox = createRawBoundingBox(targetTiles.getTileSpecs().stream().findAny().orElseThrow());
+		scanTransformedTemplateTile = createRawBoundingBox(targetTiles.getTileSpecs().stream().findAny().orElseThrow());
 
 		// Fuse data block by block
 		final ExecutorService ex = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() );
@@ -220,7 +220,7 @@ public class ResaveSegmentations {
 					targetCursor.localize(currentPoint);
 					fromTargetTransforms.get(i).applyInPlace(currentPoint);
 
-					if (Intervals.contains(rawBoundingBox, new RealPoint(currentPoint))) {
+					if (Intervals.contains(scanTransformedTemplateTile, new RealPoint(currentPoint))) {
 						toSourceTransforms.get(i).applyInPlace(currentPoint);
 						sourceRa.setPosition(currentPoint);
 						final UnsignedLongType sourcePixel = sourceRa.get();
