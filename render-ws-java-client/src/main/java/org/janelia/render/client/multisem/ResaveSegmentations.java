@@ -168,7 +168,6 @@ public class ResaveSegmentations {
 		final long[] blockOffset = gridBlock[0];
 		final Interval block = Intervals.translate(new FinalInterval(blockSize), blockOffset);
 		final Img<UnsignedLongType> blockData = ArrayImgs.unsignedLongs(blockSize);
-		boolean blockIsEmpty = true;
 
 		final Map<Integer, Integer> zRenderToExport = new HashMap<>();
 		layerOrigins.forEach((exportZ, layerOrigin) -> {
@@ -232,7 +231,6 @@ public class ResaveSegmentations {
 					final UnsignedLongType sourcePixel = sourceRa.get();
 					if (sourcePixel.get() != 0) {
 						pixel.set(sourcePixel);
-						blockIsEmpty = false;
 						// Take the first hit
 						break;
 					}
@@ -242,11 +240,9 @@ public class ResaveSegmentations {
 		}
 
 		// Write block if it's not empty
-		if (! blockIsEmpty) {
-			try (final N5Writer writer = new N5FSWriter(n5path)) {
-				final long[] gridOffset = gridBlock[2];
-				N5Utils.saveNonEmptyBlock(blockData, writer, dataset, gridOffset, new UnsignedLongType(0));
-			}
+		try (final N5Writer writer = new N5FSWriter(n5path)) {
+			final long[] gridOffset = gridBlock[2];
+			N5Utils.saveNonEmptyBlock(blockData, writer, dataset, gridOffset, new UnsignedLongType(0));
 		}
 	}
 
