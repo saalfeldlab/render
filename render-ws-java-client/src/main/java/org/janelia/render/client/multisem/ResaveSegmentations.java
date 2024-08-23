@@ -39,9 +39,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 public class ResaveSegmentations {
@@ -116,17 +117,15 @@ public class ResaveSegmentations {
 
 		// Fuse data block by block
 		final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
-		final List<Future<?>> tasks = new ArrayList<>();
+		final CompletionService<Void> completionService = new ExecutorCompletionService<>(executor);
 		for (final long[][] gridBlock : grid) {
-			final Future<?> task = executor.submit(() -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber));
-			tasks.add(task);
+			completionService.submit(() -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber));
 		}
 
 		try {
-			int count = 0;
-			for (final Future<?> task : tasks) {
-				task.get();
-				LOG.info("Processed {} of {} blocks", ++count, grid.size());
+			for (int i = 0; i < grid.size(); i++) {
+				completionService.take().get();
+				LOG.info("Processed {} of {} blocks", i + 1, grid.size());
 			}
 			executor.shutdown();
 		} catch (final Exception e) {
@@ -159,7 +158,7 @@ public class ResaveSegmentations {
 		return relevantGridBlocks;
 	}
 
-	private void fuseBlock(
+	private Void fuseBlock(
 			final Map<String, TileSpec> sourceTiles,
 			final Map<String, TileSpec> targetTiles,
 			final RandomAccessibleInterval<UnsignedLongType> segmentations,
@@ -199,7 +198,7 @@ public class ResaveSegmentations {
 
 		if (fromTargetTransforms.isEmpty()) {
 			// No tiles in this block
-			return;
+			return null;
 		}
 
 
@@ -248,6 +247,7 @@ public class ResaveSegmentations {
 			final long[] gridOffset = gridBlock[2];
 			N5Utils.saveNonEmptyBlock(blockData, writer, dataset, gridOffset, new UnsignedLongType(0));
 		}
+		return null;
 	}
 
 	private int getStackZValue(final LayerOrigin layerOrigin) {
