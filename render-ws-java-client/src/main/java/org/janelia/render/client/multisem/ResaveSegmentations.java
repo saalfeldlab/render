@@ -224,9 +224,10 @@ public class ResaveSegmentations {
 			if (zInExport == null | layerFromTargetTransforms == null) {
 				continue;
 			}
-			currentPoint[2] = zInExport;
 
 			for (int i = 0; i < layerFromTargetTransforms.size(); ++i) {
+				targetCursor.localize(currentPoint);
+				currentPoint[2] = zInExport;
 				layerFromTargetTransforms.get(i).applyInPlace(currentPoint);
 
 				if (Intervals.contains(scanTransformedTemplateTile, new RealPoint(currentPoint))) {
@@ -239,7 +240,6 @@ public class ResaveSegmentations {
 						break;
 					}
 				}
-				targetCursor.localize(currentPoint);
 			}
 		}
 
