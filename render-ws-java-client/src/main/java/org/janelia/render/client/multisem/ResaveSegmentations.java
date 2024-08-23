@@ -58,6 +58,7 @@ public class ResaveSegmentations {
 	private final String dataset;
 	private final String layerOriginCsv;
 	private final int[] blockSize;
+	private final int numThreads;
 	private Interval scanTransformedTemplateTile;
 
 	public ResaveSegmentations() {
@@ -71,6 +72,7 @@ public class ResaveSegmentations {
 		dataset = "/n5";
 		blockSize = new int[] {512, 512, 64};
 		// Create with LayerOrigin.main()
+		numThreads = 2;
 		layerOriginCsv = "layerOrigins.csv";
 	}
 
@@ -113,7 +115,7 @@ public class ResaveSegmentations {
 		scanTransformedTemplateTile = createRawBoundingBox(targetTiles.getTileSpecs().stream().findAny().orElseThrow());
 
 		// Fuse data block by block
-		final ExecutorService executor = Executors.newFixedThreadPool(2);
+		final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
 		final List<Future<?>> tasks = new ArrayList<>();
 		for (final long[][] gridBlock : grid) {
 			final Future<?> task = executor.submit(() -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber));
@@ -121,8 +123,10 @@ public class ResaveSegmentations {
 		}
 
 		try {
+			int count = 0;
 			for (final Future<?> task : tasks) {
 				task.get();
+				LOG.info("Processed {} of {} blocks", ++count, grid.size());
 			}
 			executor.shutdown();
 		} catch (final Exception e) {
