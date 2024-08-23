@@ -215,7 +215,7 @@ public class ResaveSegmentations {
 			final int zInRender = (int) currentPoint[2] + 1;
 			final Integer zInExport = zRenderToExport.get(zInRender);
 			final List<AffineModel2D> layerFromTargetTransforms = fromTargetTransforms.get(zInRender);
-			final List<AffineModel2D> layerToSourceTransforms = toSourceTransforms.get(zInExport);
+			final List<AffineModel2D> layerToSourceTransforms = toSourceTransforms.get(zInRender);
 
 			if (zInExport == null | layerFromTargetTransforms == null) {
 				continue;
