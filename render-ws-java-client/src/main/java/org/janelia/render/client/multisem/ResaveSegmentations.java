@@ -1,5 +1,6 @@
 package org.janelia.render.client.multisem;
 
+import ij.ImageJ;
 import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
@@ -12,6 +13,7 @@ import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NearestNeighborInterpolatorFactory;
 import net.imglib2.type.numeric.integer.UnsignedLongType;
 import net.imglib2.util.Intervals;
@@ -36,10 +38,12 @@ import org.slf4j.LoggerFactory;
 import java.awt.*;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -112,16 +116,20 @@ public class ResaveSegmentations {
 		scanTransformedTemplateTile = createRawBoundingBox(targetTiles.getTileSpecs().stream().findAny().orElseThrow());
 
 		// Fuse data block by block
-		final ExecutorService ex = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() );
-		ex.submit(() -> grid.parallelStream().forEach(
-				gridBlock -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber))
-		);
+		final ExecutorService executor = Executors.newFixedThreadPool(2);
+		final List<Future<?>> tasks = new ArrayList<>();
+		for (final long[][] gridBlock : grid) {
+			final Future<?> task = executor.submit(() -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber));
+			tasks.add(task);
+		}
 
 		try {
-			ex.shutdown();
-			ex.awaitTermination(Long.MAX_VALUE, TimeUnit.HOURS);
-		} catch (final InterruptedException e) {
-			throw new RuntimeException("Failed to fuse.", e);
+			for (final Future<?> task : tasks) {
+				task.get();
+			}
+			executor.shutdown();
+		} catch (final Exception e) {
+			throw new RuntimeException(e);
 		} finally {
 			sourceReader.close();
 		}
@@ -165,81 +173,82 @@ public class ResaveSegmentations {
 		final Img<UnsignedLongType> blockData = ArrayImgs.unsignedLongs(blockSize);
 		boolean blockIsEmpty = true;
 
-		for (final Map.Entry<Integer, LayerOrigin> entry : layerOrigins.entrySet()) {
-			// Extract the corresponding z values in the exported stack and the target render stack
-			// The export starts with a blank layer
-			final int zInExport = entry.getKey() + 1;
-			final int zInRender = getStackZValue(entry.getValue());
-			if (zInRender < 0) {
+		final Map<Integer, Integer> zRenderToExport = new HashMap<>();
+		layerOrigins.forEach((exportZ, layerOrigin) -> {
+			final int zRender = getStackZValue(layerOrigin);
+			if (zRender >= 0) {
+				// The export starts with a blank layer, hence the +1
+				zRenderToExport.put(zRender, exportZ + 1);
+			}
+		});
+
+		final Map<Integer, List<AffineModel2D>> fromTargetTransforms = new HashMap<>();
+		final Map<Integer, List<AffineModel2D>> toSourceTransforms = new HashMap<>();
+
+		for (final TileSpec sourceTileSpec : sourceTiles.values()) {
+			final TileSpec targetTileSpec = targetTiles.get(sourceTileSpec.getTileId());
+			final int zInRender = targetTileSpec.getZ().intValue();
+
+			if (! intersect(targetTileSpec, block)) {
+				final List<AffineModel2D> layerFromTargetTransforms = fromTargetTransforms.computeIfAbsent(zInRender, k -> new ArrayList<>());
+				final List<AffineModel2D> layerToSourceTransforms = toSourceTransforms.computeIfAbsent(zInRender, k -> new ArrayList<>());
+				layerFromTargetTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()).createInverse());
+				layerToSourceTransforms.add(concatenateTransforms(sourceTileSpec.getTransformList()));
+			}
+		}
+
+		if (fromTargetTransforms.isEmpty()) {
+			// No tiles in this block
+			return;
+		}
+
+
+		// Position the segmentation and block data
+		final long[] cropOffset = new long[]{6250, 6250, 0};
+		final RandomAccessibleInterval<UnsignedLongType> positionedSegmentation = Views.translate(Views.dropSingletonDimensions(segmentations), cropOffset);
+		final RandomAccessibleInterval<UnsignedLongType> positionedBlock = Views.translate(blockData, blockOffset);
+
+		final Cursor<UnsignedLongType> targetCursor = Views.iterable(positionedBlock).localizingCursor();
+		final RealRandomAccess<UnsignedLongType> sourceRa = Views.interpolate(Views.extendZero(positionedSegmentation), new NearestNeighborInterpolatorFactory<>()).realRandomAccess();
+		final double[] currentPoint = new double[targetCursor.numDimensions()];
+
+		// Fill the target block pixel by pixel
+		while (targetCursor.hasNext()) {
+			final UnsignedLongType pixel = targetCursor.next();
+			targetCursor.localize(currentPoint);
+			final int zInRender = (int) currentPoint[2] + 1;
+			final Integer zInExport = zRenderToExport.get(zInRender);
+			final List<AffineModel2D> layerFromTargetTransforms = fromTargetTransforms.get(zInRender);
+			final List<AffineModel2D> layerToSourceTransforms = toSourceTransforms.get(zInExport);
+
+			if (zInExport == null | layerFromTargetTransforms == null) {
 				continue;
 			}
+			currentPoint[2] = zInExport;
 
-			// Find transformations for all tiles in the target stack that intersect with the current block
-			final List<AffineModel2D> fromTargetTransforms = new ArrayList<>();
-			final List<AffineModel2D> toSourceTransforms = new ArrayList<>();
+			for (int i = 0; i < layerFromTargetTransforms.size(); ++i) {
+				layerFromTargetTransforms.get(i).applyInPlace(currentPoint);
 
-			for (final TileSpec sourceTileSpec : sourceTiles.values()) {
-				final TileSpec targetTileSpec = targetTiles.get(sourceTileSpec.getTileId());
-				if (targetTileSpec.getZ().intValue() != zInRender) {
-					// We are only interested in the current layer
-					continue;
-				}
-
-				if (! intersect(targetTileSpec, block)) {
-					fromTargetTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()).createInverse());
-					toSourceTransforms.add(concatenateTransforms(sourceTileSpec.getTransformList()));
-				}
-			}
-
-			if (fromTargetTransforms.isEmpty()) {
-				// No tiles in this block
-				continue;
-			}
-
-			// Extract the current z layer from the segmentations and the block data
-			final int cropOffset = 6250;
-			final RandomAccessibleInterval<UnsignedLongType> segmentationLayer =
-					Views.translate(
-							Views.dropSingletonDimensions(
-									Views.hyperSlice(segmentations, 2, zInExport)
-							),
-							cropOffset, cropOffset);
-			final RandomAccessibleInterval<UnsignedLongType> blockLayer =
-					Views.translate(
-							Views.hyperSlice(blockData, 2, zInRender),
-							blockOffset[0], blockOffset[1]);
-
-			final Cursor<UnsignedLongType> targetCursor = Views.iterable(blockLayer).localizingCursor();
-			final RealRandomAccess<UnsignedLongType> sourceRa = Views.interpolate(Views.extendZero(segmentationLayer), new NearestNeighborInterpolatorFactory<>()).realRandomAccess();
-			final double[] currentPoint = new double[targetCursor.numDimensions()];
-
-			// Fill the target z-layer pixel by pixel
-			while (targetCursor.hasNext()) {
-				final UnsignedLongType pixel = targetCursor.next();
-
-				for (int i = 0; i < fromTargetTransforms.size(); ++i) {
-					targetCursor.localize(currentPoint);
-					fromTargetTransforms.get(i).applyInPlace(currentPoint);
-
-					if (Intervals.contains(scanTransformedTemplateTile, new RealPoint(currentPoint))) {
-						toSourceTransforms.get(i).applyInPlace(currentPoint);
-						sourceRa.setPosition(currentPoint);
-						final UnsignedLongType sourcePixel = sourceRa.get();
-						if (sourcePixel.get() != 0) {
-							pixel.set(sourcePixel);
-							blockIsEmpty = false;
-							// Take the first hit
-							break;
-						}
+				if (Intervals.contains(scanTransformedTemplateTile, new RealPoint(currentPoint))) {
+					layerToSourceTransforms.get(i).applyInPlace(currentPoint);
+					sourceRa.setPosition(currentPoint);
+					final UnsignedLongType sourcePixel = sourceRa.get();
+					if (sourcePixel.get() != 0) {
+						pixel.set(sourcePixel);
+						blockIsEmpty = false;
+						// Take the first hit
+						break;
 					}
 				}
+				targetCursor.localize(currentPoint);
 			}
 		}
 
 		// Write block if it's not empty
 		if (! blockIsEmpty) {
 			try (final N5Writer writer = new N5FSWriter(n5path)) {
-				N5Utils.saveNonEmptyBlock(blockData, writer, dataset, blockOffset, new UnsignedLongType(0));
+				final long[] gridOffset = gridBlock[2];
+				N5Utils.saveNonEmptyBlock(blockData, writer, dataset, gridOffset, new UnsignedLongType(0));
 			}
 		}
 	}
