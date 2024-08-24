@@ -49,77 +49,109 @@ public class ResaveSegmentations {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ResaveSegmentations.class);
 
-	private final String baseDataUrl;
-	private final String owner;
-	private final String stackNumber;
+	private final String stackBaseName;
 	private final String sourceStackSuffix;
 	private final String targetStackSuffix;
 	private final String sourceN5;
+	private final String sourceDataset;
 	private final String targetN5;
-	private final String dataset;
+	private final String targetGroup;
 	private final String layerOriginCsv;
 	private final int[] blockSize;
 	private final int numThreads;
 	private Interval scanTransformedTemplateTile;
 
-	public ResaveSegmentations() {
-		baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
-		owner = "hess_wafer_53_center7";
-		stackNumber = "s001_m239";
-		sourceStackSuffix = "_hayworth_alignment_replica";
-		targetStackSuffix = "_align_no35";
-		sourceN5 = "/nrs/hess/data/hess_wafer_53/mapback_michal/base240715/test";
-		targetN5 = "/home/innerbergerm@hhmi.org/big-data/kens-alignment/segmentations.n5";
-		dataset = "/n5";
-		blockSize = new int[] {512, 512, 64};
-		// Create with LayerOrigin.main()
-		numThreads = 2;
-		layerOriginCsv = "layerOrigins.csv";
+	private final RenderDataClient dataClient;
+	private final StackMetaData targetStackMetaData;
+
+	public ResaveSegmentations(
+			final String baseDataUrl,
+			final String owner,
+			final String stackBaseName,
+			final String sourceStackSuffix,
+			final String targetStackSuffix,
+			final String sourceN5,
+			final String targetN5,
+			final String sourceDataset,
+			final String targetGroup,
+			final String layerOriginCsv,
+			final int[] blockSize,
+			final int numThreads
+	) throws IOException {
+		this.stackBaseName = stackBaseName;
+		this.sourceStackSuffix = sourceStackSuffix;
+		this.targetStackSuffix = targetStackSuffix;
+		this.sourceN5 = sourceN5;
+		this.sourceDataset = sourceDataset;
+		this.targetN5 = targetN5;
+		this.targetGroup = targetGroup;
+		this.layerOriginCsv = layerOriginCsv;
+		this.blockSize = blockSize;
+		this.numThreads = numThreads;
+
+		// Set up render data client
+		final String project = new LayerOrigin(stackBaseName, 0).project();
+		this.dataClient = new RenderDataClient(baseDataUrl, owner, project);
+		// Get the stack bounds for the target stack to create the target dataset
+		this.targetStackMetaData = dataClient.getStackMetaData(stackBaseName + targetStackSuffix);
+	}
+
+	public StackMetaData getTargetStackMetaData() {
+		return targetStackMetaData;
 	}
 
 	public static void main(final String[] args) throws IOException {
-		new ResaveSegmentations().run();
+		new ResaveSegmentations(
+				"http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+				"hess_wafer_53_center7",
+				"s400_m152",
+				"_hayworth_alignment_replica",
+				"_align_no35",
+				"/nrs/hess/data/hess_wafer_53/mapback_michal/base240715/test",
+				"/home/innerbergerm@hhmi.org/big-data/kens-alignment/segmentations.n5",
+				"/n5",
+				"/test",
+				"layerOrigins.csv",
+				new int[] {512, 512, 64},
+				// Create with LayerOrigin.main()
+				2)
+				.run();
 	}
 
 	public void run() throws IOException {
-		// Get mapping "layer in exported stack" -> "stack name + layer" for the stack under consideration
-		final Map<Integer, LayerOrigin> layerOrigins = LayerOrigin.getRangeForStack(layerOriginCsv, stackNumber);
-		final LayerOrigin firstLayerOrigin = layerOrigins.values().stream().findFirst().orElseThrow();
-		final String stackNumber = firstLayerOrigin.stack();
-		final RenderDataClient dataClient = new RenderDataClient(baseDataUrl, owner, firstLayerOrigin.project());
-
-		// Get the stack bounds for the target stack to create the target dataset
-		final String targetStack = stackNumber + targetStackSuffix;
-		final StackMetaData targetStackMetaData = dataClient.getStackMetaData(targetStack);
-		final Bounds targetBounds = targetStackMetaData.getStackBounds();
-
-		// Get other attributes for the target dataset from the source dataset
-		LOG.info("Resaving segmentations from {}/{} to {}/{}", sourceN5, dataset, targetN5, stackNumber);
+		// Get some attributes to use for the target dataset from the source dataset
+		LOG.info("Resaving segmentations from {}/{} to {}/{}", sourceN5, sourceDataset, targetN5, stackBaseName);
 		final N5Reader sourceReader = new N5FSReader(sourceN5);
-		final DatasetAttributes attributes = sourceReader.getDatasetAttributes(dataset);
-		final RandomAccessibleInterval<UnsignedLongType> segmentations = N5Utils.open(sourceReader, dataset);
+		final DatasetAttributes attributes = sourceReader.getDatasetAttributes(sourceDataset);
+		final RandomAccessibleInterval<UnsignedLongType> segmentations = N5Utils.open(sourceReader, sourceDataset);
 
 		// Create dataset in output N5 container
+		final Bounds targetBounds = targetStackMetaData.getStackBounds();
 		final DatasetAttributes targetAttributes = new DatasetAttributes(
-				new long[] {targetBounds.getWidth(), targetBounds.getHeight(), (long) targetStackMetaData.getStackBounds().getDeltaZ()},
+				new long[] {targetBounds.getWidth(), targetBounds.getHeight(), (long) targetBounds.getDeltaZ() + 1},
 				blockSize,
 				attributes.getDataType(),
 				new GzipCompression());
+		final String targetDataset = targetGroup + "/" + stackBaseName;
 		try (final N5Writer targetWriter = new N5FSWriter(targetN5)) {
-			targetWriter.createDataset(stackNumber, targetAttributes);
+			targetWriter.createDataset(targetDataset, targetAttributes);
 		}
 
 		// Create a grid over the relevant part of the target stack
-		final ResolvedTileSpecCollection sourceTiles = dataClient.getResolvedTiles(stackNumber + sourceStackSuffix, null);
+		final String targetStack = stackBaseName + targetStackSuffix;
+		final ResolvedTileSpecCollection sourceTiles = dataClient.getResolvedTiles(stackBaseName + sourceStackSuffix, null);
 		final ResolvedTileSpecCollection targetTiles = dataClient.getResolvedTiles(targetStack, null);
 		final List<long[][]> grid = createGridOverRelevantTiles(targetAttributes, targetTiles, sourceTiles);
 		scanTransformedTemplateTile = createRawBoundingBox(targetTiles.getTileSpecs().stream().findAny().orElseThrow());
 
+		// Get mapping "layer in exported stack" -> "stack name + layer" for the stack under consideration
+		final Map<Integer, LayerOrigin> layerOrigins = LayerOrigin.getRangeForStack(layerOriginCsv, stackBaseName);
+
 		// Fuse data block by block
-		final ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+		final ExecutorService executor = (numThreads == 1) ? Executors.newSingleThreadExecutor() : Executors.newFixedThreadPool(numThreads);
 		final CompletionService<Void> completionService = new ExecutorCompletionService<>(executor);
 		for (final long[][] gridBlock : grid) {
-			completionService.submit(() -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, stackNumber));
+			completionService.submit(() -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, targetDataset));
 		}
 
 		try {
