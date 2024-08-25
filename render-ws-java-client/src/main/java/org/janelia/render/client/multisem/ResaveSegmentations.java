@@ -139,7 +139,7 @@ public class ResaveSegmentations {
 		final String targetStack = stackBaseName + targetStackSuffix;
 		final ResolvedTileSpecCollection sourceTiles = dataClient.getResolvedTiles(stackBaseName + sourceStackSuffix, null);
 		final ResolvedTileSpecCollection targetTiles = dataClient.getResolvedTiles(targetStack, null);
-		final List<long[][]> grid = createGridOverRelevantTiles(targetAttributes, targetTiles, sourceTiles);
+		final List<long[][]> grid = createGridOverRelevantTiles(targetAttributes, targetBounds, targetTiles, sourceTiles);
 		scanTransformedTemplateTile = createRawBoundingBox(targetTiles.getTileSpecs().stream().findAny().orElseThrow());
 
 		// Get mapping "layer in exported stack" -> "stack name + layer" for the stack under consideration
@@ -167,25 +167,40 @@ public class ResaveSegmentations {
 
 	private static List<long[][]> createGridOverRelevantTiles(
 			final DatasetAttributes targetAttributes,
+			final Bounds targetBounds,
 			final ResolvedTileSpecCollection targetTiles,
 			final ResolvedTileSpecCollection sourceTiles
 	) {
 		// Start with a grid over the full dimensions, then only keep blocks that intersect with tiles that will be used in writing
 		final List<long[][]> fullGrid = Grid.create(targetAttributes.getDimensions(), targetAttributes.getBlockSize());
 
+		// Offset the grid by the stack offset
+		final long[] stackOffset = new long[]{targetBounds.getMinX().longValue(), targetBounds.getMinY().longValue(), targetBounds.getMinZ().longValue()};
+
 		// Only keep tiles that are in the source stack, since there are no transformations for the others and hence there can be no data
 		targetTiles.retainTileSpecs(sourceTiles.getTileIds());
 		targetTiles.recalculateBoundingBoxes();
 		final Rectangle remainingStackBounds = targetTiles.toBounds().toRectangle();
 		final List<long[][]> relevantGridBlocks = fullGrid.stream()
-				.filter(gridBlock -> {
-					final long[] blockOffset = gridBlock[0];
-					final long[] blockSize = gridBlock[1];
-					return remainingStackBounds.intersects(blockOffset[0], blockOffset[1], blockSize[0], blockSize[1]);
-				}).collect(Collectors.toList());
+				.map(gridBlock -> offsetBlock(gridBlock, stackOffset))
+				.filter(gridBlock -> intersectsWithStackBounds(gridBlock, remainingStackBounds))
+				.collect(Collectors.toList());
 
 		LOG.info("Resaving {} (relevant) of {} (total) blocks", relevantGridBlocks.size(), fullGrid.size());
 		return relevantGridBlocks;
+	}
+
+	private static long[][] offsetBlock(final long[][] gridBlock, final long[] stackOffset) {
+		gridBlock[0][0] += stackOffset[0];
+		gridBlock[0][1] += stackOffset[1];
+		return gridBlock;
+	}
+
+	private static boolean intersectsWithStackBounds(long[][] gridBlock, Rectangle remainingStackBounds) {
+		final long[] blockOffset = gridBlock[0];
+		final long[] blockSize = gridBlock[1];
+		final Rectangle blockBounds = new Rectangle((int) blockOffset[0], (int) blockOffset[1], (int) blockSize[0], (int) blockSize[1]);
+		return remainingStackBounds.intersects(blockBounds);
 	}
 
 	private Void fuseBlock(
