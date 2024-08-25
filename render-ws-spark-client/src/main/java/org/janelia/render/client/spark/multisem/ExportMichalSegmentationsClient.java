@@ -202,8 +202,6 @@ public class ExportMichalSegmentationsClient implements Serializable {
 
         resaveSegmentations.run();
 
-        final int[] blockSize = parameters.getBlockSize();
-
         final StackMetaData stackMetaData = resaveSegmentations.getTargetStackMetaData();
         final Bounds boundsForRun = stackMetaData.getStackBounds();
         final List<Double> resolutionValues = stackMetaData.getCurrentResolutionValues();
@@ -213,27 +211,12 @@ public class ExportMichalSegmentationsClient implements Serializable {
                 boundsForRun.getMinY().longValue(),
                 boundsForRun.getMinZ().longValue()
         };
-        final long[] dimensions = {
-                Double.valueOf(boundsForRun.getDeltaX() + 1).longValue(),
-                Double.valueOf(boundsForRun.getDeltaY() + 1).longValue(),
-                Double.valueOf(boundsForRun.getDeltaZ() + 1).longValue()
-        };
 
         final String viewStackCommandOffsets = min[0] + "," + min[1] + "," + min[2];
 
-        final String targetDataset = parameters.targetN5Group + "/" + stack;
+        final String targetDataset = Paths.get(parameters.targetN5Group, stack).toString();
         LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",
                  parameters.targetN5Path, targetDataset, viewStackCommandOffsets);
-
-        final DataType dataType = getDataType();
-
-        try (final N5Writer n5 = new N5FSWriter(parameters.targetN5Path)) {
-            n5.createDataset(targetDataset,
-                             dimensions,
-                             blockSize,
-                             dataType,
-                             new GzipCompression());
-        }
 
 		try (final N5Writer n5 = new N5FSWriter(parameters.targetN5Path)) {
             final Map<String, Object> exportAttributes = new HashMap<>();
