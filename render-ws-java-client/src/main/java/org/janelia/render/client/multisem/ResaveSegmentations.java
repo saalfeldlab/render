@@ -127,11 +127,8 @@ public class ResaveSegmentations {
 
 		// Create dataset in output N5 container
 		final Bounds targetBounds = targetStackMetaData.getStackBounds();
-		final DatasetAttributes targetAttributes = new DatasetAttributes(
-				new long[] {targetBounds.getWidth(), targetBounds.getHeight(), (long) targetBounds.getDeltaZ() + 1},
-				blockSize,
-				attributes.getDataType(),
-				new GzipCompression());
+		final long[] dimensions = new long[] {(long) (targetBounds.getDeltaX() + 1), (long) (targetBounds.getDeltaY() + 1), (long) (targetBounds.getDeltaZ() + 1)};
+		final DatasetAttributes targetAttributes = new DatasetAttributes(dimensions, blockSize, attributes.getDataType(), new GzipCompression());
 		final String targetDataset = targetGroup + "/" + stackBaseName;
 		try (final N5Writer targetWriter = new N5FSWriter(targetN5)) {
 			targetWriter.createDataset(targetDataset, targetAttributes);
