@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -129,7 +130,7 @@ public class ResaveSegmentations {
 		final Bounds targetBounds = targetStackMetaData.getStackBounds();
 		final long[] dimensions = new long[] {(long) (targetBounds.getDeltaX() + 1), (long) (targetBounds.getDeltaY() + 1), (long) (targetBounds.getDeltaZ() + 1)};
 		final DatasetAttributes targetAttributes = new DatasetAttributes(dimensions, blockSize, attributes.getDataType(), new GzipCompression());
-		final String targetDataset = targetGroup + "/" + stackBaseName;
+		final String targetDataset = Paths.get(targetGroup, stackBaseName, "s0").toString();
 		try (final N5Writer targetWriter = new N5FSWriter(targetN5)) {
 			targetWriter.createDataset(targetDataset, targetAttributes);
 		}

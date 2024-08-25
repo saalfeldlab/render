@@ -245,6 +245,6 @@ public class ExportMichalSegmentationsClient implements Serializable {
                                            Arrays.asList(min[0], min[1], min[2]),
                                            NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-        ngAttributes.write(Paths.get(parameters.targetN5Path), Paths.get(targetDataset));
+        ngAttributes.write(Paths.get(parameters.targetN5Path), Paths.get(targetDataset, "s0"));
     }
 }
