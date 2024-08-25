@@ -22,6 +22,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
@@ -34,7 +35,7 @@ import java.util.Map;
  *
  * @author Stephan Saalfeld &lt;saalfelds@janelia.hhmi.org&gt;
  */
-public class ExportMichalSegmentationsClient {
+public class ExportMichalSegmentationsClient implements Serializable {
 
     @SuppressWarnings({"FieldCanBeLocal", "FieldMayBeFinal"})
     public static class Parameters
@@ -172,7 +173,7 @@ public class ExportMichalSegmentationsClient {
             sparkContext.parallelize(parameters.stacks)
                     .foreach(stack -> {
                         try {
-                            runForStack(sparkContext, stack, parameters);
+                            runForStack(stack, parameters);
                         } catch (final Exception e) {
                             LOG.error("run: error processing stack {}", stack, e);
                         }
@@ -181,7 +182,6 @@ public class ExportMichalSegmentationsClient {
     }
 
     private void runForStack(
-			final JavaSparkContext sparkContext,
 			final String stack,
 			final Parameters parameters
     ) throws IOException {
@@ -193,8 +193,8 @@ public class ExportMichalSegmentationsClient {
                 parameters.sourceStackSuffix,
                 parameters.targetStackSuffix,
                 parameters.sourceN5Path,
-                parameters.sourceN5Dataset,
                 parameters.targetN5Path,
+                parameters.sourceN5Dataset,
                 parameters.targetN5Group,
                 parameters.layerOriginCsv,
                 parameters.getBlockSize(),
@@ -202,7 +202,6 @@ public class ExportMichalSegmentationsClient {
 
         resaveSegmentations.run();
 
-        final String datasetName = parameters.sourceN5Dataset;
         final int[] blockSize = parameters.getBlockSize();
 
         final StackMetaData stackMetaData = resaveSegmentations.getTargetStackMetaData();
@@ -222,48 +221,47 @@ public class ExportMichalSegmentationsClient {
 
         final String viewStackCommandOffsets = min[0] + "," + min[1] + "," + min[2];
 
+        final String targetDataset = parameters.targetN5Group + "/" + stack;
         LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",
-                 parameters.sourceN5Path, datasetName, viewStackCommandOffsets);
+                 parameters.targetN5Path, targetDataset, viewStackCommandOffsets);
 
         final DataType dataType = getDataType();
 
-        try (final N5Writer n5 = new N5FSWriter(parameters.sourceN5Path)) {
-            n5.createDataset(datasetName,
+        try (final N5Writer n5 = new N5FSWriter(parameters.targetN5Path)) {
+            n5.createDataset(targetDataset,
                              dimensions,
                              blockSize,
                              dataType,
                              new GzipCompression());
         }
 
-		try (final N5Writer n5 = new N5FSWriter(parameters.sourceN5Path)) {
-            final Map<String, Object> export_attributes = new HashMap<>();
-            export_attributes.put("runTimestamp", new Date());
-            export_attributes.put("runParameters", parameters);
-            export_attributes.put("stackMetadata", stackMetaData);
+		try (final N5Writer n5 = new N5FSWriter(parameters.targetN5Path)) {
+            final Map<String, Object> exportAttributes = new HashMap<>();
+            exportAttributes.put("runTimestamp", new Date());
+            exportAttributes.put("runParameters", parameters);
+            exportAttributes.put("stackMetadata", stackMetaData);
 
             final Map<String, Object> attributes = new HashMap<>();
-            attributes.put("renderExport", export_attributes);
+            attributes.put("renderExport", exportAttributes);
 
-            n5.setAttributes(datasetName, attributes);
+            n5.setAttributes(targetDataset, attributes);
         }
 
         LOG.info("updateFullScaleExportAttributes: saved {}",
-                 Paths.get(parameters.sourceN5Path, datasetName, "attributes.json"));
+                 Paths.get(parameters.targetN5Path, targetDataset, "attributes.json"));
 
         final int numberOfDownSampledDatasets = 0;
+        final int[] downSampleFactors = null;
 
         // save additional parameters so that n5 can be viewed in neuroglancer
         final NeuroglancerAttributes ngAttributes =
                 new NeuroglancerAttributes(resolutionValues,
                                            parameters.stackResolutionUnit,
                                            numberOfDownSampledDatasets,
-                                           null,
+                                           downSampleFactors,
                                            Arrays.asList(min[0], min[1], min[2]),
                                            NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-        ngAttributes.write(Paths.get(parameters.sourceN5Path),
-                           Paths.get(datasetName));
-
-        sparkContext.close();
+        ngAttributes.write(Paths.get(parameters.targetN5Path), Paths.get(targetDataset));
     }
 }
