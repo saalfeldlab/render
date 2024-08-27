@@ -196,7 +196,7 @@ public class ResaveSegmentations {
 		return gridBlock;
 	}
 
-	private static boolean intersectsWithStackBounds(long[][] gridBlock, Rectangle remainingStackBounds) {
+	private static boolean intersectsWithStackBounds(final long[][] gridBlock, final Rectangle remainingStackBounds) {
 		final long[] blockOffset = gridBlock[0];
 		final long[] blockSize = gridBlock[1];
 		final Rectangle blockBounds = new Rectangle((int) blockOffset[0], (int) blockOffset[1], (int) blockSize[0], (int) blockSize[1]);
@@ -248,7 +248,9 @@ public class ResaveSegmentations {
 
 
 		// Position the segmentation and block data
-		final long[] cropOffset = new long[]{6250, 6250, 0};
+		final int margin = (22000 - 12500) / 2;
+		final long[] cropOffset = new long[]{margin, margin, 0};
+
 		final RandomAccessibleInterval<UnsignedLongType> positionedSegmentation = Views.translate(Views.dropSingletonDimensions(segmentations), cropOffset);
 		final RandomAccessibleInterval<UnsignedLongType> positionedBlock = Views.translate(blockData, blockOffset);
 
