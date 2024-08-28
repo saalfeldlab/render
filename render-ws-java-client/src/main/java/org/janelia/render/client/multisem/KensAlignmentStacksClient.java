@@ -46,6 +46,11 @@ public class KensAlignmentStacksClient {
                 description = "Name of stack to which updated tile specs should be written",
                 required = true)
         private String targetStack;
+
+        @Parameter(
+                names = "--overwrite",
+                description = "Overwrite existing target stack")
+        private boolean overwrite = false;
     }
 
     public static void main(final String[] args) {
@@ -82,11 +87,19 @@ public class KensAlignmentStacksClient {
         final RecapKensAlignmentTools.SlabInfo slabInfo = RecapKensAlignment.slabInfoForSlab(slab);
         final Map<Integer, RecapKensAlignment.TransformedZLayer> transformedZLayers = RecapKensAlignment.reconstruct(slabInfo);
 
+        if (parameters.overwrite) {
+            renderDataClient.deleteStack(parameters.targetStack, null);
+        }
         renderDataClient.setupDerivedStack(fromStackMetaData, parameters.targetStack);
 
         for (final Double z : renderDataClient.getStackZValues(parameters.stack)) {
             final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack, z);
-            final RecapKensAlignment.TransformedZLayer transformedZLayer = transformedZLayers.get(z.intValue());
+            final TileSpec firstTileSpec = resolvedTiles.getTileSpecs().stream().findFirst().orElseThrow();
+            // z values in the stack might be reassigned; the section id should carry the original z value
+            final int realZ = Double.valueOf(firstTileSpec.getSectionId()).intValue();
+            final int scan = getScanNumberWithSpecialCases(realZ);
+
+            final RecapKensAlignment.TransformedZLayer transformedZLayer = transformedZLayers.get(scan);
             final Set<String> tileIdsToRemove = new HashSet<>();
 
             if (transformedZLayer == null) {
@@ -106,19 +119,32 @@ public class KensAlignmentStacksClient {
 
                 if (mfov == 10) {
                     // only the central MFOV (number 10) is aligned
-                    fixTileSpec(tileSpec, sfovToTransformedImage.get(sfov));
+                    fixTileSpec(tileSpec, sfovToTransformedImage.get(sfov), realZ);
                 } else {
                     tileIdsToRemove.add(tileSpec.getTileId());
                 }
             }
             resolvedTiles.removeTileSpecs(tileIdsToRemove);
-            renderDataClient.saveResolvedTiles(resolvedTiles, parameters.targetStack, z);
+            renderDataClient.saveResolvedTiles(resolvedTiles, parameters.targetStack, (double) realZ);
         }
 
         renderDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
     }
 
-    private void fixTileSpec(final TileSpec tileSpec, final RecapKensAlignment.TransformedImage transformedImage) {
+    private int getScanNumberWithSpecialCases(final int z) {
+        int scan = z;
+        if (z > 35) {
+            // Scan 36 was skipped in the ingestion, so scan numbers have an offset of 1 after layer 35
+            scan += 1;
+        }
+        if (parameters.stack.startsWith("s213") && scan >= 38) {
+            // Scan 38 in slab 213 didn't get ingested because of a missing full_image_coordinates.txt file
+            scan += 1;
+        }
+        return scan;
+    }
+
+    private void fixTileSpec(final TileSpec tileSpec, final RecapKensAlignment.TransformedImage transformedImage, final int realZ) {
 
         final ListTransformSpec transforms = new ListTransformSpec();
 
@@ -151,6 +177,7 @@ public class KensAlignmentStacksClient {
 
         tileSpec.setTransforms(transforms);
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
+        tileSpec.setZ((double) realZ);
     }
 
     // Make sure the correct scan correction transform is the first transform in the list
