@@ -469,11 +469,11 @@ public class N5Client {
     }
 
     @Nonnull
-    public static List<long[][]> buildGridBlocks(final int tileWidth,
-                                                 final int tileHeight,
-                                                 final long[] dimensions,
-                                                 final int[] blockSize,
-                                                 final Long minZToRender) {
+    public static List<Grid.Block> buildGridBlocks(final int tileWidth,
+                                                   final int tileHeight,
+                                                   final long[] dimensions,
+                                                   final int[] blockSize,
+                                                   final Long minZToRender) {
 
         // grid block size for parallelization to minimize double loading of tiles
         final int[] gridBlockSize = new int[]{
@@ -482,7 +482,7 @@ public class N5Client {
                 blockSize[2]
         };
 
-        List<long[][]> gridBlocks = Grid.create(
+        List<Grid.Block> gridBlocks = Grid.create(
                 new long[] {
                         dimensions[0],
                         dimensions[1],
@@ -492,9 +492,9 @@ public class N5Client {
                 blockSize);
 
         if (minZToRender != null) {
-            final List<long[][]> gridBlocksToRender = new ArrayList<>();
-            for (final long[][] gridBlock : gridBlocks) {
-                final long maxZForBlock = gridBlock[0][2] + blockSize[2];
+            final List<Grid.Block> gridBlocksToRender = new ArrayList<>();
+            for (final Grid.Block gridBlock : gridBlocks) {
+                final long maxZForBlock = gridBlock.offset[2] + blockSize[2];
                 if (maxZForBlock >= minZToRender) {
                     gridBlocksToRender.add(gridBlock);
                 }
@@ -533,9 +533,9 @@ public class N5Client {
                                         final ImageProcessorCacheSpec cacheSpec,
                                         final Long minZToRender) {
 
-        final List<long[][]> gridBlocks = buildGridBlocks(tileWidth, tileHeight, dimensions, blockSize, minZToRender);
+        final List<Grid.Block> gridBlocks = buildGridBlocks(tileWidth, tileHeight, dimensions, blockSize, minZToRender);
 
-        final JavaRDD<long[][]> rdd = sc.parallelize(gridBlocks);
+        final JavaRDD<Grid.Block> rdd = sc.parallelize(gridBlocks);
 
         final Broadcast<ImageProcessorCacheSpec> broadcastCacheSpec = sc.broadcast(cacheSpec);
 
@@ -544,11 +544,11 @@ public class N5Client {
             final ImageProcessorCache ipCache = broadcastCacheSpec.getValue().getSharableInstance();
 
             /* assume we can fit it in an array */
-            final ArrayImg<UnsignedByteType, ByteArray> block = ArrayImgs.unsignedBytes(gridBlock[1]);
+            final ArrayImg<UnsignedByteType, ByteArray> block = ArrayImgs.unsignedBytes(gridBlock.dimensions);
 
-            final long x = gridBlock[0][0] + min[0];
-            final long y = gridBlock[0][1] + min[1];
-            final long startZ = gridBlock[0][2] + min[2];
+            final long x = gridBlock.offset[0] + min[0];
+            final long y = gridBlock.offset[1] + min[1];
+            final long startZ = gridBlock.offset[2] + min[2];
 
             // enable logging on executors and add gridBlock context to log messages
             LogUtilities.setupExecutorLog4j(x + ":" + y + ":" + startZ);
@@ -559,7 +559,7 @@ public class N5Client {
             ByteProcessor nextProcessor = null;
             for (int zIndex = 0; zIndex < block.dimension(2); zIndex++) {
 
-                final long z = gridBlock[0][2] + min[2] + zIndex;
+                final long z = gridBlock.offset[2] + min[2] + zIndex;
 
                 if (thicknessCorrectionData == null) {
                     currentProcessor = boxRenderer.render(x, y, z, ipCache);
@@ -626,7 +626,7 @@ public class N5Client {
             }
 
             final N5Writer anotherN5Writer = new N5FSWriter(n5Path); // needed to prevent Spark serialization error
-            N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock[2], new UnsignedByteType(0));
+            N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock.gridPosition, new UnsignedByteType(0));
         });
     }
 
@@ -650,7 +650,7 @@ public class N5Client {
                 Math.max(blockSize[1], tileHeight),
         };
 
-        final JavaRDD<long[][]> rdd = sc.parallelize(
+        final JavaRDD<Grid.Block> rdd = sc.parallelize(
                 Grid.create(
                         new long[] {
                                 dimensions[0],
@@ -666,10 +666,10 @@ public class N5Client {
             final ImageProcessorCache ipCache = broadcastCacheSpec.value().getSharableInstance();
 
             /* assume we can fit it in an array */
-            final ArrayImg<UnsignedByteType, ByteArray> block = ArrayImgs.unsignedBytes(gridBlock[1]);
+            final ArrayImg<UnsignedByteType, ByteArray> block = ArrayImgs.unsignedBytes(gridBlock.dimensions);
 
-            final long x = gridBlock[0][0] + min[0];
-            final long y = gridBlock[0][1] + min[1];
+            final long x = gridBlock.offset[0] + min[0];
+            final long y = gridBlock.offset[1] + min[1];
 
             // enable logging on executors and add gridBlock context to log messages
             LogUtilities.setupExecutorLog4j(x + ":" + y + ":" + z);
@@ -692,7 +692,7 @@ public class N5Client {
             }
 
             final N5Writer anotherN5Writer = new N5FSWriter(n5Path); // needed to prevent Spark serialization error
-            N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock[2], new UnsignedByteType(0));
+            N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock.gridPosition, new UnsignedByteType(0));
         });
 
         LOG.info("save2DRenderStack: exit");

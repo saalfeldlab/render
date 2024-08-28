@@ -9,6 +9,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.ShortBoxRenderer;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.util.Grid;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.ImageProcessorCacheSpec;
 import org.janelia.render.client.ClientRunner;
@@ -123,9 +124,9 @@ public class ShortN5Client
                                         final ImageProcessorCacheSpec cacheSpec,
                                         final Long minZToRender) {
 
-        final List<long[][]> gridBlocks = buildGridBlocks(tileWidth, tileHeight, dimensions, blockSize, minZToRender);
+        final List<Grid.Block> gridBlocks = buildGridBlocks(tileWidth, tileHeight, dimensions, blockSize, minZToRender);
 
-        final JavaRDD<long[][]> rdd = sc.parallelize(gridBlocks);
+        final JavaRDD<Grid.Block> rdd = sc.parallelize(gridBlocks);
 
         final Broadcast<ImageProcessorCacheSpec> broadcastCacheSpec = sc.broadcast(cacheSpec);
 
@@ -134,11 +135,11 @@ public class ShortN5Client
             final ImageProcessorCache ipCache = broadcastCacheSpec.getValue().getSharableInstance();
 
             /* assume we can fit it in an array */
-            final ArrayImg<UnsignedShortType, ShortArray> block = ArrayImgs.unsignedShorts(gridBlock[1]);
+            final ArrayImg<UnsignedShortType, ShortArray> block = ArrayImgs.unsignedShorts(gridBlock.dimensions);
 
-            final long x = gridBlock[0][0] + min[0];
-            final long y = gridBlock[0][1] + min[1];
-            final long startZ = gridBlock[0][2] + min[2];
+            final long x = gridBlock.offset[0] + min[0];
+            final long y = gridBlock.offset[1] + min[1];
+            final long startZ = gridBlock.offset[2] + min[2];
 
             // enable logging on executors and add gridBlock context to log messages
             LogUtilities.setupExecutorLog4j(x + ":" + y + ":" + startZ);
@@ -149,7 +150,7 @@ public class ShortN5Client
             ShortProcessor nextProcessor = null;
             for (int zIndex = 0; zIndex < block.dimension(2); zIndex++) {
 
-                final long z = gridBlock[0][2] + min[2] + zIndex;
+                final long z = gridBlock.offset[2] + min[2] + zIndex;
 
                 if (thicknessCorrectionData == null) {
                     currentProcessor = boxRenderer.render(x, y, z, ipCache);
@@ -216,7 +217,7 @@ public class ShortN5Client
             }
 
             final N5Writer anotherN5Writer = new N5FSWriter(n5Path); // needed to prevent Spark serialization error
-            N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock[2], new UnsignedShortType(0));
+            N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock.gridPosition, new UnsignedShortType(0));
         });
     }
 

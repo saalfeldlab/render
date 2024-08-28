@@ -73,7 +73,7 @@ public class RecapKensAlignmentTools {
 						ArrayImgs.unsignedBytes( interval.dimensionsAsLongArray() ),
 						Intervals.minAsLongArray( interval ) );
 
-		final List<long[][]> grid =
+		final List<Grid.Block> grid =
 				Grid.create(
 						interval.dimensionsAsLongArray(),
 						new int[] { 512, 512 } );
@@ -121,8 +121,8 @@ public class RecapKensAlignmentTools {
 							final Interval block =
 									Intervals.translate(
 											Intervals.translate(
-													new FinalInterval( gridBlock[1] ), // blocksize
-													gridBlock[0] ), // block offset
+													new FinalInterval(gridBlock.dimensions),
+													gridBlock.offset),
 											Intervals.minAsLongArray( interval ) ); // offset of global interval
 
 							final RandomAccessibleInterval< UnsignedByteType > target = Views.interval( output, block );

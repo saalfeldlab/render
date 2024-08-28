@@ -16,6 +16,7 @@
  */
 package org.janelia.alignment.util;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -36,7 +37,7 @@ public class Grid {
 
 	/**
 	 * Crops the dimensions of a {@link DataBlock} at a given offset to fit
-	 * into and {@link Interval} of given dimensions.  Fills long and int
+	 * into an {@link Interval} of given dimensions.  Fills long and int
 	 * version of cropped block size.  Also calculates the grid raster position
 	 * assuming that the offset divisible by block size without remainder.
 	 */
@@ -63,25 +64,20 @@ public class Grid {
 	 * specified on an independent output grid.  It is assumed that
 	 * gridBlockSize is an integer multiple of outBlockSize.
 	 */
-	public static List<long[][]> create(
+	public static List<Block> create(
 			final long[] dimensions,
 			final int[] gridBlockSize,
 			final int[] outBlockSize) {
 
 		final int n = dimensions.length;
-		final ArrayList<long[][]> gridBlocks = new ArrayList<>();
+		final List<Block> gridBlocks = new ArrayList<>();
 
 		final long[] offset = new long[n];
 		final long[] gridPosition = new long[n];
 		final long[] longCroppedGridBlockSize = new long[n];
 		for (int d = 0; d < n;) {
 			cropBlockDimensions(dimensions, offset, outBlockSize, gridBlockSize, longCroppedGridBlockSize, gridPosition);
-				gridBlocks.add(
-						new long[][]{
-							offset.clone(),
-							longCroppedGridBlockSize.clone(),
-							gridPosition.clone()
-						});
+			gridBlocks.add(new Block(offset, longCroppedGridBlockSize, gridPosition));
 
 			for (d = 0; d < n; ++d) {
 				offset[d] += gridBlockSize[d];
@@ -99,7 +95,7 @@ public class Grid {
 	 * the world coordinate offset, the size of the grid block, and the
 	 * grid-coordinate offset.
 	 */
-	public static List<long[][]> create(
+	public static List<Block> create(
 			final long[] dimensions,
 			final int[] blockSize) {
 
@@ -165,5 +161,18 @@ public class Grid {
 		final long[] ceilScaled = new long[doubles.length];
 		Arrays.setAll(ceilScaled, i -> (long)Math.ceil(doubles[i] * scale));
 		return ceilScaled;
+	}
+
+
+	public static class Block implements Serializable {
+		public final long[] dimensions;
+		public final long[] offset;
+		public final long[] gridPosition;
+
+		public Block(final long[] dimensions, final long[] offset, final long[] gridPosition) {
+			this.dimensions = dimensions.clone();
+			this.offset = offset.clone();
+			this.gridPosition = gridPosition.clone();
+		}
 	}
 }
