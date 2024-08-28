@@ -12,7 +12,6 @@ import org.janelia.render.client.multisem.ResaveSegmentations;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.spark.LogUtilities;
-import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Reader;
@@ -22,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Date;
@@ -143,10 +143,6 @@ public class ExportMichalSegmentationsClient implements Serializable {
         return parameters;
     }
 
-    public DataType getDataType() {
-        return DataType.UINT8;
-    }
-
     public void run() throws IOException, IllegalArgumentException {
 
         final SparkConf conf = new SparkConf().setAppName("ExportMichalSegmentationsClient");
@@ -163,9 +159,11 @@ public class ExportMichalSegmentationsClient implements Serializable {
                 }
             }
 
-            try (final N5Reader n5 = new N5FSReader(parameters.targetN5Path)) {
-                if (n5.exists(parameters.targetN5Group)) {
-                    throw new IllegalArgumentException("run: target N5 group already exists: " + parameters.targetN5Group);
+            if (Files.exists(Paths.get(parameters.targetN5Path))) {
+                try (final N5Reader n5 = new N5FSReader(parameters.targetN5Path)) {
+                    if (n5.exists(parameters.targetN5Group)) {
+                        throw new IllegalArgumentException("run: target N5 group already exists: " + parameters.targetN5Group);
+                    }
                 }
             }
 
