@@ -4,6 +4,7 @@ import ij.process.ShortProcessor;
 
 import java.util.List;
 
+import net.imglib2.util.Intervals;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
@@ -137,9 +138,10 @@ public class ShortN5Client
             /* assume we can fit it in an array */
             final ArrayImg<UnsignedShortType, ShortArray> block = ArrayImgs.unsignedShorts(gridBlock.dimensions);
 
-            final long x = gridBlock.offset[0] + min[0];
-            final long y = gridBlock.offset[1] + min[1];
-            final long startZ = gridBlock.offset[2] + min[2];
+            final Grid.Block translatedBlock = new Grid.Block(Intervals.translate(block, min), gridBlock.gridPosition);
+            final long x = translatedBlock.min(0);
+            final long y = translatedBlock.min(1);
+            final long startZ = translatedBlock.min(2);
 
             // enable logging on executors and add gridBlock context to log messages
             LogUtilities.setupExecutorLog4j(x + ":" + y + ":" + startZ);
@@ -150,7 +152,7 @@ public class ShortN5Client
             ShortProcessor nextProcessor = null;
             for (int zIndex = 0; zIndex < block.dimension(2); zIndex++) {
 
-                final long z = gridBlock.offset[2] + min[2] + zIndex;
+                final long z = translatedBlock.min(2) + zIndex;
 
                 if (thicknessCorrectionData == null) {
                     currentProcessor = boxRenderer.render(x, y, z, ipCache);

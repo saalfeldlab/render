@@ -164,7 +164,7 @@ public class Grid {
 	}
 
 
-	public static class Block implements Serializable {
+	public static class Block implements Serializable, Interval {
 		public final long[] dimensions;
 		public final long[] offset;
 		public final long[] gridPosition;
@@ -173,6 +173,32 @@ public class Grid {
 			this.dimensions = dimensions.clone();
 			this.offset = offset.clone();
 			this.gridPosition = gridPosition.clone();
+
+			if (dimensions.length != offset.length || dimensions.length != gridPosition.length)
+				throw new IllegalArgumentException("Dimensions of block, offset, and grid position must match.");
+		}
+
+		public Block(final Block otherBlock) {
+			this(otherBlock.dimensions, otherBlock.offset, otherBlock.gridPosition);
+		}
+
+		public Block(final Interval interval, final long[] gridPosition) {
+			this(interval.dimensionsAsLongArray(), interval.minAsLongArray(), gridPosition);
+		}
+
+		@Override
+		public long min(final int i) {
+			return offset[i];
+		}
+
+		@Override
+		public long max(final int i) {
+			return offset[i] + dimensions[i] - 1;
+		}
+
+		@Override
+		public int numDimensions() {
+			return dimensions.length;
 		}
 	}
 }

@@ -73,10 +73,7 @@ public class RecapKensAlignmentTools {
 						ArrayImgs.unsignedBytes( interval.dimensionsAsLongArray() ),
 						Intervals.minAsLongArray( interval ) );
 
-		final List<Grid.Block> grid =
-				Grid.create(
-						interval.dimensionsAsLongArray(),
-						new int[] { 512, 512 } );
+		final List<Grid.Block> grid = Grid.create(interval.dimensionsAsLongArray(), new int[] {512, 512});
 
 		System.out.println( "num blocks = " + grid.size() );
 
@@ -118,13 +115,7 @@ public class RecapKensAlignmentTools {
 		ex.submit(() ->
 			grid.parallelStream().forEach(
 					gridBlock -> {
-							final Interval block =
-									Intervals.translate(
-											Intervals.translate(
-													new FinalInterval(gridBlock.dimensions),
-													gridBlock.offset),
-											Intervals.minAsLongArray( interval ) ); // offset of global interval
-
+							final Interval block = Intervals.translate(gridBlock, interval.minAsLongArray()); // offset of global interval
 							final RandomAccessibleInterval< UnsignedByteType > target = Views.interval( output, block );
 
 							// test which images we actually overlap

@@ -9,13 +9,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import net.imglib2.util.Intervals;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -481,28 +482,11 @@ public class N5Client {
                 Math.max(blockSize[1], tileHeight),
                 blockSize[2]
         };
+        final long[] longDimensions = new long[] {dimensions[0], dimensions[1], dimensions[2]};
 
-        List<Grid.Block> gridBlocks = Grid.create(
-                new long[] {
-                        dimensions[0],
-                        dimensions[1],
-                        dimensions[2]
-                },
-                gridBlockSize,
-                blockSize);
-
-        if (minZToRender != null) {
-            final List<Grid.Block> gridBlocksToRender = new ArrayList<>();
-            for (final Grid.Block gridBlock : gridBlocks) {
-                final long maxZForBlock = gridBlock.offset[2] + blockSize[2];
-                if (maxZForBlock >= minZToRender) {
-                    gridBlocksToRender.add(gridBlock);
-                }
-            }
-            gridBlocks = gridBlocksToRender;
-        }
-
-        return gridBlocks;
+		return Grid.create(longDimensions, gridBlockSize, blockSize).stream()
+                .filter(block -> minZToRender == null || block.max(2) + 1 >= minZToRender)
+                .collect(Collectors.toList());
     }
 
     /**
@@ -546,9 +530,10 @@ public class N5Client {
             /* assume we can fit it in an array */
             final ArrayImg<UnsignedByteType, ByteArray> block = ArrayImgs.unsignedBytes(gridBlock.dimensions);
 
-            final long x = gridBlock.offset[0] + min[0];
-            final long y = gridBlock.offset[1] + min[1];
-            final long startZ = gridBlock.offset[2] + min[2];
+            final Grid.Block translatedBlock = new Grid.Block(Intervals.translate(gridBlock, min), gridBlock.gridPosition);
+            final long x = translatedBlock.min(0);
+            final long y = translatedBlock.min(1);
+            final long startZ = translatedBlock.min(2);
 
             // enable logging on executors and add gridBlock context to log messages
             LogUtilities.setupExecutorLog4j(x + ":" + y + ":" + startZ);
@@ -559,7 +544,7 @@ public class N5Client {
             ByteProcessor nextProcessor = null;
             for (int zIndex = 0; zIndex < block.dimension(2); zIndex++) {
 
-                final long z = gridBlock.offset[2] + min[2] + zIndex;
+                final long z = translatedBlock.min(2) + zIndex;
 
                 if (thicknessCorrectionData == null) {
                     currentProcessor = boxRenderer.render(x, y, z, ipCache);
@@ -650,14 +635,8 @@ public class N5Client {
                 Math.max(blockSize[1], tileHeight),
         };
 
-        final JavaRDD<Grid.Block> rdd = sc.parallelize(
-                Grid.create(
-                        new long[] {
-                                dimensions[0],
-                                dimensions[1],
-                        },
-                        gridBlockSize,
-                        blockSize));
+        final List<Grid.Block> grid = Grid.create(Arrays.copyOfRange(dimensions, 0, 2), gridBlockSize, blockSize);
+        final JavaRDD<Grid.Block> rdd = sc.parallelize(grid);
 
         final Broadcast<ImageProcessorCacheSpec> broadcastCacheSpec = sc.broadcast(cacheSpec);
         
@@ -668,8 +647,9 @@ public class N5Client {
             /* assume we can fit it in an array */
             final ArrayImg<UnsignedByteType, ByteArray> block = ArrayImgs.unsignedBytes(gridBlock.dimensions);
 
-            final long x = gridBlock.offset[0] + min[0];
-            final long y = gridBlock.offset[1] + min[1];
+            final Grid.Block translatedBlock = new Grid.Block(Intervals.translate(gridBlock, min), gridBlock.gridPosition);
+            final long x = translatedBlock.min(0);
+            final long y = translatedBlock.min(1);
 
             // enable logging on executors and add gridBlock context to log messages
             LogUtilities.setupExecutorLog4j(x + ":" + y + ":" + z);

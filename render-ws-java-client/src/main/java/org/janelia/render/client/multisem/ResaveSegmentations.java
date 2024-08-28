@@ -182,18 +182,12 @@ public class ResaveSegmentations {
 		targetTiles.recalculateBoundingBoxes();
 		final Rectangle remainingStackBounds = targetTiles.toBounds().toRectangle();
 		final List<Grid.Block> relevantGridBlocks = fullGrid.stream()
-				.map(gridBlock -> offsetBlock(gridBlock, stackOffset))
+				.map(gridBlock -> new Grid.Block(Intervals.translate(gridBlock, stackOffset), gridBlock.gridPosition))
 				.filter(gridBlock -> intersectsWithStackBounds(gridBlock, remainingStackBounds))
 				.collect(Collectors.toList());
 
 		LOG.info("Resaving {} (relevant) of {} (total) blocks", relevantGridBlocks.size(), fullGrid.size());
 		return relevantGridBlocks;
-	}
-
-	private static Grid.Block offsetBlock(final Grid.Block gridBlock, final long[] stackOffset) {
-		gridBlock.offset[0] += stackOffset[0];
-		gridBlock.offset[1] += stackOffset[1];
-		return gridBlock;
 	}
 
 	private static boolean intersectsWithStackBounds(final Grid.Block gridBlock, final Rectangle remainingStackBounds) {
@@ -211,7 +205,6 @@ public class ResaveSegmentations {
 			final String n5path,
 			final String dataset
 	) {
-		final Interval block = Intervals.translate(new FinalInterval(gridBlock.dimensions), gridBlock.offset);
 		final Img<UnsignedLongType> blockData = ArrayImgs.unsignedLongs(gridBlock.dimensions);
 
 		final Map<Integer, Integer> zRenderToExport = new HashMap<>();
@@ -230,7 +223,7 @@ public class ResaveSegmentations {
 			final TileSpec targetTileSpec = targetTiles.get(sourceTileSpec.getTileId());
 			final int zInRender = targetTileSpec.getZ().intValue();
 
-			if (! intersect(targetTileSpec, block)) {
+			if (! intersect(targetTileSpec, gridBlock)) {
 				final List<AffineModel2D> layerFromTargetTransforms = fromTargetTransforms.computeIfAbsent(zInRender, k -> new ArrayList<>());
 				final List<AffineModel2D> layerToSourceTransforms = toSourceTransforms.computeIfAbsent(zInRender, k -> new ArrayList<>());
 				layerFromTargetTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()).createInverse());
@@ -306,7 +299,7 @@ public class ResaveSegmentations {
 	private static boolean intersect(final TileSpec tileSpec, final Interval interval) {
 		final TileBounds tileBounds = tileSpec.toTileBounds();
 		final Interval tileBoundingBox = new FinalInterval(new long[]{tileBounds.getMinX().longValue(), tileBounds.getMinY().longValue()},
-														   new long[]{tileBounds.getMaxX().longValue() - 1, tileBounds.getMaxY().longValue() - 1});
+														   new long[]{tileBounds.getMaxX().longValue(), tileBounds.getMaxY().longValue()});
 		return Intervals.isEmpty(Intervals.intersect(tileBoundingBox, interval));
 	}
 
@@ -329,7 +322,7 @@ public class ResaveSegmentations {
 		tsWithOnlyScanCorrection.deriveBoundingBox(tsWithOnlyScanCorrection.getMeshCellSize(), true);
 		final TileBounds bounds = tsWithOnlyScanCorrection.toTileBounds();
 		return new FinalInterval(new long[]{bounds.getMinX().longValue(), bounds.getMinY().longValue()},
-								 new long[]{bounds.getMaxX().longValue() - 1, bounds.getMaxY().longValue() - 1});
+								 new long[]{bounds.getMaxX().longValue(), bounds.getMaxY().longValue()});
 	}
 
 	/**
