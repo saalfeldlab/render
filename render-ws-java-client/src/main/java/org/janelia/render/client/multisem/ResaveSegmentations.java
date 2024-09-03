@@ -139,7 +139,7 @@ public class ResaveSegmentations {
 		final String targetStack = stackBaseName + targetStackSuffix;
 		final ResolvedTileSpecCollection sourceTiles = dataClient.getResolvedTiles(stackBaseName + sourceStackSuffix, null);
 		final ResolvedTileSpecCollection targetTiles = dataClient.getResolvedTiles(targetStack, null);
-		final List<long[][]> grid = createGridOverRelevantTiles(targetAttributes, targetBounds, targetTiles, sourceTiles);
+		final List<Grid.Block> grid = createGridOverRelevantTiles(targetAttributes, targetBounds, targetTiles, sourceTiles);
 		scanTransformedTemplateTile = createRawBoundingBox(targetTiles.getTileSpecs().stream().findAny().orElseThrow());
 
 		// Get mapping "layer in exported stack" -> "stack name + layer" for the stack under consideration
@@ -148,7 +148,7 @@ public class ResaveSegmentations {
 		// Fuse data block by block
 		final ExecutorService executor = (numThreads == 1) ? Executors.newSingleThreadExecutor() : Executors.newFixedThreadPool(numThreads);
 		final CompletionService<Void> completionService = new ExecutorCompletionService<>(executor);
-		for (final long[][] gridBlock : grid) {
+		for (final Grid.Block gridBlock : grid) {
 			completionService.submit(() -> fuseBlock(sourceTiles.getTileIdToSpecMap(), targetTiles.getTileIdToSpecMap(), segmentations, gridBlock, layerOrigins, targetN5, targetDataset));
 		}
 
@@ -165,14 +165,14 @@ public class ResaveSegmentations {
 		}
 	}
 
-	private static List<long[][]> createGridOverRelevantTiles(
+	private static List<Grid.Block> createGridOverRelevantTiles(
 			final DatasetAttributes targetAttributes,
 			final Bounds targetBounds,
 			final ResolvedTileSpecCollection targetTiles,
 			final ResolvedTileSpecCollection sourceTiles
 	) {
 		// Start with a grid over the full dimensions, then only keep blocks that intersect with tiles that will be used in writing
-		final List<long[][]> fullGrid = Grid.create(targetAttributes.getDimensions(), targetAttributes.getBlockSize());
+		final List<Grid.Block> fullGrid = Grid.create(targetAttributes.getDimensions(), targetAttributes.getBlockSize());
 
 		// Offset the grid by the stack offset
 		final long[] stackOffset = new long[]{targetBounds.getMinX().longValue(), targetBounds.getMinY().longValue(), targetBounds.getMinZ().longValue()};
@@ -181,8 +181,8 @@ public class ResaveSegmentations {
 		targetTiles.retainTileSpecs(sourceTiles.getTileIds());
 		targetTiles.recalculateBoundingBoxes();
 		final Rectangle remainingStackBounds = targetTiles.toBounds().toRectangle();
-		final List<long[][]> relevantGridBlocks = fullGrid.stream()
-				.map(gridBlock -> offsetBlock(gridBlock, stackOffset))
+		final List<Grid.Block> relevantGridBlocks = fullGrid.stream()
+				.map(gridBlock -> new Grid.Block(Intervals.translate(gridBlock, stackOffset), gridBlock.gridPosition))
 				.filter(gridBlock -> intersectsWithStackBounds(gridBlock, remainingStackBounds))
 				.collect(Collectors.toList());
 
@@ -190,16 +190,9 @@ public class ResaveSegmentations {
 		return relevantGridBlocks;
 	}
 
-	private static long[][] offsetBlock(final long[][] gridBlock, final long[] stackOffset) {
-		gridBlock[0][0] += stackOffset[0];
-		gridBlock[0][1] += stackOffset[1];
-		return gridBlock;
-	}
-
-	private static boolean intersectsWithStackBounds(final long[][] gridBlock, final Rectangle remainingStackBounds) {
-		final long[] blockOffset = gridBlock[0];
-		final long[] blockSize = gridBlock[1];
-		final Rectangle blockBounds = new Rectangle((int) blockOffset[0], (int) blockOffset[1], (int) blockSize[0], (int) blockSize[1]);
+	private static boolean intersectsWithStackBounds(final Grid.Block gridBlock, final Rectangle remainingStackBounds) {
+		final Rectangle blockBounds = new Rectangle((int) gridBlock.offset[0], (int) gridBlock.offset[1],
+													(int) gridBlock.dimensions[0], (int) gridBlock.dimensions[1]);
 		return remainingStackBounds.intersects(blockBounds);
 	}
 
@@ -207,15 +200,12 @@ public class ResaveSegmentations {
 			final Map<String, TileSpec> sourceTiles,
 			final Map<String, TileSpec> targetTiles,
 			final RandomAccessibleInterval<UnsignedLongType> segmentations,
-			final long[][] gridBlock,
+			final Grid.Block gridBlock,
 			final Map<Integer, LayerOrigin> layerOrigins,
 			final String n5path,
 			final String dataset
 	) {
-		final long[] blockSize = gridBlock[1];
-		final long[] blockOffset = gridBlock[0];
-		final Interval block = Intervals.translate(new FinalInterval(blockSize), blockOffset);
-		final Img<UnsignedLongType> blockData = ArrayImgs.unsignedLongs(blockSize);
+		final Img<UnsignedLongType> blockData = ArrayImgs.unsignedLongs(gridBlock.dimensions);
 
 		final Map<Integer, Integer> zRenderToExport = new HashMap<>();
 		layerOrigins.forEach((exportZ, layerOrigin) -> {
@@ -233,7 +223,7 @@ public class ResaveSegmentations {
 			final TileSpec targetTileSpec = targetTiles.get(sourceTileSpec.getTileId());
 			final int zInRender = targetTileSpec.getZ().intValue();
 
-			if (! intersect(targetTileSpec, block)) {
+			if (! intersect(targetTileSpec, gridBlock)) {
 				final List<AffineModel2D> layerFromTargetTransforms = fromTargetTransforms.computeIfAbsent(zInRender, k -> new ArrayList<>());
 				final List<AffineModel2D> layerToSourceTransforms = toSourceTransforms.computeIfAbsent(zInRender, k -> new ArrayList<>());
 				layerFromTargetTransforms.add(concatenateTransforms(targetTileSpec.getTransformList()).createInverse());
@@ -252,7 +242,7 @@ public class ResaveSegmentations {
 		final long[] cropOffset = new long[]{margin, margin, 0};
 
 		final RandomAccessibleInterval<UnsignedLongType> positionedSegmentation = Views.translate(Views.dropSingletonDimensions(segmentations), cropOffset);
-		final RandomAccessibleInterval<UnsignedLongType> positionedBlock = Views.translate(blockData, blockOffset);
+		final RandomAccessibleInterval<UnsignedLongType> positionedBlock = Views.translate(blockData, gridBlock.offset);
 
 		final Cursor<UnsignedLongType> targetCursor = Views.iterable(positionedBlock).localizingCursor();
 		final RealRandomAccess<UnsignedLongType> sourceRa = Views.interpolate(Views.extendZero(positionedSegmentation), new NearestNeighborInterpolatorFactory<>()).realRandomAccess();
@@ -291,8 +281,7 @@ public class ResaveSegmentations {
 
 		// Write block if it's not empty
 		try (final N5Writer writer = new N5FSWriter(n5path)) {
-			final long[] gridOffset = gridBlock[2];
-			N5Utils.saveNonEmptyBlock(blockData, writer, dataset, gridOffset, new UnsignedLongType(0));
+			N5Utils.saveNonEmptyBlock(blockData, writer, dataset, gridBlock.gridPosition, new UnsignedLongType(0));
 		}
 		return null;
 	}
@@ -310,7 +299,7 @@ public class ResaveSegmentations {
 	private static boolean intersect(final TileSpec tileSpec, final Interval interval) {
 		final TileBounds tileBounds = tileSpec.toTileBounds();
 		final Interval tileBoundingBox = new FinalInterval(new long[]{tileBounds.getMinX().longValue(), tileBounds.getMinY().longValue()},
-														   new long[]{tileBounds.getMaxX().longValue() - 1, tileBounds.getMaxY().longValue() - 1});
+														   new long[]{tileBounds.getMaxX().longValue(), tileBounds.getMaxY().longValue()});
 		return Intervals.isEmpty(Intervals.intersect(tileBoundingBox, interval));
 	}
 
@@ -333,7 +322,7 @@ public class ResaveSegmentations {
 		tsWithOnlyScanCorrection.deriveBoundingBox(tsWithOnlyScanCorrection.getMeshCellSize(), true);
 		final TileBounds bounds = tsWithOnlyScanCorrection.toTileBounds();
 		return new FinalInterval(new long[]{bounds.getMinX().longValue(), bounds.getMinY().longValue()},
-								 new long[]{bounds.getMaxX().longValue() - 1, bounds.getMaxY().longValue() - 1});
+								 new long[]{bounds.getMaxX().longValue(), bounds.getMaxY().longValue()});
 	}
 
 	/**

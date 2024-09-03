@@ -100,11 +100,21 @@ public class Bounds implements Serializable {
         return minY.intValue();
     }
 
+    /**
+     * Note: this is the same as {@link #getDeltaX()} rounded up to the nearest integer and is distinct from the natural
+     * interpretation of the term "width" of an image, which is the number of pixels in the x direction.
+     * @return the width of the bounding box, rounded up to the nearest integer.
+     */
     @JsonIgnore
     public int getWidth() {
         return (int) Math.ceil(getDeltaX());
     }
 
+    /**
+     * Note: this is the same as {@link #getDeltaY()} rounded up to the nearest integer and is distinct from the natural
+     * interpretation of the term "height" of an image, which is the number of pixels in the y direction.
+     * @return the height of the bounding box, rounded up to the nearest integer.
+     */
     @JsonIgnore
     public int getHeight() {
         return (int) Math.ceil(getDeltaY());
