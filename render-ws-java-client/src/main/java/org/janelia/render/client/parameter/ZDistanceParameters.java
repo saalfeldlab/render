@@ -10,7 +10,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
@@ -157,10 +156,6 @@ public class ZDistanceParameters implements Serializable {
             if (valueList != null) {
                 if (valueList.stream().anyMatch(z -> z < 0)) {
                     throw new IllegalArgumentException("zDistance must not contain negative values");
-                } else if (valueList.size() == 1) {
-                    // include whole range up to given value
-                    final int endExclusive = valueList.get(0) + 1;
-                    normalizedList.addAll(IntStream.range(1, endExclusive).boxed().collect(Collectors.toList()));
                 } else {
                     normalizedList.addAll(valueList);
                 }
