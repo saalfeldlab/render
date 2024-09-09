@@ -18,13 +18,11 @@ package org.janelia.alignment.util;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.janelia.saalfeldlab.n5.DataBlock;
 
 import net.imglib2.Interval;
-import net.imglib2.util.Intervals;
 
 /**
  *
@@ -77,7 +75,7 @@ public class Grid {
 		final long[] longCroppedGridBlockSize = new long[n];
 		for (int d = 0; d < n;) {
 			cropBlockDimensions(dimensions, offset, outBlockSize, gridBlockSize, longCroppedGridBlockSize, gridPosition);
-			gridBlocks.add(new Block(offset, longCroppedGridBlockSize, gridPosition));
+			gridBlocks.add(new Block(longCroppedGridBlockSize, offset, gridPosition));
 
 			for (d = 0; d < n; ++d) {
 				offset[d] += gridBlockSize[d];
@@ -102,68 +100,6 @@ public class Grid {
 		return create(dimensions, blockSize, blockSize);
 	}
 
-
-	/**
-	 * Create a {@link List} of grid block offsets in world coordinates
-	 * covering an {@link Interval} at a given spacing.
-	 */
-	public static List<long[]> createOffsets(
-			final Interval interval,
-			final int[] spacing) {
-
-		final int n = interval.numDimensions();
-		final ArrayList<long[]> offsets = new ArrayList<>();
-
-		final long[] offset = Intervals.minAsLongArray(interval);
-		for (int d = 0; d < n;) {
-			offsets.add(offset.clone());
-
-			for (d = 0; d < n; ++d) {
-				offset[d] += spacing[d];
-				if (offset[d] <= interval.max(d))
-					break;
-				else
-					offset[d] = interval.min(d);
-			}
-		}
-		return offsets;
-	}
-
-	/**
-	 * Returns the grid coordinates of a given offset for a min coordinate and
-	 * a grid spacing.
-	 */
-	public static long[] gridCell(
-			final long[] offset,
-			final long[] min,
-			final int[] spacing) {
-
-		final long[] gridCell = new long[offset.length];
-		Arrays.setAll(gridCell, i -> (offset[i] - min[i]) / spacing[i]);
-		return gridCell;
-	}
-
-	/**
-	 * Returns the long coordinates <= scaled double coordinates.
-	 */
-	public static long[] floorScaled(final double[] doubles, final double scale) {
-
-		final long[] floorScaled = new long[doubles.length];
-		Arrays.setAll(floorScaled, i -> (long)Math.floor(doubles[i] * scale));
-		return floorScaled;
-	}
-
-	/**
-	 * Returns the long coordinate >= scaled doubel coordinates.
-	 */
-	public static long[] ceilScaled(final double[] doubles, final double scale) {
-
-		final long[] ceilScaled = new long[doubles.length];
-		Arrays.setAll(ceilScaled, i -> (long)Math.ceil(doubles[i] * scale));
-		return ceilScaled;
-	}
-
-
 	public static class Block implements Serializable, Interval {
 		public final long[] dimensions;
 		public final long[] offset;
@@ -176,10 +112,6 @@ public class Grid {
 
 			if (dimensions.length != offset.length || dimensions.length != gridPosition.length)
 				throw new IllegalArgumentException("Dimensions of block, offset, and grid position must match.");
-		}
-
-		public Block(final Block otherBlock) {
-			this(otherBlock.dimensions, otherBlock.offset, otherBlock.gridPosition);
 		}
 
 		public Block(final Interval interval, final long[] gridPosition) {
