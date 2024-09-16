@@ -2,6 +2,7 @@ package org.janelia.render.client.spark.n5;
 
 import ij.process.ShortProcessor;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.spark.api.java.JavaRDD;
@@ -203,7 +204,8 @@ public class ShortN5Client
                         .flatIterable(
                                 Views.interval(
                                         ArrayImgs.unsignedShorts(
-                                                (short[]) currentProcessor.getPixels(),
+                                        		(short[])convert16bit( currentProcessor ).getPixels(),
+                                                //(short[]) currentProcessor.getPixels(),
                                                 currentProcessor.getWidth(),
                                                 currentProcessor.getHeight()),
                                         outSlice));
@@ -220,4 +222,13 @@ public class ShortN5Client
         });
     }
 
+    public static ShortProcessor convert16bit( final ShortProcessor currentProcessor )
+    {
+    	final short[] array = (short[])currentProcessor.getPixels();
+
+    	for ( int i = 0; i < array.length; ++i )
+    		array[ i ] = UnsignedShortType.getCodedSignedShort( 32768 - array[ i ] );
+
+    	return currentProcessor;
+    }
 }
