@@ -157,6 +157,15 @@
       }
     ],
 
+    "jrc_sepia_MPI_S_DEC_5A-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "7921,10920,30,6,0.0,15,27.0,0.05"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
