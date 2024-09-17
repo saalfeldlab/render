@@ -484,9 +484,15 @@ public class N5Client {
         };
         final long[] longDimensions = new long[] {dimensions[0], dimensions[1], dimensions[2]};
 
-		return Grid.create(longDimensions, gridBlockSize, blockSize).stream()
-                .filter(block -> minZToRender == null || block.max(2) + 1 >= minZToRender)
-                .collect(Collectors.toList());
+        final List<Grid.Block> blockList =
+                Grid.create(longDimensions, gridBlockSize, blockSize).stream()
+                        .filter(block -> minZToRender == null || block.max(2) + 1 >= minZToRender)
+                        .collect(Collectors.toList());
+
+        LOG.info("buildGridBlocks: returning {} blocks with size {}",
+                 blockList.size(), Arrays.toString(gridBlockSize));
+
+        return blockList;
     }
 
     /**
