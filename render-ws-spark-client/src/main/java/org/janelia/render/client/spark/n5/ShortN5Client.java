@@ -2,7 +2,6 @@ package org.janelia.render.client.spark.n5;
 
 import ij.process.ShortProcessor;
 
-import java.util.Arrays;
 import java.util.List;
 
 import net.imglib2.util.Intervals;
@@ -139,7 +138,7 @@ public class ShortN5Client
             /* assume we can fit it in an array */
             final ArrayImg<UnsignedShortType, ShortArray> block = ArrayImgs.unsignedShorts(gridBlock.dimensions);
 
-            final Grid.Block translatedBlock = new Grid.Block(Intervals.translate(block, min), gridBlock.gridPosition);
+            final Grid.Block translatedBlock = new Grid.Block(Intervals.translate(gridBlock, min), gridBlock.gridPosition);
             final long x = translatedBlock.min(0);
             final long y = translatedBlock.min(1);
             final long startZ = translatedBlock.min(2);
