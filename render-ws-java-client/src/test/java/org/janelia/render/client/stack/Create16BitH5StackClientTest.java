@@ -70,12 +70,12 @@ public class Create16BitH5StackClientTest {
         final String[] effectiveArgs = new String[] {
                 "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
                 "--owner", "cellmap",
-                "--project", "aic_desmosome_2",
-                "--alignStack", "v1_acquire_align_adaptive_2_untwisted",
-                "--rawStack", "v1_acquire_align_adaptive_2_untwisted_16bit",
-                "--rawRootDirectory", "/nrs/cellmap/data/aic_desmosome-2/raw",
-                "--completeRawStack",
-                "--z", "1", "2"
+                "--project", "jrc_mus_pancreas_5",
+                "--alignStack", "v3_acquire_align",
+                "--rawStack", "v3_acquire_align_16bit",
+                "--rawRootDirectory", "/nrs/cellmap/data/jrc_mus-pancreas-5/raw",
+                "--completeRawStack"
+//                "--minZ", "7100", "--maxZ", "7250"
         };
 
         Create16BitH5StackClient.main(effectiveArgs);
