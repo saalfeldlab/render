@@ -1,10 +1,6 @@
 package org.janelia.render.client.spark.n5;
 
-import ij.ImagePlus;
-import ij.process.ByteProcessor;
-
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -13,16 +9,18 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
-import org.janelia.alignment.ByteBoxRenderer;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.util.FileUtil;
-import org.janelia.alignment.util.ImageProcessorCache;
+import org.janelia.alignment.util.ImageProcessorCacheSpec;
 import org.janelia.alignment.util.NeuroglancerAttributes;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.zspacing.ThicknessCorrectionData;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
@@ -243,8 +241,7 @@ public class N5ClientTest {
                                           final N5Reader n5Reader,
                                           final String levelDatasetName,
                                           final List<String> parentAxes,
-                                          final List<Double> expectedScaleList)
-            throws IOException {
+                                          final List<Double> expectedScaleList) {
 
         final Map<String, Object> transformLevel0 = n5Reader.getAttribute(levelDatasetName,
                                                                           "transform",
@@ -267,68 +264,52 @@ public class N5ClientTest {
     }
 
     public static void main(final String[] args) {
-        testThicknessCorrectionIntensityBug();
+
+        final N5Client.Parameters parameters = new N5Client.Parameters();
+
+        parameters.renderWeb = new RenderWebServiceParameters(
+                "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                "hess_wafer_53_center7",
+                "slab_000_to_009");
+        parameters.stack = "s001_m239_align_no35";
+        parameters.tileWidth = 2048;
+        parameters.tileHeight = 2048;
+        parameters.n5Path = "test.n5";
+        parameters.n5Dataset = "/output";
+
+        final N5Client n5Client = new N5Client(parameters);
+
+        final SparkConf sparkConf = new SparkConf()
+                .setMaster("local[4]") // run spark locally with 4 threads
+                .setAppName("test");
+        final JavaSparkContext sparkContext = new JavaSparkContext(sparkConf);
+
+        final int[] blockSize = new int[] {1024, 1024, 4};
+        final String fullScaleDatasetName = parameters.n5Dataset + "/s0";
+        final Bounds boundsForRun = new Bounds(40000.0, 40000.0, 20.0,
+                                               44000.0, 44000.0, 22.0);
+        final long[] min = {
+                boundsForRun.getMinX().longValue(),
+                boundsForRun.getMinY().longValue(),
+                boundsForRun.getMinZ().longValue()
+        };
+        final long[] dimensions = {
+                Double.valueOf(boundsForRun.getDeltaX() + 1).longValue(),
+                Double.valueOf(boundsForRun.getDeltaY() + 1).longValue(),
+                Double.valueOf(boundsForRun.getDeltaZ() + 1).longValue()
+        };
+        final ImageProcessorCacheSpec cacheSpec = N5Client.buildImageProcessorCacheSpec();
+
+        n5Client.renderStack(sparkContext,
+                             blockSize,
+                             fullScaleDatasetName,
+                             null,
+                             boundsForRun,
+                             min,
+                             dimensions,
+                             false,
+                             cacheSpec,
+                             null);
     }
 
-    public static void testThicknessCorrectionIntensityBug() {
-        final ByteBoxRenderer boxRenderer =
-                new ByteBoxRenderer("http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                                    "cellmap",
-                                    "jrc_mus_pancreas_4",
-                                    "v4_acquire_align_ic",
-                                    1000,
-                                    1000,
-                                    1.0,
-                                    null,
-                                    null,
-                                    false);
-
-        final ThicknessCorrectionData thicknessCorrectionData = new ThicknessCorrectionData(
-                Arrays.asList("690 690",
-                              "696 692.6486098964094",
-                              "697 693.6355224576068",
-                              "698 694.6238190704008",
-                              "699 695.619517550349",
-                              "700 696.6197745281739",
-                              "701 697.6183340778427",
-                              "702 698.598784770009",
-                              "703 699.5827772984937",
-                              "704 704"));
-
-        final long x = -500;
-        final long y = -500;
-        final long z = 696;
-        final ThicknessCorrectionData.LayerInterpolator interpolator = thicknessCorrectionData.getInterpolator(z);
-
-        final ImageProcessorCache ipCache = new ImageProcessorCache(ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS,
-                                                                    true,
-                                                                    false);
-
-        renderZ(boxRenderer, x, y, z, ipCache, "uncorrected");
-
-        final ByteProcessor priorProcessor = renderZ(boxRenderer, x, y, interpolator.getPriorStackZ(), ipCache, "prior");
-        final ByteProcessor nextProcessor = renderZ(boxRenderer, x, y, interpolator.getNextStackZ(), ipCache, "next");
-
-        final ByteProcessor currentProcessor = new ByteProcessor(priorProcessor.getWidth(), priorProcessor.getHeight());
-
-        final int totalPixels = currentProcessor.getWidth() * currentProcessor.getHeight();
-        for (int pixelIndex = 0; pixelIndex < totalPixels; pixelIndex++) {
-            final double intensity = interpolator.deriveIntensity(priorProcessor.get(pixelIndex),
-                                                                  nextProcessor.get(pixelIndex));
-            currentProcessor.set(pixelIndex, (int) intensity);
-        }
-
-        new ImagePlus("corrected " + z, currentProcessor).show();
-    }
-
-    private static ByteProcessor renderZ(final ByteBoxRenderer boxRenderer,
-                                         final long x,
-                                         final long y,
-                                         final long z,
-                                         final ImageProcessorCache ipCache,
-                                         final String context) {
-        final ByteProcessor imageProcessor = boxRenderer.render(x, y, z, ipCache);
-        new ImagePlus(context + " z " + z, imageProcessor).show();
-        return imageProcessor;
-    }
 }
