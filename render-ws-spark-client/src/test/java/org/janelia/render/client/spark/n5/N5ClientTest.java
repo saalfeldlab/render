@@ -274,13 +274,14 @@ public class N5ClientTest {
         parameters.stack = "s001_m239_align_no35";
         parameters.tileWidth = 2048;
         parameters.tileHeight = 2048;
-        parameters.n5Path = "test.n5";
+        parameters.n5Path = System.getenv("HOME") + "/Desktop/test.n5";
         parameters.n5Dataset = "/output";
 
         final N5Client n5Client = new N5Client(parameters);
 
         final SparkConf sparkConf = new SparkConf()
                 .setMaster("local[4]") // run spark locally with 4 threads
+                .set("spark.driver.bindAddress", "127.0.0.1")
                 .setAppName("test");
         final JavaSparkContext sparkContext = new JavaSparkContext(sparkConf);
 
@@ -299,6 +300,14 @@ public class N5ClientTest {
                 Double.valueOf(boundsForRun.getDeltaZ() + 1).longValue()
         };
         final ImageProcessorCacheSpec cacheSpec = N5Client.buildImageProcessorCacheSpec();
+
+        try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
+            n5.createDataset(fullScaleDatasetName,
+                             dimensions,
+                             blockSize,
+                             DataType.UINT8,
+                             new GzipCompression());
+        }
 
         n5Client.renderStack(sparkContext,
                              blockSize,
