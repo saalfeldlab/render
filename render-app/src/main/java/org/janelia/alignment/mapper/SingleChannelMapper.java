@@ -38,7 +38,10 @@ public class SingleChannelMapper
 	final Img<UnsignedByteType> img;
 	final RealRandomAccessible<UnsignedByteType> rra;
 	final RealRandomAccess<UnsignedByteType> access;
+	final AffineTransform2D t, tInv;
 	final double[] tmp;
+
+	final int subsampling = 3;
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
                                final ImageProcessorWithMasks target,
@@ -52,11 +55,17 @@ public class SingleChannelMapper
         {
             this.normalizedSource.ip.setInterpolationMethod(ImageProcessor.BILINEAR);
         	this.img = ImageJFunctions.wrapByte( new ImagePlus( "", normalizedSource.ip ) );
-        	this.rra = Views.interpolate( Views.extendZero( img ), new NLinearInterpolatorFactory<>() );
-        	this.access = rra.realRandomAccess();
+        	//this.rra = Views.interpolate( Views.extendZero( img ), new NLinearInterpolatorFactory<>() );
+        	//this.access = rra.realRandomAccess();
         	this.tmp = new double[ 2 ];
 
-        	createSubsampler( img, 3 );
+        	this.rra = createSubsampled( img, subsampling );
+        	this.access = rra.realRandomAccess();
+
+        	// transform to undo the subsampling
+        	this.t = new AffineTransform2D();
+        	this.t.scale( subsampling );
+        	this.tInv = t.inverse();
         }
         else
         {
@@ -65,11 +74,13 @@ public class SingleChannelMapper
     }
 
     // TOOD: remove synchronized (just there so it is shown once for testing)
-    public static synchronized void createSubsampler( final Img<UnsignedByteType> img, final int subsampling )
+    public static RealRandomAccessible<UnsignedByteType> createSubsampled( final Img<UnsignedByteType> img, final int subsampling )
     {
     	final RandomAccessibleInterval<UnsignedByteType> sub = Views.subsample( img, subsampling ); // always takes the first pixel
-    	final RealRandomAccessible<UnsignedByteType> rraSub = Views.interpolate( Views.extendZero( sub ), new NLinearInterpolatorFactory<>() );
+    	final RealRandomAccessible<UnsignedByteType> rraSub = Views.interpolate( Views.extendBorder( sub ), new NLinearInterpolatorFactory<>() );
+    	// bordering is necessary so the interpolation on the smaller image does not create black borders
 
+    	/*
     	final AffineTransform2D t = new AffineTransform2D();
     	t.scale( subsampling );
     	final RealRandomAccessible<UnsignedByteType> rraSubScaled = RealViews.affine( rraSub, t );
@@ -80,7 +91,8 @@ public class SingleChannelMapper
     	ImageJFunctions.show( sub ).setTitle( "subsampled");
     	ImageJFunctions.show( rasteredInterval ).setTitle( "restored");
 
-    	SimpleMultiThreading.threadHaltUnClean();
+    	SimpleMultiThreading.threadHaltUnClean(); */
+    	return rraSub;
     }
 
     @Override
@@ -120,7 +132,11 @@ public class SingleChannelMapper
 
     	tmp[ 0 ] = sourceX;
     	tmp[ 1 ] = sourceY;
+
+    	// we interpolate on the subsampled image
+    	tInv.apply( tmp, tmp );
     	access.setPosition( tmp );
+
         target.ip.set(targetX, targetY, access.get().get() );
 
     	//ImageJFunctions.show( img );

@@ -34,6 +34,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import ij.ImageJ;
+
 /**
  * Tests the {@link N5Client} class.
  *
@@ -265,6 +267,7 @@ public class N5ClientTest {
 
     public static void main(final String[] args) {
 
+    	//new ImageJ();
         final N5Client.Parameters parameters = new N5Client.Parameters();
 
         parameters.renderWeb = new RenderWebServiceParameters(
@@ -316,7 +319,7 @@ public class N5ClientTest {
                              boundsForRun,
                              min,
                              dimensions,
-                             false,
+                             false, // is2DVolume
                              cacheSpec,
                              null);
     }
