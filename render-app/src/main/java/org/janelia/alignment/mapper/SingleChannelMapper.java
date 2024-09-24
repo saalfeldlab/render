@@ -56,7 +56,6 @@ public class SingleChannelMapper
         final int roundedSourceX = (int) (sourceX + 0.5f);
         final int roundedSourceY = (int) (sourceY + 0.5f);
         target.ip.set(targetX, targetY, normalizedSource.ip.get(roundedSourceX, roundedSourceY));
-        // TODO: subsampling needs to go here
     }
 
     @Override
@@ -66,6 +65,12 @@ public class SingleChannelMapper
                                 final int targetY) {
 
         target.ip.set(targetX, targetY, normalizedSource.ip.getPixelInterpolated(sourceX, sourceY));
+
+        //target: ij.process.ByteProcessor
+        //normalizedSource: ij.process.ByteProcessor
+        //System.out.println( "target: " + target.ip.getClass().getName() );
+        //System.out.println( "normalizedSource: " + normalizedSource.ip.getClass().getName() );
+        // TODO: subsampling needs to go here
     }
 
     public static ImageProcessorWithMasks normalizeSourceForTarget(final ImageProcessorWithMasks source,
