@@ -7,12 +7,22 @@ import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import ij.process.ShortProcessor;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import net.imglib2.RandomAccessible;
+import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.multithreading.SimpleMultiThreading;
+import net.imglib2.realtransform.AffineGet;
+import net.imglib2.realtransform.AffineRandomAccessible;
+import net.imglib2.realtransform.AffineTransform2D;
+import net.imglib2.realtransform.RealViews;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.view.IntervalView;
+import net.imglib2.view.RandomAccessibleOnRealRandomAccessible;
+import net.imglib2.view.SubsampleIntervalView;
 import net.imglib2.view.Views;
 
 /**
@@ -45,11 +55,32 @@ public class SingleChannelMapper
         	this.rra = Views.interpolate( Views.extendZero( img ), new NLinearInterpolatorFactory<>() );
         	this.access = rra.realRandomAccess();
         	this.tmp = new double[ 2 ];
+
+        	createSubsampler( img, 3 );
         }
         else
         {
         	throw new RuntimeException( "not supported for subsampling" );
         }
+    }
+
+    // TOOD: remove synchronized (just there so it is shown once for testing)
+    public static synchronized void createSubsampler( final Img<UnsignedByteType> img, final int subsampling )
+    {
+    	final RandomAccessibleInterval<UnsignedByteType> sub = Views.subsample( img, subsampling ); // always takes the first pixel
+    	final RealRandomAccessible<UnsignedByteType> rraSub = Views.interpolate( Views.extendZero( sub ), new NLinearInterpolatorFactory<>() );
+
+    	final AffineTransform2D t = new AffineTransform2D();
+    	t.scale( subsampling );
+    	final RealRandomAccessible<UnsignedByteType> rraSubScaled = RealViews.affine( rraSub, t );
+    	final RandomAccessible<UnsignedByteType> rastered = Views.raster( rraSubScaled );
+    	final RandomAccessibleInterval<UnsignedByteType> rasteredInterval = Views.interval( rastered, img );
+    	
+    	ImageJFunctions.show( img ).setTitle( "original" );
+    	ImageJFunctions.show( sub ).setTitle( "subsampled");
+    	ImageJFunctions.show( rasteredInterval ).setTitle( "restored");
+
+    	SimpleMultiThreading.threadHaltUnClean();
     }
 
     @Override
