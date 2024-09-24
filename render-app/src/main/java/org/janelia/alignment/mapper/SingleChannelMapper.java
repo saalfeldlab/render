@@ -34,8 +34,8 @@ public class SingleChannelMapper
 	final double[] tmp;
 
 	// 2x2 subsampling using bottom-right pixels
-	final int subsampling = 1;//2;
-	final long[] offset = new long[] {0,0};//{ -1, -1 };
+	final int subsampling = 2;
+	final long[] offset = new long[] { -1, -1 };
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
                                final ImageProcessorWithMasks target,
