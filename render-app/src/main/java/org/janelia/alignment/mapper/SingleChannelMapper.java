@@ -7,22 +7,14 @@ import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import ij.process.ShortProcessor;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.multithreading.SimpleMultiThreading;
-import net.imglib2.realtransform.AffineGet;
-import net.imglib2.realtransform.AffineRandomAccessible;
 import net.imglib2.realtransform.AffineTransform2D;
-import net.imglib2.realtransform.RealViews;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.view.IntervalView;
-import net.imglib2.view.RandomAccessibleOnRealRandomAccessible;
-import net.imglib2.view.SubsampleIntervalView;
 import net.imglib2.view.Views;
 
 /**
@@ -42,8 +34,8 @@ public class SingleChannelMapper
 	final double[] tmp;
 
 	// 2x2 subsampling using bottom-right pixels
-	final int subsampling = 2;
-	final long[] offset = new long[] { -1, -1 };
+	final int subsampling = 1;//2;
+	final long[] offset = new long[] {0,0};//{ -1, -1 };
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
                                final ImageProcessorWithMasks target,
