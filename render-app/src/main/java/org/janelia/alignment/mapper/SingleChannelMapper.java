@@ -76,9 +76,13 @@ public class SingleChannelMapper
     // TOOD: remove synchronized (just there so it is shown once for testing)
     public static RealRandomAccessible<UnsignedByteType> createSubsampled( final Img<UnsignedByteType> img, final int subsampling )
     {
-    	final RandomAccessibleInterval<UnsignedByteType> sub = Views.subsample( img, subsampling ); // always takes the first pixel
-    	final RealRandomAccessible<UnsignedByteType> rraSub = Views.interpolate( Views.extendBorder( sub ), new NLinearInterpolatorFactory<>() );
+    	// right now always takes the first pixel
+    	// to do advanced types of downsampling we need to implement our own version of net.imglib2.view.SubsampleIntervalView / net.imglib2.view.SubsampleView
+    	// to use e.g. the center pixel for 3x3, we simply need to translate the underlying img
+    	final RandomAccessibleInterval<UnsignedByteType> sub = Views.subsample( img, subsampling );
+
     	// bordering is necessary so the interpolation on the smaller image does not create black borders
+    	final RealRandomAccessible<UnsignedByteType> rraSub = Views.interpolate( Views.extendBorder( sub ), new NLinearInterpolatorFactory<>() );
 
     	/*
     	final AffineTransform2D t = new AffineTransform2D();
