@@ -17,7 +17,6 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 /**
@@ -73,8 +72,8 @@ public class SingleChannelMapper
 
         	this.tInv = t.inverse();
         	
-        	System.out.println( "t: " + t );
-        	System.out.println( "tInv: " + tInv );
+        	//System.out.println( "t: " + t );
+        	//System.out.println( "tInv: " + tInv );
         }
         else
         {
