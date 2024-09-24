@@ -41,7 +41,7 @@ public class SingleChannelMapper
 	final AffineTransform2D t, tInv;
 	final double[] tmp;
 
-	final int subsampling = 3;
+	final int subsampling = 2;
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
                                final ImageProcessorWithMasks target,
