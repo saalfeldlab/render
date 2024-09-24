@@ -33,8 +33,8 @@ public class SingleChannelMapper
 	final AffineTransform2D t, tInv;
 	final double[] tmp;
 
-	// 2x2 subsampling using bottom-right pixels
-	final int subsampling = 2;
+	// 3x3 subsampling using center pixels
+	final int subsampling = 3;
 	final long[] offset = new long[] { -1, -1 };
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
