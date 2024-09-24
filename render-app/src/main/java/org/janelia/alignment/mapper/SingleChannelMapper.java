@@ -1,12 +1,19 @@
 package org.janelia.alignment.mapper;
 
+import ij.ImagePlus;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import ij.process.ShortProcessor;
-
-import static mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
+import net.imglib2.RealRandomAccess;
+import net.imglib2.RealRandomAccessible;
+import net.imglib2.img.Img;
+import net.imglib2.img.display.imagej.ImageJFunctions;
+import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.view.Views;
 
 /**
  * Maps source pixels from an unmasked single channel source to a target canvas.
@@ -18,6 +25,11 @@ public class SingleChannelMapper
     protected final ImageProcessorWithMasks target;
     protected final boolean isMappingInterpolated;
 
+	final Img<UnsignedByteType> img;
+	final RealRandomAccessible<UnsignedByteType> rra;
+	final RealRandomAccess<UnsignedByteType> access;
+	final double[] tmp;
+
     public SingleChannelMapper(final ImageProcessorWithMasks source,
                                final ImageProcessorWithMasks target,
                                final boolean isMappingInterpolated) {
@@ -26,9 +38,17 @@ public class SingleChannelMapper
         this.target = target;
         this.isMappingInterpolated = isMappingInterpolated;
 
-        if (isMappingInterpolated) {
-        	System.out.println( "interpolated is on");
+        if (isMappingInterpolated)
+        {
             this.normalizedSource.ip.setInterpolationMethod(ImageProcessor.BILINEAR);
+        	this.img = ImageJFunctions.wrapByte( new ImagePlus( "", normalizedSource.ip ) );
+        	this.rra = Views.interpolate( Views.extendZero( img ), new NLinearInterpolatorFactory<>() );
+        	this.access = rra.realRandomAccess();
+        	this.tmp = new double[ 2 ];
+        }
+        else
+        {
+        	throw new RuntimeException( "not supported for subsampling" );
         }
     }
 
@@ -64,7 +84,17 @@ public class SingleChannelMapper
                                 final int targetX,
                                 final int targetY) {
 
-        target.ip.set(targetX, targetY, normalizedSource.ip.getPixelInterpolated(sourceX, sourceY));
+    	// old code:
+        //target.ip.set(targetX, targetY, normalizedSource.ip.getPixelInterpolated(sourceX, sourceY));
+
+    	tmp[ 0 ] = sourceX;
+    	tmp[ 1 ] = sourceY;
+    	access.setPosition( tmp );
+        target.ip.set(targetX, targetY, access.get().get() );
+
+    	//ImageJFunctions.show( img );
+    	//SimpleMultiThreading.threadHaltUnClean();
+
 
         //target: ij.process.ByteProcessor
         //normalizedSource: ij.process.ByteProcessor
