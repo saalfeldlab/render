@@ -17,7 +17,6 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 /**
@@ -34,9 +33,8 @@ public class SingleChannelMapper
 	final AffineTransform2D tInv;
 	final double[] tmp;
 
-	// 3x3 subsampling using center pixels
-	final int subsampling = 3;
-	final long[] offset = new long[] { -1, -1 };
+	final int subsampling = 2;
+	final long[] offset = new long[] { 0, 0 };
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
                                final ImageProcessorWithMasks target,
@@ -50,6 +48,14 @@ public class SingleChannelMapper
         {
             //this.normalizedSource.ip.setInterpolationMethod(ImageProcessor.BILINEAR);
         	final Img<UnsignedByteType> img = ImageJFunctions.wrapByte( new ImagePlus( "", normalizedSource.ip ) );
+        	if ( img == null )
+        	{
+        		System.out.println( "normalizedSource.ip" + normalizedSource.ip );
+        		if ( normalizedSource.ip != null )
+        		System.out.println( "normalizedSource.ip class=" + normalizedSource.ip.getClass().getName() );
+        		System.out.println( "img=" + img );
+        		throw new RuntimeException( "Couldn't wrap normalizedSource.ip to imglib2 image." );
+        	}
         	final RealRandomAccessible<UnsignedByteType> rra = createSubsampled( img, subsampling, offset );
         	this.access = rra.realRandomAccess();
 
