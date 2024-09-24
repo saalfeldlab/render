@@ -41,7 +41,9 @@ public class SingleChannelMapper
 	final AffineTransform2D t, tInv;
 	final double[] tmp;
 
+	// 2x2 subsampling using bottom-right pixels
 	final int subsampling = 2;
+	final long[] offset = new long[] { -1, -1 };
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
                                final ImageProcessorWithMasks target,
@@ -59,7 +61,7 @@ public class SingleChannelMapper
         	//this.access = rra.realRandomAccess();
         	this.tmp = new double[ 2 ];
 
-        	this.rra = createSubsampled( img, subsampling );
+        	this.rra = createSubsampled( img, subsampling, offset );
         	this.access = rra.realRandomAccess();
 
         	// transform to undo the subsampling
@@ -69,17 +71,25 @@ public class SingleChannelMapper
         }
         else
         {
-        	throw new RuntimeException( "not supported for subsampling" );
+        	this.t = this.tInv = null;
+        	this.img = null;
+        	this.rra = null;
+        	this.access = null;
+        	this.tmp = null;
+        	//throw new RuntimeException( "not supported for subsampling" );
         }
     }
 
     // TOOD: remove synchronized (just there so it is shown once for testing)
-    public static RealRandomAccessible<UnsignedByteType> createSubsampled( final Img<UnsignedByteType> img, final int subsampling )
+    public static RealRandomAccessible<UnsignedByteType> createSubsampled( final Img<UnsignedByteType> img, final int subsampling, final long[] offset )
     {
+    	// change which pixel in the local neighborhood is being used
+    	final RandomAccessibleInterval<UnsignedByteType> imgTranslated = Views.interval( Views.extendBorder( Views.translate( img, offset ) ), img );
+
     	// right now always takes the first pixel
     	// to do advanced types of downsampling we need to implement our own version of net.imglib2.view.SubsampleIntervalView / net.imglib2.view.SubsampleView
     	// to use e.g. the center pixel for 3x3, we simply need to translate the underlying img
-    	final RandomAccessibleInterval<UnsignedByteType> sub = Views.subsample( img, subsampling );
+    	final RandomAccessibleInterval<UnsignedByteType> sub = Views.subsample( imgTranslated, subsampling );
 
     	// bordering is necessary so the interpolation on the smaller image does not create black borders
     	final RealRandomAccessible<UnsignedByteType> rraSub = Views.interpolate( Views.extendBorder( sub ), new NLinearInterpolatorFactory<>() );
