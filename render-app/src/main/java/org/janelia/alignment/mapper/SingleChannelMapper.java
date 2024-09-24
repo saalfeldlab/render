@@ -1,5 +1,7 @@
 package org.janelia.alignment.mapper;
 
+import java.util.Arrays;
+
 import ij.ImagePlus;
 import ij.process.ByteProcessor;
 import ij.process.ColorProcessor;
@@ -15,6 +17,7 @@ import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.realtransform.AffineTransform2D;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 
 /**
@@ -27,14 +30,12 @@ public class SingleChannelMapper
     protected final ImageProcessorWithMasks target;
     protected final boolean isMappingInterpolated;
 
-	final Img<UnsignedByteType> img;
-	final RealRandomAccessible<UnsignedByteType> rra;
 	final RealRandomAccess<UnsignedByteType> access;
-	final AffineTransform2D t, tInv;
+	final AffineTransform2D tInv;
 	final double[] tmp;
 
-	// 3x3 subsampling using center pixels
-	final int subsampling = 3;
+	// 2x2 subsampling using bottom right pixels
+	final int subsampling = 2;
 	final long[] offset = new long[] { -1, -1 };
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
@@ -47,28 +48,31 @@ public class SingleChannelMapper
 
         if (isMappingInterpolated)
         {
-            this.normalizedSource.ip.setInterpolationMethod(ImageProcessor.BILINEAR);
-        	this.img = ImageJFunctions.wrapByte( new ImagePlus( "", normalizedSource.ip ) );
-        	//this.rra = Views.interpolate( Views.extendZero( img ), new NLinearInterpolatorFactory<>() );
-        	//this.access = rra.realRandomAccess();
-        	this.tmp = new double[ 2 ];
-
-        	this.rra = createSubsampled( img, subsampling, offset );
+            //this.normalizedSource.ip.setInterpolationMethod(ImageProcessor.BILINEAR);
+        	final Img<UnsignedByteType> img = ImageJFunctions.wrapByte( new ImagePlus( "", normalizedSource.ip ) );
+        	final RealRandomAccessible<UnsignedByteType> rra = createSubsampled( img, subsampling, offset );
         	this.access = rra.realRandomAccess();
 
-        	// transform to undo the subsampling
-        	this.t = new AffineTransform2D();
-        	this.t.scale( subsampling );
+        	this.tmp = new double[ 2 ];
+
+        	// transform to undo the subsampling and shift
+        	final AffineTransform2D t = new AffineTransform2D();
+        	t.scale( subsampling );
+
+        	final double[] shift = new double[ offset.length ];
+        	Arrays.setAll( shift, d -> -offset[ d ]);
+        	t.translate( shift );
+
         	this.tInv = t.inverse();
+        	
+        	System.out.println( "t: " + t );
+        	System.out.println( "tInv: " + tInv );
         }
         else
         {
-        	this.t = this.tInv = null;
-        	this.img = null;
-        	this.rra = null;
+        	this.tInv = null;
         	this.access = null;
         	this.tmp = null;
-        	//throw new RuntimeException( "not supported for subsampling" );
         }
     }
 
