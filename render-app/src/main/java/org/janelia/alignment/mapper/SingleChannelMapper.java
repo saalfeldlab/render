@@ -27,6 +27,7 @@ public class SingleChannelMapper
         this.isMappingInterpolated = isMappingInterpolated;
 
         if (isMappingInterpolated) {
+        	System.out.println( "interpolated is on");
             this.normalizedSource.ip.setInterpolationMethod(ImageProcessor.BILINEAR);
         }
     }
@@ -55,6 +56,7 @@ public class SingleChannelMapper
         final int roundedSourceX = (int) (sourceX + 0.5f);
         final int roundedSourceY = (int) (sourceY + 0.5f);
         target.ip.set(targetX, targetY, normalizedSource.ip.get(roundedSourceX, roundedSourceY));
+        // TODO: subsampling needs to go here
     }
 
     @Override
