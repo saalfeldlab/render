@@ -4,6 +4,8 @@ import ij.IJ;
 import ij.ImagePlus;
 import ij.Prefs;
 
+import java.io.Serializable;
+
 /**
  * This class can detect streaks in an image and return a corresponding mask.
  * <p>
@@ -20,7 +22,7 @@ import ij.Prefs;
  *     <li>blurRadius: the radius of the Gaussian blur applied to the streak mask</li>
  * </ul>
  */
-public class StreakFinder {
+public class StreakFinder implements Serializable {
 
 	private final double threshold;
 	private final int blurRadius;
