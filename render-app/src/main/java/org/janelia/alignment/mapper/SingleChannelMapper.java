@@ -15,7 +15,9 @@ import net.imglib2.RealRandomAccessible;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.realtransform.AffineTransform2D;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.view.Views;
 
@@ -32,14 +34,19 @@ public class SingleChannelMapper
 	final RealRandomAccess<UnsignedByteType> access;
 	final AffineTransform2D tInv;
 	final double[] tmp;
+	final boolean isRGB;
+
+    // 2x2 subsampling using top-left pixels
+    final int subsampling = 2;
+    final long[] offset = new long[] { 0, 0 };
 
     // 2x2 subsampling using bottom-right pixels
 //    final int subsampling = 2;
 //    final long[] offset = new long[] { -1, -1 };
 
 	// 3x3 subsampling using center pixels
-	final int subsampling = 3;
-	final long[] offset = new long[] { -1, -1 };
+	//final int subsampling = 3;
+	//final long[] offset = new long[] { -1, -1 };
 
     public SingleChannelMapper(final ImageProcessorWithMasks source,
                                final ImageProcessorWithMasks target,
@@ -49,10 +56,19 @@ public class SingleChannelMapper
         this.target = target;
         this.isMappingInterpolated = isMappingInterpolated;
 
+        this.isRGB = ColorProcessor.class.isInstance( normalizedSource.ip );
         if (isMappingInterpolated)
         {
             //this.normalizedSource.ip.setInterpolationMethod(ImageProcessor.BILINEAR);
-        	final Img<UnsignedByteType> img = ImageJFunctions.wrapByte( new ImagePlus( "", normalizedSource.ip ) );
+
+        	final Img<UnsignedByteType> img;
+
+        	// TODO: this is a bug, this should not be a ColorProcessor
+        	if ( isRGB )
+        		img = ImageJFunctions.wrapByte( new ImagePlus( "", normalizedSource.ip.convertToByte( false ) ) );
+        	else
+        		img = ImageJFunctions.wrapByte( new ImagePlus( "", normalizedSource.ip ) );
+
         	final RealRandomAccessible<UnsignedByteType> rra = createSubsampled( img, subsampling, offset );
         	this.access = rra.realRandomAccess();
 
@@ -67,9 +83,6 @@ public class SingleChannelMapper
         	t.translate( shift );
 
         	this.tInv = t.inverse();
-        	
-        	//System.out.println( "t: " + t );
-        	//System.out.println( "tInv: " + tInv );
         }
         else
         {
@@ -150,7 +163,14 @@ public class SingleChannelMapper
     	tInv.apply( tmp, tmp );
     	access.setPosition( tmp );
 
-        target.ip.set(targetX, targetY, access.get().get() );
+
+    	if ( isRGB )
+    	{
+    		final int value = access.get().get();
+    		target.ip.set(targetX, targetY, ARGBType.rgba(value, value, value, 0) );
+    	}
+    	else
+    		target.ip.set(targetX, targetY, access.get().get() );
 
     	//ImageJFunctions.show( img );
     	//SimpleMultiThreading.threadHaltUnClean();
