@@ -34,8 +34,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import ij.ImageJ;
-
 /**
  * Tests the {@link N5Client} class.
  *
@@ -274,7 +272,7 @@ public class N5ClientTest {
                 "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "hess_wafer_53_center7",
                 "slab_000_to_009");
-        parameters.stack = "s001_m239_align_no35";
+        parameters.stack = "s001_m239_align_no35_hayworth_ic";
         parameters.tileWidth = 2048;
         parameters.tileHeight = 2048;
         parameters.n5Path = System.getenv("HOME") + "/Desktop/test.n5";
