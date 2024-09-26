@@ -32,8 +32,8 @@ public class StreakFinder implements Serializable {
 		if (threshold < 1) {
 			throw new IllegalArgumentException("threshold must be positive");
 		}
-		if (blurRadius < 1) {
-			throw new IllegalArgumentException("blurRadius must be positive");
+		if (blurRadius < 0) {
+			throw new IllegalArgumentException("blurRadius must be 0 (no blur) or positive");
 		}
 		if (meanFilterSize < 1 || meanFilterSize % 2 == 0) {
 			throw new IllegalArgumentException("meanFilterSize must be positive and odd");
@@ -53,7 +53,9 @@ public class StreakFinder implements Serializable {
 		IJ.setThreshold(converted, -threshold, threshold);
 		Prefs.blackBackground = false;
 		IJ.run(converted, "Convert to Mask", "");
-		IJ.run(converted, "Gaussian Blur...", String.format("sigma=%d", blurRadius));
+		if (blurRadius > 0) {
+			IJ.run(converted, "Gaussian Blur...", String.format("sigma=%d", blurRadius));
+		}
 		return converted;
 	}
 }

@@ -62,8 +62,8 @@ public class StreakStatisticsClient implements Serializable {
 			@Parameter(names = "--threshold", description = "Threshold used to convert the streak mask to a binary mask", required = true)
 			public double threshold;
 
-			@Parameter(names = "--blurRadius", description = "Radius of the Gaussian blur applied to the streak mask", required = true)
-			private int blurRadius;
+			@Parameter(names = "--blurRadius", description = "Radius of the Gaussian blur applied to the streak mask")
+			private int blurRadius = 0;
 
 			@Parameter(names = "--meanFilterSize", description = "Number of pixels to average in the y-direction (must be odd)", required = true)
 			private int meanFilterSize;
@@ -78,15 +78,8 @@ public class StreakStatisticsClient implements Serializable {
 			private int nY = -1;
 
 			public void validate() {
-				if (threshold < 1) {
-					throw new IllegalArgumentException("threshold must be positive");
-				}
-				if (blurRadius < 1) {
-					throw new IllegalArgumentException("blurRadius must be positive");
-				}
-				if (meanFilterSize < 1 || meanFilterSize % 2 == 0) {
-					throw new IllegalArgumentException("meanFilterSize must be positive and odd");
-				}
+				// delegate validation to StreakFinder
+				final StreakFinder ignored = new StreakFinder(meanFilterSize, threshold, blurRadius);
 				try {
 					final String[] nCells = cells.split("x");
 					nX = Integer.parseInt(nCells[0]);
@@ -305,7 +298,8 @@ public class StreakStatisticsClient implements Serializable {
 			final double[][] results = new double[nX][nY];
 			for (int i = 0; i < nX; i++) {
 				for (int j = 0; j < nY; j++) {
-					results[i][j] = sum[i][j] / counts[i][j];
+					// invert the result because the mask is 0 where there are streaks and 255 where there are no streaks
+					results[i][j] = (255.0 - sum[i][j] / counts[i][j]) / 255.0;
 				}
 			}
 			return results;
