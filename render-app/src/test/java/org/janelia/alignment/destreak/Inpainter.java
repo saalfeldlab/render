@@ -57,7 +57,7 @@ public class Inpainter {
 		while (imgCursor.hasNext()) {
 			final FloatType o = imgCursor.next();
 			final float m = maskAccess.setPositionAndGet(imgCursor).get();
-			if (m == 255.0) {
+			if (m == 0.0) {
 				// pixel not masked, no inpainting necessary
 				continue;
 			}
@@ -80,7 +80,7 @@ public class Inpainter {
 			final float v = (float) (valueSum / weightSum);
 			final float w = m / 255.0f;
 			final float oldValue = o.get();
-			final float newValue = v * (1 - w) + oldValue * w;
+			final float newValue = v * w + oldValue * (1 - w);
 			o.set(newValue);
 		}
 	}
@@ -105,7 +105,7 @@ public class Inpainter {
 		 * Casts a ray from the given position in a random direction until it hits a non-masked (i.e., non-NaN) pixel
 		 * or exits the image boundary.
 		 *
-		 * @param mask the mask indicating which pixels are masked (< 255) and which are not (255)
+		 * @param mask the mask indicating which pixels are masked (> 0) and which are not (0)
 		 * @param interval the interval of the image
 		 * @param position the position from which to cast the ray
 		 * @return the result of the ray casting or null if the ray exited the image boundary without hitting a

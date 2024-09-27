@@ -283,22 +283,31 @@ public class StreakStatisticsClient implements Serializable {
 	private static class StreakAccumulator {
 		private final int nX;
 		private final int nY;
-		private final Bounds layerBounds;
+
+		private final int minX;
+		private final int minY;
+		private final int width;
+		private final int height;
 
 		private final double[][] sum;
 		private final int[][] counts;
 
 		public StreakAccumulator(final Bounds layerBounds, final int nX, final int nY) {
-			this.layerBounds = layerBounds;
 			this.nX = nX;
 			this.nY = nY;
+
+			this.minX =  layerBounds.getMinX().intValue();
+			this.minY =  layerBounds.getMinY().intValue();
+			this.width =  layerBounds.getWidth();
+			this.height =  layerBounds.getHeight();
+
 			sum = new double[nX][nY];
 			counts = new int[nX][nY];
 		}
 
 		public void addValue(final double value, final double x, final double y) {
-			final int i = (int) ((x - layerBounds.getMinX()) / layerBounds.getWidth() * nX);
-			final int j = (int) ((y - layerBounds.getMinY()) / layerBounds.getHeight() * nY);
+			final int i = (int) (nX * (x - minX) / width);
+			final int j = (int) (nY * (y - minY) / height);
 			sum[i][j] += value;
 			counts[i][j]++;
 		}
@@ -308,7 +317,7 @@ public class StreakStatisticsClient implements Serializable {
 			for (int i = 0; i < nX; i++) {
 				for (int j = 0; j < nY; j++) {
 					// invert the result because the mask is 0 where there are streaks and 255 where there are no streaks
-					results[i][j] = (255.0 - sum[i][j] / counts[i][j]) / 255.0;
+					results[i][j] = sum[i][j] / ( 255 * counts[i][j]);
 				}
 			}
 			return results;
