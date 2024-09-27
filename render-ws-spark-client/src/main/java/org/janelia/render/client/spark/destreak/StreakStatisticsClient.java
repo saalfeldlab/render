@@ -26,6 +26,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.N5Writer;
@@ -56,6 +57,9 @@ public class StreakStatisticsClient implements Serializable {
 			@ParametersDelegate
 			public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
 
+			@ParametersDelegate
+			public ZRangeParameters zRange = new ZRangeParameters();
+
 			@Parameter(names = "--stack", description = "Stack to pull image and transformation data from", required = true)
 			public String stack;
 
@@ -74,8 +78,8 @@ public class StreakStatisticsClient implements Serializable {
 			@Parameter(names = "--nCells", description = "Number of cells to use in x and y directions, e.g., 5x3", required = true)
 			public String cells;
 
-			private int nX = -1;
-			private int nY = -1;
+			private int nX = 0;
+			private int nY = 0;
 
 			public void validate() {
 				// delegate validation to StreakFinder
@@ -93,14 +97,14 @@ public class StreakStatisticsClient implements Serializable {
 			}
 
 			public int nCellsX() {
-				if (nX == -1) {
+				if (nX == 0) {
 					validate();
 				}
 				return nX;
 			}
 
 			public int nCellsY() {
-				if (nY == -1) {
+				if (nY == 0) {
 					validate();
 				}
 				return nY;
@@ -147,11 +151,8 @@ public class StreakStatisticsClient implements Serializable {
 
 	private void compileStreakStatistics(final JavaSparkContext sparkContext) throws IOException {
 		// get stack and tile data
-		final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
-		final StackMetaData stackMetaData = dataClient.getStackMetaData(parameters.stack);
-		final Broadcast<Bounds> stackBounds = sparkContext.broadcast(stackMetaData.getStackBounds());
-
-		final ResolvedTileSpecCollection rtsc = dataClient.getResolvedTilesForZRange(parameters.stack, stackBounds.value().getMinZ(), stackBounds.value().getMaxZ());
+		final ResolvedTileSpecCollection rtsc = getRequestedTiles();
+		final Broadcast<Bounds> stackBounds = sparkContext.broadcast(rtsc.toBounds());
 		LOG.info("run: fetched {} resolved tiles for stack {}", rtsc.getTileCount(), parameters.stack);
 
 		// prepare a suitable data structure for spark
@@ -174,6 +175,15 @@ public class StreakStatisticsClient implements Serializable {
 		// convert to image and store on disk - list needs to be copied since the list returned by spark is not sortable
 		final Img<DoubleType> data = combineToImg(new ArrayList<>(result));
 		storeData(data, stackBounds);
+	}
+
+	private ResolvedTileSpecCollection getRequestedTiles() throws IOException {
+		final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
+		final StackMetaData stackMetaData = dataClient.getStackMetaData(parameters.stack);
+		final Bounds bounds = stackMetaData.getStackBounds();
+		final Bounds reducedBounds = parameters.zRange.overrideBounds(bounds);
+
+		return dataClient.getResolvedTilesForZRange(parameters.stack, reducedBounds.getMinZ(), reducedBounds.getMaxZ());
 	}
 
 	private Img<DoubleType> combineToImg(final List<Tuple2<Double, double[][]>> zLayerToStreakStatistics) {
