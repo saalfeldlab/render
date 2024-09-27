@@ -26,6 +26,7 @@ import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.StreakFinderParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.saalfeldlab.n5.GzipCompression;
@@ -60,17 +61,11 @@ public class StreakStatisticsClient implements Serializable {
 			@ParametersDelegate
 			public ZRangeParameters zRange = new ZRangeParameters();
 
+			@ParametersDelegate
+			public StreakFinderParameters streakFinder = new StreakFinderParameters();
+
 			@Parameter(names = "--stack", description = "Stack to pull image and transformation data from", required = true)
 			public String stack;
-
-			@Parameter(names = "--threshold", description = "Threshold used to convert the streak mask to a binary mask", required = true)
-			public double threshold;
-
-			@Parameter(names = "--blurRadius", description = "Radius of the Gaussian blur applied to the streak mask")
-			private int blurRadius = 0;
-
-			@Parameter(names = "--meanFilterSize", description = "Number of pixels to average in the y-direction (must be odd)", required = true)
-			private int meanFilterSize;
 
 			@Parameter(names = "--output", description = "Output file path", required = true)
 			public String outputPath;
@@ -82,8 +77,7 @@ public class StreakStatisticsClient implements Serializable {
 			private int nY = 0;
 
 			public void validate() {
-				// delegate validation to StreakFinder
-				final StreakFinder ignored = new StreakFinder(meanFilterSize, threshold, blurRadius);
+				streakFinder.validate();
 				try {
 					final String[] nCells = cells.split("x");
 					nX = Integer.parseInt(nCells[0]);
@@ -166,7 +160,7 @@ public class StreakStatisticsClient implements Serializable {
 
 		// do the actual computation in a distributed way
 		final Broadcast<Map<String, TransformSpec>> referenceSpecs = sparkContext.broadcast(rtsc.getTransformIdToSpecMap());
-		final Broadcast<StreakFinder> streakFinder = sparkContext.broadcast(new StreakFinder(parameters.meanFilterSize, parameters.threshold, parameters.blurRadius));
+		final Broadcast<StreakFinder> streakFinder = sparkContext.broadcast(parameters.streakFinder.createStreakFinder());
 		final List<Tuple2<Double, double[][]>> result = sparkContext.parallelizePairs(zLayerToTileSpecs)
 				.mapValues(tileSpecs -> resolveTileSpecs(referenceSpecs.getValue(), tileSpecs))
 				.mapValues(tileSpecs -> computeStreakStatisticsForLayer(streakFinder.value(), stackBounds.value(), parameters.nCellsX(), parameters.nCellsY(), tileSpecs))
@@ -238,9 +232,9 @@ public class StreakStatisticsClient implements Serializable {
 
 			n5Writer.setAttribute(dataset, "StackBounds", Map.of("min", min, "max", max));
 			final Map<String, Double> runParameters = Map.of(
-					"threshold", parameters.threshold,
-					"meanFilterSize", (double) parameters.meanFilterSize,
-					"blurRadius", (double) parameters.blurRadius);
+					"threshold", parameters.streakFinder.threshold,
+					"meanFilterSize", (double) parameters.streakFinder.meanFilterSize,
+					"blurRadius", (double) parameters.streakFinder.blurRadius);
 			n5Writer.setAttribute(dataset, "RunParameters", runParameters);
 		}
 	}

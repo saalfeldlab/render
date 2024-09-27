@@ -30,4 +30,16 @@ public class StreakFinderParameters implements Serializable {
 	public StreakFinder createStreakFinder() {
 		return new StreakFinder(meanFilterSize, threshold, blurRadius);
 	}
+
+	public void validate() {
+		if (meanFilterSize < 0) {
+			throw new IllegalArgumentException("meanFilterSize must be non-negative");
+		}
+		if (threshold < 0) {
+			throw new IllegalArgumentException("threshold must be non-negative");
+		}
+		if (blurRadius < 0) {
+			throw new IllegalArgumentException("blurRadius must be 0 (no blur) or positive");
+		}
+	}
 }

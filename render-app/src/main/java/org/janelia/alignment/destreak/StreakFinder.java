@@ -32,8 +32,8 @@ public class StreakFinder implements Serializable {
 		if (meanFilterSize < 0) {
 			throw new IllegalArgumentException("meanFilterSize must be non-negative");
 		}
-		if (threshold < 1) {
-			throw new IllegalArgumentException("threshold must be positive");
+		if (threshold < 0) {
+			throw new IllegalArgumentException("threshold must be non-negative");
 		}
 		if (blurRadius < 0) {
 			throw new IllegalArgumentException("blurRadius must be 0 (no blur) or positive");
