@@ -19,7 +19,6 @@ import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.ClientRunner;
@@ -44,7 +43,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 /**
@@ -144,40 +144,35 @@ public class StreakStatisticsClient implements Serializable {
 	}
 
 	private void compileStreakStatistics(final JavaSparkContext sparkContext) throws IOException {
-		// get stack and tile data
-		final ResolvedTileSpecCollection rtsc = getRequestedTiles();
-		final Broadcast<Bounds> stackBounds = sparkContext.broadcast(rtsc.toBounds());
-		LOG.info("run: fetched {} resolved tiles for stack {}", rtsc.getTileCount(), parameters.stack);
+		// get some metadata and broadcast variables accessed by all workers
+		final Broadcast<Parameters> bcParameters = sparkContext.broadcast(parameters);
+		final Broadcast<Bounds> bounds = sparkContext.broadcast(getBounds());
+		final List<Double> zValues = IntStream.range(bounds.value().getMinZ().intValue(), bounds.value().getMaxZ().intValue() + 1)
+				.boxed().map(Double::valueOf).collect(Collectors.toList());
 
-		// prepare a suitable data structure for spark
-		final Map<String, Set<String>> zLayerToTileIds = rtsc.buildSectionIdToTileIdsMap();
-		final List<Tuple2<Double, List<TileSpec>>> zLayerToTileSpecs = new ArrayList<>(zLayerToTileIds.size());
-		zLayerToTileIds.forEach((zLayer, tileIds) -> {
-			final List<TileSpec> tileSpecs = new ArrayList<>(tileIds.size());
-			tileIds.forEach(tileId -> tileSpecs.add(rtsc.getTileSpec(tileId)));
-			zLayerToTileSpecs.add(new Tuple2<>(Double.valueOf(zLayer), tileSpecs));
-		});
+		LOG.info("run: fetched {} z-values for stack {}", zValues.size(), parameters.stack);
 
-		// do the actual computation in a distributed way
-		final Broadcast<Map<String, TransformSpec>> referenceSpecs = sparkContext.broadcast(rtsc.getTransformIdToSpecMap());
-		final Broadcast<StreakFinder> streakFinder = sparkContext.broadcast(parameters.streakFinder.createStreakFinder());
-		final List<Tuple2<Double, double[][]>> result = sparkContext.parallelizePairs(zLayerToTileSpecs)
-				.mapValues(tileSpecs -> resolveTileSpecs(referenceSpecs.getValue(), tileSpecs))
-				.mapValues(tileSpecs -> computeStreakStatisticsForLayer(streakFinder.value(), stackBounds.value(), parameters.nCellsX(), parameters.nCellsY(), tileSpecs))
+		// do the computation in a distributed way
+		final List<Tuple2<Double, double[][]>> result = sparkContext.parallelize(zValues)
+				.mapToPair(z -> new Tuple2<>(z, pullTileSpecs(bcParameters.value(), z)))
+				.mapValues(tileSpecs -> computeStreakStatisticsForLayer(bcParameters.value(), bounds.value(), tileSpecs))
 				.collect();
 
 		// convert to image and store on disk - list needs to be copied since the list returned by spark is not sortable
 		final Img<DoubleType> data = combineToImg(new ArrayList<>(result));
-		storeData(data, stackBounds);
+		storeData(data, bounds);
 	}
 
-	private ResolvedTileSpecCollection getRequestedTiles() throws IOException {
+	private Bounds getBounds() throws IOException {
 		final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
 		final StackMetaData stackMetaData = dataClient.getStackMetaData(parameters.stack);
-		final Bounds bounds = stackMetaData.getStackBounds();
-		final Bounds reducedBounds = parameters.zRange.overrideBounds(bounds);
+		return parameters.zRange.overrideBounds(stackMetaData.getStackBounds());
+	}
 
-		return dataClient.getResolvedTilesForZRange(parameters.stack, reducedBounds.getMinZ(), reducedBounds.getMaxZ());
+	private static List<TileSpec> pullTileSpecs(final Parameters parameters, final double z) throws IOException {
+		final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
+		final ResolvedTileSpecCollection rtsc = dataClient.getResolvedTiles(parameters.stack, z);
+		return new ArrayList<>(rtsc.getTileSpecs());
 	}
 
 	private Img<DoubleType> combineToImg(final List<Tuple2<Double, double[][]>> zLayerToStreakStatistics) {
@@ -200,15 +195,6 @@ public class StreakStatisticsClient implements Serializable {
 			}
 		}
 		return data;
-	}
-
-	private static List<TileSpec> resolveTileSpecs(final Map<String, TransformSpec> referenceSpecs, final List<TileSpec> tileSpecs) {
-		final List<TileSpec> resolvedTileSpecs = new ArrayList<>(tileSpecs.size());
-		for (final TileSpec tileSpec : tileSpecs) {
-			tileSpec.getTransforms().resolveReferences(referenceSpecs);
-			resolvedTileSpecs.add(tileSpec);
-		}
-		return resolvedTileSpecs;
 	}
 
 	private void storeData(final Img<DoubleType> data, final Broadcast<Bounds> stackBounds) {
@@ -240,14 +226,12 @@ public class StreakStatisticsClient implements Serializable {
 	}
 
 	private static double[][] computeStreakStatisticsForLayer(
-			final StreakFinder streakFinder,
+			final Parameters parameters,
 			final Bounds stackBounds,
-			final int nX,
-			final int nY,
 			final List<TileSpec> layerTiles) {
 
 		LOG.info("computeStreakStatisticsForLayer: processing {} tiles", layerTiles.size());
-		final StreakAccumulator accumulator = new StreakAccumulator(stackBounds, nX, nY);
+		final StreakAccumulator accumulator = new StreakAccumulator(stackBounds, parameters.nCellsX(), parameters.nCellsY());
 		final ImageProcessorCache cache = ImageProcessorCache.DISABLED_CACHE;
 
 		for (final TileSpec tileSpec : layerTiles) {
@@ -260,6 +244,8 @@ public class StreakStatisticsClient implements Serializable {
 				continue;
 			}
 
+
+			final StreakFinder streakFinder = parameters.streakFinder.createStreakFinder();
 			final ImagePlus mask = streakFinder.createStreakMask(image);
 			addStreakStatisticsForSingleMask(accumulator, mask, tileSpec);
 		}
