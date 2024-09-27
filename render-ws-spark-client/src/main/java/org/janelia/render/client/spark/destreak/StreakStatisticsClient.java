@@ -235,8 +235,13 @@ public class StreakStatisticsClient implements Serializable {
 
 		try (final N5Writer n5Writer = new N5ZarrWriter(parameters.outputPath)) {
 			N5Utils.save(transposedData, n5Writer, dataset, fullDimensions, new GzipCompression());
-			n5Writer.setAttribute(dataset, "stackMin", min);
-			n5Writer.setAttribute(dataset, "stackMax", max);
+
+			n5Writer.setAttribute(dataset, "StackBounds", Map.of("min", min, "max", max));
+			final Map<String, Double> runParameters = Map.of(
+					"threshold", parameters.threshold,
+					"meanFilterSize", (double) parameters.meanFilterSize,
+					"blurRadius", (double) parameters.blurRadius);
+			n5Writer.setAttribute(dataset, "RunParameters", runParameters);
 		}
 	}
 
