@@ -11,7 +11,7 @@ import java.io.Serializable;
 public class StreakFinderParameters implements Serializable {
 	@Parameter(
 			names = "--meanFilterSize",
-			description = "Number of pixels to average in the y-direction (must be odd)",
+			description = "Number of pixels to average in the positive and negative y-direction",
 			required = true)
 	public int meanFilterSize;
 
