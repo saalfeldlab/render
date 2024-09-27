@@ -160,7 +160,7 @@ public class StreakStatisticsClient implements Serializable {
 
 		// convert to image and store on disk - list needs to be copied since the list returned by spark is not sortable
 		final Img<DoubleType> data = combineToImg(new ArrayList<>(result));
-		storeData(data, bounds);
+		storeData(data, bounds.value());
 	}
 
 	private Bounds getBounds() throws IOException {
@@ -197,21 +197,21 @@ public class StreakStatisticsClient implements Serializable {
 		return data;
 	}
 
-	private void storeData(final Img<DoubleType> data, final Broadcast<Bounds> stackBounds) {
+	private void storeData(final Img<DoubleType> data, final Bounds stackBounds) {
 		// transpose data because images are F-order and python expects C-order
 		final RandomAccessibleInterval<DoubleType> transposedData = Views.permute(data, 0, 2);
 		final String dataset = Paths.get(parameters.renderWeb.project, parameters.stack).toString();
 		final int[] fullDimensions = Arrays.stream(transposedData.dimensionsAsLongArray()).mapToInt(i -> (int) i).toArray();
 
 		final double[] min = new double[3];
-		min[0] = stackBounds.value().getMinX();
-		min[1] = stackBounds.value().getMinY();
-		min[2] = stackBounds.value().getMinZ();
+		min[0] = stackBounds.getMinX();
+		min[1] = stackBounds.getMinY();
+		min[2] = stackBounds.getMinZ();
 
 		final double[] max = new double[3];
-		max[0] = stackBounds.value().getMaxX();
-		max[1] = stackBounds.value().getMaxY();
-		max[2] = stackBounds.value().getMaxZ();
+		max[0] = stackBounds.getMaxX();
+		max[1] = stackBounds.getMaxY();
+		max[2] = stackBounds.getMaxZ();
 
 		try (final N5Writer n5Writer = new N5ZarrWriter(parameters.outputPath)) {
 			N5Utils.save(transposedData, n5Writer, dataset, fullDimensions, new GzipCompression());
