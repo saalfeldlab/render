@@ -42,7 +42,7 @@ public class StreakFinderTest {
 		final ImageProcessor originalProc = original.getProcessor();
 		for (int i = 0; i < corrected.getWidth() * corrected.getHeight(); i++) {
 			final float lambda = maskProc.getf(i) / 255.0f;
-			final float mergedValue = originalProc.getf(i) * lambda + proc.getf(i) * (1.0f - lambda);
+			final float mergedValue = originalProc.getf(i) * (1 - lambda) + proc.getf(i) * lambda;
 			proc.setf(i, mergedValue);
 		}
 

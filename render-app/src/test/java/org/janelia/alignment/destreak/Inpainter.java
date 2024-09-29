@@ -126,7 +126,7 @@ public class Inpainter {
 				}
 
 				final float value = mask.get().get();
-				if (value > 254.0) {
+				if (value < 1.0) {
 					// the ray reached a non-masked pixel
 					mask.localize(result.position);
 					result.distance = steps;
