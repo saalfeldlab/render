@@ -244,7 +244,6 @@ public class StreakStatisticsClient implements Serializable {
 				continue;
 			}
 
-
 			final StreakFinder streakFinder = parameters.streakFinder.createStreakFinder();
 			final ImagePlus mask = streakFinder.createStreakMask(image);
 			addStreakStatisticsForSingleMask(accumulator, mask, tileSpec);
@@ -276,7 +275,7 @@ public class StreakStatisticsClient implements Serializable {
 		private final int height;
 
 		private final double[][] sum;
-		private final int[][] counts;
+		private final long[][] counts;
 
 		public StreakAccumulator(final Bounds layerBounds, final int nX, final int nY) {
 			this.nX = nX;
@@ -288,7 +287,7 @@ public class StreakStatisticsClient implements Serializable {
 			this.height =  layerBounds.getHeight();
 
 			sum = new double[nX][nY];
-			counts = new int[nX][nY];
+			counts = new long[nX][nY];
 		}
 
 		public void addValue(final double value, final double x, final double y) {
@@ -302,7 +301,7 @@ public class StreakStatisticsClient implements Serializable {
 			final double[][] results = new double[nX][nY];
 			for (int i = 0; i < nX; i++) {
 				for (int j = 0; j < nY; j++) {
-					// invert the result because the mask is 0 where there are streaks and 255 where there are no streaks
+					// account for the fact that the mask values are in [0, 255], with 255 indicating a streak
 					results[i][j] = sum[i][j] / ( 255 * counts[i][j]);
 				}
 			}
