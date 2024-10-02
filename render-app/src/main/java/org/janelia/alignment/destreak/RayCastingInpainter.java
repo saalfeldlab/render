@@ -19,16 +19,19 @@ import net.imglib2.view.Views;
  * <p>
  * This is adapted from the hotknife repository for testing purposes.
  */
-public class Inpainter {
+public class RayCastingInpainter {
 
 	private final int nRays;
-	private final RayCaster rayCaster;
+	private final long maxRayLength;
+	private final RayDirectionStrategy directionStrategy;
 
-	public Inpainter(final int nRays, final int maxInpaintingDiameter) {
+	private final double[] direction = new double[2];
+	private final Result result = new Result();
+
+	public RayCastingInpainter(final int nRays, final int maxInpaintingDiameter, final RayDirectionStrategy directionStrategy) {
 		this.nRays = nRays;
-
-		final Random rnd = new Random(89656);
-		rayCaster = new RayCaster(maxInpaintingDiameter, rnd);
+		this.maxRayLength = maxInpaintingDiameter;
+		this.directionStrategy = directionStrategy;
 	}
 
 	private static boolean isInside(final RealLocalizable p, final RealInterval r) {
@@ -68,7 +71,7 @@ public class Inpainter {
 			// interpolate value by casting rays in random directions and averaging (weighted by distances) the
 			// values of the first non-masked pixel
 			for (int i = 0; i < nRays; ++i) {
-				final RayCaster.Result result = rayCaster.cast(maskAccess, mask, imgCursor);
+				final Result result = castRay(maskAccess, mask, imgCursor);
 				if (result != null) {
 					final double weight = 1.0 / result.distance;
 					weightSum += weight;
@@ -85,65 +88,43 @@ public class Inpainter {
 		}
 	}
 
-	private static class RayCaster {
-		private final double[] direction = new double[2];
-		private final Result result = new Result();
+	/**
+	 * Casts a ray from the given position in a random direction until it hits a non-masked (i.e., non-NaN) pixel
+	 * or exits the image boundary.
+	 *
+	 * @param mask the mask indicating which pixels are masked (> 0) and which are not (0)
+	 * @param interval the interval of the image
+	 * @param position the position from which to cast the ray
+	 * @return the result of the ray casting or null if the ray exited the image boundary without hitting a
+	 * 		   non-masked pixel
+	 */
+	private Result castRay(final RealRandomAccess<FloatType> mask, final Interval interval, final RealLocalizable position) {
+		mask.setPosition(position);
+		directionStrategy.initializeNextDirection(direction);
+		long steps = 0;
 
-		private final Random random;
-		private final long maxRayLength;
+		while(true) {
+			mask.move(direction);
+			++steps;
 
-		/**
-		 * @param maxRayLength the maximum length of a ray in pixels
-		 * @param random the random number generator to use
-		 */
-		public RayCaster(final long maxRayLength, final Random random) {
-			this.maxRayLength = maxRayLength;
-			this.random = random;
-		}
+			if (!isInside(mask, interval) || steps > maxRayLength) {
+				// the ray exited the image boundaries without hitting a non-masked pixel
+				return null;
+			}
 
-		/**
-		 * Casts a ray from the given position in a random direction until it hits a non-masked (i.e., non-NaN) pixel
-		 * or exits the image boundary.
-		 *
-		 * @param mask the mask indicating which pixels are masked (> 0) and which are not (0)
-		 * @param interval the interval of the image
-		 * @param position the position from which to cast the ray
-		 * @return the result of the ray casting or null if the ray exited the image boundary without hitting a
-		 * 		   non-masked pixel
-		 */
-		public Result cast(final RealRandomAccess<FloatType> mask, final Interval interval, final RealLocalizable position) {
-			mask.setPosition(position);
-			initializeRandomDirection();
-			long steps = 0;
-
-			while(true) {
-				mask.move(direction);
-				++steps;
-
-				if (!isInside(mask, interval) || steps > maxRayLength) {
-					// the ray exited the image boundaries without hitting a non-masked pixel
-					return null;
-				}
-
-				final float value = mask.get().get();
-				if (value < 1.0) {
-					// the ray reached a non-masked pixel
-					mask.localize(result.position);
-					result.distance = steps;
-					return result;
-				}
+			final float value = mask.get().get();
+			if (value < 1.0) {
+				// the ray reached a non-masked pixel
+				mask.localize(result.position);
+				result.distance = steps;
+				return result;
 			}
 		}
+	}
 
-		private void initializeRandomDirection() {
-			final double angle = random.nextDouble() * 2 * Math.PI;
-			direction[0] = Math.cos(angle);
-			direction[1] = Math.sin(angle);
-		}
 
-		public static class Result {
-			public double[] position = new double[2];
-			public double distance = 0;
-		}
+	private static class Result {
+		public double[] position = new double[2];
+		public double distance = 0;
 	}
 }
