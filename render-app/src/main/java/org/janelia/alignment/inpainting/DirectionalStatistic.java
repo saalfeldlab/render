@@ -1,14 +1,14 @@
 package org.janelia.alignment.inpainting;
 
 /**
- * Interface for strategies that determine the direction of a ray used in {@link RayCastingInpainter}.
+ * Interface for distributions that model the direction of a ray used in {@link RayCastingInpainter}.
  */
-public interface RayDirectionStrategy {
+public interface DirectionalStatistic {
 
 	/**
 	 * Initializes the direction of the next ray. The array that is passed in is filled with the direction.
 	 *
 	 * @param direction the array in which to initialize the direction
 	 */
-	void initializeNextDirection(double[] direction);
+	void sample(double[] direction);
 }

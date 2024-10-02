@@ -7,7 +7,7 @@ import ij.process.ImageProcessor;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.real.FloatType;
-import org.janelia.alignment.inpainting.RandomRayDirection2D;
+import org.janelia.alignment.inpainting.RandomDirection2D;
 import org.janelia.alignment.inpainting.RayCastingInpainter;
 
 public class InpaintingClient {
@@ -22,7 +22,7 @@ public class InpaintingClient {
 	public static void main(final String[] args) {
 		final String srcPath = "/home/innerbergerm@hhmi.org/big-data/streak-correction/jrc_P3-E2-D1-Lip4-19/z14765-0-0-0.png";
 		final ImagePlus original = new ImagePlus(srcPath);
-		final RayCastingInpainter inpainter = new RayCastingInpainter(N_RAYS, MAX_INPAINTING_DIAMETER, new RandomRayDirection2D());
+		final RayCastingInpainter inpainter = new RayCastingInpainter(N_RAYS, MAX_INPAINTING_DIAMETER, new RandomDirection2D());
 
 //		final ImagePlus mask = threshold(original.getProcessor(), THRESHOLD);
 		final ImagePlus mask = bandMask(original.getProcessor(), Y_MIN, Y_MAX);

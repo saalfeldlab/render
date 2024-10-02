@@ -7,7 +7,7 @@ import ij.process.ImageProcessor;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.real.FloatType;
-import org.janelia.alignment.inpainting.RandomRayDirection2D;
+import org.janelia.alignment.inpainting.RandomDirection2D;
 import org.janelia.alignment.inpainting.RayCastingInpainter;
 
 public class StreakFinderTest {
@@ -15,7 +15,7 @@ public class StreakFinderTest {
 		final String srcPath = "/home/innerbergerm@hhmi.org/big-data/streak-correction/jrc_mus-liver-zon-3/z00032-0-0-1.png";
 		final StreakFinder finder = new StreakFinder(100, 5.0, 3);
 		// final StreakCorrector corrector = new SmoothMaskStreakCorrector(12, 6161, 8190, 10, 10, 0);
-		final RayCastingInpainter inpainter = new RayCastingInpainter(128, 100, new RandomRayDirection2D());
+		final RayCastingInpainter inpainter = new RayCastingInpainter(128, 100, new RandomDirection2D());
 
 		final long start = System.currentTimeMillis();
 		final ImagePlus original = new ImagePlus(srcPath);

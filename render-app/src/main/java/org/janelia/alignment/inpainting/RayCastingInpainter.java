@@ -21,15 +21,15 @@ public class RayCastingInpainter {
 
 	private final int nRays;
 	private final long maxRayLength;
-	private final RayDirectionStrategy directionStrategy;
+	private final DirectionalStatistic directionStatistic;
 
 	private final double[] direction = new double[2];
 	private final Result result = new Result();
 
-	public RayCastingInpainter(final int nRays, final int maxInpaintingDiameter, final RayDirectionStrategy directionStrategy) {
+	public RayCastingInpainter(final int nRays, final int maxInpaintingDiameter, final DirectionalStatistic directionStatistic) {
 		this.nRays = nRays;
 		this.maxRayLength = maxInpaintingDiameter;
-		this.directionStrategy = directionStrategy;
+		this.directionStatistic = directionStatistic;
 	}
 
 	private static boolean isInside(final RealLocalizable p, final RealInterval r) {
@@ -98,7 +98,7 @@ public class RayCastingInpainter {
 	 */
 	private Result castRay(final RealRandomAccess<FloatType> mask, final Interval interval, final RealLocalizable position) {
 		mask.setPosition(position);
-		directionStrategy.initializeNextDirection(direction);
+		directionStatistic.sample(direction);
 		long steps = 0;
 
 		while(true) {
