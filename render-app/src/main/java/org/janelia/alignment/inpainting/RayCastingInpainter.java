@@ -1,6 +1,4 @@
-package org.janelia.alignment.destreak;
-
-import java.util.Random;
+package org.janelia.alignment.inpainting;
 
 import net.imglib2.RealInterval;
 

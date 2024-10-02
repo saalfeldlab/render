@@ -1,4 +1,4 @@
-package org.janelia.alignment.destreak;
+package org.janelia.alignment.inpainting;
 
 import java.util.Random;
 

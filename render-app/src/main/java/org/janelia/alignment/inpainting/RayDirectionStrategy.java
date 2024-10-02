@@ -1,4 +1,4 @@
-package org.janelia.alignment.destreak;
+package org.janelia.alignment.inpainting;
 
 /**
  * Interface for strategies that determine the direction of a ray used in {@link RayCastingInpainter}.

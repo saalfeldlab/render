@@ -7,6 +7,8 @@ import ij.process.ImageProcessor;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.real.FloatType;
+import org.janelia.alignment.inpainting.RandomRayDirection2D;
+import org.janelia.alignment.inpainting.RayCastingInpainter;
 
 public class StreakFinderTest {
 	public static void main(final String[] args) {
