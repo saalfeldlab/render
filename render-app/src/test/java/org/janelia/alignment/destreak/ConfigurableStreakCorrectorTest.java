@@ -167,7 +167,7 @@ public class ConfigurableStreakCorrectorTest {
         // displayParameterRange(srcPath, parameters, "angle", 0.0, 1.0, 3, false);
         displayParameterRange(srcPath, parameters, "gaussianBlurRadius", 3.0, 3, true);
         displayParameterRange(srcPath, parameters, "initialThreshold", 1.0, 3, true);
-        displayParameterRange(srcPath, parameters, "finalThreshold", 0.03, 3, true);
+        displayParameterRange(srcPath, parameters, "finalThreshold", 0.01, 3, true);
 
         // this shows the final result of the correction process as well as the end result
         displayParameterRange(srcPath, parameters, "numThreads", 1.0, 0, true);

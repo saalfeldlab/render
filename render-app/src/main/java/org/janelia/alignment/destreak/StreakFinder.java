@@ -8,18 +8,18 @@ import ij.process.ImageProcessor;
 import java.io.Serializable;
 
 /**
- * This class can detect streaks in an image and return a corresponding mask.
+ * This class detects streaks in an image and returns a corresponding mask.
  * <p>
  * The finder first applies a derivative filter in the x-direction to detect vertical edges. Then, it applies a mean
  * filter in the y-direction to smooth out the edges in the y-direction. The resulting image is then thresholded
- * (from above and below) to create a mask of the streaks. Finally, a Gaussian blur is applied to the mask to smooth it.
- * The mask is 0 where there are no streaks and 255 where there are streaks.
+ * (from above and below) to create a mask of the streaks. Finally, an optional Gaussian blur is applied to the mask to
+ * smooth it. The mask is 0 where there are no streaks and 255 where there are streaks.
  * <p>
  * There are three parameters that can be set:
  * <ul>
  *     <li>meanFilterSize: the number of pixels to average in the y-direction (e.g., 0 means no averaging, 50 means averaging +/-50 pixels in y)</li>
  *     <li>threshold: the threshold used to convert the streak mask to a binary mask</li>
- *     <li>blurRadius: the radius of the Gaussian blur applied to the streak mask</li>
+ *     <li>blurRadius: the radius of the Gaussian blur applied to the streak mask (0 means no smoothing)</li>
  * </ul>
  */
 public class StreakFinder implements Serializable {
