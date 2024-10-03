@@ -11,7 +11,7 @@ import org.janelia.alignment.inpainting.AnisotropicDirection2D;
 import org.janelia.alignment.inpainting.DirectionalStatistic;
 import org.janelia.alignment.inpainting.RayCastingInpainter;
 
-public class InpaintingClient {
+public class InpaintingTest {
 
 	private static final int N_RAYS = 256;
 	private static final int MAX_INPAINTING_DIAMETER = 100;
