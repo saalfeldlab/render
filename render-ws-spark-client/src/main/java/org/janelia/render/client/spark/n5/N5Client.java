@@ -7,6 +7,7 @@ import ij.process.ByteProcessor;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -16,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import net.imglib2.util.Intervals;
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -52,6 +52,7 @@ import net.imglib2.img.array.ArrayImg;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.basictypeaccess.array.ByteArray;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.util.Intervals;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 
@@ -118,6 +119,15 @@ public class N5Client {
 
         public int[] getDownsampleFactors() {
             return parseCSIntArray(downsampleFactorsString);
+        }
+
+        @Parameter(
+                names = "--reviewFactors",
+                description = "If specified, generates a review scale pyramid with given factors, e.g. 2,2,1")
+        public String reviewDownsampleFactorsString;
+
+        public int[] getReviewDownsampleFactors() {
+            return parseCSIntArray(reviewDownsampleFactorsString);
         }
 
         @ParametersDelegate
@@ -251,6 +261,8 @@ public class N5Client {
         int[] blockSize = parameters.getBlockSize();
         final int[] downsampleFactors = parameters.getDownsampleFactors();
         final boolean downsampleStack = downsampleFactors != null;
+        final int[] reviewDownsampleFactors = parameters.getReviewDownsampleFactors();
+        final boolean downsampleStackForReview = downsampleStack && (reviewDownsampleFactors != null);
 
         final String fullScaleDatasetName = downsampleStack ?
                                             Paths.get(datasetName, "s" + 0).toString() : datasetName;
@@ -351,6 +363,52 @@ public class N5Client {
 
         ngAttributes.write(Paths.get(parameters.n5Path),
                            Paths.get(fullScaleDatasetName));
+
+        if (downsampleStackForReview) {
+
+            final String reviewDatasetName = datasetName + "_review";
+            final Path reviewDatasetPath = Paths.get(parameters.n5Path, reviewDatasetName);
+
+            if (Files.exists(reviewDatasetPath)) {
+                throw new IllegalArgumentException("review dataset " + reviewDatasetPath + " already exists");
+            }
+
+            Files.createDirectory(reviewDatasetPath);
+
+            final String fullScaleReviewDatasetName = reviewDatasetName + "/s0";
+            final Path fullScaleReviewDatasetPath = Paths.get(parameters.n5Path, fullScaleReviewDatasetName);
+            final Path fullScaleDatasetPath = Paths.get(parameters.n5Path, fullScaleDatasetName);
+
+            Files.createSymbolicLink(fullScaleReviewDatasetPath, fullScaleDatasetPath);
+
+            LOG.info("run: downsample {} with factors {}",
+                     fullScaleReviewDatasetPath,
+                     Arrays.toString(reviewDownsampleFactors));
+
+            // Now that the full resolution image is saved into n5, generate the scale pyramid
+            final N5WriterSupplier n5ReviewSupplier = new N5PathSupplier(parameters.n5Path);
+
+            final List<String> downsampledDatasetPaths =
+                    downsampleScalePyramid(sparkContext,
+                                           n5ReviewSupplier,
+                                           fullScaleReviewDatasetName,
+                                           reviewDatasetName,
+                                           reviewDownsampleFactors);
+
+            numberOfDownSampledDatasets = downsampledDatasetPaths.size();
+
+            // save additional parameters so that n5 can be viewed in neuroglancer
+            final NeuroglancerAttributes reviewNgAttributes =
+                    new NeuroglancerAttributes(resolutionValues,
+                                               parameters.stackResolutionUnit,
+                                               numberOfDownSampledDatasets,
+                                               reviewDownsampleFactors,
+                                               Arrays.asList(min[0], min[1], min[2]),
+                                               NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
+
+            reviewNgAttributes.write(Paths.get(parameters.n5Path),
+                                     Paths.get(fullScaleReviewDatasetName));
+        }
 
         sparkContext.close();
     }
