@@ -175,6 +175,24 @@
       }
     ],
 
+    "jrc_liu-nih_ips-draq5-test-2-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "5545,3080,15,4,0.0,20,4.0,0.05"
+        }
+      }
+    ],
+
+    "jrc_mpi_psc120_1b-destreak" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "6553,10920,40,8,0.0,5,15.0,0.05"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
