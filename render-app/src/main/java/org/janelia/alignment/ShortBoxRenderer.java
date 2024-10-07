@@ -44,6 +44,15 @@ public class ShortBoxRenderer
                                  final long y,
                                  final long z,
                                  final ImageProcessorCache ipCache) {
+
+        return render(x, y, z, ipCache, true);
+    }
+
+    public ShortProcessor render(final long x,
+                                 final long y,
+                                 final long z,
+                                 final ImageProcessorCache ipCache,
+                                 final boolean highQuality) {
         final String renderParametersUrlString = String.format("%s/z/%d/box/%d,%d,%s",
                                                                stackUrl, z, x, y, boxUrlSuffix);
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(renderParametersUrlString);
@@ -52,6 +61,10 @@ public class ShortBoxRenderer
         }
         if (maxIntensity != null) {
             renderParameters.setMaxIntensity(maxIntensity);
+        }
+        if (highQuality) {
+            renderParameters.setBinaryMask(false);
+            renderParameters.setSkipInterpolation(false);
         }
 
         final ShortProcessor renderedProcessor;
