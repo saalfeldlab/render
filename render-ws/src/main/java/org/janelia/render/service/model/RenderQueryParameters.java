@@ -19,6 +19,9 @@ public class RenderQueryParameters
     @QueryParam("binaryMask")
     private final Boolean binaryMask;
 
+    @QueryParam("skipInterpolation")
+    private final Boolean skipInterpolation;
+
     @QueryParam("channels")
     private final String channels;
 
@@ -68,10 +71,12 @@ public class RenderQueryParameters
              null,
              null,
              null,
+             null,
              scale);
     }
 
     private RenderQueryParameters(final Boolean binaryMask,
+                                  final Boolean skipInterpolation,
                                   final String channels,
                                   final Boolean convertToGray,
                                   final Boolean excludeMask,
@@ -84,6 +89,7 @@ public class RenderQueryParameters
                                   final Double maxIntensity,
                                   final Double scale) {
         this.binaryMask = binaryMask;
+        this.skipInterpolation = skipInterpolation;
         this.channels = channels;
         this.convertToGray = convertToGray;
         this.excludeMask = excludeMask;
@@ -100,6 +106,11 @@ public class RenderQueryParameters
     @SuppressWarnings("unused") // getter required for Swagger to detect parameter
     public Boolean getBinaryMask() {
         return binaryMask;
+    }
+
+    @SuppressWarnings("unused") // getter required for Swagger to detect parameter
+    public Boolean getSkipInterpolation() {
+        return skipInterpolation;
     }
 
     @SuppressWarnings("unused") // getter required for Swagger to detect parameter
