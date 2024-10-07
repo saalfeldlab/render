@@ -212,8 +212,8 @@ public class RenderParameters implements Serializable {
         this.convertToGray = false;
         this.quality = DEFAULT_QUALITY;
         this.numberOfThreads = DEFAULT_NUMBER_OF_THREADS;
-        this.skipInterpolation = true;
-        this.binaryMask = true;
+        this.skipInterpolation = false;
+        this.binaryMask = false;
         this.excludeMask = false;
         this.maskMinX = null;
         this.maskMinY = null;

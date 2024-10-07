@@ -54,10 +54,6 @@ public class ByteBoxRenderer
             renderParameters.setMaxIntensity(maxIntensity);
         }
 
-        // render at full quality
-        renderParameters.setSkipInterpolation(false);
-        renderParameters.setBinaryMask(false);
-
         final ByteProcessor renderedProcessor;
         if (renderParameters.numberOfTileSpecs() > 0) {
             if (exportMaskOnly) {

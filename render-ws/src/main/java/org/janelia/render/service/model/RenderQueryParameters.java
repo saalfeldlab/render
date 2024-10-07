@@ -169,7 +169,8 @@ public class RenderQueryParameters
                                                final RenderDataService renderDataService) {
 
         // apply "simple" parameters
-        renderParameters.setBinaryMask(binaryMask);
+        renderParameters.setBinaryMask(binaryMask == null || binaryMask);
+        renderParameters.setSkipInterpolation(skipInterpolation == null || skipInterpolation);
         renderParameters.setChannels(channels);
         renderParameters.setConvertToGray(convertToGray);
         renderParameters.setExcludeMask(excludeMask);
