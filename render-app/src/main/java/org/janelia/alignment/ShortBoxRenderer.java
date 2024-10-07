@@ -54,6 +54,10 @@ public class ShortBoxRenderer
             renderParameters.setMaxIntensity(maxIntensity);
         }
 
+        // render at full quality
+        renderParameters.setSkipInterpolation(false);
+        renderParameters.setBinaryMask(false);
+
         final ShortProcessor renderedProcessor;
         if (renderParameters.numberOfTileSpecs() > 0) {
             if (exportMaskOnly) {
