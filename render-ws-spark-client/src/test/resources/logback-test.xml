@@ -8,9 +8,10 @@
         </encoder>
     </appender>
 
-    <!-- reduce log noise from spark -->
+    <!-- reduce log noise -->
     <logger name="org.sparkproject" level="warn"/>
     <logger name="org.apache" level="info"/>
+    <logger name="org.apache.http" level="warn"/>
 
     <root level="debug">
         <appender-ref ref="STDOUT" />

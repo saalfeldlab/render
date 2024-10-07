@@ -8,6 +8,9 @@
         </encoder>
     </appender>
 
+    <!-- reduce log noise -->
+    <logger name="org.apache.http" level="warn"/>
+
     <root level="debug">
         <appender-ref ref="STDOUT" />
     </root>
