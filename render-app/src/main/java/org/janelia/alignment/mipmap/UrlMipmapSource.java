@@ -101,7 +101,7 @@ public class UrlMipmapSource
 
         final ChannelMap channels = new ChannelMap();
 
-        if ((channelSpecList != null) && (channelSpecList.size() > 0)) {
+        if ((channelSpecList != null) && (! channelSpecList.isEmpty())) {
 
             final long loadMipStart = System.currentTimeMillis();
 
@@ -139,8 +139,8 @@ public class UrlMipmapSource
 
             if (imageProcessor.getWidth() == 0 || imageProcessor.getHeight() == 0) {
 
-                LOG.debug("skipping " + getSourceName() + " mipmap " + imageAndMask.getImageUrl() +
-                          " with zero dimension after down-sampling " + downSampleLevels + " levels");
+				LOG.debug("skipping {} mipmap {} with zero dimension after down-sampling {} levels",
+                          getSourceName(), imageAndMask.getImageUrl(), downSampleLevels);
 
             } else {
 

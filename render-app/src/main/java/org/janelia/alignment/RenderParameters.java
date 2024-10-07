@@ -212,8 +212,8 @@ public class RenderParameters implements Serializable {
         this.convertToGray = false;
         this.quality = DEFAULT_QUALITY;
         this.numberOfThreads = DEFAULT_NUMBER_OF_THREADS;
-        this.skipInterpolation = false;
-        this.binaryMask = false;
+        this.skipInterpolation = true;
+        this.binaryMask = true;
         this.excludeMask = false;
         this.maskMinX = null;
         this.maskMinY = null;
@@ -329,7 +329,7 @@ public class RenderParameters implements Serializable {
             try {
                 parametersReader.close();
             } catch (final IOException e) {
-                LOG.warn("failed to close reader for " + jsonFile.getAbsolutePath() + ", ignoring error", e);
+				LOG.warn("failed to close reader for {}, ignoring error", jsonFile.getAbsolutePath(), e);
             }
         }
 
@@ -399,7 +399,7 @@ public class RenderParameters implements Serializable {
                 try {
                     urlStream.close();
                 } catch (final IOException e) {
-                    LOG.warn("failed to close " + uri + ", ignoring error", e);
+					LOG.warn("failed to close {}, ignoring error", uri, e);
                 }
             }
         }
@@ -625,7 +625,7 @@ public class RenderParameters implements Serializable {
     }
 
     public boolean hasTileSpecs() {
-        return ((tileSpecs != null) && (tileSpecs.size() > 0));
+        return ((tileSpecs != null) && (! tileSpecs.isEmpty()));
     }
 
     public int numberOfTileSpecs() {
@@ -922,7 +922,7 @@ public class RenderParameters implements Serializable {
 
     private String getFirstChannelName() {
         String firstChannelName = null;
-        if ((tileSpecs != null) && (tileSpecs.size() > 0)) {
+        if ((tileSpecs != null) && (! tileSpecs.isEmpty())) {
             firstChannelName = tileSpecs.get(0).getFirstChannelName();
         }
         return firstChannelName;
@@ -968,7 +968,7 @@ public class RenderParameters implements Serializable {
                     try {
                         urlStream.close();
                     } catch (final IOException e) {
-                        LOG.warn("failed to close " + uri + ", ignoring error", e);
+						LOG.warn("failed to close {}, ignoring error", uri, e);
                     }
                 }
             }
