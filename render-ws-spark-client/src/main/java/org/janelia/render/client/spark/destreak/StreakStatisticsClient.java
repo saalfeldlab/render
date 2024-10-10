@@ -302,7 +302,11 @@ public class StreakStatisticsClient implements Serializable {
 			for (int i = 0; i < nX; i++) {
 				for (int j = 0; j < nY; j++) {
 					// account for the fact that the mask values are in [0, 255], with 255 indicating a streak
-					results[i][j] = sum[i][j] / ( 255 * counts[i][j]);
+					if (counts[i][j] == 0) {
+						results[i][j] = 0;
+					} else {
+						results[i][j] = sum[i][j] / (255 * counts[i][j]);
+					}
 				}
 			}
 			return results;
