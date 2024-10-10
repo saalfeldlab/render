@@ -201,7 +201,7 @@ public class StreakStatisticsClient implements Serializable {
 		// transpose data because images are F-order and python expects C-order
 		final RandomAccessibleInterval<DoubleType> transposedData = Views.permute(data, 0, 2);
 		final String dataset = Paths.get(parameters.renderWeb.project, parameters.stack).toString();
-		final int[] chunkSize = new int[] {parameters.nCellsX(), parameters.nCellsY(), Math.min(1000, (int) transposedData.dimension(2))};
+		final int[] chunkSize = new int[] {parameters.nCellsX(), parameters.nCellsY(), Math.min(1000, (int) data.dimension(2))};
 
 		final double[] min = new double[3];
 		min[0] = stackBounds.getMinX();
