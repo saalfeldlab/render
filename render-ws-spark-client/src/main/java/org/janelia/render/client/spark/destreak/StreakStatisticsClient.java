@@ -201,7 +201,7 @@ public class StreakStatisticsClient implements Serializable {
 		// transpose data because images are F-order and python expects C-order
 		final RandomAccessibleInterval<DoubleType> transposedData = Views.permute(data, 0, 2);
 		final String dataset = Paths.get(parameters.renderWeb.project, parameters.stack).toString();
-		final int[] fullDimensions = Arrays.stream(transposedData.dimensionsAsLongArray()).mapToInt(i -> (int) i).toArray();
+		final int[] chunkSize = new int[] {parameters.nCellsX(), parameters.nCellsY(), Math.min(1000, (int) transposedData.dimension(2))};
 
 		final double[] min = new double[3];
 		min[0] = stackBounds.getMinX();
@@ -214,7 +214,7 @@ public class StreakStatisticsClient implements Serializable {
 		max[2] = stackBounds.getMaxZ();
 
 		try (final N5Writer n5Writer = new N5ZarrWriter(parameters.outputPath)) {
-			N5Utils.save(transposedData, n5Writer, dataset, fullDimensions, new GzipCompression());
+			N5Utils.save(transposedData, n5Writer, dataset, chunkSize, new GzipCompression());
 
 			n5Writer.setAttribute(dataset, "StackBounds", Map.of("min", min, "max", max));
 			final Map<String, Double> runParameters = Map.of(
