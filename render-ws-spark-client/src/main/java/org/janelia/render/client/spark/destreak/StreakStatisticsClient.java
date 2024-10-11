@@ -40,7 +40,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -146,7 +145,8 @@ public class StreakStatisticsClient implements Serializable {
 	private void compileStreakStatistics(final JavaSparkContext sparkContext) throws IOException {
 		// get some metadata and broadcast variables accessed by all workers
 		final Broadcast<Parameters> bcParameters = sparkContext.broadcast(parameters);
-		final Broadcast<Bounds> bounds = sparkContext.broadcast(getBounds());
+		final StackMetaData stackMetaData = getMetaData();
+		final Broadcast<Bounds> bounds = sparkContext.broadcast(parameters.zRange.overrideBounds(stackMetaData.getStackBounds()));
 		final List<Double> zValues = IntStream.range(bounds.value().getMinZ().intValue(), bounds.value().getMaxZ().intValue() + 1)
 				.boxed().map(Double::valueOf).collect(Collectors.toList());
 
@@ -160,13 +160,12 @@ public class StreakStatisticsClient implements Serializable {
 
 		// convert to image and store on disk - list needs to be copied since the list returned by spark is not sortable
 		final Img<DoubleType> data = combineToImg(new ArrayList<>(result));
-		storeData(data, bounds.value());
+		storeData(data, stackMetaData);
 	}
 
-	private Bounds getBounds() throws IOException {
+	private StackMetaData getMetaData() throws IOException {
 		final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
-		final StackMetaData stackMetaData = dataClient.getStackMetaData(parameters.stack);
-		return parameters.zRange.overrideBounds(stackMetaData.getStackBounds());
+		return dataClient.getStackMetaData(parameters.stack);
 	}
 
 	private static List<TileSpec> pullTileSpecs(final Parameters parameters, final double z) throws IOException {
@@ -197,12 +196,13 @@ public class StreakStatisticsClient implements Serializable {
 		return data;
 	}
 
-	private void storeData(final Img<DoubleType> data, final Bounds stackBounds) {
+	private void storeData(final Img<DoubleType> data, final StackMetaData stackMetaData) {
 		// transpose data because images are F-order and python expects C-order
 		final RandomAccessibleInterval<DoubleType> transposedData = Views.permute(data, 0, 2);
 		final String dataset = Paths.get(parameters.renderWeb.project, parameters.stack).toString();
 		final int[] chunkSize = new int[] {Math.min(1000, (int) data.dimension(2)), parameters.nCellsY(), parameters.nCellsX()};
 
+		final Bounds stackBounds = stackMetaData.getStackBounds();
 		final double[] min = new double[3];
 		min[0] = stackBounds.getMinX();
 		min[1] = stackBounds.getMinY();
@@ -217,6 +217,7 @@ public class StreakStatisticsClient implements Serializable {
 			N5Utils.save(transposedData, n5Writer, dataset, chunkSize, new GzipCompression());
 
 			n5Writer.setAttribute(dataset, "StackBounds", Map.of("min", min, "max", max));
+			n5Writer.setAttribute(dataset, "Resolution_nm", stackMetaData.getCurrentResolutionValues());
 			final Map<String, Double> runParameters = Map.of(
 					"threshold", parameters.streakFinder.threshold,
 					"meanFilterSize", (double) parameters.streakFinder.meanFilterSize,
