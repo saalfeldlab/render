@@ -6,7 +6,6 @@ import ij.ImagePlus;
 import ij.process.ImageProcessor;
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
-import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.type.numeric.real.DoubleType;
@@ -40,8 +39,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -153,14 +154,18 @@ public class StreakStatisticsClient implements Serializable {
 		LOG.info("run: fetched {} z-values for stack {}", zValues.size(), parameters.stack);
 
 		// do the computation in a distributed way
-		final List<Tuple2<Double, double[][]>> result = sparkContext.parallelize(zValues)
+		final List<Tuple2<Double, LayerResults>> result = sparkContext.parallelize(zValues)
 				.mapToPair(z -> new Tuple2<>(z, pullTileSpecs(bcParameters.value(), z)))
 				.mapValues(tileSpecs -> computeStreakStatisticsForLayer(bcParameters.value(), bounds.value(), tileSpecs))
 				.collect();
 
 		// convert to image and store on disk - list needs to be copied since the list returned by spark is not sortable
-		final Img<DoubleType> data = combineToImg(new ArrayList<>(result));
-		storeData(data, stackMetaData);
+		final List<Tuple2<Double, LayerResults>> sortedResults = new ArrayList<>(result);
+		sortedResults.sort((a, b) -> a._1.compareTo(b._1));
+		final Img<DoubleType> data = statisticsToImage(sortedResults);
+		final Img<DoubleType> min = minMaxToImage(sortedResults, LayerResults::getMin);
+		final Img<DoubleType> max = minMaxToImage(sortedResults, LayerResults::getMax);
+		storeData(data, min, max, stackMetaData);
 	}
 
 	private StackMetaData getMetaData() throws IOException {
@@ -168,21 +173,19 @@ public class StreakStatisticsClient implements Serializable {
 		return dataClient.getStackMetaData(parameters.stack);
 	}
 
-	private static List<TileSpec> pullTileSpecs(final Parameters parameters, final double z) throws IOException {
+	private static ResolvedTileSpecCollection pullTileSpecs(final Parameters parameters, final double z) throws IOException {
 		final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
-		final ResolvedTileSpecCollection rtsc = dataClient.getResolvedTiles(parameters.stack, z);
-		return new ArrayList<>(rtsc.getTileSpecs());
+		return dataClient.getResolvedTiles(parameters.stack, z);
 	}
 
-	private Img<DoubleType> combineToImg(final List<Tuple2<Double, double[][]>> zLayerToStreakStatistics) {
-		final double[] fullData = new double[parameters.nCellsX() * parameters.nCellsY() * zLayerToStreakStatistics.size()];
-		final Img<DoubleType> data = ArrayImgs.doubles(fullData, parameters.nCellsX(), parameters.nCellsY(), zLayerToStreakStatistics.size());
+	private Img<DoubleType> statisticsToImage(final List<Tuple2<Double, LayerResults>> zLayerToResults) {
+		final double[] fullData = new double[parameters.nCellsX() * parameters.nCellsY() * zLayerToResults.size()];
+		final Img<DoubleType> data = ArrayImgs.doubles(fullData, parameters.nCellsX(), parameters.nCellsY(), zLayerToResults.size());
 		final long[] position = new long[3];
 		int z = 0;
 
-		zLayerToStreakStatistics.sort((a, b) -> a._1.compareTo(b._1));
-		for (final Tuple2<Double, double[][]> zLayerToStreakStatistic : zLayerToStreakStatistics) {
-			final double[][] layerStatistics = zLayerToStreakStatistic._2;
+		for (final Tuple2<Double, LayerResults> zLayerToResult : zLayerToResults) {
+			final double[][] layerStatistics = zLayerToResult._2.getStatistics();
 
 			position[2] = z++;
 			for (int x = 0; x < parameters.nCellsX(); x++) {
@@ -196,11 +199,29 @@ public class StreakStatisticsClient implements Serializable {
 		return data;
 	}
 
-	private void storeData(final Img<DoubleType> data, final StackMetaData stackMetaData) {
+	private Img<DoubleType> minMaxToImage(
+			final List<Tuple2<Double, LayerResults>> zLayerToResults,
+			final Function<LayerResults, double[]> minMaxExtractor
+	) {
+		final double[] flattenedMinMax = zLayerToResults.stream()
+				.map(Tuple2::_2)
+				.map(minMaxExtractor)
+				.flatMapToDouble(Arrays::stream)
+				.toArray();
+		return ArrayImgs.doubles(flattenedMinMax, 2, zLayerToResults.size());
+	}
+
+	private void storeData(
+			final Img<DoubleType> data,
+			final Img<DoubleType> layerMin,
+			final Img<DoubleType> layerMax,
+			final StackMetaData stackMetaData
+	) {
 		// transpose data because images are F-order and python expects C-order
-		final RandomAccessibleInterval<DoubleType> transposedData = Views.permute(data, 0, 2);
-		final String dataset = Paths.get(parameters.renderWeb.project, parameters.stack).toString();
-		final int[] chunkSize = new int[] {Math.min(1000, (int) data.dimension(2)), parameters.nCellsY(), parameters.nCellsX()};
+		final String group = Paths.get(parameters.renderWeb.project, parameters.stack).toString();
+		final int zChunkSize = Math.min(1000, (int) data.dimension(2));
+		final int[] dataChunkSize = new int[] {zChunkSize, parameters.nCellsY(), parameters.nCellsX()};
+		final int[] minMaxChunkSize = new int[] {2, zChunkSize};
 
 		final Bounds stackBounds = stackMetaData.getStackBounds();
 		final double[] min = new double[3];
@@ -214,28 +235,31 @@ public class StreakStatisticsClient implements Serializable {
 		max[2] = stackBounds.getMaxZ();
 
 		try (final N5Writer n5Writer = new N5ZarrWriter(parameters.outputPath)) {
-			N5Utils.save(transposedData, n5Writer, dataset, chunkSize, new GzipCompression());
+			n5Writer.createGroup(group);
+			N5Utils.save(Views.permute(data, 0, 2), n5Writer, Paths.get(group, "statistics").toString(), dataChunkSize, new GzipCompression());
+			N5Utils.save(layerMin, n5Writer, Paths.get(group, "layer_min").toString(), minMaxChunkSize, new GzipCompression());
+			N5Utils.save(layerMax, n5Writer, Paths.get(group, "layer_max").toString(), minMaxChunkSize, new GzipCompression());
 
-			n5Writer.setAttribute(dataset, "StackBounds", Map.of("min", min, "max", max));
-			n5Writer.setAttribute(dataset, "Resolution_nm", stackMetaData.getCurrentResolutionValues());
+			n5Writer.setAttribute(group, "StackBounds", Map.of("min", min, "max", max));
+			n5Writer.setAttribute(group, "Resolution_nm", stackMetaData.getCurrentResolutionValues());
 			final Map<String, Double> runParameters = Map.of(
 					"threshold", parameters.streakFinder.threshold,
 					"meanFilterSize", (double) parameters.streakFinder.meanFilterSize,
 					"blurRadius", (double) parameters.streakFinder.blurRadius);
-			n5Writer.setAttribute(dataset, "RunParameters", runParameters);
+			n5Writer.setAttribute(group, "RunParameters", runParameters);
 		}
 	}
 
-	private static double[][] computeStreakStatisticsForLayer(
+	private static LayerResults computeStreakStatisticsForLayer(
 			final Parameters parameters,
 			final Bounds stackBounds,
-			final List<TileSpec> layerTiles) {
+			final ResolvedTileSpecCollection layerTiles) {
 
-		LOG.info("computeStreakStatisticsForLayer: processing {} tiles", layerTiles.size());
+		LOG.info("computeStreakStatisticsForLayer: processing {} tiles", layerTiles.getTileSpecs().size());
 		final StreakAccumulator accumulator = new StreakAccumulator(stackBounds, parameters.nCellsX(), parameters.nCellsY());
 		final ImageProcessorCache cache = ImageProcessorCache.DISABLED_CACHE;
 
-		for (final TileSpec tileSpec : layerTiles) {
+		for (final TileSpec tileSpec : layerTiles.getTileSpecs()) {
 			LOG.debug("computeStreakStatisticsForLayer: processing tile {}", tileSpec.getTileId());
 
 			final ImageProcessor imp = cache.get(tileSpec.getImagePath(), 0, false, false, ImageLoader.LoaderType.H5_SLICE, null);
@@ -250,7 +274,12 @@ public class StreakStatisticsClient implements Serializable {
 			addStreakStatisticsForSingleMask(accumulator, mask, tileSpec);
 		}
 
-		return accumulator.getResults();
+		layerTiles.recalculateBoundingBoxes();
+		final Bounds layerBounds = layerTiles.toBounds();
+		final double[] min = new double[] {layerBounds.getMinX(), layerBounds.getMinY()};
+		final double[] max = new double[] {layerBounds.getMaxX(), layerBounds.getMaxY()};
+
+		return new LayerResults(accumulator.getResults(), min, max);
 	}
 
 	private static void addStreakStatisticsForSingleMask(final StreakAccumulator accumulator, final ImagePlus mask, final TileSpec tileSpec) {
@@ -265,6 +294,7 @@ public class StreakStatisticsClient implements Serializable {
 			}
 		}
 	}
+
 
 	private static class StreakAccumulator {
 		private final int nX;
@@ -311,6 +341,31 @@ public class StreakStatisticsClient implements Serializable {
 				}
 			}
 			return results;
+		}
+	}
+
+
+	private static class LayerResults implements Serializable{
+		final private double[][] statistics;
+		final private double[] min;
+		final private double[] max;
+
+		public LayerResults(final double[][] statistics, final double[] min, final double[] max) {
+			this.statistics = statistics;
+			this.min = min;
+			this.max = max;
+		}
+
+		public double[][] getStatistics() {
+			return statistics;
+		}
+
+		public double[] getMin() {
+			return min;
+		}
+
+		public double[] getMax() {
+			return max;
 		}
 	}
 }
