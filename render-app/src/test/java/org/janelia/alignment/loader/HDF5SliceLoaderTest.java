@@ -29,7 +29,19 @@ public class HDF5SliceLoaderTest {
 
     public static void main(final String[] args) {
         final HDF5SliceLoader loader = new HDF5SliceLoader();
-        final ImageProcessor ip = loader.load("file:///nrs/cellmap/data/aic_desmosome-2/raw/Gemini450-0113/2021/01/27/02/Gemini450-0113_21-01-27_025406.raw-archive.h5?dataSet=/0-0-0/c0");
-        System.out.println(ip);
+
+        final String basePath = "/nrs/cellmap/data/jrc_mus-cerebellum-3/align";
+        final String[] relPaths = {
+                "/Merlin-6262/2024/08/14/12/Merlin-6262_24-08-14_120147.uint8.h5",
+                "/Merlin-6262/2024/08/14/15/Merlin-6262_24-08-14_155536.uint8.h5"
+        };
+        final String dataSet = "?dataSet=/0-1-3/mipmap.0&z=0";
+
+        for (final String relPath : relPaths) {
+            System.out.println("testing " + relPath);
+            final String urlString = "file://" + basePath + relPath + dataSet;
+            final ImageProcessor ip = loader.load(urlString);
+            System.out.println(ip);
+        }
     }
 }

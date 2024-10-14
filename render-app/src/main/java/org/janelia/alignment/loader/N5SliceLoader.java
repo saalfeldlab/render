@@ -113,6 +113,11 @@ public class N5SliceLoader implements ImageLoader {
 
                 final N5Reader reader = buildReader(basePath);
                 final DatasetAttributes datasetAttributes = reader.getDatasetAttributes(dataSet);
+
+                if (datasetAttributes == null) {
+                    throw new IllegalArgumentException("attributes not found for dataset '" + dataSet + "' in '" + urlString + "'");
+                }
+
                 final DataType dataType = datasetAttributes.getDataType();
                 final long[] dimensions = datasetAttributes.getDimensions();
 
