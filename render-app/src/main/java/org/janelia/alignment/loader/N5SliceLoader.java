@@ -81,15 +81,15 @@ public class N5SliceLoader implements ImageLoader {
                 if (keyValue.length == 2) {
                     final String key = keyValue[0];
                     if ("x".equals(key)){
-                        x = new Long(keyValue[1]);
+                        x = Long.valueOf(keyValue[1]);
                     } else if ("y".equals(key)) {
-                        y = new Long(keyValue[1]);
+                        y = Long.valueOf(keyValue[1]);
                     } else if ("z".equals(key)) {
-                        z = new Long(keyValue[1]);
+                        z = Long.valueOf(keyValue[1]);
                     } else if ("w".equals(key)) {
-                        width = new Integer(keyValue[1]);
+                        width = Integer.valueOf(keyValue[1]);
                     } else if ("h".equals(key)) {
-                        height = new Integer(keyValue[1]);
+                        height = Integer.valueOf(keyValue[1]);
                     } else if ("dataSet".equals(key)) {
                         dataSet = URLDecoder.decode(keyValue[1], defaultCharsetName);
                     }
@@ -201,7 +201,7 @@ public class N5SliceLoader implements ImageLoader {
     }
 
     public static Helper<UnsignedByteType, ByteProcessor> UNSIGNED_BYTE_HELPER =
-            new Helper<UnsignedByteType, ByteProcessor>() {
+            new Helper<>() {
                 @Override
                 public ByteProcessor buildImageProcessor(final int width,
                                                          final int height) {
@@ -218,12 +218,13 @@ public class N5SliceLoader implements ImageLoader {
             };
 
     public static Helper<ShortType, ShortProcessor> SHORT_HELPER =
-            new Helper<ShortType, ShortProcessor>() {
+            new Helper<>() {
                 @Override
                 public ShortProcessor buildImageProcessor(final int width,
                                                           final int height) {
                     return new ShortProcessor(width, height);
                 }
+
                 @Override
                 public RandomAccessibleInterval<ShortType> setupTarget(final ShortProcessor forImageProcessor) {
                     return ArrayImgs.shorts(
@@ -234,12 +235,13 @@ public class N5SliceLoader implements ImageLoader {
             };
 
     public static Helper<FloatType, FloatProcessor> FLOAT_HELPER =
-            new Helper<FloatType, FloatProcessor>() {
+            new Helper<>() {
                 @Override
                 public FloatProcessor buildImageProcessor(final int width,
                                                           final int height) {
                     return new FloatProcessor(width, height);
                 }
+
                 @Override
                 public RandomAccessibleInterval<FloatType> setupTarget(final FloatProcessor forImageProcessor) {
                     return ArrayImgs.floats(
