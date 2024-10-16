@@ -193,6 +193,15 @@
       }
     ],
 
+    "jrc_pri-neuro_0710dish-4" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
+        "parameters" : {
+          "dataString" : "7921,5544,9,6,0.0,10,10.0,0.05"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
