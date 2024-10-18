@@ -3,7 +3,7 @@ package org.janelia.alignment.inpainting;
 import java.util.Random;
 
 /**
- * A statistic that yields a small perturbation of a given direction for each sample.
+ * A statistic that yields a small perturbation of a given 2D direction for each sample.
  */
 public class AnisotropicDirection2D implements DirectionalStatistic {
 

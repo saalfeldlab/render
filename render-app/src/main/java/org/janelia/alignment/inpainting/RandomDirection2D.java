@@ -3,7 +3,7 @@ package org.janelia.alignment.inpainting;
 import java.util.Random;
 
 /**
- * A statistic that yields a completely random direction for each sample.
+ * A statistic that yields a completely random 2D direction for each sample.
  */
 public class RandomDirection2D implements DirectionalStatistic {
 

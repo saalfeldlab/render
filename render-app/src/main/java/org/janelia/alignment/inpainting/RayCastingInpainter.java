@@ -13,7 +13,7 @@ import net.imglib2.view.Views;
 
 
 /**
- * Infer missing values in a 2D image by ray casting (which is equivalent to diffusion of image values).
+ * Infer missing values in an image (up to 3D) by ray casting (which is equivalent to diffusion of image values).
  * <p>
  * This is adapted from the hotknife repository for testing purposes.
  */
@@ -23,7 +23,7 @@ public class RayCastingInpainter {
 	private final long maxRayLength;
 	private final DirectionalStatistic directionStatistic;
 
-	private final double[] direction = new double[2];
+	private final double[] direction = new double[3];
 	private final Result result = new Result();
 
 	public RayCastingInpainter(final int nRays, final int maxInpaintingDiameter, final DirectionalStatistic directionStatistic) {
@@ -43,8 +43,8 @@ public class RayCastingInpainter {
 	}
 
 	/**
-	 * Inpaints missing values in a 2D image by casting rays in random directions and averaging the values of the
-	 * first non-masked pixel.
+	 * Inpaints missing values in an image (up to 3D) by casting rays in random directions and averaging the values of
+	 * the first non-masked pixel.
 	 *
 	 * @param img the image to inpaint
 	 * @param mask the mask
@@ -122,7 +122,7 @@ public class RayCastingInpainter {
 
 
 	private static class Result {
-		public double[] position = new double[2];
+		public double[] position = new double[3];
 		public double distance = 0;
 	}
 }
