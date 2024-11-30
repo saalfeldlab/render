@@ -40,6 +40,20 @@ public class SpaceFillingHilbertCurve {
 	}
 
 	/**
+	 * @return the maximum index that can be encoded/decoded with this Hilbert curve.
+	 */
+	public long maxIndex() {
+		return (1L << (nDimensions * nBits)) - 1;
+	}
+
+	/**
+	 * @return the maximum coordinate that can be encoded/decoded with this Hilbert curve.
+	 */
+	public long maxCoordinate() {
+		return (1L << nBits) - 1;
+	}
+
+	/**
 	 * Convert an index to a set of n-dimensional coordinates.
 	 *
 	 * @param index index within [0, 2^nBits)^nDimensions
@@ -51,8 +65,8 @@ public class SpaceFillingHilbertCurve {
 		}
 
 		final long gray = indexToGray(index);
-		final int[] coordinates = grayToCoordinates(gray, nDimensions, nBits);
-		correctCoordinates(coordinates, nDimensions, nBits);
+		final int[] coordinates = grayToCoordinates(gray);
+		correctCoordinates(coordinates);
 		return coordinates;
 	}
 
@@ -73,37 +87,15 @@ public class SpaceFillingHilbertCurve {
 		}
 
 		final int[] clonedCoordinates = coordinates.clone();
-		unCorrectCoordinates(clonedCoordinates, nDimensions, nBits);
-		final long gray = coordinatesToGray(clonedCoordinates, nDimensions, nBits);
+		unCorrectCoordinates(clonedCoordinates);
+		final long gray = coordinatesToGray(clonedCoordinates);
 		return grayToIndex(gray);
-	}
-
-	/**
-	 * @return the maximum index that can be encoded/decoded with this Hilbert curve.
-	 */
-	public long maxIndex() {
-		return (1L << (nDimensions * nBits)) - 1;
-	}
-
-	/**
-	 * @return the maximum coordinate that can be encoded/decoded with this Hilbert curve.
-	 */
-	public long maxCoordinate() {
-		return (1L << nBits) - 1;
-	}
-
-
-	/**
-	 * Convert an index to a Gray code to create groups of indices that are close to each other in the Hilbert curve.
-	 */
-	private static long indexToGray(final long index) {
-		return index ^ (index >> 1);
 	}
 
 	/**
 	 * Convert a Gray code to a set of n-dimensional coordinates with at most nBits bits of information each.
 	 */
-	private static int[] grayToCoordinates(final long gray, final int nDimensions, final int nBits) {
+	private int[] grayToCoordinates(final long gray) {
 
 		final int[] coordinates = new int[nDimensions];
 		for (int i = 0; i < nDimensions; ++i) {
@@ -125,7 +117,7 @@ public class SpaceFillingHilbertCurve {
 	/**
 	 * Convert a set of n-dimensional coordinates to a Gray code.
 	 */
-	private static long coordinatesToGray(final int[] coordinates, final int nDimensions, final int nBits) {
+	private long coordinatesToGray(final int[] coordinates) {
 		long gray = 0;
 		for (int i = 0; i < nDimensions; ++i) {
 			for (int j = 0; j < nBits; ++j) {
@@ -139,24 +131,19 @@ public class SpaceFillingHilbertCurve {
 	}
 
 	/**
-	 * Convert a Gray code to an index.
-	 */
-	private static long grayToIndex(final long gray) {
-		long index = gray;
-		long mask = gray;
-		while (mask != 0) {
-			mask >>= 1;
-			index ^= mask;
-		}
-		return index;
-	}
-
-	/**
 	 * Correct the coordinates to re-orient the groups of coordinates so that they form a continuous curve.
 	 */
-	private static void correctCoordinates(final int[] coordinates, final int nDimensions, final int nBits) {
+	private void correctCoordinates(final int[] coordinates) {
 		for (int r = 1; r < nBits; ++r) {
 			for (int i = nDimensions - 1; i >= 0; --i) {
+				correctBitsOfCoordinates(coordinates, r, i);
+			}
+		}
+	}
+
+	private void unCorrectCoordinates(final int[] coordinates) {
+		for (int r = nBits - 1; r > 0; --r) {
+			for (int i = 0; i < nDimensions; ++i) {
 				correctBitsOfCoordinates(coordinates, r, i);
 			}
 		}
@@ -175,12 +162,24 @@ public class SpaceFillingHilbertCurve {
 		}
 	}
 
-	private static void unCorrectCoordinates(final int[] coordinates, final int nDimensions, final int nBits) {
-		for (int r = nBits - 1; r > 0; --r) {
-			for (int i = 0; i < nDimensions; ++i) {
-				correctBitsOfCoordinates(coordinates, r, i);
-			}
+	/**
+	 * Convert an index to a Gray code to create groups of indices that are close to each other in the Hilbert curve.
+	 */
+	private static long indexToGray(final long index) {
+		return index ^ (index >> 1);
+	}
+
+	/**
+	 * Convert a Gray code back to an index.
+	 */
+	private static long grayToIndex(final long gray) {
+		long index = gray;
+		long mask = gray;
+		while (mask != 0) {
+			mask >>= 1;
+			index ^= mask;
 		}
+		return index;
 	}
 
 	private static boolean bitIsSet(final long binary, final int bit) {
