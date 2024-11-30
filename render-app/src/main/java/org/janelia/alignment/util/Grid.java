@@ -18,7 +18,9 @@ package org.janelia.alignment.util;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.LongStream;
 
 import org.janelia.saalfeldlab.n5.DataBlock;
 
@@ -99,6 +101,39 @@ public class Grid {
 
 		return create(dimensions, blockSize, blockSize);
 	}
+
+	/**
+	 * Reorder a list of blocks so that consecutive blocks in the list are likely to be adjacent within a z-layer.
+	 */
+	public static void reorderLayerWise(final List<Block> blocks) {
+		final long maxCoordinate = getMaxCoordinate(blocks, 2);
+		final int numBits = Long.SIZE - Long.numberOfLeadingZeros(maxCoordinate);
+
+		final SpaceFillingHilbertCurve hilbertCurve = new SpaceFillingHilbertCurve(2, numBits);
+		final long coordinatesPerLayer = hilbertCurve.maxIndex() + 1;
+		blocks.sort(Comparator.comparing(b -> hilbertCurve.encode(b.gridPosition) + coordinatesPerLayer * b.gridPosition[2]));
+	}
+
+	/**
+	 * Reorder a list of blocks so that consecutive blocks in the list are likely to be adjacent within the full grid.
+	 */
+	public static void reorderFullGrid(final List<Block> blocks) {
+		final int numDimensions = blocks.get(0).numDimensions();
+		final long maxCoordinate = getMaxCoordinate(blocks, numDimensions);
+		final int numBits = Long.SIZE - Long.numberOfLeadingZeros(maxCoordinate);
+
+		final SpaceFillingHilbertCurve hilbertCurve = new SpaceFillingHilbertCurve(numDimensions, numBits);
+		blocks.sort(Comparator.comparing(b -> hilbertCurve.encode(b.gridPosition)));
+	}
+
+	private static long getMaxCoordinate(final List<Block> blocks, final int numDimensions) {
+		// get the maximum coordinate in the first numDimensions dimensions
+		return blocks.stream()
+				.map(b -> b.dimensions)
+				.flatMapToLong(b -> LongStream.of(b).limit(numDimensions))
+				.max().orElseThrow();
+	}
+
 
 	public static class Block implements Serializable, Interval {
 		public final long[] dimensions;
