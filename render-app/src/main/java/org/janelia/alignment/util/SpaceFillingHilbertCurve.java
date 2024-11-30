@@ -10,17 +10,6 @@ import java.util.Arrays;
  * The implementation is based on the following paper: Skilling, J. (2004). Programming the Hilbert curve. AIP
  */
 public class SpaceFillingHilbertCurve {
-	public static void main(final String[] args) {
-		final SpaceFillingHilbertCurve hilbert = new SpaceFillingHilbertCurve(2, 2);
-		System.out.println("max index: " + hilbert.maxIndex());
-		System.out.println("max coordinate: " + hilbert.maxCoordinate());
-
-		for (int i = 0; i < 16; ++i) {
-			final int[] coordinates = hilbert.decode(i);
-			final long reconstructedIndex = hilbert.encode(coordinates);
-			System.out.println(i + " -> " + Arrays.toString(coordinates) + " -> " + reconstructedIndex);
-		}
-	}
 
 	private final int nDimensions;
 	private final int nBits;
@@ -59,13 +48,13 @@ public class SpaceFillingHilbertCurve {
 	 * @param index index within [0, 2^nBits)^nDimensions
 	 * @return n-dimensional coordinates
 	 */
-	public int[] decode(final long index) {
+	public long[] decode(final long index) {
 		if (index < 0 || index > maxIndex()) {
 			throw new IllegalArgumentException("Index out of bounds [0, " + maxIndex() + "]: " + index);
 		}
 
 		final long gray = indexToGray(index);
-		final int[] coordinates = grayToCoordinates(gray);
+		final long[] coordinates = grayToCoordinates(gray);
 		correctCoordinates(coordinates);
 		return coordinates;
 	}
@@ -76,7 +65,7 @@ public class SpaceFillingHilbertCurve {
 	 * @param coordinates n-dimensional coordinates
 	 * @return index within [0, 2^nBits)^nDimensions
 	 */
-	public long encode(final int[] coordinates) {
+	public long encode(final long[] coordinates) {
 		if (coordinates.length < nDimensions) {
 			throw new IllegalArgumentException("Number of coordinates must be at least number of dimensions: " + coordinates.length);
 		}
@@ -86,7 +75,7 @@ public class SpaceFillingHilbertCurve {
 			}
 		}
 
-		final int[] clonedCoordinates = coordinates.clone();
+		final long[] clonedCoordinates = coordinates.clone();
 		unCorrectCoordinates(clonedCoordinates);
 		final long gray = coordinatesToGray(clonedCoordinates);
 		return grayToIndex(gray);
@@ -95,13 +84,13 @@ public class SpaceFillingHilbertCurve {
 	/**
 	 * Convert a Gray code to a set of n-dimensional coordinates with at most nBits bits of information each.
 	 */
-	private int[] grayToCoordinates(final long gray) {
+	private long[] grayToCoordinates(final long gray) {
 
-		final int[] coordinates = new int[nDimensions];
+		final long[] coordinates = new long[nDimensions];
 		for (int i = 0; i < nDimensions; ++i) {
 
 			// read out nDimensions interleaved coordinates with nBits bits each
-			int coordinate = 0;
+			long coordinate = 0;
 			for (int j = 0; j < nBits; ++j) {
 				final int bitPosition = nDimensions * (nBits - j) - i - 1;
 				if (bitIsSet(gray, bitPosition)) {
@@ -117,7 +106,7 @@ public class SpaceFillingHilbertCurve {
 	/**
 	 * Convert a set of n-dimensional coordinates to a Gray code.
 	 */
-	private long coordinatesToGray(final int[] coordinates) {
+	private long coordinatesToGray(final long[] coordinates) {
 		long gray = 0;
 		for (int i = 0; i < nDimensions; ++i) {
 			for (int j = 0; j < nBits; ++j) {
@@ -133,7 +122,7 @@ public class SpaceFillingHilbertCurve {
 	/**
 	 * Correct the coordinates to re-orient the groups of coordinates so that they form a continuous curve.
 	 */
-	private void correctCoordinates(final int[] coordinates) {
+	private void correctCoordinates(final long[] coordinates) {
 		for (int r = 1; r < nBits; ++r) {
 			for (int i = nDimensions - 1; i >= 0; --i) {
 				correctBitsOfCoordinates(coordinates, r, i);
@@ -141,7 +130,7 @@ public class SpaceFillingHilbertCurve {
 		}
 	}
 
-	private void unCorrectCoordinates(final int[] coordinates) {
+	private void unCorrectCoordinates(final long[] coordinates) {
 		for (int r = nBits - 1; r > 0; --r) {
 			for (int i = 0; i < nDimensions; ++i) {
 				correctBitsOfCoordinates(coordinates, r, i);
@@ -149,14 +138,14 @@ public class SpaceFillingHilbertCurve {
 		}
 	}
 
-	private static void correctBitsOfCoordinates(final int[] coordinates, final int r, final int i) {
+	private static void correctBitsOfCoordinates(final long[] coordinates, final int r, final int i) {
 		final int lowBits = (1 << r) - 1;
 		if (bitIsSet(coordinates[i], r)) {
 			// invert the lowest bits of the first coordinate
 			coordinates[0] ^= lowBits;
 		} else {
 			// swap the lowest bits of the first coordinate with the lowest bits of the current coordinate
-			final int swap = (coordinates[0] ^ coordinates[i]) & lowBits;
+			final long swap = (coordinates[0] ^ coordinates[i]) & lowBits;
 			coordinates[0] ^= swap;
 			coordinates[i] ^= swap;
 		}
@@ -184,14 +173,6 @@ public class SpaceFillingHilbertCurve {
 
 	private static boolean bitIsSet(final long binary, final int bit) {
 		return (binary & (1L << bit)) != 0;
-	}
-
-	private static boolean bitIsSet(final int binary, final int bit) {
-		return (binary & (1L << bit)) != 0;
-	}
-
-	private static int setBit(final int binary, final int bit) {
-		return binary | (1 << bit);
 	}
 
 	private static long setBit(final long binary, final int bit) {
