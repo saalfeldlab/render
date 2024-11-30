@@ -12,6 +12,9 @@ import java.util.Arrays;
 public class SpaceFillingHilbertCurve {
 	public static void main(final String[] args) {
 		final SpaceFillingHilbertCurve hilbert = new SpaceFillingHilbertCurve(2, 2);
+		System.out.println("max index: " + hilbert.maxIndex());
+		System.out.println("max coordinate: " + hilbert.maxCoordinate());
+
 		for (int i = 0; i < 16; ++i) {
 			final int[] coordinates = hilbert.decode(i);
 			final long reconstructedIndex = hilbert.encode(coordinates);
@@ -29,10 +32,12 @@ public class SpaceFillingHilbertCurve {
 	 * @param nBits number of bits per dimension
 	 */
 	public SpaceFillingHilbertCurve(final int nDimensions, final int nBits) {
+		if (nDimensions * nBits > 63) {
+			throw new IllegalArgumentException("nIntegers * nBits must be < 64");
+		}
 		this.nDimensions = nDimensions;
 		this.nBits = nBits;
 	}
-
 
 	/**
 	 * Convert an index to a set of n-dimensional coordinates.
@@ -41,6 +46,10 @@ public class SpaceFillingHilbertCurve {
 	 * @return n-dimensional coordinates
 	 */
 	public int[] decode(final long index) {
+		if (index < 0 || index > maxIndex()) {
+			throw new IllegalArgumentException("Index out of bounds [0, " + maxIndex() + "]: " + index);
+		}
+
 		final long gray = indexToGray(index);
 		final int[] coordinates = grayToCoordinates(gray, nDimensions, nBits);
 		correctCoordinates(coordinates, nDimensions, nBits);
@@ -54,10 +63,33 @@ public class SpaceFillingHilbertCurve {
 	 * @return index within [0, 2^nBits)^nDimensions
 	 */
 	public long encode(final int[] coordinates) {
+		if (coordinates.length < nDimensions) {
+			throw new IllegalArgumentException("Number of coordinates must be at least number of dimensions: " + coordinates.length);
+		}
+		for (int i = 0; i < nDimensions; ++i) {
+			if (coordinates[i] < 0 || coordinates[i] > maxCoordinate()) {
+				throw new IllegalArgumentException("Coordinate in dimension " + i + " out of bounds [0, " + maxCoordinate() + "]: " + coordinates[i]);
+			}
+		}
+
 		final int[] clonedCoordinates = coordinates.clone();
 		unCorrectCoordinates(clonedCoordinates, nDimensions, nBits);
 		final long gray = coordinatesToGray(clonedCoordinates, nDimensions, nBits);
 		return grayToIndex(gray);
+	}
+
+	/**
+	 * @return the maximum index that can be encoded/decoded with this Hilbert curve.
+	 */
+	public long maxIndex() {
+		return (1L << (nDimensions * nBits)) - 1;
+	}
+
+	/**
+	 * @return the maximum coordinate that can be encoded/decoded with this Hilbert curve.
+	 */
+	public long maxCoordinate() {
+		return (1L << nBits) - 1;
 	}
 
 
@@ -72,9 +104,6 @@ public class SpaceFillingHilbertCurve {
 	 * Convert a Gray code to a set of n-dimensional coordinates with at most nBits bits of information each.
 	 */
 	private static int[] grayToCoordinates(final long gray, final int nDimensions, final int nBits) {
-		if (nDimensions * nBits > 64) {
-			throw new IllegalArgumentException("nIntegers * nBits must be <= 64");
-		}
 
 		final int[] coordinates = new int[nDimensions];
 		for (int i = 0; i < nDimensions; ++i) {
