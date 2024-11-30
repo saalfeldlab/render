@@ -14,10 +14,15 @@ public class SpaceFillingHilbertCurve {
 		for (int i = 0; i < 16; ++i) {
 			final long gray = indexToGray(i);
 			final int[] coordinates = grayToCoordinates(gray, 2, 2);
-//			System.out.println(i + " -> " + Arrays.toString(coordinates));
+//			System.out.println(i + " -> " + Arrays.toString(coordinates) + " -> " + reconstructedIndex);
 
 			correctCoordinates(coordinates, 2, 2);
-			System.out.println(i + " -> " + Arrays.toString(coordinates));
+
+			final int[] clonedCoordinates = coordinates.clone();
+			unCorrectCoordinates(clonedCoordinates, 2, 2);
+			final long reconstructedGray = coordinatesToGray(clonedCoordinates, 2, 2);
+			final long reconstructedIndex = grayToIndex(reconstructedGray);
+			System.out.println(i + " -> " + Arrays.toString(coordinates) + " -> " + reconstructedIndex);
 		}
 
 	}
@@ -37,21 +42,50 @@ public class SpaceFillingHilbertCurve {
 			throw new IllegalArgumentException("nIntegers * nBits must be <= 64");
 		}
 
-		final int[] integers = new int[nDimensions];
+		final int[] coordinates = new int[nDimensions];
 		for (int i = 0; i < nDimensions; ++i) {
 
-			// read out nDimensions interleaved integers with nBits bits each
-			int integer = 0;
+			// read out nDimensions interleaved coordinates with nBits bits each
+			int coordinate = 0;
 			for (int j = 0; j < nBits; ++j) {
 				final int bitPosition = nDimensions * (nBits - j) - i - 1;
 				if (bitIsSet(gray, bitPosition)) {
-					integer = setBit(integer, nBits - 1 - j);
+					coordinate = setBit(coordinate, nBits - 1 - j);
 				}
 			}
-			integers[i] = integer;
+			coordinates[i] = coordinate;
 		}
 
-		return integers;
+		return coordinates;
+	}
+
+	/**
+	 * Convert a set of n-dimensional coordinates to a Gray code.
+	 */
+	private static long coordinatesToGray(final int[] coordinates, final int nDimensions, final int nBits) {
+		long gray = 0;
+		for (int i = 0; i < nDimensions; ++i) {
+			for (int j = 0; j < nBits; ++j) {
+				final int bitPosition = nDimensions * (nBits - j) - i - 1;
+				if (bitIsSet(coordinates[i], nBits - 1 - j)) {
+					gray = setBit(gray, bitPosition);
+				}
+			}
+		}
+		return gray;
+	}
+
+	/**
+	 * Convert a Gray code to an index.
+	 */
+	private static long grayToIndex(final long gray) {
+		long index = gray;
+		long mask = gray;
+		while (mask != 0) {
+			mask >>= 1;
+			index ^= mask;
+		}
+		return index;
 	}
 
 	/**
@@ -60,16 +94,28 @@ public class SpaceFillingHilbertCurve {
 	private static void correctCoordinates(final int[] coordinates, final int nDimensions, final int nBits) {
 		for (int r = 1; r < nBits; ++r) {
 			for (int i = nDimensions - 1; i >= 0; --i) {
-				final int lowBits = (1 << r) - 1;
-				if (bitIsSet(coordinates[i], r)) {
-					// invert the lowest bits of the first coordinate
-					coordinates[0] ^= lowBits;
-				} else {
-					// swap the lowest bits of the first coordinate with the lowest bits of the current coordinate
-					final int swap = (coordinates[0] ^ coordinates[i]) & lowBits;
-					coordinates[0] ^= swap;
-					coordinates[i] ^= swap;
-				}
+				correctBitsOfCoordinates(coordinates, r, i);
+			}
+		}
+	}
+
+	private static void correctBitsOfCoordinates(final int[] coordinates, final int r, final int i) {
+		final int lowBits = (1 << r) - 1;
+		if (bitIsSet(coordinates[i], r)) {
+			// invert the lowest bits of the first coordinate
+			coordinates[0] ^= lowBits;
+		} else {
+			// swap the lowest bits of the first coordinate with the lowest bits of the current coordinate
+			final int swap = (coordinates[0] ^ coordinates[i]) & lowBits;
+			coordinates[0] ^= swap;
+			coordinates[i] ^= swap;
+		}
+	}
+
+	private static void unCorrectCoordinates(final int[] coordinates, final int nDimensions, final int nBits) {
+		for (int r = nBits - 1; r > 0; --r) {
+			for (int i = 0; i < nDimensions; ++i) {
+				correctBitsOfCoordinates(coordinates, r, i);
 			}
 		}
 	}
@@ -84,5 +130,9 @@ public class SpaceFillingHilbertCurve {
 
 	private static int setBit(final int binary, final int bit) {
 		return binary | (1 << bit);
+	}
+
+	private static long setBit(final long binary, final int bit) {
+		return binary | (1L << bit);
 	}
 }
