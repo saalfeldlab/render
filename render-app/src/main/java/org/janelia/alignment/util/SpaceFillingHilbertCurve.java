@@ -11,21 +11,55 @@ import java.util.Arrays;
  */
 public class SpaceFillingHilbertCurve {
 	public static void main(final String[] args) {
+		final SpaceFillingHilbertCurve hilbert = new SpaceFillingHilbertCurve(2, 2);
 		for (int i = 0; i < 16; ++i) {
-			final long gray = indexToGray(i);
-			final int[] coordinates = grayToCoordinates(gray, 2, 2);
-//			System.out.println(i + " -> " + Arrays.toString(coordinates) + " -> " + reconstructedIndex);
-
-			correctCoordinates(coordinates, 2, 2);
-
-			final int[] clonedCoordinates = coordinates.clone();
-			unCorrectCoordinates(clonedCoordinates, 2, 2);
-			final long reconstructedGray = coordinatesToGray(clonedCoordinates, 2, 2);
-			final long reconstructedIndex = grayToIndex(reconstructedGray);
+			final int[] coordinates = hilbert.decode(i);
+			final long reconstructedIndex = hilbert.encode(coordinates);
 			System.out.println(i + " -> " + Arrays.toString(coordinates) + " -> " + reconstructedIndex);
 		}
-
 	}
+
+	private final int nDimensions;
+	private final int nBits;
+
+	/**
+	 * Create a space-filling Hilbert curve for a grid within [0, 2^nBits)^nDimensions.
+	 *
+	 * @param nDimensions number of dimensions
+	 * @param nBits number of bits per dimension
+	 */
+	public SpaceFillingHilbertCurve(final int nDimensions, final int nBits) {
+		this.nDimensions = nDimensions;
+		this.nBits = nBits;
+	}
+
+
+	/**
+	 * Convert an index to a set of n-dimensional coordinates.
+	 *
+	 * @param index index within [0, 2^nBits)^nDimensions
+	 * @return n-dimensional coordinates
+	 */
+	public int[] decode(final long index) {
+		final long gray = indexToGray(index);
+		final int[] coordinates = grayToCoordinates(gray, nDimensions, nBits);
+		correctCoordinates(coordinates, nDimensions, nBits);
+		return coordinates;
+	}
+
+	/**
+	 * Convert a set of n-dimensional coordinates to an index.
+	 *
+	 * @param coordinates n-dimensional coordinates
+	 * @return index within [0, 2^nBits)^nDimensions
+	 */
+	public long encode(final int[] coordinates) {
+		final int[] clonedCoordinates = coordinates.clone();
+		unCorrectCoordinates(clonedCoordinates, nDimensions, nBits);
+		final long gray = coordinatesToGray(clonedCoordinates, nDimensions, nBits);
+		return grayToIndex(gray);
+	}
+
 
 	/**
 	 * Convert an index to a Gray code to create groups of indices that are close to each other in the Hilbert curve.
