@@ -12,14 +12,12 @@ import java.util.Arrays;
 public class SpaceFillingHilbertCurve {
 	public static void main(final String[] args) {
 		for (int i = 0; i < 16; ++i) {
-			// works!
 			final long gray = indexToGray(i);
-			final int[] integers = grayToCoordinates(gray, 2, 2);
-			System.out.println(i + " -> " + Arrays.toString(integers));
+			final int[] coordinates = grayToCoordinates(gray, 2, 2);
+//			System.out.println(i + " -> " + Arrays.toString(coordinates));
 
-			// doesn't work yet
-//			correctCoordinates(integers, 2, 2);
-//			System.out.println(i + " -> " + Arrays.toString(integers));
+			correctCoordinates(coordinates, 2, 2);
+			System.out.println(i + " -> " + Arrays.toString(coordinates));
 		}
 
 	}
@@ -60,23 +58,17 @@ public class SpaceFillingHilbertCurve {
 	 * Correct the coordinates to re-orient the groups of coordinates so that they form a continuous curve.
 	 */
 	private static void correctCoordinates(final int[] coordinates, final int nDimensions, final int nBits) {
-		for (int r = nBits - 2; r >= 0; --r) {
+		for (int r = 1; r < nBits; ++r) {
 			for (int i = nDimensions - 1; i >= 0; --i) {
-				final int coordinate = coordinates[i];
-
-				// create a mask of the lowest bits
-				int lowBits = 0;
-				for (int j = r + 1; j < nBits; ++j) {
-					lowBits = setBit(lowBits, j);
-				}
-
-				if (bitIsSet(coordinate, r)) {
-					// swap the lowest bits of the first coordinate with the lowest bits of the current coordinate
-					coordinates[i] = coordinates[0] & lowBits;
-					coordinates[0] = coordinate & lowBits;
-				} else {
+				final int lowBits = (1 << r) - 1;
+				if (bitIsSet(coordinates[i], r)) {
 					// invert the lowest bits of the first coordinate
-					coordinates[0] = coordinates[0] ^ lowBits;
+					coordinates[0] ^= lowBits;
+				} else {
+					// swap the lowest bits of the first coordinate with the lowest bits of the current coordinate
+					final int swap = (coordinates[0] ^ coordinates[i]) & lowBits;
+					coordinates[0] ^= swap;
+					coordinates[i] ^= swap;
 				}
 			}
 		}
