@@ -533,6 +533,7 @@ public class N5Client {
                 Grid.create(longDimensions, gridBlockSize, blockSize).stream()
                         .filter(block -> minZToRender == null || block.max(2) + 1 >= minZToRender)
                         .collect(Collectors.toList());
+        Grid.reorderLayerWise(blockList);
 
         LOG.info("buildGridBlocks: returning {} blocks with size {}",
                  blockList.size(), Arrays.toString(gridBlockSize));
@@ -687,6 +688,7 @@ public class N5Client {
         };
 
         final List<Grid.Block> grid = Grid.create(Arrays.copyOfRange(dimensions, 0, 2), gridBlockSize, blockSize);
+        Grid.reorderFullGrid(grid);
         final JavaRDD<Grid.Block> rdd = sc.parallelize(grid);
 
         final Broadcast<ImageProcessorCacheSpec> broadcastCacheSpec = sc.broadcast(cacheSpec);
