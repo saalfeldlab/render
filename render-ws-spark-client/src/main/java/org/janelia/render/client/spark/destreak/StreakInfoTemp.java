@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark.destreak;
 
 import ij.ImagePlus;
+import ij.process.ImageConverter;
 import org.janelia.alignment.destreak.StreakFinder;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -29,6 +30,7 @@ public class StreakInfoTemp {
 
 		final String srcPath = "/home/innerbergerm@hhmi.org/big-data/streak-correction/jrc_pri-neuro_0710dish-4/z7350-0-0-0.png";
 		final ImagePlus imp = new ImagePlus(srcPath);
+//		new ImageConverter(imp).convertToGray8();
 		final StreakFinder finder = new StreakFinder(meanFilterSize, threshold, blurRadius);
 		final ImagePlus mask = finder.createStreakMask(imp);
 
