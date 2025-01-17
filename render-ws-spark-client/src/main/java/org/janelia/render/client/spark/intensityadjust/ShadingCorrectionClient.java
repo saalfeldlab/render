@@ -209,10 +209,6 @@ public class ShadingCorrectionClient implements Serializable {
             final RandomAccessibleInterval<UnsignedByteType> croppedMask = Views.interval(mask, block);
             final long[] dimensions = in.getDatasetAttributes(parameters.datasetIn).getDimensions();
 
-            // scale pixel coordinates to [-1, 1] x [-1, 1]
-            final double xScale = dimensions[0] / 2.0;
-            final double yScale = dimensions[1] / 2.0;
-
             // process block z-slice by z-slice
             for (int z = (int) block.min(2); z <= block.max(2); z++) {
                 final ShadingModel model = modelProvider.getModel(z);
@@ -236,8 +232,8 @@ public class ShadingCorrectionClient implements Serializable {
                         continue;
                     }
 
-                    location[0] = ShadingModel.scaleCoordinate(imgCursor.getDoublePosition(0), xScale);
-                    location[1] = ShadingModel.scaleCoordinate(imgCursor.getDoublePosition(1), yScale);
+                    location[0] = ShadingModel.toModelCoordinates(imgCursor.getDoublePosition(0), 0, dimensions[0]);
+                    location[1] = ShadingModel.toModelCoordinates(imgCursor.getDoublePosition(1), 0, dimensions[1]);
 
                     model.applyInPlace(location);
                     pixel.setReal(UnsignedShortType.getCodedSignedShortChecked((int) (pixel.getRealDouble() - location[0])));

@@ -62,13 +62,33 @@ public abstract class ShadingModel extends AbstractModel<ShadingModel> implement
 	}
 
 	/**
-	 * Scale the given coordinate to the model coordinates (in [-1, 1]).
-	 * @param coordinate the coordinate to scale
-	 * @param scale the scale factor (usually half the image size in the respective dimension)
-	 * @return the scaled coordinate in the range [-1, 1]
+	 * Transform the given world coordinate (in [min, min + size]) to model coordinates (in [-1, 1]).
+	 * @param coordinate the world coordinate to transform
+	 * @param min the minimum coordinate of world coordinates
+	 * @param size the size of the range of world coordinates
+	 * @return the transformed coordinate in the range [-1, 1]
 	 */
-	public static double scaleCoordinate(final double coordinate, final double scale) {
-		return (coordinate - scale) / scale;
+	public static double toModelCoordinates(
+			final double coordinate,
+			final double min,
+			final double size
+	) {
+		return 2 * (coordinate - min) / size - 1;
+	}
+
+	/**
+	 * Transform the given model coordinate (in [-1, 1]) to world coordinates (in [min, min + size]).
+	 * @param coordinate the model coordinate to transform
+	 * @param min the minimum coordinate of world coordinates
+	 * @param size the size of the range of world coordinates
+	 * @return the transformed coordinate in the range [min, min + size]
+	 */
+	public static double fromModelCoordinates(
+			final double coordinate,
+			final double min,
+			final double size
+	) {
+		return (coordinate + 1) * size / 2 + min;
 	}
 
 	@Override

@@ -82,16 +82,14 @@ public class ShadingCorrectionFilter implements Filter {
     @Override
     public void process(final ImageProcessor ip, final double scale) {
         // transform pixel coordinates into [-1, 1] x [-1, 1]
-        final double scaleX = ip.getWidth() / 2.0;
-        final double scaleY = ip.getHeight() / 2.0;
         final ShadingModel shadingModel = correctionMethod.create(coefficients);
 
         // subtract shading model from image
         final double[] location = new double[2];
         for (int i = 0; i < ip.getWidth(); i++) {
             for (int j = 0; j < ip.getHeight(); j++) {
-                location[0] = ShadingModel.scaleCoordinate(i, scaleX);
-                location[1] = ShadingModel.scaleCoordinate(j, scaleY);
+                location[0] = ShadingModel.toModelCoordinates(i, 0, ip.getWidth());
+                location[1] = ShadingModel.toModelCoordinates(j, 0, ip.getHeight());
                 shadingModel.applyInPlace(location);
 
                 final double value = ip.getPixelValue(i, j) - location[0];

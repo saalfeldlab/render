@@ -75,16 +75,16 @@ public class CorrectShading {
 			throws NotEnoughDataPointsException, IllDefinedDataPointsException {
 
 		// transform pixel coordinates into [-1, 1] x [-1, 1]
-		final double scaleX = slice.dimension(0) / 2.0;
-		final double scaleY = slice.dimension(1) / 2.0;
+		final double dimX = slice.dimension(0);
+		final double dimY = slice.dimension(1);
 
 		// fit a quadratic shading model with all the points in the first slice
 		final List<PointMatch> matches = new ArrayList<>();
 		final RandomAccess<T> ra = slice.randomAccess();
 
 		for (final java.awt.Point point : extractInterestPoints(rois)) {
-			final double x = ShadingModel.scaleCoordinate(point.x, scaleX);
-			final double y = ShadingModel.scaleCoordinate(point.y, scaleY);
+			final double x = ShadingModel.toModelCoordinates(point.x, 0, dimX);
+			final double y = ShadingModel.toModelCoordinates(point.y, 0, dimY);
 			final double z = ra.setPositionAndGet(point.x, point.y).getRealDouble();
 			matches.add(new PointMatch(new Point(new double[]{x, y}), new Point(new double[]{z})));
 		}
@@ -105,14 +105,13 @@ public class CorrectShading {
 	public static <T extends NativeType<T> & RealType<T>>
 	RandomAccessibleInterval<FloatType> createBackgroundImage(final ShadingModel shadingModel, final RandomAccessibleInterval<T> slice) {
 
-		// transform pixel coordinates into [-1, 1] x [-1, 1]
-		final double scaleX = slice.dimension(0) / 2.0;
-		final double scaleY = slice.dimension(1) / 2.0;
+		final double dimX = slice.dimension(0);
+		final double dimY = slice.dimension(1);
 
 		final double[] location = new double[2];
 		final RealRandomAccessible<FloatType> shading = new FunctionRealRandomAccessible<>(2, (pos, value) -> {
-			location[0] = ShadingModel.scaleCoordinate(pos.getDoublePosition(0), scaleX);
-			location[1] = ShadingModel.scaleCoordinate(pos.getDoublePosition(1), scaleY);
+			location[0] = ShadingModel.toModelCoordinates(pos.getDoublePosition(0), 0, dimX);
+			location[1] = ShadingModel.toModelCoordinates(pos.getDoublePosition(1), 0, dimY);
 			shadingModel.applyInPlace(location);
 			value.setReal(location[0]);
 		}, FloatType::new);
