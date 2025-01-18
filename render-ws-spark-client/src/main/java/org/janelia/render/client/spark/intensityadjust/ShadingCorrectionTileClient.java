@@ -195,31 +195,27 @@ public class ShadingCorrectionTileClient implements Serializable {
 
 		// get uniform grid of points in tile
         final int nSamples = (int) Math.ceil(Math.sqrt(tileModel.getMinNumMatches()));
-        final List<double[]> points = uniformGrid(nSamples);
-
-        final double centerX = bounds.getMinX() + 0.5 * bounds.getWidth();
-        final double centerY = bounds.getMinY() + 0.5 * bounds.getHeight();
+        final List<double[]> gridPoints = uniformGrid(nSamples);
 
         final CoordinateTransformList<CoordinateTransform> transforms = tileSpec.getTransformList();
         final List<PointMatch> matches = new ArrayList<>();
 
         final double[] transformedPoint = new double[2];
-        for (final double[] tilePointNormalized : points) {
+        for (final double[] tilePointNormalized : gridPoints) {
             // transform normalized tile point (in [-1, 1] x [-1, 1]) to tile coordinates
-            transformedPoint[0] = (tilePointNormalized[0] + 1) * tileSpec.getWidth() / 2.0;
-            transformedPoint[1] = (tilePointNormalized[1] + 1) * tileSpec.getHeight() / 2.0;
+            transformedPoint[0] = ShadingModel.fromModelCoordinates(tilePointNormalized[0], 0, tileSpec.getWidth());
+            transformedPoint[1] = ShadingModel.fromModelCoordinates(tilePointNormalized[1], 0, tileSpec.getHeight());
 
             // transform tile point to global coordinate system
             transforms.applyInPlace(transformedPoint);
 
             // transform global coordinate to [-1, 1] x [-1, 1] wrt to the layer bounds
-            transformedPoint[0] = (transformedPoint[0] - centerX) / (bounds.getWidth() / 2.0);
-            transformedPoint[1] = (transformedPoint[1] - centerY) / (bounds.getHeight() / 2.0);
+            transformedPoint[0] = ShadingModel.toModelCoordinates(transformedPoint[0], bounds.getMinX(), bounds.getWidth());
+            transformedPoint[1] = ShadingModel.toModelCoordinates(transformedPoint[1], bounds.getMinY(), bounds.getHeight());
 
             // scale coordinates to [-1, 1] to evaluate the global model
             layerModel.applyInPlace(transformedPoint);
-            final double[] value = new double[] {transformedPoint[0], 0};
-            matches.add(new PointMatch(new Point(tilePointNormalized), new Point(value)));
+            matches.add(new PointMatch(new Point(tilePointNormalized), new Point(transformedPoint)));
         }
 
 		try {

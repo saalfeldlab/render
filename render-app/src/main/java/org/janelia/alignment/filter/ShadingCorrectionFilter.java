@@ -92,7 +92,8 @@ public class ShadingCorrectionFilter implements Filter {
                 location[1] = ShadingModel.toModelCoordinates(j, 0, ip.getHeight());
                 shadingModel.applyInPlace(location);
 
-                final double value = ip.getPixelValue(i, j) - location[0];
+                final double correction = location[0];
+                final double value = ip.getPixelValue(i, j) - correction;
                 ip.putPixelValue(i, j, value);
             }
         }
