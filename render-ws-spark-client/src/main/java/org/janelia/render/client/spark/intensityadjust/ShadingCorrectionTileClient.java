@@ -215,7 +215,7 @@ public class ShadingCorrectionTileClient implements Serializable {
 
             // scale coordinates to [-1, 1] to evaluate the global model
             layerModel.applyInPlace(transformedPoint);
-            matches.add(new PointMatch(new Point(tilePointNormalized), new Point(transformedPoint)));
+            matches.add(new PointMatch(new Point(tilePointNormalized), new Point(transformedPoint.clone())));
         }
 
 		try {
