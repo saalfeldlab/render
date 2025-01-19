@@ -6,7 +6,9 @@ import mpicbg.models.Affine1D;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
+import net.imglib2.util.Pair;
 import net.imglib2.util.StopWatch;
+import net.imglib2.util.ValuePair;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
@@ -19,6 +21,7 @@ import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 /*
@@ -31,6 +34,8 @@ import java.util.List;
  * @author Michael Innerberger
  */
 class IntensityMatcher {
+	private static final int N_BINS = 256;
+
 	final private PointMatchFilter filter;
 	final private double sameLayerScale;
 	final private double crossLayerScale;
@@ -99,8 +104,13 @@ class IntensityMatcher {
 		/* filter matches */
 		final List<PointMatch> inliers = new ArrayList<>();
 		for (final List<PointMatch> candidates : matrix) {
+			if (candidates.isEmpty())
+				continue;
+
+			final List<PointMatch> compressedCandidates = compressByBinning(candidates, N_BINS);
+
 			inliers.clear();
-			filter.filter(candidates, inliers);
+			filter.filter(compressedCandidates, inliers);
 			candidates.clear();
 			candidates.addAll(inliers);
 		}
@@ -143,6 +153,35 @@ class IntensityMatcher {
 
 	private static int numberOfPixels(final int length, final double scale) {
 		return (int) Math.round(length * scale);
+	}
+
+	// Since there is a good chance that some intensity matches are redundant, we can try to compress them by binning
+	private static List<PointMatch> compressByBinning(final List<PointMatch> candidates, final int nBins) {
+		final Map<Pair<Integer, Integer>, Double> pairToWeights = new HashMap<>(nBins * nBins);
+		for (final PointMatch candidate : candidates) {
+			// Use the fact that the intensity matches are integers in the range [0, 255]
+			final int x = (int) Math.round(candidate.getP1().getL()[0] * nBins);
+			final int y = (int) Math.round(candidate.getP2().getL()[0] * nBins);
+			final Pair<Integer, Integer> pair = new ValuePair<>(x, y);
+			final double previousWeight = pairToWeights.getOrDefault(pair, 0.0);
+			pairToWeights.put(pair, previousWeight + candidate.getWeight());
+		}
+
+		if (pairToWeights.size() == candidates.size()) {
+			// Compression was not successful
+			return candidates;
+		}
+
+		final List<PointMatch> compressedCandidates = new ArrayList<>(pairToWeights.size());
+		for (final Map.Entry<Pair<Integer, Integer>, Double> entry : pairToWeights.entrySet()) {
+			final Pair<Integer, Integer> pair = entry.getKey();
+			final double weight = entry.getValue();
+			final Point p1 = new Point(new double[]{ (double) pair.getA() / nBins });
+			final Point p2 = new Point(new double[]{ (double) pair.getB() / nBins });
+			compressedCandidates.add(new PointMatch(p1, p2, weight));
+		}
+
+		return compressedCandidates;
 	}
 
 	List<Double> computeAverages(final TileSpec tile) {
