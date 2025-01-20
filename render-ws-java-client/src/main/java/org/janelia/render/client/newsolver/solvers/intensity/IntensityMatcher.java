@@ -3,7 +3,6 @@ package org.janelia.render.client.newsolver.solvers.intensity;
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
 import mpicbg.models.Affine1D;
-import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import net.imglib2.util.Pair;
@@ -93,7 +92,7 @@ class IntensityMatcher {
 			if (matchCanContribute) {
 				final double p = pixels1.getf(i);
 				final double q = pixels2.getf(i);
-				final PointMatch pq = new PointMatch(new Point(new double[]{p}), new Point(new double[]{q}), weight1 * weight2);
+				final PointMatch pq = new PointMatch1D(new Point1D(p), new Point1D(q), weight1 * weight2);
 
 				/* first sub-tile label is 1 */
 				final List<PointMatch> matches = get(matrix, label1 - 1, label2 - 1, nCoefficientTiles);
@@ -176,9 +175,9 @@ class IntensityMatcher {
 		for (final Map.Entry<Pair<Integer, Integer>, Double> entry : pairToWeights.entrySet()) {
 			final Pair<Integer, Integer> pair = entry.getKey();
 			final double weight = entry.getValue();
-			final Point p1 = new Point(new double[]{ (double) pair.getA() / nBins });
-			final Point p2 = new Point(new double[]{ (double) pair.getB() / nBins });
-			compressedCandidates.add(new PointMatch(p1, p2, weight));
+			final Point1D p1 = new Point1D((double) pair.getA() / nBins);
+			final Point1D p2 = new Point1D((double) pair.getB() / nBins);
+			compressedCandidates.add(new PointMatch1D(p1, p2, weight));
 		}
 
 		return compressedCandidates;
