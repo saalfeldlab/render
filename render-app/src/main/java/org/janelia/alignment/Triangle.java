@@ -48,6 +48,15 @@ class Triangle {
         this.cy = cy;
     }
 
+    @Override
+    public String toString() {
+        return "Triangle{" +
+               "A=(" + ax + ", " + ay + "), " +
+               "B=(" + bx + ", " + by + "), " +
+               "C=(" + cx + ", " + cy + ")" +
+               '}';
+    }
+
     static class Range {
         private final int from;
         private final int length;
@@ -84,7 +93,7 @@ class Triangle {
     Range intersect(final double y, final int rangeMinX, final int rangeMaxX) {
         final double[] bounds = new double[]{rangeMinX, rangeMaxX};
         intersect(y, bounds);
-        return new Range((int) Math.ceil(bounds[0]), (int) Math.ceil(bounds[1]));
+        return new Range((int) Math.ceil(bounds[0]), Math.min(rangeMaxX, (int) Math.floor(bounds[1] + 1)));
     }
 
     void intersect(final double y, final double[] bounds) {
