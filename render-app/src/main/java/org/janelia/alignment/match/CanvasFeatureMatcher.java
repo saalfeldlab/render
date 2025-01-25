@@ -52,9 +52,11 @@ public class CanvasFeatureMatcher implements Serializable {
         final Timer timer = new Timer();
         timer.start();
 
-        final List<PointMatch> candidates = new ArrayList<>(canvas1Features.size());
+//        final List<PointMatch> candidates = new ArrayList<>(canvas1Features.size());
+//        FeatureTransform.matchFeatures(canvas1Features, canvas2Features, candidates, rod);
 
-        FeatureTransform.matchFeatures(canvas1Features, canvas2Features, candidates, rod);
+        final double radius = 300 * 0.8;
+        final List<PointMatch> candidates = FeatureTransform.matchFeaturesLocally(canvas1Features, canvas2Features, radius, rod);
 
         final CanvasMatchResult result = matchFilter.buildMatchResult(candidates);
 

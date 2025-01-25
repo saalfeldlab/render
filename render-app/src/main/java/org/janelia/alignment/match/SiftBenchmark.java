@@ -3,11 +3,14 @@ package org.janelia.alignment.match;
 import ij.ImagePlus;
 import ij.gui.PointRoi;
 import ij.gui.Roi;
+import mpicbg.ij.FeatureTransform;
 import mpicbg.imagefeatures.Feature;
 import mpicbg.models.PointMatch;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class SiftBenchmark {
@@ -75,6 +78,7 @@ public class SiftBenchmark {
 		for (final PointMatch match : matches.getInlierPointMatchList()) {
 			points.addPoint((int) match.getP1().getL()[0] + w - clipWidth, (int) match.getP1().getL()[1]);
 		}
+		System.out.println("Found " + matches.getInlierPointMatchList().size() + " matches");
 
 		scaledImage1.setRoi(points);
 		scaledImage1.show();
