@@ -6,7 +6,6 @@ import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IdentityModel;
 import mpicbg.models.InterpolatedAffineModel1D;
 import mpicbg.models.NoninvertibleModelException;
-import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
@@ -321,16 +320,14 @@ public class AffineIntensityCorrectionBlockWorker<M>
 											 final Tile<?> equilibrationTile,
 											 final Double average,
 											 final double weight) {
-		final PointMatch eqMatch = new PointMatch(new Point(new double[] { average }),
-												  new Point(new double[] { 0.5 }),
-												  weight);
+		final PointMatch eqMatch = new PointMatch1D(new Point1D(average), new Point1D(0.5), weight);
 		coefficientTile.connect(equilibrationTile, List.of(eqMatch));
 	}
 
 	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2) {
 		final ArrayList<PointMatch> matches = new ArrayList<>();
-		matches.add(new PointMatch(new Point(new double[] { 0 }), new Point(new double[] { 0 })));
-		matches.add(new PointMatch(new Point(new double[] { 1 }), new Point(new double[] { 1 })));
+		matches.add(new PointMatch1D(new Point1D(0), new Point1D(0)));
+		matches.add(new PointMatch1D(new Point1D(1), new Point1D(1)));
 		t1.connect(t2, matches);
 	}
 
