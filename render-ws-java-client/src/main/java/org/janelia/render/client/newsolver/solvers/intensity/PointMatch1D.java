@@ -26,6 +26,6 @@ public class PointMatch1D extends PointMatch {
 	public double getDistance(){
 		final Point1D p1 = (Point1D) this.p1;
 		final Point1D p2 = (Point1D) this.p2;
-		return Math.abs(p1.getL()[0] - p2.getL()[0]);
+		return Math.abs(p1.getW()[0] - p2.getW()[0]);
 	}
 }
