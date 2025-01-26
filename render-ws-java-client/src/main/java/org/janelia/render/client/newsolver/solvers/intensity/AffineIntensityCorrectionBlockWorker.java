@@ -235,20 +235,19 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		/* optimize */
 		final List<IntensityTile> tiles = new ArrayList<>(coefficientTiles.values());
-		final List<IntensityTile> fixedTiles = new ArrayList<>();
 
 		// anchor the equilibration tile if it is used, otherwise anchor a random tile (the first one)
+		final IntensityTile fixedTile;
 		if (blockData.solveTypeParameters().equilibrationWeight() > 0.0) {
 			tiles.add(equilibrationTile);
-			fixedTiles.add(equilibrationTile);
+			fixedTile = equilibrationTile;
 		} else {
-			final IntensityTile firstTile = tiles.get(0);
-			fixedTiles.add(firstTile);
+			fixedTile = tiles.get(0);
 		}
 
 		LOG.info("solveForGlobalCoefficients: optimizing {} tiles with {} threads", tiles.size(), numThreads);
 		final IntensityTileOptimizer optimizer = new IntensityTileOptimizer(0.01, iterations, iterations, 0.75, numThreads);
-		optimizer.optimize(tiles, fixedTiles);
+		optimizer.optimize(tiles, fixedTile);
 
 		// TODO: this is not the right error measure, what is idToBlockErrorMap supposed to be exactly?
 		coefficientTiles.forEach((tileId, tile) -> {

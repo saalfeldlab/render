@@ -68,6 +68,10 @@ class IntensityTile {
 		return this.subTiles.size();
 	}
 
+	public int nFittingCycles() {
+		return nFittingCycles;
+	}
+
 	public double getDistance() {
 		return distance;
 	}

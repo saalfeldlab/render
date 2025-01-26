@@ -55,9 +55,15 @@ class IntensityTileOptimizer {
 		this.nThreads = nThreads;
 	}
 
+	/**
+	 * Optimize the given tiles concurrently. Since an intensity tile is a collection of sub-tiles, "fixed" in this
+	 * context means that one of the sub-tiles is fixed, while the other sub-tiles are optimized.
+	 * @param tiles the intensity tiles to optimize
+	 * @param fixedTile the intensity tile where one sub-tile is fixed
+	 */
 	public void optimize(
 			final List<IntensityTile> tiles,
-			final List<IntensityTile> fixedTiles
+			final IntensityTile fixedTile
 		) {
 
 		final ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(nThreads);
@@ -66,7 +72,7 @@ class IntensityTileOptimizer {
 			final ErrorStatistic observer = new ErrorStatistic(maxIterations + 1);
 
 			final List<IntensityTile> freeTiles = new ArrayList<>(tiles);
-			freeTiles.removeAll(fixedTiles);
+			freeTiles.remove(fixedTile);
 			Collections.shuffle(freeTiles);
 
 			final long t1 = System.currentTimeMillis();
@@ -87,6 +93,7 @@ class IntensityTileOptimizer {
 				final Deque<IntensityTile> pending = new ConcurrentLinkedDeque<>(freeTiles);
 				final List<Future<Void>> tasks = new ArrayList<>(nThreads);
 
+				// Fit and apply all free tiles concurrently
 				for (int j = 0; j < nThreads; j++) {
 					final boolean cleanUp = (j == 0);
 					tasks.add(executor.submit(() -> fitAndApplyWorker(pending, executingTiles, damp, cleanUp)));
@@ -97,6 +104,19 @@ class IntensityTileOptimizer {
 						task.get();
 					} catch (final InterruptedException | ExecutionException e) {
 						throw new RuntimeException(e);
+					}
+				}
+
+				// Fit and apply the fixed tile separately (don't fit the first sub-tile)
+				for (int j = 0; j < fixedTile.nFittingCycles(); j++) {
+					for (int k = 1; k < fixedTile.nSubTiles(); k++) {
+						final Tile<?> subTile = fixedTile.getSubTile(k);
+						try {
+							subTile.fitModel();
+							subTile.apply(damp);
+						} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+							LOG.warn("Error while fitting and applying fixed tile: {}", e.getMessage());
+						}
 					}
 				}
 
