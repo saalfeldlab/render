@@ -2,7 +2,6 @@ package org.janelia.render.client.newsolver.solvers.intensity;
 
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
-import mpicbg.models.Affine1D;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import net.imglib2.util.Pair;
@@ -55,7 +54,7 @@ class IntensityMatcher {
 		this.imageProcessorCache = imageProcessorCache;
 	}
 
-	public void match(final TileSpec p1, final TileSpec p2, final HashMap<String, ArrayList<Tile<? extends Affine1D<?>>>> coefficientTiles) {
+	public void match(final TileSpec p1, final TileSpec p2, final HashMap<String, IntensityTile> intensityTiles) {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
 
@@ -115,22 +114,26 @@ class IntensityMatcher {
 		}
 
 		/* connect tiles across patches */
-		final List<Tile<? extends Affine1D<?>>> p1CoefficientTiles = coefficientTiles.get(p1.getTileId());
-		final List<Tile<? extends Affine1D<?>>> p2CoefficientTiles = coefficientTiles.get(p2.getTileId());
+		final IntensityTile p1IntensityTile = intensityTiles.get(p1.getTileId());
+		final IntensityTile p2IntensityTile = intensityTiles.get(p2.getTileId());
 		int connectionCount = 0;
 
 		for (int i = 0; i < nCoefficientTiles; ++i) {
-			final Tile<?> t1 = p1CoefficientTiles.get(i);
+			final Tile<?> t1 = p1IntensityTile.getSubTile(i);
 
 			for (int j = 0; j < nCoefficientTiles; ++j) {
 				final List<PointMatch> matches = get(matrix, i, j, nCoefficientTiles);
 				if (matches.isEmpty())
 					continue;
 
-				final Tile<?> t2 = p2CoefficientTiles.get(j);
+				final Tile<?> t2 = p2IntensityTile.getSubTile(j);
 				t1.connect(t2, matches);
 				connectionCount++;
 			}
+		}
+
+		if (connectionCount > 0) {
+			p1IntensityTile.connectTo(p2IntensityTile);
 		}
 
 		stopWatch.stop();
