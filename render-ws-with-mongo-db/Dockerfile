@@ -13,10 +13,10 @@
 #   cd ${RENDER_REPO_ROOT_DIR}
 #   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --tag janelia-render-ws-with-mongo-db:0.0.2 .
 #
-# To run a container:
-#   docker run --tty --publish 8080:8080 --rm janelia-render-ws-with-mongo-db:0.0.2
+# To run a container in detached mode:
+#   docker run --publish 8080:8080 --detach --rm janelia-render-ws-with-mongo-db:0.0.2
 #
-# To launch interactive bash shell within an example container:
+# To launch interactive bash shell within a container:
 #   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm janelia-render-ws-with-mongo-db:0.0.2
 # ======================================================================================
 
