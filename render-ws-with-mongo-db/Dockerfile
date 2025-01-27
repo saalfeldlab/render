@@ -66,11 +66,7 @@ RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key 
     echo "mongodb-org-tools hold" | sudo dpkg --set-selections && \
     sudo rm /bin/systemctl
 
-# start up mongodb
-RUN sudo mongodb /usr/bin/mongod -f /etc/mongod.conf \
-
-# start up jetty
-RUN sudo deploy/jetty_base/jetty_wrapper.sh run
-
 # expose the render port
 EXPOSE 8080
+
+CMD ./render-ws-with-mongodb/startup_mongodb_and_jetty.sh
