@@ -14,10 +14,10 @@
 #   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --tag janelia-render-ws-with-mongo-db:0.0.2 .
 #
 # To run a container:
-#   docker run --tty --rm janelia-render-ws-with-mongo-db:0.0.2
+#   docker run --tty --publish 8080:8080 --rm janelia-render-ws-with-mongo-db:0.0.2
 #
 # To launch interactive bash shell within an example container:
-#   docker run --interactive --tty --entrypoint /bin/bash --rm janelia-render-ws-with-mongo-db:0.0.2
+#   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm janelia-render-ws-with-mongo-db:0.0.2
 # ======================================================================================
 
 FROM ubuntu:22.04
@@ -39,7 +39,8 @@ WORKDIR /var/www/render/
 # Uncomment next line to switch to different source branch
 RUN git checkout newsolver
 
-RUN ./render-ws/src/main/scripts/install.sh
+RUN ./render-ws/src/main/scripts/install.sh && \
+    cp ./render-ws-with-mongo-db/startup_mongodb_and_jetty.sh .
 
 # 4. Build the Render Modules
 RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc
@@ -69,9 +70,6 @@ RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key 
     echo "mongodb-org-mongos hold" | sudo dpkg --set-selections && \
     echo "mongodb-org-tools hold" | sudo dpkg --set-selections && \
     sudo rm /bin/systemctl
-
-# 7. Deploy the start-up script
-RUN cp render-ws-with-mongodb/startup_mongodb_and_jetty.sh /var/www/render
 
 # expose the render port
 EXPOSE 8080
