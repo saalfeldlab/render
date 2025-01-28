@@ -1,7 +1,6 @@
 package org.janelia.alignment.match;
 
 import java.io.Serializable;
-import java.util.ArrayList;
 import java.util.List;
 
 import mpicbg.ij.FeatureTransform;
@@ -23,6 +22,7 @@ public class CanvasFeatureMatcher implements Serializable {
 
     private final float rod;
     private final MatchFilter matchFilter;
+    private final double renderScale;
 
     /**
      * Sets up everything that is needed to derive point matches from the feature lists of two canvases.
@@ -31,6 +31,7 @@ public class CanvasFeatureMatcher implements Serializable {
                                 final double renderScale) {
         this.rod = matchParameters.matchRod;
         this.matchFilter = new MatchFilter(matchParameters, renderScale);
+        this.renderScale = renderScale;
     }
 
     public MatchFilter getMatchFilter() {
@@ -55,7 +56,7 @@ public class CanvasFeatureMatcher implements Serializable {
 //        final List<PointMatch> candidates = new ArrayList<>(canvas1Features.size());
 //        FeatureTransform.matchFeatures(canvas1Features, canvas2Features, candidates, rod);
 
-        final double radius = 300 * 0.8;
+        final double radius = 300 * renderScale;
         final List<PointMatch> candidates = FeatureTransform.matchFeaturesLocally(canvas1Features, canvas2Features, radius, rod);
 
         final CanvasMatchResult result = matchFilter.buildMatchResult(candidates);
