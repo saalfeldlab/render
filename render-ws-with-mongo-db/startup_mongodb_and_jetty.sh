@@ -6,8 +6,6 @@
 echo "starting mongodb"
 sudo -u mongodb /usr/bin/mongod -f /etc/mongod.conf &
 
-echo "starting jetty"
-deploy/jetty_base/jetty_wrapper.sh start
-
-echo "sleeping 'infinity' to keep container running"
-sleep infinity
+# note that jetty_wrapper.sh start still does not seem to work and we want to keep the container active anyway
+echo "starting jetty_wrapper.sh run (which should keep the container active)"
+deploy/jetty_base/jetty_wrapper.sh run

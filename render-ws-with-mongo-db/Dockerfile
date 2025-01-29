@@ -34,16 +34,16 @@
 FROM ubuntu:22.04
 LABEL maintainer="Eric Trautman <trautmane@janelia.hhmi.org>"
 
-# 1: Install Git, Maven, curl, vim
+# 1: Install Git, Maven, curl, vim, gnupg (needed for keyring that Google Cloud SDK install requires)
 RUN apt-get update && \
     apt-get -y upgrade && \
-    apt-get install -y git maven curl vim
+    apt-get install -y git maven curl vim gnupg
 
 # 1b: Install Google Cloud SDK ( steps from https://stackoverflow.com/a/61420657 )
-RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" |  sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
-    apt-get update && \
-    apt-get install google-cloud-sdk
+# RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
+#    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
+#    apt-get update && \
+#    apt-get install -y google-cloud-sdk
 
 # 2. Clone the Repository
 WORKDIR /var/www/
@@ -58,14 +58,16 @@ RUN git checkout newsolver
 RUN ./render-ws/src/main/scripts/install.sh && \
     cp ./render-ws-with-mongo-db/startup_mongodb_and_jetty.sh .
 
-# 4. Build the Render Modules
+# 4. Build only the render-app and render-ws modules and skip tests
 RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc  && \
-    mvn --version; mvn --batch-mode -Dproject.build.sourceEncoding=UTF-8 package
+    mvn --version; mvn --batch-mode --projects ".,render-app,render-ws" -Dproject.build.sourceEncoding=UTF-8 -Dmaven.test.skip package
 
-# 5. Deploy Web Service and remove all unneeded build artifacts
+# 5. Deploy Web Service and remove all unneeded source and build artifacts
 #    leaving only render/deploy and render/startup_mongodb_and_jetty.sh
 RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war && \
-    rm -rf render/.[dgi]* render/[DLReprt]* render/do*
+    rm -rf .[dgi]* Dockerfile LICENSE README.md docker-build-and-push.sh docs examples pom.xml \
+    render-app render-ws render-ws-java-client render-ws-spark-client render-ws-with-mongo-db trakem2-scripts \
+    /tmp/extract* /root/.m2
 
 # 6. Install MongoDB 6.0.4
 
