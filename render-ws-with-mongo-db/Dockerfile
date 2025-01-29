@@ -11,23 +11,39 @@
 #
 # To build:
 #   cd ${RENDER_REPO_ROOT_DIR}
-#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --tag janelia-render-ws-with-mongo-db:0.0.2 .
+#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.3 .
 #
 # To run a container in detached mode:
-#   docker run --publish 8080:8080 --detach --rm janelia-render-ws-with-mongo-db:0.0.2
+#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.3
 #
-# To launch interactive bash shell within a container:
-#   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm janelia-render-ws-with-mongo-db:0.0.2
+# To launch an interactive bash shell within a container:
+#   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.3
+#
+# To push the image to the janeliascicomp containers GitHub registry (see https://github.com/JaneliaSciComp/containers/tree/main):
+#   docker push ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.3
+#
+# Published Containers Notes:
+#   - Before pushing, your docker instance needs to be logged in to GitHub.
+#     For details on how to do that from docker see:
+#     https://github.com/JaneliaSciComp/containers/tree/main?tab=readme-ov-file#publishing-images
+#
+#   - The list of successfully published render-ws-with-mongodb containers can be found at:
+#     https://github.com/JaneliaSciComp/containers/pkgs/container/render-ws-with-mongodb
 # ======================================================================================
 
 FROM ubuntu:22.04
 LABEL maintainer="Eric Trautman <trautmane@janelia.hhmi.org>"
 
-RUN apt-get update
-RUN apt-get -y upgrade
+# 1: Install Git, Maven, curl, vim
+RUN apt-get update && \
+    apt-get -y upgrade && \
+    apt-get install -y git maven curl vim
 
-# 1: Install Git and Maven (curl and vim also added here for convenience)
-RUN apt-get install -y git maven curl vim
+# 1b: Install Google Cloud SDK ( steps from https://stackoverflow.com/a/61420657 )
+RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main" |  sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - && \
+    apt-get update && \
+    apt-get install google-cloud-sdk
 
 # 2. Clone the Repository
 WORKDIR /var/www/
@@ -43,11 +59,13 @@ RUN ./render-ws/src/main/scripts/install.sh && \
     cp ./render-ws-with-mongo-db/startup_mongodb_and_jetty.sh .
 
 # 4. Build the Render Modules
-RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc
-RUN mvn --version; mvn --batch-mode -Dproject.build.sourceEncoding=UTF-8 package
+RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc  && \
+    mvn --version; mvn --batch-mode -Dproject.build.sourceEncoding=UTF-8 package
 
-# 5. Deploy Web Service
-RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
+# 5. Deploy Web Service and remove all unneeded build artifacts
+#    leaving only render/deploy and render/startup_mongodb_and_jetty.sh
+RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war && \
+    rm -rf render/.[dgi]* render/[DLReprt]* render/do*
 
 # 6. Install MongoDB 6.0.4
 
@@ -58,16 +76,13 @@ RUN apt-get -y install apt-transport-https gnupg wget sudo
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends tzdata
 
 # steps from https://www.mongodb.com/docs/v6.0/tutorial/install-mongodb-on-ubuntu/#install-mongodb-community-edition
+# with all packages except mongodb-org-server and mongodb-org-tools removed
 RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key add - && \
     sudo ln -s /bin/true /bin/systemctl && \
     echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list && \
     sudo apt-get update && \
-    sudo apt-get install -y mongodb-org=6.0.4 mongodb-org-database=6.0.4 mongodb-org-server=6.0.4 mongodb-org-mongos=6.0.4 mongodb-org-tools=6.0.4 && \
-    echo "mongodb-org hold" | sudo dpkg --set-selections && \
-    echo "mongodb-org-database hold" | sudo dpkg --set-selections && \
+    sudo apt-get install -y mongodb-org-server=6.0.4 mongodb-org-tools=6.0.4 && \
     echo "mongodb-org-server hold" | sudo dpkg --set-selections && \
-    echo "mongodb-mongosh hold" | sudo dpkg --set-selections && \
-    echo "mongodb-org-mongos hold" | sudo dpkg --set-selections && \
     echo "mongodb-org-tools hold" | sudo dpkg --set-selections && \
     sudo rm /bin/systemctl
 
