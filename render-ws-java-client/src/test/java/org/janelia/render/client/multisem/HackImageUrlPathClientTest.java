@@ -4,9 +4,7 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
- * Tests the {@link PreAlignClient} class.
- *
- * @author Michael Innerberger
+ * Tests the {@link HackImageUrlPathClient} class.
  */
 public class HackImageUrlPathClientTest {
 
