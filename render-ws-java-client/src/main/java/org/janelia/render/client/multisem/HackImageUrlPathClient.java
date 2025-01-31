@@ -28,10 +28,30 @@ import org.slf4j.LoggerFactory;
  *   the Hayworth pipeline.
  * - BasicBackgroundCorrectionPathTransformation: changes the image URL to point to images that have been
  *   background-corrected using the BaSiC background correction method.
+ * - GoogleTestCloudPathTransformation: changes the image URL to point to images stored
+ *   in a test Google Cloud Storage bucket.
  *
  * @author Eric Trautman
  */
 public class HackImageUrlPathClient {
+
+    public enum PathTransformationType {
+        HAYWORTH_CONTRAST,
+        BASIC_BACKGROUND_CORRECTION,
+        GOOGLE_TEST_CLOUD;
+        public UnaryOperator<String> getOperator() {
+            switch (this) {
+                case HAYWORTH_CONTRAST:
+                    return new HayworthContrastPathTransformation();
+                case BASIC_BACKGROUND_CORRECTION:
+                    return new BasicBackgroundCorrectionPathTransformation();
+                case GOOGLE_TEST_CLOUD:
+                    return new GoogleTestCloudPathTransformation();
+                default:
+                    throw new IllegalArgumentException("unsupported transformation type: " + this);
+            }
+        }
+    }
 
     @SuppressWarnings("ALL")
     public static class Parameters extends CommandLineParameters {
@@ -50,6 +70,12 @@ public class HackImageUrlPathClient {
                 description = "Name of stack to which updated tile specs should be written",
                 required = true)
         private String targetStack;
+
+        @Parameter(
+                names = "--transformationType",
+                description = "Type of transformation to apply to image URLs",
+                required = true)
+        private PathTransformationType transformationType;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(HackImageUrlPathClient.class);
@@ -66,7 +92,7 @@ public class HackImageUrlPathClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final UnaryOperator<String> pathTransformation = new BasicBackgroundCorrectionPathTransformation();
+                final UnaryOperator<String> pathTransformation = parameters.transformationType.getOperator();
                 final HackImageUrlPathClient client = new HackImageUrlPathClient(parameters, pathTransformation);
                 client.fixStackData();
             }
@@ -121,12 +147,18 @@ public class HackImageUrlPathClient {
                 throw new IllegalArgumentException("could not transform image URL: " + imageUrl);
             }
 
-            final File hackFile = new File(transformedUrl);
-            if (! hackFile.exists()) {
-                throw new IllegalArgumentException("target file does not exist: " + hackFile);
+            final String derivedImageUrl;
+            if (transformedUrl.startsWith("file:")) {
+                final File hackFile = new File(transformedUrl);
+                if (!hackFile.exists()) {
+                    throw new IllegalArgumentException("target file does not exist: " + hackFile);
+                }
+                derivedImageUrl = "file:" + hackFile.getAbsolutePath();
+            } else {
+                derivedImageUrl = transformedUrl;
             }
 
-            final ImageAndMask hackedImageAndMask = sourceImageAndMask.copyWithDerivedUrls("file:" + hackFile.getAbsolutePath(),
+            final ImageAndMask hackedImageAndMask = sourceImageAndMask.copyWithDerivedUrls(derivedImageUrl,
                                                                                            sourceImageAndMask.getMaskUrl());
             channelSpec.putMipmap(zeroLevelKey, hackedImageAndMask);
         }
@@ -156,6 +188,16 @@ public class HackImageUrlPathClient {
         @Override
         public String apply(final String path) {
             return path.substring(5, 62) + "/background_corrected" + path.substring(62);
+        }
+    }
+
+    private static class GoogleTestCloudPathTransformation implements UnaryOperator<String> {
+
+        // original:                 file:/nrs/hess/ibeammsem/system_02/wafers/wafer_60/acquisition/scans/scan_004/slabs/slab_0399/mfovs/mfov_0023/sfov_073.png
+        // target:   https://storage.googleapis.com/janelia-spark-test/FlyMSEM/wafer_60/acquisition/scans/scan_004/slabs/slab_0399/mfovs/mfov_0023/sfov_073.png
+        @Override
+        public String apply(final String path) {
+            return "https://storage.googleapis.com/janelia-spark-test/FlyMSEM" + path.substring(41);
         }
     }
 
