@@ -11,20 +11,20 @@
 #
 # To build:
 #   cd ${RENDER_REPO_ROOT_DIR}
-#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.3 .
+#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.4 .
 #
 # To run a container in detached mode:
-#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.3
+#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.4
 #
 # To launch an interactive bash shell within a new container:
-#   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.3
+#   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.4
 #
 # To launch an interactive bash shell within an already running container:
 #   docker ps -a     # to get the container id
 #   docker exec --interactive --tty <container-id> /bin/bash
 #
 # To push the image to the janeliascicomp containers GitHub registry (see https://github.com/JaneliaSciComp/containers/tree/main):
-#   docker push ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.3
+#   docker push ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.4
 #
 # Published Containers Notes:
 #   - Before pushing, your docker instance needs to be logged in to GitHub.
@@ -54,7 +54,8 @@ WORKDIR /var/www/render/
 RUN git checkout newsolver
 
 RUN ./render-ws/src/main/scripts/install.sh && \
-    cp ./render-ws-with-mongo-db/startup_mongodb_and_jetty.sh .
+    cp ./render-ws-with-mongo-db/*.sh . && \
+    chmod 755 *.sh
 
 # 4. Build only the render-app and render-ws modules and skip tests
 RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc  && \
