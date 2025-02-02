@@ -82,6 +82,10 @@ public class MultiProjectParameters
         return baseDataUrl;
     }
 
+    public void setBaseDataUrl(final String baseDataUrl) {
+        this.baseDataUrl = baseDataUrl;
+    }
+
     public MatchCollectionId getMatchCollectionIdForStack(final StackId stackId) {
         return matchCollection == null ?
                stackId.getDefaultMatchCollectionId(deriveMatchCollectionNamesFromProject) :

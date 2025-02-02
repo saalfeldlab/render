@@ -3,6 +3,7 @@ package org.janelia.render.client.spark.pipeline;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
+import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.List;
@@ -12,6 +13,7 @@ import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.spec.stack.PipelineStackIdNamingGroups;
 import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.util.FileUtil;
+import org.janelia.alignment.util.UrlResourceUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
@@ -195,12 +197,29 @@ public class AlignmentPipelineParameters
         return STRICT_JSON_HELPER.fromJson(json);
     }
 
-    public static AlignmentPipelineParameters fromJsonFile(final String dataFile)
+    public static AlignmentPipelineParameters fromJsonFile(final String jsonFilePathString,
+                                                           final String baseDataUrlString)
             throws IOException {
         final AlignmentPipelineParameters parameters;
-        final Path path = FileSystems.getDefault().getPath(dataFile).toAbsolutePath();
+        final Path path = FileSystems.getDefault().getPath(jsonFilePathString).toAbsolutePath();
         try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
             parameters = fromJson(reader);
+            if (baseDataUrlString != null) {
+                parameters.multiProject.setBaseDataUrl(baseDataUrlString);
+            }
+        }
+        return parameters;
+    }
+
+    public static AlignmentPipelineParameters fromJsonUrl(final URL jsonUrl,
+                                                          final String baseDataUrlString)
+            throws IOException {
+        final AlignmentPipelineParameters parameters;
+        try (final Reader reader = UrlResourceUtil.DEFAULT_INSTANCE.getExtensionBasedReader(jsonUrl)) {
+            parameters = fromJson(reader);
+            if (baseDataUrlString != null) {
+                parameters.multiProject.setBaseDataUrl(baseDataUrlString);
+            }
         }
         return parameters;
     }

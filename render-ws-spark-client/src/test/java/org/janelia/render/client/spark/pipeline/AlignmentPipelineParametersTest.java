@@ -44,7 +44,8 @@ public class AlignmentPipelineParametersTest {
 
     private AlignmentPipelineParameters loadTestParameters() throws IOException {
         final AlignmentPipelineParameters pipelineParameters =
-                AlignmentPipelineParameters.fromJsonFile("src/test/resources/pipeline/msem_alignment_pipeline.json");
+                AlignmentPipelineParameters.fromJsonFile("src/test/resources/pipeline/msem_alignment_pipeline.json",
+                                                         null);
         Assert.assertNotNull("deserialized parameters are null", pipelineParameters);
         return pipelineParameters;
     }

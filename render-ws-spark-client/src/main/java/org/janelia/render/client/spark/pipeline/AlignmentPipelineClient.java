@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.URL;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
@@ -25,9 +26,14 @@ public class AlignmentPipelineClient
     public static class Parameters extends CommandLineParameters {
         @Parameter(
                 names = "--pipelineJson",
-                description = "JSON file where pipeline parameters are defined",
+                description = "JSON file (or URL) where pipeline parameters are defined",
                 required = true)
         public String pipelineJson;
+
+        @Parameter(
+                names = "--baseDataUrl",
+                description = "Override the baseDataUrl defined in the pipeline JSON (omit to use JSON value)")
+        public String baseDataUrl;
     }
 
     /** Run the client with command line parameters. */
@@ -51,10 +57,28 @@ public class AlignmentPipelineClient
     public void createContextAndRun(final Parameters clientParameters) throws IOException, IllegalArgumentException {
         final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
+
             LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
-            final AlignmentPipelineParameters parsedParameters =
-                    AlignmentPipelineParameters.fromJsonFile(clientParameters.pipelineJson);
+
+            if (clientParameters.pipelineJson == null) {
+                throw new IllegalArgumentException("pipelineJson is required");
+            }
+
+            final AlignmentPipelineParameters parsedParameters;
+            if (clientParameters.pipelineJson.startsWith("/") ||
+                clientParameters.pipelineJson.startsWith("\\") ||
+                clientParameters.pipelineJson.startsWith("file:")) {
+                parsedParameters =
+                        AlignmentPipelineParameters.fromJsonFile(clientParameters.pipelineJson,
+                                                                 clientParameters.baseDataUrl);
+            } else {
+                final URL jsonUrl = new URL(clientParameters.pipelineJson);
+                parsedParameters = AlignmentPipelineParameters.fromJsonUrl(jsonUrl,
+                                                                           clientParameters.baseDataUrl);
+            }
+
             runPipeline(sparkContext, parsedParameters);
+
         }
     }
 
