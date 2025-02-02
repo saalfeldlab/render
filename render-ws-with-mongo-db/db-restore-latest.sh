@@ -31,6 +31,7 @@ for DB in render match; do
   DUMP_FILE="${DUMP_DIR}/${LATEST_TIMESTAMP}.${DB}.dump.gz"
   if [ -f "${DUMP_FILE}" ]; then
     echo "restoring ${DUMP_FILE} ..."
+    # see https://www.mongodb.com/docs/database-tools/mongorestore/
     mongorestore --uri="${URI}" --archive="${DUMP_FILE}" --gzip
   else
     echo "WARNING: ${DUMP_FILE} not found"
