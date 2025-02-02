@@ -112,6 +112,10 @@ public class AlignmentPipelineParameters
         return pipelineStackGroups == null ? null : pipelineStackGroups.getIntensityCorrected();
     }
 
+    public List<AlignmentPipelineStepId> getPipelineSteps() {
+        return pipelineSteps;
+    }
+
     public MipmapParameters getMipmap() {
         return mipmap;
     }
