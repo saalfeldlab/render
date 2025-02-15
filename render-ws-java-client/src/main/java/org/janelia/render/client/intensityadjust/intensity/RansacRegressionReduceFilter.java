@@ -19,9 +19,6 @@
  * <http://www.gnu.org/licenses/gpl-3.0.html>.
  * #L%
  */
-/**
- *
- */
 package org.janelia.render.client.intensityadjust.intensity;
 
 import java.util.ArrayList;
@@ -33,8 +30,9 @@ import mpicbg.models.AffineModel1D;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;
 import mpicbg.models.NotEnoughDataPointsException;
-import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
+import org.janelia.render.client.newsolver.solvers.intensity.Point1D;
+import org.janelia.render.client.newsolver.solvers.intensity.PointMatch1D;
 
 /**
  * @author Stephan Saalfeld saalfelds@janelia.hhmi.org
@@ -95,25 +93,25 @@ public class RansacRegressionReduceFilter implements PointMatchFilter
 
 		final double[] minMax = minMax(inliers);
 		final double weight = 2.0 / model.getMinNumMatches();
-		final List<Point> points = evenlySpacedPoints(minMax, model.getMinNumMatches());
+		final List<Point1D> points = evenlySpacedPoints(minMax, model.getMinNumMatches());
 		inliers.clear();
 
-		for (final Point point : points) {
+		for (final Point1D point : points) {
 			point.apply(model);
-			inliers.add(new PointMatch(point, new Point(point.getW().clone()), weight));
+			inliers.add(new PointMatch1D(point, new Point1D(point.getW()[0]), weight));
 		}
 	}
 
-	protected List<Point> evenlySpacedPoints(final double[] interval, final int n) {
+	protected List<Point1D> evenlySpacedPoints(final double[] interval, final int n) {
 		if (n == 1)
-			return List.of(new Point(new double[]{ (interval[0] + interval[1]) / 2 }));
+			return List.of(new Point1D((interval[0] + interval[1]) / 2));
 
 		final double min = interval[0];
 		final double delta = (interval[1] - interval[0]) / (n-1);
-		final List<Point> points = new ArrayList<>();
+		final List<Point1D> points = new ArrayList<>();
 
 		for (int k = 0; k < n; k++) {
-			points.add(new Point(new double[]{ min + k*delta }));
+			points.add(new Point1D(min + k*delta));
 		}
 
 		return points;
