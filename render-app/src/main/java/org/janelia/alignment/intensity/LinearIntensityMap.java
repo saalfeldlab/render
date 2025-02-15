@@ -171,6 +171,7 @@ public class LinearIntensityMap< T extends RealType< T > >
 		// this is before applying any image transformations
 		final double[] s = new double[ dimensions.numDimensions() ];
 		for ( int d = 0; d < s.length; ++d )
+			// TODO: probably a bug!? integer division in floating point context...
 			s[ d ] = image.dimension( d ) / dimensions.dimension( d );
 		final Scale scale = new Scale( s );
 

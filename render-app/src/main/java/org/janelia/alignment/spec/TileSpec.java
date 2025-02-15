@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
 
 import mpicbg.models.CoordinateTransform;
 import mpicbg.models.CoordinateTransformList;
@@ -708,15 +709,7 @@ public class TileSpec implements Serializable {
         return hasMasks;
     }
 
-    /**
-     * Utility for altering this tile spec to support rendering/exporting of transformed mask data.
-     * If useExistingMask is true and the first channel has a mask, replace the source image with that mask.
-     * In all other cases, replace the source image with a dynamic empty mask that covers the full tile area
-     * and remove any existing mask.
-     * This tile spec's filter will also always be removed if it has one.
-     */
-    public void replaceFirstChannelImageWithMask(final boolean useExistingMask) {
-
+    private TreeMap<Integer, ImageAndMask> getFirstChannelMipmapLevels() {
         final TreeMap<Integer, ImageAndMask> levels;
         if ((channels == null) || channels.isEmpty()) {
             levels = mipmapLevels;
@@ -726,7 +719,19 @@ public class TileSpec implements Serializable {
             levels = firstChannelSpec.getMipmapLevels();
             firstChannelSpec.setFilterSpec(null);
         }
+        return levels;
+    }
 
+    /**
+     * Utility for altering this tile spec to support rendering/exporting of transformed mask data.
+     * If useExistingMask is true and the first channel has a mask, replace the source image with that mask.
+     * In all other cases, replace the source image with a dynamic empty mask that covers the full tile area
+     * and remove any existing mask.
+     * This tile spec's filter will also always be removed if it has one.
+     */
+    public void replaceFirstChannelImageWithMask(final boolean useExistingMask) {
+
+        final TreeMap<Integer, ImageAndMask> levels = getFirstChannelMipmapLevels();
         final Map.Entry<Integer, ImageAndMask> firstEntry = levels.firstEntry();
         final ImageAndMask imageAndMask = firstEntry.getValue();
         if (useExistingMask && imageAndMask.hasMask()) {
@@ -747,6 +752,22 @@ public class TileSpec implements Serializable {
                                         null,
                                         null,
                                         null));
+        }
+    }
+
+    public void replaceFirstChannelImageUrl(final Pattern pattern,
+                                            final String replacement) {
+
+        final TreeMap<Integer, ImageAndMask> levels = getFirstChannelMipmapLevels();
+        final Map.Entry<Integer, ImageAndMask> firstEntry = levels.firstEntry();
+        final ImageAndMask imageAndMask = firstEntry.getValue();
+        if (imageAndMask.hasImage()) {
+            String updatedImageUrl = imageAndMask.getImageUrl();
+            updatedImageUrl = pattern.matcher(updatedImageUrl).replaceFirst(replacement);
+            levels.put(firstEntry.getKey(),
+                       imageAndMask.copyWithImage(updatedImageUrl,
+                                                  imageAndMask.getImageLoaderType(),
+                                                  imageAndMask.getImageSliceNumber()));
         }
     }
 

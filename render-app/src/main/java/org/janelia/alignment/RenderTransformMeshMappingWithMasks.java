@@ -1,4 +1,4 @@
-/**
+/*
  * License: GPL
  *
  * This program is free software; you can redistribute it and/or
@@ -21,10 +21,14 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.NoninvertibleModelException;
 import mpicbg.trakem2.util.Pair;
 import mpicbg.util.Util;
 
+import net.imglib2.realtransform.AffineTransform2D;
+import org.janelia.alignment.Triangle.Range;
 import org.janelia.alignment.mapper.PixelMapper;
+import org.janelia.alignment.mapper.PixelMapper.LineMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,13 +105,34 @@ public class RenderTransformMeshMappingWithMasks {
         }
     }
 
+    /**
+     * Extract the inverse {@code model} transform
+     * (mapping target to source coordinates).
+     *
+     * @param model
+     * @return the inverse model transform
+     * @throws NoninvertibleModelException
+     */
+    private static AffineTransform2D getTransformToSource(AffineModel2D model) throws NoninvertibleModelException {
+        try {
+            final AffineTransform2D transform = new AffineTransform2D();
+            final double[] m = new double[6];
+            model.toArray(m);
+            transform.set(m[0], m[2], m[4], m[1], m[3], m[5]);
+            return transform.inverse();
+        } catch (final Exception e) {
+            throw new NoninvertibleModelException("Model not invertible.");
+        }
+    }
+
+
     private static Exception mapTriangle(final Pair<AffineModel2D, double[][]> ai,
                                          final PixelMapper pixelMapper) {
 
-        final int w = pixelMapper.getTargetWidth() - 1;
-        final int h = pixelMapper.getTargetHeight() - 1;
-
         final double[][] pq = ai.b;
+        final AffineModel2D model = ai.a;
+
+        final Triangle triangle = new Triangle(pq[2][0], pq[3][0], pq[2][1], pq[3][1], pq[2][2], pq[3][2]);
 
         final double[] min = new double[2];
         final double[] max = new double[2];
@@ -115,61 +140,29 @@ public class RenderTransformMeshMappingWithMasks {
 
         final int minX = Math.max(0, Util.roundPos(min[0]));
         final int minY = Math.max(0, Util.roundPos(min[1]));
-        final int maxX = Math.min(w, Util.roundPos(max[0]));
-        final int maxY = Math.min(h, Util.roundPos(max[1]));
+        final int maxX = Math.min(pixelMapper.getTargetWidth() - 1, Util.roundPos(max[0]));
+        final int maxY = Math.min(pixelMapper.getTargetHeight() - 1, Util.roundPos(max[1]));
 
-        final double[] source = new double[2];
-
-        // TODO: ask Saalfeld why we can't just throw the exception - are there common cases where ignoring makes sense?
-        Exception lastIgnoredException = null;
-        
-        if (pixelMapper.isMappingInterpolated()) {
-
-            for (int targetY = minY; targetY <= maxY; ++targetY) {
-                for (int targetX = minX; targetX <= maxX; ++targetX) {
-
-                    if (RenderTransformMesh.isInTargetTriangle(pq, targetX, targetY)) {
-
-                        source[0] = targetX;
-                        source[1] = targetY;
-
-                        try {
-                            ai.a.applyInverseInPlace(source);
-                        } catch (final Exception e) {
-                            lastIgnoredException = e;
-                            continue;
-                        }
-
-                        pixelMapper.mapInterpolated(source[0], source[1], targetX, targetY);
-                    }
-                }
-            }
-
-        } else {
-
-            for (int targetY = minY; targetY <= maxY; ++targetY) {
-                for (int targetX = minX; targetX <= maxX; ++targetX) {
-
-                    if (RenderTransformMesh.isInTargetTriangle(pq, targetX, targetY)) {
-
-                        source[0] = targetX;
-                        source[1] = targetY;
-
-                        try {
-                            ai.a.applyInverseInPlace(source);
-                        } catch (final Exception e) {
-                            lastIgnoredException = e;
-                            continue;
-                        }
-
-                        pixelMapper.map(source[0], source[1], targetX, targetY);
-                    }
-                }
-            }
-
+        final AffineTransform2D affineTransform2D;
+            try {
+            affineTransform2D = getTransformToSource(model);
+        } catch (final NoninvertibleModelException e) {
+            return e;
         }
 
-        return lastIgnoredException;
+        final LineMapper lineMapper = pixelMapper.createLineMapper();
+        final double dx = affineTransform2D.d(0).getDoublePosition(0);
+        final double dy = affineTransform2D.d(0).getDoublePosition(1);
+        final double[] source = new double[2];
+        for (int targetY = minY; targetY <= maxY; ++targetY) {
+            final Range xRange = triangle.intersect(targetY, minX, maxX + 1);
+            source[0] = xRange.from();
+            source[1] = targetY;
+            affineTransform2D.apply(source, source);
+            lineMapper.map(source[0], source[1], dx, dy, xRange.from(), targetY, xRange.length());
+        }
+
+        return null;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderTransformMeshMappingWithMasks.class);
