@@ -16,12 +16,18 @@
 # To run a container in detached mode:
 #   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.4
 #
+# To run a container in detached mode with the standard MongoDB dump directory mounted:
+#   docker run --publish 8080:8080 --detach --rm --mount type=bind,source=/mnt/disks/mongodb_dump_fs/dump,target=/mnt/disks/mongodb_dump_fs/dump ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.4
+#
 # To launch an interactive bash shell within a new container:
 #   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.4
 #
 # To launch an interactive bash shell within an already running container:
 #   docker ps -a     # to get the container id
 #   docker exec --interactive --tty <container-id> /bin/bash
+
+# To launch an interactive bash shell within an already running container when only one container is running:
+#   docker exec --interactive --tty "$(docker ps -q)" /bin/bash
 #
 # To push the image to the janeliascicomp containers GitHub registry (see https://github.com/JaneliaSciComp/containers/tree/main):
 #   docker push ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.4
