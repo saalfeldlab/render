@@ -21,9 +21,9 @@ public class UnconnectedCrossMFOVClientTest {
                 "--baseDataUrl", "http://10.40.3.113:8080/render-ws/v1",
                 "--owner", "trautmane",
                 "--project", "w60_serial_290_to_299",
-                "--stack", "w60_s296_r00_d00",
-                "--minPairsForConnection", "2",
-                "--unconnectedMFOVPairsDirectory", "/Users/trautmane/Desktop/mfov_2",
+                "--stack", "w60_s296_r00_d00_google_cluster0",
+                "--minPairsForConnection", "1",
+                "--unconnectedMFOVPairsDirectory", "/Users/trautmane/Desktop/unconnectedMFOVPairs",
                 "--montageStackSuffix", "_mfov_montage"
         };
 
