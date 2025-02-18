@@ -3,7 +3,7 @@
 set -e
 
 # ----------------------------------------------------------------------------
-# Generate mongodb dump files from a render-ws-mongodb Google Cloud VM container.
+# Generate mongodb archive dump files from a render-ws-mongodb Google Cloud VM container.
 #
 # Dump files for the render and match databases are written to:
 #   /mnt/disks/mongodb_dump_fs/dump/${HOSTNAME}/${RUN_TIMESTAMP}.${DB}.dump.gz
@@ -18,7 +18,7 @@ if [ ! -d "${BASE_DUMP_DIR}" ]; then
   exit 1
 fi
 
-# /mnt/disks/mongodb_dump_fs/dump/render-ws-mongodb-8c-32gb-aab
+# /mnt/disks/mongodb_dump_fs/dump/render-ws-mongodb-8c-32gb-aab/archives
 DUMP_DIR="${BASE_DUMP_DIR}/${DUMP_SUBDIR}"
 mkdir -p "${DUMP_DIR}"
 
