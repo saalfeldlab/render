@@ -76,11 +76,11 @@ public class CopyStackClientTest {
 
         final String[] effectiveArgs = new String[] {
                 "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
-                "--owner", "hess",
-                "--project", "wafer_52_cut_00030_to_00039",
-                "--fromStack", "slab_045_all_align_t2",
-                "--toStack", "slab_045_all_align_t2_mfov_4_center_19",
-                "--includeTileIdsWithPattern", "_000004_0[0-1]",
+                "--owner", "hess_wafers_60_61",
+                "--project", "w60_serial_360_to_369",
+                "--fromStack", "w60_s360_r00_d30_gc",
+                "--toStack", "w60_s360_r00_d20_gc",
+                "--excludeTileIdsMissingFromStacks", "w60_s360_r00_d20",
                 "--completeToStackAfterCopy"
         };
 
