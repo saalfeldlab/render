@@ -34,12 +34,12 @@ import org.slf4j.LoggerFactory;
 public class MultiSemUtilities {
 
     /**
-     * @return 0399_m0013 for w60_magc0399_scan005_m0013_s001
+     * @return 0399_m0013 for w60_magc0399_scan005_m0013_r46_s01
      */
-    public static String getMFOVForTileId(final String tileId) throws IllegalArgumentException {
+    public static String getMagcMfovForTileId(final String tileId) throws IllegalArgumentException {
         final int magcIndex = tileId.indexOf("magc");
         if ((magcIndex < 0) || (tileId.length() < (magcIndex + 18))) {
-            throw new IllegalArgumentException("MFOV identifier cannot be derived from tileId " + tileId);
+            throw new IllegalArgumentException("MagcMfov identifier cannot be derived from tileId " + tileId);
         }
         final String magcName = tileId.substring((magcIndex + 4), (magcIndex + 8)); // 0399
         final String mfovName = tileId.substring((magcIndex + 16), (magcIndex + 22)); // _m0013
@@ -47,33 +47,47 @@ public class MultiSemUtilities {
     }
 
     /**
-     * @return 0399_m0013_s001 for w60_magc0399_scan005_m0013_s001
+     * @return 0399_m0013_s01 for w60_magc0399_scan005_m0013_r46_s01
      */
-    public static String getSFOVForTileId(final String tileId) throws IllegalArgumentException {
+    public static String getMagcMfovSfovForTileId(final String tileId) throws IllegalArgumentException {
         final int magcIndex = tileId.indexOf("magc");
-        if ((magcIndex < 0) || (tileId.length() < (magcIndex + 27))) {
-            throw new IllegalArgumentException("SFOV identifier cannot be derived from tileId " + tileId);
+        if ((magcIndex < 0) || (tileId.length() < (magcIndex + 30))) {
+            throw new IllegalArgumentException("MagcMfovSfov identifier cannot be derived from tileId " + tileId);
         }
         final String magcName = tileId.substring((magcIndex + 4), (magcIndex + 8)); // 0399
-        final String mfovSfovName = tileId.substring((magcIndex + 16), (magcIndex + 27)); // _m0013_s001
-        return magcName + mfovSfovName;
+        final String mfovName = tileId.substring((magcIndex + 16), (magcIndex + 22)); // _m0013
+        final String sfovName = tileId.substring((magcIndex + 26), (magcIndex + 30)); // _s01
+        return magcName + mfovName + sfovName;
     }
 
     /**
-     * @return 001 for w60_magc0399_scan005_m0013_s001
+     * @return m0013_s01 for w60_magc0399_scan005_m0013_r46_s01
+     */
+    public static String getMfovSfovForTileId(final String tileId) throws IllegalArgumentException {
+        final int magcIndex = tileId.indexOf("magc");
+        if ((magcIndex < 0) || (tileId.length() < (magcIndex + 30))) {
+            throw new IllegalArgumentException("MfovSfov identifier cannot be derived from tileId " + tileId);
+        }
+        final String mfovName = tileId.substring((magcIndex + 17), (magcIndex + 22)); // m0013
+        final String sfovName = tileId.substring((magcIndex + 26), (magcIndex + 30)); // _s01
+        return mfovName + sfovName;
+    }
+
+    /**
+     * @return 001 for w60_magc0399_scan005_m0013_r46_s01
      */
     public static String getSFOVIndexForTileId(final String tileId) throws IllegalArgumentException {
         final int scanIndex = tileId.indexOf("scan");
-        if ((scanIndex < 0) || (tileId.length() < (scanIndex + 18))) {
+        if ((scanIndex < 0) || (tileId.length() < (scanIndex + 21))) {
             throw new IllegalArgumentException("SFOV index cannot be derived from tileId " + tileId);
         }
-        return tileId.substring(scanIndex + 15);
+        return tileId.substring(scanIndex + 19);
     }
 
     /**
-     * @return 1247.0:019:020 for groupId 1247.0,
-     *                            pId 001_000006_019_20220407_115555.1247.0, and
-     *                            qId 001_000006_020_20220407_115555.1247.0
+     * @return 33.0:01:02 for groupId 33.0,
+     *                            pId w60_magc0399_scan004_m0013_r46_s01, and
+     *                            qId w60_magc0399_scan004_m0013_r47_s02
      */
     public static String getSFOVIndexPairName(final String groupId,
                                               final String pId,
@@ -87,8 +101,8 @@ public class MultiSemUtilities {
         final Map<String, TileSpec> map = new HashMap<>(tileSpecList.size());
         for (final TileSpec tileSpec : tileSpecList) {
             final String tileId = tileSpec.getTileId();
-            if (mFOVId.equals(getMFOVForTileId(tileId))) {
-                map.put(getSFOVForTileId(tileId), tileSpec);
+            if (mFOVId.equals(getMagcMfovForTileId(tileId))) {
+                map.put(getMagcMfovSfovForTileId(tileId), tileSpec);
             }
         }
         return map;

@@ -289,7 +289,7 @@ public class TileBoundsRTree {
                                                             final boolean includeRelativePosition) {
         final Set<OrderedCanvasIdPair> pairs = new HashSet<>(toTiles.size() * 2);
         final String pTileId = fromTile.getTileId();
-        final String pMfov = excludeSameMfovNeighbors ? MultiSemUtilities.getMFOVForTileId(pTileId) : null;
+        final String pMfov = excludeSameMfovNeighbors ? MultiSemUtilities.getMagcMfovForTileId(pTileId) : null;
 
         final double fromMinX = fromTile.getMinX();
         final double fromMaxX = fromTile.getMaxX();
@@ -308,7 +308,7 @@ public class TileBoundsRTree {
                         isNeighborCenterInRange(fromMinX, fromMaxX, toTile.getMinX(), toTile.getMaxX()) ||
                         isNeighborCenterInRange(fromMinY, fromMaxY, toTile.getMinY(), toTile.getMaxY())) {
 
-                        if (excludeSameMfovNeighbors && (pMfov.equals(MultiSemUtilities.getMFOVForTileId(qTileId)))) {
+                        if (excludeSameMfovNeighbors && (pMfov.equals(MultiSemUtilities.getMagcMfovForTileId(qTileId)))) {
                             continue;
                         }
 

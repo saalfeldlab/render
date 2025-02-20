@@ -1,6 +1,6 @@
 [
     {
-        "tileId": "w60_magc0399_scan032_m0013_s032",
+        "tileId": "w60_magc0399_scan032_m0013_r73_s32",
         "layout": {
             "sectionId": "27.0",
             "imageRow": 52,
@@ -46,7 +46,7 @@
         "meshCellSize": 64
     },
     {
-        "tileId": "w60_magc0399_scan032_m0013_s053",
+        "tileId": "w60_magc0399_scan032_m0013_r72_s53",
         "layout": {
             "sectionId": "27.0",
             "imageRow": 52,

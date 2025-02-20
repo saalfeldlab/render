@@ -179,11 +179,11 @@ public class TileBoundsRTreeTest {
         // s082  s083  s084
         //    s071  s070
         final List<TileBounds> tileBoundsList = Arrays.asList(
-                new TileBounds("w60_magc0399_scan012_m0013_s082", sectionId, z, 5.0, 0.0, 17.0, 12.0),
-                new TileBounds("w60_magc0399_scan012_m0013_s083", sectionId, z, 15.0, 0.0, 27.0, 12.0),
-                new TileBounds("w60_magc0399_scan012_m0013_s084", sectionId, z, 25.0, 0.0, 37.0, 12.0),
-                new TileBounds("w60_magc0399_scan012_m0014_s071", sectionId, z, 10.0, 10.0, 22.0, 22.0),
-                new TileBounds("w60_magc0399_scan012_m0014_s070", sectionId, z, 20.0, 10.0, 32.0, 22.0)
+                new TileBounds("w60_magc0399_scan012_m0013_r86_s82", sectionId, z, 5.0, 0.0, 17.0, 12.0),
+                new TileBounds("w60_magc0399_scan012_m0013_r87_s83", sectionId, z, 15.0, 0.0, 27.0, 12.0),
+                new TileBounds("w60_magc0399_scan012_m0013_r88_s84", sectionId, z, 25.0, 0.0, 37.0, 12.0),
+                new TileBounds("w60_magc0399_scan012_m0014_r02_s71", sectionId, z, 10.0, 10.0, 22.0, 22.0),
+                new TileBounds("w60_magc0399_scan012_m0014_r01_s70", sectionId, z, 20.0, 10.0, 32.0, 22.0)
         );
 
         final TileBounds testTile = tileBoundsList.get(1); // s083

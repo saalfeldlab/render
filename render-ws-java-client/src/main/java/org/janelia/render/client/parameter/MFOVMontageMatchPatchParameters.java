@@ -128,9 +128,9 @@ public class MFOVMontageMatchPatchParameters
         String mFOVId = multiFieldOfViewId;
         if (mFOVId == null) {
             if (pTileId != null) {
-                mFOVId = MultiSemUtilities.getMFOVForTileId(pTileId);
+                mFOVId = MultiSemUtilities.getMagcMfovForTileId(pTileId);
             } else if (qTileId != null) {
-                mFOVId = MultiSemUtilities.getMFOVForTileId(qTileId);
+                mFOVId = MultiSemUtilities.getMagcMfovForTileId(qTileId);
             }
         }
         return mFOVId;
@@ -184,10 +184,10 @@ public class MFOVMontageMatchPatchParameters
             throws IllegalArgumentException {
 
         if (pTileId != null) {
-            multiFieldOfViewId = MultiSemUtilities.getMFOVForTileId(pTileId);
+            multiFieldOfViewId = MultiSemUtilities.getMagcMfovForTileId(pTileId);
             pTileIdPrefixForRun = getTileIdPrefixForRun(pTileId);
             if (qTileId != null) {
-                if (! multiFieldOfViewId.equals(MultiSemUtilities.getMFOVForTileId(qTileId))) {
+                if (! multiFieldOfViewId.equals(MultiSemUtilities.getMagcMfovForTileId(qTileId))) {
                     throw new IllegalArgumentException("pTileId and qTileId reference different MFOVs");
                 }
                 qTileIdPrefixForRun = getTileIdPrefixForRun(qTileId);
@@ -195,7 +195,7 @@ public class MFOVMontageMatchPatchParameters
                 qTileIdPrefixForRun = multiFieldOfViewId;
             }
         } else if (qTileId != null) {
-            multiFieldOfViewId = MultiSemUtilities.getMFOVForTileId(qTileId);
+            multiFieldOfViewId = MultiSemUtilities.getMagcMfovForTileId(qTileId);
             qTileIdPrefixForRun = getTileIdPrefixForRun(qTileId);
             pTileIdPrefixForRun = multiFieldOfViewId;
         } else if ((multiFieldOfViewId == null) || (multiFieldOfViewId.length() != 10)) {

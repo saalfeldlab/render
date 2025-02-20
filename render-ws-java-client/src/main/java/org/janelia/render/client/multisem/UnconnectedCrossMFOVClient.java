@@ -194,8 +194,8 @@ public class UnconnectedCrossMFOVClient {
         for (final CanvasMatches canvasMatches : matchClient.getMatchesBetweenGroups(pGroupId,
                                                                                      qGroupId,
                                                                                      true)) {
-            final String pMFOVName = MultiSemUtilities.getMFOVForTileId(canvasMatches.getpId());
-            final String qMFOVName = MultiSemUtilities.getMFOVForTileId(canvasMatches.getqId());
+            final String pMFOVName = MultiSemUtilities.getMagcMfovForTileId(canvasMatches.getpId());
+            final String qMFOVName = MultiSemUtilities.getMagcMfovForTileId(canvasMatches.getqId());
             final Integer sFOVPairCount = mFOVToSFOVPairCount.get(pMFOVName);
             if ((sFOVPairCount != null) && (pMFOVName.equals(qMFOVName))) {
                 mFOVToSFOVPairCount.put(pMFOVName, sFOVPairCount + 1);

@@ -399,7 +399,7 @@ public class MFOVCrossMatchPatchClient {
 
         OrderedCanvasIdPair firstUnconnectedPairWithWrongSFOVIndex = null;
         for (final OrderedCanvasIdPair canvasPair : unconnectedPairsForMFOV) {
-            final String sFOV = MultiSemUtilities.getSFOVForTileId(canvasPair.getP().getId());
+            final String sFOV = MultiSemUtilities.getMagcMfovSfovForTileId(canvasPair.getP().getId());
             final String sFOVIndex = sFOV.substring(sFOV.length() - 3);
             if (parameters.sFOVIndexSet.contains(sFOVIndex)) {
                 unconnectedPairsWithSFOVIndex.add(canvasPair);

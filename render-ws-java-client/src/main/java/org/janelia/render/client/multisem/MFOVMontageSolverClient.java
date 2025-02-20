@@ -162,7 +162,7 @@ public class MFOVMontageSolverClient {
             final Set<String> tileIdsToKeep = resolvedTiles.getTileSpecs()
                     .stream()
                     .map(TileSpec::getTileId)
-                    .filter(id -> mFOVSet.contains(MultiSemUtilities.getMFOVForTileId(id)))
+                    .filter(id -> mFOVSet.contains(MultiSemUtilities.getMagcMfovForTileId(id)))
                     .collect(Collectors.toSet());
             resolvedTiles.retainTileSpecs(tileIdsToKeep);
             resolvedTiles.resolveTileSpecs();
@@ -216,8 +216,8 @@ public class MFOVMontageSolverClient {
             final String pId = match.getpId();
             final String qId = match.getqId();
 
-            final String pMFOV = MultiSemUtilities.getMFOVForTileId(pId);
-            final String qMFOV = MultiSemUtilities.getMFOVForTileId(qId);
+            final String pMFOV = MultiSemUtilities.getMagcMfovForTileId(pId);
+            final String qMFOV = MultiSemUtilities.getMagcMfovForTileId(qId);
 
             if (pMFOV.equals(qMFOV) && mFOVSet.contains(pMFOV)) {
 
@@ -312,7 +312,7 @@ public class MFOVMontageSolverClient {
             if (tile == null) {
                 throw new IOException("Tile " + tileId + " was dropped because " + matchCollection +
                                       " does not contain matches for it with any other tiles in MFOV " +
-                                      MultiSemUtilities.getMFOVForTileId(tileId) +
+                                      MultiSemUtilities.getMagcMfovForTileId(tileId) +
                                       ".  Make sure montage match patching has been run for " +
                                       matchCollection + " (or specify a different collection).");
             }

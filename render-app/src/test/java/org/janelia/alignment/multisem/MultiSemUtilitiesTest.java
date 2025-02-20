@@ -12,13 +12,15 @@ public class MultiSemUtilitiesTest {
 
     @Test
     public void testTileIdParsers() {
-        final String tileId = "w60_magc0399_scan005_m0013_s001";
-        Assert.assertEquals("invalid MFOVForTileId",
-                            "0399_m0013", MultiSemUtilities.getMFOVForTileId(tileId));
-        Assert.assertEquals("invalid SFOVForTileId",
-                            "0399_m0013_s001", MultiSemUtilities.getSFOVForTileId(tileId));
+        final String tileId = "w60_magc0399_scan005_m0013_r46_s01";
+        Assert.assertEquals("invalid MagcMfov",
+                            "0399_m0013", MultiSemUtilities.getMagcMfovForTileId(tileId));
+        Assert.assertEquals("invalid MagcMfovSfov",
+                            "0399_m0013_s01", MultiSemUtilities.getMagcMfovSfovForTileId(tileId));
+        Assert.assertEquals("invalid MfovSfov",
+                            "m0013_s01", MultiSemUtilities.getMfovSfovForTileId(tileId));
         Assert.assertEquals("invalid SFOVIndexForTileId",
-                            "001", MultiSemUtilities.getSFOVIndexForTileId(tileId));
+                            "01", MultiSemUtilities.getSFOVIndexForTileId(tileId));
     }
 
 }

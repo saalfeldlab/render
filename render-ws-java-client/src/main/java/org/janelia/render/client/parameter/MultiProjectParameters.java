@@ -167,7 +167,7 @@ public class MultiProjectParameters
             throws IOException {
         return renderDataClient.getTileBounds(stack, z)
                 .stream()
-                .map(tileBounds -> MultiSemUtilities.getMFOVForTileId(tileBounds.getTileId()))
+                .map(tileBounds -> MultiSemUtilities.getMagcMfovForTileId(tileBounds.getTileId()))
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
