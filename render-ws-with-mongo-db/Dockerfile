@@ -88,9 +88,10 @@ RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key 
     sudo ln -s /bin/true /bin/systemctl && \
     echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/6.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-6.0.list && \
     sudo apt-get update && \
-    sudo apt-get install -y mongodb-org-server=6.0.4 mongodb-mongosh=6.0.4 mongodb-org-tools=6.0.4 && \
+    sudo apt-get install -y mongodb-org-server=6.0.4 mongodb-org-tools=6.0.4 mongodb-mongosh=2.3.8 && \
     echo "mongodb-org-server hold" | sudo dpkg --set-selections && \
     echo "mongodb-org-tools hold" | sudo dpkg --set-selections && \
+    echo "mongodb-mongosh hold" | sudo dpkg --set-selections && \
     sudo rm /bin/systemctl
 
 # expose the render port
