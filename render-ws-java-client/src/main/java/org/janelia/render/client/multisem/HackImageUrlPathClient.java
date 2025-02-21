@@ -38,15 +38,18 @@ public class HackImageUrlPathClient {
     public enum PathTransformationType {
         HAYWORTH_CONTRAST,
         BASIC_BACKGROUND_CORRECTION,
-        GOOGLE_TEST_CLOUD;
+        GOOGLE_CLOUD_TEST,
+        GOOGLE_CLOUD_WAFER_60;
         public UnaryOperator<String> getOperator() {
             switch (this) {
                 case HAYWORTH_CONTRAST:
                     return new HayworthContrastPathTransformation();
                 case BASIC_BACKGROUND_CORRECTION:
                     return new BasicBackgroundCorrectionPathTransformation();
-                case GOOGLE_TEST_CLOUD:
-                    return new GoogleTestCloudPathTransformation();
+                case GOOGLE_CLOUD_TEST:
+                    return new GoogleCloudTestPathTransformation();
+                case GOOGLE_CLOUD_WAFER_60:
+                    return new GoogleCloudWafer60PathTransformation();
                 default:
                     throw new IllegalArgumentException("unsupported transformation type: " + this);
             }
@@ -191,13 +194,26 @@ public class HackImageUrlPathClient {
         }
     }
 
-    private static class GoogleTestCloudPathTransformation implements UnaryOperator<String> {
-
+    private static class GoogleCloudTestPathTransformation
+            implements UnaryOperator<String> {
         // original:                 file:/nrs/hess/ibeammsem/system_02/wafers/wafer_60/acquisition/scans/scan_004/slabs/slab_0399/mfovs/mfov_0023/sfov_073.png
         // target:   https://storage.googleapis.com/janelia-spark-test/FlyMSEM/wafer_60/acquisition/scans/scan_004/slabs/slab_0399/mfovs/mfov_0023/sfov_073.png
         @Override
         public String apply(final String path) {
-            return "https://storage.googleapis.com/janelia-spark-test/FlyMSEM" + path.substring(41);
+            return "https://storage.googleapis.com/janelia-spark-test/FlyMSEM/" + path.substring(42);
+        }
+    }
+
+    private static class GoogleCloudWafer60PathTransformation
+            implements UnaryOperator<String> {
+        // original: file:/nearline/hess/ibeammsem/system_02/wafers/wafer_60/acquisition/scans/scan_004/slabs/slab_0160/mfovs/mfov_0000/sfov_002.png
+        // target:        https://storage.googleapis.com/janelia-spark-test/hess_wafer_60_data/scan_004/slab_0160/mfov_0000/sfov_002.png
+        @Override
+        public String apply(final String path) {
+            final String hackedPath = path.substring(74)
+                    .replace("/slabs/", "/")
+                    .replace("/mfovs/", "/");
+            return "https://storage.googleapis.com/janelia-spark-test/hess_wafer_60_data/" + hackedPath;
         }
     }
 
