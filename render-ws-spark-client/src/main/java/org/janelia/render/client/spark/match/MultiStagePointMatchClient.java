@@ -213,8 +213,8 @@ public class MultiStagePointMatchClient
 
         final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
 
-        LOG.info("generateRenderableCanvasIdPairs: process {} StackWithZValues objects across {} partitions",
-                 stackWithZValuesList.size(), rddStackWithZValues.getNumPartitions());
+        LOG.info("generateRenderableCanvasIdPairs: process {} StackWithZValues objects across {} partitions and batch pairs in groups of {}",
+                 stackWithZValuesList.size(), rddStackWithZValues.getNumPartitions(), maxPairsPerStackBatch);
 
         return rddStackWithZValues.mapPartitionsWithIndex(
                 (Function2<Integer, Iterator<StackWithZValues>, Iterator<RenderableCanvasIdPairsForCollection>>) (partitionIndex, stackWithZValuesIterator) -> {
@@ -286,10 +286,19 @@ public class MultiStagePointMatchClient
         // TODO: figure out how to repartition RDD without bringing all of the data back to the driver
         final List<RenderableCanvasIdPairsForCollection> batchedCanvasIdPairs =
                 rddCanvasIdPairsWithDrift.collect();
-        final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairs =
+        final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairsWithDefaultPartitioning =
                 sparkContext.parallelize(batchedCanvasIdPairs);
+
+        final int defaultNumPartitions = rddCanvasIdPairsWithDefaultPartitioning.getNumPartitions();
+        final int numPartitions = Math.min(100000, batchedCanvasIdPairs.size());
+        LOG.info("repartitionPairsForBalancedProcessing: repartition from {} to {} partitions",
+                 defaultNumPartitions, numPartitions);
+        final JavaRDD<RenderableCanvasIdPairsForCollection> rddCanvasIdPairs =
+                rddCanvasIdPairsWithDefaultPartitioning.repartition(numPartitions);
+
         LOG.info("repartitionPairsForBalancedProcessing: process {} RenderableCanvasIdPairsForCollection objects across {} partitions",
                  batchedCanvasIdPairs.size(), rddCanvasIdPairs.getNumPartitions());
+
         return rddCanvasIdPairs;
     }
 
