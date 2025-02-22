@@ -10,7 +10,7 @@ set -e
 #
 # If an argument is provided, it is used instead of the current hostname as the subdirectory.
 
-DUMP_SUBDIR="${1:-${HOSTNAME}}"
+DUMP_SUBDIR="${1:-${HOSTNAME}}/archives"
 BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
 
 if [ ! -d "${BASE_DUMP_DIR}" ]; then
