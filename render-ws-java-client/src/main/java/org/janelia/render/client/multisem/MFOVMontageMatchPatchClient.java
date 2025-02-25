@@ -43,19 +43,21 @@ import org.slf4j.LoggerFactory;
  *     after standard matching (typically because of substrate or resin borders).
  *   </li>
  *   <li>
- *     For each unconnected pair, the client first tries to find existing matches for the same pair in another
+ *     Step 1: If a sameLayerDerivedMatchWeight is specified and unconnected pairs exist,
+ *     the client loops through each unconnected pair and tries to find existing matches for that same pair in another
  *     MFOV in the same layer.  If found, the existing matches are copied to the unconnected pair and stored
- *     with a specified weight (typically reduced to something like 0.15 to ensure that standard matches are
- *     given precedence).
+ *     with the sameLayerDerivedMatchWeight which is typically some reduced value like 0.15
+ *     to ensure that standard matches are given precedence.
  *   </li>
  *   <li>
- *     If not found (no other MFOVs in the same layer have matches for the unconnected pair),
+ *     Step 2: If a crossLayerDerivedMatchWeight is specified and unconnected pairs remain after step 1,
  *     the client collects matches for the unconnected pair in all other layers and fits them to a
  *     "montage patch match model".  Montage patch matches are derived by applying the model to each SFOV tile's
- *     corners and those matches are stored with a specified weight.
+ *     corners and those matches are stored with the crossLayerDerivedMatchWeight.
  *   </li>
  *   <li>
- *       If no matches are found for the unconnected pair in any other layer, an exception is thrown.
+ *     Step 3: If a startPositionMatchWeight is specified and unconnected pairs remain after step 2,
+ *     point matches are set at the corners of the area where the two tiles overlap in the acquisition stack.
  *   </li>
  * </ul>
  *
@@ -110,7 +112,7 @@ public class MFOVMontageMatchPatchClient {
 
         final RenderDataClient defaultDataClient = multiProject.getDataClient();
         final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
-                multiProject.buildListOfStackMFOVWithAllZ(patch.multiFieldOfViewId);
+                multiProject.buildListOfStackMFOVWithAllZ(patch.getMultiFieldOfViewId());
 
         for (final StackMFOVWithZValues stackMFOVWithZValues : stackMFOVWithZValuesList) {
             final StackId stackId = stackMFOVWithZValues.getStackId();
@@ -187,7 +189,8 @@ public class MFOVMontageMatchPatchClient {
             derivedMatchesForMFOV.addAll(
                     positionPairMatchData.deriveMatchesForUnconnectedPairs(matchClient,
                                                                            patch.sameLayerDerivedMatchWeight,
-                                                                           patch.crossLayerDerivedMatchWeight));
+                                                                           patch.crossLayerDerivedMatchWeight,
+                                                                           patch.startPositionMatchWeight));
         }
 
         final int numberOfDerivedMatchPairs = derivedMatchesForMFOV.size();
@@ -224,8 +227,8 @@ public class MFOVMontageMatchPatchClient {
                                            final RenderDataClient matchClient)
             throws IOException {
 
-        LOG.info("updatePositionPairDataForZ: entry, stack={}, z={}, sectionIds={}, pTileIdPrefixForRun={}, qTileIdPrefixForRun={}",
-                 stack, z, sectionIds, patch.pTileIdPrefixForRun, patch.qTileIdPrefixForRun);
+        LOG.info("updatePositionPairDataForZ: entry, stack={}, z={}, sectionIds={}, pMagcMfovSfovPrefix={}, qMagcMfovSfovPrefix={}",
+                 stack, z, sectionIds, patch.pMagcMfovSfovPrefix, patch.qMagcMfovSfovPrefix);
 
         final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
 
@@ -245,8 +248,10 @@ public class MFOVMontageMatchPatchClient {
         // add all MFOV tile pairs to unconnected set
         final Set<OrderedCanvasIdPair> unconnectedPairsForMFOV = new HashSet<>(potentialPairsForZ.size());
         for (final OrderedCanvasIdPair pair : potentialPairsForZ) {
-            if (pair.getP().getId().startsWith(patch.pTileIdPrefixForRun) &&
-                pair.getQ().getId().startsWith(patch.qTileIdPrefixForRun)) {
+            final String pMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(pair.getP().getId());
+            final String qMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(pair.getQ().getId());
+            if (pMagcMfovSfov.startsWith(patch.pMagcMfovSfovPrefix) &&
+                qMagcMfovSfov.startsWith(patch.qMagcMfovSfovPrefix)) {
                 // remove relative position info from tree search to simplify existence check later
                 final OrderedCanvasIdPair pairWithoutRelative =
                         new OrderedCanvasIdPair(pair.getP().withoutRelativePosition(),
@@ -276,11 +281,13 @@ public class MFOVMontageMatchPatchClient {
                                                                                           true)) {
                    final String pId = canvasMatches.getpId();
                    final String qId = canvasMatches.getqId();
+                   final String pMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(pId);
+                   final String qMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(qId);
                    final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(new CanvasId(groupId, pId),
                                                                             new CanvasId(groupId, qId),
                                                                             0.0);
-                   if (pId.startsWith(patch.pTileIdPrefixForRun) &&
-                       qId.startsWith(patch.qTileIdPrefixForRun)) {
+                   if (pMagcMfovSfov.startsWith(patch.pMagcMfovSfovPrefix) &&
+                       qMagcMfovSfov.startsWith(patch.qMagcMfovSfovPrefix)) {
                        if (! unconnectedPairsForMFOV.remove(pair)) {
                            LOG.warn("updatePositionPairDataForZ: failed to locate existing pair {} in potential set",
                                     pair);
