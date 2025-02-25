@@ -57,7 +57,7 @@ public class MFOVMontageMatchPatchParameters
     @Parameter(
             names = "--startPositionMatchWeight",
             description = "Weight (e.g. 0.000001) for matches derived from tile start position.  " +
-                          "Omit to skip and throw an exception if the tile remains unconnected after patching.")
+                          "Omit to skip start position derivation.")
     public Double startPositionMatchWeight;
 
     @Parameter(
