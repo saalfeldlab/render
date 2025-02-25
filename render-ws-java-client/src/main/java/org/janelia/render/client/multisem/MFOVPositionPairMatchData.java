@@ -173,7 +173,7 @@ public class MFOVPositionPairMatchData
             }
 
         } else {
-            LOG.info("all pairs for {} are connected, nothing to derive", this);
+            LOG.info("deriveMatchesForUnconnectedPairs: all pairs for {} are connected, nothing to derive", this);
         }
 
         LOG.info("deriveMatchesForUnconnectedPairs: exit, returning matches for {}", this);
