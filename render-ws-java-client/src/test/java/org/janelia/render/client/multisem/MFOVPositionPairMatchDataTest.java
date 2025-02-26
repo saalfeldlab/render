@@ -88,7 +88,7 @@ public class MFOVPositionPairMatchDataTest {
         positionPairMatchData.addPair(tilePair, pTileSpec, qTileSpec);
         positionPairMatchData.addUnconnectedPair(tilePair);
 
-        final double derivedMatchWeight = 0.000001;
+        final double derivedMatchWeight = 1e-6;
         final List<CanvasMatches> derivedMatchesList = new ArrayList<>();
         final Set<OrderedCanvasIdPair> unconnectedPairs = new HashSet<>();
         unconnectedPairs.add(tilePair);
