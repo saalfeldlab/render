@@ -347,10 +347,10 @@ public class MFOVPositionPairMatchData
                     { worldOverlap.x, worldOverlap.y + worldOverlap.height }
             };
 
-            final double[][] pMatches = new double[2][worldOverlapPoints.length];
-            final double[][] qMatches = new double[2][worldOverlapPoints.length];
+            final double[][] pMatches = new double[2][numberOfMatchPoints];
+            final double[][] qMatches = new double[2][numberOfMatchPoints];
 
-            for (int i = 0; i < worldOverlapPoints.length; i++) {
+            for (int i = 0; i < numberOfMatchPoints; i++) {
                 final double[] worldOverlapCorner = worldOverlapPoints[i];
                 pMatches[0][i] = worldOverlapCorner[0] - pWorldBounds.x;
                 pMatches[1][i] = worldOverlapCorner[1] - pWorldBounds.y;
