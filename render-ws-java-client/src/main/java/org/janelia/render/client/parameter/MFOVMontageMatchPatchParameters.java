@@ -31,20 +31,20 @@ public class MFOVMontageMatchPatchParameters
 
     @Parameter(
             names = "--mfov",
-            description = "Multi-field-of-view identifier <slab number>_<mfov number> (e.g. 001_000006).  " +
+            description = "Multi-field-of-view identifier <magcNumber>_m<mfovNumber> (e.g. 0399_m0013).  " +
                           "Omit to process all MFOVs in stack.")
     public String multiFieldOfViewId;
 
     @Parameter(
             names = "--sameLayerDerivedMatchWeight",
-            description = "Weight for matches derived from same z layer (e.g. 0.15).  " +
+            description = "Weight (e.g. 0.15) for matches derived from same z layer.  " +
                           "Omit to skip same layer derivation.")
     public Double sameLayerDerivedMatchWeight;
 
     @Parameter(
             names = "--crossLayerDerivedMatchWeight",
-            description = "Weight for matches derived from other z layers (e.g. 0.1)",
-            required = true)
+            description = "Weight (e.g. 0.1) for matches derived from other z layers.  " +
+                          "Omit to skip cross layer derivation.")
     public Double crossLayerDerivedMatchWeight;
 
     @Parameter(
@@ -53,6 +53,12 @@ public class MFOVMontageMatchPatchParameters
                           "Omit to skip second pass derivation.  " +
                           "Only valid for spark jobs (ignored for java client jobs).")
     public Double secondPassDerivedMatchWeight;
+
+    @Parameter(
+            names = "--startPositionMatchWeight",
+            description = "Weight (e.g. 0.000001) for matches derived from tile start position.  " +
+                          "Omit to skip start position derivation.")
+    public Double startPositionMatchWeight;
 
     @Parameter(
             names = "--xyNeighborFactor",
@@ -66,14 +72,14 @@ public class MFOVMontageMatchPatchParameters
             description = "Only derive matches for positions associated with this p tile (overrides --mfov parameter)"
     )
     public String pTileId;
-    public String pTileIdPrefixForRun;
+    public String pMagcMfovSfovPrefix;
 
     @Parameter(
             names = "--qTileId",
             description = "Only derive matches for positions associated with this q tile (overrides --mfov parameter)"
     )
     public String qTileId;
-    public String qTileIdPrefixForRun;
+    public String qMagcMfovSfovPrefix;
 
     @Parameter(
             names = "--matchStorageFile",
@@ -103,6 +109,8 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.multiFieldOfViewId = multiFieldOfViewIdForClone;
         clonedParameters.sameLayerDerivedMatchWeight = this.sameLayerDerivedMatchWeight;
         clonedParameters.crossLayerDerivedMatchWeight = this.crossLayerDerivedMatchWeight;
+        clonedParameters.secondPassDerivedMatchWeight = this.secondPassDerivedMatchWeight;
+        clonedParameters.startPositionMatchWeight = this.startPositionMatchWeight;
         clonedParameters.xyNeighborFactor = this.xyNeighborFactor;
         clonedParameters.pTileId = this.pTileId;
         clonedParameters.qTileId = this.qTileId;
@@ -114,14 +122,6 @@ public class MFOVMontageMatchPatchParameters
     public void setWeightsForSecondPass() {
         this.sameLayerDerivedMatchWeight = this.secondPassDerivedMatchWeight;
         this.crossLayerDerivedMatchWeight = this.secondPassDerivedMatchWeight;
-    }
-
-    // 001_000006_019_20220407_115555.1247.0 => 001_000006_019
-    public String getTileIdPrefixForRun(final String tileId) throws IllegalArgumentException {
-        if (tileId.length() < 14) {
-            throw new IllegalArgumentException("MFOV position cannot be derived from tileId " + tileId);
-        }
-        return tileId.substring(0, 14);
     }
 
     public String getMultiFieldOfViewId() {
@@ -148,13 +148,13 @@ public class MFOVMontageMatchPatchParameters
     }
 
     /**
-     * @return the specified stackMFOVWithZValues list bundled into groups of numberOfMFOVsPerBatch.
+     * @return the specified stackMFOVWithZValuesList bundled into groups of numberOfMFOVsPerBatch.
      */
-    public List<List<StackMFOVWithZValues>> bundleMFOVs(final List<StackMFOVWithZValues> stackMFOVWithZValues) {
+    public List<List<StackMFOVWithZValues>> bundleMFOVs(final List<StackMFOVWithZValues> stackMFOVWithZValuesList) {
         final List<List<StackMFOVWithZValues>> bundles = new ArrayList<>();
         List<StackMFOVWithZValues> currentBundle = new ArrayList<>();
-        for (final StackMFOVWithZValues stackMFOVWithZValue : stackMFOVWithZValues) {
-            currentBundle.add(stackMFOVWithZValue);
+        for (final StackMFOVWithZValues stackMFOVWithZValues : stackMFOVWithZValuesList) {
+            currentBundle.add(stackMFOVWithZValues);
             if (currentBundle.size() == numberOfMFOVsPerBatch) {
                 bundles.add(currentBundle);
                 currentBundle = new ArrayList<>();
@@ -185,24 +185,24 @@ public class MFOVMontageMatchPatchParameters
 
         if (pTileId != null) {
             multiFieldOfViewId = MultiSemUtilities.getMagcMfovForTileId(pTileId);
-            pTileIdPrefixForRun = getTileIdPrefixForRun(pTileId);
+            pMagcMfovSfovPrefix = MultiSemUtilities.getMagcMfovSfovForTileId(pTileId);
             if (qTileId != null) {
                 if (! multiFieldOfViewId.equals(MultiSemUtilities.getMagcMfovForTileId(qTileId))) {
                     throw new IllegalArgumentException("pTileId and qTileId reference different MFOVs");
                 }
-                qTileIdPrefixForRun = getTileIdPrefixForRun(qTileId);
+                qMagcMfovSfovPrefix = MultiSemUtilities.getMagcMfovSfovForTileId(qTileId);
             } else {
-                qTileIdPrefixForRun = multiFieldOfViewId;
+                qMagcMfovSfovPrefix = multiFieldOfViewId;
             }
         } else if (qTileId != null) {
             multiFieldOfViewId = MultiSemUtilities.getMagcMfovForTileId(qTileId);
-            qTileIdPrefixForRun = getTileIdPrefixForRun(qTileId);
-            pTileIdPrefixForRun = multiFieldOfViewId;
+            qMagcMfovSfovPrefix = MultiSemUtilities.getMagcMfovSfovForTileId(qTileId);
+            pMagcMfovSfovPrefix = multiFieldOfViewId;
         } else if ((multiFieldOfViewId == null) || (multiFieldOfViewId.length() != 10)) {
             throw new IllegalArgumentException("--mfov should be a 10 character value (e.g. 0399_m0013)");
         } else {
-            pTileIdPrefixForRun = multiFieldOfViewId;
-            qTileIdPrefixForRun = multiFieldOfViewId;
+            pMagcMfovSfovPrefix = multiFieldOfViewId;
+            qMagcMfovSfovPrefix = multiFieldOfViewId;
         }
 
         if (matchStorageFile != null) {
