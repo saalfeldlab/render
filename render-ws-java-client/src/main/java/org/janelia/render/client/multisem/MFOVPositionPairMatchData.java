@@ -125,23 +125,16 @@ public class MFOVPositionPairMatchData
         if (! unconnectedPairsForPosition.isEmpty()) {
 
             // 1. if same layer derivation is requested, try to patch with same layer matches
-            final Set<OrderedCanvasIdPair> unconnectedPairsWithSameLayerSubstitute;
+            final Set<OrderedCanvasIdPair> unconnectedPairsAfterStep1;
             if (sameLayerDerivedMatchWeight != null) {
-                unconnectedPairsWithSameLayerSubstitute =
+                unconnectedPairsAfterStep1 =
                         deriveMatchesUsingDataFromSameLayer(matchClient,
                                                             sameLayerDerivedMatchWeight,
-                                                            derivedMatchesList);
+                                                            derivedMatchesList,
+                                                            unconnectedPairsForPosition);
             } else {
-                unconnectedPairsWithSameLayerSubstitute = new HashSet<>();
+                unconnectedPairsAfterStep1 = unconnectedPairsForPosition;
             }
-
-            final Set<OrderedCanvasIdPair> unconnectedPairsAfterStep1 =
-                    unconnectedPairsForPosition.stream().filter(
-                                    p -> ! unconnectedPairsWithSameLayerSubstitute.contains(p)
-                            ).collect(Collectors.toSet());
-
-            LOG.info("deriveMatchesForUnconnectedPairs: after same layer derivation, {} unconnected pairs remain",
-                     unconnectedPairsAfterStep1.size());
 
             // 2. if cross layer derivation is requested, try to patch remaining unconnected pairs with cross layer data
             Set<OrderedCanvasIdPair> unconnectedPairsAfterStep2 = unconnectedPairsAfterStep1;
@@ -154,7 +147,7 @@ public class MFOVPositionPairMatchData
                             deriveMatchesUsingDataFromOtherLayers(matchClient,
                                                                   crossLayerDerivedMatchWeight,
                                                                   derivedMatchesList,
-                                                                  unconnectedPairsWithSameLayerSubstitute);
+                                                                  unconnectedPairsAfterStep1);
                 }
             } else {
                 LOG.info("deriveMatchesForUnconnectedPairs: skipping cross layer derivation, {} unconnected pairs remain, crossLayerDerivedMatchWeight={}",
@@ -181,19 +174,26 @@ public class MFOVPositionPairMatchData
         return derivedMatchesList;
     }
 
+    private Set<OrderedCanvasIdPair> buildRemainingPairsSet(final Set<OrderedCanvasIdPair> pairsBeforeRemoval,
+                                                            final Set<OrderedCanvasIdPair> pairsToRemove) {
+        return pairsBeforeRemoval.stream().filter(p -> ! pairsToRemove.contains(p)).collect(Collectors.toSet());
+    }
+
+    /** @return the set of unconnected pairs that were not patched with same layer data. */
     private Set<OrderedCanvasIdPair> deriveMatchesUsingDataFromSameLayer(final RenderDataClient matchClient,
                                                                          final double sameLayerDerivedMatchWeight,
-                                                                         final List<CanvasMatches> derivedMatchesList)
+                                                                         final List<CanvasMatches> derivedMatchesList,
+                                                                         final Set<OrderedCanvasIdPair> unconnectedPairsAtStart)
             throws IOException {
 
         LOG.info("deriveMatchesUsingDataFromSameLayer: entry, {} ", this);
 
-        final Set<OrderedCanvasIdPair> unconnectedPairsWithSameLayerSubstitute = new HashSet<>();
+        final Set<OrderedCanvasIdPair> pairsConnectedInThisStep = new HashSet<>();
 
-        for (final OrderedCanvasIdPair unconnectedPair : unconnectedPairsForPosition) {
+        for (final OrderedCanvasIdPair pair : unconnectedPairsAtStart) {
 
-            final CanvasId unconnectedP = unconnectedPair.getP();
-            final CanvasId unconnectedQ = unconnectedPair.getQ();
+            final CanvasId unconnectedP = pair.getP();
+            final CanvasId unconnectedQ = pair.getQ();
             final OrderedCanvasIdPair sameLayerPair = groupIdToSameLayerPairForPosition.get(unconnectedP.getGroupId());
 
             if (sameLayerPair != null) {
@@ -217,25 +217,30 @@ public class MFOVPositionPairMatchData
                                                          unconnectedQ.getId(),
                                                          derivedMatches));
 
-                unconnectedPairsWithSameLayerSubstitute.add(unconnectedPair); // keep track of substituted pairs
+                pairsConnectedInThisStep.add(pair); // keep track of substituted pairs
             }
 
         }
 
-        LOG.info("deriveMatchesUsingDataFromSameLayer: exit, added matches for {} unconnected pairs, {}",
-                 unconnectedPairsWithSameLayerSubstitute.size(), this);
+        final Set<OrderedCanvasIdPair> remainingUnconnectedPairs = buildRemainingPairsSet(unconnectedPairsAtStart,
+                                                                                          pairsConnectedInThisStep);
 
-        return unconnectedPairsWithSameLayerSubstitute;
+        LOG.info("deriveMatchesUsingDataFromSameLayer: exit, added matches for {} unconnected pairs, {} unconnected pairs remain, {}",
+                 pairsConnectedInThisStep.size(), remainingUnconnectedPairs.size(), this);
+
+        return remainingUnconnectedPairs;
     }
 
+    /** @return the set of unconnected pairs that were not patched with cross layer data. */
     private Set<OrderedCanvasIdPair> deriveMatchesUsingDataFromOtherLayers(final RenderDataClient matchClient,
                                                                            final double derivedMatchWeight,
                                                                            final List<CanvasMatches> derivedMatchesList,
-                                                                           final Set<OrderedCanvasIdPair> unconnectedPairsWithSameLayerSubstitute)
+                                                                           final Set<OrderedCanvasIdPair> unconnectedPairsAtStart)
             throws IOException {
 
         LOG.info("deriveMatchesUsingDataFromOtherLayers: entry, {}", this);
 
+        final Set<OrderedCanvasIdPair> pairsConnectedInThisStep = new HashSet<>();
         final List<PointMatch> existingCornerMatchList = new ArrayList<>();
 
         // loop through all tile pairs (connected and unconnected) across z for this position
@@ -283,10 +288,9 @@ public class MFOVPositionPairMatchData
         }
 
         // for each missing pair do
-        int addedPairCount = 0;
         for (final OrderedCanvasIdPair pair : unconnectedPairsForPosition.stream().sorted().collect(Collectors.toList())) {
-            // if the pair was not already patched from same layer ...
-            if (! unconnectedPairsWithSameLayerSubstitute.contains(pair)) {
+            // if the pair was not already patched from a prior step ...
+            if (unconnectedPairsAtStart.contains(pair)) {
 
                 final TileSpec pTileSpec = idToTileSpec.get(pair.getP().getId());
                 final TileSpec qTileSpec = idToTileSpec.get(pair.getQ().getId());
@@ -298,22 +302,22 @@ public class MFOVPositionPairMatchData
                                                             MultiSemUtilities.getMatchingTransformedCornersForTile(qTileSpec, CORNER_MARGIN),
                                                             existingCornerMatchModel,
                                                             derivedMatchWeight));
-                addedPairCount++;
+                pairsConnectedInThisStep.add(pair);
             }
         }
 
-        final Set<OrderedCanvasIdPair> remainingUnconnectedPairsForPosition = new HashSet<>(unconnectedPairsForPosition);
-        remainingUnconnectedPairsForPosition.removeAll(unconnectedPairsWithSameLayerSubstitute);
+        final Set<OrderedCanvasIdPair> remainingUnconnectedPairs = buildRemainingPairsSet(unconnectedPairsAtStart,
+                                                                                          pairsConnectedInThisStep);
 
-        LOG.info("deriveMatchesUsingDataFromOtherLayers: exit, {} unconnected pairs remain, added matches for {} unconnected pairs, {}",
-                 remainingUnconnectedPairsForPosition.size(), addedPairCount, this);
+        LOG.info("deriveMatchesUsingDataFromOtherLayers: exit, added matches for {} unconnected pairs, {} unconnected pairs remain, {}",
+                 pairsConnectedInThisStep.size(), remainingUnconnectedPairs.size(), this);
 
-        return remainingUnconnectedPairsForPosition;
+        return remainingUnconnectedPairs;
     }
 
     public void deriveMatchesUsingStartPositions(final double derivedMatchWeight,
                                                  final List<CanvasMatches> derivedMatchesList,
-                                                 final Set<OrderedCanvasIdPair> unconnectedPairsForPositionAfterCrossDerivation)
+                                                 final Set<OrderedCanvasIdPair> unconnectedPairsAtStart)
             throws IOException {
 
         LOG.info("deriveMatchesUsingStartPositions: entry, {}", this);
@@ -322,7 +326,7 @@ public class MFOVPositionPairMatchData
         final double[] derivedWeightList = new double[numberOfMatchPoints];
         Arrays.fill(derivedWeightList, derivedMatchWeight);
 
-        for (final OrderedCanvasIdPair pair : unconnectedPairsForPositionAfterCrossDerivation) {
+        for (final OrderedCanvasIdPair pair : unconnectedPairsAtStart) {
 
             final CanvasId p = pair.getP();
             final TileSpec pTileSpec = idToTileSpec.get(p.getId());
@@ -370,7 +374,7 @@ public class MFOVPositionPairMatchData
         }
 
         LOG.info("deriveMatchesUsingStartPositions: exit, added matches for {} unconnected pairs, {}",
-                 unconnectedPairsForPositionAfterCrossDerivation.size(), this);
+                 unconnectedPairsAtStart.size(), this);
     }
 
     private static void validateTileSpec(final TileSpec expected,
