@@ -92,6 +92,14 @@ public class MFOVMontageMatchPatchParameters
             description = "Number of MFOVs to process in each batch")
     public int numberOfMFOVsPerBatch = 1;
 
+    @Parameter(
+            names = "--trimMfovsWithNoConnectedTiles",
+            description = "If specified, create a 'trim' copy of the source stack that excludes any unconnected " +
+                          "tiles that exist in a z-layer MFOV in which all of its tiles are completely unconnected. " +
+                          "Note that this option is currently only supported for Spark jobs.",
+            arity = 0)
+    public boolean trimMfovsWithNoConnectedTiles = false;
+
     public MFOVMontageMatchPatchParameters() {
     }
 
@@ -115,6 +123,7 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.pTileId = this.pTileId;
         clonedParameters.qTileId = this.qTileId;
         clonedParameters.matchStorageFile = this.matchStorageFile;
+        clonedParameters.trimMfovsWithNoConnectedTiles = this.trimMfovsWithNoConnectedTiles;
         clonedParameters.validateAndSetupDerivedValues(); // make sure values derived from multiFieldOfViewId are rebuilt
         return clonedParameters;
     }
@@ -164,6 +173,10 @@ public class MFOVMontageMatchPatchParameters
             bundles.add(currentBundle);
         }
         return bundles;
+    }
+
+    public String getTrimStackName(final String sourceStackName) {
+        return trimMfovsWithNoConnectedTiles ? sourceStackName + "_trim" : null;
     }
 
     public static MFOVMontageMatchPatchParameters fromJson(final Reader json) {

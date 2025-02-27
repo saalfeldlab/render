@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
@@ -14,6 +15,8 @@ import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.multisem.StackMFOVWithZValues;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -60,6 +63,8 @@ public class MFOVMontageMatchPatchClient
         };
         clientRunner.run();
     }
+
+    private final List<StackId> trimStackIdList = new ArrayList<>();
 
     /** Empty constructor required for alignment pipeline steps. */
     public MFOVMontageMatchPatchClient() {
@@ -135,6 +140,10 @@ public class MFOVMontageMatchPatchClient
         final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
                 multiProjectParameters.buildListOfStackMFOVWithAllZ(patchParameters.getMultiFieldOfViewId());
 
+        if (patchParameters.trimMfovsWithNoConnectedTiles) {
+            createTrimStacks(multiProjectParameters, patchParameters);
+        }
+
         final List<List<StackMFOVWithZValues>> bundledMFOVList = patchParameters.bundleMFOVs(stackMFOVWithZValuesList);
 
         LOG.info("patchPairsForPass: {}, distributing tasks for {} bundles of {} MFOVs",
@@ -181,8 +190,53 @@ public class MFOVMontageMatchPatchClient
                 .mapToLong(Integer::longValue)
                 .reduce(0, Long::sum);
 
+        if (patchParameters.trimMfovsWithNoConnectedTiles) {
+            completeTrimStacks(multiProjectParameters);
+        }
+
         LOG.info("patchPairsForPass: {}, exit, derived matches for {} tile pairs",
                  passName, numberOfDerivedMatchPairs);
+    }
+
+    private void createTrimStacks(final MultiProjectParameters multiProject,
+                                  final MFOVMontageMatchPatchParameters patchParameters)
+            throws IOException {
+
+        LOG.info("createTrimStacks: entry");
+
+        final List<StackWithZValues> stackWithAllZValuesList = multiProject.buildListOfStackWithAllZ();
+        final RenderDataClient defaultDataClient = multiProject.getDataClient();
+
+        for (final StackWithZValues stackWithZValues : stackWithAllZValuesList) {
+
+            final StackId stackId = stackWithZValues.getStackId();
+            final RenderDataClient stackDataClient = defaultDataClient.buildClient(stackId.getOwner(),
+                                                                                   stackId.getProject());
+            final StackMetaData stackMetaData = stackDataClient.getStackMetaData(stackId.getStack());
+            final String trimStackName = patchParameters.getTrimStackName(stackId.getStack());
+
+            stackDataClient.setupDerivedStack(stackMetaData, trimStackName);
+
+            trimStackIdList.add(new StackId(stackId.getOwner(), stackId.getProject(), trimStackName));
+        }
+
+        LOG.info("createTrimStacks: exit");
+    }
+
+    private void completeTrimStacks(final MultiProjectParameters multiProject)
+            throws IOException {
+
+        LOG.info("completeTrimStacks: entry");
+
+        final RenderDataClient defaultDataClient = multiProject.getDataClient();
+
+        for (final StackId trimStackId : trimStackIdList) {
+            final RenderDataClient stackDataClient = defaultDataClient.buildClient(trimStackId.getOwner(),
+                                                                                   trimStackId.getProject());
+            stackDataClient.setStackState(trimStackId.getStack(), StackMetaData.StackState.COMPLETE);
+        }
+
+        LOG.info("completeTrimStacks: exit");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVMontageMatchPatchClient.class);
