@@ -19,10 +19,10 @@ public class ClusterCountClientTest {
 
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[]{
                 "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
-                "--owner", "trautmane",
-                "--project", "w60_serial_290_to_299",
-                "--stack", "w60_s296_r00_d00_google_cluster0",
-                "--matchCollection", "w60_s296_r00_d00_google_cluster0_match",
+                "--owner", "hess_wafers_60_61",
+                "--project", "w60_serial_360_to_369",
+                "--stack", "w60_s360_r00_d20_gc_trim",
+                "--matchCollection", "w60_s360_r00_d20_gc_match",
                 "--maxSmallClusterSize", "0",
                 "--includeMatchesOutsideGroup",
                 "--maxLayersPerBatch", "1000",
