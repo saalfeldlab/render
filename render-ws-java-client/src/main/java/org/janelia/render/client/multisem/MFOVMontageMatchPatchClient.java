@@ -163,7 +163,12 @@ public class MFOVMontageMatchPatchClient {
 
         for (final Double z : zToSectionIdsMap.keySet().stream().sorted().collect(Collectors.toList())) {
             final Set<String> sectionIds = zToSectionIdsMap.get(z);
-            updatePositionPairDataForZ(stack, z, sectionIds, positionToPairs, renderDataClient, matchClient);
+            updatePositionPairDataForZ(stack,
+                                       z,
+                                       sectionIds,
+                                       positionToPairs,
+                                       renderDataClient,
+                                       matchClient);
         }
 
         final int totalNumberOfPositions = positionToPairs.size();
@@ -245,62 +250,99 @@ public class MFOVMontageMatchPatchClient {
                                                                                     false,
                                                                                     false);
 
-        // add all MFOV tile pairs to unconnected set
+        // add all MFOV tile pairs to unconnected set to start
         final Set<OrderedCanvasIdPair> unconnectedPairsForMFOV = new HashSet<>(potentialPairsForZ.size());
+        final Set<String> mfovTileIds = new HashSet<>();
         for (final OrderedCanvasIdPair pair : potentialPairsForZ) {
-            final String pMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(pair.getP().getId());
-            final String qMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(pair.getQ().getId());
+
+            final CanvasId p = pair.getP();
+            final String pId = p.getId();
+            final String pMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(pId);
+
+            final CanvasId q = pair.getQ();
+            final String qId = q.getId();
+            final String qMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(qId);
+
             if (pMagcMfovSfov.startsWith(patch.pMagcMfovSfovPrefix) &&
                 qMagcMfovSfov.startsWith(patch.qMagcMfovSfovPrefix)) {
+
+                mfovTileIds.add(pId);
+                mfovTileIds.add(qId);
+
                 // remove relative position info from tree search to simplify existence check later
                 final OrderedCanvasIdPair pairWithoutRelative =
-                        new OrderedCanvasIdPair(pair.getP().withoutRelativePosition(),
-                                                pair.getQ().withoutRelativePosition(),
+                        new OrderedCanvasIdPair(p.withoutRelativePosition(),
+                                                q.withoutRelativePosition(),
                                                 0.0);
                 final MFOVPositionPair positionPair = new MFOVPositionPair(pairWithoutRelative);
+
                 final MFOVPositionPairMatchData positionPairMatchData =
                         positionToPairs.computeIfAbsent(positionPair,
                                                         d -> new MFOVPositionPairMatchData(positionPair));
+
                 positionPairMatchData.addPair(pairWithoutRelative,
-                                              resolvedTiles.getTileSpec(pair.getP().getId()),
-                                              resolvedTiles.getTileSpec(pair.getQ().getId()));
+                                              resolvedTiles.getTileSpec(pId),
+                                              resolvedTiles.getTileSpec(qId));
+
                 unconnectedPairsForMFOV.add(pairWithoutRelative);
             }
         }
 
-        LOG.info("updatePositionPairDataForZ: found {} pairs within mFOV {} in z {}",
-                 unconnectedPairsForMFOV.size(), patch.multiFieldOfViewId, z);
+        LOG.info("updatePositionPairDataForZ: found {} tiles and {} pairs within mFOV {} in z {}",
+                 mfovTileIds.size(), unconnectedPairsForMFOV.size(), patch.multiFieldOfViewId, z);
 
         // query web service to find connected tile pairs and remove them from unconnected set
         final Map<String, OrderedCanvasIdPair> sameLayerPairsFromOtherMFOVs = new HashMap<>();
+        int numberOfConnectedPairsForMFOV = 0;
         if (! unconnectedPairsForMFOV.isEmpty()) {
 
-
             for (final String groupId : sectionIds) {
-               for (final CanvasMatches canvasMatches : matchClient.getMatchesWithinGroup(groupId,
-                                                                                          true)) {
-                   final String pId = canvasMatches.getpId();
-                   final String qId = canvasMatches.getqId();
-                   final String pMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(pId);
-                   final String qMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(qId);
-                   final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(new CanvasId(groupId, pId),
-                                                                            new CanvasId(groupId, qId),
-                                                                            0.0);
-                   if (pMagcMfovSfov.startsWith(patch.pMagcMfovSfovPrefix) &&
-                       qMagcMfovSfov.startsWith(patch.qMagcMfovSfovPrefix)) {
-                       if (! unconnectedPairsForMFOV.remove(pair)) {
-                           LOG.warn("updatePositionPairDataForZ: failed to locate existing pair {} in potential set",
-                                    pair);
-                       }
-                   } else {
-                       // TODO: as coded here, same layer pair will often come from last MFOV (19) - does it matter?
-                       final String sfovIndexPairName = MultiSemUtilities.getSFOVIndexPairName(canvasMatches.getpGroupId(),
-                                                                                               pId,
-                                                                                               qId);
-                       sameLayerPairsFromOtherMFOVs.put(sfovIndexPairName, pair);
-                   }
-               }
+                for (final CanvasMatches canvasMatches : matchClient.getMatchesWithinGroup(groupId,
+                                                                                           true)) {
+                    final String pId = canvasMatches.getpId();
+                    final String qId = canvasMatches.getqId();
+                    final String pMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(pId);
+                    final String qMagcMfovSfov = MultiSemUtilities.getMagcMfovSfovForTileId(qId);
+                    final OrderedCanvasIdPair pair = new OrderedCanvasIdPair(new CanvasId(groupId, pId),
+                                                                             new CanvasId(groupId, qId),
+                                                                             0.0);
+                    if (pMagcMfovSfov.startsWith(patch.pMagcMfovSfovPrefix) &&
+                        qMagcMfovSfov.startsWith(patch.qMagcMfovSfovPrefix)) {
+                        if (unconnectedPairsForMFOV.remove(pair)) {
+                            numberOfConnectedPairsForMFOV++;
+                        } else {
+                            LOG.warn("updatePositionPairDataForZ: failed to locate existing pair {} in potential set",
+                                     pair);
+                        }
+                    } else {
+                        // note that same layer pair will often come from last MFOV (e.g. MFOV 19 for wafer 53)
+                        final String sfovIndexPairName = MultiSemUtilities.getSFOVIndexPairName(canvasMatches.getpGroupId(),
+                                                                                                pId,
+                                                                                                qId);
+                        sameLayerPairsFromOtherMFOVs.put(sfovIndexPairName, pair);
+                    }
+                }
             }
+        }
+
+        final String trimStack = patch.getTrimStackName(stack);
+
+        LOG.info("updatePositionPairDataForZ: found {} connected pairs and {} unconnected pairs within mFOV {} in z {}, trimStack={}",
+                 numberOfConnectedPairsForMFOV, unconnectedPairsForMFOV.size(), patch.multiFieldOfViewId, z, trimStack);
+
+        if (trimStack != null) {
+
+            if (numberOfConnectedPairsForMFOV == 0) {
+                LOG.info("updatePositionPairDataForZ: all pairs in mFOV {} of z {} are unconnected, excluding this MFOV from the {} stack and skipping patch",
+                         patch.multiFieldOfViewId, z, trimStack);
+                unconnectedPairsForMFOV.clear();
+            } else {
+                LOG.info("updatePositionPairDataForZ: since {} connected pairs were found for mFOV {} in z {}, copying all {} tiles to the {} stack",
+                         numberOfConnectedPairsForMFOV, patch.multiFieldOfViewId, z, mfovTileIds.size(), trimStack);
+                final ResolvedTileSpecCollection mfovResolvedTiles = resolvedTiles.copyAndRetainTileSpecs(mfovTileIds);
+                renderDataClient.saveResolvedTiles(mfovResolvedTiles, trimStack, z);
+            }
+
         }
 
         for (final OrderedCanvasIdPair unconnectedPair : unconnectedPairsForMFOV) {
