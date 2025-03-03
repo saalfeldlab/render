@@ -35,8 +35,8 @@ public class InterpolatedShading extends ShadingModel {
 	public InterpolatedShading(final ShadingModel modelA, final ShadingModel modelB, final double t) {
 		this.modelA = modelA;
 		this.modelB = modelB;
-		this.bufferA = new double[nCoefficients()];
-		this.bufferB = new double[nCoefficients()];
+		this.bufferA = new double[2];
+		this.bufferB = new double[2];
 		this.interpolator = (a, b) -> a * t + b * (1 - t);
 	}
 
@@ -50,8 +50,8 @@ public class InterpolatedShading extends ShadingModel {
 		super();
 		this.modelA = modelA;
 		this.modelB = modelB;
-		this.bufferA = new double[nCoefficients()];
-		this.bufferB = new double[nCoefficients()];
+		this.bufferA = new double[2];
+		this.bufferB = new double[2];
 		this.interpolator = interpolator;
 	}
 
@@ -100,6 +100,11 @@ public class InterpolatedShading extends ShadingModel {
 		for (int i = 0; i < location.length; i++) {
 			location[i] = interpolator.applyAsDouble(bufferA[i], bufferB[i]);
 		}
+	}
+
+	@Override
+	public double[] getCoefficients() {
+		throw new UnsupportedOperationException("InterpolatedShading does not support coefficients");
 	}
 
 	@Override
