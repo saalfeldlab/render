@@ -487,6 +487,10 @@ public class TilePairClient {
         } else {
 
             tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
+
+            tileBoundsList = tpdp.shiftTileBoundsAsNeeded(renderDataClient.getProject(),
+                                                          parameters.stack,
+                                                          tileBoundsList);
             totalTileCount = tileBoundsList.size();
 
             if (includeClient != null) {
