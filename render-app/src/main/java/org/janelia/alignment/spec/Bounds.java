@@ -203,6 +203,12 @@ public class Bounds implements Serializable {
                           union(this.maxZ, that.maxZ, false));
     }
 
+    public Bounds withXYShift(final Double shiftX,
+                               final Double shiftY) {
+        return new Bounds(this.minX + shiftX, this.minY + shiftY, minZ,
+                          this.maxX + shiftX, this.maxY + shiftY, this.maxZ);
+    }
+
     public Bounds withMinZ(final Double minZ) {
         return new Bounds(this.minX, this.minY, minZ, this.maxX, this.maxY, this.maxZ);
     }

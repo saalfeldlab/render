@@ -57,7 +57,7 @@ public class RenderDao {
 
     public static final String RENDER_DB_NAME = "render";
     public static final String STACK_META_DATA_COLLECTION_NAME = "admin__stack_meta_data";
-    public static final int MAX_TILE_SPEC_COUNT_FOR_QUERIES = 100000;
+    public static final int MAX_TILE_SPEC_COUNT_FOR_QUERIES = 500000;
 
     public static RenderDao build()
             throws UnknownHostException {
@@ -1893,7 +1893,7 @@ public class RenderDao {
             int count = 0;
             while (cursor.hasNext()) {
                 if (count > MAX_TILE_SPEC_COUNT_FOR_QUERIES) {
-                    throw new IllegalArgumentException("query too broad, over " + count + " tiles match " + tileQuery);
+                    throw new IllegalArgumentException("query too broad, MAX_TILE_SPEC_COUNT_FOR_QUERIES is " + MAX_TILE_SPEC_COUNT_FOR_QUERIES + " but over " + count + " tiles match " + tileQuery);
                 }
                 document = cursor.next();
                 tileSpec = TileSpec.fromJson(document.toJson());
@@ -2142,7 +2142,7 @@ public class RenderDao {
             toCount = toCollection.countDocuments();
 
             // if nothing was filtered, verify that all documents got copied
-            if (filterQuery.keySet().isEmpty()) {
+            if (filterQuery.isEmpty()) {
                 if (toCount != fromCount) {
                     throw new IllegalStateException("only inserted " + toCount + " out of " + fromCount + " documents");
                 }
@@ -2150,7 +2150,7 @@ public class RenderDao {
 
         }
 
-        LOG.debug("cloneCollection: inserted {} documents from {}.find(\\{}) to {}",
+        LOG.debug("cloneCollection: inserted {} documents from {}.find(\\{\\}) to {}",
                   toCount, fromFullName, toFullName);
     }
 

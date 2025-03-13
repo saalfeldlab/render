@@ -53,6 +53,11 @@ public class TileClusterParameters
                           "Omit or set to to zero to skip check for unconnected tile edges.")
     public int maxLayersForUnconnectedEdge = 0;
 
+    @Parameter(
+            names = "--maxClusterSizeToLog",
+            description = "If specified, all tile ids in clusters with this number of tiles or fewer will be logged")
+    public Integer maxClusterSizeToLog;
+
     /**
      * Validate that --matchCollection has been defined if it is required
      * or if --maxSmallClusterSize or --smallClusterFactor has been defined.
@@ -94,4 +99,7 @@ public class TileClusterParameters
         return maxSize;
     }
 
+    public boolean logClusterTileIds(final int tileCount) {
+        return maxClusterSizeToLog != null && tileCount <= maxClusterSizeToLog;
+    }
 }

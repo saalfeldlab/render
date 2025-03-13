@@ -3,9 +3,14 @@ package org.janelia.alignment.match.parameters;
 import com.beust.jcommander.Parameter;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MontageRelativePosition;
+import org.janelia.alignment.spec.TileBounds;
 
 /**
  * Common parameters used for location based tile pair derivation.
@@ -101,6 +106,14 @@ public class TilePairDerivationParameters implements Serializable {
     )
     public String onlyIncludeTilesNearTileIdsJson;
 
+    @Parameter(
+            names = "--layerShift",
+            description = "Shift to apply to source tiles of a z-layer before determining which tile are neighbors.  " +
+                          "Specified as 'project|stack|xShift|yShift|z' (e.g. 'w60_serial_360_to_369|w60_s360_r00_d20_gc|-4764|-197|76')",
+            variableArity = true
+    )
+    public List<String> layerShiftList;
+
     public TilePairDerivationParameters() {
     }
 
@@ -111,4 +124,42 @@ public class TilePairDerivationParameters implements Serializable {
         }
     }
 
+    /**
+     * @return a new list with bounds shifted based upon this object's layer shift parameters.
+     *         If there are no layer shift parameters, the original tile bounds list is simply returned.
+     */
+    public List<TileBounds> shiftTileBoundsAsNeeded(final String project,
+                                                    final String stack,
+                                                    final List<TileBounds> tileBoundsList) {
+
+        List<TileBounds> resultList = tileBoundsList;
+
+        if ((layerShiftList != null) && (! layerShiftList.isEmpty())) {
+
+            final Map<Double, LayerShift> zToLayerShift = new HashMap<>();
+            final List<TileBounds> shiftedTileBoundsList = new ArrayList<>(tileBoundsList.size());
+            for (final String layerShiftString : layerShiftList) {
+                final LayerShift layerShift = LayerShift.parse(layerShiftString);
+                if (layerShift.matches(project, stack)) {
+                    zToLayerShift.put(layerShift.getZ(), layerShift);
+                }
+            }
+
+            for (final TileBounds tileBounds : tileBoundsList) {
+                final LayerShift layerShift = zToLayerShift.get(tileBounds.getZ());
+                if (layerShift == null) {
+                    shiftedTileBoundsList.add(tileBounds);
+                } else {
+                    shiftedTileBoundsList.add(tileBounds.withXYShift(layerShift.getShiftX(),
+                                                                     layerShift.getShiftY()));
+                }
+            }
+
+            if (! shiftedTileBoundsList.isEmpty()) {
+                resultList = shiftedTileBoundsList;
+            }
+        }
+
+        return resultList;
+    }
 }

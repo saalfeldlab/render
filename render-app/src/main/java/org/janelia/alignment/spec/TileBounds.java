@@ -44,6 +44,15 @@ public class TileBounds extends Bounds {
         return z;
     }
 
+    @Override
+    public TileBounds withXYShift(final Double shiftX,
+                                   final Double shiftY) {
+        final Bounds shiftedBounds = super.withXYShift(shiftX, shiftY);
+        return new TileBounds(tileId, sectionId, z,
+                              shiftedBounds.getMinX(), shiftedBounds.getMinY(),
+                              shiftedBounds.getMaxX(), shiftedBounds.getMaxY());
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }

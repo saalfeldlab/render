@@ -1,7 +1,5 @@
 package org.janelia.render.client;
 
-import com.beust.jcommander.ParametersDelegate;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -25,6 +23,8 @@ import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Java client for identifying connected tile clusters in a stack.
@@ -144,6 +144,7 @@ public class ClusterCountClient {
 
         stackClusterSummary.setUnconnectedTileIdList(allUnconnectedTileIds);
 
+        int clusterNumber = 0;
         for (final Set<String> tileIdSet : allClusters.getSortedConnectedTileIdSets()) {
 
             final int tileCount = tileIdSet.size();
@@ -158,6 +159,16 @@ public class ClusterCountClient {
                                                               tileIdSet.stream().findAny().orElse(null));
             }
             stackClusterSummary.addTileClusterSummary(tileSummary);
+
+            if (parameters.tileCluster.logClusterTileIds(tileCount)) {
+                final List<String> sortedTileIds = tileIdSet.stream()
+                        .sorted()
+                        .map(s -> "\"" + s + "\"")
+                        .collect(Collectors.toList());
+                LOG.info("findConnectedClusters: cluster {} has {} tiles with the following ids: {}",
+                         clusterNumber, tileCount, sortedTileIds);
+            }
+            clusterNumber++;
         }
 
         if (unconnectedEdges != null) {
