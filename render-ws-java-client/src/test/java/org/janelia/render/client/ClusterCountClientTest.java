@@ -26,7 +26,8 @@ public class ClusterCountClientTest {
                 "--maxSmallClusterSize", "0",
                 "--includeMatchesOutsideGroup",
                 "--maxLayersPerBatch", "1000",
-                "--maxOverlapLayers", "6"
+                "--maxOverlapLayers", "6",
+                "--maxClusterSizeToLog", "100"
         };
 
         ClusterCountClient.main(effectiveArgs);
