@@ -173,9 +173,17 @@ public class MFOVMontageMatchPatchClient {
 
         final int totalNumberOfPositions = positionToPairs.size();
         final Set<MFOVPositionPair> positionsWithoutAnyUnconnectedPairs = new HashSet<>();
+        final Set<String> connectedTileIds = new HashSet<>();
         for (final MFOVPositionPair positionPair : positionToPairs.keySet()) {
-            if (! positionToPairs.get(positionPair).hasUnconnectedPairs()) {
+            final MFOVPositionPairMatchData positionPairMatchData = positionToPairs.get(positionPair);
+            if (! positionPairMatchData.hasUnconnectedPairs()) {
                 positionsWithoutAnyUnconnectedPairs.add(positionPair);
+            }
+            if (patch.onlyPatchCompletelyUnconnectedTiles) {
+                for (final OrderedCanvasIdPair connectedPair : positionPairMatchData.getConnectedPairsForPosition()) {
+                    connectedTileIds.add(connectedPair.getP().getId());
+                    connectedTileIds.add(connectedPair.getQ().getId());
+                }
             }
         }
         for (final MFOVPositionPair positionPair : positionsWithoutAnyUnconnectedPairs) {
@@ -185,7 +193,7 @@ public class MFOVMontageMatchPatchClient {
         LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: {} out of {} positions in {} have at least one unconnected pair",
                  positionToPairs.size(), totalNumberOfPositions, stackMFOVWithZValues);
 
-        final List<CanvasMatches> derivedMatchesForMFOV = new ArrayList<>();
+        List<CanvasMatches> derivedMatchesForMFOV = new ArrayList<>();
 
         final List<MFOVPositionPair> sortedPositions =
                 positionToPairs.keySet().stream().sorted().collect(Collectors.toList());
@@ -196,6 +204,24 @@ public class MFOVMontageMatchPatchClient {
                                                                            patch.sameLayerDerivedMatchWeight,
                                                                            patch.crossLayerDerivedMatchWeight,
                                                                            patch.startPositionMatchWeight));
+        }
+
+        if (patch.onlyPatchCompletelyUnconnectedTiles) {
+            final List<CanvasMatches> completelyUnconnectedTileMatchesList = new ArrayList<>();
+
+            for (final CanvasMatches derivedMatches : derivedMatchesForMFOV) {
+                if ((! connectedTileIds.contains(derivedMatches.getpId())) ||
+                    (! connectedTileIds.contains(derivedMatches.getqId()))) {
+                    completelyUnconnectedTileMatchesList.add(derivedMatches);
+                }
+            }
+
+            final int removedCount = derivedMatchesForMFOV.size() - completelyUnconnectedTileMatchesList.size();
+
+            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: removed {} match pairs for partially connected tiles in {}",
+                     removedCount, stackMFOVWithZValues);
+
+            derivedMatchesForMFOV = completelyUnconnectedTileMatchesList;
         }
 
         final int numberOfDerivedMatchPairs = derivedMatchesForMFOV.size();

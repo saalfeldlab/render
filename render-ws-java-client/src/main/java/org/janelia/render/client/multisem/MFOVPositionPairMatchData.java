@@ -92,6 +92,12 @@ public class MFOVPositionPairMatchData
         }
     }
 
+    public Set<OrderedCanvasIdPair> getConnectedPairsForPosition() {
+        return allPairsForPosition.stream()
+                .filter(p -> ! unconnectedPairsForPosition.contains(p))
+                .collect(Collectors.toSet());
+    }
+
     @Override
     public String toString() {
         return "position: " + positionPair +
