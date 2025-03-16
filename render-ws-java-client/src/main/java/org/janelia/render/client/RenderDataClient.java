@@ -400,6 +400,27 @@ public class RenderDataClient {
     }
 
     /**
+     * @param  stack  name of stack.
+     *
+     * @return list of distinct sorted section ids for the specified stack.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<String> getDistinctSortedSectionIds(final String stack)
+            throws IOException {
+        return getStackSectionData(stack, null, null).stream()
+                .map(SectionData::getSectionId)
+                .distinct()
+                .sorted((idA, idB) -> {
+                    final double a = Double.parseDouble(idA);
+                    final double b = Double.parseDouble(idB);
+                    return Double.compare(a, b);
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
      * A derived stack should retain a common set of metadata from its source stack
      * (e.g. resolution and mipmap path builder values).  This method ensures that
      * the derived stack exists, that it shares the common metadata from its source stack,
@@ -1295,6 +1316,26 @@ public class RenderDataClient {
                           excludeMatchDetails);
     }
 
+    /**
+     * @param  groupId              groupId (usually the section id).
+     * @param  excludeMatchDetails  if true, only retrieve pair identifiers and exclude detailed match points.
+     *
+     * @return list of canvas matches between the specified groupId
+     *         and all other canvases that have a different groupId.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public List<CanvasMatches> getMatchesOutsideGroup(final String groupId,
+                                                      final boolean excludeMatchDetails)
+            throws IOException {
+
+        final String urlString = String.format("%s/group/%s/matchesOutsideGroup",
+                                               urls.getMatchCollectionUrlString(), groupId);
+        return getMatches("getMatchesOutsideGroup",
+                          urlString,
+                          excludeMatchDetails);
+    }
     /**
      * Deletes matches with the specified pGroupId.
      *
