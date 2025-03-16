@@ -1,7 +1,5 @@
 package org.janelia.render.client.multisem;
 
-import com.beust.jcommander.ParametersDelegate;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,6 +30,8 @@ import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Java client for patching matches missing from adjacent SFOV tile pairs within the same MFOV and z layer.
@@ -206,8 +206,30 @@ public class MFOVMontageMatchPatchClient {
                                                                            patch.startPositionMatchWeight));
         }
 
-        if (patch.onlyPatchCompletelyUnconnectedTiles) {
+        if (patch.onlyPatchCompletelyUnconnectedTiles && (! derivedMatchesForMFOV.isEmpty())) {
+
+            final List<String> distinctSortedSectionIds = renderDataClient.getDistinctSortedSectionIds(stack);
             final List<CanvasMatches> completelyUnconnectedTileMatchesList = new ArrayList<>();
+
+            // Build connected tile set by retrieving match pairs incrementally for each section
+            // to reduce amount of data retrieved from web service in one call.
+            // We need to retrieve all match pairs to ensure that connections
+            // to all tiles outside the MFOV and to all tiles outside the z layer are included.
+            final int originalConnectedTileCount = connectedTileIds.size();
+            for (final String groupId : distinctSortedSectionIds) {
+                for (final CanvasMatches pair : matchClient.getMatchesWithinGroup(groupId, true)) {
+                    connectedTileIds.add(pair.getpId());
+                    connectedTileIds.add(pair.getqId());
+                }
+                for (final CanvasMatches pair : matchClient.getMatchesOutsideGroup(groupId, true)) {
+                    connectedTileIds.add(pair.getpId());
+                    connectedTileIds.add(pair.getqId());
+                }
+            }
+
+            final int additionalConnectedTileCount = connectedTileIds.size() - originalConnectedTileCount;
+            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: added {} more connectedTileIds in {}",
+                     additionalConnectedTileCount, stackMFOVWithZValues);
 
             for (final CanvasMatches derivedMatches : derivedMatchesForMFOV) {
                 if ((! connectedTileIds.contains(derivedMatches.getpId())) ||
@@ -227,8 +249,9 @@ public class MFOVMontageMatchPatchClient {
         final int numberOfDerivedMatchPairs = derivedMatchesForMFOV.size();
         if (numberOfDerivedMatchPairs > 0) {
 
-            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}",
-                     numberOfDerivedMatchPairs, stackMFOVWithZValues);
+            final String firstPairKey = derivedMatchesForMFOV.get(0).toKeyString();
+            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}, first save pair is {}",
+                     numberOfDerivedMatchPairs, stackMFOVWithZValues, firstPairKey);
 
             if (patch.matchStorageFile != null) {
                 final Path storagePath = Paths.get(patch.matchStorageFile).toAbsolutePath();
