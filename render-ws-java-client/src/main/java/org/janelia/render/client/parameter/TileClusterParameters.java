@@ -54,9 +54,10 @@ public class TileClusterParameters
     public int maxLayersForUnconnectedEdge = 0;
 
     @Parameter(
-            names = "--maxClusterSizeToLog",
-            description = "If specified, all tile ids in clusters with this number of tiles or fewer will be logged")
-    public Integer maxClusterSizeToLog;
+            names = "--maxSmallClusterSizeToSave",
+            description = "If specified and clusters exist with this many tiles or fewer, " +
+                          "then tiles in those clusters will be copied to a '_small_clusters' stack for review.")
+    public Integer maxSmallClusterSizeToSave;
 
     /**
      * Validate that --matchCollection has been defined if it is required
@@ -99,7 +100,11 @@ public class TileClusterParameters
         return maxSize;
     }
 
-    public boolean logClusterTileIds(final int tileCount) {
-        return maxClusterSizeToLog != null && tileCount <= maxClusterSizeToLog;
+    public boolean isMaxSmallClusterSizeToSaveDefined() {
+        return maxSmallClusterSizeToSave != null;
+    }
+
+    public boolean includeInSmallClusterStack(final int tileCount) {
+        return maxSmallClusterSizeToSave != null && tileCount <= maxSmallClusterSizeToSave;
     }
 }

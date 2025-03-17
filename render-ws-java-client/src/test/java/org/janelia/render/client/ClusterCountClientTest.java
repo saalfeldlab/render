@@ -21,13 +21,14 @@ public class ClusterCountClientTest {
                 "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
                 "--owner", "hess_wafers_60_61",
                 "--project", "w60_serial_360_to_369",
-                "--stack", "w60_s360_r00_d20_gc_trim",
+//                "--stack", "w60_s360_r00_d20_gc_trim",
+                "--stack", "w60_s360_r00_d20xr",
                 "--matchCollection", "w60_s360_r00_d20_gc_match",
                 "--maxSmallClusterSize", "0",
                 "--includeMatchesOutsideGroup",
                 "--maxLayersPerBatch", "1000",
                 "--maxOverlapLayers", "6",
-                "--maxClusterSizeToLog", "100"
+                "--maxSmallClusterSizeToSave", "100"
         };
 
         ClusterCountClient.main(effectiveArgs);
