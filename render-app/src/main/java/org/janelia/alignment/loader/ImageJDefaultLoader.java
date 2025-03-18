@@ -46,12 +46,12 @@ public class ImageJDefaultLoader
             throws IllegalArgumentException {
 
         final int maxRetries = 3;
-        final int secondsBetweenRetries = 5;
+        final int secondsBetweenRetries = 5 << (retryNumber - 1); // retry 1: 5s, retry 2: 10s, retry 3: 20s
         final int nextRetryNumber = retryNumber + 1;
 
         if (retryNumber > 0) {
             try {
-                Thread.sleep(secondsBetweenRetries * 1000);
+                Thread.sleep(secondsBetweenRetries * 1000L);
             } catch (final InterruptedException e) {
                 LOG.warn("loadWithRetries: interrupted while sleeping before retry, continuing with retry now ", e);
             }
