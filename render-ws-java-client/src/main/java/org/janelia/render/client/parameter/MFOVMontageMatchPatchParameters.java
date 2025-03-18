@@ -100,6 +100,12 @@ public class MFOVMontageMatchPatchParameters
             arity = 0)
     public boolean trimMfovsWithNoConnectedTiles = false;
 
+    @Parameter(
+            names = "--onlyPatchCompletelyUnconnectedTiles",
+            description = "If specified, limit patching to tiles that are completely unconnected.",
+            arity = 0)
+    public boolean onlyPatchCompletelyUnconnectedTiles = false;
+
     public MFOVMontageMatchPatchParameters() {
     }
 
@@ -124,6 +130,7 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.qTileId = this.qTileId;
         clonedParameters.matchStorageFile = this.matchStorageFile;
         clonedParameters.trimMfovsWithNoConnectedTiles = this.trimMfovsWithNoConnectedTiles;
+        clonedParameters.onlyPatchCompletelyUnconnectedTiles = this.onlyPatchCompletelyUnconnectedTiles;
         clonedParameters.validateAndSetupDerivedValues(); // make sure values derived from multiFieldOfViewId are rebuilt
         return clonedParameters;
     }

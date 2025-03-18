@@ -26,12 +26,13 @@ public class MFOVMontageMatchPatchClientTest {
                 "--sameLayerDerivedMatchWeight", "0.15",
 //                "--crossLayerDerivedMatchWeight", "0.1",
                 "--startPositionMatchWeight", "0.000001",
-                "--pTileId", "w60_magc0160_scan081_m0030_r81_s55",
-                "--qTileId", "w60_magc0160_scan081_m0030_r88_s84",
-//                "--mfov", "0160_m0018",
+//                "--pTileId", "w60_magc0160_scan081_m0030_r81_s55",
+//                "--qTileId", "w60_magc0160_scan081_m0030_r88_s84",
+                "--mfov", "0160_m0000",
                 "--matchStorageFile", "/Users/trautmane/Desktop/matchStorageFile.json",
 //                "--matchCollection", "w60_s360_r00_d20_gc_match",
 //                "--matchStorageCollection", "w60_s360_r00_d20_gc_match_test",
+                "--onlyPatchCompletelyUnconnectedTiles"
         };
 
         MFOVMontageMatchPatchClient.main(effectiveArgs);

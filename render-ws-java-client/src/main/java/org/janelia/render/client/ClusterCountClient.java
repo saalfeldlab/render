@@ -1,5 +1,7 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -8,14 +10,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import mpicbg.trakem2.transform.TranslationModel2D;
+
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.ConnectedTileClusterSummary;
 import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.alignment.match.TileIdsWithMatches;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.match.UnconnectedTileEdges;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -24,7 +33,7 @@ import org.janelia.render.client.parameter.TileClusterParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.ParametersDelegate;
+import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST;
 
 /**
  * Java client for identifying connected tile clusters in a stack.
@@ -144,7 +153,10 @@ public class ClusterCountClient {
 
         stackClusterSummary.setUnconnectedTileIdList(allUnconnectedTileIds);
 
-        int clusterNumber = 0;
+        final String sourceStackName = stackId.getStack();
+        final String smallClusterStackName = sourceStackName + "_small_clusters";
+
+        int smallClusterZ = 1;
         for (final Set<String> tileIdSet : allClusters.getSortedConnectedTileIdSets()) {
 
             final int tileCount = tileIdSet.size();
@@ -160,15 +172,13 @@ public class ClusterCountClient {
             }
             stackClusterSummary.addTileClusterSummary(tileSummary);
 
-            if (parameters.tileCluster.logClusterTileIds(tileCount)) {
-                final List<String> sortedTileIds = tileIdSet.stream()
-                        .sorted()
-                        .map(s -> "\"" + s + "\"")
-                        .collect(Collectors.toList());
-                LOG.info("findConnectedClusters: cluster {} has {} tiles with the following ids: {}",
-                         clusterNumber, tileCount, sortedTileIds);
+            if (parameters.tileCluster.includeInSmallClusterStack(tileCount)) {
+                setupSmallClusterStackAsNeeded(smallClusterZ, sourceStackName, smallClusterStackName, renderDataClient);
+                addTilesToSmallClusterStack(tileIdSet,
+                                            smallClusterZ, sourceStackName, smallClusterStackName, renderDataClient);
+                logTileIds(tileIdSet, smallClusterZ);
+                smallClusterZ++;
             }
-            clusterNumber++;
         }
 
         if (unconnectedEdges != null) {
@@ -176,6 +186,23 @@ public class ClusterCountClient {
             final boolean hasTooManyConsecutiveUnconnectedEdges = unconnectedEdges.hasTooManyConsecutiveUnconnectedEdges();
             stackClusterSummary.setUnconnectedEdgeData(unconnectedTileEdgesList,
                                                        hasTooManyConsecutiveUnconnectedEdges);
+        }
+
+        if (parameters.tileCluster.isMaxSmallClusterSizeToSaveDefined()) {
+            if (! allUnconnectedTileIds.isEmpty())  {
+                setupSmallClusterStackAsNeeded(smallClusterZ, sourceStackName, smallClusterStackName, renderDataClient);
+                addUnconnectedTilesToSmallClusterStack(allUnconnectedTileIds,
+                                                       smallClusterZ,
+                                                       sourceStackName,
+                                                       smallClusterStackName,
+                                                       renderDataClient);
+                logTileIds(allUnconnectedTileIds, smallClusterZ);
+                smallClusterZ++;
+            }
+
+            if (smallClusterZ > 1) {
+                renderDataClient.setStackState(smallClusterStackName, StackMetaData.StackState.COMPLETE);
+            }
         }
 
         LOG.info("findConnectedClusters: {} ", stackClusterSummary.toDetailsString());
@@ -235,6 +262,108 @@ public class ClusterCountClient {
                  clusters.getClusterSizes());
 
         return clusters;
+    }
+
+    private void setupSmallClusterStackAsNeeded(final int smallClusterZ,
+                                                final String sourceStackName,
+                                                final String smallClusterStackName,
+                                                final RenderDataClient renderDataClient)
+            throws IOException {
+        if (smallClusterZ == 1) {
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(sourceStackName);
+            renderDataClient.setupDerivedStack(stackMetaData, smallClusterStackName);
+        }
+    }
+
+    private void logTileIds(final Set<String> tileIdSet,
+                            final int smallClusterZ) {
+
+        final List<String> sortedTileIds = tileIdSet.stream()
+                .sorted()
+                .map(s -> "\"" + s + "\"")
+                .collect(Collectors.toList());
+
+        LOG.info("logTileIds: smallClusterZ {} has {} tiles with the following ids: {}",
+                 smallClusterZ, sortedTileIds.size(), sortedTileIds);
+    }
+
+    private void addTilesToSmallClusterStack(final Set<String> tileIdSet,
+                                             final int smallClusterZ,
+                                             final String sourceStackName,
+                                             final String smallClusterStackName,
+                                             final RenderDataClient renderDataClient)
+            throws IOException {
+
+        final List<TileSpec> tileSpecList = renderDataClient.getTileSpecsWithIds(new ArrayList<>(tileIdSet),
+                                                                                 sourceStackName);
+
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(),
+                                                                                        tileSpecList);
+
+        Bounds smallClusterBounds = new Bounds();
+        for (final TileSpec tileSpec : tileSpecList) {
+            smallClusterBounds = smallClusterBounds.union(tileSpec.toTileBounds());
+        }
+
+        final Map<Double, List<TileSpec>> zToTileSpecsMap = tileSpecList.stream()
+                .collect(Collectors.groupingBy(TileSpec::getZ));
+
+        int transformX = -smallClusterBounds.getMinX().intValue();
+        final int transformY = -smallClusterBounds.getMinY().intValue();
+        for (final Double sourceZ : zToTileSpecsMap.keySet().stream().sorted().collect(Collectors.toList())) {
+            final List<TileSpec> layerTileSpecs = zToTileSpecsMap.get(sourceZ);
+
+            final String transformDataString = transformX + " " + transformY;
+            final LeafTransformSpec transformSpec = new LeafTransformSpec(TranslationModel2D.class.getName(),
+                                                                          transformDataString);
+            for (final TileSpec tileSpec : layerTileSpecs) {
+                tileSpec.setZ((double) smallClusterZ);
+                resolvedTiles.addTransformSpecToTile(tileSpec.getTileId(), transformSpec, PRE_CONCATENATE_LAST);
+            }
+
+            transformX += (int) smallClusterBounds.getDeltaX() + 10;
+        }
+
+        renderDataClient.saveResolvedTiles(resolvedTiles, smallClusterStackName, null);
+    }
+
+    private void addUnconnectedTilesToSmallClusterStack(final Set<String> tileIdSet,
+                                                        final int smallClusterZ,
+                                                        final String sourceStackName,
+                                                        final String smallClusterStackName,
+                                                        final RenderDataClient renderDataClient)
+            throws IOException {
+
+        final List<TileSpec> tileSpecList = renderDataClient.getTileSpecsWithIds(new ArrayList<>(tileIdSet),
+                                                                                 sourceStackName);
+
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(),
+                                                                                        tileSpecList);
+
+        final int columnCount = (int) Math.ceil(Math.sqrt(tileIdSet.size()));
+        final int rowCount = (int) Math.ceil((double) tileIdSet.size() / columnCount);
+
+        for (int row = 0; row < rowCount; row++) {
+            for (int column = 0; column < columnCount; column++) {
+                final int index = (row * columnCount) + column;
+                if (index >= tileSpecList.size()) {
+                    break; // no more tiles to process
+                }
+
+                final TileSpec tileSpec = tileSpecList.get(index);
+                tileSpec.setZ((double) smallClusterZ);
+
+                final int x = row * (tileSpec.getWidth() + 10);
+                final int y = column * (tileSpec.getHeight() + 10);
+                final ListTransformSpec transformSpec = new ListTransformSpec();
+                transformSpec.addSpec(new LeafTransformSpec(TranslationModel2D.class.getName(),
+                                                            x + " " + y));
+                tileSpec.setTransforms(transformSpec);
+                tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
+            }
+        }
+
+        renderDataClient.saveResolvedTiles(resolvedTiles, smallClusterStackName, null);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ClusterCountClient.class);

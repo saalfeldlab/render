@@ -1,7 +1,5 @@
 package org.janelia.render.client.multisem;
 
-import com.beust.jcommander.ParametersDelegate;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -32,6 +30,8 @@ import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.beust.jcommander.ParametersDelegate;
 
 /**
  * Java client for patching matches missing from adjacent SFOV tile pairs within the same MFOV and z layer.
@@ -137,6 +137,7 @@ public class MFOVMontageMatchPatchClient {
                                                               final String matchStorageCollectionName)
             throws IOException, IllegalStateException {
 
+        // TODO: revisit this when there is more time to see if the logic can be simplified ( see https://github.com/saalfeldlab/render/pull/206#pullrequestreview-2686939433 )
         LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: entry, stackMFOVWithZValues={}", stackMFOVWithZValues);
 
         if (! stackMFOVWithZValues.getmFOVId().equals(patch.multiFieldOfViewId)) {
@@ -173,9 +174,17 @@ public class MFOVMontageMatchPatchClient {
 
         final int totalNumberOfPositions = positionToPairs.size();
         final Set<MFOVPositionPair> positionsWithoutAnyUnconnectedPairs = new HashSet<>();
+        final Set<String> connectedTileIds = new HashSet<>();
         for (final MFOVPositionPair positionPair : positionToPairs.keySet()) {
-            if (! positionToPairs.get(positionPair).hasUnconnectedPairs()) {
+            final MFOVPositionPairMatchData positionPairMatchData = positionToPairs.get(positionPair);
+            if (! positionPairMatchData.hasUnconnectedPairs()) {
                 positionsWithoutAnyUnconnectedPairs.add(positionPair);
+            }
+            if (patch.onlyPatchCompletelyUnconnectedTiles) {
+                for (final OrderedCanvasIdPair connectedPair : positionPairMatchData.getConnectedPairsForPosition()) {
+                    connectedTileIds.add(connectedPair.getP().getId());
+                    connectedTileIds.add(connectedPair.getQ().getId());
+                }
             }
         }
         for (final MFOVPositionPair positionPair : positionsWithoutAnyUnconnectedPairs) {
@@ -185,7 +194,7 @@ public class MFOVMontageMatchPatchClient {
         LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: {} out of {} positions in {} have at least one unconnected pair",
                  positionToPairs.size(), totalNumberOfPositions, stackMFOVWithZValues);
 
-        final List<CanvasMatches> derivedMatchesForMFOV = new ArrayList<>();
+        List<CanvasMatches> derivedMatchesForMFOV = new ArrayList<>();
 
         final List<MFOVPositionPair> sortedPositions =
                 positionToPairs.keySet().stream().sorted().collect(Collectors.toList());
@@ -198,11 +207,52 @@ public class MFOVMontageMatchPatchClient {
                                                                            patch.startPositionMatchWeight));
         }
 
+        if (patch.onlyPatchCompletelyUnconnectedTiles && (! derivedMatchesForMFOV.isEmpty())) {
+
+            final List<String> distinctSortedSectionIds = renderDataClient.getDistinctSortedSectionIds(stack);
+            final List<CanvasMatches> completelyUnconnectedTileMatchesList = new ArrayList<>();
+
+            // Build connected tile set by retrieving match pairs incrementally for each section
+            // to reduce amount of data retrieved from web service in one call.
+            // We need to retrieve all match pairs to ensure that connections
+            // to all tiles outside the MFOV and to all tiles outside the z layer are included.
+            final int originalConnectedTileCount = connectedTileIds.size();
+            for (final String groupId : distinctSortedSectionIds) {
+                for (final CanvasMatches pair : matchClient.getMatchesWithinGroup(groupId, true)) {
+                    connectedTileIds.add(pair.getpId());
+                    connectedTileIds.add(pair.getqId());
+                }
+                for (final CanvasMatches pair : matchClient.getMatchesOutsideGroup(groupId, true)) {
+                    connectedTileIds.add(pair.getpId());
+                    connectedTileIds.add(pair.getqId());
+                }
+            }
+
+            final int additionalConnectedTileCount = connectedTileIds.size() - originalConnectedTileCount;
+            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: added {} more connectedTileIds in {}",
+                     additionalConnectedTileCount, stackMFOVWithZValues);
+
+            for (final CanvasMatches derivedMatches : derivedMatchesForMFOV) {
+                if ((! connectedTileIds.contains(derivedMatches.getpId())) ||
+                    (! connectedTileIds.contains(derivedMatches.getqId()))) {
+                    completelyUnconnectedTileMatchesList.add(derivedMatches);
+                }
+            }
+
+            final int removedCount = derivedMatchesForMFOV.size() - completelyUnconnectedTileMatchesList.size();
+
+            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: removed {} match pairs for partially connected tiles in {}",
+                     removedCount, stackMFOVWithZValues);
+
+            derivedMatchesForMFOV = completelyUnconnectedTileMatchesList;
+        }
+
         final int numberOfDerivedMatchPairs = derivedMatchesForMFOV.size();
         if (numberOfDerivedMatchPairs > 0) {
 
-            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}",
-                     numberOfDerivedMatchPairs, stackMFOVWithZValues);
+            final String firstPairKey = derivedMatchesForMFOV.get(0).toKeyString();
+            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}, first save pair is {}",
+                     numberOfDerivedMatchPairs, stackMFOVWithZValues, firstPairKey);
 
             if (patch.matchStorageFile != null) {
                 final Path storagePath = Paths.get(patch.matchStorageFile).toAbsolutePath();
