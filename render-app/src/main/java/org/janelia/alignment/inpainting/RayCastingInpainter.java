@@ -50,7 +50,7 @@ public class RayCastingInpainter {
 	 * @param mask the mask
 	 */
 	public void inpaint(final RandomAccessibleInterval<FloatType> img, final RandomAccessibleInterval<FloatType> mask) {
-		final Cursor<FloatType> imgCursor = Views.iterable(img).localizingCursor();
+		final Cursor<FloatType> imgCursor = img.localizingCursor();
 
 		final RealRandomAccess<FloatType> imageAccess = Views.interpolate(Views.extendBorder(img), new NLinearInterpolatorFactory<>()).realRandomAccess();
 		final RealRandomAccess<FloatType> maskAccess = Views.interpolate(Views.extendBorder(mask), new NLinearInterpolatorFactory<>()).realRandomAccess();
