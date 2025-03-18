@@ -16,6 +16,9 @@ import java.util.Locale;
 
 import javax.imageio.ImageIO;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Default loader that wraps the ij.io.Opener for render and handles S3 URLs.
  */
@@ -33,10 +36,28 @@ public class ImageJDefaultLoader
         return true;
     }
 
-    @SuppressWarnings("UnstableApiUsage")
-    public ImageProcessor load(final String urlString) {
+    public ImageProcessor load(final String urlString)
+            throws IllegalArgumentException {
+        return loadWithRetries(urlString, 0).getProcessor();
+    }
 
-        final ImagePlus imagePlus;
+    private ImagePlus loadWithRetries(final String urlString,
+                                      final int retryNumber)
+            throws IllegalArgumentException {
+
+        final int maxRetries = 3;
+        final int secondsBetweenRetries = 5 << (retryNumber - 1); // retry 1: 5s, retry 2: 10s, retry 3: 20s
+        final int nextRetryNumber = retryNumber + 1;
+
+        if (retryNumber > 0) {
+            try {
+                Thread.sleep(secondsBetweenRetries * 1000L);
+            } catch (final InterruptedException e) {
+                LOG.warn("loadWithRetries: interrupted while sleeping before retry, continuing with retry now ", e);
+            }
+        }
+
+        ImagePlus imagePlus;
 
         // openers keep state about the file being opened, so we need to create a new opener for each load
         final Opener opener = new Opener();
@@ -81,14 +102,31 @@ public class ImageJDefaultLoader
             }
 
         } catch (final Throwable t) {
-            throw new IllegalArgumentException(getErrorMessage(urlString), t);
+            if (nextRetryNumber <= maxRetries) {
+                LOG.warn("loadWithRetries: failed to load {}, will run retry number {} of {} in {} seconds",
+                         urlString, nextRetryNumber, maxRetries, secondsBetweenRetries, t);
+                imagePlus = loadWithRetries(urlString,
+                                            nextRetryNumber);
+            } else {
+                throw new IllegalArgumentException(
+                        getErrorMessage(urlString) + " after " + retryNumber + " retries",
+                        t);
+            }
         }
 
         if (imagePlus == null) {
-            throw new IllegalArgumentException(getErrorMessage(urlString));
+            if (nextRetryNumber <= maxRetries) {
+                LOG.warn("loadWithRetries: null imagePlus for {}, will run retry number {} of {} in {} seconds",
+                         urlString, nextRetryNumber, maxRetries, secondsBetweenRetries);
+                imagePlus = loadWithRetries(urlString,
+                                            nextRetryNumber);
+            } else {
+                throw new IllegalArgumentException(
+                        getErrorMessage(urlString) + " (null imagePlus) after " + retryNumber + " retries");
+            }
         }
 
-        return imagePlus.getProcessor();
+        return imagePlus;
     }
 
     /** Copied from protected {@link Opener#openJpegOrGifUsingURL}. */
@@ -112,5 +150,7 @@ public class ImageJDefaultLoader
     private String getErrorMessage(final String urlString) {
         return "failed to create imagePlus instance for '" + urlString + "'";
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(ImageJDefaultLoader.class);
 
 }
