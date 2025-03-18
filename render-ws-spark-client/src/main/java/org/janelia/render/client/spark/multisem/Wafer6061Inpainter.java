@@ -61,8 +61,8 @@ public class Wafer6061Inpainter {
 
 		@Parameter(
 				names = "--output",
-				description = "Name of the dataset to write the inpainted data to. Only blocks that are inpainted are written.",
-				required = true)
+				description = "Name of the dataset to write the inpainted data to. Only blocks that are inpainted are written. "
+						+ "If omitted, input blocks are overwritten.")
 		public String output;
 
 		@Parameter(
@@ -76,6 +76,10 @@ public class Wafer6061Inpainter {
 			if (stepSize <= 0) {
 				throw new IllegalArgumentException("Inpainting size must be positive");
 			}
+		}
+
+		public String fullDataset() {
+			return dataset + "/s0";
 		}
 	}
 
@@ -92,20 +96,29 @@ public class Wafer6061Inpainter {
 		this.param = parameters;
 	}
 
-	public void inpaint() {
-		LOG.info("Inpainting {} in {} using mask {} and writing to {}",
-				 param.dataset, param.n5Path, param.mask, param.output);
+	public void run() {
+		final String output = param.output == null ? "input dataset" : "'" + param.output + "'";
+		LOG.info("Inpainting dataset '{}' in '{}' using mask '{}' and writing to {}",
+				 param.dataset, param.n5Path, param.mask, output);
 
 		// Read and cache some metadata of the tissue and mask datasets
 		// Assume that the tissue is a multiscale pyramid / mask is a standalone dataset
 		n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, param.n5Path);
-		tissueAttributes = n5.getDatasetAttributes(param.dataset + "/s0");
+		tissueAttributes = n5.getDatasetAttributes(param.fullDataset());
 		maskAttributes = n5.getDatasetAttributes(param.mask);
 		tissueMin = n5.getAttribute(param.dataset, "translate", long[].class);
 		maskMin = n5.getAttribute(param.mask, "translate", long[].class);
 
-		if (n5.exists(param.output)) {
-			throw new RuntimeException("Dataset '" + param.output + "' already exists");
+		if (param.output == null) {
+			param.output = param.fullDataset();
+			LOG.info("Output dataset equals input dataset. Overwriting blocks in the input dataset '{}'", param.output);
+		} else if (n5.exists(param.output)) {
+			throw new IllegalArgumentException("Dataset '" + param.output + "' is different from the input dataset and already exists. Stopping.");
+		} else {
+			LOG.info("Output dataset is '{}'. Creating new dataset.", param.output);
+			try (final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, param.n5Path)) {
+				n5Writer.createDataset(param.output, tissueAttributes);
+			}
 		}
 
 		final List<Grid.Block> blocksToInpaint = getBlocksToInpaint();
@@ -164,14 +177,11 @@ public class Wafer6061Inpainter {
 	}
 
 	private void inpaintBlocks(final List<Grid.Block> blocksToInpaint) {
-		final Img<UnsignedByteType> rawTissue = N5Utils.open(n5, param.dataset + "/s0");
+		final Img<UnsignedByteType> rawTissue = N5Utils.open(n5, param.fullDataset());
 		final Img<UnsignedByteType> rawMask = N5Utils.open(n5, param.mask);
 
 		final RandomAccessibleInterval<UnsignedByteType> tissue = Views.translate(rawTissue, tissueMin);
 		final RandomAccessible<UnsignedByteType> mask = Views.translate(Views.extendValue(rawMask, 0.0f), maskMin);
-
-		final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, param.n5Path);
-		n5Writer.createDataset(param.output, tissueAttributes);
 
 		for (final Grid.Block block : blocksToInpaint) {
 			final Interval blockInterval = Intervals.translate(block, tissueMin);
@@ -192,10 +202,10 @@ public class Wafer6061Inpainter {
 				targetPixel.set(value);
 			}
 
-			N5Utils.saveBlock(inpaintedBlock, n5Writer, param.output, tissueAttributes, block.gridPosition);
+			try (final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, param.n5Path)) {
+				N5Utils.saveBlock(inpaintedBlock, n5Writer, param.output, tissueAttributes, block.gridPosition);
+			}
 		}
-
-		n5Writer.close();
 	}
 
 
@@ -204,7 +214,7 @@ public class Wafer6061Inpainter {
 				"--n5Path", "/Users/innerbergerm/Data/render-exports/wafer60.n5",
 				"--dataset", "tissue",
 				"--mask", "mask",
-				"--output", "inpainted",
+//				"--output", "inpainted",
 				"--inpaintingSize", "20"
 		};
 
@@ -219,7 +229,7 @@ public class Wafer6061Inpainter {
 				LOG.info("runClient: entry, parameters={}", parameters);
 
 				final Wafer6061Inpainter inpainter = new Wafer6061Inpainter(parameters);
-				inpainter.inpaint();
+				inpainter.run();
 			}
 		};
 		clientRunner.run();
