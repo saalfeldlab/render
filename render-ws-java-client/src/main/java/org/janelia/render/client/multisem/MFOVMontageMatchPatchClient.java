@@ -137,6 +137,7 @@ public class MFOVMontageMatchPatchClient {
                                                               final String matchStorageCollectionName)
             throws IOException, IllegalStateException {
 
+        // TODO: revisit this when there is more time to see if the logic can be simplified ( see https://github.com/saalfeldlab/render/pull/206#pullrequestreview-2686939433 )
         LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: entry, stackMFOVWithZValues={}", stackMFOVWithZValues);
 
         if (! stackMFOVWithZValues.getmFOVId().equals(patch.multiFieldOfViewId)) {
