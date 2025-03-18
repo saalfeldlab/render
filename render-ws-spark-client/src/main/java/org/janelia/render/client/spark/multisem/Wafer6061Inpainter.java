@@ -3,6 +3,7 @@ package org.janelia.render.client.spark.multisem;
 
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
+import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
@@ -98,31 +99,27 @@ public class Wafer6061Inpainter {
 		final List<Grid.Block> tissueBlocks = Grid.create(tissueAttributes.getDimensions(), tissueAttributes.getBlockSize());
 		final List<Grid.Block> maskBlocks = Grid.create(maskAttributes.getDimensions(), maskAttributes.getBlockSize());
 
-		// Filter empty blocks in the mask
+		// Filter all blocks that either have no mask, or are completely covered by the mask
 		LOG.info("Filtering empty mask blocks from {} blocks", maskBlocks.size());
 		final Img<UnsignedByteType> mask = N5Utils.open(n5, maskDataset);
-		final List<Interval> nonEmptyMaskBlocks = new ArrayList<>();
+		final List<Interval> nonHomogeneousMaskBlocks = new ArrayList<>();
 		for (final Grid.Block block : maskBlocks) {
-			final IntervalView<UnsignedByteType> pixels = Views.interval(mask, block);
-			for (final UnsignedByteType pixel : pixels) {
-				final float value = pixel.get();
-				if (value > 0 && value < 255) {
-					nonEmptyMaskBlocks.add(block);
-					break;
-				}
+			final IntervalView<UnsignedByteType> maskPixels = Views.interval(mask, block);
+			if (! isHomogeneous(maskPixels)) {
+				nonHomogeneousMaskBlocks.add(block);
 			}
 		}
-		LOG.info("Found {} non-empty mask blocks", nonEmptyMaskBlocks.size());
+		LOG.info("Found {} non-homogeneous mask blocks", nonHomogeneousMaskBlocks.size());
 
-		// See which tissue blocks are covered by the mask
-		final List<Interval> translatedNonEmptyMaskBlocks = nonEmptyMaskBlocks.stream()
+		// Check which tissue blocks are covered by the mask
+		final List<Interval> translatedNonHomogeneousMaskBlocks = nonHomogeneousMaskBlocks.stream()
 				.map(b -> Intervals.translate(b, maskMin))
 				.collect(Collectors.toList());
 		final List<Grid.Block> tissueBlocksToInpaint = new ArrayList<>();
 
 		for (final Grid.Block block : tissueBlocks) {
 			final Interval blockInterval = Intervals.translate(block, tissueMin);
-			for (final Interval maskBlock : translatedNonEmptyMaskBlocks) {
+			for (final Interval maskBlock : translatedNonHomogeneousMaskBlocks) {
 				final boolean intervalsAreDisjoint = Intervals.isEmpty(Intervals.intersect(blockInterval, maskBlock));
 				if (!intervalsAreDisjoint) {
 					tissueBlocksToInpaint.add(block);
@@ -133,6 +130,16 @@ public class Wafer6061Inpainter {
 		LOG.info("Found {} tissue blocks to inpaint", tissueBlocksToInpaint.size());
 
 		return tissueBlocksToInpaint;
+	}
+
+	private static boolean isHomogeneous(final IterableInterval<UnsignedByteType> pixels) {
+		final UnsignedByteType firstPixel = pixels.firstElement();
+		for (final UnsignedByteType pixel : pixels) {
+			if (pixel.equals(firstPixel)) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	private void inpaintBlocks(final List<Grid.Block> blocksToInpaint) {
@@ -176,7 +183,7 @@ public class Wafer6061Inpainter {
 		final String dataset = "tissue";
 		final String maskDataset = "mask";
 		final String outputDataset = "inpainted";
-		final int stepSize = 10;
+		final int stepSize = 20;
 
 		final Wafer6061Inpainter inpainter = new Wafer6061Inpainter(n5Path, dataset, maskDataset, outputDataset, stepSize);
 		inpainter.inpaint();
@@ -227,7 +234,7 @@ public class Wafer6061Inpainter {
 				tissueAccess.move(2, 2);
 				final int below = tissueAccess.get().get();
 
-				return UnsignedByteType.getCodedSignedByteChecked((above + below) >>> 2);
+				return UnsignedByteType.getCodedSignedByteChecked((above + below) >>> 1);
 			} else if (hasContentAbove) {
 				tissueAccess.move(-1, 2);
 				return tissueAccess.get().get();
