@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark.multisem;
 
 
+import com.beust.jcommander.Parameter;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.IterableInterval;
@@ -14,6 +15,8 @@ import net.imglib2.util.Intervals;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.janelia.alignment.util.Grid;
+import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
@@ -37,11 +40,46 @@ public class Wafer6061Inpainter {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Wafer6061Inpainter.class);
 
-	private final String n5Path;
-	private final String dataset;
-	private final String maskDataset;
-	private final String outputDataset;
-	private final int stepSize;
+	public static class Parameters extends CommandLineParameters {
+		@Parameter(
+				names = "--n5Path",
+				description = "Path to the N5 container containing the data and the mask.",
+				required = true)
+		public String n5Path;
+
+		@Parameter(
+				names = "--dataset",
+				description = "Name of the dataset to inpaint; assumed to be a multiscale pyramid, only s0 is inpainted.",
+				required = true)
+		public String dataset;
+
+		@Parameter(
+				names = "--mask",
+				description = "Name of the mask dataset. This is supposed be a binary uint8 mask covering the whole dataset.",
+				required = true)
+		public String mask;
+
+		@Parameter(
+				names = "--output",
+				description = "Name of the dataset to write the inpainted data to. Only blocks that are inpainted are written.",
+				required = true)
+		public String output;
+
+		@Parameter(
+				names = "--inpaintingSize",
+				description = "Rough size of the inpainting region in pixels. This is used to determine the regions to inpaint, so better to be too large than too small.",
+				required = true)
+		public int stepSize;
+
+
+		public void validate() {
+			if (stepSize <= 0) {
+				throw new IllegalArgumentException("Inpainting size must be positive");
+			}
+		}
+	}
+
+	private final Parameters param;
 
 	private N5Reader n5;
 	private DatasetAttributes tissueAttributes;
@@ -49,42 +87,25 @@ public class Wafer6061Inpainter {
 	private long[] tissueMin;
 	private long[] maskMin;
 
-	/**
-	 * @param n5Path path to the N5 container containing the data and the mask
-	 * @param dataset name of the dataset to inpaint; assumed to be a multiscale pyramid, only s0 is inpainted
-	 * @param maskDataset name of the mask dataset; this is supposed to only cover a small z-range of the dataset and
-	 *                    translated to the correct location in the stack coordinates (with an attribute "translate"
-	 *                    containing the translation vector)
-	 * @param outputDataset name of the dataset to write the inpainted data to; only blocks that are inpainted are written
-	 * @param stepSize step size in pixels to look for non-masked pixels in the x/y directions
-	 */
-	public Wafer6061Inpainter(
-			final String n5Path,
-			final String dataset,
-			final String maskDataset,
-			final String outputDataset,
-			final int stepSize
-	) {
-		this.n5Path = n5Path;
-		this.dataset = dataset;
-		this.maskDataset = maskDataset;
-		this.outputDataset = outputDataset;
-		this.stepSize = stepSize;
+
+	public Wafer6061Inpainter(final Parameters parameters) {
+		this.param = parameters;
 	}
 
 	public void inpaint() {
-		LOG.info("Inpainting {} in {} using mask {} and writing to {}", dataset, n5Path, maskDataset, outputDataset);
+		LOG.info("Inpainting {} in {} using mask {} and writing to {}",
+				 param.dataset, param.n5Path, param.mask, param.output);
 
 		// Read and cache some metadata of the tissue and mask datasets
 		// Assume that the tissue is a multiscale pyramid / mask is a standalone dataset
-		n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, n5Path);
-		tissueAttributes = n5.getDatasetAttributes(dataset + "/s0");
-		maskAttributes = n5.getDatasetAttributes(maskDataset);
-		tissueMin = n5.getAttribute(dataset, "translate", long[].class);
-		maskMin = n5.getAttribute(maskDataset, "translate", long[].class);
+		n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, param.n5Path);
+		tissueAttributes = n5.getDatasetAttributes(param.dataset + "/s0");
+		maskAttributes = n5.getDatasetAttributes(param.mask);
+		tissueMin = n5.getAttribute(param.dataset, "translate", long[].class);
+		maskMin = n5.getAttribute(param.mask, "translate", long[].class);
 
-		if (n5.exists(outputDataset)) {
-			throw new RuntimeException("Dataset '" + outputDataset + "' already exists");
+		if (n5.exists(param.output)) {
+			throw new RuntimeException("Dataset '" + param.output + "' already exists");
 		}
 
 		final List<Grid.Block> blocksToInpaint = getBlocksToInpaint();
@@ -94,14 +115,14 @@ public class Wafer6061Inpainter {
 	}
 
 	private List<Grid.Block> getBlocksToInpaint() {
-		LOG.info("Reading metadata from {}", n5Path);
+		LOG.info("Reading metadata from {}", param.n5Path);
 
 		final List<Grid.Block> tissueBlocks = Grid.create(tissueAttributes.getDimensions(), tissueAttributes.getBlockSize());
 		final List<Grid.Block> maskBlocks = Grid.create(maskAttributes.getDimensions(), maskAttributes.getBlockSize());
 
 		// Filter all blocks that either have no mask, or are completely covered by the mask
 		LOG.info("Filtering empty mask blocks from {} blocks", maskBlocks.size());
-		final Img<UnsignedByteType> mask = N5Utils.open(n5, maskDataset);
+		final Img<UnsignedByteType> mask = N5Utils.open(n5, param.mask);
 		final List<Interval> nonHomogeneousMaskBlocks = new ArrayList<>();
 		for (final Grid.Block block : maskBlocks) {
 			final IntervalView<UnsignedByteType> maskPixels = Views.interval(mask, block);
@@ -143,18 +164,18 @@ public class Wafer6061Inpainter {
 	}
 
 	private void inpaintBlocks(final List<Grid.Block> blocksToInpaint) {
-		final Img<UnsignedByteType> rawTissue = N5Utils.open(n5, dataset + "/s0");
-		final Img<UnsignedByteType> rawMask = N5Utils.open(n5, maskDataset);
+		final Img<UnsignedByteType> rawTissue = N5Utils.open(n5, param.dataset + "/s0");
+		final Img<UnsignedByteType> rawMask = N5Utils.open(n5, param.mask);
 
 		final RandomAccessibleInterval<UnsignedByteType> tissue = Views.translate(rawTissue, tissueMin);
 		final RandomAccessible<UnsignedByteType> mask = Views.translate(Views.extendValue(rawMask, 0.0f), maskMin);
 
-		final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, n5Path);
-		n5Writer.createDataset(outputDataset, tissueAttributes);
+		final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, param.n5Path);
+		n5Writer.createDataset(param.output, tissueAttributes);
 
 		for (final Grid.Block block : blocksToInpaint) {
 			final Interval blockInterval = Intervals.translate(block, tissueMin);
-			LOG.info("Inpainting block at {}", blockInterval.minAsLongArray());
+			LOG.info("Inpainting block {} at {}", block.gridPosition, blockInterval.minAsLongArray());
 
 			final Img<UnsignedByteType> inpaintedBlock = ArrayImgs.unsignedBytes(blockInterval.dimensionsAsLongArray());
 
@@ -162,7 +183,7 @@ public class Wafer6061Inpainter {
 			final long[] location = new long[3];
 			final PixelFiller interpolator = new PixelFiller(Views.interval(tissue, blockInterval),
 															 Views.interval(mask, blockInterval),
-															 stepSize);
+															 param.stepSize);
 
 			while (targetCursor.hasNext()) {
 				final UnsignedByteType targetPixel = targetCursor.next();
@@ -171,7 +192,7 @@ public class Wafer6061Inpainter {
 				targetPixel.set(value);
 			}
 
-			N5Utils.saveBlock(inpaintedBlock, n5Writer, outputDataset, tissueAttributes, block.gridPosition);
+			N5Utils.saveBlock(inpaintedBlock, n5Writer, param.output, tissueAttributes, block.gridPosition);
 		}
 
 		n5Writer.close();
@@ -179,14 +200,29 @@ public class Wafer6061Inpainter {
 
 
 	public static void main(final String[] args) {
-		final String n5Path = "/Users/innerbergerm/Data/render-exports/wafer60.n5";
-		final String dataset = "tissue";
-		final String maskDataset = "mask";
-		final String outputDataset = "inpainted";
-		final int stepSize = 20;
+		final String[] testArgs = {
+				"--n5Path", "/Users/innerbergerm/Data/render-exports/wafer60.n5",
+				"--dataset", "tissue",
+				"--mask", "mask",
+				"--output", "inpainted",
+				"--inpaintingSize", "20"
+		};
 
-		final Wafer6061Inpainter inpainter = new Wafer6061Inpainter(n5Path, dataset, maskDataset, outputDataset, stepSize);
-		inpainter.inpaint();
+		final ClientRunner clientRunner = new ClientRunner(testArgs) {
+			@Override
+			public void runClient(final String[] args) {
+
+				final Wafer6061Inpainter.Parameters parameters = new Wafer6061Inpainter.Parameters();
+				parameters.parse(args);
+				parameters.validate();
+
+				LOG.info("runClient: entry, parameters={}", parameters);
+
+				final Wafer6061Inpainter inpainter = new Wafer6061Inpainter(parameters);
+				inpainter.inpaint();
+			}
+		};
+		clientRunner.run();
 	}
 
 
