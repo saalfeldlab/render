@@ -4,7 +4,6 @@ package org.janelia.render.client.spark.multisem;
 import com.beust.jcommander.Parameter;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
-import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
@@ -20,6 +19,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.util.Grid;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
@@ -28,7 +28,6 @@ import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.Tuple2;
-import scala.xml.PrettyPrinter;
 
 import java.io.Serializable;
 import java.util.List;
@@ -138,18 +137,10 @@ public class Wafer6061Inpainter {
 		LOG.info("Filtering empty mask blocks from {} blocks", maskBlocks.size());
 
 		// Filter all blocks that either have no mask, or are completely covered by the mask
-		final List<Grid.Block> nonHomogeneousMaskBlocks = maskRDD.mapToPair(
-						block -> {
-					final Interval blockInterval = Intervals.translate(block, maskAttributesBroadcast.value().min);
-					final Grid.Block translatedBlock = new Grid.Block(blockInterval, block.gridPosition);
-					final boolean isHomogeneous;
-					try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, paramBroadcast.value().n5Path)) {
-						final Img<UnsignedByteType> mask1 = N5Utils.open(n5, paramBroadcast.value().mask);
-						final RandomAccessibleInterval<UnsignedByteType> maskPixels = Views.interval(mask1, translatedBlock);
-						isHomogeneous = isHomogeneous(maskPixels);
-					}
-					return new Tuple2<>(translatedBlock, isHomogeneous);
-				})
+		final List<Grid.Block> nonHomogeneousMaskBlocks = maskRDD
+				.mapToPair(block -> translateAndCheckHomogeneity(block,
+												 maskAttributesBroadcast.value().min,
+												 paramBroadcast.value()))
 				.filter(tuple -> !tuple._2)
 				.map(Tuple2::_1)
 				.collect();
@@ -214,14 +205,35 @@ public class Wafer6061Inpainter {
 		});
 	}
 
-	private static boolean isHomogeneous(final IterableInterval<UnsignedByteType> pixels) {
-		final UnsignedByteType firstPixel = pixels.firstElement();
-		for (final UnsignedByteType pixel : pixels) {
-			if (pixel.equals(firstPixel)) {
-				return false;
+	private static Tuple2<Grid.Block, Boolean> translateAndCheckHomogeneity(
+			final Grid.Block block,
+			final long[] shift,
+			final Parameters param
+	) {
+		LogUtilities.setupExecutorLog4j("");
+
+		// Translate the block to physical coordinates
+		final Interval blockInterval = Intervals.translate(block, shift);
+		final Grid.Block translatedBlock = new Grid.Block(blockInterval, block.gridPosition);
+
+		// Read the mask block and check if it is homogeneous
+		boolean isHomogeneous = true;
+		try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, param.n5Path)) {
+			final Img<UnsignedByteType> mask = N5Utils.open(n5, param.mask);
+			final RandomAccessibleInterval<UnsignedByteType> maskPixels = Views.interval(mask, translatedBlock);
+
+			final UnsignedByteType firstPixel = maskPixels.firstElement();
+			for (final UnsignedByteType pixel : maskPixels) {
+				if (! pixel.equals(firstPixel)) {
+					isHomogeneous = false;
+					break;
+				}
 			}
 		}
-		return true;
+
+		LOG.info("Block {} at {} is {}",
+				 block.gridPosition, blockInterval.minAsLongArray(), isHomogeneous ? "homogeneous -> skip" : "non-homogeneous -> inpaint");
+		return new Tuple2<>(translatedBlock, isHomogeneous);
 	}
 
 	public static void main(final String[] args) {
