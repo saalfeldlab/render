@@ -12,8 +12,11 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.util.Intervals;
-import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaRDD;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.util.Grid;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -24,10 +27,12 @@ import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.Tuple2;
+import scala.xml.PrettyPrinter;
 
-import java.util.ArrayList;
+import java.io.Serializable;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
 
 /**
@@ -85,11 +90,8 @@ public class Wafer6061Inpainter {
 
 	private final Parameters param;
 
-	private N5Reader n5;
-	private DatasetAttributes tissueAttributes;
-	private DatasetAttributes maskAttributes;
-	private long[] tissueMin;
-	private long[] maskMin;
+	private ExtendedAttributes tissueAttributes;
+	private ExtendedAttributes maskAttributes;
 
 
 	public Wafer6061Inpainter(final Parameters parameters) {
@@ -103,67 +105,113 @@ public class Wafer6061Inpainter {
 
 		// Read and cache some metadata of the tissue and mask datasets
 		// Assume that the tissue is a multiscale pyramid / mask is a standalone dataset
-		n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, param.n5Path);
-		tissueAttributes = n5.getDatasetAttributes(param.fullDataset());
-		maskAttributes = n5.getDatasetAttributes(param.mask);
-		tissueMin = n5.getAttribute(param.dataset, "translate", long[].class);
-		maskMin = n5.getAttribute(param.mask, "translate", long[].class);
+		try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, param.n5Path)) {
+			LOG.info("Reading metadata from {}", param.n5Path);
+			tissueAttributes = ExtendedAttributes.read(n5, param.fullDataset(), param.dataset);
+			maskAttributes = ExtendedAttributes.read(n5, param.mask, param.mask);
 
-		if (param.output == null) {
-			param.output = param.fullDataset();
-			LOG.info("Output dataset equals input dataset. Overwriting blocks in the input dataset '{}'", param.output);
-		} else if (n5.exists(param.output)) {
-			throw new IllegalArgumentException("Dataset '" + param.output + "' is different from the input dataset and already exists. Stopping.");
-		} else {
-			LOG.info("Output dataset is '{}'. Creating new dataset.", param.output);
-			try (final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, param.n5Path)) {
-				n5Writer.createDataset(param.output, tissueAttributes);
-			}
-		}
-
-		final List<Grid.Block> blocksToInpaint = getBlocksToInpaint();
-		inpaintBlocks(blocksToInpaint);
-
-		n5.close();
-	}
-
-	private List<Grid.Block> getBlocksToInpaint() {
-		LOG.info("Reading metadata from {}", param.n5Path);
-
-		final List<Grid.Block> tissueBlocks = Grid.create(tissueAttributes.getDimensions(), tissueAttributes.getBlockSize());
-		final List<Grid.Block> maskBlocks = Grid.create(maskAttributes.getDimensions(), maskAttributes.getBlockSize());
-
-		// Filter all blocks that either have no mask, or are completely covered by the mask
-		LOG.info("Filtering empty mask blocks from {} blocks", maskBlocks.size());
-		final Img<UnsignedByteType> mask = N5Utils.open(n5, param.mask);
-		final List<Interval> nonHomogeneousMaskBlocks = new ArrayList<>();
-		for (final Grid.Block block : maskBlocks) {
-			final IntervalView<UnsignedByteType> maskPixels = Views.interval(mask, block);
-			if (! isHomogeneous(maskPixels)) {
-				nonHomogeneousMaskBlocks.add(block);
-			}
-		}
-		LOG.info("Found {} non-homogeneous mask blocks", nonHomogeneousMaskBlocks.size());
-
-		// Check which tissue blocks are covered by the mask
-		final List<Interval> translatedNonHomogeneousMaskBlocks = nonHomogeneousMaskBlocks.stream()
-				.map(b -> Intervals.translate(b, maskMin))
-				.collect(Collectors.toList());
-		final List<Grid.Block> tissueBlocksToInpaint = new ArrayList<>();
-
-		for (final Grid.Block block : tissueBlocks) {
-			final Interval blockInterval = Intervals.translate(block, tissueMin);
-			for (final Interval maskBlock : translatedNonHomogeneousMaskBlocks) {
-				final boolean intervalsAreDisjoint = Intervals.isEmpty(Intervals.intersect(blockInterval, maskBlock));
-				if (!intervalsAreDisjoint) {
-					tissueBlocksToInpaint.add(block);
-					break;
+			if (param.output == null) {
+				param.output = param.fullDataset();
+				LOG.info("Output dataset equals input dataset. Overwriting blocks in the input dataset '{}'", param.output);
+			} else if (n5.exists(param.output)) {
+				throw new IllegalArgumentException("Dataset '" + param.output + "' is different from the input dataset and already exists. Stopping.");
+			} else {
+				LOG.info("Output dataset is '{}'. Creating new dataset.", param.output);
+				try (final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, param.n5Path)) {
+					n5Writer.createDataset(param.output, tissueAttributes.attrs);
 				}
 			}
 		}
+
+		final SparkConf conf = new SparkConf().setAppName("Wafer6061Inpainter");
+		try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
+			runWithSparkContext(sparkContext);
+		}
+	}
+
+	private void runWithSparkContext(final JavaSparkContext sparkContext) {
+		// Find out which blocks need inpainting
+		final List<Grid.Block> maskBlocks = Grid.create(maskAttributes.attrs.getDimensions(), maskAttributes.attrs.getBlockSize());
+		final JavaRDD<Grid.Block> maskRDD = sparkContext.parallelize(maskBlocks);
+		final Broadcast<ExtendedAttributes> maskAttributesBroadcast = sparkContext.broadcast(maskAttributes);
+		final Broadcast<Parameters> paramBroadcast = sparkContext.broadcast(param);
+		LOG.info("Filtering empty mask blocks from {} blocks", maskBlocks.size());
+
+		// Filter all blocks that either have no mask, or are completely covered by the mask
+		final List<Grid.Block> nonHomogeneousMaskBlocks = maskRDD.mapToPair(
+						block -> {
+					final Interval blockInterval = Intervals.translate(block, maskAttributesBroadcast.value().min);
+					final Grid.Block translatedBlock = new Grid.Block(blockInterval, block.gridPosition);
+					final boolean isHomogeneous;
+					try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, paramBroadcast.value().n5Path)) {
+						final Img<UnsignedByteType> mask1 = N5Utils.open(n5, paramBroadcast.value().mask);
+						final RandomAccessibleInterval<UnsignedByteType> maskPixels = Views.interval(mask1, translatedBlock);
+						isHomogeneous = isHomogeneous(maskPixels);
+					}
+					return new Tuple2<>(translatedBlock, isHomogeneous);
+				})
+				.filter(tuple -> !tuple._2)
+				.map(Tuple2::_1)
+				.collect();
+		LOG.info("Found {} non-homogeneous mask blocks", nonHomogeneousMaskBlocks.size());
+
+		final List<Grid.Block> tissueBlocks = Grid.create(tissueAttributes.attrs.getDimensions(), tissueAttributes.attrs.getBlockSize());
+		final JavaRDD<Grid.Block> tissueBlocksRDD = sparkContext.parallelize(tissueBlocks);
+		final Broadcast<ExtendedAttributes> tissueAttributesBroadcast = sparkContext.broadcast(tissueAttributes);
+		final Broadcast<List<Grid.Block>> maskBlocksBroadcast = sparkContext.broadcast(nonHomogeneousMaskBlocks);
+
+		// Check which tissue blocks are covered by the interesting mask blocks determined above
+		final List<Grid.Block> tissueBlocksToInpaint = tissueBlocksRDD.map(
+						block -> {
+					final Interval blockInterval = Intervals.translate(block, tissueAttributesBroadcast.value().min);
+					final List<Grid.Block> interestingMaskBlocks = maskBlocksBroadcast.getValue();
+					for (final Interval maskBlock : interestingMaskBlocks) {
+						final boolean intervalsAreDisjoint = Intervals.isEmpty(Intervals.intersect(blockInterval, maskBlock));
+						if (!intervalsAreDisjoint) {
+							return block;
+						}
+					}
+					return null;
+				})
+				.filter(Objects::nonNull)
+				.collect();
 		LOG.info("Found {} tissue blocks to inpaint", tissueBlocksToInpaint.size());
 
-		return tissueBlocksToInpaint;
+		final JavaRDD<Grid.Block> inpaintingBlocksRDD = sparkContext.parallelize(tissueBlocksToInpaint);
+		inpaintingBlocksRDD.foreach(block -> {
+			final long[] tissueMin = tissueAttributesBroadcast.value().min;
+			final long[] maskMin = maskAttributesBroadcast.value().min;
+			final Interval blockInterval = Intervals.translate(block, tissueMin);
+			final Img<UnsignedByteType> inpaintedBlock = ArrayImgs.unsignedBytes(blockInterval.dimensionsAsLongArray());
+
+			try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, paramBroadcast.value().n5Path)) {
+				final Img<UnsignedByteType> rawTissue = N5Utils.open(n5, paramBroadcast.value().fullDataset());
+				final Img<UnsignedByteType> rawMask = N5Utils.open(n5, paramBroadcast.value().mask);
+
+				final RandomAccessibleInterval<UnsignedByteType> tissue = Views.translate(rawTissue, tissueMin);
+				final RandomAccessible<UnsignedByteType> mask = Views.translate(Views.extendValue(rawMask, 0.0f), maskMin);
+				LOG.info("Inpainting block {} at {}", block.gridPosition, blockInterval.minAsLongArray());
+
+
+				final Cursor<UnsignedByteType> targetCursor = Views.translate(inpaintedBlock, blockInterval.minAsLongArray()).localizingCursor();
+				final long[] location = new long[3];
+				final PixelFiller interpolator = new PixelFiller(Views.interval(tissue, blockInterval),
+																 Views.interval(mask, blockInterval),
+																 paramBroadcast.value().stepSize);
+
+				while (targetCursor.hasNext()) {
+					final UnsignedByteType targetPixel = targetCursor.next();
+					targetCursor.localize(location);
+					final int value = interpolator.getPixel(location);
+					targetPixel.set(value);
+				}
+			}
+
+			try (final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, paramBroadcast.value().n5Path)) {
+				final DatasetAttributes targetAttributes = tissueAttributesBroadcast.value().attrs;
+				N5Utils.saveBlock(inpaintedBlock, n5Writer, paramBroadcast.value().output, targetAttributes, block.gridPosition);
+			}
+		});
 	}
 
 	private static boolean isHomogeneous(final IterableInterval<UnsignedByteType> pixels) {
@@ -175,39 +223,6 @@ public class Wafer6061Inpainter {
 		}
 		return true;
 	}
-
-	private void inpaintBlocks(final List<Grid.Block> blocksToInpaint) {
-		final Img<UnsignedByteType> rawTissue = N5Utils.open(n5, param.fullDataset());
-		final Img<UnsignedByteType> rawMask = N5Utils.open(n5, param.mask);
-
-		final RandomAccessibleInterval<UnsignedByteType> tissue = Views.translate(rawTissue, tissueMin);
-		final RandomAccessible<UnsignedByteType> mask = Views.translate(Views.extendValue(rawMask, 0.0f), maskMin);
-
-		for (final Grid.Block block : blocksToInpaint) {
-			final Interval blockInterval = Intervals.translate(block, tissueMin);
-			LOG.info("Inpainting block {} at {}", block.gridPosition, blockInterval.minAsLongArray());
-
-			final Img<UnsignedByteType> inpaintedBlock = ArrayImgs.unsignedBytes(blockInterval.dimensionsAsLongArray());
-
-			final Cursor<UnsignedByteType> targetCursor = Views.translate(inpaintedBlock, blockInterval.minAsLongArray()).localizingCursor();
-			final long[] location = new long[3];
-			final PixelFiller interpolator = new PixelFiller(Views.interval(tissue, blockInterval),
-															 Views.interval(mask, blockInterval),
-															 param.stepSize);
-
-			while (targetCursor.hasNext()) {
-				final UnsignedByteType targetPixel = targetCursor.next();
-				targetCursor.localize(location);
-				final int value = interpolator.getPixel(location);
-				targetPixel.set(value);
-			}
-
-			try (final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, param.n5Path)) {
-				N5Utils.saveBlock(inpaintedBlock, n5Writer, param.output, tissueAttributes, block.gridPosition);
-			}
-		}
-	}
-
 
 	public static void main(final String[] args) {
 		final String[] testArgs = {
@@ -317,5 +332,21 @@ public class Wafer6061Inpainter {
 			return hasContentRight && hasContentLeft;
 		}
 
+	}
+
+	private static class ExtendedAttributes implements Serializable {
+		public final DatasetAttributes attrs;
+		public final long[] min;
+
+		public ExtendedAttributes(final DatasetAttributes attrs, final long[] min) {
+			this.attrs = attrs;
+			this.min = min;
+		}
+
+		public static ExtendedAttributes read(final N5Reader n5, final String attrsPath, final String minPath) {
+			final DatasetAttributes attrs = n5.getDatasetAttributes(attrsPath);
+			final long[] min = n5.getAttribute(minPath, "translate", long[].class);
+			return new ExtendedAttributes(attrs, min);
+		}
 	}
 }
