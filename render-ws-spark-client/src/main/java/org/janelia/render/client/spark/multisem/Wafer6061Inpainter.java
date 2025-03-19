@@ -5,7 +5,6 @@ import com.beust.jcommander.Parameter;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccess;
-import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
@@ -132,7 +131,7 @@ public class Wafer6061Inpainter {
 	}
 
 	private void runWithSparkContext(final JavaSparkContext sparkContext) {
-		// Find out which blocks need inpainting (i.e., find blocks that are neither all mask or all void)
+		// Find out which blocks need inpainting (i.e., find blocks that are neither all mask nor all void)
 		final List<Grid.Block> maskBlocks = Grid.create(maskAttributes.attrs.getDimensions(), maskAttributes.attrs.getBlockSize());
 		final JavaRDD<Grid.Block> maskRDD = sparkContext.parallelize(maskBlocks);
 		final Broadcast<ExtendedAttributes> maskAttributesBroadcast = sparkContext.broadcast(maskAttributes);
@@ -276,15 +275,7 @@ public class Wafer6061Inpainter {
 
 
 	public static void main(final String[] args) {
-		final String[] testArgs = {
-				"--n5Path", "/Users/innerbergerm/Data/render-exports/wafer60.n5",
-				"--dataset", "tissue",
-				"--mask", "mask",
-//				"--output", "inpainted",
-				"--inpaintingSize", "20"
-		};
-
-		final ClientRunner clientRunner = new ClientRunner(testArgs) {
+		final ClientRunner clientRunner = new ClientRunner(args) {
 			@Override
 			public void runClient(final String[] args) {
 
@@ -331,6 +322,11 @@ public class Wafer6061Inpainter {
 			}
 		}
 
+		/**
+		 * Average the z-values of the pixels above and below the current pixel.
+		 * If only one of the pixels is available, that value is used.
+		 * If neither is available, the pixel is set to 0.
+		 */
 		private int zAverage(final long[] position) {
 			maskAccess.setPosition(position);
 			maskAccess.move(-1, 2);
@@ -358,6 +354,9 @@ public class Wafer6061Inpainter {
 			}
 		}
 
+		/**
+		 * Determines if the pixel at the given position should be inpainted based on the local environment.
+		 */
 		private boolean shouldBeInpainted(final long[] position) {
 			final boolean hasContent = maskAccess.setPositionAndGet(position).get() > 0;
 			if (hasContent) {
