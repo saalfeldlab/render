@@ -183,7 +183,7 @@ public class UnconnectedCrossMFOVClient {
         final String pGroupId = String.valueOf(pZ);
         final String qGroupId = String.valueOf(qZ);
 
-        final List<String> mFOVNames = MultiProjectParameters.getMFOVNames(renderDataClient, stack, pZ);
+        final List<String> mFOVNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(renderDataClient, stack, pZ);
 
         final Map<String, Integer> mFOVToSFOVPairCount = new HashMap<>();
         mFOVNames.forEach(name -> mFOVToSFOVPairCount.put(name, 0));
