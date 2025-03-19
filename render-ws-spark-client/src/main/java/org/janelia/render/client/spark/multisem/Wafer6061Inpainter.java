@@ -27,6 +27,7 @@ import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.annotation.meta.param;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -164,8 +165,11 @@ public class Wafer6061Inpainter {
 		// Inpaint the blocks
 		final JavaRDD<Grid.Block> inpaintingBlocksRDD = sparkContext.parallelize(tissueBlocksToInpaint);
 
-		inpaintingBlocksRDD.foreach(block -> {
-		});
+		inpaintingBlocksRDD.foreach(block -> inpaintBlock(block,
+														  maskAttributesBroadcast.value().min,
+														  tissueAttributesBroadcast.value().min,
+														  paramBroadcast.value(),
+														  tissueAttributesBroadcast.value().attrs));
 	}
 
 	private static Grid.Block translateAndCheckHomogeneity(
@@ -186,16 +190,17 @@ public class Wafer6061Inpainter {
 			final RandomAccessibleInterval<UnsignedByteType> maskPixels = Views.interval(mask, translatedBlock);
 
 			final UnsignedByteType firstPixel = maskPixels.firstElement();
-			for (final UnsignedByteType pixel : maskPixels) {
-				if (! pixel.equals(firstPixel)) {
-					isHomogeneous = false;
-					break;
-				}
-			}
+//			for (final UnsignedByteType pixel : maskPixels) {
+//				if (! pixel.equals(firstPixel)) {
+//					isHomogeneous = false;
+//					break;
+//				}
+//			}
+			isHomogeneous = false;
 		}
 
 		final String blockType = isHomogeneous ? "homogeneous -> skip" : "non-homogeneous -> possibly inpaint";
-		LOG.info("Mask block {} at {} is {}", block.gridPosition, blockInterval.minAsLongArray(), blockType);
+		LOG.info("Mask block {} at {} is {}", translatedBlock.gridPosition, translatedBlock.offset, blockType);
 		return isHomogeneous ? null : translatedBlock;
 	}
 
@@ -209,6 +214,7 @@ public class Wafer6061Inpainter {
 		// Translate the block to physical coordinates
 		final Interval blockInterval = Intervals.translate(block, shift);
 		final Grid.Block translatedBlock = new Grid.Block(blockInterval, block.gridPosition);
+		System.out.println(" **********            translated block offset: " + Arrays.toString(translatedBlock.offset));
 
 		// Check if the block overlaps with any of the mask blocks that might need inpainting
 		for (final Interval maskBlock : blocksToCheckAgainst) {
@@ -216,7 +222,7 @@ public class Wafer6061Inpainter {
 			if (! intervalsAreDisjoint) {
 				LOG.info("Tissue block {} at {} is determined a candidate for inpainting",
 						 translatedBlock.gridPosition, translatedBlock.minAsLongArray());
-				return block;
+				return translatedBlock;
 			}
 		}
 
@@ -225,9 +231,10 @@ public class Wafer6061Inpainter {
 		return null;
 	}
 
-	private void inpaintBlock(
+	private static void inpaintBlock(
 			final Grid.Block block,
 			final long[] maskMin,
+			final long[] tissueMin,
 			final Parameters param,
 			final DatasetAttributes targetAttributes
 	) {
@@ -242,8 +249,8 @@ public class Wafer6061Inpainter {
 			final Img<UnsignedByteType> rawTissue = N5Utils.open(n5, param.fullDataset());
 			final Img<UnsignedByteType> rawMask = N5Utils.open(n5, param.mask);
 
-			final RandomAccessibleInterval<UnsignedByteType> tissue = Views.translate(rawTissue, block.offset);
-			final RandomAccessible<UnsignedByteType> mask = Views.translate(Views.extendValue(rawMask, 0.0f), maskMin);
+			final RandomAccessibleInterval<UnsignedByteType> tissue = Views.translate(rawTissue, tissueMin);
+			final RandomAccessible<UnsignedByteType> mask = Views.translate(rawMask, maskMin);
 
 			// For each pixel, determine if it should be inpainted and if so, inpaint it by interpolating in z
 			LOG.info("Start inpainting");
@@ -273,8 +280,8 @@ public class Wafer6061Inpainter {
 	public static void main(final String[] args) {
 		final String[] testArgs = {
 				"--n5Path", "/Users/innerbergerm/Data/render-exports/wafer60.n5",
-				"--dataset", "tissue",
-				"--mask", "mask",
+				"--dataset", "tissue_boundary",
+				"--mask", "mask_boundary",
 //				"--output", "inpainted",
 				"--inpaintingSize", "20"
 		};
@@ -313,7 +320,7 @@ public class Wafer6061Inpainter {
 				final int stepSize
 		) {
 			this.tissueAccess = tissue.randomAccess();
-			this.maskAccess = mask.randomAccess();
+			this.maskAccess = Views.extendZero(mask).randomAccess();
 			this.posStep = stepSize;
 			this.negStep = -2 * stepSize;
 		}
