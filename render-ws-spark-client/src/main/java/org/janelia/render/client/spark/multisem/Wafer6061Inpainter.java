@@ -27,7 +27,6 @@ import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.annotation.meta.param;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -179,25 +178,25 @@ public class Wafer6061Inpainter {
 	) {
 		LogUtilities.setupExecutorLog4j("");
 
-		// Translate the block to physical coordinates
-		final Interval blockInterval = Intervals.translate(block, shift);
-		final Grid.Block translatedBlock = new Grid.Block(blockInterval, block.gridPosition);
-
 		// Read the mask block and check if it is homogeneous
 		boolean isHomogeneous = true;
 		try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, param.n5Path)) {
 			final Img<UnsignedByteType> mask = N5Utils.open(n5, param.mask);
-			final RandomAccessibleInterval<UnsignedByteType> maskPixels = Views.interval(mask, translatedBlock);
+			final Interval interval = Intervals.intersect(mask, block);
+			final RandomAccessibleInterval<UnsignedByteType> maskPixels = Views.interval(mask, interval);
 
 			final UnsignedByteType firstPixel = maskPixels.firstElement();
-//			for (final UnsignedByteType pixel : maskPixels) {
-//				if (! pixel.equals(firstPixel)) {
-//					isHomogeneous = false;
-//					break;
-//				}
-//			}
-			isHomogeneous = false;
+			for (final UnsignedByteType pixel : maskPixels) {
+				if (! pixel.equals(firstPixel)) {
+					isHomogeneous = false;
+					break;
+				}
+			}
 		}
+
+		// Translate the block to physical coordinates
+		final Interval blockInterval = Intervals.translate(block, shift);
+		final Grid.Block translatedBlock = new Grid.Block(blockInterval, block.gridPosition);
 
 		final String blockType = isHomogeneous ? "homogeneous -> skip" : "non-homogeneous -> possibly inpaint";
 		LOG.info("Mask block {} at {} is {}", translatedBlock.gridPosition, translatedBlock.offset, blockType);
@@ -214,7 +213,6 @@ public class Wafer6061Inpainter {
 		// Translate the block to physical coordinates
 		final Interval blockInterval = Intervals.translate(block, shift);
 		final Grid.Block translatedBlock = new Grid.Block(blockInterval, block.gridPosition);
-		System.out.println(" **********            translated block offset: " + Arrays.toString(translatedBlock.offset));
 
 		// Check if the block overlaps with any of the mask blocks that might need inpainting
 		for (final Interval maskBlock : blocksToCheckAgainst) {
@@ -250,14 +248,14 @@ public class Wafer6061Inpainter {
 			final Img<UnsignedByteType> rawMask = N5Utils.open(n5, param.mask);
 
 			final RandomAccessibleInterval<UnsignedByteType> tissue = Views.translate(rawTissue, tissueMin);
-			final RandomAccessible<UnsignedByteType> mask = Views.translate(rawMask, maskMin);
+			final RandomAccessibleInterval<UnsignedByteType> mask = Views.translate(rawMask, maskMin);
 
 			// For each pixel, determine if it should be inpainted and if so, inpaint it by interpolating in z
 			LOG.info("Start inpainting");
 			final long start = System.currentTimeMillis();
 			final Cursor<UnsignedByteType> targetCursor = Views.translate(inpaintedBlock, block.offset).localizingCursor();
 			final long[] location = new long[3];
-			final PixelFiller interpolator = new PixelFiller(Views.interval(tissue, block), Views.interval(mask, block), param.stepSize);
+			final PixelFiller interpolator = new PixelFiller(tissue, mask, param.stepSize);
 
 			while (targetCursor.hasNext()) {
 				final UnsignedByteType targetPixel = targetCursor.next();
@@ -280,8 +278,8 @@ public class Wafer6061Inpainter {
 	public static void main(final String[] args) {
 		final String[] testArgs = {
 				"--n5Path", "/Users/innerbergerm/Data/render-exports/wafer60.n5",
-				"--dataset", "tissue_boundary",
-				"--mask", "mask_boundary",
+				"--dataset", "tissue",
+				"--mask", "mask",
 //				"--output", "inpainted",
 				"--inpaintingSize", "20"
 		};
