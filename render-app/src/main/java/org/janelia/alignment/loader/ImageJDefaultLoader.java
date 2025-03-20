@@ -46,15 +46,16 @@ public class ImageJDefaultLoader
             throws IllegalArgumentException {
 
         final int maxRetries = 3;
-        final int secondsBetweenRetries = 5 << (retryNumber - 1); // retry 1: 5s, retry 2: 10s, retry 3: 20s
         final int nextRetryNumber = retryNumber + 1;
 
         if (retryNumber > 0) {
             try {
-                Thread.sleep(secondsBetweenRetries * 1000L);
-            } catch (final InterruptedException e) {
-                LOG.warn("loadWithRetries: interrupted while sleeping before retry, continuing with retry now ", e);
+                Thread.sleep(getRetrySleepSeconds(retryNumber) * 1000L);
+            } catch (final Throwable t) {
+                LOG.warn("loadWithRetries: exception thrown while sleeping before retry, continuing with retry now ", t);
             }
+        } else if (retryNumber < 0) {
+            throw new IllegalArgumentException("retryNumber '" + retryNumber + "' must be greater than or equal to 0");
         }
 
         ImagePlus imagePlus;
@@ -104,7 +105,7 @@ public class ImageJDefaultLoader
         } catch (final Throwable t) {
             if (nextRetryNumber <= maxRetries) {
                 LOG.warn("loadWithRetries: failed to load {}, will run retry number {} of {} in {} seconds",
-                         urlString, nextRetryNumber, maxRetries, secondsBetweenRetries, t);
+                         urlString, nextRetryNumber, maxRetries, getRetrySleepSeconds(nextRetryNumber), t);
                 imagePlus = loadWithRetries(urlString,
                                             nextRetryNumber);
             } else {
@@ -117,7 +118,7 @@ public class ImageJDefaultLoader
         if (imagePlus == null) {
             if (nextRetryNumber <= maxRetries) {
                 LOG.warn("loadWithRetries: null imagePlus for {}, will run retry number {} of {} in {} seconds",
-                         urlString, nextRetryNumber, maxRetries, secondsBetweenRetries);
+                         urlString, nextRetryNumber, maxRetries, getRetrySleepSeconds(nextRetryNumber));
                 imagePlus = loadWithRetries(urlString,
                                             nextRetryNumber);
             } else {
@@ -127,6 +128,10 @@ public class ImageJDefaultLoader
         }
 
         return imagePlus;
+    }
+
+    private int getRetrySleepSeconds(final int retryNumber) {
+        return retryNumber > 0 ? 5 << (retryNumber - 1) : 0; // retry 1: 5s, retry 2: 10s, retry 3: 20s
     }
 
     /** Copied from protected {@link Opener#openJpegOrGifUsingURL}. */
