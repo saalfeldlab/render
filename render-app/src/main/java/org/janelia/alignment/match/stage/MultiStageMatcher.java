@@ -81,14 +81,23 @@ public class MultiStageMatcher
 
             pFeatureContextCanvasId = stageResources.getFeatureContextCanvasId(p, pFeatureContextCanvasId);
             qFeatureContextCanvasId = stageResources.getFeatureContextCanvasId(q, qFeatureContextCanvasId);
-            pPeakContextCanvasId = stageResources.getPeakContextCanvasId(p, pPeakContextCanvasId);
-            qPeakContextCanvasId = stageResources.getPeakContextCanvasId(q, qPeakContextCanvasId);
 
-            final StageMatcher.PairResult stagePairResult =
-                    stageMatcher.generateStageMatchesForPair(pFeatureContextCanvasId,
-                                                             qFeatureContextCanvasId,
-                                                             pPeakContextCanvasId,
-                                                             qPeakContextCanvasId);
+            final StageMatcher.PairResult stagePairResult;
+            final Double startPositionMatchWeight = stageResources.getStartPositionMatchWeight();
+
+            if (startPositionMatchWeight == null) {
+                pPeakContextCanvasId = stageResources.getPeakContextCanvasId(p, pPeakContextCanvasId);
+                qPeakContextCanvasId = stageResources.getPeakContextCanvasId(q, qPeakContextCanvasId);
+
+                stagePairResult = stageMatcher.generateStageMatchesForPair(pFeatureContextCanvasId,
+                                                                           qFeatureContextCanvasId,
+                                                                           pPeakContextCanvasId,
+                                                                           qPeakContextCanvasId);
+            } else {
+                stagePairResult = stageMatcher.generateStartPositionOverlapResult(pFeatureContextCanvasId,
+                                                                                  qFeatureContextCanvasId,
+                                                                                  startPositionMatchWeight);
+            }
 
             multiStagePairResult.addStagePairResult(stagePairResult);
 
