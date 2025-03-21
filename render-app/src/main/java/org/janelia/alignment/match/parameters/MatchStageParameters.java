@@ -26,10 +26,12 @@ public class MatchStageParameters
     private final MatchDerivationParameters featureMatchDerivation;
     private final GeometricDescriptorAndMatchFilterParameters geometricDescriptorAndMatch;
     private final Double maxNeighborDistance;
+    private final Double startPositionMatchWeight;
 
     @SuppressWarnings("unused")
     public MatchStageParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -44,7 +46,8 @@ public class MatchStageParameters
                                 final FeatureExtractionParameters featureExtraction,
                                 final MatchDerivationParameters featureMatchDerivation,
                                 final GeometricDescriptorAndMatchFilterParameters geometricDescriptorAndMatch,
-                                final Double maxNeighborDistance) {
+                                final Double maxNeighborDistance,
+                                final Double startPositionMatchWeight) {
         this.stageName = stageName;
         this.featureRender = featureRender;
         this.featureRenderClip = featureRenderClip;
@@ -52,6 +55,7 @@ public class MatchStageParameters
         this.featureMatchDerivation = featureMatchDerivation;
         this.geometricDescriptorAndMatch = geometricDescriptorAndMatch;
         this.maxNeighborDistance = maxNeighborDistance;
+        this.startPositionMatchWeight = startPositionMatchWeight;
     }
 
     public String getStageName() {
@@ -80,6 +84,10 @@ public class MatchStageParameters
 
     public boolean exceedsMaxNeighborDistance(final Double absoluteDeltaZ) {
         return (maxNeighborDistance != null) && (absoluteDeltaZ != null) && (absoluteDeltaZ > maxNeighborDistance);
+    }
+
+    public Double getStartPositionMatchWeight() {
+        return startPositionMatchWeight;
     }
 
     public void validateAndSetDefaults() throws IllegalArgumentException {
