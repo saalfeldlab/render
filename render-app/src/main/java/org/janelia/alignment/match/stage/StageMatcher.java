@@ -1,5 +1,6 @@
 package org.janelia.alignment.match.stage;
 
+import java.awt.Rectangle;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,6 +12,7 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
+import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasIdWithRenderContext;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
@@ -240,6 +242,96 @@ public class StageMatcher {
         return stagePairResult;
     }
 
+    public PairResult generateStartPositionOverlapResult(final CanvasIdWithRenderContext pFeatureContextCanvasId,
+                                                         final CanvasIdWithRenderContext qFeatureContextCanvasId,
+                                                         final double matchWeight)
+            throws IllegalArgumentException {
+
+        final PairResult stagePairResult = new PairResult(this);
+
+        final String stageName = stageResources.getStageName();
+        final CanvasId pCanvasId = pFeatureContextCanvasId.getCanvasId();
+        final CanvasId qCanvasId = qFeatureContextCanvasId.getCanvasId();
+
+        LOG.info("generateStartPositionOverlapResult: build matches between {} and {} for stage {}",
+                 pCanvasId, qCanvasId, stageName);
+
+        final CanvasMatches startPositionMatches =
+                generateStartPositionOverlapMatches(pCanvasId,
+                                                    pFeatureContextCanvasId.getWorldBounds(),
+                                                    qCanvasId,
+                                                    qFeatureContextCanvasId.getWorldBounds(),
+                                                    matchWeight);
+
+        if (startPositionMatches != null) {
+            pairCounts.incrementStartPositionSaved();
+            stagePairResult.addCanvasMatches(startPositionMatches);
+        }
+
+        LOG.info("generateStartPositionOverlapResult: exit, returning list with {} element(s) for pair {} and {} in stage {}",
+                 stagePairResult.size(),
+                 pCanvasId,
+                 qCanvasId,
+                 stageName);
+
+        return stagePairResult;
+    }
+
+    public static CanvasMatches generateStartPositionOverlapMatches(final CanvasId pCanvasId,
+                                                                    final Rectangle pWorldBounds,
+                                                                    final CanvasId qCanvasId,
+                                                                    final Rectangle qWorldBounds,
+                                                                    final double matchWeight)
+            throws IllegalArgumentException {
+
+        CanvasMatches startPositionOverlapMatches = null;
+
+        final Rectangle worldOverlap = pWorldBounds.intersection(qWorldBounds);
+
+        if (worldOverlap.isEmpty()) {
+            LOG.info("generateStartPositionOverlapMatches: returning null since there is no overlap between {} and {}",
+                     pCanvasId, qCanvasId);
+        } else {
+
+            final double[][] worldOverlapPoints = new double[][]{
+                    {worldOverlap.x, worldOverlap.y},
+                    {worldOverlap.x + worldOverlap.width, worldOverlap.y},
+                    {worldOverlap.x + worldOverlap.width, worldOverlap.y + worldOverlap.height},
+                    {worldOverlap.x, worldOverlap.y + worldOverlap.height}
+            };
+
+            final int numberOfMatchPoints = 4;
+
+            final double[][] pMatches = new double[2][numberOfMatchPoints];
+            final double[][] qMatches = new double[2][numberOfMatchPoints];
+
+            final double[] matchWeightList = new double[numberOfMatchPoints];
+            Arrays.fill(matchWeightList, matchWeight);
+
+            for (int i = 0; i < numberOfMatchPoints; i++) {
+                final double[] worldOverlapCorner = worldOverlapPoints[i];
+                pMatches[0][i] = worldOverlapCorner[0] - pWorldBounds.x;
+                pMatches[1][i] = worldOverlapCorner[1] - pWorldBounds.y;
+                qMatches[0][i] = worldOverlapCorner[0] - qWorldBounds.x;
+                qMatches[1][i] = worldOverlapCorner[1] - qWorldBounds.y;
+            }
+
+            // constructor normalizes the p/q order so they will be flipped if necessary
+            startPositionOverlapMatches = new CanvasMatches(pCanvasId.getGroupId(),
+                                                            pCanvasId.getId(),
+                                                            qCanvasId.getGroupId(),
+                                                            qCanvasId.getId(),
+                                                            new Matches(pMatches,
+                                                                        qMatches,
+                                                                        matchWeightList));
+
+            LOG.info("generateStartPositionOverlapMatches: returning {} match points since overlap between {} and {} is {}",
+                     numberOfMatchPoints, pCanvasId, qCanvasId, worldOverlap);
+        }
+
+        return startPositionOverlapMatches;
+    }
+
     private void appendGeometricMatchesIfNecessary(final StageMatchingResources stageResources,
                                                    final CachedCanvasFeatures pCanvasFeatures,
                                                    final CachedCanvasFeatures qCanvasFeatures,
@@ -367,7 +459,7 @@ public class StageMatcher {
         final List<PointMatch> siftScaledInliers = siftMatchResult.getInlierPointMatchList();
 
         CanvasMatches combinedCanvasMatches = null;
-        if (siftScaledInliers.size() > 0) {
+        if (! siftScaledInliers.isEmpty()) {
 
             final List<Point> pInlierPoints = new ArrayList<>();
             final List<Point> qInlierPoints = new ArrayList<>();

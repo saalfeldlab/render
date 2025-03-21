@@ -139,6 +139,10 @@ public class StageMatchingResources
         return stageParameters.getStageName();
     }
 
+    public Double getStartPositionMatchWeight() {
+        return stageParameters.getStartPositionMatchWeight();
+    }
+
     public FeatureRenderParameters getFeatureRender() {
         return stageParameters.getFeatureRender();
     }

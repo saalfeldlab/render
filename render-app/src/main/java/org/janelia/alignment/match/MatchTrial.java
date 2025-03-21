@@ -105,6 +105,7 @@ public class MatchTrial implements Serializable {
                                          featureAndMatchParameters.getSiftFeatureParameters(),
                                          featureAndMatchParameters.getMatchDerivationParameters(),
                                          gdmfParameters,
+                                         null,
                                          null);
 
         final String urlTemplateString = getTemplateString(parameters.getpRenderParametersUrl());

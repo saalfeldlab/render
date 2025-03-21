@@ -101,10 +101,12 @@ public class MFOVMontageMatchPatchParameters
     public boolean trimMfovsWithNoConnectedTiles = false;
 
     @Parameter(
-            names = "--onlyPatchCompletelyUnconnectedTiles",
-            description = "If specified, limit patching to tiles that are completely unconnected.",
+            names = "--patchAllUnconnectedPairsWithStageCoordinates",
+            description = "If specified, patch all remaining unconnected pairs with positions based upon SFOV stage locations.  " +
+                          "Omit sameLayerDerivedMatchWeight, crossLayerDerivedMatchWeight, and secondPassDerivedMatchWeight " +
+                          "parameters if you want to patch everything with these stage locations.",
             arity = 0)
-    public boolean onlyPatchCompletelyUnconnectedTiles = false;
+    public boolean patchAllUnconnectedPairsWithStageCoordinates = false;
 
     public MFOVMontageMatchPatchParameters() {
     }
@@ -130,7 +132,7 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.qTileId = this.qTileId;
         clonedParameters.matchStorageFile = this.matchStorageFile;
         clonedParameters.trimMfovsWithNoConnectedTiles = this.trimMfovsWithNoConnectedTiles;
-        clonedParameters.onlyPatchCompletelyUnconnectedTiles = this.onlyPatchCompletelyUnconnectedTiles;
+        clonedParameters.patchAllUnconnectedPairsWithStageCoordinates = this.patchAllUnconnectedPairsWithStageCoordinates;
         clonedParameters.validateAndSetupDerivedValues(); // make sure values derived from multiFieldOfViewId are rebuilt
         return clonedParameters;
     }

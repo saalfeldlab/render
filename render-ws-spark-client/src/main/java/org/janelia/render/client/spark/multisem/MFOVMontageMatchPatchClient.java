@@ -132,7 +132,7 @@ public class MFOVMontageMatchPatchClient
                                    final int passNumber)
             throws IOException {
 
-        final String passName = "pass" + passNumber;
+        final String passName = "pass" + passNumber + " for MFOV " + patchParameters.getMultiFieldOfViewId();
 
         LOG.info("patchPairsForPass: entry, {}", passName);
 
