@@ -10,6 +10,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -107,13 +108,13 @@ public class HackImageUrlPathClient {
     private final RenderDataClient renderDataClient;
     private final UnaryOperator<String> pathTransformation;
 
-    private HackImageUrlPathClient(final Parameters parameters, final UnaryOperator<String> pathTransformation) {
+    public HackImageUrlPathClient(final Parameters parameters, final UnaryOperator<String> pathTransformation) {
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
         this.pathTransformation = pathTransformation;
     }
 
-    private void fixStackData() throws Exception {
+    public void fixStackData() throws Exception {
         final StackMetaData fromStackMetaData = renderDataClient.getStackMetaData(parameters.stack);
 
         // remove mipmap path builder if it is defined since we did not generate mipmaps for the hacked source images
@@ -161,8 +162,17 @@ public class HackImageUrlPathClient {
                 derivedImageUrl = transformedUrl;
             }
 
-            final ImageAndMask hackedImageAndMask = sourceImageAndMask.copyWithDerivedUrls(derivedImageUrl,
-                                                                                           sourceImageAndMask.getMaskUrl());
+            final ImageAndMask hackedImageAndMask;
+            if (transformedUrl.startsWith("https://storage.googleapis.com/")) {
+                hackedImageAndMask = sourceImageAndMask.copyWithDerivedUrls(derivedImageUrl,
+                                                                            ImageLoader.LoaderType.IMAGEJ_DEFAULT_W_TIMEOUT,
+                                                                            sourceImageAndMask.getImageSliceNumber(),
+                                                                            sourceImageAndMask.getMaskUrl());
+            } else {
+                hackedImageAndMask = sourceImageAndMask.copyWithDerivedUrls(derivedImageUrl,
+                                                                            sourceImageAndMask.getMaskUrl());
+            }
+
             channelSpec.putMipmap(zeroLevelKey, hackedImageAndMask);
         }
     }
