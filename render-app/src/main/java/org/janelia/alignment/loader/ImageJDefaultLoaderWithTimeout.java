@@ -44,6 +44,8 @@ public class ImageJDefaultLoaderWithTimeout
                                                    final int retryNumber,
                                                    final int maxRetries) {
         ImagePlus imagePlus = null;
+
+        // TODO: consider using a shared Executors.newCachedThreadPool
         final ExecutorService executor = Executors.newSingleThreadExecutor();
         final Future<ImagePlus> future =
                 executor.submit(() -> super.loadImagePlus(urlString,
