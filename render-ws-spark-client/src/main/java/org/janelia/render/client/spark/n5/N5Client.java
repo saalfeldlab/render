@@ -482,7 +482,6 @@ public class N5Client {
                              blockSize,
                              dataType,
                              new GzipCompression());
-            n5.close();
         }
 
         updateFullScaleExportAttributes(parameters,
@@ -510,7 +509,6 @@ public class N5Client {
                 exportAttributesDatasetName = fullScaleDatasetPath.getParent().toString();
             }
             n5.setAttributes(exportAttributesDatasetName, attributes);
-            n5.close();
         }
 
         LOG.info("updateFullScaleExportAttributes: saved {}",
