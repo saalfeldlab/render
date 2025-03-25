@@ -2,9 +2,9 @@ package org.janelia.render.client.spark.n5;
 
 import java.io.IOException;
 
-import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.spark.supplier.N5WriterSupplier;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
 
 /**
  * Utilities for N5 operations.
@@ -22,7 +22,7 @@ public class Util {
         @Override
         public N5Writer get()
                 throws IOException {
-            return new N5FSWriter(path);
+            return new N5Factory().openWriter(N5Factory.StorageFormat.N5, path);
         }
     }
 
