@@ -28,6 +28,9 @@ public class ImageJDefaultLoader
     /** Shareable instance of this loader. */
     public static final ImageJDefaultLoader INSTANCE = new ImageJDefaultLoader();
 
+    /** The maximum number of retries for each load. */
+    public static int DEFAULT_MAX_RETRIES = 3;
+
     /**
      * @return true (always) because the default ImageJ loader handles 2D sources.
      */
@@ -38,21 +41,36 @@ public class ImageJDefaultLoader
 
     public ImageProcessor load(final String urlString)
             throws IllegalArgumentException {
-        return loadWithRetries(urlString, 0).getProcessor();
+        return loadImagePlus(urlString, 0, DEFAULT_MAX_RETRIES, true).getProcessor();
     }
 
-    private ImagePlus loadWithRetries(final String urlString,
-                                      final int retryNumber)
+    /**
+     * Loads an imagePlus from the specified URL and potentially retries failed loads.
+     *
+     * @param  urlString      the URL of the image to load.
+     * @param  retryNumber    number of the current retry (0 for the first load).
+     * @param  maxRetries     maximum number of times to retry a failed load.
+     * @param  retryAsNeeded  true indicates that failed load retries should be handled by this method and
+     *                        false indicates that the caller will handle retries.
+     *
+     * @return ImagePlus instance for the specified URL.
+     *
+     * @throws IllegalArgumentException
+     *   if the imagePlus cannot be created for any reason.
+     */
+    protected ImagePlus loadImagePlus(final String urlString,
+                                      final int retryNumber,
+                                      final int maxRetries,
+                                      final boolean retryAsNeeded)
             throws IllegalArgumentException {
 
-        final int maxRetries = 3;
         final int nextRetryNumber = retryNumber + 1;
 
         if (retryNumber > 0) {
             try {
                 Thread.sleep(getRetrySleepSeconds(retryNumber) * 1000L);
             } catch (final Throwable t) {
-                LOG.warn("loadWithRetries: exception thrown while sleeping before retry, continuing with retry now ", t);
+                LOG.info("loadImagePlus: exception thrown while sleeping before retry, continuing with retry now ", t);
             }
         } else if (retryNumber < 0) {
             throw new IllegalArgumentException("retryNumber '" + retryNumber + "' must be greater than or equal to 0");
@@ -104,10 +122,18 @@ public class ImageJDefaultLoader
 
         } catch (final Throwable t) {
             if (nextRetryNumber <= maxRetries) {
-                LOG.warn("loadWithRetries: failed to load {}, will run retry number {} of {} in {} seconds",
-                         urlString, nextRetryNumber, maxRetries, getRetrySleepSeconds(nextRetryNumber), t);
-                imagePlus = loadWithRetries(urlString,
-                                            nextRetryNumber);
+                if (retryAsNeeded) {
+                    LOG.info("loadImagePlus: failed to load {}, will run retry number {} of {} in {} seconds",
+                             urlString, nextRetryNumber, maxRetries, getRetrySleepSeconds(nextRetryNumber), t);
+                    imagePlus = loadImagePlus(urlString,
+                                              nextRetryNumber,
+                                              maxRetries,
+                                              true);
+                } else {
+                    LOG.info("loadImagePlus: failed to load {} on retry number {} of {}",
+                             urlString, retryNumber, maxRetries, t);
+                    imagePlus = null;
+                }
             } else {
                 throw new IllegalArgumentException(
                         getErrorMessage(urlString) + " after " + retryNumber + " retries",
@@ -117,10 +143,17 @@ public class ImageJDefaultLoader
 
         if (imagePlus == null) {
             if (nextRetryNumber <= maxRetries) {
-                LOG.warn("loadWithRetries: null imagePlus for {}, will run retry number {} of {} in {} seconds",
-                         urlString, nextRetryNumber, maxRetries, getRetrySleepSeconds(nextRetryNumber));
-                imagePlus = loadWithRetries(urlString,
-                                            nextRetryNumber);
+                if (retryAsNeeded) {
+                    LOG.info("loadImagePlus: null imagePlus for {}, will run retry number {} of {} in {} seconds",
+                             urlString, nextRetryNumber, maxRetries, getRetrySleepSeconds(nextRetryNumber));
+                    imagePlus = loadImagePlus(urlString,
+                                              nextRetryNumber,
+                                              maxRetries,
+                                              true);
+                } else {
+                    LOG.info("loadImagePlus: null imagePlus for {} on retry number {} of {}",
+                             urlString, retryNumber, maxRetries);
+                }
             } else {
                 throw new IllegalArgumentException(
                         getErrorMessage(urlString) + " (null imagePlus) after " + retryNumber + " retries");
