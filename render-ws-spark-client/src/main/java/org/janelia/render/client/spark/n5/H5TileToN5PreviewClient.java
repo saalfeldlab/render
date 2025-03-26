@@ -559,7 +559,7 @@ public class H5TileToN5PreviewClient {
                                            Arrays.asList(exportInfo.min[0], exportInfo.min[1], exportInfo.min[2]),
                                            NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-        ngAttributes.write(Paths.get(exportInfo.n5PathString),
+        ngAttributes.write(exportInfo.n5PathString,
                            Paths.get(exportInfo.fullScaleDatasetName));
     }
 

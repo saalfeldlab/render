@@ -362,7 +362,7 @@ public class N5Client {
                                            Arrays.asList(min[0], min[1], min[2]),
                                            NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-        ngAttributes.write(Paths.get(parameters.n5Path),
+        ngAttributes.write(parameters.n5Path,
                            Paths.get(fullScaleDatasetName));
 
         if (downsampleStackForReview) {
@@ -407,7 +407,7 @@ public class N5Client {
                                                Arrays.asList(min[0], min[1], min[2]),
                                                NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-            reviewNgAttributes.write(Paths.get(parameters.n5Path),
+            reviewNgAttributes.write(parameters.n5Path,
                                      Paths.get(fullScaleReviewDatasetName));
         }
 
