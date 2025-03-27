@@ -74,7 +74,7 @@ public class MultiSemUtilities {
     }
 
     /**
-     * @return 001 for w60_magc0399_scan005_m0013_r46_s01
+     * @return 01 for w60_magc0399_scan005_m0013_r46_s01
      */
     public static String getSFOVIndexForTileId(final String tileId) throws IllegalArgumentException {
         final int scanIndex = tileId.indexOf("scan");
