@@ -163,23 +163,17 @@ public class MultiSemZLayerOffsetClient {
                                                            layerImagePlus,
                                                            roi, roi, 0, 0,
                                                            stitchingParameters);
-            int fullScaleOffsetX = (int) (result.getOffset(0) / renderScale);
-            int fullScaleOffsetY = (int) (result.getOffset(1) / renderScale);
+            final int fullScaleOffsetFromPreviousX = (int) (result.getOffset(0) / renderScale);
+            final int fullScaleOffsetFromPreviousY = (int) (result.getOffset(1) / renderScale);
 
-            LOG.info("deriveZOffsetsForStack: {} z {} needs offset of {}, {} from z {}",
-                     stackId.toDevString(), z, fullScaleOffsetX, fullScaleOffsetY, previousZ);
+            final int fullScaleOffsetX = fullScaleOffsetFromPreviousX + previousFullScaleOffsetX;
+            final int fullScaleOffsetY = fullScaleOffsetFromPreviousY + previousFullScaleOffsetY;
 
-            fullScaleOffsetX += previousFullScaleOffsetX;
-            fullScaleOffsetY += previousFullScaleOffsetY;
+            LOG.info("deriveZOffsetsForStack: {} z {} needs offset of {}, {} from z {} and {}, {} from z {}",
+                     stackId.toDevString(), z,
+                     fullScaleOffsetFromPreviousX, fullScaleOffsetFromPreviousY, previousZ,
+                     fullScaleOffsetX, fullScaleOffsetY, firstZ);
 
-            LOG.info("deriveZOffsetsForStack: {} z {} needs offset of {}, {} from z {}",
-                     stackId.toDevString(), z, fullScaleOffsetX, fullScaleOffsetY, firstZ);
-
-            if (zToOffsets.containsKey(previousZ)) {
-                final int[] previousOffsets = zToOffsets.get(previousZ);
-                fullScaleOffsetX += previousOffsets[0];
-                fullScaleOffsetY += previousOffsets[1];
-            }
             zToOffsets.put(z, new int[] { fullScaleOffsetX, fullScaleOffsetY });
 
             previousLayerImagePlus = layerImagePlus;
@@ -263,6 +257,8 @@ public class MultiSemZLayerOffsetClient {
                                          regionBounds.getX(), regionBounds.getY(), regionBounds.getWidth(), regionBounds.getHeight(),
                                          renderScale);
         final RenderParameters regionRenderParameters = RenderParameters.loadFromUrl(url);
+
+//        LOG.info("renderRegion: first path for z {} is {}", z, regionRenderParameters.getTileSpecs().get(0).getFirstMipmapEntry().getValue().getImageFilePath());
 
         final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
                 Renderer.renderImageProcessorWithMasks(regionRenderParameters,
