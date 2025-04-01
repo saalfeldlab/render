@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import io.swagger.annotations.ApiModelProperty;
 
@@ -59,5 +60,17 @@ public class StackWithZValues implements Serializable {
 
     public boolean hasSameStack(final StackWithZValues that) {
         return (that != null) && this.stackId.equals(that.stackId);
+    }
+
+    /**
+     * @return a list of StackWithZValues objects, one for each z value in this object.
+     */
+    public List<StackWithZValues> splitByZ() {
+        if (zValues.size() <= 1) {
+            return Collections.singletonList(this);
+        }
+        return zValues.stream()
+                .map(z -> new StackWithZValues(stackId, z))
+                .collect(Collectors.toList());
     }
 }
