@@ -17,7 +17,6 @@ import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.parameters.TilePairDerivationParameters;
 import org.janelia.alignment.multisem.LayerMFOV;
 import org.janelia.alignment.multisem.MultiSemUtilities;
-import org.janelia.alignment.multisem.OrderedMFOVPair;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
@@ -30,7 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Java client for finding adjacent MFOVs in the same z layer that are unconnected.
+ * Java client for finding adjacent MFOVs in the same z layer that contain tissue but are unconnected.
  */
 public class UnconnectedMontageMFOVClient {
 
@@ -55,7 +54,9 @@ public class UnconnectedMontageMFOVClient {
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final UnconnectedMontageMFOVClient client = new UnconnectedMontageMFOVClient(parameters);
-                client.findUnconnectedMFOVs();
+                final List<LayerMFOV> isolatedMFOVs = client.findIsolatedTissueMFOVs();
+
+                LOG.info("runClient: exit, found {} isolatedMFOVs {}", isolatedMFOVs.size(), isolatedMFOVs);
             }
         };
         clientRunner.run();
@@ -68,25 +69,31 @@ public class UnconnectedMontageMFOVClient {
         this.parameters = parameters;
     }
 
-    public void findUnconnectedMFOVs()
+    public List<LayerMFOV> findIsolatedTissueMFOVs()
             throws IOException {
 
         final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
         final List<StackWithZValues> stackWithZList = parameters.multiProject.buildListOfStackWithAllZ();
 
+        final List<LayerMFOV> isolatedMFOVs = new ArrayList<>();
         for (final StackWithZValues stackWithZ : stackWithZList) {
-            findUnconnectedPairsBetweenMFOVsInStack(stackWithZ,
-                                                    parameters.multiProject.deriveMatchCollectionNamesFromProject,
-                                                    renderDataClient);
+            isolatedMFOVs.addAll(
+                    findIsolatedTissueMFOVsInStack(stackWithZ,
+                                                   parameters.multiProject.deriveMatchCollectionNamesFromProject,
+                                                   renderDataClient));
         }
+
+        LOG.info("findIsolatedTissueMFOVs: returning {} isolated MFOV(s)", isolatedMFOVs.size());
+
+        return isolatedMFOVs;
     }
 
-    public void findUnconnectedPairsBetweenMFOVsInStack(final StackWithZValues stackWithZ,
-                                                        final boolean deriveMatchCollectionNamesFromProject,
-                                                        final RenderDataClient renderDataClient)
+    public List<LayerMFOV> findIsolatedTissueMFOVsInStack(final StackWithZValues stackWithZ,
+                                                          final boolean deriveMatchCollectionNamesFromProject,
+                                                          final RenderDataClient renderDataClient)
             throws IOException {
 
-        LOG.info("findUnconnectedPairsBetweenMFOVsInStack: entry, stackWithZ={}", stackWithZ);
+        LOG.info("findIsolatedTissueMFOVsInStack: entry, {}", stackWithZ);
 
         final StackId renderStackId = stackWithZ.getStackId();
         final MatchCollectionId matchCollectionId =
@@ -94,24 +101,21 @@ public class UnconnectedMontageMFOVClient {
         final RenderDataClient matchClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
                                                                           matchCollectionId.getName());
 
-        int problemPairsCount = 0;
+        final List<LayerMFOV> isolatedMFOVsForStack = new ArrayList<>();
         for (final StackWithZValues stackWithSingleZ : stackWithZ.splitByZ()) {
-            problemPairsCount +=
-                    findUnconnectedPairsAcrossMFOVsInOneZLayer(renderDataClient, stackWithSingleZ, matchClient);
+            isolatedMFOVsForStack.addAll(
+                    findIsolatedTissueMFOVsInOneZLayer(renderDataClient, stackWithSingleZ, matchClient));
         }
 
-        if (problemPairsCount == 0) {
-            LOG.info("findUnconnectedPairsBetweenMFOVsInStack: exit, stackWithZ={}, all MFOVs are all connected",
-                     stackWithZ);
-        } else {
-            LOG.warn("findUnconnectedPairsBetweenMFOVsInStack: exit, stackWithZ={}, found {} unconnected pairs between MFOVs",
-                     stackWithZ, problemPairsCount);
-        }
+        LOG.info("findIsolatedTissueMFOVsInStack: {} has {} isolated MFOV(s)",
+                 stackWithZ, isolatedMFOVsForStack.size());
+
+        return isolatedMFOVsForStack;
     }
 
-    public static int findUnconnectedPairsAcrossMFOVsInOneZLayer(final RenderDataClient renderDataClient,
-                                                                 final StackWithZValues stackWithSingleZ,
-                                                                 final RenderDataClient matchClient)
+    public static List<LayerMFOV> findIsolatedTissueMFOVsInOneZLayer(final RenderDataClient renderDataClient,
+                                                                     final StackWithZValues stackWithSingleZ,
+                                                                     final RenderDataClient matchClient)
             throws IOException {
 
         final List<OrderedCanvasIdPair> potentialDifferentMfovPairs =
@@ -126,7 +130,7 @@ public class UnconnectedMontageMFOVClient {
 
         final Map<String, Set<String>> tileIdToConnectedMfovsMap = new HashMap<>();
         final Set<String> internallyConnectedMFOVs = new HashSet<>();
-        final Set<OrderedMFOVPair> connectedMFOVPairs = new HashSet<>();
+        final Set<String> externallyConnectedMFOVs = new HashSet<>();
         for (final OrderedCanvasIdPair pair : existingSameLayerPairs) {
             final String pTileId = pair.getP().getId();
             final String pMfovId = MultiSemUtilities.getMagcMfovForTileId(pTileId);
@@ -137,11 +141,12 @@ public class UnconnectedMontageMFOVClient {
             if (pMfovId.equals(qMfovId)) {
                 internallyConnectedMFOVs.add(pMfovId);
             } else {
-                connectedMFOVPairs.add(new OrderedMFOVPair(new LayerMFOV(z, pMfovId),
-                                                           new LayerMFOV(z, qMfovId)));
+                externallyConnectedMFOVs.add(pMfovId);
+                externallyConnectedMFOVs.add(qMfovId);
             }
         }
 
+        final Set<String> isolatedMFOVs = new HashSet<>();
         final List<OrderedCanvasIdPair> problemPairs = new ArrayList<>();
         for (final OrderedCanvasIdPair pair : potentialDifferentMfovPairs) {
 
@@ -156,40 +161,48 @@ public class UnconnectedMontageMFOVClient {
             // if other matches do exist for both p and q ...
             if (tileIdToConnectedMfovsMap.containsKey(pTileId) && tileIdToConnectedMfovsMap.containsKey(qTileId)) {
 
-                // they are not resin, so see if any other pairs between the same two MFOVs exist ...
+                // they are not resin, so see if either of the MFOVs are isolated ...
                 final String pMfovId = MultiSemUtilities.getMagcMfovForTileId(pTileId);
-                final LayerMFOV pLayerMfov = new LayerMFOV(z, pMfovId);
                 final String qMfovId = MultiSemUtilities.getMagcMfovForTileId(qTileId);
-                final LayerMFOV qLayerMfov = new LayerMFOV(z, qMfovId);
 
-                final OrderedMFOVPair crossMfovPair = new OrderedMFOVPair(pLayerMfov, qLayerMfov);
+                final boolean isPMfovIsolated = internallyConnectedMFOVs.contains(pMfovId) && (! externallyConnectedMFOVs.contains(pMfovId));
+                final boolean isQMfovIsolated = internallyConnectedMFOVs.contains(qMfovId) && (! externallyConnectedMFOVs.contains(qMfovId));
 
-                if (connectedMFOVPairs.contains(crossMfovPair)) {
-                    // p is connected to q's mfov through some other tile,
-                    // so there is no need to move p since rough alignment will get things positioned correctly
-                    continue;
+                if (isPMfovIsolated) {
+
+                    isolatedMFOVs.add(pMfovId);
+                    problemPairs.add(pair);
+
+                    if (isQMfovIsolated) {
+                        isolatedMFOVs.add(qMfovId);
+                    }
+
+                } else if (isQMfovIsolated) {
+
+                    isolatedMFOVs.add(qMfovId);
+                    problemPairs.add(pair);
+
                 }
 
-                // if both p and q are connected to other tiles in their own mfov, but not to each other's mfov ...
-                if (internallyConnectedMFOVs.contains(pMfovId) && internallyConnectedMFOVs.contains(qMfovId)) {
-                    problemPairs.add(pair); // flag the pair as a problem
-                }
-                // otherwise p and or q are not connected to any tiles in their own mfov so they are likely resin
             }
         }
 
-        final String problemPairsString =
-                problemPairs.size() < 5 ? String.valueOf(problemPairs) : String.valueOf(problemPairs.subList(0, 5));
-
-        if (problemPairs.isEmpty()) {
-            LOG.info("findUnconnectedPairsAcrossMFOVsInOneZLayer: z {} MFOVs are all connected",
-                     stackWithSingleZ.getFirstZ());
-        } else {
-            LOG.warn("findUnconnectedPairsAcrossMFOVsInOneZLayer: z {} has {} unconnected pairs with different MFOVs like {}",
-                     stackWithSingleZ.getFirstZ(), problemPairs.size(), problemPairsString);
+        if (! problemPairs.isEmpty()) {
+            final String problemDetails = problemPairs.size() < 5 ?
+                                          String.valueOf(problemPairs) : String.valueOf(problemPairs.subList(0, 5));
+            LOG.info("findIsolatedTissueMFOVsInOneZLayer: {} has {} problem tile pairs like {}",
+                     stackWithSingleZ, problemPairs.size(), problemDetails);
         }
 
-        return problemPairs.size();
+        final List<LayerMFOV> sortedIsolatedMFOVs = isolatedMFOVs.stream()
+                .sorted()
+                .map(mfov_name -> new LayerMFOV(z, mfov_name))
+                .collect(Collectors.toList());
+
+        LOG.info("findIsolatedTissueMFOVsInOneZLayer: {} has {} isolated MFOV(s) {}",
+                 stackWithSingleZ, sortedIsolatedMFOVs.size(), sortedIsolatedMFOVs);
+
+        return sortedIsolatedMFOVs;
     }
 
     public static List<OrderedCanvasIdPair> findPotentialSameLayerPairsWithDifferentMfovs(final String baseDataUrl,
