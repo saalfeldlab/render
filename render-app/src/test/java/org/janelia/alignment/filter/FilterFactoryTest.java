@@ -2,6 +2,9 @@ package org.janelia.alignment.filter;
 
 import java.io.File;
 import java.io.FileReader;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Files;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -64,4 +67,28 @@ public class FilterFactoryTest {
 
     }
 
+    @Test
+    public void testWebServiceFilterLists()
+            throws IOException {
+
+        final File configFile = new File("../render-ws/src/main/scripts/jetty/resources/filter_lists.json").getCanonicalFile();
+        final FilterFactory factory = FilterFactory.fromJson(new FileReader(configFile));
+
+        for (final String listName : factory.getSortedFilterListNames()) {
+            final List<FilterSpec> filterSpecs = factory.getFilterList(listName);
+            for (int i = 0; i < filterSpecs.size(); i++) {
+                final FilterSpec filterSpec = filterSpecs.get(i);
+                try {
+                    filterSpec.buildInstance();
+                } catch (final Throwable t) {
+                    final StringWriter sw = new StringWriter();
+                    final PrintWriter pw = new PrintWriter(sw);
+                    t.printStackTrace(pw);
+                    Assert.fail("failed to build filter " + i + " of the " + listName +
+                                " list because of the following exception:\n" + sw);
+                }
+            }
+        }
+
+    }
 }

@@ -251,7 +251,7 @@
       {
         "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
         "parameters" : {
-          "dataString" : "6161.0,9240.0,40.0,6.0,0.0,10.0,10.0,0.05"
+          "dataString" : "6161,9240,40,6,0.0,10,10.0,0.05"
         }
       }
     ],
