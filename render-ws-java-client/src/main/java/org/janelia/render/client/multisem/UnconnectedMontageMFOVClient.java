@@ -129,7 +129,7 @@ public class UnconnectedMontageMFOVClient {
                         .map(CanvasMatches::toOrderedPair).collect(Collectors.toSet());
 
         final Map<String, Set<String>> tileIdToConnectedMfovsMap = new HashMap<>();
-        final Set<String> internallyConnectedMFOVs = new HashSet<>();
+        final Set<String> internalEdgeConnectedTileIds = new HashSet<>();
         final Set<String> externallyConnectedMFOVs = new HashSet<>();
         for (final OrderedCanvasIdPair pair : existingSameLayerPairs) {
             final String pTileId = pair.getP().getId();
@@ -139,7 +139,13 @@ public class UnconnectedMontageMFOVClient {
             tileIdToConnectedMfovsMap.computeIfAbsent(pTileId, k -> new HashSet<>()).add(qMfovId);
             tileIdToConnectedMfovsMap.computeIfAbsent(qTileId, k -> new HashSet<>()).add(pMfovId);
             if (pMfovId.equals(qMfovId)) {
-                internallyConnectedMFOVs.add(pMfovId);
+                // MFOVs are the same, so check if the pair is along the edge of the MFOV
+                final int pSfovIndex = Integer.parseInt(MultiSemUtilities.getSFOVIndexForTileId(pTileId));
+                final int qSfovIndex = Integer.parseInt(MultiSemUtilities.getSFOVIndexForTileId(qTileId));
+                if ((pSfovIndex > 61) && (qSfovIndex > 61)) {
+                    internalEdgeConnectedTileIds.add(pTileId);
+                    internalEdgeConnectedTileIds.add(qTileId);
+                }
             } else {
                 externallyConnectedMFOVs.add(pMfovId);
                 externallyConnectedMFOVs.add(qMfovId);
@@ -165,8 +171,10 @@ public class UnconnectedMontageMFOVClient {
                 final String pMfovId = MultiSemUtilities.getMagcMfovForTileId(pTileId);
                 final String qMfovId = MultiSemUtilities.getMagcMfovForTileId(qTileId);
 
-                final boolean isPMfovIsolated = internallyConnectedMFOVs.contains(pMfovId) && (! externallyConnectedMFOVs.contains(pMfovId));
-                final boolean isQMfovIsolated = internallyConnectedMFOVs.contains(qMfovId) && (! externallyConnectedMFOVs.contains(qMfovId));
+                final boolean isPMfovIsolated = internalEdgeConnectedTileIds.contains(pMfovId) &&
+                                                (! externallyConnectedMFOVs.contains(pMfovId));
+                final boolean isQMfovIsolated = internalEdgeConnectedTileIds.contains(qMfovId) &&
+                                                (! externallyConnectedMFOVs.contains(qMfovId));
 
                 if (isPMfovIsolated) {
 
