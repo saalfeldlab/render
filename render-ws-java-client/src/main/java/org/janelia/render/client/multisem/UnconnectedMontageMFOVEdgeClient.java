@@ -29,9 +29,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Java client for finding adjacent MFOVs in the same z layer that contain tissue but are unconnected.
+ * Java client for finding adjacent MFOVs in the same z layer that have connected tiles
+ * along their edge, but are not connected to each other.
  */
-public class UnconnectedMontageMFOVClient {
+public class UnconnectedMontageMFOVEdgeClient {
 
     public static class Parameters
             extends CommandLineParameters {
@@ -53,8 +54,8 @@ public class UnconnectedMontageMFOVClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final UnconnectedMontageMFOVClient client = new UnconnectedMontageMFOVClient(parameters);
-                final List<LayerMFOV> isolatedMFOVs = client.findIsolatedTissueMFOVs();
+                final UnconnectedMontageMFOVEdgeClient client = new UnconnectedMontageMFOVEdgeClient(parameters);
+                final List<LayerMFOV> isolatedMFOVs = client.findIsolatedEdgeMFOVs();
 
                 LOG.info("runClient: exit, found {} isolatedMFOVs {}", isolatedMFOVs.size(), isolatedMFOVs);
             }
@@ -65,11 +66,11 @@ public class UnconnectedMontageMFOVClient {
     private final Parameters parameters;
 
 
-    public UnconnectedMontageMFOVClient(final Parameters parameters) {
+    public UnconnectedMontageMFOVEdgeClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
-    public List<LayerMFOV> findIsolatedTissueMFOVs()
+    public List<LayerMFOV> findIsolatedEdgeMFOVs()
             throws IOException {
 
         final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
@@ -78,22 +79,22 @@ public class UnconnectedMontageMFOVClient {
         final List<LayerMFOV> isolatedMFOVs = new ArrayList<>();
         for (final StackWithZValues stackWithZ : stackWithZList) {
             isolatedMFOVs.addAll(
-                    findIsolatedTissueMFOVsInStack(stackWithZ,
-                                                   parameters.multiProject.deriveMatchCollectionNamesFromProject,
-                                                   renderDataClient));
+                    findIsolatedEdgeMFOVsInStack(stackWithZ,
+                                                 parameters.multiProject.deriveMatchCollectionNamesFromProject,
+                                                 renderDataClient));
         }
 
-        LOG.info("findIsolatedTissueMFOVs: returning {} isolated MFOV(s)", isolatedMFOVs.size());
+        LOG.info("findIsolatedEdgeMFOVs: returning {} isolated MFOV(s)", isolatedMFOVs.size());
 
         return isolatedMFOVs;
     }
 
-    public List<LayerMFOV> findIsolatedTissueMFOVsInStack(final StackWithZValues stackWithZ,
-                                                          final boolean deriveMatchCollectionNamesFromProject,
-                                                          final RenderDataClient renderDataClient)
+    public List<LayerMFOV> findIsolatedEdgeMFOVsInStack(final StackWithZValues stackWithZ,
+                                                        final boolean deriveMatchCollectionNamesFromProject,
+                                                        final RenderDataClient renderDataClient)
             throws IOException {
 
-        LOG.info("findIsolatedTissueMFOVsInStack: entry, {}", stackWithZ);
+        LOG.info("findIsolatedEdgeMFOVsInStack: entry, {}", stackWithZ);
 
         final StackId renderStackId = stackWithZ.getStackId();
         final MatchCollectionId matchCollectionId =
@@ -104,18 +105,18 @@ public class UnconnectedMontageMFOVClient {
         final List<LayerMFOV> isolatedMFOVsForStack = new ArrayList<>();
         for (final StackWithZValues stackWithSingleZ : stackWithZ.splitByZ()) {
             isolatedMFOVsForStack.addAll(
-                    findIsolatedTissueMFOVsInOneZLayer(renderDataClient, stackWithSingleZ, matchClient));
+                    findIsolatedEdgeMFOVsInOneZLayer(renderDataClient, stackWithSingleZ, matchClient));
         }
 
-        LOG.info("findIsolatedTissueMFOVsInStack: {} has {} isolated MFOV(s)",
+        LOG.info("findIsolatedEdgeMFOVsInStack: {} has {} isolated MFOV(s)",
                  stackWithZ, isolatedMFOVsForStack.size());
 
         return isolatedMFOVsForStack;
     }
 
-    public static List<LayerMFOV> findIsolatedTissueMFOVsInOneZLayer(final RenderDataClient renderDataClient,
-                                                                     final StackWithZValues stackWithSingleZ,
-                                                                     final RenderDataClient matchClient)
+    public static List<LayerMFOV> findIsolatedEdgeMFOVsInOneZLayer(final RenderDataClient renderDataClient,
+                                                                   final StackWithZValues stackWithSingleZ,
+                                                                   final RenderDataClient matchClient)
             throws IOException {
 
         final List<OrderedCanvasIdPair> potentialDifferentMfovPairs =
@@ -198,7 +199,7 @@ public class UnconnectedMontageMFOVClient {
         if (! problemPairs.isEmpty()) {
             final String problemDetails = problemPairs.size() < 5 ?
                                           String.valueOf(problemPairs) : String.valueOf(problemPairs.subList(0, 5));
-            LOG.info("findIsolatedTissueMFOVsInOneZLayer: {} has {} problem tile pairs like {}",
+            LOG.info("findIsolatedEdgeMFOVsInOneZLayer: {} has {} problem tile pairs like {}",
                      stackWithSingleZ, problemPairs.size(), problemDetails);
         }
 
@@ -207,7 +208,7 @@ public class UnconnectedMontageMFOVClient {
                 .map(mfov_name -> new LayerMFOV(z, mfov_name))
                 .collect(Collectors.toList());
 
-        LOG.info("findIsolatedTissueMFOVsInOneZLayer: {} has {} isolated MFOV(s) {}",
+        LOG.info("findIsolatedEdgeMFOVsInOneZLayer: {} has {} isolated MFOV(s) {}",
                  stackWithSingleZ, sortedIsolatedMFOVs.size(), sortedIsolatedMFOVs);
 
         return sortedIsolatedMFOVs;
@@ -248,5 +249,5 @@ public class UnconnectedMontageMFOVClient {
                 .collect(Collectors.toList());
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(UnconnectedMontageMFOVClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(UnconnectedMontageMFOVEdgeClient.class);
 }

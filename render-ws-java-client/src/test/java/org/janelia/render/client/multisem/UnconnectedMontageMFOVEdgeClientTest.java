@@ -4,13 +4,13 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
- * Tests the {@link UnconnectedMontageMFOVClient} class.
+ * Tests the {@link UnconnectedMontageMFOVEdgeClient} class.
  */
-public class UnconnectedMontageMFOVClientTest {
+public class UnconnectedMontageMFOVEdgeClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new UnconnectedMontageMFOVClient.Parameters());
+        CommandLineParameters.parseHelp(new UnconnectedMontageMFOVEdgeClient.Parameters());
     }
 
     public static void main(final String[] args) {
@@ -22,6 +22,6 @@ public class UnconnectedMontageMFOVClientTest {
                 "--stack", "w60_s360_r00_d20_gc",
         };
 
-        UnconnectedMontageMFOVClient.main(effectiveArgs);
+        UnconnectedMontageMFOVEdgeClient.main(effectiveArgs);
     }
 }
