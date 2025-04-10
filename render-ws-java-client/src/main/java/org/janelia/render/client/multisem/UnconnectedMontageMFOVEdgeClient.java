@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Java client for finding adjacent MFOVs in the same z layer that have connected tiles
  * along their edge, but are not connected to each other.
+ * This version of the client simply logs anything it finds.
  */
 public class UnconnectedMontageMFOVEdgeClient {
 
@@ -172,9 +173,9 @@ public class UnconnectedMontageMFOVEdgeClient {
                 final String pMfovId = MultiSemUtilities.getMagcMfovForTileId(pTileId);
                 final String qMfovId = MultiSemUtilities.getMagcMfovForTileId(qTileId);
 
-                final boolean isPMfovIsolated = internalEdgeConnectedTileIds.contains(pMfovId) &&
+                final boolean isPMfovIsolated = internalEdgeConnectedTileIds.contains(pTileId) &&
                                                 (! externallyConnectedMFOVs.contains(pMfovId));
-                final boolean isQMfovIsolated = internalEdgeConnectedTileIds.contains(qMfovId) &&
+                final boolean isQMfovIsolated = internalEdgeConnectedTileIds.contains(qTileId) &&
                                                 (! externallyConnectedMFOVs.contains(qMfovId));
 
                 if (isPMfovIsolated) {
