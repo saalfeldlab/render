@@ -20,6 +20,7 @@ public class UnconnectedMontageMFOVEdgeClientTest {
                 "--owner", "hess_wafers_60_61",
                 "--project", "w60_serial_360_to_369",
                 "--stack", "w60_s360_r00_d20_gc",
+//                "--addIsolatedEdgeLabel"
         };
 
         UnconnectedMontageMFOVEdgeClient.main(effectiveArgs);

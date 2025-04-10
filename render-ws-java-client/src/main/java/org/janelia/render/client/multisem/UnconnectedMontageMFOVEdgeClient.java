@@ -1,5 +1,6 @@
 package org.janelia.render.client.multisem;
 
+import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
@@ -17,7 +18,10 @@ import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.parameters.TilePairDerivationParameters;
 import org.janelia.alignment.multisem.LayerMFOV;
 import org.janelia.alignment.multisem.MultiSemUtilities;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -41,7 +45,16 @@ public class UnconnectedMontageMFOVEdgeClient {
         @ParametersDelegate
         public MultiProjectParameters multiProject = new MultiProjectParameters();
 
+        @Parameter(
+                names = "--addIsolatedEdgeLabel",
+                description = "Specify to add the label 'isolated_edge' to all tiles in MFOVs with isolated edges",
+                arity = 0)
+        public boolean addIsolatedEdgeLabel = false;
+
     }
+
+    /** Label for tiles in MFOVs with isolated edges. */
+    public static String ISOLATED_EDGE_LABEL = "isolated_edge";
 
     public static void main(final String[] args) {
 
@@ -111,6 +124,12 @@ public class UnconnectedMontageMFOVEdgeClient {
 
         LOG.info("findIsolatedEdgeMFOVsInStack: {} has {} isolated MFOV(s)",
                  stackWithZ, isolatedMFOVsForStack.size());
+
+        if (parameters.addIsolatedEdgeLabel) {
+            addIsolatedEdgeLabelToTiles(isolatedMFOVsForStack,
+                                        renderStackId.getStack(),
+                                        renderDataClient);
+        }
 
         return isolatedMFOVsForStack;
     }
@@ -248,6 +267,49 @@ public class UnconnectedMontageMFOVEdgeClient {
                                                      pair.getQ().withoutRelativePosition(),
                                                      pair.getAbsoluteDeltaZ()))
                 .collect(Collectors.toList());
+    }
+
+    public static void addIsolatedEdgeLabelToTiles(final List<LayerMFOV> isolatedMFOVs,
+                                                   final String renderStack,
+                                                   final RenderDataClient renderDataClient)
+            throws IOException {
+
+        LOG.info("addIsolatedEdgeLabelToTiles: entry, with {} isolatedMFOVs for stack {}",
+                 isolatedMFOVs.size(), renderStack);
+
+        if (! isolatedMFOVs.isEmpty()) {
+
+
+            renderDataClient.ensureStackIsInLoadingState(renderStack, null);
+
+            final Map<Double, Set<String>> zToMFOVSet = LayerMFOV.buildZToMFOVNamesMap(isolatedMFOVs);
+
+            for (final Double z : zToMFOVSet.keySet().stream().sorted().collect(Collectors.toList())) {
+                final Set<String> isolatedLayerMFOVNames = zToMFOVSet.get(z);
+
+                final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(renderStack, z);
+
+                final Set<String> unchangedTileIds = new HashSet<>();
+                for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
+                    final String mfovName = MultiSemUtilities.getMagcMfovForTileId(tileSpec.getTileId());
+                    if (isolatedLayerMFOVNames.contains(mfovName)) {
+                        tileSpec.addLabel(ISOLATED_EDGE_LABEL);
+                    } else {
+                        unchangedTileIds.add(tileSpec.getTileId());
+                    }
+                }
+
+                // remove unchanged tiles from the collection, so we don't re-save them
+                resolvedTiles.removeTileSpecs(unchangedTileIds);
+
+                LOG.info("addIsolatedEdgeLabelToTiles: saving {} tile specs with label '{}' for z {} of stack {}",
+                         resolvedTiles.getTileCount(), ISOLATED_EDGE_LABEL, z, renderStack);
+
+                renderDataClient.saveResolvedTiles(resolvedTiles, renderStack, z);
+            }
+
+            renderDataClient.setStackState(renderStack, StackMetaData.StackState.COMPLETE);
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UnconnectedMontageMFOVEdgeClient.class);

@@ -144,11 +144,7 @@ public class MFOVMontageSolverClient {
 
         final List<LayerMFOV> unconnectedMFOVs = unconnectedMFOVPairsForStack.getOrderedDistinctUnconnectedMFOVs();
 
-        final Map<Double, Set<String>> zToMFOVSet = new HashMap<>();
-        for (final LayerMFOV layerMFOV : unconnectedMFOVs) {
-            final Set<String> mFOVSet = zToMFOVSet.computeIfAbsent(layerMFOV.getZ(), k -> new HashSet<>());
-            mFOVSet.add(layerMFOV.getName());
-        }
+        final Map<Double, Set<String>> zToMFOVSet = LayerMFOV.buildZToMFOVNamesMap(unconnectedMFOVs);
 
         for (final double z : zToMFOVSet.keySet().stream().sorted().collect(Collectors.toList())) {
 
