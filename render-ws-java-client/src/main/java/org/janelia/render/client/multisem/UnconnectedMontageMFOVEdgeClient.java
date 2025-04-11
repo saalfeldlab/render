@@ -96,7 +96,8 @@ public class UnconnectedMontageMFOVEdgeClient {
             isolatedMFOVs.addAll(
                     findIsolatedEdgeMFOVsInStack(stackWithZ,
                                                  parameters.multiProject.deriveMatchCollectionNamesFromProject,
-                                                 renderDataClient));
+                                                 renderDataClient,
+                                                 parameters.addIsolatedEdgeLabel));
         }
 
         LOG.info("findIsolatedEdgeMFOVs: returning {} isolated MFOV(s)", isolatedMFOVs.size());
@@ -104,9 +105,10 @@ public class UnconnectedMontageMFOVEdgeClient {
         return isolatedMFOVs;
     }
 
-    public List<LayerMFOV> findIsolatedEdgeMFOVsInStack(final StackWithZValues stackWithZ,
-                                                        final boolean deriveMatchCollectionNamesFromProject,
-                                                        final RenderDataClient renderDataClient)
+    public static List<LayerMFOV> findIsolatedEdgeMFOVsInStack(final StackWithZValues stackWithZ,
+                                                               final boolean deriveMatchCollectionNamesFromProject,
+                                                               final RenderDataClient renderDataClient,
+                                                               final boolean addIsolatedEdgeLabel)
             throws IOException {
 
         LOG.info("findIsolatedEdgeMFOVsInStack: entry, {}", stackWithZ);
@@ -126,7 +128,7 @@ public class UnconnectedMontageMFOVEdgeClient {
         LOG.info("findIsolatedEdgeMFOVsInStack: {} has {} isolated MFOV(s)",
                  stackWithZ, isolatedMFOVsForStack.size());
 
-        if (parameters.addIsolatedEdgeLabel) {
+        if (addIsolatedEdgeLabel) {
             addIsolatedEdgeLabelToTiles(isolatedMFOVsForStack,
                                         renderStackId.getStack(),
                                         renderDataClient);
