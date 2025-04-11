@@ -35,7 +35,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Java client for finding adjacent MFOVs in the same z layer that have connected tiles
  * along their edge, but are not connected to each other.
- * This version of the client simply logs anything it finds.
+ * Results are logged.  If the --addIsolatedEdgeLabel option is specified,
+ * the label 'isolated_edge' is added to all tiles in MFOVs with isolated edges.
  */
 public class UnconnectedMontageMFOVEdgeClient {
 
