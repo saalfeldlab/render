@@ -117,7 +117,7 @@ public class UnconnectedCrossMFOVClient
 
     @Override
     public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.FIND_UNCONNECTED_MFOVS;
+        return AlignmentPipelineStepId.FIND_UNCONNECTED_CROSS_MFOVS;
     }
 
     private List<UnconnectedMFOVPairsForStack> findUnconnectedMFOVs(final JavaSparkContext sparkContext,

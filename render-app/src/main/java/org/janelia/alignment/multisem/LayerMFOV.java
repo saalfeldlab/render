@@ -1,6 +1,11 @@
 package org.janelia.alignment.multisem;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.janelia.alignment.json.JsonUtils;
 
@@ -50,9 +55,7 @@ public class LayerMFOV
     @Override
     public int hashCode() {
         int result;
-        final long temp;
-        temp = Double.doubleToLongBits(z);
-        result = (int) (temp ^ (temp >>> 32));
+        result = Double.hashCode(z);
         result = 31 * result + name.hashCode();
         return result;
     }
@@ -76,5 +79,14 @@ public class LayerMFOV
             result = this.name.compareTo(that.name);
         }
         return result;
+    }
+
+    public static Map<Double, Set<String>> buildZToMFOVNamesMap(final List<LayerMFOV> layerMFOVList) {
+        final Map<Double, Set<String>> zToMFOVNamesMap = new HashMap<>();
+        for (final LayerMFOV layerMFOV : layerMFOVList) {
+            final Set<String> layerMFOVNames = zToMFOVNamesMap.computeIfAbsent(layerMFOV.getZ(), z -> new HashSet<>());
+            layerMFOVNames.add(layerMFOV.getName());
+        }
+        return zToMFOVNamesMap;
     }
 }

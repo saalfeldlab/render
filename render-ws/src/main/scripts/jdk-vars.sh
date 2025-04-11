@@ -1,6 +1,6 @@
 #!/bin/bash
 
-export JDK_VERSION="zulu11.62.17-ca-jdk11.0.18-linux_x64"
+export JDK_VERSION="zulu11.78.15-ca-jdk11.0.26-linux_x64"
 
 # URL for JDK
 # You can find latest Linux x64 download links at:
