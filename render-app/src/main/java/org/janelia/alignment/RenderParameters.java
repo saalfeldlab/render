@@ -137,7 +137,7 @@ public class RenderParameters implements Serializable {
     @Parameter(names = "--parameters_url", description = "URL to base JSON parameters file (to be applied to any unspecified or default parameters)")
     public String parametersUrl;
 
-    @Parameter(names = "--do_filter", description = "ad hoc filters to support alignment")
+    @Parameter(names = "--do_filter", description = "If no other filters are given, this flag adds ad hoc filters to support alignment; it is ignored if other filters are specified")
     public boolean doFilter;
 
     @Parameter(names = "--addWarpFieldDebugOverlay", description = "render warp field debug overlay")

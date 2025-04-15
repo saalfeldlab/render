@@ -110,8 +110,6 @@ public class Renderer {
 
         renderParameters.validate();
 
-        final Renderer renderer = new Renderer(renderParameters, imageProcessorCache);
-
         final ImageProcessorWithMasks imageProcessorWithMasks;
         if (debugFile == null) {
 
@@ -142,6 +140,7 @@ public class Renderer {
 
         } else {
 
+            final Renderer renderer = new Renderer(renderParameters, imageProcessorCache);
             final BufferedImage bufferedImage = renderParameters.openTargetImage();
             imageProcessorWithMasks = renderer.renderToBufferedImage(ArgbRenderer.CONVERTER, bufferedImage);
 
