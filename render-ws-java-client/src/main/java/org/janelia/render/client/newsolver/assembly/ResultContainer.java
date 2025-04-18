@@ -186,4 +186,13 @@ public class ResultContainer<M> implements Serializable {
 			   '}';
 	}
 
+	public String toTileSummaryString() {
+		String tileString = null;
+		if ((rtsc != null) && (rtsc.getTileCount() > 0)) {
+			tileString = rtsc.getTileCount() + " tiles (first id " +
+						 rtsc.getTileIds().stream().sorted().findFirst().orElse(null) + ")";
+		}
+		return tileString;
+	}
+
 }
