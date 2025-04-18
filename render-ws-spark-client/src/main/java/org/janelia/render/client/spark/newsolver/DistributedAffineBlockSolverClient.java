@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -19,8 +21,10 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.storage.StorageLevel;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.BlockCollection;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.DistributedAffineBlockSolver;
@@ -104,15 +108,40 @@ public class DistributedAffineBlockSolverClient
 
         final String matchSuffix = pipelineParameters.getMatchCopyToCollectionSuffix();
         for (final StackWithZValues stackWithZValues : stackList) {
-            setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
-                                                   stackWithZValues,
-                                                   multiProject.deriveMatchCollectionNamesFromProject,
-                                                   matchSuffix));
+            if (setup.stitchOnly) {
+                setupList.addAll(buildSetupForEachZLayer(stackWithZValues,
+                                                         multiProject,
+                                                         setup,
+                                                         matchSuffix));
+            } else {
+                setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
+                                                       stackWithZValues,
+                                                       multiProject.deriveMatchCollectionNamesFromProject,
+                                                       matchSuffix));
+            }
         }
 
         final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
 
-        if (nRuns == 1) {
+        if (setup.stitchOnly) {
+
+            // stitch each layer
+            affineBlockSolverClient.alignSetupList(sparkContext, setupList);
+
+            if (setup.targetStack.completeStack) {
+                final Set<String> completedTargetStacks = new HashSet<>();
+                for (final AffineBlockSolverSetup stackSetup : setupList) {
+                    final String targetStack = stackSetup.targetStack.stack;
+                    if (completedTargetStacks.contains(targetStack)) {
+                        continue;
+                    }
+                    final RenderDataClient renderDataClient = stackSetup.renderWeb.getDataClient();
+                    renderDataClient.setStackState(stackSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
+                    completedTargetStacks.add(targetStack);
+                }
+            }
+
+        } else if (nRuns == 1) {
 
             affineBlockSolverClient.alignSetupList(sparkContext, setupList);
 
@@ -144,6 +173,34 @@ public class DistributedAffineBlockSolverClient
     @Override
     public AlignmentPipelineStepId getDefaultStepId() {
         return AlignmentPipelineStepId.ALIGN_TILES;
+    }
+
+
+    @Nonnull
+    private List<AffineBlockSolverSetup> buildSetupForEachZLayer(final StackWithZValues stackWithZValues,
+                                                                 final MultiProjectParameters multiProject,
+                                                                 final AffineBlockSolverSetup setup,
+                                                                 final String matchSuffix) {
+
+        final List<AffineBlockSolverSetup> setupListForLayers = new ArrayList<>();
+
+        for (final Double z : stackWithZValues.getzValues()) {
+
+           final StackWithZValues stackWithOneZ = new StackWithZValues(stackWithZValues.getStackId(), z);
+
+            final AffineBlockSolverSetup setupClone =
+                    setup.buildPipelineClone(multiProject.getBaseDataUrl(),
+                                             stackWithOneZ,
+                                             multiProject.deriveMatchCollectionNamesFromProject,
+                                             matchSuffix);
+
+            // don't complete stack as part of solve since layers will be processed in parallel
+            setupClone.targetStack.completeStack = false;
+
+            setupListForLayers.add(setupClone);
+        }
+
+        return setupListForLayers;
     }
 
     @Nonnull

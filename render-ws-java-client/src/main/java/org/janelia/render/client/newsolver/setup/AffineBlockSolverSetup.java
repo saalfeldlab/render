@@ -68,8 +68,14 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 			names = "--stitchFirst",
 			description = "if stitching per z-layer should be performed prior to block alignment (default: false)"
 	)
-
 	public boolean stitchFirst = false;
+
+	@Parameter(
+			names = "--stitchOnly",
+			description = "Only stitch per z-layer, do not align across layers.  " +
+						  "This option is currently only supported for spark runs."
+	)
+	public boolean stitchOnly = false;
 
 	@Parameter(
             names = "--preAlign",
