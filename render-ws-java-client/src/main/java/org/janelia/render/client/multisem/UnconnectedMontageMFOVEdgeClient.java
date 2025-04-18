@@ -3,6 +3,7 @@ package org.janelia.render.client.multisem;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
+import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,10 +13,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.parameters.TilePairDerivationParameters;
+import org.janelia.alignment.match.stage.StageMatcher;
 import org.janelia.alignment.multisem.LayerMFOV;
 import org.janelia.alignment.multisem.MultiSemUtilities;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -48,9 +51,16 @@ public class UnconnectedMontageMFOVEdgeClient {
 
         @Parameter(
                 names = "--addIsolatedEdgeLabel",
-                description = "Specify to add the label 'isolated_edge' to all tiles in MFOVs with isolated edges",
+                description = "Specify to add the label 'isolated_edge' to all SFOVs in MFOVs with isolated edges",
                 arity = 0)
         public boolean addIsolatedEdgeLabel = false;
+
+        @Parameter(
+                names = "--startPositionMatchWeight",
+                description = "Weight (e.g. 0.001) for matches derived from SFOV start positions.  " +
+                              "Specify to patch all isolated edge pairs with positions based upon SFOV stage locations.  " +
+                              "Omit to skip start position derivation.")
+        public Double startPositionMatchWeight;
 
     }
 
@@ -97,7 +107,8 @@ public class UnconnectedMontageMFOVEdgeClient {
                     findIsolatedEdgeMFOVsInStack(stackWithZ,
                                                  parameters.multiProject.deriveMatchCollectionNamesFromProject,
                                                  renderDataClient,
-                                                 parameters.addIsolatedEdgeLabel));
+                                                 parameters.addIsolatedEdgeLabel,
+                                                 parameters.startPositionMatchWeight));
         }
 
         LOG.info("findIsolatedEdgeMFOVs: returning {} isolated MFOV(s)", isolatedMFOVs.size());
@@ -108,7 +119,8 @@ public class UnconnectedMontageMFOVEdgeClient {
     public static List<LayerMFOV> findIsolatedEdgeMFOVsInStack(final StackWithZValues stackWithZ,
                                                                final boolean deriveMatchCollectionNamesFromProject,
                                                                final RenderDataClient renderDataClient,
-                                                               final boolean addIsolatedEdgeLabel)
+                                                               final boolean addIsolatedEdgeLabel,
+                                                               final Double startPositionMatchWeight)
             throws IOException {
 
         LOG.info("findIsolatedEdgeMFOVsInStack: entry, {}", stackWithZ);
@@ -122,7 +134,10 @@ public class UnconnectedMontageMFOVEdgeClient {
         final List<LayerMFOV> isolatedMFOVsForStack = new ArrayList<>();
         for (final StackWithZValues stackWithSingleZ : stackWithZ.splitByZ()) {
             isolatedMFOVsForStack.addAll(
-                    findIsolatedEdgeMFOVsInOneZLayer(renderDataClient, stackWithSingleZ, matchClient));
+                    findIsolatedEdgeMFOVsInOneZLayer(renderDataClient,
+                                                     stackWithSingleZ,
+                                                     matchClient,
+                                                     startPositionMatchWeight));
         }
 
         LOG.info("findIsolatedEdgeMFOVsInStack: {} has {} isolated MFOV(s)",
@@ -139,7 +154,8 @@ public class UnconnectedMontageMFOVEdgeClient {
 
     public static List<LayerMFOV> findIsolatedEdgeMFOVsInOneZLayer(final RenderDataClient renderDataClient,
                                                                    final StackWithZValues stackWithSingleZ,
-                                                                   final RenderDataClient matchClient)
+                                                                   final RenderDataClient matchClient,
+                                                                   final Double startPositionMatchWeight)
             throws IOException {
 
         final List<OrderedCanvasIdPair> potentialDifferentMfovPairs =
@@ -220,10 +236,28 @@ public class UnconnectedMontageMFOVEdgeClient {
         }
 
         if (! problemPairs.isEmpty()) {
+
             final String problemDetails = problemPairs.size() < 5 ?
                                           String.valueOf(problemPairs) : String.valueOf(problemPairs.subList(0, 5));
+
             LOG.info("findIsolatedEdgeMFOVsInOneZLayer: {} has {} problem tile pairs like {}",
                      stackWithSingleZ, problemPairs.size(), problemDetails);
+
+            if (startPositionMatchWeight != null) {
+
+                final List<CanvasMatches> derivedMatches =
+                        deriveMatchesUsingStartPositions(problemPairs,
+                                                         renderDataClient,
+                                                         stackWithSingleZ.getStackId().getStack(),
+                                                         z,
+                                                         startPositionMatchWeight);
+
+                // need to check that there are matches to save because some start positions may not overlap -
+                // so it is possible that the derivedMatches list is empty
+                if (! derivedMatches.isEmpty()) {
+                    matchClient.saveMatches(derivedMatches);
+                }
+            }
         }
 
         final List<LayerMFOV> sortedIsolatedMFOVs = isolatedMFOVs.stream()
@@ -235,6 +269,45 @@ public class UnconnectedMontageMFOVEdgeClient {
                  stackWithSingleZ, sortedIsolatedMFOVs.size(), sortedIsolatedMFOVs);
 
         return sortedIsolatedMFOVs;
+    }
+
+    public static List<CanvasMatches> deriveMatchesUsingStartPositions(final List<OrderedCanvasIdPair> unconnectedPairs,
+                                                                       final RenderDataClient renderDataClient,
+                                                                       final String stackName,
+                                                                       final double z,
+                                                                       final double startPositionMatchWeight)
+            throws IOException {
+
+        LOG.info("deriveMatchesUsingStartPositions: entry, {} unconnected pairs for z {} of stack {}",
+                 unconnectedPairs.size(), z, stackName);
+
+        final List<CanvasMatches> derivedMatchesList = new ArrayList<>();
+
+        final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stackName, z);
+
+        for (final OrderedCanvasIdPair pair : unconnectedPairs) {
+            final CanvasId p = pair.getP();
+            final TileSpec pTileSpec = resolvedTiles.getTileSpec(p.getId());
+            final Rectangle pWorldBounds = pTileSpec.toTileBounds().toRectangle();
+
+            final CanvasId q = pair.getQ();
+            final TileSpec qTileSpec = resolvedTiles.getTileSpec(q.getId());
+            final Rectangle qWorldBounds = qTileSpec.toTileBounds().toRectangle();
+
+            final CanvasMatches startPositionMatches =
+                    StageMatcher.generateStartPositionOverlapMatches(p,
+                                                                     pWorldBounds,
+                                                                     q,
+                                                                     qWorldBounds,
+                                                                     startPositionMatchWeight);
+
+            // need to check that the start position matches exist - they will be null if the two tiles do not overlap
+            if (startPositionMatches != null) {
+                derivedMatchesList.add(startPositionMatches);
+            }
+        }
+
+        return derivedMatchesList;
     }
 
     public static List<OrderedCanvasIdPair> findPotentialSameLayerPairsWithDifferentMfovs(final String baseDataUrl,

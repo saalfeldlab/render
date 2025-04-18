@@ -1,5 +1,6 @@
 package org.janelia.render.client.spark.multisem;
 
+import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
@@ -39,6 +40,12 @@ public class UnconnectedMontageMFOVEdgeClient
         @ParametersDelegate
         public MultiProjectParameters multiProject = new MultiProjectParameters();
 
+        @Parameter(
+                names = "--startPositionMatchWeight",
+                description = "Weight (e.g. 0.001) for matches derived from SFOV start positions.  " +
+                              "Specify to patch all isolated edge pairs with positions based upon SFOV stage locations.  " +
+                              "Omit to skip start position derivation.")
+        public Double startPositionMatchWeight;
     }
 
     /** Run the client with command line parameters. */
@@ -64,7 +71,9 @@ public class UnconnectedMontageMFOVEdgeClient
         final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
             LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
-            labelIsolatedEdgeMFOVs(sparkContext, clientParameters.multiProject);
+            labelIsolatedEdgeMFOVs(sparkContext,
+                                   clientParameters.multiProject,
+                                   clientParameters.startPositionMatchWeight);
         }
     }
 
@@ -79,7 +88,8 @@ public class UnconnectedMontageMFOVEdgeClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IOException {
         labelIsolatedEdgeMFOVs(sparkContext,
-                               pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup()));
+                               pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup()),
+                               pipelineParameters.getUnconnectedMfovEdgeStartPositionMatchWeight());
     }
 
 
@@ -89,7 +99,8 @@ public class UnconnectedMontageMFOVEdgeClient
     }
 
     private void labelIsolatedEdgeMFOVs(final JavaSparkContext sparkContext,
-                                        final MultiProjectParameters multiProjectParameters)
+                                        final MultiProjectParameters multiProjectParameters,
+                                        final Double startPositionMatchWeight)
             throws IOException {
 
         LOG.info("labelIsolatedEdgeMFOVs: entry, multiProjectParameters={}",
@@ -112,7 +123,8 @@ public class UnconnectedMontageMFOVEdgeClient
             findIsolatedEdgeMFOVsInStack(stackWithZValues,
                                          false,
                                          renderDataClient,
-                                         true); // add label to all tiles in MFOVs with isolated edges
+                                         true, // add label to all tiles in MFOVs with isolated edges
+                                         startPositionMatchWeight);
             return null;
         };
 
