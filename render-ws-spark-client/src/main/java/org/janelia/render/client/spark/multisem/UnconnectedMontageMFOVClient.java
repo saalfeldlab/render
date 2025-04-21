@@ -93,7 +93,7 @@ public class UnconnectedMontageMFOVClient
 
     @Override
     public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.LABEL_UNCONNECTED_MONTAGE_MFOV_EDGES;
+        return AlignmentPipelineStepId.PATCH_MFOV_MONTAGE_MATCHES_USING_SAME_LAYER_DATA;
     }
 
     private void labelIsolatedEdgeMFOVs(final JavaSparkContext sparkContext,

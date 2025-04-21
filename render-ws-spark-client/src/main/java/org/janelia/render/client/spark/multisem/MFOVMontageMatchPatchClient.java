@@ -101,7 +101,7 @@ public class MFOVMontageMatchPatchClient
 
     @Override
     public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.PATCH_MFOV_MONTAGE_MATCHES;
+        return AlignmentPipelineStepId.PATCH_MFOV_MONTAGE_MATCHES_USING_CROSS_LAYER_DATA;
     }
 
     private void patchPairs(final JavaSparkContext sparkContext,

@@ -23,8 +23,8 @@ public enum AlignmentPipelineStepId {
 
     GENERATE_MIPMAPS(MipmapClient::new),
     DERIVE_TILE_MATCHES(MultiStagePointMatchClient::new),
-    PATCH_MFOV_MONTAGE_MATCHES(MFOVMontageMatchPatchClient::new),
-    LABEL_UNCONNECTED_MONTAGE_MFOV_EDGES(UnconnectedMontageMFOVClient::new),
+    PATCH_MFOV_MONTAGE_MATCHES_USING_SAME_LAYER_DATA(UnconnectedMontageMFOVClient::new),
+    PATCH_MFOV_MONTAGE_MATCHES_USING_CROSS_LAYER_DATA(MFOVMontageMatchPatchClient::new),
     FIND_UNCONNECTED_CROSS_MFOVS(UnconnectedCrossMFOVClient::new),
     FIND_UNCONNECTED_TILES_AND_EDGES(ClusterCountClient::new),
     FILTER_MATCHES(CopyMatchClient::new),
