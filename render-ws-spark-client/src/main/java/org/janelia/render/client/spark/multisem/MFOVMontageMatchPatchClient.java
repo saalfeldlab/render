@@ -29,6 +29,8 @@ import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.janelia.render.client.multisem.UnconnectedMontageMFOVClient.findIsolatedMFOVsInStack;
+
 /**
  * Spark client for patching matches missing from adjacent SFOV tile pairs within the same MFOV and z layer.
  * Core logic is implemented in {@link org.janelia.render.client.multisem.MFOVMontageMatchPatchClient}.
@@ -77,7 +79,7 @@ public class MFOVMontageMatchPatchClient
             LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
             final MFOVMontageMatchPatchParameters patchParameters =
                     MFOVMontageMatchPatchParameters.fromJsonFile(clientParameters.matchPatchJson);
-            patchPairs(sparkContext, clientParameters.multiProject, patchParameters);
+            patchMFOVs(sparkContext, clientParameters.multiProject, patchParameters);
         }
     }
 
@@ -93,7 +95,7 @@ public class MFOVMontageMatchPatchClient
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IOException {
-        patchPairs(sparkContext,
+        patchMFOVs(sparkContext,
                    pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup()),
                    pipelineParameters.getMfovMontagePatch());
     }
@@ -101,16 +103,20 @@ public class MFOVMontageMatchPatchClient
 
     @Override
     public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.PATCH_MFOV_MONTAGE_MATCHES_USING_CROSS_LAYER_DATA;
+        return AlignmentPipelineStepId.PATCH_MFOV_MONTAGE_MATCHES;
     }
 
-    private void patchPairs(final JavaSparkContext sparkContext,
+    private void patchMFOVs(final JavaSparkContext sparkContext,
                             final MultiProjectParameters multiProjectParameters,
                             final MFOVMontageMatchPatchParameters patchParameters)
             throws IOException {
 
-        LOG.info("patchPairs: entry, multiProjectParameters={}, patchParameters={}",
+        LOG.info("patchMFOVs: entry, multiProjectParameters={}, patchParameters={}",
                  multiProjectParameters.toJson(), patchParameters.toJson());
+
+        if (patchParameters.isIsolatedMfovPatchingNeeded()) {
+            patchIsolatedMFOVs(sparkContext, multiProjectParameters, patchParameters);
+        }
 
         patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
 
@@ -123,7 +129,41 @@ public class MFOVMontageMatchPatchClient
             patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 2);
         }
 
-        LOG.info("patchPairs: exit");
+        LOG.info("patchMFOVs: exit");
+    }
+
+    private void patchIsolatedMFOVs(final JavaSparkContext sparkContext,
+                                    final MultiProjectParameters multiProjectParameters,
+                                    final MFOVMontageMatchPatchParameters patchParameters)
+            throws IOException {
+
+        LOG.info("patchIsolatedMFOVs: entry");
+
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
+
+        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
+
+        final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
+
+        final Function<StackWithZValues, Void> findFunction = stackWithZValues -> {
+
+            LogUtilities.setupExecutorLog4j(stackWithZValues.getStackId().toDevString());
+
+            final StackId stackId = stackWithZValues.getStackId();
+            final RenderDataClient renderDataClient =
+                    new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
+
+            findIsolatedMFOVsInStack(stackWithZValues,
+                                     false,
+                                     renderDataClient,
+                                     patchParameters.addIsolatedEdgeLabel,
+                                     patchParameters.resinMfovStartPositionMatchWeight);
+            return null;
+        };
+
+        rddStackWithZValues.map(findFunction).collect();
+
+        LOG.info("patchIsolatedMFOVs: exit");
     }
 
     private void patchPairsForPass(final JavaSparkContext sparkContext,

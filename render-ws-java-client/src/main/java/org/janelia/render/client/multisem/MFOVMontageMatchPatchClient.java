@@ -50,6 +50,13 @@ import com.beust.jcommander.ParametersDelegate;
  *     to ensure that standard matches are given precedence.
  *   </li>
  *   <li>
+ *     Step 1: If a sameLayerDerivedMatchWeight is specified and unconnected pairs exist,
+ *     the client loops through each unconnected pair and tries to find existing matches for that same pair in another
+ *     MFOV in the same layer.  If found, the existing matches are copied to the unconnected pair and stored
+ *     with the sameLayerDerivedMatchWeight which is typically some reduced value like 0.15
+ *     to ensure that standard matches are given precedence.
+ *   </li>
+ *   <li>
  *     Step 2: If a crossLayerDerivedMatchWeight is specified and unconnected pairs remain after step 1,
  *     the client collects matches for the unconnected pair in all other layers and fits them to a
  *     "montage patch match model".  Montage patch matches are derived by applying the model to each SFOV tile's
@@ -355,7 +362,7 @@ public class MFOVMontageMatchPatchClient {
             positionPairMatchData.addUnconnectedPair(unconnectedPair);
 
             // try to add same layer pair data from another MFOV, unless we are patching with stage coordinates
-            if (! patch.patchAllUnconnectedPairsWithStageCoordinates) {
+            if (! patch.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates) {
 
                 final CanvasId p = unconnectedPair.getP();
                 final String indexPairName = MultiSemUtilities.getSFOVIndexPairName(p.getGroupId(),

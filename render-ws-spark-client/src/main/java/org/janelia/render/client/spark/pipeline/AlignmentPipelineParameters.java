@@ -49,12 +49,10 @@ public class AlignmentPipelineParameters
     private final IntensityCorrectionSetup intensityCorrectionSetup;
     private final ZSpacingParameters zSpacing;
     private final MaskHackParameters maskHack;
-    private final Double unconnectedMfovEdgeStartPositionMatchWeight;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
-             null,
              null,
              null,
              null,
@@ -81,8 +79,7 @@ public class AlignmentPipelineParameters
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
                                        final IntensityCorrectionSetup intensityCorrectionSetup,
                                        final ZSpacingParameters zSpacing,
-                                       final MaskHackParameters maskHack,
-                                       final Double unconnectedMfovEdgeStartPositionMatchWeight) {
+                                       final MaskHackParameters maskHack) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -96,7 +93,6 @@ public class AlignmentPipelineParameters
         this.intensityCorrectionSetup = intensityCorrectionSetup;
         this.zSpacing = zSpacing;
         this.maskHack = maskHack;
-        this.unconnectedMfovEdgeStartPositionMatchWeight = unconnectedMfovEdgeStartPositionMatchWeight;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -162,10 +158,6 @@ public class AlignmentPipelineParameters
 
     public MaskHackParameters getMaskHack() {
         return maskHack;
-    }
-
-    public Double getUnconnectedMfovEdgeStartPositionMatchWeight() {
-        return unconnectedMfovEdgeStartPositionMatchWeight;
     }
 
     /**

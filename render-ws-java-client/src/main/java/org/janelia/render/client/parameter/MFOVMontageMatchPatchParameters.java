@@ -101,12 +101,27 @@ public class MFOVMontageMatchPatchParameters
     public boolean trimMfovsWithNoConnectedTiles = false;
 
     @Parameter(
-            names = "--patchAllUnconnectedPairsWithStageCoordinates",
-            description = "If specified, patch all remaining unconnected pairs with positions based upon SFOV stage locations.  " +
+            names = "--patchUnconnectedPairsWithinAnMfovUsingStageCoordinates",
+            description = "If specified, patch all remaining unconnected pairs within each MFOV using positions based upon SFOV stage locations.  " +
                           "Omit sameLayerDerivedMatchWeight, crossLayerDerivedMatchWeight, and secondPassDerivedMatchWeight " +
-                          "parameters if you want to patch everything with these stage locations.",
+                          "parameters if you want to patch all unconnected MFOV internal pairs with these stage locations.",
             arity = 0)
-    public boolean patchAllUnconnectedPairsWithStageCoordinates = false;
+    public boolean patchUnconnectedPairsWithinAnMfovUsingStageCoordinates = false;
+
+    @Parameter(
+            names = "--addIsolatedEdgeLabel",
+            description = "Specify to add the label 'isolated_edge' to all SFOVs in MFOVs with isolated edges.  " +
+                          "Isolated edges are when SFOVs along the edge of an MFOV are connected to each other " +
+                          "but not to SFOVs in any other MFOV.",
+            arity = 0)
+    public boolean addIsolatedEdgeLabel = false;
+
+    @Parameter(
+            names = "--resinMfovStartPositionMatchWeight",
+            description = "Weight (e.g. 0.0001) for matches derived from SFOV start positions.  " +
+                          "If specified, patch all pairs for MFOVs that do not contain a single connected SFOV.  " +
+                          "Omit to skip derivation for completely resin MFOVs.")
+    public Double resinMfovStartPositionMatchWeight;
 
     public MFOVMontageMatchPatchParameters() {
     }
@@ -132,7 +147,7 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.qTileId = this.qTileId;
         clonedParameters.matchStorageFile = this.matchStorageFile;
         clonedParameters.trimMfovsWithNoConnectedTiles = this.trimMfovsWithNoConnectedTiles;
-        clonedParameters.patchAllUnconnectedPairsWithStageCoordinates = this.patchAllUnconnectedPairsWithStageCoordinates;
+        clonedParameters.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates = this.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates;
         clonedParameters.validateAndSetupDerivedValues(); // make sure values derived from multiFieldOfViewId are rebuilt
         return clonedParameters;
     }
@@ -186,6 +201,10 @@ public class MFOVMontageMatchPatchParameters
 
     public String getTrimStackName(final String sourceStackName) {
         return trimMfovsWithNoConnectedTiles ? sourceStackName + "_trim" : null;
+    }
+
+    public boolean isIsolatedMfovPatchingNeeded() {
+        return addIsolatedEdgeLabel || resinMfovStartPositionMatchWeight != null;
     }
 
     public static MFOVMontageMatchPatchParameters fromJson(final Reader json) {
