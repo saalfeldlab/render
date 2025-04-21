@@ -36,12 +36,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Java client for finding adjacent MFOVs in the same z layer that have connected tiles
- * along their edge, but are not connected to each other.
- * Results are logged.  If the --addIsolatedEdgeLabel option is specified,
- * the label 'isolated_edge' is added to all tiles in MFOVs with isolated edges.
+ * Java client for finding adjacent MFOVs in the same z layer that are unconnected.
  */
-public class UnconnectedMontageMFOVEdgeClient {
+public class UnconnectedMontageMFOVClient {
 
     public static class Parameters
             extends CommandLineParameters {
@@ -51,14 +48,16 @@ public class UnconnectedMontageMFOVEdgeClient {
 
         @Parameter(
                 names = "--addIsolatedEdgeLabel",
-                description = "Specify to add the label 'isolated_edge' to all SFOVs in MFOVs with isolated edges",
+                description = "Specify to add the label 'isolated_edge' to all SFOVs in MFOVs with isolated edges.  " +
+                              "Isolated edges are when SFOVs along the edge of an MFOV are connected to each other " +
+                              "but not to SFOVs in any other MFOV.",
                 arity = 0)
         public boolean addIsolatedEdgeLabel = false;
 
         @Parameter(
                 names = "--startPositionMatchWeight",
                 description = "Weight (e.g. 0.001) for matches derived from SFOV start positions.  " +
-                              "Specify to patch all isolated edge pairs with positions based upon SFOV stage locations.  " +
+                              "Specify to patch all unconnected pairs with positions based upon SFOV stage locations.  " +
                               "Omit to skip start position derivation.")
         public Double startPositionMatchWeight;
 
@@ -79,10 +78,10 @@ public class UnconnectedMontageMFOVEdgeClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final UnconnectedMontageMFOVEdgeClient client = new UnconnectedMontageMFOVEdgeClient(parameters);
-                final List<LayerMFOV> isolatedMFOVs = client.findIsolatedEdgeMFOVs();
+                final UnconnectedMontageMFOVClient client = new UnconnectedMontageMFOVClient(parameters);
+                client.findIsolatedMFOVs();
 
-                LOG.info("runClient: exit, found {} isolatedMFOVs {}", isolatedMFOVs.size(), isolatedMFOVs);
+                LOG.info("runClient: exit");
             }
         };
         clientRunner.run();
@@ -91,39 +90,33 @@ public class UnconnectedMontageMFOVEdgeClient {
     private final Parameters parameters;
 
 
-    public UnconnectedMontageMFOVEdgeClient(final Parameters parameters) {
+    public UnconnectedMontageMFOVClient(final Parameters parameters) {
         this.parameters = parameters;
     }
 
-    public List<LayerMFOV> findIsolatedEdgeMFOVs()
+    public void findIsolatedMFOVs()
             throws IOException {
 
         final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
         final List<StackWithZValues> stackWithZList = parameters.multiProject.buildListOfStackWithAllZ();
 
-        final List<LayerMFOV> isolatedMFOVs = new ArrayList<>();
         for (final StackWithZValues stackWithZ : stackWithZList) {
-            isolatedMFOVs.addAll(
-                    findIsolatedEdgeMFOVsInStack(stackWithZ,
-                                                 parameters.multiProject.deriveMatchCollectionNamesFromProject,
-                                                 renderDataClient,
-                                                 parameters.addIsolatedEdgeLabel,
-                                                 parameters.startPositionMatchWeight));
+            findIsolatedMFOVsInStack(stackWithZ,
+                                     parameters.multiProject.deriveMatchCollectionNamesFromProject,
+                                     renderDataClient,
+                                     parameters.addIsolatedEdgeLabel,
+                                     parameters.startPositionMatchWeight);
         }
-
-        LOG.info("findIsolatedEdgeMFOVs: returning {} isolated MFOV(s)", isolatedMFOVs.size());
-
-        return isolatedMFOVs;
     }
 
-    public static List<LayerMFOV> findIsolatedEdgeMFOVsInStack(final StackWithZValues stackWithZ,
-                                                               final boolean deriveMatchCollectionNamesFromProject,
-                                                               final RenderDataClient renderDataClient,
-                                                               final boolean addIsolatedEdgeLabel,
-                                                               final Double startPositionMatchWeight)
+    public static IsolatedMfovsForStack findIsolatedMFOVsInStack(final StackWithZValues stackWithZ,
+                                                                 final boolean deriveMatchCollectionNamesFromProject,
+                                                                 final RenderDataClient renderDataClient,
+                                                                 final boolean addIsolatedEdgeLabel,
+                                                                 final Double startPositionMatchWeight)
             throws IOException {
 
-        LOG.info("findIsolatedEdgeMFOVsInStack: entry, {}", stackWithZ);
+        LOG.info("findIsolatedMFOVsInStack: entry, {}", stackWithZ);
 
         final StackId renderStackId = stackWithZ.getStackId();
         final MatchCollectionId matchCollectionId =
@@ -131,36 +124,43 @@ public class UnconnectedMontageMFOVEdgeClient {
         final RenderDataClient matchClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
                                                                           matchCollectionId.getName());
 
-        final List<LayerMFOV> isolatedMFOVsForStack = new ArrayList<>();
+        final IsolatedMfovsForStack isolatedMFOVsForStack = new IsolatedMfovsForStack(renderStackId.getStack());
         for (final StackWithZValues stackWithSingleZ : stackWithZ.splitByZ()) {
-            isolatedMFOVsForStack.addAll(
-                    findIsolatedEdgeMFOVsInOneZLayer(renderDataClient,
-                                                     stackWithSingleZ,
-                                                     matchClient,
-                                                     startPositionMatchWeight));
+            isolatedMFOVsForStack.addIsolatedMFOVsForLayer(
+                    findIsolatedMFOVsInLayer(renderDataClient,
+                                             stackWithSingleZ,
+                                             matchClient,
+                                             startPositionMatchWeight));
         }
 
-        LOG.info("findIsolatedEdgeMFOVsInStack: {} has {} isolated MFOV(s)",
+        LOG.info("findIsolatedMFOVsInStack: {} has {} isolated MFOV(s)",
                  stackWithZ, isolatedMFOVsForStack.size());
 
         if (addIsolatedEdgeLabel) {
             addIsolatedEdgeLabelToTiles(isolatedMFOVsForStack,
-                                        renderStackId.getStack(),
                                         renderDataClient);
         }
 
         return isolatedMFOVsForStack;
     }
 
-    public static List<LayerMFOV> findIsolatedEdgeMFOVsInOneZLayer(final RenderDataClient renderDataClient,
-                                                                   final StackWithZValues stackWithSingleZ,
-                                                                   final RenderDataClient matchClient,
-                                                                   final Double startPositionMatchWeight)
+    public static SortedIsolatedMFOVsForLayer findIsolatedMFOVsInLayer(final RenderDataClient renderDataClient,
+                                                                       final StackWithZValues stackWithSingleZ,
+                                                                       final RenderDataClient matchClient,
+                                                                       final Double startPositionMatchWeight)
             throws IOException {
+
+        LOG.info("findIsolatedMFOVsInLayer: entry, {}", stackWithSingleZ);
 
         final List<OrderedCanvasIdPair> potentialDifferentMfovPairs =
                 findPotentialSameLayerPairsWithDifferentMfovs(renderDataClient.getBaseDataUrl(),
                                                               stackWithSingleZ);
+
+        final Set<String> allMFOVs = new HashSet<>();
+        potentialDifferentMfovPairs.forEach(pair -> {
+            allMFOVs.add(MultiSemUtilities.getMagcMfovForTileId(pair.getP().getId()));
+            allMFOVs.add(MultiSemUtilities.getMagcMfovForTileId(pair.getQ().getId()));
+        });
 
         final Double z = stackWithSingleZ.getFirstZ();
         final String groupId = String.valueOf(z);
@@ -170,7 +170,7 @@ public class UnconnectedMontageMFOVEdgeClient {
 
         final Map<String, Set<String>> tileIdToConnectedMfovsMap = new HashMap<>();
         final Set<String> internalEdgeConnectedTileIds = new HashSet<>();
-        final Set<String> externallyConnectedMFOVs = new HashSet<>();
+        final Set<String> connectedMFOVs = new HashSet<>();
         for (final OrderedCanvasIdPair pair : existingSameLayerPairs) {
             final String pTileId = pair.getP().getId();
             final String pMfovId = MultiSemUtilities.getMagcMfovForTileId(pTileId);
@@ -187,12 +187,21 @@ public class UnconnectedMontageMFOVEdgeClient {
                     internalEdgeConnectedTileIds.add(qTileId);
                 }
             } else {
-                externallyConnectedMFOVs.add(pMfovId);
-                externallyConnectedMFOVs.add(qMfovId);
+                connectedMFOVs.add(pMfovId);
+                connectedMFOVs.add(qMfovId);
             }
         }
 
-        final Set<String> isolatedMFOVs = new HashSet<>();
+        final Set<String> unconnectedMFOVs = allMFOVs.stream()
+                        .filter(m -> ! connectedMFOVs.contains(m))
+                        .collect(Collectors.toSet());
+
+        if (! unconnectedMFOVs.isEmpty()) {
+            LOG.info("findIsolatedMFOVsInLayer: {} has {} unconnected MFOVs {}",
+                     stackWithSingleZ, unconnectedMFOVs.size(), unconnectedMFOVs);
+        }
+
+        final Set<String> edgeMFOVs = new HashSet<>();
         final List<OrderedCanvasIdPair> problemPairs = new ArrayList<>();
         for (final OrderedCanvasIdPair pair : potentialDifferentMfovPairs) {
 
@@ -212,26 +221,44 @@ public class UnconnectedMontageMFOVEdgeClient {
                 final String qMfovId = MultiSemUtilities.getMagcMfovForTileId(qTileId);
 
                 final boolean isPMfovIsolated = internalEdgeConnectedTileIds.contains(pTileId) &&
-                                                (! externallyConnectedMFOVs.contains(pMfovId));
+                                                (! connectedMFOVs.contains(pMfovId));
                 final boolean isQMfovIsolated = internalEdgeConnectedTileIds.contains(qTileId) &&
-                                                (! externallyConnectedMFOVs.contains(qMfovId));
+                                                (! connectedMFOVs.contains(qMfovId));
 
                 if (isPMfovIsolated) {
 
-                    isolatedMFOVs.add(pMfovId);
+                    edgeMFOVs.add(pMfovId);
                     problemPairs.add(pair);
 
                     if (isQMfovIsolated) {
-                        isolatedMFOVs.add(qMfovId);
+                        edgeMFOVs.add(qMfovId);
                     }
 
                 } else if (isQMfovIsolated) {
 
-                    isolatedMFOVs.add(qMfovId);
+                    edgeMFOVs.add(qMfovId);
                     problemPairs.add(pair);
 
                 }
 
+            }
+        }
+
+        final Set<String> resinMFOVs = new HashSet<>(unconnectedMFOVs);
+        resinMFOVs.removeAll(edgeMFOVs);
+
+        if (! resinMFOVs.isEmpty()) {
+            for (final OrderedCanvasIdPair pair : potentialDifferentMfovPairs) {
+                if (existingSameLayerPairs.contains(pair) || problemPairs.contains(pair)) {
+                    continue; // matches already exist or pair has already been identified as a problem
+                }
+
+                final String pMfovId = MultiSemUtilities.getMagcMfovForTileId(pair.getP().getId());
+                final String qMfovId = MultiSemUtilities.getMagcMfovForTileId(pair.getQ().getId());
+
+                if (resinMFOVs.contains(pMfovId) || resinMFOVs.contains(qMfovId)) {
+                    problemPairs.add(pair);
+                }
             }
         }
 
@@ -240,7 +267,7 @@ public class UnconnectedMontageMFOVEdgeClient {
             final String problemDetails = problemPairs.size() < 5 ?
                                           String.valueOf(problemPairs) : String.valueOf(problemPairs.subList(0, 5));
 
-            LOG.info("findIsolatedEdgeMFOVsInOneZLayer: {} has {} problem tile pairs like {}",
+            LOG.info("findIsolatedMFOVsInLayer: {} has {} problem tile pairs like {}",
                      stackWithSingleZ, problemPairs.size(), problemDetails);
 
             if (startPositionMatchWeight != null) {
@@ -260,13 +287,11 @@ public class UnconnectedMontageMFOVEdgeClient {
             }
         }
 
-        final List<LayerMFOV> sortedIsolatedMFOVs = isolatedMFOVs.stream()
-                .sorted()
-                .map(mfov_name -> new LayerMFOV(z, mfov_name))
-                .collect(Collectors.toList());
+        final SortedIsolatedMFOVsForLayer sortedIsolatedMFOVs = new SortedIsolatedMFOVsForLayer(z,
+                                                                                                edgeMFOVs,
+                                                                                                resinMFOVs);
 
-        LOG.info("findIsolatedEdgeMFOVsInOneZLayer: {} has {} isolated MFOV(s) {}",
-                 stackWithSingleZ, sortedIsolatedMFOVs.size(), sortedIsolatedMFOVs);
+        LOG.info("findIsolatedMFOVsInLayer: {} has {} ", stackWithSingleZ, sortedIsolatedMFOVs);
 
         return sortedIsolatedMFOVs;
     }
@@ -345,25 +370,23 @@ public class UnconnectedMontageMFOVEdgeClient {
                 .collect(Collectors.toList());
     }
 
-    public static void addIsolatedEdgeLabelToTiles(final List<LayerMFOV> isolatedMFOVs,
-                                                   final String renderStack,
+    public static void addIsolatedEdgeLabelToTiles(final IsolatedMfovsForStack isolatedMFOVsForStack,
                                                    final RenderDataClient renderDataClient)
             throws IOException {
 
-        LOG.info("addIsolatedEdgeLabelToTiles: entry, with {} isolatedMFOVs for stack {}",
-                 isolatedMFOVs.size(), renderStack);
+        LOG.info("addIsolatedEdgeLabelToTiles: entry, {}", isolatedMFOVsForStack);
 
-        if (! isolatedMFOVs.isEmpty()) {
+        if (isolatedMFOVsForStack.size() > 0) {
 
+            renderDataClient.ensureStackIsInLoadingState(isolatedMFOVsForStack.stackName, null);
 
-            renderDataClient.ensureStackIsInLoadingState(renderStack, null);
-
-            final Map<Double, Set<String>> zToMFOVSet = LayerMFOV.buildZToMFOVNamesMap(isolatedMFOVs);
+            final Map<Double, Set<String>> zToMFOVSet = isolatedMFOVsForStack.buildZToMFOVNamesMap();
 
             for (final Double z : zToMFOVSet.keySet().stream().sorted().collect(Collectors.toList())) {
                 final Set<String> isolatedLayerMFOVNames = zToMFOVSet.get(z);
 
-                final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(renderStack, z);
+                final ResolvedTileSpecCollection resolvedTiles =
+                        renderDataClient.getResolvedTiles(isolatedMFOVsForStack.stackName, z);
 
                 final Set<String> unchangedTileIds = new HashSet<>();
                 for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
@@ -379,14 +402,82 @@ public class UnconnectedMontageMFOVEdgeClient {
                 resolvedTiles.removeTileSpecs(unchangedTileIds);
 
                 LOG.info("addIsolatedEdgeLabelToTiles: saving {} tile specs with label '{}' for z {} of stack {}",
-                         resolvedTiles.getTileCount(), ISOLATED_EDGE_LABEL, z, renderStack);
+                         resolvedTiles.getTileCount(), ISOLATED_EDGE_LABEL, z, isolatedMFOVsForStack.stackName);
 
-                renderDataClient.saveResolvedTiles(resolvedTiles, renderStack, z);
+                renderDataClient.saveResolvedTiles(resolvedTiles, isolatedMFOVsForStack.stackName, z);
             }
 
-            renderDataClient.setStackState(renderStack, StackMetaData.StackState.COMPLETE);
+            renderDataClient.setStackState(isolatedMFOVsForStack.stackName, StackMetaData.StackState.COMPLETE);
         }
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(UnconnectedMontageMFOVEdgeClient.class);
+    public static class SortedIsolatedMFOVsForLayer {
+
+        private final double z;
+        private final List<LayerMFOV> connectedEdgeMFOVList;
+        private final List<LayerMFOV> entirelyResinMFOVList;
+
+        public SortedIsolatedMFOVsForLayer(final double z,
+                                           final Set<String> edgeMFOVNameSet,
+                                           final Set<String> resinMFOVNameSet) {
+            this.z = z;
+            this.connectedEdgeMFOVList = edgeMFOVNameSet.stream()
+                    .sorted()
+                    .map(mfov_name -> new LayerMFOV(z, mfov_name))
+                    .collect(Collectors.toList());
+            this.entirelyResinMFOVList = resinMFOVNameSet.stream()
+                    .sorted()
+                    .map(mfov_name -> new LayerMFOV(z, mfov_name))
+                    .collect(Collectors.toList());
+        }
+
+        @Override
+        public String toString() {
+            return "z " + z +
+                   " with " + connectedEdgeMFOVList.size() + " connected edge MFOVs " + connectedEdgeMFOVList +
+                   " and " + entirelyResinMFOVList.size() + " entirely resin MFOVs " + entirelyResinMFOVList;
+        }
+    }
+
+    public static class IsolatedMfovsForStack {
+        private final String stackName;
+        private final List<SortedIsolatedMFOVsForLayer> isolatedMFOVsForStack;
+
+        public IsolatedMfovsForStack(final String stackName) {
+            this.stackName = stackName;
+            this.isolatedMFOVsForStack = new ArrayList<>();
+        }
+
+        public void addIsolatedMFOVsForLayer(final SortedIsolatedMFOVsForLayer isolatedMFOVs) {
+            this.isolatedMFOVsForStack.add(isolatedMFOVs);
+        }
+
+        public int size() {
+            return isolatedMFOVsForStack.size();
+        }
+
+        public Map<Double, Set<String>> buildZToMFOVNamesMap() {
+            final List<LayerMFOV> connectedEdgeMFOVs =
+                    isolatedMFOVsForStack.stream()
+                            .flatMap(im -> im.connectedEdgeMFOVList.stream())
+                            .collect(Collectors.toList());
+            return LayerMFOV.buildZToMFOVNamesMap(connectedEdgeMFOVs);
+        }
+
+        @Override
+        public String toString() {
+            int connectedEdgeMfovCount = 0;
+            int entirelyResinMfovCount = 0;
+            for (final SortedIsolatedMFOVsForLayer isolatedMFOVs : isolatedMFOVsForStack) {
+                connectedEdgeMfovCount += isolatedMFOVs.connectedEdgeMFOVList.size();
+                entirelyResinMfovCount += isolatedMFOVs.entirelyResinMFOVList.size();
+            }
+            return stackName +
+                   " with " + connectedEdgeMfovCount + " connected edge MFOVs and " +
+                   entirelyResinMfovCount + " entirely resin MFOVs across " +
+                   isolatedMFOVsForStack.size() + " z layers";
+        }
+    }
+
+    private static final Logger LOG = LoggerFactory.getLogger(UnconnectedMontageMFOVClient.class);
 }

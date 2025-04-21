@@ -4,13 +4,13 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
- * Tests the {@link UnconnectedMontageMFOVEdgeClient} class.
+ * Tests the {@link UnconnectedMontageMFOVClient} class.
  */
-public class UnconnectedMontageMFOVEdgeClientTest {
+public class UnconnectedMontageMFOVClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new UnconnectedMontageMFOVEdgeClient.Parameters());
+        CommandLineParameters.parseHelp(new UnconnectedMontageMFOVClient.Parameters());
     }
 
     public static void main(final String[] args) {
@@ -20,9 +20,11 @@ public class UnconnectedMontageMFOVEdgeClientTest {
                 "--owner", "hess_wafers_60_61",
                 "--project", "w60_serial_360_to_369",
                 "--stack", "w60_s360_r00_d20_gc",
-//                "--addIsolatedEdgeLabel"
+//                "--addIsolatedEdgeLabel",
+//                "--startPositionMatchWeight", "0.005",
+                "--z", "35"
         };
 
-        UnconnectedMontageMFOVEdgeClient.main(effectiveArgs);
+        UnconnectedMontageMFOVClient.main(effectiveArgs);
     }
 }

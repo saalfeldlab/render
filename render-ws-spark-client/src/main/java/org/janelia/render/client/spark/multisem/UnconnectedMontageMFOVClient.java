@@ -24,15 +24,13 @@ import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.janelia.render.client.multisem.UnconnectedMontageMFOVEdgeClient.findIsolatedEdgeMFOVsInStack;
+import static org.janelia.render.client.multisem.UnconnectedMontageMFOVClient.findIsolatedMFOVsInStack;
 
 /**
- * Spark client for finding adjacent MFOVs in the same z layer that have connected tiles
- * along their edge, but are not connected to each other.
- * Results are logged and the label 'isolated_edge' is added to all tiles in MFOVs with isolated edges.
- * Core logic is implemented in {@link org.janelia.render.client.multisem.UnconnectedMontageMFOVEdgeClient}.
+ * Spark client for finding adjacent MFOVs in the same z layer that are not connected.
+ * Core logic is implemented in {@link org.janelia.render.client.multisem.UnconnectedMontageMFOVClient}.
  */
-public class UnconnectedMontageMFOVEdgeClient
+public class UnconnectedMontageMFOVClient
         implements Serializable, AlignmentPipelineStep {
 
     public static class Parameters extends CommandLineParameters {
@@ -55,7 +53,7 @@ public class UnconnectedMontageMFOVEdgeClient
             public void runClient(final String[] args) throws Exception {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-                final UnconnectedMontageMFOVEdgeClient client = new UnconnectedMontageMFOVEdgeClient();
+                final UnconnectedMontageMFOVClient client = new UnconnectedMontageMFOVClient();
                 client.createContextAndRun(parameters);
             }
         };
@@ -63,7 +61,7 @@ public class UnconnectedMontageMFOVEdgeClient
     }
 
     /** Empty constructor required for alignment pipeline steps. */
-    public UnconnectedMontageMFOVEdgeClient() {
+    public UnconnectedMontageMFOVClient() {
     }
 
     /** Create a spark context and run the client with the specified parameters. */
@@ -120,11 +118,11 @@ public class UnconnectedMontageMFOVEdgeClient
             final RenderDataClient renderDataClient =
                     new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
 
-            findIsolatedEdgeMFOVsInStack(stackWithZValues,
-                                         false,
-                                         renderDataClient,
-                                         true, // add label to all tiles in MFOVs with isolated edges
-                                         startPositionMatchWeight);
+            findIsolatedMFOVsInStack(stackWithZValues,
+                                     false,
+                                     renderDataClient,
+                                     true, // add label to all tiles in MFOVs with isolated edges
+                                     startPositionMatchWeight);
             return null;
         };
 
@@ -133,5 +131,5 @@ public class UnconnectedMontageMFOVEdgeClient
         LOG.info("labelIsolatedEdgeMFOVs: exit");
     }
 
-    private static final Logger LOG = LoggerFactory.getLogger(UnconnectedMontageMFOVEdgeClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(UnconnectedMontageMFOVClient.class);
 }
