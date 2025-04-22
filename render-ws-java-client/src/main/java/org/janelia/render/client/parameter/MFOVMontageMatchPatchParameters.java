@@ -123,6 +123,13 @@ public class MFOVMontageMatchPatchParameters
                           "Omit to skip derivation for completely resin MFOVs.")
     public Double resinMfovStartPositionMatchWeight;
 
+    @Parameter(
+            names = "--checkLayerConnectedClusters",
+            description = "If specified, after patching everything check each z layer to ensure it has one and " +
+                          "only one connected cluster of SFOVs and throw an exception if the check fails.",
+            arity = 0)
+    public boolean checkLayerConnectedClusters = false;
+
     public MFOVMontageMatchPatchParameters() {
     }
 
@@ -148,6 +155,9 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.matchStorageFile = this.matchStorageFile;
         clonedParameters.trimMfovsWithNoConnectedTiles = this.trimMfovsWithNoConnectedTiles;
         clonedParameters.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates = this.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates;
+        clonedParameters.addIsolatedEdgeLabel = this.addIsolatedEdgeLabel;
+        clonedParameters.resinMfovStartPositionMatchWeight = this.resinMfovStartPositionMatchWeight;
+        clonedParameters.checkLayerConnectedClusters = this.checkLayerConnectedClusters;
         clonedParameters.validateAndSetupDerivedValues(); // make sure values derived from multiFieldOfViewId are rebuilt
         return clonedParameters;
     }

@@ -31,6 +31,10 @@ public class ConnectedTileClusterSummaryForStack
         this.hasTooManyConsecutiveUnconnectedEdges = false;
     }
 
+    public StackId getStackId() {
+        return stackId;
+    }
+
     public void addTileClusterSummary(final ConnectedTileClusterSummary clusterSummary) {
         tileClusterSummaryList.add(clusterSummary);
     }
@@ -93,5 +97,26 @@ public class ConnectedTileClusterSummaryForStack
 
     public boolean hasTooManyConsecutiveUnconnectedEdges() {
         return hasTooManyConsecutiveUnconnectedEdges;
+    }
+
+    public String buildCountErrorString(final int expectedTileClusterCount,
+                                        final int expectedUnconnectedTileCount,
+                                        final int expectedUnconnectedEdgeCount) {
+
+        final StringBuilder sb = new StringBuilder();
+        if (tileClusterSummaryList.size() != expectedTileClusterCount) {
+            sb.append("Expected ").append(expectedTileClusterCount).append(" tile clusters, but found ")
+                    .append(tileClusterSummaryList.size()).append(".  ");
+        }
+        if (unconnectedTileIdList.size() != expectedUnconnectedTileCount) {
+            sb.append("Expected ").append(expectedUnconnectedTileCount).append(" unconnected tiles, but found ")
+                    .append(unconnectedTileIdList.size()).append(".  ");
+        }
+        final int unconnectedEdgeCount = unconnectedEdgeList == null ? 0 : unconnectedEdgeList.size();
+        if (unconnectedEdgeCount != expectedUnconnectedEdgeCount) {
+            sb.append("Expected ").append(expectedUnconnectedEdgeCount).append(" unconnected edges, but found ")
+                    .append(unconnectedEdgeCount).append(".  ");
+        }
+        return sb.length() > 0 ? "Stack " + stackId.toDevString() + " has count errors.  " + sb : "";
     }
 }

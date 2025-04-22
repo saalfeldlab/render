@@ -42,6 +42,15 @@ public class ClusterCountClient
         @ParametersDelegate
         public TileClusterParameters tileCluster = new TileClusterParameters();
 
+        public Parameters() {
+        }
+
+        public Parameters(final MultiProjectParameters multiProject,
+                          final TileClusterParameters tileCluster) {
+            this.multiProject = multiProject;
+            this.tileCluster = tileCluster;
+        }
+
         public org.janelia.render.client.ClusterCountClient buildJavaClient() {
             final org.janelia.render.client.ClusterCountClient.Parameters javaClientParameters =
                     new org.janelia.render.client.ClusterCountClient.Parameters();
@@ -119,8 +128,8 @@ public class ClusterCountClient
         return AlignmentPipelineStepId.FIND_UNCONNECTED_TILES_AND_EDGES;
     }
 
-    private List<ConnectedTileClusterSummaryForStack> findConnectedClusters(final JavaSparkContext sparkContext,
-                                                                            final Parameters clientParameters)
+    public List<ConnectedTileClusterSummaryForStack> findConnectedClusters(final JavaSparkContext sparkContext,
+                                                                           final Parameters clientParameters)
             throws IOException {
 
         LOG.info("findConnectedClusters: entry, clientParameters={}", clientParameters);
