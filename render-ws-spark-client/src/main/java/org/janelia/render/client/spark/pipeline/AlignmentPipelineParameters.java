@@ -21,6 +21,7 @@ import org.janelia.render.client.parameter.MaskHackParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.ScapeParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.UnconnectedCrossMFOVParameters;
 import org.janelia.render.client.parameter.ZSpacingParameters;
@@ -49,10 +50,12 @@ public class AlignmentPipelineParameters
     private final IntensityCorrectionSetup intensityCorrectionSetup;
     private final ZSpacingParameters zSpacing;
     private final MaskHackParameters maskHack;
+    private final ScapeParameters scape;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -79,7 +82,8 @@ public class AlignmentPipelineParameters
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
                                        final IntensityCorrectionSetup intensityCorrectionSetup,
                                        final ZSpacingParameters zSpacing,
-                                       final MaskHackParameters maskHack) {
+                                       final MaskHackParameters maskHack,
+                                       final ScapeParameters scape) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -93,6 +97,7 @@ public class AlignmentPipelineParameters
         this.intensityCorrectionSetup = intensityCorrectionSetup;
         this.zSpacing = zSpacing;
         this.maskHack = maskHack;
+        this.scape = scape;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -108,6 +113,7 @@ public class AlignmentPipelineParameters
         return pipelineStackGroups == null ? null : pipelineStackGroups.getAligned();
     }
 
+    @SuppressWarnings("unused")
     public StackIdNamingGroup getIntensityCorrectedNamingGroup() {
         return pipelineStackGroups == null ? null : pipelineStackGroups.getIntensityCorrected();
     }
@@ -158,6 +164,10 @@ public class AlignmentPipelineParameters
 
     public MaskHackParameters getMaskHack() {
         return maskHack;
+    }
+
+    public ScapeParameters getScape() {
+        return scape;
     }
 
     /**

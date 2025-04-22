@@ -3,6 +3,7 @@ package org.janelia.render.client.spark.pipeline;
 import java.util.function.Supplier;
 
 import org.janelia.render.client.spark.MipmapClient;
+import org.janelia.render.client.spark.ScapeClient;
 import org.janelia.render.client.spark.mask.MaskHackClient;
 import org.janelia.render.client.spark.match.ClusterCountClient;
 import org.janelia.render.client.spark.match.CopyMatchClient;
@@ -29,7 +30,8 @@ public enum AlignmentPipelineStepId {
     ALIGN_TILES(DistributedAffineBlockSolverClient::new),
     CORRECT_Z_POSITIONS(ZPositionCorrectionClient::new),
     CORRECT_INTENSITY(DistributedIntensityCorrectionBlockSolverClient::new),
-    HACK_MASK(MaskHackClient::new);
+    HACK_MASK(MaskHackClient::new),
+    RENDER_SCAPES(ScapeClient::new);
 
     private final Supplier<AlignmentPipelineStep> stepClientSupplier;
 
