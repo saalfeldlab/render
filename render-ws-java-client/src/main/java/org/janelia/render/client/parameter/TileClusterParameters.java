@@ -2,7 +2,14 @@ package org.janelia.render.client.parameter;
 
 import com.beust.jcommander.Parameter;
 
+import java.io.IOException;
+import java.io.Reader;
 import java.io.Serializable;
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+
+import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.util.FileUtil;
 
 /**
  * Parameters and methods for determining clusters of connected tiles within a layer.
@@ -107,4 +114,21 @@ public class TileClusterParameters
     public boolean includeInSmallClusterStack(final int tileCount) {
         return maxSmallClusterSizeToSave != null && tileCount <= maxSmallClusterSizeToSave;
     }
+
+    public static TileClusterParameters fromJson(final Reader json) {
+        return JSON_HELPER.fromJson(json);
+    }
+
+    public static TileClusterParameters fromJsonFile(final String dataFile)
+            throws IOException {
+        final TileClusterParameters parameters;
+        final Path path = FileSystems.getDefault().getPath(dataFile).toAbsolutePath();
+        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(path.toString())) {
+            parameters = fromJson(reader);
+        }
+        return parameters;
+    }
+
+    private static final JsonUtils.Helper<TileClusterParameters> JSON_HELPER =
+            new JsonUtils.Helper<>(TileClusterParameters.class);
 }

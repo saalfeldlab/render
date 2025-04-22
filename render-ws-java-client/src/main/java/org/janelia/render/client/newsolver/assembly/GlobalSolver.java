@@ -1,5 +1,11 @@
 package org.janelia.render.client.newsolver.assembly;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.Model;
@@ -8,6 +14,7 @@ import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
+
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.newsolver.BlockData;
@@ -15,13 +22,6 @@ import org.janelia.render.client.newsolver.assembly.matches.SameTileMatchCreator
 import org.janelia.render.client.newsolver.setup.DistributedSolveParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.ExecutionException;
 
 public class GlobalSolver<G extends Model<G>, R> {
 
@@ -48,7 +48,7 @@ public class GlobalSolver<G extends Model<G>, R> {
 
 	public HashMap<BlockData<R, ?>, Tile<G>> globalSolve(
 			final List<? extends BlockData<R, ?>> blocks
-	) throws NotEnoughDataPointsException, IllDefinedDataPointsException, InterruptedException, ExecutionException {
+	) throws NotEnoughDataPointsException, IllDefinedDataPointsException {
 
 		final HashMap<BlockData<R, ?>, Tile<G>> blockToTile = new HashMap<>();
 		for (final BlockData<R, ?> block : blocks) {
@@ -92,7 +92,13 @@ public class GlobalSolver<G extends Model<G>, R> {
 					sameTileMatchCreator.addMatches(tileSpecAB, modelA, modelB, solveItemA, solveItemB, matchesAtoB);
 				}
 
-				if (! matchesAtoB.isEmpty()) {
+				if (matchesAtoB.isEmpty()) {
+
+					LOG.info("globalSolve: no matches found between {} with {} and {} with {}",
+							 solveItemA, resultsA.toTileSummaryString(),
+							 solveItemB, resultsB.toTileSummaryString());
+
+				} else {
 
 					LOG.info("globalSolve: found {} commonTileIds and {} matches between {} and {}",
 							 commonTileIds.size(), matchesAtoB.size(), solveItemA, solveItemB);
@@ -108,6 +114,11 @@ public class GlobalSolver<G extends Model<G>, R> {
 					tileConfigBlocks.addTile(tileB);
 				}
 			}
+
+			if (otherBlocks.isEmpty()) {
+				break; // exit loop since there are no more blocks to compare
+			}
+
 		}
 
 		for (final BlockData<R, ?> block : blocks) {

@@ -47,6 +47,8 @@ public class Assembler<Z, G extends Model<G>, R>
 	public ResultContainer<Z> createAssembly(final List<BlockData<R, ?>> blocks,
 											 final BlockFactory blockFactory) {
 
+		LOG.info("createAssembly: entry, with {} block(s)", blocks.size());
+
 		// the trivial case of a single block, would crash with the code below
 		if (isTrivialCase(blocks)) {
 			return buildTrivialAssembly(blocks);

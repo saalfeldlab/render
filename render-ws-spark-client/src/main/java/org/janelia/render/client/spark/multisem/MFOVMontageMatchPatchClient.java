@@ -12,6 +12,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.multisem.StackMFOVWithZValues;
 import org.janelia.alignment.spec.stack.StackId;
@@ -22,12 +23,16 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.spark.LogUtilities;
+import org.janelia.render.client.spark.match.ClusterCountClient;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.janelia.render.client.multisem.UnconnectedMontageMFOVClient.findIsolatedMFOVsInStack;
 
 /**
  * Spark client for patching matches missing from adjacent SFOV tile pairs within the same MFOV and z layer.
@@ -48,6 +53,12 @@ public class MFOVMontageMatchPatchClient
                 description = "JSON file where match patch parameters are defined",
                 required = true)
         public String matchPatchJson;
+
+        @Parameter(
+                names = "--tileClusterJson",
+                description = "JSON file where tile cluster parameters are defined.  " +
+                              "Omit to skip check.")
+        public String tileClusterJson;
     }
 
     /** Run the client with command line parameters. */
@@ -74,10 +85,28 @@ public class MFOVMontageMatchPatchClient
     public void createContextAndRun(final Parameters clientParameters) throws IOException {
         final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
+
             LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
+
             final MFOVMontageMatchPatchParameters patchParameters =
                     MFOVMontageMatchPatchParameters.fromJsonFile(clientParameters.matchPatchJson);
-            patchPairs(sparkContext, clientParameters.multiProject, patchParameters);
+
+            TileClusterParameters tileClusterParameters = null;
+            if (patchParameters.checkLayerConnectedClusters) {
+                if (clientParameters.tileClusterJson == null) {
+                    throw new IllegalArgumentException("--tileClusterJson parameter must be defined when --checkLayerConnectedClusters is requested");
+                }
+                tileClusterParameters = TileClusterParameters.fromJsonFile(clientParameters.tileClusterJson);
+            }
+
+            patchMFOVs(sparkContext, clientParameters.multiProject, patchParameters);
+
+            if (patchParameters.checkLayerConnectedClusters) {
+                checkLayerConnectedClusters(sparkContext,
+                                            clientParameters.multiProject,
+                                            tileClusterParameters);
+            }
+
         }
     }
 
@@ -85,32 +114,47 @@ public class MFOVMontageMatchPatchClient
     @Override
     public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException {
+        final MFOVMontageMatchPatchParameters patchParameters = pipelineParameters.getMfovMontagePatch();
         AlignmentPipelineParameters.validateRequiredElementExists("mfovMontagePatch",
-                                                                  pipelineParameters.getMfovMontagePatch());
+                                                                  patchParameters);
+        if (patchParameters.checkLayerConnectedClusters) {
+            AlignmentPipelineParameters.validateRequiredElementExists("tileCluster",
+                                                                      pipelineParameters.getTileCluster());
+        }
     }
 
     /** Run the client as part of an alignment pipeline. */
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IOException {
-        patchPairs(sparkContext,
-                   pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup()),
-                   pipelineParameters.getMfovMontagePatch());
-    }
 
+        final MultiProjectParameters multiProjectParameters =
+                pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
+        final MFOVMontageMatchPatchParameters patchParameters = pipelineParameters.getMfovMontagePatch();
+
+        patchMFOVs(sparkContext, multiProjectParameters, patchParameters);
+
+        if (patchParameters.checkLayerConnectedClusters) {
+            checkLayerConnectedClusters(sparkContext, multiProjectParameters, pipelineParameters.getTileCluster());
+        }
+    }
 
     @Override
     public AlignmentPipelineStepId getDefaultStepId() {
         return AlignmentPipelineStepId.PATCH_MFOV_MONTAGE_MATCHES;
     }
 
-    private void patchPairs(final JavaSparkContext sparkContext,
+    private void patchMFOVs(final JavaSparkContext sparkContext,
                             final MultiProjectParameters multiProjectParameters,
                             final MFOVMontageMatchPatchParameters patchParameters)
             throws IOException {
 
-        LOG.info("patchPairs: entry, multiProjectParameters={}, patchParameters={}",
+        LOG.info("patchMFOVs: entry, multiProjectParameters={}, patchParameters={}",
                  multiProjectParameters.toJson(), patchParameters.toJson());
+
+        if (patchParameters.isIsolatedMfovPatchingNeeded()) {
+            patchIsolatedMFOVs(sparkContext, multiProjectParameters, patchParameters);
+        }
 
         patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
 
@@ -123,7 +167,41 @@ public class MFOVMontageMatchPatchClient
             patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 2);
         }
 
-        LOG.info("patchPairs: exit");
+        LOG.info("patchMFOVs: exit");
+    }
+
+    private void patchIsolatedMFOVs(final JavaSparkContext sparkContext,
+                                    final MultiProjectParameters multiProjectParameters,
+                                    final MFOVMontageMatchPatchParameters patchParameters)
+            throws IOException {
+
+        LOG.info("patchIsolatedMFOVs: entry");
+
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
+
+        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
+
+        final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
+
+        final Function<StackWithZValues, Void> findFunction = stackWithZValues -> {
+
+            LogUtilities.setupExecutorLog4j(stackWithZValues.getStackId().toDevString());
+
+            final StackId stackId = stackWithZValues.getStackId();
+            final RenderDataClient renderDataClient =
+                    new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
+
+            findIsolatedMFOVsInStack(stackWithZValues,
+                                     false,
+                                     renderDataClient,
+                                     patchParameters.addIsolatedEdgeLabel,
+                                     patchParameters.resinMfovStartPositionMatchWeight);
+            return null;
+        };
+
+        rddStackWithZValues.map(findFunction).collect();
+
+        LOG.info("patchIsolatedMFOVs: exit");
     }
 
     private void patchPairsForPass(final JavaSparkContext sparkContext,
@@ -237,6 +315,44 @@ public class MFOVMontageMatchPatchClient
         }
 
         LOG.info("completeTrimStacks: exit");
+    }
+
+    private void checkLayerConnectedClusters(final JavaSparkContext sparkContext,
+                                             final MultiProjectParameters multiProjectParameters,
+                                             final TileClusterParameters tileClusterParameters)
+            throws IOException {
+
+        LOG.info("checkLayerConnectedClusters: entry");
+
+        final ClusterCountClient clusterCountClient = new ClusterCountClient();
+        final ClusterCountClient.Parameters clientParameters =
+                new ClusterCountClient.Parameters(multiProjectParameters,
+                                                  tileClusterParameters);
+        final List<ConnectedTileClusterSummaryForStack> connectedTileClusterSummaryForStacks =
+                clusterCountClient.findConnectedClusters(sparkContext, clientParameters);
+
+
+        final List<String> stackErrors = new ArrayList<>();
+
+        for (final ConnectedTileClusterSummaryForStack summary : connectedTileClusterSummaryForStacks) {
+            final StackId stackId = summary.getStackId();
+            final RenderDataClient renderDataClient =
+                    multiProjectParameters.getDataClient().buildClient(stackId.getOwner(), stackId.getProject());
+            final List<Double> zValues = renderDataClient.getStackZValues(stackId.getStack());
+            final String countErrorString = summary.buildCountErrorString(zValues.size(),
+                                                                          0,
+                                                                          0);
+            if (! countErrorString.isEmpty()) {
+                stackErrors.add(countErrorString);
+            }
+        }
+
+        if (! stackErrors.isEmpty()) {
+            throw new IOException("Found the following stack connected cluster count errors: " +
+                                  String.join("\n", stackErrors));
+        }
+
+        LOG.info("checkLayerConnectedClusters: exit");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVMontageMatchPatchClient.class);
