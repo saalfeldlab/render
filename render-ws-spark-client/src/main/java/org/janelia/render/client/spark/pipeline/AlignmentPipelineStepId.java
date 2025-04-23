@@ -31,7 +31,7 @@ public enum AlignmentPipelineStepId {
     CORRECT_Z_POSITIONS(ZPositionCorrectionClient::new),
     CORRECT_INTENSITY(DistributedIntensityCorrectionBlockSolverClient::new),
     HACK_MASK(MaskHackClient::new),
-    RENDER_SCAPES(ScapeClient::new);
+    RENDER_SCAPE_IMAGES(ScapeClient::new);
 
     private final Supplier<AlignmentPipelineStep> stepClientSupplier;
 

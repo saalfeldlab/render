@@ -45,6 +45,8 @@ import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jakarta.annotation.Nonnull;
+
 /**
  * Spark client for rendering montage scapes for a range of layers within a stack.
  *
@@ -152,7 +154,7 @@ public class ScapeClient
 
     @Override
     public AlignmentPipelineStepId getDefaultStepId() {
-        return AlignmentPipelineStepId.RENDER_SCAPES;
+        return AlignmentPipelineStepId.RENDER_SCAPE_IMAGES;
     }
 
     public static void exportStackToFilesystem(final JavaSparkContext sparkContext,
@@ -215,90 +217,13 @@ public class ScapeClient
             stackResolutionValues = null;
         }
 
-        final Function<RenderSection, Integer> generateScapeFunction = renderSection -> {
-
-                    final Double z = renderSection.getFirstZ();
-                    LogUtilities.setupExecutorLog4j("z " + z);
-
-                    final RenderDataClient workerDataClient = new RenderDataClient(baseDataUrl,
-                                                                                   stackId.getOwner(),
-                                                                                   stackId.getProject());
-
-                    // set cache size to 50MB so that masks get cached but most of RAM is left for target image
-                    final int maxCachedPixels = 50 * 1000000;
-                    final ImageProcessorCache imageProcessorCache =
-                            new ImageProcessorCache(maxCachedPixels, false, false);
-
-                    final boolean isProjectionNeeded = renderSection.isProjectionNeeded();
-                    BufferedImage sectionImage = null;
-                    ImageStack projectedStack = null;
-
-                    for (final SectionData sectionData : renderSection.getSectionDataList()) {
-
-
-                        final String parametersUrl =
-                                workerDataClient.getRenderParametersUrlString(stack,
-                                                                              sectionData.getMinX(),
-                                                                              sectionData.getMinY(),
-                                                                              sectionData.getZ(),
-                                                                              sectionData.getWidth(),
-                                                                              sectionData.getHeight(),
-                                                                              renderScale,
-                                                                              scape.filterListName);
-
-                        LOG.debug("generateScapeFunction: loading {}", parametersUrl);
-
-                        final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-                        renderParameters.setFillWithNoise(scape.fillWithNoise);
-                        renderParameters.setDoFilter(scape.doFilter);
-                        renderParameters.setChannels(scape.channels);
-
-                        sectionImage = renderParameters.openTargetImage();
-
-                        if (isProjectionNeeded && (projectedStack == null)) {
-                            projectedStack = new ImageStack(sectionImage.getWidth(), sectionImage.getHeight());
-                        }
-
-                        ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
-
-                        if (isProjectionNeeded) {
-                            projectedStack.addSlice(new ColorProcessor(sectionImage).convertToByteProcessor());
-                        }
-                    }
-
-                    if (projectedStack != null) {
-
-                        LOG.debug("projecting {} sections", projectedStack.getSize());
-
-                        final ZProjector projector = new ZProjector(new ImagePlus("", projectedStack));
-                        projector.setMethod(ZProjector.AVG_METHOD);
-                        projector.doProjection();
-                        final ImageProcessor ip = projector.getProjection().getProcessor();
-                        sectionImage = ip.getBufferedImage();
-                    }
-
-                    final File sectionFile = renderSection.getOutputFile(scape.format);
-
-                    if (isTiffWithResolutionOutput) {
-
-                        Utils.saveTiffImageWithResolution(sectionImage,
-                                                          stackResolutionValues,
-                                                          scape.resolutionUnit,
-                                                          renderScale,
-                                                          sectionFile.getAbsolutePath());
-
-                    } else {
-
-                        Utils.saveImage(sectionImage,
-                                        sectionFile.getAbsolutePath(),
-                                        scape.format,
-                                        true,
-                                        0.85f);
-
-                    }
-
-                    return 1;
-                };
+        final Function<RenderSection, Integer> generateScapeFunction =
+                buildSectionScapeGenerationFunction(baseDataUrl,
+                                                    stackId,
+                                                    scape,
+                                                    renderScale,
+                                                    isTiffWithResolutionOutput,
+                                                    stackResolutionValues);
 
         final JavaRDD<Integer> rddLayerCounts = rddSectionData.map(generateScapeFunction);
 
@@ -379,6 +304,98 @@ public class ScapeClient
         }
 
         return renderSectionList;
+    }
+
+    @Nonnull
+    private static Function<RenderSection, Integer> buildSectionScapeGenerationFunction(final String baseDataUrl,
+                                                                                        final StackId stackId,
+                                                                                        final ScapeParameters scape,
+                                                                                        final double renderScale,
+                                                                                        final boolean isTiffWithResolutionOutput,
+                                                                                        final List<Double> stackResolutionValues) {
+        return renderSection -> {
+
+            final Double z = renderSection.getFirstZ();
+            LogUtilities.setupExecutorLog4j("z " + z);
+
+            final RenderDataClient workerDataClient = new RenderDataClient(baseDataUrl,
+                                                                           stackId.getOwner(),
+                                                                           stackId.getProject());
+
+            // set cache size to 50MB so that masks get cached but most of RAM is left for target image
+            final int maxCachedPixels = 50 * 1000000;
+            final ImageProcessorCache imageProcessorCache =
+                    new ImageProcessorCache(maxCachedPixels, false, false);
+
+            final boolean isProjectionNeeded = renderSection.isProjectionNeeded();
+            BufferedImage sectionImage = null;
+            ImageStack projectedStack = null;
+
+            for (final SectionData sectionData : renderSection.getSectionDataList()) {
+
+                final String parametersUrl =
+                        workerDataClient.getRenderParametersUrlString(stackId.getStack(),
+                                                                      sectionData.getMinX(),
+                                                                      sectionData.getMinY(),
+                                                                      sectionData.getZ(),
+                                                                      sectionData.getWidth(),
+                                                                      sectionData.getHeight(),
+                                                                      renderScale,
+                                                                      scape.filterListName);
+
+                LOG.debug("generateScapeFunction: loading {}", parametersUrl);
+
+                final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+                renderParameters.setFillWithNoise(scape.fillWithNoise);
+                renderParameters.setDoFilter(scape.doFilter);
+                renderParameters.setChannels(scape.channels);
+
+                sectionImage = renderParameters.openTargetImage();
+
+                if (isProjectionNeeded && (projectedStack == null)) {
+                    projectedStack = new ImageStack(sectionImage.getWidth(), sectionImage.getHeight());
+                }
+
+                ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
+
+                if (isProjectionNeeded) {
+                    projectedStack.addSlice(new ColorProcessor(sectionImage).convertToByteProcessor());
+                }
+            }
+
+            if (projectedStack != null) {
+
+                LOG.debug("projecting {} sections", projectedStack.getSize());
+
+                final ZProjector projector = new ZProjector(new ImagePlus("", projectedStack));
+                projector.setMethod(ZProjector.AVG_METHOD);
+                projector.doProjection();
+                final ImageProcessor ip = projector.getProjection().getProcessor();
+                sectionImage = ip.getBufferedImage();
+            }
+
+            final File sectionFile = renderSection.getOutputFile(scape.format);
+
+            if (isTiffWithResolutionOutput) {
+
+                Utils.saveTiffImageWithResolution(sectionImage,
+                                                  stackResolutionValues,
+                                                  scape.resolutionUnit,
+                                                  renderScale,
+                                                  sectionFile.getAbsolutePath());
+
+            } else {
+
+                Utils.saveImage(sectionImage,
+                                sectionFile.getAbsolutePath(),
+                                scape.format,
+                                true,
+                                0.85f);
+
+            }
+
+            return 1;
+        };
     }
 
     public static class RenderSection implements Serializable {
