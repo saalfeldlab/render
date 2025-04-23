@@ -22,11 +22,16 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.ArgbRenderer;
+import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ChannelSpec;
+import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -157,11 +162,11 @@ public class ScapeClient
         return AlignmentPipelineStepId.RENDER_SCAPE_IMAGES;
     }
 
-    public static void exportStackToFilesystem(final JavaSparkContext sparkContext,
-                                               final String baseDataUrl,
-                                               final StackId stackId,
-                                               final ZRangeParameters layerRange,
-                                               final ScapeParameters scape)
+    private static void exportStackToFilesystem(final JavaSparkContext sparkContext,
+                                                final String baseDataUrl,
+                                                final StackId stackId,
+                                                final ZRangeParameters layerRange,
+                                                final ScapeParameters scape)
             throws IOException {
 
         LOG.info("exportStackToFilesystem: entry, stackId={}", stackId);
@@ -217,7 +222,7 @@ public class ScapeClient
             stackResolutionValues = null;
         }
 
-        final Function<RenderSection, Integer> generateScapeFunction =
+        final Function<RenderSection, TileSpec> generateScapeFunction =
                 buildSectionScapeGenerationFunction(baseDataUrl,
                                                     stackId,
                                                     scape,
@@ -225,16 +230,16 @@ public class ScapeClient
                                                     isTiffWithResolutionOutput,
                                                     stackResolutionValues);
 
-        final JavaRDD<Integer> rddLayerCounts = rddSectionData.map(generateScapeFunction);
+        final JavaRDD<TileSpec> rddLayerTileSpecs = rddSectionData.map(generateScapeFunction);
 
-        final List<Integer> layerCountList = rddLayerCounts.collect();
-        long total = 0;
-        for (final Integer layerCount : layerCountList) {
-            total += layerCount;
+        final List<TileSpec> layerTileSpecList = rddLayerTileSpecs.collect();
+
+        LOG.info("exportStackToFilesystem: collected tile specs");
+        LOG.info("exportStackToFilesystem: rendered {} layers", layerTileSpecList.size());
+
+        if ((scape.isHackStackSuffixDefined()) && (! layerTileSpecList.isEmpty())) {
+            saveHackStack(sourceDataClient, stack, stackMetaData, layerTileSpecList, scape);
         }
-
-        LOG.info("exportStackToFilesystem: collected stats");
-        LOG.info("exportStackToFilesystem: generated boxes for {} layers", total);
     }
 
     private static List<RenderSection> getRenderSections(final List<SectionData> sectionDataList,
@@ -307,12 +312,12 @@ public class ScapeClient
     }
 
     @Nonnull
-    private static Function<RenderSection, Integer> buildSectionScapeGenerationFunction(final String baseDataUrl,
-                                                                                        final StackId stackId,
-                                                                                        final ScapeParameters scape,
-                                                                                        final double renderScale,
-                                                                                        final boolean isTiffWithResolutionOutput,
-                                                                                        final List<Double> stackResolutionValues) {
+    private static Function<RenderSection, TileSpec> buildSectionScapeGenerationFunction(final String baseDataUrl,
+                                                                                         final StackId stackId,
+                                                                                         final ScapeParameters scape,
+                                                                                         final double renderScale,
+                                                                                         final boolean isTiffWithResolutionOutput,
+                                                                                         final List<Double> stackResolutionValues) {
         return renderSection -> {
 
             final Double z = renderSection.getFirstZ();
@@ -394,11 +399,70 @@ public class ScapeClient
 
             }
 
-            return 1;
+            return buildScapeFileTileSpec(stackId, z, sectionImage, sectionFile);
         };
     }
 
-    public static class RenderSection implements Serializable {
+    @Nonnull
+    private static TileSpec buildScapeFileTileSpec(final StackId stackId,
+                                                   final Double z,
+                                                   final BufferedImage sectionImage,
+                                                   final File sectionFile) {
+
+        final TileSpec tileSpec = new TileSpec();
+        final String sectionAndTileId = stackId.toDevString() + "::z" + z;
+
+        tileSpec.setTileId(sectionAndTileId);
+        tileSpec.setZ(z);
+
+        tileSpec.setLayout(new LayoutData(sectionAndTileId,
+                                          null,
+                                          null,
+                                          0,
+                                          0,
+                                          0.0,
+                                          0.0,
+                                          null));
+
+        tileSpec.setWidth(sectionImage == null ? 0.0 : (double) sectionImage.getWidth());
+        tileSpec.setHeight(sectionImage == null ? 0.0 : (double) sectionImage.getHeight());
+
+        // assume scape images are 8-bit unsigned data
+        tileSpec.setMinAndMaxIntensity(0.0, 255.0, null);
+
+        final ChannelSpec channelSpec = new ChannelSpec();
+        final String imageUrl = "file://" + sectionFile.getAbsolutePath();
+        final ImageAndMask imageAndMask = new ImageAndMask(imageUrl, null);
+        channelSpec.putMipmap(0, imageAndMask);
+        tileSpec.addChannel(channelSpec);
+        tileSpec.convertSingleChannelSpecToLegacyForm();  // simplify channel spec by converting it to legacy form
+
+        tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true, true);
+
+        return tileSpec;
+    }
+
+    private static void saveHackStack(final RenderDataClient sourceDataClient,
+                                      final String sourceStackName,
+                                      final StackMetaData sourceStackMetaData,
+                                      final List<TileSpec> layerTileSpecList,
+                                      final ScapeParameters scape) throws IOException {
+
+        final String hackStackName = sourceStackName + scape.hackStackSuffix;
+
+        sourceDataClient.setupDerivedStack(sourceStackMetaData, hackStackName);
+
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection();
+        for (final TileSpec tileSpec : layerTileSpecList) {
+            resolvedTiles.addTileSpecToCollection(tileSpec);
+        }
+
+        sourceDataClient.saveResolvedTiles(resolvedTiles, hackStackName, null);
+
+        sourceDataClient.setStackState(hackStackName, StackMetaData.StackState.COMPLETE);
+    }
+
+    private static class RenderSection implements Serializable {
 
         private final Double firstZ;
         private final List<SectionData> sectionDataList;

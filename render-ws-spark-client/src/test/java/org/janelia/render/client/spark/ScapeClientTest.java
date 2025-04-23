@@ -27,13 +27,14 @@ public class ScapeClientTest {
                 "--project", "w60_serial_360_to_369",
                 "--stack", "w60_s360_r00_d20_gc_mfov_32_rxy",
                 "--resolutionUnit", "nm",
-                "--rootDirectory", "/Users/trautmane/Desktop/scape_test",
+                "--rootDirectory", "/nrs/hess/render/scapes",
 //                "--scale", "0.01",
                 "--scaledScapeSize", "4096",
                 "--format", "jpg",
                 "--useLayerBounds", "true",
-                "--minZ", "34",
-                "--maxZ", "34"
+                "--minZ", "26",
+                "--maxZ", "26",
+//                "--hackStackSuffix", "d"
         };
 
         final ScapeClient.Parameters parameters = new ScapeClient.Parameters();

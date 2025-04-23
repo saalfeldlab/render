@@ -117,6 +117,13 @@ public class ScapeParameters
     )
     public Double height;
 
+    @Parameter(
+            names = "--hackStackSuffix",
+            description = "If specified, create tile specs that reference the rendered scape images and save them to " +
+                          "a new 'hack' stack.  The hack stack will have the source stack's owner and project and " +
+                          "its name will be the source stack's name with this suffix.")
+    public String hackStackSuffix;
+
     public ScapeParameters() {
     }
 
@@ -171,5 +178,9 @@ public class ScapeParameters
         }
         return scapeRenderScale;
 
+    }
+
+    public boolean isHackStackSuffixDefined() {
+        return hackStackSuffix != null && ! hackStackSuffix.trim().isEmpty();
     }
 }
