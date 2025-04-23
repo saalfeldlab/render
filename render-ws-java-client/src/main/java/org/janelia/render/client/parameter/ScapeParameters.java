@@ -8,8 +8,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.SectionData;
 
 /**
  * Parameters for rendering montage scapes within a stack.
@@ -34,6 +37,13 @@ public class ScapeParameters
             description = "Scale for each rendered layer"
     )
     public Double scale = 0.02;
+
+    @Parameter(
+            names = "--scaledScapeSize",
+            description = "If specified, set the rendered layer scale so that the longer dimension (height or width) " +
+                          "of each rendered scape is this many pixels.  This will override the --scale option."
+    )
+    public Integer scaledScapeSize;
 
     @Parameter(
             names = "--zScale",
@@ -145,4 +155,21 @@ public class ScapeParameters
         return (height == null) ? null : effectiveMinY + height;
     }
 
+    public double getScapeRenderScale(final Bounds stackBounds,
+                                      final List<SectionData> sectionDataList) {
+        double scapeRenderScale = scale;
+        if (scaledScapeSize != null) {
+            final int maxSize;
+            if (useLayerBounds) {
+                maxSize = sectionDataList.stream()
+                        .map(sd -> Math.max(sd.getWidth(), sd.getHeight()))
+                        .max(Integer::compareTo).orElse(0);
+            } else {
+                maxSize = Math.max(stackBounds.getWidth(), stackBounds.getHeight());
+            }
+            scapeRenderScale = scaledScapeSize / (double) maxSize;
+        }
+        return scapeRenderScale;
+
+    }
 }

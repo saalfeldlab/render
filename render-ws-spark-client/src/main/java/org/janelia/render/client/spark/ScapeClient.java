@@ -107,7 +107,9 @@ public class ScapeClient
         SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
 
         if (numberOfLocalConcurrentTasks != null) {
-            conf = conf.setMaster("local[" + numberOfLocalConcurrentTasks + "]");
+            conf = conf.setMaster("local[" + numberOfLocalConcurrentTasks + "]")
+                    .set("spark.driver.bindAddress", "127.0.0.1")
+                    .set("spark.driver.host",        "127.0.0.1");
         }
 
         try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
@@ -160,11 +162,16 @@ public class ScapeClient
                                                final ScapeParameters scape)
             throws IOException {
 
+        LOG.info("exportStackToFilesystem: entry, stackId={}", stackId);
+
         final String stack = stackId.getStack();
 
         final RenderDataClient sourceDataClient = new RenderDataClient(baseDataUrl,
                                                                        stackId.getOwner(),
                                                                        stackId.getProject());
+
+        final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(stack);
+        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
 
         final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(stack,
                                                                                        layerRange.minZ,
@@ -184,12 +191,17 @@ public class ScapeClient
         final File parametersFile = new File(sectionRootDirectory, "scape_parameters.json");
         JsonUtils.MAPPER.writeValue(parametersFile, scape);
 
+        final double renderScale = scape.getScapeRenderScale(stackBounds,
+                                                             sectionDataList);
+
+        LOG.info("exportStackToFilesystem: set renderScale to {}", renderScale);
+
         final List<RenderSection> renderSectionList =
-                getRenderSections(sourceDataClient,
-                                  sectionDataList,
+                getRenderSections(sectionDataList,
                                   sectionRootDirectory,
-                                  stack,
-                                  scape);
+                                  stackBounds,
+                                  scape,
+                                  renderScale);
 
         final JavaRDD<RenderSection> rddSectionData = sparkContext.parallelize(renderSectionList);
 
@@ -198,7 +210,6 @@ public class ScapeClient
                                                     Utils.TIF_FORMAT.equals(scape.format));
         final List<Double> stackResolutionValues;
         if (isTiffWithResolutionOutput) {
-            final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(stack);
             stackResolutionValues = stackMetaData.getCurrentResolutionValues();
         } else {
             stackResolutionValues = null;
@@ -224,6 +235,7 @@ public class ScapeClient
 
                     for (final SectionData sectionData : renderSection.getSectionDataList()) {
 
+
                         final String parametersUrl =
                                 workerDataClient.getRenderParametersUrlString(stack,
                                                                               sectionData.getMinX(),
@@ -231,7 +243,7 @@ public class ScapeClient
                                                                               sectionData.getZ(),
                                                                               sectionData.getWidth(),
                                                                               sectionData.getHeight(),
-                                                                              scape.scale,
+                                                                              renderScale,
                                                                               scape.filterListName);
 
                         LOG.debug("generateScapeFunction: loading {}", parametersUrl);
@@ -272,7 +284,7 @@ public class ScapeClient
                         Utils.saveTiffImageWithResolution(sectionImage,
                                                           stackResolutionValues,
                                                           scape.resolutionUnit,
-                                                          scape.scale,
+                                                          renderScale,
                                                           sectionFile.getAbsolutePath());
 
                     } else {
@@ -296,21 +308,15 @@ public class ScapeClient
             total += layerCount;
         }
 
-        LOG.info("run: collected stats");
-        LOG.info("run: generated boxes for {} layers", total);
-
-        sparkContext.stop();
+        LOG.info("exportStackToFilesystem: collected stats");
+        LOG.info("exportStackToFilesystem: generated boxes for {} layers", total);
     }
 
-    private static List<RenderSection> getRenderSections(final RenderDataClient sourceDataClient,
-                                                         final List<SectionData> sectionDataList,
+    private static List<RenderSection> getRenderSections(final List<SectionData> sectionDataList,
                                                          final File sectionRootDirectory,
-                                                         final String stack,
-                                                         final ScapeParameters scapeParameters)
-            throws IOException {
-
-        final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(stack);
-        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+                                                         final Bounds stackBounds,
+                                                         final ScapeParameters scapeParameters,
+                                                         final double renderScale) {
 
         int maxZCharacters = 3; // %3.1d => 1.0
         for (long z = 1; z < stackBounds.getMaxZ().longValue(); z = z * 10) {
@@ -318,7 +324,7 @@ public class ScapeClient
         }
         final String zFormatSpec = "%0" + maxZCharacters + ".1f";
 
-        final double zScale = scapeParameters.zScale == null ? 0.0 : scapeParameters.zScale / scapeParameters.scale;
+        final double zScale = scapeParameters.zScale == null ? 0.0 : scapeParameters.zScale / renderScale;
 
         final List<RenderSection> renderSectionList = new ArrayList<>(sectionDataList.size());
 
@@ -338,11 +344,11 @@ public class ScapeClient
             }
 
             final double minX = scapeParameters.getEffectiveBound(sectionData.getMinX(),
-                                                                   stackBounds.getMinX(),
-                                                                   scapeParameters.minX);
+                                                                  stackBounds.getMinX(),
+                                                                  scapeParameters.minX);
             final double minY = scapeParameters.getEffectiveBound(sectionData.getMinY(),
-                                                                   stackBounds.getMinY(),
-                                                                   scapeParameters.minY);
+                                                                  stackBounds.getMinY(),
+                                                                  scapeParameters.minY);
 
             final SectionData boundedSectionData =
                     new SectionData(sectionData.getSectionId(),
@@ -350,22 +356,22 @@ public class ScapeClient
                                     sectionData.getTileCount(),
                                     minX,
                                     scapeParameters.getEffectiveBound(sectionData.getMaxX(),
-                                                                       stackBounds.getMaxX(),
-                                                                       scapeParameters.getMaxX(minX)),
+                                                                      stackBounds.getMaxX(),
+                                                                      scapeParameters.getMaxX(minX)),
                                     minY,
                                     scapeParameters.getEffectiveBound(sectionData.getMaxY(),
-                                                                       stackBounds.getMaxY(),
-                                                                       scapeParameters.getMaxY(minY)));
+                                                                      stackBounds.getMaxY(),
+                                                                      scapeParameters.getMaxY(minY)));
 
-            final long scaledSectionWidth = (long) (boundedSectionData.getWidth() * scapeParameters.scale + 0.5);
-            final long scaledSectionHeight = (long) (boundedSectionData.getHeight() * scapeParameters.scale + 0.5);
+            final long scaledSectionWidth = (long) (boundedSectionData.getWidth() * renderScale + 0.5);
+            final long scaledSectionHeight = (long) (boundedSectionData.getHeight() * renderScale + 0.5);
             final long sectionPixelCount = scaledSectionWidth * scaledSectionHeight;
 
             if (sectionPixelCount >= Integer.MAX_VALUE) {
                 final DecimalFormat formatter = new DecimalFormat("#,###");
                 throw new IllegalArgumentException("section " + boundedSectionData + " has " +
                                                    formatter.format(sectionPixelCount) + " pixels at scale " +
-                                                   scapeParameters.scale + " which is greater than the maximum allowed " +
+                                                   renderScale + " which is greater than the maximum allowed " +
                                                    formatter.format(Integer.MAX_VALUE));
             }
 
