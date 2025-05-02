@@ -2,6 +2,8 @@ package org.janelia.render.client.destreak;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import edu.mines.jtk.dsp.FftComplex;
+import edu.mines.jtk.dsp.FftReal;
 import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
@@ -9,6 +11,7 @@ import ij.plugin.PlugIn;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.destreak.SmoothMaskStreakCorrector;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -19,6 +22,7 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import spim.Threads;
 
 import javax.swing.SwingUtilities;
 import java.awt.KeyboardFocusManager;
@@ -27,8 +31,6 @@ import java.io.IOException;
 
 
 public class StreakCorrection_Plugin implements PlugIn {
-
-	private static final Logger LOG = LoggerFactory.getLogger(StreakCorrection_Plugin.class);
 
 	private static class Parameters extends CommandLineParameters {
 		@ParametersDelegate
@@ -80,9 +82,8 @@ public class StreakCorrection_Plugin implements PlugIn {
 		final ChannelSpec firstChannel = tileSpec.getAllChannels().stream().findFirst().orElseThrow();
 		final ImageAndMask imageAndMask = firstChannel.getMipmap(0);
 		final ImageProcessor ip = cache.get(imageAndMask.getImageUrl(), 0, false, false, imageAndMask.getImageLoaderType(), null);
-		final FloatProcessor fip = ip.convertToFloatProcessor();
 
-		return new ImagePlus(tileSpec.getTileId(), fip);
+		return new ImagePlus(tileSpec.getTileId(), ip);
 	}
 
 	public static void main(final String[] args) throws IOException {
@@ -98,5 +99,26 @@ public class StreakCorrection_Plugin implements PlugIn {
 		final ImagePlus img = loadImage(client, params);
 
 		img.show();
+
+		final int width = img.getWidth();
+		final int height = img.getHeight();
+
+		// The following computations are based on the original code in net.imglib2.algorithm.fft.FourierTransform
+		final int extendedWidth = width + Math.max(Math.round(1.25f * width) - width, 12);
+		final int extendedHeight = height + Math.max(Math.round(1.25f * height) - height, 12);
+		final int fftWidth = FftReal.nfftFast(extendedWidth) / 2 + 1;
+		final int fftHeight = FftComplex.nfftFast(extendedHeight);
+
+		final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(
+				Threads.numThreads() / 2,
+				fftWidth,
+				fftHeight,
+				18,
+				8,
+				0.0);
+
+		final ImagePlus corrected = loadImage(client, params);
+		corrector.process(corrected.getProcessor(), 1.0);
+		corrected.show();
 	}
 }
