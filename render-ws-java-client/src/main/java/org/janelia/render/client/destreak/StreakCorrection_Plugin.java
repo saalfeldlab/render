@@ -7,21 +7,19 @@ import edu.mines.jtk.dsp.FftReal;
 import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.gui.GenericDialog;
 import ij.plugin.PlugIn;
-import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.destreak.SmoothMaskStreakCorrector;
+import org.janelia.alignment.destreak.StreakCorrector;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.emshading.ShadingCorrection_Plugin;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import spim.Threads;
 
 import javax.swing.SwingUtilities;
@@ -50,8 +48,54 @@ public class StreakCorrection_Plugin implements PlugIn {
 		public int tileNumber = 0;
 	}
 
+	private static StreakCorrectionParameters defaultParameters = new StreakCorrectionParameters();
+	private static int nSteps = 3;
+	private static double stepSize = 1.0;
+	private static int defaultChoice = 0;
+	private static String[] parameterChoices = new String[] { "None", "innerCutoff", "bandWidth", "angle",
+			"gaussianBlurRadius", "initialThreshold", "finalThreshold" };
+
+
 	@Override
 	public void run(final String arg) {
+		final GenericDialog dialog = new GenericDialog("Fit shading correction");
+
+		dialog.addMessage("Streak correction parameters");
+		dialog.addNumericField("Inner cutoff", defaultParameters.innerCutoff);
+		dialog.addNumericField("Band width", defaultParameters.bandWidth);
+		dialog.addNumericField("Angle", defaultParameters.angle);
+
+		dialog.addMessage("Localization parameters");
+		dialog.addCheckbox("Localize correction", defaultParameters.localize);
+		dialog.addNumericField("Gaussian blur radius", defaultParameters.gaussianBlurRadius);
+		dialog.addNumericField("Initial threshold", defaultParameters.initialThreshold);
+		dialog.addNumericField("Final threshold", defaultParameters.finalThreshold);
+
+		dialog.addMessage("Parameter variation");
+		dialog.addChoice("Parameter to vary", parameterChoices, parameterChoices[defaultChoice]);
+		dialog.addNumericField("Step size", stepSize);
+		dialog.addNumericField("Number of steps", nSteps);
+
+		dialog.showDialog();
+
+		if (dialog.wasCanceled()) {
+			return;
+		}
+
+		defaultParameters.setFromDialog(dialog);
+
+		final ImagePlus img = IJ.getImage();
+		final int width = img.getWidth();
+		final int height = img.getHeight();
+		final StreakCorrector corrector = defaultParameters.getCorrector(width, height);
+
+		try {
+			final ImagePlus corrected = new ImagePlus("Corrected", img.getProcessor().duplicate());
+			corrector.process(corrected.getProcessor(), 1.0);
+			corrected.show();
+		} catch (final Exception e) {
+			IJ.log("Streak correction failed: " + e.getMessage());
+		}
 
 	}
 
@@ -62,7 +106,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 				.addKeyEventDispatcher(e -> {
 					if (e.getID() == KeyEvent.KEY_PRESSED) {
 						if (e.getKeyCode() == KeyEvent.VK_F1) {
-							new ShadingCorrection_Plugin().run(null);
+							new StreakCorrection_Plugin().run(null);
 						}
 					}
 					return false;
@@ -99,26 +143,53 @@ public class StreakCorrection_Plugin implements PlugIn {
 		final ImagePlus img = loadImage(client, params);
 
 		img.show();
+	}
 
-		final int width = img.getWidth();
-		final int height = img.getHeight();
 
-		// The following computations are based on the original code in net.imglib2.algorithm.fft.FourierTransform
-		final int extendedWidth = width + Math.max(Math.round(1.25f * width) - width, 12);
-		final int extendedHeight = height + Math.max(Math.round(1.25f * height) - height, 12);
-		final int fftWidth = FftReal.nfftFast(extendedWidth) / 2 + 1;
-		final int fftHeight = FftComplex.nfftFast(extendedHeight);
+	private static class StreakCorrectionParameters {
+		public int innerCutoff = 15;
+		public int bandWidth = 10;
+		public double angle = 0.0;
+		public int gaussianBlurRadius = 10;
+		public double initialThreshold = 7.0;
+		public double finalThreshold = 0.05;
+		public boolean localize = true;
 
-		final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(
-				Threads.numThreads() / 2,
-				fftWidth,
-				fftHeight,
-				18,
-				8,
-				0.0);
+		public StreakCorrectionParameters() {
+			// Default constructor
+		}
 
-		final ImagePlus corrected = loadImage(client, params);
-		corrector.process(corrected.getProcessor(), 1.0);
-		corrected.show();
+		public StreakCorrectionParameters(final StreakCorrectionParameters other) {
+			this.innerCutoff = other.innerCutoff;
+			this.bandWidth = other.bandWidth;
+			this.angle = other.angle;
+			this.gaussianBlurRadius = other.gaussianBlurRadius;
+			this.initialThreshold = other.initialThreshold;
+			this.finalThreshold = other.finalThreshold;
+			this.localize = other.localize;
+		}
+
+		public StreakCorrector getCorrector(final int width, final int height) {
+			// The following computations are based on the original code in net.imglib2.algorithm.fft.FourierTransform
+			final int extendedWidth = width + Math.max(Math.round(1.25f * width) - width, 12);
+			final int extendedHeight = height + Math.max(Math.round(1.25f * height) - height, 12);
+			final int fftWidth = FftReal.nfftFast(extendedWidth) / 2 + 1;
+			final int fftHeight = FftComplex.nfftFast(extendedHeight);
+
+			final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(
+					Threads.numThreads() / 2, fftWidth, fftHeight, innerCutoff, bandWidth, angle);
+
+			return corrector;
+		}
+
+		public void setFromDialog(final GenericDialog dialog) {
+			innerCutoff = (int) dialog.getNextNumber();
+			bandWidth = (int) dialog.getNextNumber();
+			angle = dialog.getNextNumber();
+			localize = dialog.getNextBoolean();
+			gaussianBlurRadius = (int) dialog.getNextNumber();
+			initialThreshold = dialog.getNextNumber();
+			finalThreshold = dialog.getNextNumber();
+		}
 	}
 }
