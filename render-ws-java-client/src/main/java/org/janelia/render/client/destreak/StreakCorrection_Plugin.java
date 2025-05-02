@@ -12,6 +12,7 @@ import ij.plugin.ImagesToStack;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector;
 import org.janelia.alignment.destreak.SmoothMaskStreakCorrector;
 import org.janelia.alignment.destreak.StreakCorrector;
 import org.janelia.alignment.spec.ChannelSpec;
@@ -29,6 +30,7 @@ import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 public class StreakCorrection_Plugin implements PlugIn {
@@ -51,9 +53,9 @@ public class StreakCorrection_Plugin implements PlugIn {
 		public int tileNumber = 0;
 	}
 
-	private static StreakCorrectionParameters defaultParameters = new StreakCorrectionParameters();
-	private static VariationParameters defaultVariationParameters = new VariationParameters();
-	private static String[] parameterChoices = new String[] { "None", "innerCutoff", "bandWidth", "angle",
+	private static final StreakCorrectionParameters defaultParameters = new StreakCorrectionParameters();
+	private static final VariationParameters defaultVariationParameters = new VariationParameters();
+	private static final String[] parameterChoices = new String[] { "None", "innerCutoff", "bandWidth", "angle",
 			"gaussianBlurRadius", "initialThreshold", "finalThreshold" };
 
 
@@ -96,7 +98,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 		}
 
 		try {
-			correctImage(defaultParameters, defaultVariationParameters);
+			correctImage();
 		} catch (final Exception e) {
 			IJ.log("Streak correction failed: " + e.getMessage());
 		}
@@ -122,7 +124,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 		if (rtsc == null) {
 			throw new IOException("Failed to load tile specs for " + params.stack + " z=" + params.z);
 		}
-		final TileSpec tileSpec = rtsc.getTileSpecs().stream().sorted().findFirst().orElseThrow();
+		final TileSpec tileSpec = rtsc.getTileSpecs().stream().sorted().collect(Collectors.toList()).get(params.tileNumber);
 		IJ.log("Show tile: " + tileSpec.getTileId() + " from z=" + params.z);
 
 		final ImageProcessorCache cache = ImageProcessorCache.DISABLED_CACHE;
@@ -133,29 +135,26 @@ public class StreakCorrection_Plugin implements PlugIn {
 		return new ImagePlus(tileSpec.getTileId(), ip);
 	}
 
-	private static void correctImage(
-			final StreakCorrectionParameters streakParameters,
-			final VariationParameters variationParameters
-	) {
+	private static void correctImage() {
 		final ImagePlus img = IJ.getImage();
 		final int width = img.getWidth();
 		final int height = img.getHeight();
-		IJ.log("Filter data string: " + streakParameters.filterDataString(width, height));
+		IJ.log("Filter data string: " + defaultParameters.filterDataString(width, height));
 
 
-		final String parameterToVary = parameterChoices[variationParameters.parameterIndex];
+		final String parameterToVary = parameterChoices[defaultVariationParameters.parameterIndex];
 		if (parameterToVary.equals("None")) {
-			final StreakCorrector corrector = streakParameters.getCorrector(width, height);
+			final StreakCorrector corrector = defaultParameters.getCorrector(width, height);
 			final ImagePlus corrected = new ImagePlus("Corrected", img.getProcessor().duplicate());
 			corrector.process(corrected.getProcessor(), 1.0);
 			corrected.show();
 		} else {
-			final int nSteps = variationParameters.nSteps;
+			final int nSteps = defaultVariationParameters.nSteps;
 			final List<ImagePlus> correctedImages = new ArrayList<>(2 * nSteps + 1);
 
 			for (int k = -nSteps; k <= nSteps; k++) {
-				final double increment = k * variationParameters.stepSize;
-				final StreakCorrectionParameters variedParameters = new StreakCorrectionParameters(streakParameters);
+				final double increment = k * defaultVariationParameters.stepSize;
+				final StreakCorrectionParameters variedParameters = new StreakCorrectionParameters(defaultParameters);
 				final double value = variedParameters.addToParameter(parameterToVary, increment);
 
 				final String title = parameterToVary + "=" + value;
@@ -216,7 +215,12 @@ public class StreakCorrection_Plugin implements PlugIn {
 			final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(
 					Threads.numThreads() / 2, fftDims.width, fftDims.height, innerCutoff, bandWidth, angle);
 
-			return corrector;
+			if (localize) {
+				return new LocalSmoothMaskStreakCorrector(
+						corrector, gaussianBlurRadius, (float) initialThreshold, (float) finalThreshold);
+			} else {
+				return corrector;
+			}
 		}
 
 		private static ImageDims getFftDimensions(final int width, final int height) {
@@ -229,7 +233,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 		}
 
 		public double addToParameter(final String parameter, final double increment) {
-			double newValue = 0.0;
+			final double newValue;
 			switch (parameter) {
 				case "innerCutoff":
 					innerCutoff = (int) (innerCutoff + increment);
@@ -275,8 +279,10 @@ public class StreakCorrection_Plugin implements PlugIn {
 
 		public String filterDataString(final int width, final int height) {
 			final ImageDims fftDims = getFftDimensions(width, height);
-			return fftDims.width + "," + fftDims.height + "," + innerCutoff + "," + bandWidth + "," + angle
+			final String method = localize ? "LocalSmoothMaskStreakCorrector" : "SmoothMaskStreakCorrector";
+			final String parameters = fftDims.width + "," + fftDims.height + "," + innerCutoff + "," + bandWidth + "," + angle
 					+ "," + gaussianBlurRadius + "," + initialThreshold + "," + finalThreshold;
+			return "method=" + method + " data=" + parameters;
 		}
 	}
 
