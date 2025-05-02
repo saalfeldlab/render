@@ -8,6 +8,7 @@ import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.gui.GenericDialog;
+import ij.plugin.ImagesToStack;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
 import org.janelia.alignment.ImageAndMask;
@@ -26,6 +27,8 @@ import javax.swing.SwingUtilities;
 import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class StreakCorrection_Plugin implements PlugIn {
@@ -49,9 +52,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 	}
 
 	private static StreakCorrectionParameters defaultParameters = new StreakCorrectionParameters();
-	private static int nSteps = 3;
-	private static double stepSize = 1.0;
-	private static int defaultChoice = 0;
+	private static VariationParameters defaultVariationParameters = new VariationParameters();
 	private static String[] parameterChoices = new String[] { "None", "innerCutoff", "bandWidth", "angle",
 			"gaussianBlurRadius", "initialThreshold", "finalThreshold" };
 
@@ -72,31 +73,33 @@ public class StreakCorrection_Plugin implements PlugIn {
 		dialog.addNumericField("Final threshold", defaultParameters.finalThreshold);
 
 		dialog.addMessage("Parameter variation");
-		dialog.addChoice("Parameter to vary", parameterChoices, parameterChoices[defaultChoice]);
-		dialog.addNumericField("Step size", stepSize);
-		dialog.addNumericField("Number of steps", nSteps);
+		dialog.addChoice("Parameter to vary", parameterChoices, parameterChoices[defaultVariationParameters.parameterIndex]);
+		dialog.addNumericField("Number of steps", defaultVariationParameters.nSteps);
+		dialog.addNumericField("Step size", defaultVariationParameters.stepSize);
 
 		dialog.showDialog();
+
+		defaultParameters.innerCutoff = (int) dialog.getNextNumber();
+		defaultParameters.bandWidth = (int) dialog.getNextNumber();
+		defaultParameters.angle = dialog.getNextNumber();
+		defaultParameters.localize = dialog.getNextBoolean();
+		defaultParameters.gaussianBlurRadius = (int) dialog.getNextNumber();
+		defaultParameters.initialThreshold = dialog.getNextNumber();
+		defaultParameters.finalThreshold = dialog.getNextNumber();
+
+		defaultVariationParameters.parameterIndex = dialog.getNextChoiceIndex();
+		defaultVariationParameters.nSteps = (int) dialog.getNextNumber();
+		defaultVariationParameters.stepSize = dialog.getNextNumber();
 
 		if (dialog.wasCanceled()) {
 			return;
 		}
 
-		defaultParameters.setFromDialog(dialog);
-
-		final ImagePlus img = IJ.getImage();
-		final int width = img.getWidth();
-		final int height = img.getHeight();
-		final StreakCorrector corrector = defaultParameters.getCorrector(width, height);
-
 		try {
-			final ImagePlus corrected = new ImagePlus("Corrected", img.getProcessor().duplicate());
-			corrector.process(corrected.getProcessor(), 1.0);
-			corrected.show();
+			correctImage(defaultParameters, defaultVariationParameters);
 		} catch (final Exception e) {
 			IJ.log("Streak correction failed: " + e.getMessage());
 		}
-
 	}
 
 	private static void addKeyListener() {
@@ -129,6 +132,45 @@ public class StreakCorrection_Plugin implements PlugIn {
 
 		return new ImagePlus(tileSpec.getTileId(), ip);
 	}
+
+	private static void correctImage(
+			final StreakCorrectionParameters streakParameters,
+			final VariationParameters variationParameters
+	) {
+		final ImagePlus img = IJ.getImage();
+		final int width = img.getWidth();
+		final int height = img.getHeight();
+		IJ.log("Filter data string: " + streakParameters.filterDataString(width, height));
+
+
+		final String parameterToVary = parameterChoices[variationParameters.parameterIndex];
+		if (parameterToVary.equals("None")) {
+			final StreakCorrector corrector = streakParameters.getCorrector(width, height);
+			final ImagePlus corrected = new ImagePlus("Corrected", img.getProcessor().duplicate());
+			corrector.process(corrected.getProcessor(), 1.0);
+			corrected.show();
+		} else {
+			final int nSteps = variationParameters.nSteps;
+			final List<ImagePlus> correctedImages = new ArrayList<>(2 * nSteps + 1);
+
+			for (int k = -nSteps; k <= nSteps; k++) {
+				final double increment = k * variationParameters.stepSize;
+				final StreakCorrectionParameters variedParameters = new StreakCorrectionParameters(streakParameters);
+				final double value = variedParameters.addToParameter(parameterToVary, increment);
+
+				final String title = parameterToVary + "=" + value;
+				final StreakCorrector corrector = variedParameters.getCorrector(width, height);
+				final ImagePlus corrected = new ImagePlus(title, img.getProcessor().duplicate());
+				corrector.process(corrected.getProcessor(), 1.0);
+				correctedImages.add(corrected);
+			}
+
+			final ImagePlus stack = ImagesToStack.run(correctedImages.toArray(new ImagePlus[0]));
+			stack.setTitle("Varying " + parameterToVary);
+			stack.show();
+		}
+	}
+
 
 	public static void main(final String[] args) throws IOException {
 		final StreakCorrection_Plugin.Parameters params = new StreakCorrection_Plugin.Parameters();
@@ -170,26 +212,91 @@ public class StreakCorrection_Plugin implements PlugIn {
 		}
 
 		public StreakCorrector getCorrector(final int width, final int height) {
+			final ImageDims fftDims = getFftDimensions(width, height);
+			final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(
+					Threads.numThreads() / 2, fftDims.width, fftDims.height, innerCutoff, bandWidth, angle);
+
+			return corrector;
+		}
+
+		private static ImageDims getFftDimensions(final int width, final int height) {
 			// The following computations are based on the original code in net.imglib2.algorithm.fft.FourierTransform
 			final int extendedWidth = width + Math.max(Math.round(1.25f * width) - width, 12);
 			final int extendedHeight = height + Math.max(Math.round(1.25f * height) - height, 12);
 			final int fftWidth = FftReal.nfftFast(extendedWidth) / 2 + 1;
 			final int fftHeight = FftComplex.nfftFast(extendedHeight);
-
-			final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(
-					Threads.numThreads() / 2, fftWidth, fftHeight, innerCutoff, bandWidth, angle);
-
-			return corrector;
+			return new ImageDims(fftWidth, fftHeight);
 		}
 
-		public void setFromDialog(final GenericDialog dialog) {
-			innerCutoff = (int) dialog.getNextNumber();
-			bandWidth = (int) dialog.getNextNumber();
-			angle = dialog.getNextNumber();
-			localize = dialog.getNextBoolean();
-			gaussianBlurRadius = (int) dialog.getNextNumber();
-			initialThreshold = dialog.getNextNumber();
-			finalThreshold = dialog.getNextNumber();
+		public double addToParameter(final String parameter, final double increment) {
+			double newValue = 0.0;
+			switch (parameter) {
+				case "innerCutoff":
+					innerCutoff = (int) (innerCutoff + increment);
+					newValue = innerCutoff;
+					break;
+				case "bandWidth":
+					bandWidth = (int) (bandWidth + increment);
+					newValue = bandWidth;
+					break;
+				case "angle":
+					angle += increment;
+					newValue = angle;
+					break;
+				case "gaussianBlurRadius":
+					gaussianBlurRadius = (int) (gaussianBlurRadius + increment);
+					newValue = gaussianBlurRadius;
+					break;
+				case "initialThreshold":
+					initialThreshold = (int) (initialThreshold + increment);
+					newValue = initialThreshold;
+					break;
+				case "finalThreshold":
+					finalThreshold += increment;
+					newValue = finalThreshold;
+					break;
+				default:
+					throw new IllegalArgumentException("Unknown parameter: " + parameter);
+			}
+			return newValue;
+		}
+
+		public String toString() {
+			return "StreakCorrectionParameters{" +
+					"innerCutoff=" + innerCutoff +
+					", bandWidth=" + bandWidth +
+					", angle=" + angle +
+					", gaussianBlurRadius=" + gaussianBlurRadius +
+					", initialThreshold=" + initialThreshold +
+					", finalThreshold=" + finalThreshold +
+					", localize=" + localize +
+					'}';
+		}
+
+		public String filterDataString(final int width, final int height) {
+			final ImageDims fftDims = getFftDimensions(width, height);
+			return fftDims.width + "," + fftDims.height + "," + innerCutoff + "," + bandWidth + "," + angle
+					+ "," + gaussianBlurRadius + "," + initialThreshold + "," + finalThreshold;
+		}
+	}
+
+	private static class VariationParameters {
+		public int nSteps = 3;
+		public double stepSize = 1.0;
+		public int parameterIndex = 0;
+
+		public VariationParameters() {
+			// Default constructor
+		}
+	}
+
+	private static class ImageDims {
+		public int width;
+		public int height;
+
+		public ImageDims(final int width, final int height) {
+			this.width = width;
+			this.height = height;
 		}
 	}
 }
