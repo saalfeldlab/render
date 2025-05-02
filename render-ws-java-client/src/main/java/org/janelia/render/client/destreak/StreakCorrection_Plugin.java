@@ -33,6 +33,11 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 
+/**
+ * ImageJ plugin to facilitate manual exploration of streak correction parameters.
+ * Run this from the command line with parameters according to the documentation and press F1 to open the GUI
+ * to specify parameters and run the streak correction.
+ */
 public class StreakCorrection_Plugin implements PlugIn {
 
 	private static class Parameters extends CommandLineParameters {
@@ -61,7 +66,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 
 	@Override
 	public void run(final String arg) {
-		final GenericDialog dialog = new GenericDialog("Fit shading correction");
+		final GenericDialog dialog = new GenericDialog("Streak correction");
 
 		dialog.addMessage("Streak correction parameters");
 		dialog.addNumericField("Inner cutoff", defaultParameters.innerCutoff);
