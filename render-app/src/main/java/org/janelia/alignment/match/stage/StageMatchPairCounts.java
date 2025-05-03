@@ -20,6 +20,7 @@ public class StageMatchPairCounts
     private long combinedPoorCoverage = 0;
     private long combinedPoorQuantity = 0;
     private long combinedSaved = 0;
+    private long startPositionSaved = 0;
 
     public long getTotalSaved() {
         return siftSaved + combinedSaved;
@@ -54,9 +55,13 @@ public class StageMatchPairCounts
         this.combinedSaved++;
     }
 
+    public void incrementStartPositionSaved() {
+        this.startPositionSaved++;
+    }
+
     public void logStats(final String stageName) {
         final int percentSaved = (int) ((getTotalSaved() / (double) getTotalProcessed()) * 100);
-        LOG.info("logStats: for stage {}, saved matches for {} out of {} pairs ({}%), siftPoorCoverage: {}, siftPoorQuantity: {}, siftSaved: {}, combinedPoorCoverage: {}, combinedPoorQuantity: {}, combinedSaved: {}, ",
+        LOG.info("logStats: for stage {}, saved matches for {} out of {} pairs ({}%), siftPoorCoverage: {}, siftPoorQuantity: {}, siftSaved: {}, combinedPoorCoverage: {}, combinedPoorQuantity: {}, combinedSaved: {}, startSaved: {},",
                  stageName,
                  getTotalSaved(),
                  getTotalProcessed(),
@@ -66,7 +71,8 @@ public class StageMatchPairCounts
                  siftSaved,
                  combinedPoorCoverage,
                  combinedPoorQuantity,
-                 combinedSaved);
+                 combinedSaved,
+                 startPositionSaved);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StageMatchPairCounts.class);

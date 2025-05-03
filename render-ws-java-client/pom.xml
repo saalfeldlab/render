@@ -74,6 +74,13 @@
                                         <exclude>LICENSE</exclude>
                                         <exclude>META-INF/*</exclude>
                                         <exclude>META-INF/versions/**</exclude>
+                                        <exclude>canonical.json</exclude>
+                                        <exclude>cosem.json</exclude>
+                                        <exclude>n5-compression.jq</exclude>
+                                        <exclude>n5.jq</exclude>
+                                        <exclude>zyx.zattrs.json</exclude>
+                                        <exclude>META-INF/services/io.grpc.LoadBalancerProvider</exclude>
+                                        <exclude>META-INF/services/io.grpc.NameResolverProvider</exclude>
                                     </excludes>
                                 </filter>
                                 <filter>

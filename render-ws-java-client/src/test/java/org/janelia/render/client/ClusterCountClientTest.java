@@ -18,16 +18,16 @@ public class ClusterCountClientTest {
     public static void main(final String[] args) {
 
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[]{
-                "--baseDataUrl", "http://renderer-dev:8080/render-ws/v1",
+                "--baseDataUrl", "http://em-services-1:8080/render-ws/v1",
                 "--owner", "hess_wafers_60_61",
                 "--project", "w60_serial_360_to_369",
-                "--stack", "w60_s360_r00_d20_gc_trim_b",
+                "--stack", "w60_s360_r00_d20_gc",
 //                "--stack", "w60_s360_r00_d20xr",
                 "--matchCollection", "w60_s360_r00_d20_gc_match",
                 "--maxSmallClusterSize", "0",
                 "--includeMatchesOutsideGroup",
                 "--maxLayersPerBatch", "1000",
-                "--maxOverlapLayers", "6"
+                "--maxOverlapLayers", "6",
 //                "--maxSmallClusterSizeToSave", "100"
         };
 

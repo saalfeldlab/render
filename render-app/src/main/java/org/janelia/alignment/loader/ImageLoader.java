@@ -11,7 +11,7 @@ import ij.process.ImageProcessor;
 public interface ImageLoader {
 
     enum LoaderType {
-        IMAGEJ_DEFAULT, IMAGEJ_TIFF_STACK, H5_SLICE, N5_SLICE, IMAGEJ_COMPOSITE, DYNAMIC_MASK
+        IMAGEJ_DEFAULT, IMAGEJ_DEFAULT_W_TIMEOUT, IMAGEJ_TIFF_STACK, H5_SLICE, N5_SLICE, IMAGEJ_COMPOSITE, DYNAMIC_MASK
     }
 
     boolean hasSame3DContext(final ImageLoader otherLoader);
@@ -34,6 +34,10 @@ public interface ImageLoader {
             switch (loaderType) {
 
                 case IMAGEJ_DEFAULT:
+                    break;
+
+                case IMAGEJ_DEFAULT_W_TIMEOUT:
+                    imageLoader = ImageJDefaultLoaderWithTimeout.INSTANCE;
                     break;
 
                 case IMAGEJ_TIFF_STACK:

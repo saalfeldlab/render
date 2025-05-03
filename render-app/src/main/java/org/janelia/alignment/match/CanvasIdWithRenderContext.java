@@ -1,9 +1,12 @@
 package org.janelia.alignment.match;
 
+import java.awt.Rectangle;
 import java.io.Serializable;
+import java.util.List;
 import java.util.Objects;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.TileSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -101,6 +104,21 @@ public class CanvasIdWithRenderContext
         }
 
         return renderParametersForRun;
+    }
+
+    public Rectangle getWorldBounds()
+            throws IllegalArgumentException {
+
+        if (originalRenderParameters == null) {
+            originalRenderParameters = RenderParameters.loadFromUrl(url);
+        }
+
+        final List<TileSpec> tileSpecList = originalRenderParameters.getTileSpecs();
+        if (tileSpecList.size() != 1) {
+            throw new IllegalArgumentException(tileSpecList.size() + "tile specs retrieved for " + this + " but only one is expected");
+        }
+        final TileSpec tileSpec = tileSpecList.get(0);
+        return tileSpec.toTileBounds().toRectangle();
     }
 
     @Override

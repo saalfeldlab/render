@@ -21,6 +21,7 @@ import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
+import org.janelia.alignment.match.stage.StageMatcher;
 import org.janelia.alignment.multisem.MultiSemUtilities;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.render.client.RenderDataClient;
@@ -90,12 +91,6 @@ public class MFOVPositionPairMatchData
         if (sameLayerPair != null) {
             this.groupIdToSameLayerPairForPosition.put(sameLayerPair.getP().getGroupId(), sameLayerPair);
         }
-    }
-
-    public Set<OrderedCanvasIdPair> getConnectedPairsForPosition() {
-        return allPairsForPosition.stream()
-                .filter(p -> ! unconnectedPairsForPosition.contains(p))
-                .collect(Collectors.toSet());
     }
 
     @Override
@@ -328,12 +323,7 @@ public class MFOVPositionPairMatchData
 
         LOG.info("deriveMatchesUsingStartPositions: entry, {}", this);
 
-        final int numberOfMatchPoints = 4;
-        final double[] derivedWeightList = new double[numberOfMatchPoints];
-        Arrays.fill(derivedWeightList, derivedMatchWeight);
-
         for (final OrderedCanvasIdPair pair : unconnectedPairsAtStart) {
-
             final CanvasId p = pair.getP();
             final TileSpec pTileSpec = idToTileSpec.get(p.getId());
             final Rectangle pWorldBounds = pTileSpec.toTileBounds().toRectangle();
@@ -342,40 +332,12 @@ public class MFOVPositionPairMatchData
             final TileSpec qTileSpec = idToTileSpec.get(q.getId());
             final Rectangle qWorldBounds = qTileSpec.toTileBounds().toRectangle();
 
-            final Rectangle worldOverlap = pWorldBounds.intersection(qWorldBounds);
-            LOG.info("deriveMatchesUsingStartPositions: overlap between {} and {} is {}",
-                     pTileSpec.getTileId(), qTileSpec.getTileId(), worldOverlap);
-
-            if (worldOverlap.height <= 0 || worldOverlap.width <= 0) {
-                throw new IOException("no overlap between " + pTileSpec.getTileId() + " and " + qTileSpec.getTileId());
-            }
-
-            final double[][] worldOverlapPoints = new double[][] {
-                    { worldOverlap.x, worldOverlap.y },
-                    { worldOverlap.x + worldOverlap.width, worldOverlap.y },
-                    { worldOverlap.x + worldOverlap.width, worldOverlap.y + worldOverlap.height },
-                    { worldOverlap.x, worldOverlap.y + worldOverlap.height }
-            };
-
-            final double[][] pMatches = new double[2][numberOfMatchPoints];
-            final double[][] qMatches = new double[2][numberOfMatchPoints];
-
-            for (int i = 0; i < numberOfMatchPoints; i++) {
-                final double[] worldOverlapCorner = worldOverlapPoints[i];
-                pMatches[0][i] = worldOverlapCorner[0] - pWorldBounds.x;
-                pMatches[1][i] = worldOverlapCorner[1] - pWorldBounds.y;
-                qMatches[0][i] = worldOverlapCorner[0] - qWorldBounds.x;
-                qMatches[1][i] = worldOverlapCorner[1] - qWorldBounds.y;
-            }
-
-            // constructor normalizes the p/q order so they will be flipped if necessary
-            final CanvasMatches startPositionMatches = new CanvasMatches(p.getGroupId(),
-                                                                         p.getId(),
-                                                                         q.getGroupId(),
-                                                                         q.getId(),
-                                                                         new Matches(pMatches,
-                                                                                     qMatches,
-                                                                                     derivedWeightList));
+            final CanvasMatches startPositionMatches =
+                    StageMatcher.generateStartPositionOverlapMatches(p,
+                                                                     pWorldBounds,
+                                                                     q,
+                                                                     qWorldBounds,
+                                                                     derivedMatchWeight);
             derivedMatchesList.add(startPositionMatches);
         }
 

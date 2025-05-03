@@ -362,7 +362,7 @@ public class N5Client {
                                            Arrays.asList(min[0], min[1], min[2]),
                                            NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-        ngAttributes.write(Paths.get(parameters.n5Path),
+        ngAttributes.write(parameters.n5Path,
                            Paths.get(fullScaleDatasetName));
 
         if (downsampleStackForReview) {
@@ -407,7 +407,7 @@ public class N5Client {
                                                Arrays.asList(min[0], min[1], min[2]),
                                                NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-            reviewNgAttributes.write(Paths.get(parameters.n5Path),
+            reviewNgAttributes.write(parameters.n5Path,
                                      Paths.get(fullScaleReviewDatasetName));
         }
 
@@ -482,7 +482,6 @@ public class N5Client {
                              blockSize,
                              dataType,
                              new GzipCompression());
-            n5.close();
         }
 
         updateFullScaleExportAttributes(parameters,
@@ -510,7 +509,6 @@ public class N5Client {
                 exportAttributesDatasetName = fullScaleDatasetPath.getParent().toString();
             }
             n5.setAttributes(exportAttributesDatasetName, attributes);
-            n5.close();
         }
 
         LOG.info("updateFullScaleExportAttributes: saved {}",

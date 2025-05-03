@@ -132,7 +132,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                                                                       stackResolutionUnit,
                                                                       rowCount,
                                                                       columnCount);
-        ngAttributes.write(Paths.get(basePath), Paths.get(datasetName));
+        ngAttributes.write(basePath, Paths.get(datasetName));
 
         final String dataSetPath = attributesPath.getParent().toString();
         final Path ccDataPath = Paths.get(dataSetPath, "cc_regional_data.json.gz");

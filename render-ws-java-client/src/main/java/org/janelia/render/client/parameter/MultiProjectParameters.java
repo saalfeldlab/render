@@ -8,7 +8,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.json.JsonUtils;
@@ -118,9 +120,9 @@ public class MultiProjectParameters
             final StackId stackId = stackWithZValues.getStackId();
             final RenderDataClient dataClient = defaultRenderClient.buildClient(stackId.getOwner(),
                                                                                 stackId.getProject());
-            final List<String> mFOVIdList = getMFOVNames(dataClient,
-                                                         stackId.getStack(),
-                                                         stackWithZValues.getFirstZ());
+            final List<String> mFOVIdList = getSortedMFOVNamesForZValues(dataClient,
+                                                                         stackId.getStack(),
+                                                                         stackWithZValues.getzValues());
 
             LOG.info("buildListOfStackMFOVWithAllZ: found {} MFOVs in {}", mFOVIdList.size(), stackWithZValues);
 
@@ -159,11 +161,25 @@ public class MultiProjectParameters
             new JsonUtils.Helper<>(MultiProjectParameters.class);
 
     /**
+     * @return list of distinct sorted MFOV names for the specified list of stack z-layer values.
+     */
+    public static List<String> getSortedMFOVNamesForZValues(final RenderDataClient renderDataClient,
+                                                            final String stack,
+                                                            final List<Double> zValues)
+            throws IOException {
+        final Set<String> mFOVNames = new HashSet<>();
+        for (final Double z : zValues) {
+            mFOVNames.addAll(getSortedMFOVNamesForOneLayer(renderDataClient, stack, z));
+        }
+        return mFOVNames.stream().sorted().collect(Collectors.toList());
+    }
+
+    /**
      * @return list of distinct sorted MFOV names for the specified stack z-layer.
      */
-    public static List<String> getMFOVNames(final RenderDataClient renderDataClient,
-                                            final String stack,
-                                            final Double z)
+    public static List<String> getSortedMFOVNamesForOneLayer(final RenderDataClient renderDataClient,
+                                                             final String stack,
+                                                             final Double z)
             throws IOException {
         return renderDataClient.getTileBounds(stack, z)
                 .stream()
