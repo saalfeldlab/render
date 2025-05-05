@@ -13,12 +13,8 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import org.apache.spark.SparkConf;
@@ -26,21 +22,35 @@ import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.ArgbRenderer;
+import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.ChannelSpec;
+import org.janelia.alignment.spec.LayoutData;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
+import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.ScapeParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
+import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import jakarta.annotation.Nonnull;
 
 /**
  * Spark client for rendering montage scapes for a range of layers within a stack.
@@ -49,7 +59,7 @@ import org.slf4j.LoggerFactory;
  * @author Stephan Saalfeld
  */
 public class ScapeClient
-        implements Serializable {
+        implements Serializable, AlignmentPipelineStep {
 
     public static class Parameters extends CommandLineParameters {
 
@@ -65,130 +75,8 @@ public class ScapeClient
                 required = true)
         public String stack;
 
-        @Parameter(
-                names = "--rootDirectory",
-                description = "Root directory for rendered layers (e.g. /groups/flyTEM/flyTEM/rendered_scapes)",
-                required = true)
-        public String rootDirectory;
-
-        @Parameter(
-                names = "--maxImagesPerDirectory",
-                description = "Maximum number of images to render in one directory"
-        )
-        public Integer maxImagesPerDirectory = 1000;
-
-        @Parameter(
-                names = "--scale",
-                description = "Scale for each rendered layer"
-        )
-        public Double scale = 0.02;
-
-        @Parameter(
-                names = "--zScale",
-                description = "Ratio of z to xy resolution for creating isotropic layer projections (omit to skip projection)"
-        )
-        public Double zScale;
-
-        @Parameter(
-                names = "--format",
-                description = "Format for rendered boxes"
-        )
-        public String format = Utils.JPEG_FORMAT;
-
-        @Parameter(
-                names = "--resolutionUnit",
-                description = "If specified (e.g. as 'nm') and format is tiff, " +
-                              "include resolution data in rendered tiff headers.  ")
-        public String resolutionUnit;
-
-        @Parameter(
-                names = "--doFilter",
-                description = "Use ad hoc filter to support alignment"
-        )
-        public boolean doFilter = false;
-
-        @Parameter(
-                names = "--filterListName",
-                description = "Apply this filter list to all rendering (overrides doFilter option)"
-        )
-        public String filterListName;
-
-        @Parameter(
-                names = "--channels",
-                description = "Specify channel(s) and weights to render (e.g. 'DAPI' or 'DAPI__0.7__TdTomato__0.3')"
-        )
-        public String channels;
-
-        @Parameter(
-                names = "--fillWithNoise",
-                description = "Fill image with noise before rendering to improve point match derivation"
-        )
-        public boolean fillWithNoise = false;
-
-        @Parameter(
-                names = "--useLayerBounds",
-                description = "Base each scape on layer bounds instead of on stack bounds (e.g. for unaligned data)",
-                arity = 1)
-        public boolean useLayerBounds = false;
-
-        @Parameter(
-                names = "--minX",
-                description = "Left most pixel coordinate in world coordinates.  Default is minX of stack (or layer when --useLayerBounds true)"
-        )
-        public Double minX;
-
-        @Parameter(
-                names = "--minY",
-                description = "Top most pixel coordinate in world coordinates.  Default is minY of stack (or layer when --useLayerBounds true)"
-        )
-        public Double minY;
-
-        @Parameter(
-                names = "--width",
-                description = "Width in world coordinates.  Default is maxX - minX of stack (or layer when --useLayerBounds true)"
-        )
-        public Double width;
-
-        @Parameter(
-                names = "--height",
-                description = "Height in world coordinates.  Default is maxY - minY of stack (or layer when --useLayerBounds true)"
-        )
-        public Double height;
-
-        File getSectionRootDirectory() {
-
-            final String scapeDir = "scape_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-            final Path sectionRootPath = Paths.get(rootDirectory,
-                                                   renderWeb.project,
-                                                   stack,
-                                                   scapeDir).toAbsolutePath();
-            return sectionRootPath.toFile();
-        }
-
-        double getEffectiveBound(final Double layerValue,
-                                 final Double stackValue,
-                                 final Double parameterValue) {
-            final double value;
-            if (parameterValue == null) {
-                if (useLayerBounds) {
-                    value = layerValue;
-                } else {
-                    value = stackValue;
-                }
-            } else {
-                value = parameterValue;
-            }
-            return value;
-        }
-
-        Double getMaxX(final double effectiveMinX) {
-            return (width == null) ? null : effectiveMinX + width;
-        }
-
-        Double getMaxY(final double effectiveMinY) {
-            return (height == null) ? null : effectiveMinY + height;
-        }
-
+        @ParametersDelegate
+        public ScapeParameters scape = new ScapeParameters();
     }
 
     public static void main(final String[] args) {
@@ -201,169 +89,164 @@ public class ScapeClient
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final ScapeClient client = new ScapeClient(parameters);
-                final SparkConf conf = new SparkConf().setAppName(ScapeClient.class.getSimpleName());
-                client.run(conf);
+                final ScapeClient client = new ScapeClient();
+                client.createContextAndRun(parameters, null);
             }
         };
         clientRunner.run();
     }
 
-    private final Parameters parameters;
-
-    public ScapeClient(final Parameters parameters) {
-        this.parameters = parameters;
+    public ScapeClient() {
     }
 
-    public void run(final SparkConf conf)
+    /**
+     * Create a spark context and run the client with the specified parameters.
+     *
+     * @param  scapeClientParameters         run parameters.
+     * @param  numberOfLocalConcurrentTasks  specify for local runs, leave as null for cluster runs.
+     *
+     * @throws IOException
+     *   if any errors occur while running the client.
+     */
+    public void createContextAndRun(final Parameters scapeClientParameters,
+                                    final Integer numberOfLocalConcurrentTasks) throws IOException {
+
+        SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
+
+        if (numberOfLocalConcurrentTasks != null) {
+            conf = conf.setMaster("local[" + numberOfLocalConcurrentTasks + "]")
+                    .set("spark.driver.bindAddress", "127.0.0.1")
+                    .set("spark.driver.host",        "127.0.0.1");
+        }
+
+        try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
+            LOG.info("createContextAndRun: appId is {}", sparkContext.getConf().getAppId());
+            exportStackToFilesystem(sparkContext,
+                                    scapeClientParameters.renderWeb.baseDataUrl,
+                                    new StackId(scapeClientParameters.renderWeb.owner,
+                                                scapeClientParameters.renderWeb.project,
+                                                scapeClientParameters.stack),
+                                    scapeClientParameters.layerRange,
+                                    scapeClientParameters.scape);
+        }
+    }
+
+    @Override
+    public void validatePipelineParameters(final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException {
+        AlignmentPipelineParameters.validateRequiredElementExists("scape",
+                                                                  pipelineParameters.getScape());
+    }
+
+    @Override
+    public void runPipelineStep(final JavaSparkContext sparkContext,
+                                final AlignmentPipelineParameters pipelineParameters)
+            throws IllegalArgumentException, IOException {
+
+        final StackIdNamingGroup rawNamingGroup = pipelineParameters.getRawNamingGroup();
+        final MultiProjectParameters multiProjectParameters = pipelineParameters.getMultiProject(rawNamingGroup);
+        final RenderDataClient sourceDataClient = multiProjectParameters.getDataClient();
+        final List<StackId> stackIdList = multiProjectParameters.stackIdWithZ.getStackIdList(sourceDataClient);
+
+        for (final StackId stackId : stackIdList) {
+            exportStackToFilesystem(sparkContext,
+                                    multiProjectParameters.baseDataUrl,
+                                    stackId,
+                                    new ZRangeParameters(),
+                                    pipelineParameters.getScape());
+        }
+    }
+
+    @Override
+    public AlignmentPipelineStepId getDefaultStepId() {
+        return AlignmentPipelineStepId.RENDER_SCAPE_IMAGES;
+    }
+
+    private static void exportStackToFilesystem(final JavaSparkContext sparkContext,
+                                                final String baseDataUrl,
+                                                final StackId stackId,
+                                                final ZRangeParameters layerRange,
+                                                final ScapeParameters scape)
             throws IOException {
 
-        final JavaSparkContext sparkContext = new JavaSparkContext(conf);
+        LOG.info("exportStackToFilesystem: entry, stackId={}", stackId);
 
-        final String sparkAppId = sparkContext.getConf().getAppId();
-        final String executorsJson = LogUtilities.getExecutorsApiJson(sparkAppId);
+        final String stack = stackId.getStack();
 
-        LOG.info("run: appId is {}, executors data is {}", sparkAppId, executorsJson);
+        final RenderDataClient sourceDataClient = new RenderDataClient(baseDataUrl,
+                                                                       stackId.getOwner(),
+                                                                       stackId.getProject());
 
-        final RenderDataClient sourceDataClient = parameters.renderWeb.getDataClient();
+        final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(stack);
+        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
 
-        final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(parameters.stack,
-                                                                                       parameters.layerRange.minZ,
-                                                                                       parameters.layerRange.maxZ);
+        final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(stack,
+                                                                                       layerRange.minZ,
+                                                                                       layerRange.maxZ);
 
         // projection process depends upon z ordering, so sort section data results by z ...
         sectionDataList.sort(SectionData.Z_COMPARATOR);
 
-        if (sectionDataList.size() == 0) {
+        if (sectionDataList.isEmpty()) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
-        final File sectionRootDirectory = parameters.getSectionRootDirectory();
+        final File sectionRootDirectory = scape.getSectionRootDirectory(stackId.getProject(), stack);
         FileUtil.ensureWritableDirectory(sectionRootDirectory);
 
         // save run parameters so that we can understand render context later if necessary
         final File parametersFile = new File(sectionRootDirectory, "scape_parameters.json");
-        JsonUtils.MAPPER.writeValue(parametersFile, parameters);
+        JsonUtils.MAPPER.writeValue(parametersFile, scape);
+
+        final double renderScale = scape.getScapeRenderScale(stackBounds,
+                                                             sectionDataList);
+
+        LOG.info("exportStackToFilesystem: set renderScale to {}", renderScale);
 
         final List<RenderSection> renderSectionList =
-                getRenderSections(sourceDataClient, sectionDataList, sectionRootDirectory);
+                getRenderSections(sectionDataList,
+                                  sectionRootDirectory,
+                                  stackBounds,
+                                  scape,
+                                  renderScale);
 
         final JavaRDD<RenderSection> rddSectionData = sparkContext.parallelize(renderSectionList);
 
-        final boolean isTiffWithResolutionOutput = parameters.resolutionUnit != null &&
-                                                   (Utils.TIFF_FORMAT.equals(parameters.format) ||
-                                                    Utils.TIF_FORMAT.equals(parameters.format));
+        final boolean isTiffWithResolutionOutput = scape.resolutionUnit != null &&
+                                                   (Utils.TIFF_FORMAT.equals(scape.format) ||
+                                                    Utils.TIF_FORMAT.equals(scape.format));
         final List<Double> stackResolutionValues;
         if (isTiffWithResolutionOutput) {
-            final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
             stackResolutionValues = stackMetaData.getCurrentResolutionValues();
         } else {
             stackResolutionValues = null;
         }
 
-        final Function<RenderSection, Integer> generateScapeFunction = renderSection -> {
+        final Function<RenderSection, TileSpec> generateScapeFunction =
+                buildSectionScapeGenerationFunction(baseDataUrl,
+                                                    stackId,
+                                                    scape,
+                                                    renderScale,
+                                                    isTiffWithResolutionOutput,
+                                                    stackResolutionValues);
 
-                    final Double z = renderSection.getFirstZ();
-                    LogUtilities.setupExecutorLog4j("z " + z);
+        final JavaRDD<TileSpec> rddLayerTileSpecs = rddSectionData.map(generateScapeFunction);
 
-                    final RenderDataClient workerDataClient = parameters.renderWeb.getDataClient();
+        final List<TileSpec> layerTileSpecList = rddLayerTileSpecs.collect();
 
-                    // set cache size to 50MB so that masks get cached but most of RAM is left for target image
-                    final int maxCachedPixels = 50 * 1000000;
-                    final ImageProcessorCache imageProcessorCache =
-                            new ImageProcessorCache(maxCachedPixels, false, false);
+        LOG.info("exportStackToFilesystem: collected tile specs");
+        LOG.info("exportStackToFilesystem: rendered {} layers", layerTileSpecList.size());
 
-                    final boolean isProjectionNeeded = renderSection.isProjectionNeeded();
-                    BufferedImage sectionImage = null;
-                    ImageStack projectedStack = null;
-
-                    for (final SectionData sectionData : renderSection.getSectionDataList()) {
-
-                        final String parametersUrl =
-                                workerDataClient.getRenderParametersUrlString(parameters.stack,
-                                                                              sectionData.getMinX(),
-                                                                              sectionData.getMinY(),
-                                                                              sectionData.getZ(),
-                                                                              sectionData.getWidth(),
-                                                                              sectionData.getHeight(),
-                                                                              parameters.scale,
-                                                                              parameters.filterListName);
-
-                        LOG.debug("generateScapeFunction: loading {}", parametersUrl);
-
-                        final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-                        renderParameters.setFillWithNoise(parameters.fillWithNoise);
-                        renderParameters.setDoFilter(parameters.doFilter);
-                        renderParameters.setChannels(parameters.channels);
-
-                        sectionImage = renderParameters.openTargetImage();
-
-                        if (isProjectionNeeded && (projectedStack == null)) {
-                            projectedStack = new ImageStack(sectionImage.getWidth(), sectionImage.getHeight());
-                        }
-
-                        ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
-
-                        if (isProjectionNeeded) {
-                            projectedStack.addSlice(new ColorProcessor(sectionImage).convertToByteProcessor());
-                        }
-                    }
-
-                    if (projectedStack != null) {
-
-                        LOG.debug("projecting {} sections", projectedStack.getSize());
-
-                        final ZProjector projector = new ZProjector(new ImagePlus("", projectedStack));
-                        projector.setMethod(ZProjector.AVG_METHOD);
-                        projector.doProjection();
-                        final ImageProcessor ip = projector.getProjection().getProcessor();
-                        sectionImage = ip.getBufferedImage();
-                    }
-
-                    final File sectionFile = renderSection.getOutputFile(parameters.format);
-
-                    if (isTiffWithResolutionOutput) {
-
-                        Utils.saveTiffImageWithResolution(sectionImage,
-                                                          stackResolutionValues,
-                                                          parameters.resolutionUnit,
-                                                          parameters.scale,
-                                                          sectionFile.getAbsolutePath());
-
-                    } else {
-
-                        Utils.saveImage(sectionImage,
-                                        sectionFile.getAbsolutePath(),
-                                        parameters.format,
-                                        true,
-                                        0.85f);
-
-                    }
-
-                    return 1;
-                };
-
-        final JavaRDD<Integer> rddLayerCounts = rddSectionData.map(generateScapeFunction);
-
-        final List<Integer> layerCountList = rddLayerCounts.collect();
-        long total = 0;
-        for (final Integer layerCount : layerCountList) {
-            total += layerCount;
+        if ((scape.isHackStackSuffixDefined()) && (! layerTileSpecList.isEmpty())) {
+            saveHackStack(sourceDataClient, stack, stackMetaData, layerTileSpecList, scape);
         }
-
-        LOG.info("run: collected stats");
-        LOG.info("run: generated boxes for {} layers", total);
-
-        sparkContext.stop();
     }
 
-    private List<RenderSection> getRenderSections(final RenderDataClient sourceDataClient,
-                                                  final List<SectionData> sectionDataList,
-                                                  final File sectionRootDirectory)
-            throws IOException {
-
-        final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
-        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+    private static List<RenderSection> getRenderSections(final List<SectionData> sectionDataList,
+                                                         final File sectionRootDirectory,
+                                                         final Bounds stackBounds,
+                                                         final ScapeParameters scapeParameters,
+                                                         final double renderScale) {
 
         int maxZCharacters = 3; // %3.1d => 1.0
         for (long z = 1; z < stackBounds.getMaxZ().longValue(); z = z * 10) {
@@ -371,7 +254,7 @@ public class ScapeClient
         }
         final String zFormatSpec = "%0" + maxZCharacters + ".1f";
 
-        final double zScale = parameters.zScale == null ? 0.0 : parameters.zScale / parameters.scale;
+        final double zScale = scapeParameters.zScale == null ? 0.0 : scapeParameters.zScale / renderScale;
 
         final List<RenderSection> renderSectionList = new ArrayList<>(sectionDataList.size());
 
@@ -385,36 +268,40 @@ public class ScapeClient
                 currentRenderSection = new RenderSection(currentZ,
                                                          renderSectionList.size(),
                                                          zFormatSpec,
-                                                         parameters.maxImagesPerDirectory,
+                                                         scapeParameters.maxImagesPerDirectory,
                                                          sectionRootDirectory);
                 renderSectionList.add(currentRenderSection);
             }
 
-            final double minX = parameters.getEffectiveBound(sectionData.getMinX(), stackBounds.getMinX(), parameters.minX);
-            final double minY = parameters.getEffectiveBound(sectionData.getMinY(), stackBounds.getMinY(), parameters.minY);
+            final double minX = scapeParameters.getEffectiveBound(sectionData.getMinX(),
+                                                                  stackBounds.getMinX(),
+                                                                  scapeParameters.minX);
+            final double minY = scapeParameters.getEffectiveBound(sectionData.getMinY(),
+                                                                  stackBounds.getMinY(),
+                                                                  scapeParameters.minY);
 
             final SectionData boundedSectionData =
                     new SectionData(sectionData.getSectionId(),
                                     sectionData.getZ(),
                                     sectionData.getTileCount(),
                                     minX,
-                                    parameters.getEffectiveBound(sectionData.getMaxX(),
-                                                                 stackBounds.getMaxX(),
-                                                                 parameters.getMaxX(minX)),
+                                    scapeParameters.getEffectiveBound(sectionData.getMaxX(),
+                                                                      stackBounds.getMaxX(),
+                                                                      scapeParameters.getMaxX(minX)),
                                     minY,
-                                    parameters.getEffectiveBound(sectionData.getMaxY(),
-                                                                 stackBounds.getMaxY(),
-                                                                 parameters.getMaxY(minY)));
+                                    scapeParameters.getEffectiveBound(sectionData.getMaxY(),
+                                                                      stackBounds.getMaxY(),
+                                                                      scapeParameters.getMaxY(minY)));
 
-            final long scaledSectionWidth = (long) (boundedSectionData.getWidth() * parameters.scale + 0.5);
-            final long scaledSectionHeight = (long) (boundedSectionData.getHeight() * parameters.scale + 0.5);
+            final long scaledSectionWidth = (long) (boundedSectionData.getWidth() * renderScale + 0.5);
+            final long scaledSectionHeight = (long) (boundedSectionData.getHeight() * renderScale + 0.5);
             final long sectionPixelCount = scaledSectionWidth * scaledSectionHeight;
 
             if (sectionPixelCount >= Integer.MAX_VALUE) {
                 final DecimalFormat formatter = new DecimalFormat("#,###");
                 throw new IllegalArgumentException("section " + boundedSectionData + " has " +
                                                    formatter.format(sectionPixelCount) + " pixels at scale " +
-                                                   parameters.scale + " which is greater than the maximum allowed " +
+                                                   renderScale + " which is greater than the maximum allowed " +
                                                    formatter.format(Integer.MAX_VALUE));
             }
 
@@ -424,7 +311,158 @@ public class ScapeClient
         return renderSectionList;
     }
 
-    public static class RenderSection implements Serializable {
+    @Nonnull
+    private static Function<RenderSection, TileSpec> buildSectionScapeGenerationFunction(final String baseDataUrl,
+                                                                                         final StackId stackId,
+                                                                                         final ScapeParameters scape,
+                                                                                         final double renderScale,
+                                                                                         final boolean isTiffWithResolutionOutput,
+                                                                                         final List<Double> stackResolutionValues) {
+        return renderSection -> {
+
+            final Double z = renderSection.getFirstZ();
+            LogUtilities.setupExecutorLog4j("z " + z);
+
+            final RenderDataClient workerDataClient = new RenderDataClient(baseDataUrl,
+                                                                           stackId.getOwner(),
+                                                                           stackId.getProject());
+
+            // set cache size to 50MB so that masks get cached but most of RAM is left for target image
+            final int maxCachedPixels = 50 * 1000000;
+            final ImageProcessorCache imageProcessorCache =
+                    new ImageProcessorCache(maxCachedPixels, false, false);
+
+            final boolean isProjectionNeeded = renderSection.isProjectionNeeded();
+            BufferedImage sectionImage = null;
+            ImageStack projectedStack = null;
+
+            for (final SectionData sectionData : renderSection.getSectionDataList()) {
+
+                final String parametersUrl =
+                        workerDataClient.getRenderParametersUrlString(stackId.getStack(),
+                                                                      sectionData.getMinX(),
+                                                                      sectionData.getMinY(),
+                                                                      sectionData.getZ(),
+                                                                      sectionData.getWidth(),
+                                                                      sectionData.getHeight(),
+                                                                      renderScale,
+                                                                      scape.filterListName);
+
+                LOG.debug("generateScapeFunction: loading {}", parametersUrl);
+
+                final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+                renderParameters.setFillWithNoise(scape.fillWithNoise);
+                renderParameters.setDoFilter(scape.doFilter);
+                renderParameters.setChannels(scape.channels);
+
+                sectionImage = renderParameters.openTargetImage();
+
+                if (isProjectionNeeded && (projectedStack == null)) {
+                    projectedStack = new ImageStack(sectionImage.getWidth(), sectionImage.getHeight());
+                }
+
+                ArgbRenderer.render(renderParameters, sectionImage, imageProcessorCache);
+
+                if (isProjectionNeeded) {
+                    projectedStack.addSlice(new ColorProcessor(sectionImage).convertToByteProcessor());
+                }
+            }
+
+            if (projectedStack != null) {
+
+                LOG.debug("projecting {} sections", projectedStack.getSize());
+
+                final ZProjector projector = new ZProjector(new ImagePlus("", projectedStack));
+                projector.setMethod(ZProjector.AVG_METHOD);
+                projector.doProjection();
+                final ImageProcessor ip = projector.getProjection().getProcessor();
+                sectionImage = ip.getBufferedImage();
+            }
+
+            final File sectionFile = renderSection.getOutputFile(scape.format);
+
+            if (isTiffWithResolutionOutput) {
+
+                Utils.saveTiffImageWithResolution(sectionImage,
+                                                  stackResolutionValues,
+                                                  scape.resolutionUnit,
+                                                  renderScale,
+                                                  sectionFile.getAbsolutePath());
+
+            } else {
+
+                Utils.saveImage(sectionImage,
+                                sectionFile.getAbsolutePath(),
+                                scape.format,
+                                true,
+                                0.85f);
+
+            }
+
+            return buildScapeFileTileSpec(stackId, z, sectionImage, sectionFile);
+        };
+    }
+
+    @Nonnull
+    private static TileSpec buildScapeFileTileSpec(final StackId stackId,
+                                                   final Double z,
+                                                   final BufferedImage sectionImage,
+                                                   final File sectionFile) {
+
+        final TileSpec tileSpec = new TileSpec();
+        final String sectionAndTileId = stackId.toDevString() + "::z" + z;
+
+        tileSpec.setTileId(sectionAndTileId);
+        tileSpec.setZ(z);
+
+        tileSpec.setLayout(new LayoutData(sectionAndTileId,
+                                          null,
+                                          null,
+                                          0,
+                                          0,
+                                          0.0,
+                                          0.0,
+                                          null));
+
+        tileSpec.setWidth(sectionImage == null ? 0.0 : (double) sectionImage.getWidth());
+        tileSpec.setHeight(sectionImage == null ? 0.0 : (double) sectionImage.getHeight());
+
+        // assume scape images are 8-bit unsigned data
+        tileSpec.setMinAndMaxIntensity(0.0, 255.0, null);
+
+        final ChannelSpec channelSpec = new ChannelSpec();
+        final String imageUrl = "file://" + sectionFile.getAbsolutePath();
+        final ImageAndMask imageAndMask = new ImageAndMask(imageUrl, null);
+        channelSpec.putMipmap(0, imageAndMask);
+        tileSpec.addChannel(channelSpec);
+        tileSpec.convertSingleChannelSpecToLegacyForm();  // simplify channel spec by converting it to legacy form
+
+        tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true, true);
+
+        return tileSpec;
+    }
+
+    private static void saveHackStack(final RenderDataClient sourceDataClient,
+                                      final String sourceStackName,
+                                      final StackMetaData sourceStackMetaData,
+                                      final List<TileSpec> layerTileSpecList,
+                                      final ScapeParameters scape) throws IOException {
+
+        final String hackStackName = sourceStackName + scape.hackStackSuffix;
+
+        sourceDataClient.setupDerivedStack(sourceStackMetaData, hackStackName);
+
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection();
+        for (final TileSpec tileSpec : layerTileSpecList) {
+            resolvedTiles.addTileSpecToCollection(tileSpec);
+        }
+
+        sourceDataClient.saveResolvedTiles(resolvedTiles, hackStackName, null);
+
+        sourceDataClient.setStackState(hackStackName, StackMetaData.StackState.COMPLETE);
+    }
+
+    private static class RenderSection implements Serializable {
 
         private final Double firstZ;
         private final List<SectionData> sectionDataList;

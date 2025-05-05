@@ -17,23 +17,23 @@ public class HackImageUrlPathClientTest {
 
     public static void main(final String[] args) {
 
-//        final String[] effectiveArgs = {
-//                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-//                "--owner", "hess_wafers_60_61",
-//                "--project", "w60_serial_360_to_369",
-//                "--stack", "w60_s360_r00_d30",
-//                "--targetStack", "w60_s360_r00_d30_gc",
-//                "--transformationType", "GOOGLE_CLOUD_WAFER_60"
-//        };
-//         HackImageUrlPathClient.main(effectiveArgs);
+        final String[] effectiveArgs = {
+                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                "--owner", "hess_wafers_60_61",
+                "--project", "w60_serial_360_to_369",
+                "--stack", "w60_s360_r00_d20_gc",
+                "--targetStack", "w60_s360_r00_d20_gc_timeout",
+                "--transformationType", "NO_PATH_TRANSFORMATION"
+        };
+         HackImageUrlPathClient.main(effectiveArgs);
 
-        for (int serialNumber = 360; serialNumber < 370; serialNumber++) {
-            final String stack = String.format("w60_s%d_r00_d30", serialNumber);
-            createGoogleCloudStackWithTimeoutLoader("hess_wafers_60_61",
-                                                    "w60_serial_360_to_369",
-                                                    stack,
-                                                    "_gc_timeout");
-        }
+//        for (int serialNumber = 360; serialNumber < 370; serialNumber++) {
+//            final String stack = String.format("w60_s%d_r00_d30", serialNumber);
+//            createGoogleCloudStackWithTimeoutLoader("hess_wafers_60_61",
+//                                                    "w60_serial_360_to_369",
+//                                                    stack,
+//                                                    "_gc_timeout");
+//        }
 
     }
 

@@ -40,7 +40,8 @@ public class HackImageUrlPathClient {
         HAYWORTH_CONTRAST,
         BASIC_BACKGROUND_CORRECTION,
         GOOGLE_CLOUD_TEST,
-        GOOGLE_CLOUD_WAFER_60;
+        GOOGLE_CLOUD_WAFER_60,
+        NO_PATH_TRANSFORMATION;
         public UnaryOperator<String> getOperator() {
             switch (this) {
                 case HAYWORTH_CONTRAST:
@@ -51,6 +52,8 @@ public class HackImageUrlPathClient {
                     return new GoogleCloudTestPathTransformation();
                 case GOOGLE_CLOUD_WAFER_60:
                     return new GoogleCloudWafer60PathTransformation();
+                case NO_PATH_TRANSFORMATION:
+                    return new NoPathTransformation();
                 default:
                     throw new IllegalArgumentException("unsupported transformation type: " + this);
             }
@@ -224,6 +227,14 @@ public class HackImageUrlPathClient {
                     .replace("/slabs/", "/")
                     .replace("/mfovs/", "/");
             return "https://storage.googleapis.com/janelia-spark-test/hess_wafer_60_data/" + hackedPath;
+        }
+    }
+
+    private static class NoPathTransformation
+            implements UnaryOperator<String> {
+        @Override
+        public String apply(final String path) {
+            return path;
         }
     }
 
