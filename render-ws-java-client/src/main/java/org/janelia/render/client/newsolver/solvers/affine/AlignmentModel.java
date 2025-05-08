@@ -44,17 +44,28 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 		return models.size();
 	}
 
+	/**
+	 * Get the model for the given name.
+	 *
+	 * @param name the name of the model
+	 * @return the model for the given name
+	 */
 	public Model<?> getModel(final String name) {
 		final int index = nameToIndex.get(name);
 		return models.get(index).asModel();
 	}
 
+	/**
+	 * Set the weights of the models. The weights are normalized to sum to 1.
+	 *
+	 * @param nameToWeight a map of model names to weights which do not need to sum to 1
+	 */
 	public void setWeights(final Map<String, Double> nameToWeight) {
 		if (!namesMatch(nameToWeight, nameToIndex))
 			throw new IllegalArgumentException("Model names do not match");
 
 		nameToWeight.forEach((name, weight) -> {
-			final Integer index = nameToIndex.get(name);
+			final int index = nameToIndex.get(name);
 			weights.set(index, weight);
 		});
 
@@ -70,7 +81,11 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 		return true;
 	}
 
-
+	/**
+	 * Interpolate the coefficients of the models to create an internal
+	 * affine representation of the compound model. This also normalizes
+	 * the weights to sum to 1.
+	 */
 	public void interpolate() {
 		// normalize weights
 		final double sum = weights.stream().mapToDouble(Double::doubleValue).sum();
