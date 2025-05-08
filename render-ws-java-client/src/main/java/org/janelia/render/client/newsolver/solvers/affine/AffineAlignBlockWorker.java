@@ -921,7 +921,15 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 			for (final Tile<?> tile : tileConfig.getTiles()) {
 				final AlignmentModel model = (AlignmentModel) tile.getModel();
-				model.setWeights(weights);
+
+				// Increase regularization for tiles with few matches, decrease for many matches
+				final Map<String, Double> dynamicWeights = new HashMap<>(weights);
+				final int nMatches = tile.getMatches().size();
+				final double steepness = -Math.log(1e-3) / nMatches;
+				final double factor = 1 - Math.exp(-steepness * nMatches);
+//				dynamicWeights.compute(AlignmentModelType.AFFINE.name(), (key, affine) -> affine * factor);
+
+				model.setWeights(dynamicWeights);
 			}
 
 			final int numIterations = blockOptimizerIterations.get(k);
