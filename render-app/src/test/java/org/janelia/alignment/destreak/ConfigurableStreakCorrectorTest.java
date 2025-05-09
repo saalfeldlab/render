@@ -3,12 +3,8 @@ package org.janelia.alignment.destreak;
 import ij.ImageJ;
 import ij.ImagePlus;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import ij.plugin.ImagesToStack;
 import org.janelia.alignment.filter.FilterSpec;
 import org.junit.Assert;
 import org.junit.Test;
@@ -147,102 +143,19 @@ public class ConfigurableStreakCorrectorTest {
         final String srcPath = "/Users/trautmane/Desktop/cellmap_cosem/jrc_hum-airway-14953vc/raw-images/" +
                                HUM_AIRWAY_FILE_NAMES[0]; // change file names index to test different images
 
-        final Map<String, Double> parameters = new HashMap<>();
-        parameters.put("numThreads", 12.0);
-        parameters.put("fftWidth", 5545.0);
-        parameters.put("fftHeight", 10920.0);
-        parameters.put("innerCutoff", 18.0);
-        parameters.put("bandWidth", 8.0);
-        parameters.put("angle", 0.0);
-        parameters.put("gaussianBlurRadius", 20.0);
-        parameters.put("initialThreshold", 7.0);
-        parameters.put("finalThreshold", 0.05);
-
-        // this shows the effect of varying the parameters on the correction process (symmetrically around the value set above)
-        // a good strategy for finding a good parameter set is to start with the actual correction parameters "innerCutoff" and "bandWidth"
-        // once good parameters for correction are found, the locality of correction can be adjusted by varying "gaussianBlurRadius",
-        // "initialThreshold" and "finalThreshold"; the angle only needs to be adjusted if the streaks are not vertical
-        displayParameterRange(srcPath, parameters, "innerCutoff", 3.0, 3, false);
-        displayParameterRange(srcPath, parameters, "bandWidth", 2.0, 3, false);
-        // displayParameterRange(srcPath, parameters, "angle", 0.0, 1.0, 3, false);
-        displayParameterRange(srcPath, parameters, "gaussianBlurRadius", 3.0, 3, true);
-        displayParameterRange(srcPath, parameters, "initialThreshold", 1.0, 3, true);
-        displayParameterRange(srcPath, parameters, "finalThreshold", 0.01, 3, true);
-
-        // this shows the final result of the correction process as well as the end result
-        displayParameterRange(srcPath, parameters, "numThreads", 1.0, 0, true);
         final ImagePlus imp = new ImagePlus(srcPath);
         imp.setTitle("Original");
         imp.show();
         // displayStreakCorrectionDetails(srcPath, HUM_AIRWAY_CORRECTOR);
-    }
 
-    /**
-     * Displays a range of parameter values for a given parameter. The parameter values are centered around the midpoint
-     * (the pre-set parameter value) and steps are taken in both directions from the midpoint. The results are displayed
-     * in a stack.
-     *
-     * @param srcPath the path to the source image.
-     * @param parameters a map of parameters for both {@link SmoothMaskStreakCorrector} and {@link LocalSmoothMaskStreakCorrector}.
-     * @param parameterToVary the name of the parameter to vary.
-     * @param stepsize the size of the steps to take in both directions from the midpoint.
-     * @param steps the number of steps to take in both directions from the midpoint.
-     * @param localizeCorrection whether to use {@link LocalSmoothMaskStreakCorrector} or not.
-     */
-    private static void displayParameterRange(
-            final String srcPath,
-            final Map<String, Double> parameters,
-            final String parameterToVary,
-            final double stepsize,
-            final int steps,
-            final boolean localizeCorrection) {
-
-        final int n = 2 * steps + 1;
-        final List<ImagePlus> images = new ArrayList<>(n);
-        final double midpoint = parameters.get(parameterToVary);
-        final double start = midpoint - steps * stepsize;
-        final double end = midpoint + steps * stepsize;
-        for (double val = start; val <= end; val += stepsize) {
-            parameters.put(parameterToVary, val);
-            final SmoothMaskStreakCorrector globalCorrector = new SmoothMaskStreakCorrector(
-                    parameters.get("numThreads").intValue(),
-                    parameters.get("fftWidth").intValue(),
-                    parameters.get("fftHeight").intValue(),
-                    parameters.get("innerCutoff").intValue(),
-                    parameters.get("bandWidth").intValue(),
-                    parameters.get("angle"));
-
-            final ImagePlus result;
-            if (localizeCorrection) {
-                final StreakCorrector corrector = new LocalSmoothMaskStreakCorrector(
-                        globalCorrector,
-                        parameters.get("gaussianBlurRadius").intValue(),
-                        parameters.get("initialThreshold").floatValue(),
-                        parameters.get("finalThreshold").floatValue());
-                result = computeStreakCorrectionResult(srcPath, corrector);
-            } else {
-                final StreakCorrector corrector = new LocalSmoothMaskStreakCorrector(
-                        globalCorrector,
-                        parameters.get("gaussianBlurRadius").intValue(),
-                        parameters.get("initialThreshold").floatValue(),
-                        parameters.get("finalThreshold").floatValue());
-                result = computeStreakCorrectionResult(srcPath, corrector);
-            }
-            images.add(result);
-        }
-
-        final ImagePlus stack = ImagesToStack.run(images.toArray(new ImagePlus[0]));
-        stack.setTitle("Varying " + parameterToVary);
-        stack.show();
-
-        parameters.put(parameterToVary, midpoint);
-    }
-
-    private static ImagePlus computeStreakCorrectionResult(final String srcPath, final StreakCorrector corrector) {
-        final ImagePlus imp = new ImagePlus(srcPath);
-        corrector.process(imp.getProcessor(), 1.0);
-        imp.setTitle(corrector.toParametersMap().toString());
-        return imp;
+        final SmoothMaskStreakCorrector globalCorrector = new SmoothMaskStreakCorrector(8, 5545,
+                10920, 18, 8, 0.0);
+        final StreakCorrector corrector = new LocalSmoothMaskStreakCorrector(
+                globalCorrector, 20, 7, 0.05f);
+        final ImagePlus corrected = new ImagePlus(srcPath);
+        corrector.process(corrected.getProcessor(), 1.0);
+        corrected.setTitle(corrector.toParametersMap().toString());
+        corrected.show();
     }
 
     // this shows all steps of the correction process

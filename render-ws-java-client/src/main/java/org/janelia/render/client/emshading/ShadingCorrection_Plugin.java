@@ -144,13 +144,8 @@ public class ShadingCorrection_Plugin implements PlugIn {
         new Thread(() -> KeyboardFocusManager.getCurrentKeyboardFocusManager()
 				.addKeyEventDispatcher(e -> {
 					if (e.getID() == KeyEvent.KEY_PRESSED) {
-						switch (e.getKeyCode()) {
-							case KeyEvent.VK_F1:
-								new ShadingCorrection_Plugin().run(null);
-								break;
-							case KeyEvent.VK_F2:
-								System.out.println("F2 key pressed (not assigned)");
-								break;
+						if (e.getKeyCode() == KeyEvent.VK_F1) {
+							new ShadingCorrection_Plugin().run(null);
 						}
 					}
 					return false;
