@@ -53,6 +53,11 @@ public class TileBounds extends Bounds {
                               shiftedBounds.getMaxX(), shiftedBounds.getMaxY());
     }
 
+    @Override
+    public String toString() {
+        return tileId + ": " + super.toString();
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }

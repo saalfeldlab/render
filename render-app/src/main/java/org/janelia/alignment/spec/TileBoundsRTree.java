@@ -50,7 +50,11 @@ public class TileBoundsRTree {
             addTile(tileBounds);
         }
 
-        LOG.debug("constructed tree for {} tiles", tileBoundsList.size());
+        LOG.debug("constructed tree for {} tiles in z {}", tileBoundsList.size(), z);
+    }
+
+    public Double getZ() {
+        return z;
     }
 
     /**
