@@ -21,7 +21,6 @@ public class MFOVOffsetClientTest {
                 "--project", "w60_serial_360_to_369",
                 "--stack", "w60_s360_r00_d20_gc_mfov_32_z_1_to_20",
                 "--matchCollection", "w60_s360_r00_d20_gc_match",
-                "--mopMaxNumberOfConnectedTilesPerMFOV", "2",
                 "--mopMaxNeighborPixelDistance", "1000",
                 "--mopMaxNeighborCount", "10",
         };

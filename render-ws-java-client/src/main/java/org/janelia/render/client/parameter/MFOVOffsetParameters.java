@@ -16,12 +16,6 @@ public class MFOVOffsetParameters
     public Integer minimumNumberOfTilesForIncludedMFOVs;
 
     @Parameter(
-            names = "--mopMaxNumberOfConnectedTilesPerMFOV",
-            description = "Maximum number of tiles to include in the best connected lists built for each MFOV.",
-            required = true)
-    public Integer maxNumberOfConnectedTilesPerMFOV;
-
-    @Parameter(
             names = "--mopMaxNeighborPixelDistance",
             description = "Maximum distance in pixels from each best connected tile to search for neighbors.")
     public Integer maxNeighborPixelDistance;

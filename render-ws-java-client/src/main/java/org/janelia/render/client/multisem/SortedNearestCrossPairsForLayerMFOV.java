@@ -192,8 +192,18 @@ public class SortedNearestCrossPairsForLayerMFOV
         final String stackName = stackId.getStack();
         final List<Double> zValues = stackWithZ.getzValues();
 
-        Map<LayerMFOV, List<TileBounds>> currentLayerMfovToMostConnectedTileBoundsMap =
-                mfovOffsetSupportData.buildFirstLayerMfovToBestConnectedTileBoundsMap(mfovOffsetParameters.maxNumberOfConnectedTilesPerMFOV);
+        Map<LayerMFOV, List<TileBounds>> currentLayerMfovToMostConnectedTileBoundsMap = new HashMap<>();
+
+        // grab the bounds for the best connected tile in each first layer MFOV and
+        // wrap each bounds object in a list so that it can be used in the same manner
+        // as the bounds pulled for all subsequent layers
+        final Map<LayerMFOV, TileBounds> firstLayerMfovToTileBoundsMap =
+                mfovOffsetSupportData.buildFirstLayerMfovToBestConnectedTileBoundsMap();
+        for (final Map.Entry<LayerMFOV, TileBounds> entry : firstLayerMfovToTileBoundsMap.entrySet()) {
+            final List<TileBounds> list = new ArrayList<>();
+            list.add(entry.getValue());
+            currentLayerMfovToMostConnectedTileBoundsMap.put(entry.getKey(), list);
+        }
 
         for (int nextZIndex = 1; nextZIndex < zValues.size(); nextZIndex++) {
 

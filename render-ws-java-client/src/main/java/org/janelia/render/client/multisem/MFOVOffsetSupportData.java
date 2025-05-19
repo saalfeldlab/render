@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.multisem.LayerMFOV;
@@ -64,53 +63,41 @@ public class MFOVOffsetSupportData
     }
 
     /**
-     * @param  maxNumberOfTilesPerMFOV  maximum number of tiles to include in the best connected lists
-     *                                  built for each MFOV.
-     *
-     * @return a map of first layer MFOV identifiers to lists of tile bounds for the best connected tiles in each MFOV.
+     * @return a map of first layer MFOV identifiers to the tile bounds for the best connected tile in each MFOV.
      */
-    public Map<LayerMFOV, List<TileBounds>> buildFirstLayerMfovToBestConnectedTileBoundsMap(final int maxNumberOfTilesPerMFOV) {
-        final Map<LayerMFOV, List<TileBounds>> map = new HashMap<>();
+    public Map<LayerMFOV, TileBounds> buildFirstLayerMfovToBestConnectedTileBoundsMap() {
+        final Map<LayerMFOV, TileBounds> map = new HashMap<>();
         for (final LayerMFOV firstLayerMFOV : firstLayerMFOVToTileBoundsMap.keySet()) {
             map.put(firstLayerMFOV,
-                    getTileBoundsWithBestConnections(firstLayerMFOV, maxNumberOfTilesPerMFOV));
+                    getTileBoundsWithBestConnections(firstLayerMFOV));
         }
         return map;
     }
 
     /**
-     * @return the connection score for the specified tile which is a negative number so that
-     *         more connected tiles are sorted ahead of less connected tiles.
+     * @return the connection score for the specified tile.  Tiles with better connections will have a higher scores.
      */
     public int getConnectionScoreForTile(final String tileId) {
         final int pairCountWeight = 1000000; // ensure that pair count is more important than match count
-        return -1 * ((tileIdToSameLayerPairCountMap.getOrDefault(tileId, 0) * pairCountWeight) +
-                     tileIdToSameLayerMatchCountMap.getOrDefault(tileId, 0));
+        return (tileIdToSameLayerPairCountMap.getOrDefault(tileId, 0) * pairCountWeight) +
+               tileIdToSameLayerMatchCountMap.getOrDefault(tileId, 0);
     }
 
     /**
-     * @param  firstLayerMFOV    identifies an MFOV in the first z layer for which tile bounds should be returned.
-     * @param  maxNumberOfTiles  maximum number of tiles to include in the returned list.
-     *
-     * @return a list of tile bounds for the given layer MFOV, sorted by the number of connections
+     * @return bounds for the tile in the specified layer MFOV that is best connected.
      */
-    private List<TileBounds> getTileBoundsWithBestConnections(final LayerMFOV firstLayerMFOV,
-                                                              final int maxNumberOfTiles) {
-        final List<TileBounds> bestConnectedTileBounds;
+    private TileBounds getTileBoundsWithBestConnections(final LayerMFOV firstLayerMFOV) {
+        TileBounds bestConnectedTileBounds = null;
         if (firstLayerMFOVToTileBoundsMap.containsKey(firstLayerMFOV)) {
 
             bestConnectedTileBounds = firstLayerMFOVToTileBoundsMap.get(firstLayerMFOV).stream()
                     // sort by number of pairs * pairCountWeight + number of matches
-                    .sorted((tb1, tb2) ->
-                                    Integer.compare(getConnectionScoreForTile(tb1.getTileId()),
-                                                    getConnectionScoreForTile(tb2.getTileId())))
-                    .limit(maxNumberOfTiles)
-                    .collect(Collectors.toList());
+                    .max((tb1, tb2) ->
+                                 Integer.compare(getConnectionScoreForTile(tb1.getTileId()),
+                                                 getConnectionScoreForTile(tb2.getTileId())))
+                    .orElse(null);
 
-        } else {
-            bestConnectedTileBounds = new ArrayList<>();
         }
-
         return bestConnectedTileBounds;
     }
 
