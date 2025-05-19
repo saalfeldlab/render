@@ -56,6 +56,48 @@ public class TileBoundsRTreeTest {
     }
 
     @Test
+    public void testFindTilesNearestToBox() {
+
+        final TileBounds scan4TileBounds =
+                new TileBounds("w60_magc0160_scan004_m0032_r04_s69", "1.0",1.0,
+                               104804.0, 40381.0, 106808.0, 42129.0);
+
+        final TileBounds[] scan5Arr = {
+                new TileBounds("w60_magc0160_scan005_m0032_r12_s42", "2.0",2.0, 107622.0, 41994.0, 109626.0, 43742.0),
+                new TileBounds("w60_magc0160_scan005_m0032_r11_s43", "2.0",2.0, 105737.0, 41994.0, 107741.0, 43742.0),
+                new TileBounds("w60_magc0160_scan005_m0032_r10_s44", "2.0",2.0, 103852.0, 41993.0, 105856.0, 43741.0),
+                new TileBounds("w60_magc0160_scan005_m0032_r09_s45", "2.0",2.0, 101966.0, 41991.0, 103970.0, 43739.0),
+                new TileBounds("w60_magc0160_scan005_m0032_r05_s68", "2.0",2.0, 106682.0, 40382.0, 108686.0, 42130.0),
+                new TileBounds("w60_magc0160_scan005_m0032_r04_s69", "2.0",2.0, 104795.0, 40382.0, 106799.0, 42130.0),
+                new TileBounds("w60_magc0160_scan005_m0032_r03_s70", "2.0",2.0, 102909.0, 40380.0, 104913.0, 42128.0)
+        };
+
+        final TileBoundsRTree scan5RTree = new TileBoundsRTree(2.0, List.of(scan5Arr));
+        final List<TileBounds> neighbors = scan5RTree.findTilesNearestToBox(scan4TileBounds.getMinX(),
+                                                                            scan4TileBounds.getMinY(),
+                                                                            scan4TileBounds.getMaxX(),
+                                                                            scan4TileBounds.getMaxY(),
+                                                                            1000, 10);
+
+        final String[] expectedOrderedTileIds = {
+                "w60_magc0160_scan005_m0032_r04_s69", // -3485265
+                "w60_magc0160_scan005_m0032_r05_s68", //  -220122
+                "w60_magc0160_scan005_m0032_r03_s70", //  -190423
+                "w60_magc0160_scan005_m0032_r11_s43", //  -144585
+                "w60_magc0160_scan005_m0032_r10_s44", //  -143072
+                "w60_magc0160_scan005_m0032_r12_s42", //        5
+                "w60_magc0160_scan005_m0032_r09_s45", //        6
+        };
+
+        for (int i = 0; i < expectedOrderedTileIds.length; i++) {
+            final TileBounds neighbor = neighbors.get(i);
+            Assert.assertEquals("incorrect tileId for neighbor " + i,
+                                expectedOrderedTileIds[i], neighbor.getTileId());
+        }
+
+    }
+
+    @Test
     public void testGetCircleNeighbors() {
 
         final TileBounds z1tile0Bounds = getTileBounds(0, z);

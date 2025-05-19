@@ -10,8 +10,11 @@ import com.github.davidmoten.rtree.geometry.Rectangle;
 import java.awt.geom.Area;
 import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -157,7 +160,9 @@ public class TileBoundsRTree {
     }
 
     /**
-     * @return nearest tiles to the specified bounding box, in ascending order of distance.
+     * @return nearest tiles to the specified bounding box.
+     *         Tiles with the most overlap will be listed first, followed by tiles with less overlap.
+     *         Tiles with no overlap will be listed last in ascending order of distance.
      */
     public List<TileBounds> findTilesNearestToBox(final double minX,
                                                   final double minY,
@@ -168,7 +173,27 @@ public class TileBoundsRTree {
 
         final Rectangle rectangle = Geometries.rectangle(minX, minY, maxX, maxY);
         final Observable<Entry<TileBounds, Geometry>> searchResults = tree.nearest(rectangle, maxDistance, maxCount);
-        return convertResultsToList(searchResults);
+        final List<TileBounds> nearestTiles = convertResultsToList(searchResults);
+        return sortByOverlappingAreaThenByDistance(rectangle, nearestTiles);
+    }
+
+    private static List<TileBounds> sortByOverlappingAreaThenByDistance(final Rectangle fromRectangle,
+                                                                        final List<TileBounds> nearestTiles) {
+
+        final Map<TileBounds, Integer> boundsToSortFactor = new HashMap<>();
+        for (int i = 0; i < nearestTiles.size(); i++) {
+            final TileBounds tb = nearestTiles.get(i);
+            final Rectangle toRectangle = Geometries.rectangle(tb.getMinX(), tb.getMinY(), tb.getMaxX(), tb.getMaxY());
+            int sortValue = -1 * (int) fromRectangle.intersectionArea(toRectangle);
+            if (sortValue == 0) {
+                sortValue = i;
+            }
+            boundsToSortFactor.put(tb, sortValue);
+        }
+
+        nearestTiles.sort(Comparator.comparingInt(boundsToSortFactor::get));
+
+        return nearestTiles;
     }
 
     /**
