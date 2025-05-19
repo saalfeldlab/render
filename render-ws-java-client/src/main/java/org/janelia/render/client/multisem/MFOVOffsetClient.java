@@ -203,6 +203,8 @@ public class MFOVOffsetClient {
 
             }
 
+            break; // TODO: continue for each z layer
+
         }
     }
 
@@ -228,6 +230,7 @@ public class MFOVOffsetClient {
                                               4.0,
                                               null,
                                               MatchFilter.FilterType.SINGLE_SET);
+        matchDerivationParameters.matchFullScaleCoverageRadius = 300.0;
 
         return new FeatureAndMatchParameters(siftFeatureParameters,
                                              matchDerivationParameters,
