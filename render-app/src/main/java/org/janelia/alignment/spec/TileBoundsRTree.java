@@ -174,17 +174,12 @@ public class TileBoundsRTree {
         final Rectangle rectangle = Geometries.rectangle(minX, minY, maxX, maxY);
         final Observable<Entry<TileBounds, Geometry>> searchResults = tree.nearest(rectangle, maxDistance, maxCount);
         final List<TileBounds> nearestTiles = convertResultsToList(searchResults);
-        return sortByOverlappingAreaThenByDistance(rectangle, nearestTiles);
-    }
-
-    private static List<TileBounds> sortByOverlappingAreaThenByDistance(final Rectangle fromRectangle,
-                                                                        final List<TileBounds> nearestTiles) {
 
         final Map<TileBounds, Integer> boundsToSortFactor = new HashMap<>();
         for (int i = 0; i < nearestTiles.size(); i++) {
             final TileBounds tb = nearestTiles.get(i);
             final Rectangle toRectangle = Geometries.rectangle(tb.getMinX(), tb.getMinY(), tb.getMaxX(), tb.getMaxY());
-            int sortValue = -1 * (int) fromRectangle.intersectionArea(toRectangle);
+            int sortValue = -1 * (int) rectangle.intersectionArea(toRectangle);
             if (sortValue == 0) {
                 sortValue = i;
             }
