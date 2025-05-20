@@ -111,6 +111,10 @@ public class SortedNearestCrossPairsForLayerMFOV
 
     }
 
+    public LayerMFOV getLayerMFOV() {
+        return layerMFOV;
+    }
+
     /**
      * @return list of tile bounds
      */
