@@ -56,6 +56,10 @@ public class MatchTrial implements Serializable {
         return parameters;
     }
 
+    public boolean hasMatches() {
+        return matches != null && ! matches.isEmpty();
+    }
+
     public List<Matches> getMatches() {
         return matches;
     }
