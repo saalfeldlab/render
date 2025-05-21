@@ -23,6 +23,8 @@ public class MFOVOffsetClientTest {
                 "--matchCollection", "w60_s360_r00_d20_gc_match",
                 "--mopMaxNeighborPixelDistance", "1000",
                 "--mopMaxNeighborCount", "10",
+                "--mopMinNumberOfMatchInliers", "10",
+                "--mopRenderScale", "0.4"
         };
 
         MFOVOffsetClient.main(effectiveArgs);

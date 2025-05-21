@@ -3,13 +3,18 @@ package org.janelia.render.client.multisem;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
-import org.janelia.alignment.match.CanvasMatches;
+import mpicbg.models.PointMatch;
+import mpicbg.models.TranslationModel2D;
+
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchFilter;
 import org.janelia.alignment.match.MatchTrial;
-import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.parameters.FeatureAndMatchParameters;
@@ -27,6 +32,8 @@ import org.janelia.render.client.parameter.MFOVOffsetParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.janelia.alignment.match.CanvasMatchResult.convertMatchesToPointMatchList;
 
 /**
  * Java client that looks at potential tile pairs between MFOVs in adjacent z layers
@@ -120,7 +127,7 @@ public class MFOVOffsetClient {
                                           mfovOffsetParameters.minimumNumberOfTilesForIncludedMFOVs);
         mfovOffsetSupportData.buildCollections(renderDataClient, matchDataClient);
 
-        // 2. Select the top connected first layer tiles in each MFOV and use their position to
+        // 2. Select the top connected first layer tile in each MFOV and use its position to
         //    derive ordered lists of potential cross layer match pairs.
         //    Potential MFOV cross layer pairs are only built for adjacent layers (e.g. z 1 to 2, 2 to 3, etc.).
         final List<SortedNearestCrossPairsForLayerMFOV> sortedNearestPairsList =
@@ -129,46 +136,75 @@ public class MFOVOffsetClient {
                                                                     mfovOffsetParameters,
                                                                     mfovOffsetSupportData);
 
-        // TODO: MFOV offset steps 3 and 4
-
         // 3. For each ordered list of potential cross layer match pairs, find the first pair
-        //    that has matches and calculate the translation offset for that pair.
-
-        // 4. Calculate the offset for each MFOV of each z layer
-        //    by averaging the layer MFOV's match translation offsets.
-
-        final int minNumberOfMatchInliers = 10; // TODO: make this a parameter
-        final double renderScale = 0.4;         // TODO: make this a parameter
+        //    that has matches and save them to calculate a translation offset later.
 
         // TODO: parallelize processing for each sortedNearestPairs object in list
 
+        final FeatureAndMatchParameters crossFeatureAndMatchParameters =
+                buildFeatureAndMatchParameters(mfovOffsetParameters.renderScale,
+                                               mfovOffsetParameters.minNumberOfMatchInliers,
+                                               MatchFilter.FilterType.SINGLE_SET);
+
+        final Map<Double, Map<LayerMFOV, List<PointMatch>>> layerZToMatchesMap = new HashMap<>();
+
         final int sortedNearestPairsCount = sortedNearestPairsList.size();
         for (int i = 0; i < sortedNearestPairsCount; i++) {
-
             final SortedNearestCrossPairsForLayerMFOV nearestCrossPairs = sortedNearestPairsList.get(i);
             final LayerMFOV layerMFOV = nearestCrossPairs.getLayerMFOV();
 
-            LOG.info("buildOneOffsetStack: process {} ({} of {})",
+            LOG.info("buildOneOffsetStack: derive matches for {} ({} of {})",
                      layerMFOV, (i+1), sortedNearestPairsCount);
 
-            final Matches matches = deriveMatchesForLayerMFOV(stackWithZ,
-                                                              renderDataClient,
-                                                              mfovOffsetSupportData,
-                                                              nearestCrossPairs,
-                                                              minNumberOfMatchInliers,
-                                                              renderScale);
+            final List<PointMatch> layerMFOVMatches =
+                    deriveMatchesForLayerMFOV(stackWithZ,
+                                              renderDataClient,
+                                              mfovOffsetSupportData,
+                                              nearestCrossPairs,
+                                              mfovOffsetParameters.renderScale,
+                                              crossFeatureAndMatchParameters);
 
-            final CanvasMatches canvasMatches = new CanvasMatches(String.valueOf(layerMFOV.getZ()),
-                                                                  layerMFOV.getName(),
-                                                                  String.valueOf(layerMFOV.getZ() + 1.0),
-                                                                  layerMFOV.getName(),
-                                                                  matches);
-            System.out.println(canvasMatches.toJson());
-
-            // TODO: combine matches from all MFOVs and run ransac, take inliers from all, should be a high number (> 95%) and pull translation vector from that
-
+            final Map<LayerMFOV, List<PointMatch>> layerMFOVToMatchesMap =
+                    layerZToMatchesMap.computeIfAbsent(layerMFOV.getZ(), k -> new HashMap<>());
+            layerMFOVToMatchesMap.put(layerMFOV, layerMFOVMatches);
         }
 
+        // 4. Calculate the offset for each MFOV of each z layer
+        //    by combining matches from all MFOVs and then run ransac filter taking the inliers.
+        //    The inliers should be a high number (> 95%).
+        //    Pull translation vector from the inliers.
+
+        final MatchFilter singleSetMatchFilter = new MatchFilter(crossFeatureAndMatchParameters.getMatchDerivationParameters(),
+                                                                 mfovOffsetParameters.renderScale);
+
+        final MatchDerivationParameters aggregatedLayerMatchDerivationParameters =
+                buildFeatureAndMatchParameters(mfovOffsetParameters.renderScale,
+                                               mfovOffsetParameters.minNumberOfMatchInliers,
+                                               MatchFilter.FilterType.AGGREGATED_CONSENSUS_SETS).getMatchDerivationParameters();
+
+        final MatchFilter aggregatedSetMatchFilter = new MatchFilter(aggregatedLayerMatchDerivationParameters,
+                                                                     mfovOffsetParameters.renderScale);
+
+        final Map<LayerMFOV, double[]> layerMFOVToTranslationMap = new HashMap<>();
+        final Map<Double, double[]> layerZToTranslationMap = new HashMap<>();
+        for (final Double z : layerZToMatchesMap.keySet().stream().sorted().collect(Collectors.toList())) {
+            final Map<LayerMFOV, List<PointMatch>> layerMFOVToMatchesMap = layerZToMatchesMap.get(z);
+            final List<PointMatch> layerMatches = new ArrayList<>();
+            for (final LayerMFOV layerMFOV : layerMFOVToMatchesMap.keySet()) {
+                final List<PointMatch> layerMFOVMatches = layerMFOVToMatchesMap.get(layerMFOV);
+                final double[] layerMFOVTranslation =
+                        deriveNextLayerTranslation(layerMFOV.toString(),
+                                                   layerMFOVMatches,
+                                                   singleSetMatchFilter);
+                layerMFOVToTranslationMap.put(layerMFOV, layerMFOVTranslation);
+                layerMatches.addAll(layerMFOVMatches);
+            }
+            final double[] layerTranslation =
+                    deriveNextLayerTranslation("z " + z,
+                                               layerMatches,
+                                               aggregatedSetMatchFilter);
+            layerZToTranslationMap.put(z, layerTranslation);
+        }
 
         // TODO: MFOV offset step 5
 
@@ -177,30 +213,22 @@ public class MFOVOffsetClient {
 
         // TODO: MFOV offset step 6
 
-        // 6. Otherwise, calculate a median offset for the layer (factoring in prior layer offsets).
-
-        // TODO: MFOV offset step 7
-
-        // 7. Apply the layer offsets, saving the resulting tile specs to the offset stack.
+        // 6. Apply the layer offsets, saving the resulting tile specs to the offset stack.
     }
 
     @SuppressWarnings("SameParameterValue")
-    private static Matches deriveMatchesForLayerMFOV(final StackWithZValues stackWithZ,
-                                                     final RenderDataClient renderDataClient,
-                                                     final MFOVOffsetSupportData mfovOffsetSupportData,
-                                                     final SortedNearestCrossPairsForLayerMFOV nearestPairsList,
-                                                     final int minNumberOfMatchInliers,
-                                                     final double renderScale) {
+    private static List<PointMatch> deriveMatchesForLayerMFOV(final StackWithZValues stackWithZ,
+                                                              final RenderDataClient renderDataClient,
+                                                              final MFOVOffsetSupportData mfovOffsetSupportData,
+                                                              final SortedNearestCrossPairsForLayerMFOV nearestPairsList,
+                                                              final double renderScale,
+                                                              final FeatureAndMatchParameters crossFeatureAndMatchParameters) {
 
-        Matches layerMFOVMatches = null;
+        List<PointMatch> layerMFOVMatches = null;
 
         final RenderWebServiceUrls urls = renderDataClient.getUrls();
         final String urlPrefix = urls.getStackUrlString(stackWithZ.getStackId().getStack()) + "/tile/";
         final String urlSuffix = "/render-parameters?excludeMask=false&normalizeForMatching=true&scale=" + renderScale;
-
-        final FeatureAndMatchParameters crossFeatureAndMatchParameters =
-                buildFeatureAndMatchParameters(renderScale,
-                                               minNumberOfMatchInliers);
 
         final List<String> nearestPairsListTileIds = nearestPairsList.getSortedTileIds();
         final int tileCount = nearestPairsListTileIds.size();
@@ -237,9 +265,9 @@ public class MFOVOffsetClient {
                 matchTrial.deriveResults(ImageProcessorCache.DISABLED_CACHE);
 
                 if (matchTrial.hasMatches()) {
-                    layerMFOVMatches = matchTrial.getMatches().get(0);
+                    layerMFOVMatches = convertMatchesToPointMatchList(matchTrial.getMatches().get(0));
                     LOG.info("deriveMatchesForLayerMFOV: found {} match points for pair {}",
-                             layerMFOVMatches.getWs().length, pair);
+                             layerMFOVMatches.size(), pair);
                     break;
                 }
 
@@ -252,7 +280,8 @@ public class MFOVOffsetClient {
 
     @SuppressWarnings("ExtractMethodRecommender")
     private static FeatureAndMatchParameters buildFeatureAndMatchParameters(final double renderScale,
-                                                                            final int minNumInliers) {
+                                                                            final int minNumInliers,
+                                                                            final MatchFilter.FilterType filterType) {
 
         final FeatureExtractionParameters siftFeatureParameters = new FeatureExtractionParameters();
         siftFeatureParameters.fdSize = 4;
@@ -271,13 +300,31 @@ public class MFOVOffsetClient {
                                               minNumInliers,
                                               4.0,
                                               null,
-                                              MatchFilter.FilterType.SINGLE_SET);
+                                              filterType);
         matchDerivationParameters.matchFullScaleCoverageRadius = 300.0;
 
         return new FeatureAndMatchParameters(siftFeatureParameters,
                                              matchDerivationParameters,
                                              null,
                                              null);
+    }
+
+    private static double[] deriveNextLayerTranslation(final String context,
+                                                       final List<PointMatch> candidates,
+                                                       final MatchFilter matchFilter) {
+        final TranslationModel2D model = new TranslationModel2D();
+        final List<PointMatch> inliers = matchFilter.filterMatches(candidates, model);
+        final double[] currentZTranslation = model.getTranslation();
+
+        // for one test with pair w60_magc0160_scan004_m0031_r89_s85 and w60_magc0160_scan005_m0031_r89_s85:
+        //   translation was 104, -188 but actual scan005 translation was -84,  118
+        //   so need to flip signs (assume it is ok to ignore deltaX 20, deltaY -70)
+        final double[] nextTranslation = new double[] {-currentZTranslation[0], -currentZTranslation[1]};
+
+        LOG.info("deriveNextLayerTranslation: returning {}, {} for {} inliers from {} {} candidates",
+                 nextTranslation[0], nextTranslation[1], inliers.size(), candidates.size(), context);
+
+        return nextTranslation;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVOffsetClient.class);

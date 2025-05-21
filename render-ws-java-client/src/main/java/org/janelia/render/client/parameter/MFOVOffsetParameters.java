@@ -17,13 +17,27 @@ public class MFOVOffsetParameters
 
     @Parameter(
             names = "--mopMaxNeighborPixelDistance",
-            description = "Maximum distance in pixels from each best connected tile to search for neighbors.")
+            description = "Maximum distance in pixels from each best connected tile to search for neighbors.",
+            required = true)
     public Integer maxNeighborPixelDistance;
 
     @Parameter(
             names = "--mopMaxNeighborCount",
-            description = "Maximum number of neighbors to include in each best connected list.")
+            description = "Maximum number of neighbors to include in each best connected list.",
+            required = true)
     public Integer maxNeighborCount;
+
+    @Parameter(
+            names = "--mopRenderScale",
+            description = "Scale for rendered tiles used in matching.",
+            required = true)
+    public Double renderScale;
+
+    @Parameter(
+            names = "--mopMinNumberOfMatchInliers",
+            description = "Minimum number of inliers required (e.g. 10) to consider a cross layer tile pair successfully matched.",
+            required = true)
+    public Integer minNumberOfMatchInliers;
 
     @Parameter(
             names = "--mopOffsetStackSuffix",
