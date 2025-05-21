@@ -22,6 +22,10 @@ import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.match.parameters.MatchTrialParameters;
 import org.janelia.alignment.multisem.LayerMFOV;
+import org.janelia.alignment.spec.LeafTransformSpec;
+import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.RenderWebServiceUrls;
@@ -185,35 +189,54 @@ public class MFOVOffsetClient {
         final MatchFilter aggregatedSetMatchFilter = new MatchFilter(aggregatedLayerMatchDerivationParameters,
                                                                      mfovOffsetParameters.renderScale);
 
-        final Map<LayerMFOV, double[]> layerMFOVToTranslationMap = new HashMap<>();
-        final Map<Double, double[]> layerZToTranslationMap = new HashMap<>();
-        for (final Double z : layerZToMatchesMap.keySet().stream().sorted().collect(Collectors.toList())) {
+        final Map<Double, double[]> nextZToTranslationMap = new HashMap<>();
+        final List<Double> zValues = stackWithZ.getzValues();
+
+        for (int nextZIndex = 1; nextZIndex < zValues.size(); nextZIndex++) {
+
+            final double z = zValues.get(nextZIndex - 1);
+            final double nextZ = zValues.get(nextZIndex);
+
             final Map<LayerMFOV, List<PointMatch>> layerMFOVToMatchesMap = layerZToMatchesMap.get(z);
-            final List<PointMatch> layerMatches = new ArrayList<>();
-            for (final LayerMFOV layerMFOV : layerMFOVToMatchesMap.keySet()) {
-                final List<PointMatch> layerMFOVMatches = layerMFOVToMatchesMap.get(layerMFOV);
-                final double[] layerMFOVTranslation =
-                        deriveNextLayerTranslation(layerMFOV.toString(),
-                                                   layerMFOVMatches,
-                                                   singleSetMatchFilter);
-                layerMFOVToTranslationMap.put(layerMFOV, layerMFOVTranslation);
-                layerMatches.addAll(layerMFOVMatches);
+            if (layerMFOVToMatchesMap == null) {
+                LOG.warn("buildOneOffsetStack: no matches found for z {}", z);
+            } else {
+
+                final List<LayerMFOV> sortedMFOVsForCurrentLayer =
+                        layerMFOVToMatchesMap.keySet().stream().sorted().collect(Collectors.toList());
+                final List<double[]> nextLayerMFOVTranslations = new ArrayList<>(sortedMFOVsForCurrentLayer.size());
+
+                final List<PointMatch> layerMatches = new ArrayList<>();
+                for (final LayerMFOV layerMFOV : sortedMFOVsForCurrentLayer) {
+                    final List<PointMatch> layerMFOVMatches = layerMFOVToMatchesMap.get(layerMFOV);
+                    final double[] nextLayerMFOVTranslation = deriveNextLayerTranslation(layerMFOV.toString(),
+                                                                                         layerMFOVMatches,
+                                                                                         singleSetMatchFilter);
+                    nextLayerMFOVTranslations.add(nextLayerMFOVTranslation);
+                    layerMatches.addAll(layerMFOVMatches);
+                }
+
+                // 5. For each z layer if any MFOVs have an offset that is significantly different from the others
+                //    log the large difference and fail the run since this should rarely occur.
+                checkNextLayerMFOVTranslationConsistency(stackWithZ.getStackId(),
+                                                         sortedMFOVsForCurrentLayer,
+                                                         nextLayerMFOVTranslations,
+                                                         mfovOffsetParameters.maxAbsoluteMFOVTranslationDelta);
+
+                final double[] nextLayerTranslation = deriveNextLayerTranslation("z " + z,
+                                                                                 layerMatches,
+                                                                                 aggregatedSetMatchFilter);
+                nextZToTranslationMap.put(nextZ, nextLayerTranslation);
+
             }
-            final double[] layerTranslation =
-                    deriveNextLayerTranslation("z " + z,
-                                               layerMatches,
-                                               aggregatedSetMatchFilter);
-            layerZToTranslationMap.put(z, layerTranslation);
         }
 
-        // TODO: MFOV offset step 5
-
-        // 5. For each z layer if any MFOVs have an offset that is significantly different from the others
-        //    log the large difference and fail the run since this should rarely occur.
-
-        // TODO: MFOV offset step 6
-
         // 6. Apply the layer offsets, saving the resulting tile specs to the offset stack.
+        saveOffsetStack(stackWithZ,
+                        renderDataClient,
+                        mfovOffsetParameters,
+                        nextZToTranslationMap);
+
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -325,6 +348,93 @@ public class MFOVOffsetClient {
                  nextTranslation[0], nextTranslation[1], inliers.size(), candidates.size(), context);
 
         return nextTranslation;
+    }
+
+    private static void checkNextLayerMFOVTranslationConsistency(final StackId stackId,
+                                                                 final List<LayerMFOV> sortedMFOVsForCurrentLayer,
+                                                                 final List<double[]> nextLayerMFOVTranslations,
+                                                                 final Integer maxAbsoluteMFOVTranslationDelta)
+            throws IllegalStateException {
+
+        for (int mfovIndex = 1; mfovIndex < sortedMFOVsForCurrentLayer.size(); mfovIndex++) {
+
+            final int previousMFOVIndex = mfovIndex - 1;
+            final LayerMFOV previousMFOV = sortedMFOVsForCurrentLayer.get(previousMFOVIndex);
+            final double[] previousMFOVTranslation = nextLayerMFOVTranslations.get(previousMFOVIndex);
+
+            final LayerMFOV currentMFOV = sortedMFOVsForCurrentLayer.get(mfovIndex);
+            final double[] currentMFOVTranslation = nextLayerMFOVTranslations.get(mfovIndex);
+
+            final double[] deltaTranslation = new double[] {
+                    currentMFOVTranslation[0] - previousMFOVTranslation[0],
+                    currentMFOVTranslation[1] - previousMFOVTranslation[1]
+            };
+
+            LOG.info("checkNextLayerMFOVTranslationConsistency: translation delta is {}, {} between {} and {} in {}",
+                     deltaTranslation[0], deltaTranslation[1], previousMFOV, currentMFOV, stackId.toDevString());
+
+            if (maxAbsoluteMFOVTranslationDelta != null) {
+                if ((Math.abs(deltaTranslation[0]) > maxAbsoluteMFOVTranslationDelta) ||
+                    (Math.abs(deltaTranslation[1]) > maxAbsoluteMFOVTranslationDelta)) {
+                    throw new IllegalStateException(
+                            "translation delta " + deltaTranslation[0] + ", " + deltaTranslation[1] +
+                            " between " + previousMFOV + " and " + currentMFOV + " of " + stackId.toDevString() +
+                            " exceeds --mopMaxAbsoluteMFOVTranslationDelta " + maxAbsoluteMFOVTranslationDelta);
+                }
+            }
+
+        }
+
+    }
+
+    private static void saveOffsetStack(final StackWithZValues stackWithZ,
+                                        final RenderDataClient renderDataClient,
+                                        final MFOVOffsetParameters mfovOffsetParameters,
+                                        final Map<Double, double[]> nextZToTranslationMap)
+            throws IOException {
+
+        final String stackName = stackWithZ.getStackId().getStack();
+        final String offsetStackName = stackName + mfovOffsetParameters.offsetStackSuffix;
+
+        final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stackName);
+        final StackMetaData offsetStackMetaData = renderDataClient.setupDerivedStack(stackMetaData, offsetStackName);
+
+        final List<Double> zValues = stackWithZ.getzValues();
+        final Double firstZ = zValues.get(0);
+
+        ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stackName, firstZ);
+        renderDataClient.saveResolvedTiles(resolvedTiles, offsetStackName, firstZ);
+
+        final int[] stackTranslation = {0, 0};
+        for (int zIndex = 1; zIndex < zValues.size(); zIndex++) {
+            final double z = zValues.get(zIndex);
+            final double[] layerTranslation = nextZToTranslationMap.get(z);
+            if (layerTranslation != null) {
+
+                // convert relative layer translation to one for the stack
+                stackTranslation[0] += (int) layerTranslation[0];
+                stackTranslation[1] += (int) layerTranslation[1];
+
+                resolvedTiles = renderDataClient.getResolvedTiles(stackName, z);
+
+                final String translationDataString = stackTranslation[0] + " " + stackTranslation[1];
+
+                LOG.info("saveOffsetStack: pre-concatenating stack translation {} to all tiles in z {} of {}, relative layer translation is {}, {}",
+                         translationDataString, z, offsetStackMetaData.getStackId().toDevString(), layerTranslation[0], layerTranslation[1]);
+
+                final LeafTransformSpec leafTransformSpec =
+                        new LeafTransformSpec("mpicbg.trakem2.transform.TranslationModel2D",
+                                              translationDataString);
+                resolvedTiles.preConcatenateTransformToAllTiles(leafTransformSpec);
+
+            } else {
+                LOG.warn("saveOffsetStack: no offset found for z {}", z);
+            }
+
+            renderDataClient.saveResolvedTiles(resolvedTiles, offsetStackName, z);
+        }
+
+        renderDataClient.setStackState(offsetStackName, StackMetaData.StackState.COMPLETE);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVOffsetClient.class);

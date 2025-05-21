@@ -40,6 +40,12 @@ public class MFOVOffsetParameters
     public Integer minNumberOfMatchInliers;
 
     @Parameter(
+            names = "--mopMaxAbsoluteMFOVTranslationDelta",
+            description = "Maximum allowed x or y translation pixel difference between MFOVs in the same z layer (e.g. 50).  " +
+                          "Omit to skip translation consistency check.")
+    public Integer maxAbsoluteMFOVTranslationDelta;
+
+    @Parameter(
             names = "--mopOffsetStackSuffix",
             description = "Suffix to append to the source stack name when creating the offset stack name.")
     public String offsetStackSuffix = "_os";

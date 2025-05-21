@@ -24,7 +24,9 @@ public class MFOVOffsetClientTest {
                 "--mopMaxNeighborPixelDistance", "1000",
                 "--mopMaxNeighborCount", "10",
                 "--mopMinNumberOfMatchInliers", "10",
-                "--mopRenderScale", "0.4"
+                "--mopRenderScale", "0.4",
+                "--mopMaxAbsoluteMFOVTranslationDelta", "150",
+                "--mopOffsetStackSuffix", "_os_aac"
         };
 
         MFOVOffsetClient.main(effectiveArgs);
