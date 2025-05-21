@@ -191,6 +191,7 @@ public class MFOVOffsetClient {
 
         final Map<Double, double[]> nextZToTranslationMap = new HashMap<>();
         final List<Double> zValues = stackWithZ.getzValues();
+        final double[] maxActualAbsoluteMFOVTranslationDelta = new double[] {0.0, 0.0};
 
         for (int nextZIndex = 1; nextZIndex < zValues.size(); nextZIndex++) {
 
@@ -218,10 +219,16 @@ public class MFOVOffsetClient {
 
                 // 5. For each z layer if any MFOVs have an offset that is significantly different from the others
                 //    log the large difference and fail the run since this should rarely occur.
-                checkNextLayerMFOVTranslationConsistency(stackWithZ.getStackId(),
-                                                         sortedMFOVsForCurrentLayer,
-                                                         nextLayerMFOVTranslations,
-                                                         mfovOffsetParameters.maxAbsoluteMFOVTranslationDelta);
+                final double[] maxActualAbsoluteMFOVTranslationDeltaForLayer =
+                        checkNextLayerMFOVTranslationConsistency(stackWithZ.getStackId(),
+                                                                 sortedMFOVsForCurrentLayer,
+                                                                 nextLayerMFOVTranslations,
+                                                                 mfovOffsetParameters.maxAbsoluteMFOVTranslationDelta);
+
+                maxActualAbsoluteMFOVTranslationDelta[0] = Math.max(maxActualAbsoluteMFOVTranslationDelta[0],
+                                                                    maxActualAbsoluteMFOVTranslationDeltaForLayer[0]);
+                maxActualAbsoluteMFOVTranslationDelta[1] = Math.max(maxActualAbsoluteMFOVTranslationDelta[1],
+                                                                    maxActualAbsoluteMFOVTranslationDeltaForLayer[1]);
 
                 final double[] nextLayerTranslation = deriveNextLayerTranslation("z " + z,
                                                                                  layerMatches,
@@ -230,6 +237,14 @@ public class MFOVOffsetClient {
 
             }
         }
+
+        // worst deltas from early test:
+        //   translation delta is -1096.5142945149448,  -699.1644233276263 between z_20.0_mfov_0160_m0031 and z_20.0_mfov_0160_m0032
+        //   translation delta is    50.76237361117569, 1154.7718412848626 between z_20.0_mfov_0160_m0032 and z_20.0_mfov_0160_m0033
+        //   maxActualAbsoluteMFOVTranslationDelta is 1096.5142945149448, 1154.7718412848626
+
+        LOG.info("buildOneOffsetStack: maxActualAbsoluteMFOVTranslationDelta is {}, {}",
+                 maxActualAbsoluteMFOVTranslationDelta[0], maxActualAbsoluteMFOVTranslationDelta[1]);
 
         // 6. Apply the layer offsets, saving the resulting tile specs to the offset stack.
         saveOffsetStack(stackWithZ,
@@ -285,7 +300,9 @@ public class MFOVOffsetClient {
                                                  null);
 
                 final MatchTrial matchTrial = new MatchTrial(matchTrialParameters);
-                matchTrial.deriveResults(ImageProcessorCache.DISABLED_CACHE);
+
+                // specify match trial groupIds so that cross layer tile pairs are always ordered properly (e.g. for z 9 to 10)
+                matchTrial.deriveResults(ImageProcessorCache.DISABLED_CACHE, "pGroupId", "qGroupId");
 
                 if (matchTrial.hasMatches()) {
                     layerMFOVMatches = convertMatchesToPointMatchList(matchTrial.getMatches().get(0));
@@ -350,11 +367,14 @@ public class MFOVOffsetClient {
         return nextTranslation;
     }
 
-    private static void checkNextLayerMFOVTranslationConsistency(final StackId stackId,
-                                                                 final List<LayerMFOV> sortedMFOVsForCurrentLayer,
-                                                                 final List<double[]> nextLayerMFOVTranslations,
-                                                                 final Integer maxAbsoluteMFOVTranslationDelta)
+    private static double[] checkNextLayerMFOVTranslationConsistency(final StackId stackId,
+                                                                     final List<LayerMFOV> sortedMFOVsForCurrentLayer,
+                                                                     final List<double[]> nextLayerMFOVTranslations,
+                                                                     final Integer maxAbsoluteMFOVTranslationDelta)
             throws IllegalStateException {
+
+        double maxTranslationDeltaX = 0.0;
+        double maxTranslationDeltaY = 0.0;
 
         for (int mfovIndex = 1; mfovIndex < sortedMFOVsForCurrentLayer.size(); mfovIndex++) {
 
@@ -373,6 +393,9 @@ public class MFOVOffsetClient {
             LOG.info("checkNextLayerMFOVTranslationConsistency: translation delta is {}, {} between {} and {} in {}",
                      deltaTranslation[0], deltaTranslation[1], previousMFOV, currentMFOV, stackId.toDevString());
 
+            maxTranslationDeltaX = Math.max(maxTranslationDeltaX, Math.abs(deltaTranslation[0]));
+            maxTranslationDeltaY = Math.max(maxTranslationDeltaY, Math.abs(deltaTranslation[1]));
+
             if (maxAbsoluteMFOVTranslationDelta != null) {
                 if ((Math.abs(deltaTranslation[0]) > maxAbsoluteMFOVTranslationDelta) ||
                     (Math.abs(deltaTranslation[1]) > maxAbsoluteMFOVTranslationDelta)) {
@@ -385,6 +408,7 @@ public class MFOVOffsetClient {
 
         }
 
+        return new double[] {maxTranslationDeltaX, maxTranslationDeltaY};
     }
 
     private static void saveOffsetStack(final StackWithZValues stackWithZ,

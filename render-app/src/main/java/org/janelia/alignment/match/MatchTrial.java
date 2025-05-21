@@ -87,6 +87,13 @@ public class MatchTrial implements Serializable {
 
     public void deriveResults(final ImageProcessorCache sourceImageProcessorCache)
             throws IllegalArgumentException {
+        deriveResults(sourceImageProcessorCache, "trial", "trial");
+    }
+
+    public void deriveResults(final ImageProcessorCache sourceImageProcessorCache,
+                              final String pGroupId,
+                              final String qGroupId)
+            throws IllegalArgumentException {
 
         final FeatureAndMatchParameters featureAndMatchParameters = parameters.getFeatureAndMatchParameters();
         final FeatureRenderClipParameters clipParameters = featureAndMatchParameters.getClipParameters();
@@ -120,9 +127,8 @@ public class MatchTrial implements Serializable {
                                                                                  sourceImageProcessorCache,
                                                                                  null);
 
-        final String groupId = "trial";
-        final CanvasId p = new CanvasId(groupId, getTileId(parameters.getpRenderParametersUrl()), pClipPosition);
-        final CanvasId q = new CanvasId(groupId, getTileId(parameters.getqRenderParametersUrl()), qClipPosition);
+        final CanvasId p = new CanvasId(pGroupId, getTileId(parameters.getpRenderParametersUrl()), pClipPosition);
+        final CanvasId q = new CanvasId(qGroupId, getTileId(parameters.getqRenderParametersUrl()), qClipPosition);
 
         if (p.compareTo(q) > 0) {
             final String additionalContext =
