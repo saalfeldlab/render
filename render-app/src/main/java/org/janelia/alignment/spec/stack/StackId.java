@@ -61,6 +61,12 @@ public class StackId implements Comparable<StackId>, Serializable {
         return stack;
     }
 
+
+    public StackId withStackSuffix(final String suffix)
+            throws IllegalArgumentException {
+        return new StackId(owner, project, stack + suffix);
+    }
+
     @Override
     public String toString() {
         return "stack with owner '" + owner + "', project '" + project + "', and name '" + stack + "'";
