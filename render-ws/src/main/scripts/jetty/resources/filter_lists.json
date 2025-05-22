@@ -265,6 +265,33 @@
       }
     ],
 
+    "jrc_mus_pancreas_7-destreak-16bit" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "parameters" : {
+          "dataString" : "5545,8190,50,4,0.0,10,5.0,0.05"
+        }
+      }
+    ],
+
+    "jrc_mosquito_stylet_5-destreak-16bit" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "parameters" : {
+          "dataString" : "2773,5544,70,7,0.0,10,7.0,0.05"
+        }
+      }
+    ],
+
+    "jrc_mpi_5g_1_hc-destreak-16bit" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "parameters" : {
+          "dataString" : "5041,9240,60,7,0.0,10,10.0,0.05"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
