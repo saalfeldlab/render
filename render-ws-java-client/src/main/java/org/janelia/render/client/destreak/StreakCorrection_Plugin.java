@@ -29,6 +29,7 @@ import java.awt.KeyboardFocusManager;
 import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -129,7 +130,9 @@ public class StreakCorrection_Plugin implements PlugIn {
 		if (rtsc == null) {
 			throw new IOException("Failed to load tile specs for " + params.stack + " z=" + params.z);
 		}
-		final TileSpec tileSpec = rtsc.getTileSpecs().stream().sorted().collect(Collectors.toList()).get(params.tileNumber);
+		final TileSpec tileSpec = rtsc.getTileSpecs().stream()
+				.sorted(Comparator.comparing(TileSpec::getTileId))
+				.collect(Collectors.toList()).get(params.tileNumber);
 		IJ.log("Show tile: " + tileSpec.getTileId() + " from z=" + params.z);
 
 		final ImageProcessorCache cache = ImageProcessorCache.DISABLED_CACHE;
