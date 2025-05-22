@@ -91,7 +91,7 @@ public class MFOVOffsetClient {
      *   if the build fails for any reason.
      */
     public void buildAllOffsetStacks()
-            throws IOException {
+            throws IOException, IllegalStateException {
 
         final RenderDataClient renderDataClient = parameters.multiProject.getDataClient();
         final List<StackWithZValues> stackWithZList = parameters.multiProject.buildListOfStackWithAllZ();
@@ -123,7 +123,9 @@ public class MFOVOffsetClient {
                                            final RenderDataClient renderDataClient,
                                            final RenderDataClient matchDataClient,
                                            final MFOVOffsetParameters mfovOffsetParameters)
-            throws IOException {
+            throws IOException, IllegalStateException {
+
+        final StackId offsetStackId = stackWithZ.getStackId().withStackSuffix(mfovOffsetParameters.offsetStackSuffix);
 
         // 1. Use number of connected match points to order same layer tile pairs in each MFOV of the first z layer.
         final MFOVOffsetSupportData mfovOffsetSupportData =
@@ -148,6 +150,7 @@ public class MFOVOffsetClient {
         final FeatureAndMatchParameters crossFeatureAndMatchParameters =
                 buildFeatureAndMatchParameters(mfovOffsetParameters.renderScale,
                                                mfovOffsetParameters.minNumberOfMatchInliers,
+                                               5.0,
                                                MatchFilter.FilterType.SINGLE_SET);
 
         final Map<Double, Map<LayerMFOV, List<PointMatch>>> layerZToMatchesMap = new HashMap<>();
@@ -184,6 +187,7 @@ public class MFOVOffsetClient {
         final MatchDerivationParameters aggregatedLayerMatchDerivationParameters =
                 buildFeatureAndMatchParameters(mfovOffsetParameters.renderScale,
                                                mfovOffsetParameters.minNumberOfMatchInliers,
+                                               2000,
                                                MatchFilter.FilterType.AGGREGATED_CONSENSUS_SETS).getMatchDerivationParameters();
 
         final MatchFilter aggregatedSetMatchFilter = new MatchFilter(aggregatedLayerMatchDerivationParameters,
@@ -248,8 +252,8 @@ public class MFOVOffsetClient {
 
         // 6. Apply the layer offsets, saving the resulting tile specs to the offset stack.
         saveOffsetStack(stackWithZ,
+                        offsetStackId,
                         renderDataClient,
-                        mfovOffsetParameters,
                         nextZToTranslationMap);
 
     }
@@ -318,9 +322,9 @@ public class MFOVOffsetClient {
         return layerMFOVMatches;
     }
 
-    @SuppressWarnings("ExtractMethodRecommender")
     private static FeatureAndMatchParameters buildFeatureAndMatchParameters(final double renderScale,
                                                                             final int minNumInliers,
+                                                                            final double maxEpsilonFullScale,
                                                                             final MatchFilter.FilterType filterType) {
 
         final FeatureExtractionParameters siftFeatureParameters = new FeatureExtractionParameters();
@@ -329,7 +333,6 @@ public class MFOVOffsetClient {
         siftFeatureParameters.maxScale = 1.0;
         siftFeatureParameters.steps = 5;
 
-        final double maxEpsilonFullScale = 5.0;
         final double maxEpsilon = maxEpsilonFullScale * (1.0 / renderScale);
         final MatchDerivationParameters matchDerivationParameters =
                 new MatchDerivationParameters(0.92f,
@@ -412,13 +415,13 @@ public class MFOVOffsetClient {
     }
 
     private static void saveOffsetStack(final StackWithZValues stackWithZ,
+                                        final StackId offsetStackId,
                                         final RenderDataClient renderDataClient,
-                                        final MFOVOffsetParameters mfovOffsetParameters,
                                         final Map<Double, double[]> nextZToTranslationMap)
             throws IOException {
 
         final String stackName = stackWithZ.getStackId().getStack();
-        final String offsetStackName = stackName + mfovOffsetParameters.offsetStackSuffix;
+        final String offsetStackName = offsetStackId.getStack();
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stackName);
         final StackMetaData offsetStackMetaData = renderDataClient.setupDerivedStack(stackMetaData, offsetStackName);
