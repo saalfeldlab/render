@@ -58,10 +58,12 @@ public class CollectionNameUtil {
         }
 
         if (name.length() > maxCollectionNameLength) {
-            throw new IllegalArgumentException(databaseName + " collection name '" + name +
-                                               "' must be less than " + maxCollectionNameLength +
-                                               " characters, therefore the length of one or more " +
-                                               "of the collection fields should be reduced");
+            final int overage = name.length() - maxCollectionNameLength;
+            throw new IllegalArgumentException(
+                    databaseName + " collection name '" + name + "' has " + name.length() +
+                    " characters but it must be less than " + maxCollectionNameLength +
+                    " characters, therefore the length of one or more of the collection fields" +
+                    " should be reduced by at least " + overage + " characters");
         }
 
         return name.toString();
