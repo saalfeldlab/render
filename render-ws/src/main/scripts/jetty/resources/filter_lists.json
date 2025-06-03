@@ -292,6 +292,15 @@
       }
     ],
 
+    "jrc_hum_airway_15056_1-destreak-16bit" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "parameters" : {
+          "dataString" : "4621,8190,35,8,0.0,10,10.0,0.05"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
