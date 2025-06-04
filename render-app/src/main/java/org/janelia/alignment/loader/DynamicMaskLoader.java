@@ -26,7 +26,7 @@ public class DynamicMaskLoader
             Pattern.compile(DYNAMIC_MASK_PROTOCOL +
                             "outside-box\\?minX=(\\d+)&minY=(\\d+)&maxX=(\\d+)&maxY=(\\d+)&width=(\\d+)&height=(\\d+).*");
 
-    private static final Pattern LEVEL_PATTERN = Pattern.compile(".*&level=(\\d+).*");
+    public static final Pattern LEVEL_PATTERN = Pattern.compile(".*&level=(\\d+).*");
 
     @Override
     public boolean hasSame3DContext(final ImageLoader otherLoader) {
