@@ -47,6 +47,7 @@ public interface WeightModificationStrategy {
 			final int nMatches = tile.getMatches().size();
 			final double factor = 1 - Math.exp(-Math.pow(nMatches / a, b));
 			modifiedWeights.compute(AlignmentModelType.AFFINE.name(), (key, affine) -> affine * factor);
+			return modifiedWeights;
 		};
 	}
 

@@ -886,7 +886,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		if (LOG.isInfoEnabled()) {
 			final DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles());
 			LOG.info("solve: block {}, optimizing {} tiles with preAlign {}, error stats before optimization are {}",
-					 blockData, solveItem.groupedTileToTiles().keySet().size(), preAlign, errors);
+					 blockData, solveItem.groupedTileToTiles().size(), preAlign, errors);
 		}
 
 		if ((preAlign != null) && (preAlign != PreAlign.NONE)) {
