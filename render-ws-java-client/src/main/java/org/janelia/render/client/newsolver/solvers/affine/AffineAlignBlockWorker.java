@@ -915,26 +915,14 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final BlockOptimizerParameters blockOptimizer = alignmentParameters.blockOptimizerParameters();
 		for (int k = 0; k < blockOptimizerIterations.size(); ++k) {
 
+			final WeightModificationStrategy weightModifier = blockOptimizer.weightModificationStrategy();
 			final Map<String, Double> weights = blockOptimizer.getWeightsForRun(k);
 			LOG.info("solve: block {}, run {}: l(rigid)={}, l(translation)={}, l(regularization)={}",
 					solveItem.blockData(), k, weights.get(AlignmentModelType.RIGID.name()), weights.get(AlignmentModelType.TRANSLATION.name()), weights.get(AlignmentModelType.REGULARIZATION.name()));
 
-			// Get function that is 0.1 at lowDecile and 0.9 at highDecile (kind of Weibull stretched exponential)
-			final int lowDecile = 50;
-			final int highDecile = 500;
-			final double enumerator = Math.log(-Math.log(0.1)) - Math.log(-Math.log(0.9));
-			final double b = enumerator / (Math.log(highDecile) - Math.log(lowDecile));
-			final double a = lowDecile * Math.pow(-Math.log(0.9), -1 / b);
-
 			for (final Tile<?> tile : tileConfig.getTiles()) {
+				final Map<String, Double> dynamicWeights = weightModifier.applyTo(weights, tile);
 				final AlignmentModel model = (AlignmentModel) tile.getModel();
-
-				// Increase regularization for tiles with few matches, decrease for many matches
-				final Map<String, Double> dynamicWeights = new HashMap<>(weights);
-				final int nMatches = tile.getMatches().size();
-				final double factor = 1 - Math.exp(-Math.pow(nMatches / a, b));
-				dynamicWeights.compute(AlignmentModelType.AFFINE.name(), (key, affine) -> affine * factor);
-
 				model.setWeights(dynamicWeights);
 			}
 
