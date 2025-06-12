@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import mpicbg.models.AbstractAffineModel2D;
 import mpicbg.models.CoordinateTransform;
@@ -34,11 +35,22 @@ import org.slf4j.LoggerFactory;
 public class MultiSemUtilities {
 
     /**
+     * @return m0013 for w60_magc0399_scan005_m0013_r46_s01
+     */
+    public static String getSimpleMfovForTileId(final String tileId) throws IllegalArgumentException {
+        final int magcIndex = tileId.indexOf("magc");
+        if ((magcIndex < 0) || (tileId.length() < (magcIndex + 22))) {
+            throw new IllegalArgumentException("SimpleMfov identifier cannot be derived from tileId " + tileId);
+        }
+        return tileId.substring((magcIndex + 17), (magcIndex + 22)); // m0013;
+    }
+
+    /**
      * @return 0399_m0013 for w60_magc0399_scan005_m0013_r46_s01
      */
     public static String getMagcMfovForTileId(final String tileId) throws IllegalArgumentException {
         final int magcIndex = tileId.indexOf("magc");
-        if ((magcIndex < 0) || (tileId.length() < (magcIndex + 18))) {
+        if ((magcIndex < 0) || (tileId.length() < (magcIndex + 22))) {
             throw new IllegalArgumentException("MagcMfov identifier cannot be derived from tileId " + tileId);
         }
         final String magcName = tileId.substring((magcIndex + 4), (magcIndex + 8)); // 0399
@@ -130,6 +142,7 @@ public class MultiSemUtilities {
         fitModelAndLogStats(matchModel, matchList, logContext);
     }
 
+    @SuppressWarnings("DuplicatedCode")
     public static void fitModelAndLogStats(final AbstractAffineModel2D<?> matchModel,
                                            final List<PointMatch> matchList,
                                            final String logContext)
@@ -204,6 +217,7 @@ public class MultiSemUtilities {
                 local = postMatchingInvertibleTransformList.applyInverse(world);
                 tileRelativePoints.add(new Point(local));
             } catch (final NoninvertibleModelException e) {
+                //noinspection StringConcatenationArgumentToLogCall
                 LOG.warn("transformMFOVMatchesForTile: skipping nom-invertible point in tile " + tileSpec.getTileId(),
                          e);
                 tileRelativePoints.add(null);
@@ -240,6 +254,13 @@ public class MultiSemUtilities {
         }
         return tileSpec.getMatchingTransformedPoints(rawLocations);
     }
+
+    /** @return true if the name is an 'm' followed by 4 digits like 'm0012', otherwise false. */
+    public static boolean isSimpleMFOVName(final String name) {
+        return SIMPLE_MFOV_NAME_PATTERN.matcher(name).matches();
+    }
+
+    private static final Pattern SIMPLE_MFOV_NAME_PATTERN = Pattern.compile("^m(\\d{4})$");
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiSemUtilities.class);
 }
