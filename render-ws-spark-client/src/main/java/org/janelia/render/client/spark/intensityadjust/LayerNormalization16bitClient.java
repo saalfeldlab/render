@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Collection;
-import java.util.stream.Collectors;
 
 import ij.process.ImageProcessor;
 
@@ -39,6 +38,8 @@ import ij.process.ImageProcessor;
  * This is a 16bit version of the processing done for 8bit images in dat_to_scheffer_8_bit.py
  */
 public class LayerNormalization16bitClient implements Serializable {
+
+    private static final ImageProcessorCache IMAGE_PROCESSOR_CACHE = ImageProcessorCache.DISABLED_CACHE;
 
     public static class Parameters extends CommandLineParameters {
         @ParametersDelegate
@@ -141,7 +142,6 @@ public class LayerNormalization16bitClient implements Serializable {
         LOG.info("Processing layer z={} with {} tile specs", z, tileSpecs.size());
 
 		// Load all images and calculate mean and standard deviation
-        final ImageProcessorCache imageProcessorCache = ImageProcessorCache.DISABLED_CACHE;
         double mean = 0.0;
         double variance = 0.0;
         int count = 0;
@@ -151,7 +151,7 @@ public class LayerNormalization16bitClient implements Serializable {
         final int upperSaturationBound = 65535 - parameters.saturationThreshold;
 
         for (final TileSpec tileSpec : tileSpecs) {
-            final ImageProcessor ip = loadImage(tileSpec, imageProcessorCache);
+            final ImageProcessor ip = loadImage(tileSpec);
 
             // Calculate mean and variance with Welford's algorithm
             // Skip pixels that are potentially saturated (using threshold)
@@ -195,16 +195,16 @@ public class LayerNormalization16bitClient implements Serializable {
         LOG.info("Saved {} tile specs for layer z={} to stack {}", tileSpecs.size(), z, parameters.targetStack);
     }
 
-    private ImageProcessor loadImage(final TileSpec tileSpec, final ImageProcessorCache imageProcessorCache) {
+    static private ImageProcessor loadImage(final TileSpec tileSpec) {
         final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().get(0);
         final String tileId = tileSpec.getTileId();
         final ImageAndMask imageAndMask = firstChannelSpec.getFirstMipmapImageAndMask(tileId);
 
-        return imageProcessorCache.get(imageAndMask.getImageUrl(),
-                                      0,
-                                      false,
-                                      firstChannelSpec.is16Bit(),
-                                      imageAndMask.getImageLoaderType(),
-                                      imageAndMask.getImageSliceNumber());
+        return IMAGE_PROCESSOR_CACHE.get(imageAndMask.getImageUrl(),
+                                         0,
+                                         false,
+                                         firstChannelSpec.is16Bit(),
+                                         imageAndMask.getImageLoaderType(),
+                                         imageAndMask.getImageSliceNumber());
     }
 }
