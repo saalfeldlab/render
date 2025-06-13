@@ -260,6 +260,9 @@ public class MultiSemUtilities {
         return SIMPLE_MFOV_NAME_PATTERN.matcher(name).matches();
     }
 
+    /** Each MFOV has 91 SFOVs or tiles */
+    public static int NUMBER_OF_TILES_IN_MFOV = 91;
+
     private static final Pattern SIMPLE_MFOV_NAME_PATTERN = Pattern.compile("^m(\\d{4})$");
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiSemUtilities.class);

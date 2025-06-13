@@ -163,8 +163,15 @@ public class LayerMFOV
                                                                scaledImageWidth,
                                                                scaledImageHeight);
 
+        // Convert
+        //   http://.../stack/w60_s360_r00_gc/z/1.0/render-parameters?tileIdPattern=_m0037_&scale=0.1
+        // to:
+        //   http://.../stack/w60_s360_r00_gc/z/1.0/png-image?tileIdPattern=_m0037_&scale=0.1&maxTileSpecsToRender=91
+        final String pngImageUrl = renderParametersUrl.replace("render-parameters", "png-image") +
+                                   "&maxTileSpecsToRender=" + MultiSemUtilities.NUMBER_OF_TILES_IN_MFOV;
+
         channelSpec.putMipmap(0,
-                              new ImageAndMask(renderParametersUrl,
+                              new ImageAndMask(pngImageUrl,
                                                null,
                                                null,
                                                maskDescription.toString(),
