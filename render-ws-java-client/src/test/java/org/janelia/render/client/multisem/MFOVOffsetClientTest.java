@@ -10,7 +10,7 @@ public class MFOVOffsetClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
-        CommandLineParameters.parseHelp(new UnconnectedMontageMFOVClient.Parameters());
+        CommandLineParameters.parseHelp(new MFOVOffsetClient.Parameters());
     }
 
     public static void main(final String[] args) {
