@@ -108,10 +108,7 @@ public class LayerNormalization16bitClient implements Serializable {
         final RenderDataClient renderClient = parameters.webservice.getDataClient();
         setUpTargetStack(renderClient);
 
-        final List<Double> zValues = renderClient.getStackZValues(parameters.stack)
-				.stream()
-				.limit(3)
-				.collect(Collectors.toList());
+        final List<Double> zValues = renderClient.getStackZValues(parameters.stack);
 
         // parallelize computation over z-layers
         final Broadcast<Parameters> parametersBroadcast = sparkContext.broadcast(parameters);
