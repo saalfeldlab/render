@@ -297,8 +297,7 @@ public class ClusterCountClient {
         final List<TileSpec> tileSpecList = renderDataClient.getTileSpecsWithIds(new ArrayList<>(tileIdSet),
                                                                                  sourceStackName);
 
-        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(),
-                                                                                        tileSpecList);
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(tileSpecList);
 
         Bounds smallClusterBounds = new Bounds();
         for (final TileSpec tileSpec : tileSpecList) {
@@ -337,8 +336,7 @@ public class ClusterCountClient {
         final List<TileSpec> tileSpecList = renderDataClient.getTileSpecsWithIds(new ArrayList<>(tileIdSet),
                                                                                  sourceStackName);
 
-        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(),
-                                                                                        tileSpecList);
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(tileSpecList);
 
         final int columnCount = (int) Math.ceil(Math.sqrt(tileIdSet.size()));
         final int rowCount = (int) Math.ceil((double) tileIdSet.size() / columnCount);

@@ -50,7 +50,7 @@ public class AdjustBlockTest {
 
         final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
 
-        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(tileSpecs);
 
         final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
@@ -71,7 +71,7 @@ public class AdjustBlockTest {
 
         final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
         final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
-        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(tileSpecs);
         final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
         final ArrayList<OnTheFlyIntensity> correctedList =
@@ -129,7 +129,7 @@ public class AdjustBlockTest {
 
         final int numCoefficients = AdjustBlock.DEFAULT_NUM_COEFFICIENTS;
         final List<TileSpec> tileSpecs = TileSpec.fromJsonArray(new FileReader(fileName));
-        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
+        final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(tileSpecs);
         final List<TileSpec> tiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
         final TileSpec tileSpec = tiles.get(0);
@@ -155,8 +155,7 @@ public class AdjustBlockTest {
             final List<TileSpec> tileSpecs =
                     TileSpec.fromJsonArray(new FileReader(fileName));
 
-            final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(new ArrayList<>(),
-                                                                                            tileSpecs);
+            final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(tileSpecs);
 
             final List<TileSpec> wrappedTiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 

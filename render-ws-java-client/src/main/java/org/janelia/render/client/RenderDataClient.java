@@ -1070,7 +1070,7 @@ public class RenderDataClient {
             final String msg = e.getMessage();
             if (handleNotFound && (msg != null) && msg.contains(EXCEPTION_MSG_PREFIX_FOR_404)) {
                 LOG.info("getResolvedTiles: handling request exception: {}", msg);
-                result = new ResolvedTileSpecCollection(new ArrayList<>(), new ArrayList<>());
+                result = new ResolvedTileSpecCollection();
             } else {
                 throw e;
             }
@@ -1133,8 +1133,7 @@ public class RenderDataClient {
             final String msg = e.getMessage();
             if (handleTilesNotFound && (msg != null) && msg.contains("no tile specifications found")) {
                 LOG.info("getResolvedTilesWithMatchPairs: handling request exception: {}", msg);
-                result = new ResolvedTileSpecsWithMatchPairs(new ResolvedTileSpecCollection(new ArrayList<>(),
-                                                                                            new ArrayList<>()),
+                result = new ResolvedTileSpecsWithMatchPairs(new ResolvedTileSpecCollection(),
                                                              new ArrayList<>());
             } else {
                 throw e;
