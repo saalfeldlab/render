@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.awt.Rectangle;
 import java.io.Serializable;
+import java.util.Collection;
 import java.util.Objects;
 
 import org.janelia.alignment.json.JsonUtils;
@@ -201,6 +202,12 @@ public class Bounds implements Serializable {
                           union(this.maxX, that.maxX, false),
                           union(this.maxY, that.maxY, false),
                           union(this.maxZ, that.maxZ, false));
+    }
+
+    public static Bounds unionAll(final Collection<Bounds> boundsCollection) {
+        return boundsCollection.stream()
+                .reduce(Bounds::union)
+                .orElse(null);
     }
 
     public Bounds withXYShift(final Double shiftX,

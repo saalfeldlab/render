@@ -68,11 +68,7 @@ public class CoordinateClientTest {
                 Collections.singletonList(TileCoordinates.buildWorldInstance(nullTileIdForOutOfBoundsCoordinate,
                                                                              new double[]{1, 1})));
 
-        final List<TransformSpec> emptyTransformSpecList = new ArrayList<>();
-        final List<TileSpec> emptyTileSpecList = new ArrayList<>();
-        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(emptyTransformSpecList,
-                                                                                emptyTileSpecList);
-
+        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection();
         final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
 
         Assert.assertEquals("invalid number of local lists returned",
@@ -223,8 +219,7 @@ public class CoordinateClientTest {
             worldListOfLists.add(Collections.singletonList(worldCoord));
         }
 
-        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(new ArrayList<>(),
-                                                                                tileSpecList);
+        final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(tileSpecList);
         final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
 
         Assert.assertEquals("invalid number of local lists returned",

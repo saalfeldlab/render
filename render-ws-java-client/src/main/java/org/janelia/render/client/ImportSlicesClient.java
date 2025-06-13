@@ -254,10 +254,8 @@ public class ImportSlicesClient {
             tileSpecs.add(tileSpec);
         }
 
-        if (tileSpecs.size() > 0) {
-            final ResolvedTileSpecCollection resolvedTiles =
-                    new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecs);
-
+        if (! tileSpecs.isEmpty()) {
+            final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(tileSpecs);
             renderDataClient.saveResolvedTiles(resolvedTiles, parameters.stack, null);
         }
 

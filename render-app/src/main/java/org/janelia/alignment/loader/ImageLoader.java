@@ -11,7 +11,8 @@ import ij.process.ImageProcessor;
 public interface ImageLoader {
 
     enum LoaderType {
-        IMAGEJ_DEFAULT, IMAGEJ_DEFAULT_W_TIMEOUT, IMAGEJ_TIFF_STACK, H5_SLICE, N5_SLICE, IMAGEJ_COMPOSITE, DYNAMIC_MASK
+        IMAGEJ_DEFAULT, IMAGEJ_DEFAULT_W_TIMEOUT, IMAGEJ_TIFF_STACK, H5_SLICE, N5_SLICE, IMAGEJ_COMPOSITE,
+        DYNAMIC_MASK, MULTI_BOX_DYNAMIC_MASK
     }
 
     boolean hasSame3DContext(final ImageLoader otherLoader);
@@ -64,6 +65,10 @@ public interface ImageLoader {
 
                 case DYNAMIC_MASK:
                     imageLoader = DynamicMaskLoader.INSTANCE;
+                    break;
+
+                case MULTI_BOX_DYNAMIC_MASK:
+                    imageLoader = MultiBoxDynamicMaskLoader.INSTANCE;
                     break;
             }
         }

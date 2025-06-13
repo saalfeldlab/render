@@ -507,7 +507,7 @@ public class CoordinateClient {
             tileSpecList = new ArrayList<>();
         }
 
-        return new ResolvedTileSpecCollection(new ArrayList<>(), tileSpecList);
+        return new ResolvedTileSpecCollection(tileSpecList);
     }
 
     public static List<TileCoordinates> loadJsonArrayOfCoordinates(final String path)

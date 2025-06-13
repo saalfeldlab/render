@@ -67,6 +67,19 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
+     * Creates a collection containing the provided tile specs.
+     *
+     * @param  tileSpecs       tile specifications.
+     *
+     * @throws IllegalArgumentException
+     *   if any of the tile specifications reference an unknown transform specification.
+     */
+    public ResolvedTileSpecCollection(final Collection<TileSpec> tileSpecs)
+            throws IllegalArgumentException {
+        this(new ArrayList<>(), tileSpecs);
+    }
+
+    /**
      * Creates a collection containing the provided transform and tile specs.
      *
      * @param  transformSpecs  shared (referenced) transform specifications.
@@ -113,7 +126,7 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
-     * @return true if the a tile spec with the specified id exits in this collection; otherwise false.
+     * @return true if the tile spec with the specified id exits in this collection; otherwise false.
      */
     public boolean hasTileSpec(final String tileId) {
         return tileIdToSpecMap.containsKey(tileId);
@@ -287,7 +300,7 @@ public class ResolvedTileSpecCollection implements Serializable {
      * Adds a reference to the specified transform to all tiles in this collection.
      *
      * Each tile's bounding box is recalculated after the new transform is applied
-     * (so this can potentially be a long running operation).
+     * (so this can potentially be a long-running operation).
      *
      * If this collection has a tile spec validator that determines one or more tile specs are invalid
      * (after applying the transform), those tile specs will be removed from the collection.
@@ -309,7 +322,7 @@ public class ResolvedTileSpecCollection implements Serializable {
      * Adds a reference to the specified transform to all tiles with ids in the specified set.
      *
      * Each tile's bounding box is recalculated after the new transform is applied
-     * (so this can potentially be a long running operation).
+     * (so this can potentially be a long-running operation).
      *
      * If this collection has a tile spec validator that determines one or more tile specs are invalid
      * (after applying the transform), those tile specs will be removed from the collection.
@@ -354,7 +367,7 @@ public class ResolvedTileSpecCollection implements Serializable {
      * Concatenates the specified transform to the last transform of each tile in this collection.
      *
      * Each tile's bounding box is recalculated after the new transform is applied
-     * (so this can potentially be a long running operation).
+     * (so this can potentially be a long-running operation).
      *
      * If this collection has a tile spec validator that determines one or more tile specs are invalid
      * (after applying the transform), those tile specs will be removed from the collection.
@@ -500,7 +513,7 @@ public class ResolvedTileSpecCollection implements Serializable {
                 transformSpecId = i.next().getKey();
                 if (! referencedTransformIds.contains(transformSpecId)) {
                     i.remove();
-                    LOG.info("removeUnreferencedTransforms: removed '" + transformSpecId + "'");
+                    LOG.info("removeUnreferencedTransforms: removed '{}'",transformSpecId);
                 }
             }
 
@@ -525,7 +538,7 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
-     * @return true if this collection has at least one tile spec; otherwise false.
+     * @return true if this collection has at least one tile spec, otherwise false.
      */
     public boolean hasTileSpecs() {
         return ! tileIdToSpecMap.isEmpty();
@@ -554,7 +567,7 @@ public class ResolvedTileSpecCollection implements Serializable {
     }
 
     /**
-     * @return bounds built from the union of the bounds of all tiles in this collection
+     * @return bounds built from the union of all tile bounds in this collection
      *         (or null if this collection does not have any tiles).
      */
     public Bounds toBounds() {
