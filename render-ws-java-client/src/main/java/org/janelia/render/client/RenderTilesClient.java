@@ -6,6 +6,8 @@ import com.beust.jcommander.ParametersDelegate;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
@@ -228,7 +230,7 @@ public class RenderTilesClient {
 
     private final Parameters clientParameters;
 
-    private final File tileDirectory;
+    private final URI tileDirectoryUri;
     private final ImageProcessorCache imageProcessorCache;
     private final RenderDataClient renderDataClient;
     private final List<String> tileIds;
@@ -243,9 +245,10 @@ public class RenderTilesClient {
                                                  clientParameters.renderWeb.project,
                                                  clientParameters.stack,
                                                  clientParameters.getRunTimestamp());
-        this.tileDirectory = tileDirectoryPath.toAbsolutePath().toFile();
+        this.tileDirectoryUri = tileDirectoryPath.toAbsolutePath().toUri();
 
-        FileUtil.ensureWritableDirectory(this.tileDirectory);
+        // Ensure the directory exists (still need to convert to File for compatibility with FileUtil)
+        FileUtil.ensureWritableDirectory(new File(tileDirectoryUri));
 
         // set cache size to 50MB so that masks get cached but most of RAM is left for target images
         final int maxCachedPixels = 50 * 1000000;
@@ -403,7 +406,15 @@ public class RenderTilesClient {
         final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
                 Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, null);
 
-        final File tileFile = getTileFile(tileSpec);
+        // Get URI for the tile file and convert to File for backwards compatibility
+        final URI tileUri;
+        try {
+            tileUri = getTileUri(tileSpec);
+        } catch (final URISyntaxException e) {
+            throw new IOException("Failed to create URI for tile " + tileId, e);
+        }
+        final File tileFile = new File(tileUri);
+
         final BufferedImage bufferedImage;
         if ((clientParameters.renderType == RenderType.ARGB) || (! clientParameters.excludeMask)) {
             // this incorporates the mask if it exists into the rendered image
@@ -440,8 +451,9 @@ public class RenderTilesClient {
             }
             final ChannelSpec channelSpec = allChannels.get(0);
 
+            // Use the URI string directly instead of file path
             ImageAndMask renderedImageAndMask =
-                    channelSpec.getFirstMipmapImageAndMask(tileId).copyWithImage(tileFile.getAbsolutePath(),
+                    channelSpec.getFirstMipmapImageAndMask(tileId).copyWithImage(tileUri.toString(),
                                                                                  null,
                                                                                  null);
             if (channelSpec.hasMask()) {
@@ -459,14 +471,24 @@ public class RenderTilesClient {
                     final String maskFileName =
                             tileFile.getName().replace(clientParameters.format,
                                                        "mask." + clientParameters.format);
-                    final File maskFile = new File(tileFile.getParentFile().getAbsolutePath(), maskFileName);
-                    final String maskPath = maskFile.getAbsolutePath();
+                    // Create mask URI based on the same parent directory
+                    final URI maskUri;
+                    try {
+                        maskUri = new URI(tileUri.getScheme(),
+                                          tileUri.getAuthority(),
+                                          tileUri.getPath().substring(0, tileUri.getPath().lastIndexOf('/') + 1) + maskFileName,
+                                          null,
+                                          null);
+                    } catch (final URISyntaxException e) {
+                        throw new IOException("Failed to create URI for mask file", e);
+                    }
                     Utils.saveImage(imageProcessorWithMasks.mask.getBufferedImage(),
-                                    maskPath,
+                                    new File(maskUri).toString(),
                                     clientParameters.format,
                                     renderParameters.convertToGray,
                                     renderParameters.quality);
-                    renderedImageAndMask = renderedImageAndMask.copyWithMask(maskPath,
+
+                    renderedImageAndMask = renderedImageAndMask.copyWithMask(maskUri.toString(),
                                                                              null,
                                                                              null);
                 }
@@ -512,20 +534,33 @@ public class RenderTilesClient {
         }
     }
 
-    private File getTileFile(final TileSpec tileSpec) {
+    private URI getTileUri(final TileSpec tileSpec) throws URISyntaxException {
 
         final int zInt = tileSpec.getZ().intValue();
         final int thousands = zInt / 1000;
-        final File thousandsDir = new File(tileDirectory, String.format("%03d", thousands));
 
-        final int hundreds = (zInt % 1000) / 100;
-        final File hundredsDirectory = new File(thousandsDir, String.valueOf(hundreds));
+        // Build relative path components
+        final String thousandsPath = String.format("%03d", thousands);
+        final String hundredsPath = String.valueOf((zInt % 1000) / 100);
+        final String zPath = String.valueOf(zInt);
+        final String fileName = tileSpec.getTileId() + "." + clientParameters.format.toLowerCase();
 
-        final File parentDirectory = new File(hundredsDirectory, String.valueOf(zInt));
+        // Create a URI for the parent directory
+        final URI parentDirUri = new URI(tileDirectoryUri.getScheme(),
+                                         tileDirectoryUri.getAuthority(),
+                                         tileDirectoryUri.getPath() + "/" + thousandsPath + "/" + hundredsPath + "/" + zPath,
+                                         null,
+                                         null);
 
-        FileUtil.ensureWritableDirectory(parentDirectory);
+        // Ensure the directory exists (still need to convert to File for compatibility with FileUtil)
+        FileUtil.ensureWritableDirectory(new File(parentDirUri));
 
-        return new File(parentDirectory, tileSpec.getTileId() + "." + clientParameters.format.toLowerCase());
+        // Create and return final URI for the tile
+        return new URI(parentDirUri.getScheme(),
+                       parentDirUri.getAuthority(),
+                       parentDirUri.getPath() + "/" + fileName,
+                       null,
+                       null);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderTilesClient.class);
