@@ -77,6 +77,10 @@ public class LayerMFOV
         return "z_" + z + "_mfov_" + name;
     }
 
+    public String toMfovAsTileName(final String stackName) {
+        return String.format("%s_z%03d_%s", stackName, (int) z, name);
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }
@@ -147,7 +151,7 @@ public class LayerMFOV
 
         final TileSpec tileSpec = new TileSpec();
 
-        tileSpec.setTileId(this.toString());
+        tileSpec.setTileId(this.toMfovAsTileName(stackId.getStack()));
         tileSpec.setZ(z);
         tileSpec.setWidth((double) scaledImageWidth);
         tileSpec.setHeight((double) scaledImageHeight);

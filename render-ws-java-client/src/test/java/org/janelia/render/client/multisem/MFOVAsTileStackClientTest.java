@@ -21,7 +21,7 @@ public class MFOVAsTileStackClientTest {
                 "--project", "w60_serial_360_to_369",
                 "--stack", "w60_s360_r00_gc",
                 "--mfovTileRenderScale", "0.2",
-                "--mfovTileStackSuffix", "_mt3"
+                "--mfovTileStackSuffix", "_mt5"
         };
 
         MFOVAsTileStackClient.main(effectiveArgs);
