@@ -43,6 +43,7 @@ import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.RigidModel2D;
+import mpicbg.models.SimilarityModel2D;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TranslationModel2D;
@@ -1088,10 +1089,25 @@ public class SolveTools
 									   " post match transforms but was expecting one and only one");
 		}
 
-		final CoordinateTransform lastTransform = simpleList.get(0);
+		CoordinateTransform lastTransform = simpleList.get(0);
 		if (! (lastTransform instanceof AffineModel2D)) {
-			throw new RuntimeException("tile " + tileSpec.getTileId() + " post match transform is a " +
-									   lastTransform.getClass().getName() + " but must be an AffineModel2D");
+			if (lastTransform instanceof TranslationModel2D) {
+				final AffineModel2D affineModel2D = new AffineModel2D();
+				affineModel2D.set((TranslationModel2D) lastTransform);
+				lastTransform = affineModel2D;
+			} else if (lastTransform instanceof RigidModel2D) {
+				final AffineModel2D affineModel2D = new AffineModel2D();
+				affineModel2D.set((RigidModel2D) lastTransform);
+				lastTransform = affineModel2D;
+			} else if (lastTransform instanceof SimilarityModel2D) {
+				final AffineModel2D affineModel2D = new AffineModel2D();
+				affineModel2D.set((SimilarityModel2D) lastTransform);
+				lastTransform = affineModel2D;
+			} else {
+				throw new RuntimeException("tile " + tileSpec.getTileId() + " post match transform is a " +
+										   lastTransform.getClass().getName() + " but must be an AffineModel2D, " +
+										   "TranslationModel2D, RigidModel2D, or SimilarityModel2D");
+			}
 		}
 
         return (AffineModel2D) lastTransform;
