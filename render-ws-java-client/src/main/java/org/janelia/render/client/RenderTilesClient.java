@@ -431,10 +431,11 @@ public class RenderTilesClient {
                 Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, null);
 
         // Get URI for the tile file and convert to File for backwards compatibility
+        final String format = clientParameters.format.toLowerCase();
         final URI parentDirUri, tileUri;
         try {
             parentDirUri = getTileParentUri(tileSpec);
-            final String fileName = tileSpec.getTileId() + "." + clientParameters.format.toLowerCase();
+            final String fileName = tileSpec.getTileId() + "." + format;
             tileUri = storageBackend.compose(parentDirUri, fileName);
         } catch (final URISyntaxException e) {
             throw new IOException("Failed to create URI for tile " + tileId, e);
@@ -458,10 +459,7 @@ public class RenderTilesClient {
             throw new IllegalArgumentException("unsupported render type: " + clientParameters.renderType);
         }
 
-        Utils.saveImage(bufferedImage,
-                        new File(tileUri),
-                        renderParameters.isConvertToGray(),
-                        renderParameters.getQuality());
+        storageBackend.writeImage(bufferedImage, tileUri, format, renderParameters);
 
         if (clientParameters.hackStack != null) {
             final ResolvedTileSpecCollection resolvedTiles = zToResolvedTiles.get(tileSpec.getZ());
@@ -494,7 +492,7 @@ public class RenderTilesClient {
                                                                              null);
                 } else if (imageProcessorWithMasks.mask != null) {
                     // if we rendered a new mask, save it to disk and update the tile spec reference
-                    final String maskFileName = tileSpec.getTileId() + ".mask." + clientParameters.format.toLowerCase();
+                    final String maskFileName = tileSpec.getTileId() + ".mask." + format;
 
                     // Create mask URI based on the same parent directory
                     final URI maskUri;
@@ -503,10 +501,7 @@ public class RenderTilesClient {
                     } catch (final URISyntaxException e) {
                         throw new IOException("Failed to create URI for mask file", e);
                     }
-                    Utils.saveImage(imageProcessorWithMasks.mask.getBufferedImage(),
-                                    new File(maskUri),
-                                    renderParameters.convertToGray,
-                                    renderParameters.quality);
+                    storageBackend.writeImage(imageProcessorWithMasks.mask.getBufferedImage(), maskUri, format, renderParameters);
 
                     renderedImageAndMask = renderedImageAndMask.copyWithMask(maskUri.toString(),
                                                                              null,
@@ -582,6 +577,8 @@ public class RenderTilesClient {
 
         abstract void ensureWritableDirectory(URI uri);
 
+        abstract void writeImage(BufferedImage image, URI uri, String format, RenderParameters parameters) throws IOException;
+
         URI compose(final URI baseUri, final String... paths) throws URISyntaxException {
             final URI base = keyValueAccess.uri(keyValueAccess.normalize(baseUri.toString()));
             return keyValueAccess.uri(keyValueAccess.compose(base, paths));
@@ -596,6 +593,15 @@ public class RenderTilesClient {
         @Override
         void ensureWritableDirectory(final URI uri) {
             FileUtil.ensureWritableDirectory(new File(uri));
+        }
+
+        @Override
+        void writeImage(final BufferedImage image,
+                        final URI uri,
+                        final String format,
+                        final RenderParameters parameters) throws IOException {
+            Utils.saveImage(image, new File(uri).toString(), format, parameters.convertToGray, parameters.quality);
+
         }
     }
 
@@ -613,6 +619,14 @@ public class RenderTilesClient {
                     throw new RuntimeException("Could not create directory " + uri, e);
                 }
             }
+        }
+
+        @Override
+        void writeImage(final BufferedImage image,
+                        final URI uri,
+                        final String format,
+                        final RenderParameters renderParameters) throws IOException {
+
         }
     }
 
