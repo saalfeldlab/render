@@ -47,8 +47,11 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
+import org.janelia.saalfeldlab.googlecloud.GoogleCloudUtils;
 import org.janelia.saalfeldlab.n5.FileSystemKeyValueAccess;
 import org.janelia.saalfeldlab.n5.KeyValueAccess;
+import org.janelia.saalfeldlab.n5.googlecloud.GoogleCloudStorageKeyValueAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -238,24 +241,22 @@ public class RenderTilesClient {
     private final List<String> tileIds;
     private final String renderParametersQueryString;
     private final Map<Double, ResolvedTileSpecCollection> zToResolvedTiles;
-    private final KeyValueAccess keyValueAccess;
+    private final StorageBackend storageBackend;
 
     private RenderTilesClient(final Parameters clientParameters) {
 
         this.clientParameters = clientParameters;
-        this.keyValueAccess = new FileSystemKeyValueAccess(FileSystems.getDefault());
+        final URI rootUri = URI.create(clientParameters.rootDirectory);
+        this.storageBackend = getStorageBackend(rootUri);
 
-        final URI rootUri;
         try {
-            rootUri = keyValueAccess.uri(clientParameters.rootDirectory);
-            final String tileDirectoryPath = keyValueAccess.compose(rootUri, clientParameters.renderWeb.project, clientParameters.stack);
-            this.tileDirectoryUri = this.keyValueAccess.uri(tileDirectoryPath);
+            this.tileDirectoryUri = storageBackend.compose(rootUri, clientParameters.renderWeb.project, clientParameters.stack);
         } catch (final URISyntaxException e) {
             throw new IllegalArgumentException("Invalid root directory URI: " + clientParameters.rootDirectory, e);
         }
 
         // Ensure the directory exists (still need to convert to File for compatibility with FileUtil)
-        FileUtil.ensureWritableDirectory(new File(tileDirectoryUri));
+        storageBackend.ensureWritableDirectory(tileDirectoryUri);
 
         // set cache size to 50MB so that masks get cached but most of RAM is left for target images
         final int maxCachedPixels = 50 * 1000000;
@@ -300,6 +301,22 @@ public class RenderTilesClient {
 
         this.renderParametersQueryString = queryParameters.toString();
         this.zToResolvedTiles = new HashMap<>();
+    }
+
+    private static StorageBackend getStorageBackend(final URI uri) {
+        final String scheme = uri.getScheme();
+
+        if (scheme == null || scheme.equals("file")) {
+            final KeyValueAccess keyValueAccess = new FileSystemKeyValueAccess(FileSystems.getDefault());
+            return new FileStorage(keyValueAccess);
+        } else if (GoogleCloudUtils.GS_SCHEME.asPredicate().test(scheme)) {
+            final GoogleCloudStorageURI googleCloudUri = new GoogleCloudStorageURI(uri);
+            final KeyValueAccess keyValueAccess =
+                    new GoogleCloudStorageKeyValueAccess(GoogleCloudUtils.createGoogleCloudStorage(null), googleCloudUri, true);
+            return new CloudStorage(keyValueAccess);
+        } else {
+            throw new IllegalArgumentException("Unsupported URI scheme: " + uri.getScheme());
+        }
     }
 
     private void collectTileInfo()
@@ -414,12 +431,15 @@ public class RenderTilesClient {
                 Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, null);
 
         // Get URI for the tile file and convert to File for backwards compatibility
-        final URI tileUri;
+        final URI parentDirUri, tileUri;
         try {
-            tileUri = getTileUri(tileSpec);
+            parentDirUri = getTileParentUri(tileSpec);
+            final String fileName = tileSpec.getTileId() + "." + clientParameters.format.toLowerCase();
+            tileUri = storageBackend.compose(parentDirUri, fileName);
         } catch (final URISyntaxException e) {
             throw new IOException("Failed to create URI for tile " + tileId, e);
         }
+
 
         final BufferedImage bufferedImage;
         if ((clientParameters.renderType == RenderType.ARGB) || (! clientParameters.excludeMask)) {
@@ -474,23 +494,17 @@ public class RenderTilesClient {
                                                                              null);
                 } else if (imageProcessorWithMasks.mask != null) {
                     // if we rendered a new mask, save it to disk and update the tile spec reference
-                    final String maskFileName =
-                            new File(tileUri).getName().replace(clientParameters.format,
-                                                       "mask." + clientParameters.format);
+                    final String maskFileName = tileSpec.getTileId() + ".mask." + clientParameters.format.toLowerCase();
+
                     // Create mask URI based on the same parent directory
                     final URI maskUri;
                     try {
-                        maskUri = new URI(tileUri.getScheme(),
-                                          tileUri.getAuthority(),
-                                          tileUri.getPath().substring(0, tileUri.getPath().lastIndexOf('/') + 1) + maskFileName,
-                                          null,
-                                          null);
+                        maskUri = storageBackend.compose(parentDirUri, maskFileName);
                     } catch (final URISyntaxException e) {
                         throw new IOException("Failed to create URI for mask file", e);
                     }
                     Utils.saveImage(imageProcessorWithMasks.mask.getBufferedImage(),
-                                    new File(maskUri).toString(),
-                                    clientParameters.format,
+                                    new File(maskUri),
                                     renderParameters.convertToGray,
                                     renderParameters.quality);
 
@@ -540,7 +554,7 @@ public class RenderTilesClient {
         }
     }
 
-    private URI getTileUri(final TileSpec tileSpec) throws URISyntaxException {
+    private URI getTileParentUri(final TileSpec tileSpec) throws URISyntaxException {
 
         final int zInt = tileSpec.getZ().intValue();
         final int thousands = zInt / 1000;
@@ -549,19 +563,59 @@ public class RenderTilesClient {
         final String thousandsPath = String.format("%03d", thousands);
         final String hundredsPath = String.valueOf((zInt % 1000) / 100);
         final String zPath = String.valueOf(zInt);
-        final String fileName = tileSpec.getTileId() + "." + clientParameters.format.toLowerCase();
 
         // Create a URI for the parent directory
-        final String parentPath = keyValueAccess.compose(tileDirectoryUri, thousandsPath, hundredsPath, zPath);
-        final URI parentDirUri = keyValueAccess.uri(parentPath);
+        final URI parentDirUri = storageBackend.compose(tileDirectoryUri, thousandsPath, hundredsPath, zPath);
 
         // Ensure the directory exists (still need to convert to File for compatibility with FileUtil)
-        FileUtil.ensureWritableDirectory(new File(parentDirUri));
-
-        // Create and return final URI for the tile
-        final String filePath = keyValueAccess.compose(parentDirUri, fileName);
-        return keyValueAccess.uri(filePath);
+        storageBackend.ensureWritableDirectory(parentDirUri);
+        return parentDirUri;
     }
+
+
+    private abstract static class StorageBackend {
+        final KeyValueAccess keyValueAccess;
+
+        StorageBackend(final KeyValueAccess keyValueAccess) {
+            this.keyValueAccess = keyValueAccess;
+        }
+
+        abstract void ensureWritableDirectory(URI uri);
+
+        URI compose(final URI baseUri, final String... paths) throws URISyntaxException {
+            final URI base = keyValueAccess.uri(keyValueAccess.normalize(baseUri.toString()));
+            return keyValueAccess.uri(keyValueAccess.compose(base, paths));
+		}
+    }
+
+    private static class FileStorage extends StorageBackend {
+        FileStorage(final KeyValueAccess keyValueAccess) {
+            super(keyValueAccess);
+        }
+
+        @Override
+        void ensureWritableDirectory(final URI uri) {
+            FileUtil.ensureWritableDirectory(new File(uri));
+        }
+    }
+
+    private static class CloudStorage extends StorageBackend {
+        CloudStorage(final KeyValueAccess keyValueAccess) {
+            super(keyValueAccess);
+        }
+
+        @Override
+        void ensureWritableDirectory(final URI uri) {
+            if (!keyValueAccess.exists(uri.toString())) {
+                try {
+                    keyValueAccess.createDirectories(uri.toString());
+                } catch (final IOException e) {
+                    throw new RuntimeException("Could not create directory " + uri, e);
+                }
+            }
+        }
+    }
+
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderTilesClient.class);
 }
