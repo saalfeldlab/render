@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
@@ -51,9 +52,12 @@ import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudUtils;
 import org.janelia.saalfeldlab.n5.FileSystemKeyValueAccess;
 import org.janelia.saalfeldlab.n5.KeyValueAccess;
+import org.janelia.saalfeldlab.n5.LockedChannel;
 import org.janelia.saalfeldlab.n5.googlecloud.GoogleCloudStorageKeyValueAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.imageio.ImageIO;
 
 
 /**
@@ -626,7 +630,15 @@ public class RenderTilesClient {
                         final URI uri,
                         final String format,
                         final RenderParameters renderParameters) throws IOException {
+            if (! Utils.PNG_FORMAT.equals(format)) {
+                throw new IllegalArgumentException("Only PNG format is supported for cloud storage: " + format);
+            }
 
+            try (final LockedChannel lockedChannel = keyValueAccess.lockForWriting(uri.toString())) {
+                final ByteArrayOutputStream oStream = new ByteArrayOutputStream();
+                ImageIO.write(image, format, oStream);
+                lockedChannel.newOutputStream().write(oStream.toByteArray());
+            }
         }
     }
 
