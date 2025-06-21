@@ -9,7 +9,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.FileSystems;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -26,6 +25,7 @@ import java.util.stream.Collectors;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import mpicbg.trakem2.transform.TranslationModel2D;
 
+import org.apache.http.client.utils.URIBuilder;
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.ByteRenderer;
 import org.janelia.alignment.ImageAndMask;
@@ -50,7 +50,6 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudUtils;
-import org.janelia.saalfeldlab.n5.FileSystemKeyValueAccess;
 import org.janelia.saalfeldlab.n5.KeyValueAccess;
 import org.janelia.saalfeldlab.n5.LockedChannel;
 import org.janelia.saalfeldlab.n5.googlecloud.GoogleCloudStorageKeyValueAccess;
@@ -239,7 +238,6 @@ public class RenderTilesClient {
 
     private final Parameters clientParameters;
 
-    private final URI tileDirectoryUri;
     private final ImageProcessorCache imageProcessorCache;
     private final RenderDataClient renderDataClient;
     private final List<String> tileIds;
@@ -250,17 +248,19 @@ public class RenderTilesClient {
     private RenderTilesClient(final Parameters clientParameters) {
 
         this.clientParameters = clientParameters;
-        final URI rootUri = URI.create(clientParameters.rootDirectory);
-        this.storageBackend = getStorageBackend(rootUri);
 
         try {
-            this.tileDirectoryUri = storageBackend.compose(rootUri, clientParameters.renderWeb.project, clientParameters.stack);
+            final URIBuilder uriBuilder = new URIBuilder(clientParameters.rootDirectory);
+            final List<String> pathSegments = uriBuilder.getPathSegments();
+            pathSegments.add(clientParameters.renderWeb.project);
+            pathSegments.add(clientParameters.stack);
+
+            final URI rootUri = uriBuilder.setPathSegments(pathSegments).build();
+            this.storageBackend = getStorageBackend(rootUri);
+            storageBackend.ensureWritableDirectory(storageBackend.root);
         } catch (final URISyntaxException e) {
             throw new IllegalArgumentException("Invalid root directory URI: " + clientParameters.rootDirectory, e);
         }
-
-        // Ensure the directory exists (still need to convert to File for compatibility with FileUtil)
-        storageBackend.ensureWritableDirectory(tileDirectoryUri);
 
         // set cache size to 50MB so that masks get cached but most of RAM is left for target images
         final int maxCachedPixels = 50 * 1000000;
@@ -307,17 +307,21 @@ public class RenderTilesClient {
         this.zToResolvedTiles = new HashMap<>();
     }
 
-    private static StorageBackend getStorageBackend(final URI uri) {
+    private static StorageBackend getStorageBackend(URI uri) {
         final String scheme = uri.getScheme();
+        if (scheme == null) {
+            // Ensure that file scheme is explicit
+            try {
+                uri = new URI("file", uri.getAuthority(), uri.getPath(), null, null);
+            } catch (final URISyntaxException e) {
+                throw new IllegalArgumentException("Invalid URI: " + uri, e);
+            }
+        }
 
         if (scheme == null || scheme.equals("file")) {
-            final KeyValueAccess keyValueAccess = new FileSystemKeyValueAccess(FileSystems.getDefault());
-            return new FileStorage(keyValueAccess);
+            return new FileStorage(uri);
         } else if (GoogleCloudUtils.GS_SCHEME.asPredicate().test(scheme)) {
-            final GoogleCloudStorageURI googleCloudUri = new GoogleCloudStorageURI(uri);
-            final KeyValueAccess keyValueAccess =
-                    new GoogleCloudStorageKeyValueAccess(GoogleCloudUtils.createGoogleCloudStorage(null), googleCloudUri, true);
-            return new CloudStorage(keyValueAccess);
+            return new CloudStorage(uri);
         } else {
             throw new IllegalArgumentException("Unsupported URI scheme: " + uri.getScheme());
         }
@@ -436,15 +440,8 @@ public class RenderTilesClient {
 
         // Get URI for the tile file and convert to File for backwards compatibility
         final String format = clientParameters.format.toLowerCase();
-        final URI parentDirUri, tileUri;
-        try {
-            parentDirUri = getTileParentUri(tileSpec);
-            final String fileName = tileSpec.getTileId() + "." + format;
-            tileUri = storageBackend.compose(parentDirUri, fileName);
-        } catch (final URISyntaxException e) {
-            throw new IOException("Failed to create URI for tile " + tileId, e);
-        }
-
+        final List<String> imagePathSegments = getImagePathSegments(tileSpec, format);
+        final URI imageUri = storageBackend.resolvePath(imagePathSegments);
 
         final BufferedImage bufferedImage;
         if ((clientParameters.renderType == RenderType.ARGB) || (! clientParameters.excludeMask)) {
@@ -463,7 +460,7 @@ public class RenderTilesClient {
             throw new IllegalArgumentException("unsupported render type: " + clientParameters.renderType);
         }
 
-        storageBackend.writeImage(bufferedImage, tileUri, format, renderParameters);
+        storageBackend.writeImage(bufferedImage, imageUri, format, renderParameters);
 
         if (clientParameters.hackStack != null) {
             final ResolvedTileSpecCollection resolvedTiles = zToResolvedTiles.get(tileSpec.getZ());
@@ -481,7 +478,7 @@ public class RenderTilesClient {
 
             // Use the URI string directly instead of file path
             ImageAndMask renderedImageAndMask =
-                    channelSpec.getFirstMipmapImageAndMask(tileId).copyWithImage(tileUri.toString(),
+                    channelSpec.getFirstMipmapImageAndMask(tileId).copyWithImage(imageUri.toString(),
                                                                                  null,
                                                                                  null);
             if (channelSpec.hasMask()) {
@@ -496,15 +493,12 @@ public class RenderTilesClient {
                                                                              null);
                 } else if (imageProcessorWithMasks.mask != null) {
                     // if we rendered a new mask, save it to disk and update the tile spec reference
+                    final List<String> maskPathSegments = new ArrayList<>(imagePathSegments);
                     final String maskFileName = tileSpec.getTileId() + ".mask." + format;
+                    maskPathSegments.set(maskPathSegments.size() - 1, maskFileName);
+                    final URI maskUri = storageBackend.resolvePath(maskPathSegments);
 
                     // Create mask URI based on the same parent directory
-                    final URI maskUri;
-                    try {
-                        maskUri = storageBackend.compose(parentDirUri, maskFileName);
-                    } catch (final URISyntaxException e) {
-                        throw new IOException("Failed to create URI for mask file", e);
-                    }
                     storageBackend.writeImage(imageProcessorWithMasks.mask.getBufferedImage(), maskUri, format, renderParameters);
 
                     renderedImageAndMask = renderedImageAndMask.copyWithMask(maskUri.toString(),
@@ -553,45 +547,51 @@ public class RenderTilesClient {
         }
     }
 
-    private URI getTileParentUri(final TileSpec tileSpec) throws URISyntaxException {
-
+    private List<String> getImagePathSegments(final TileSpec tileSpec, final String format) {
         final int zInt = tileSpec.getZ().intValue();
         final int thousands = zInt / 1000;
 
         // Build relative path components
-        final String thousandsPath = String.format("%03d", thousands);
-        final String hundredsPath = String.valueOf((zInt % 1000) / 100);
-        final String zPath = String.valueOf(zInt);
+        final List<String> relativePathSegments = new ArrayList<>();
+        relativePathSegments.add(String.format("%03d", thousands));
+        relativePathSegments.add(String.valueOf((zInt % 1000) / 100));
+        relativePathSegments.add(String.valueOf(zInt));
 
-        // Create a URI for the parent directory
-        final URI parentDirUri = storageBackend.compose(tileDirectoryUri, thousandsPath, hundredsPath, zPath);
+        // Ensure the directory exists and if so append file name
+        final URI parentUri = storageBackend.resolvePath(relativePathSegments);
+        storageBackend.ensureWritableDirectory(parentUri);
+        relativePathSegments.add(tileSpec.getTileId() + "." + format);
 
-        // Ensure the directory exists (still need to convert to File for compatibility with FileUtil)
-        storageBackend.ensureWritableDirectory(parentDirUri);
-        return parentDirUri;
+        return relativePathSegments;
     }
 
 
     private abstract static class StorageBackend {
-        final KeyValueAccess keyValueAccess;
+        final URI root;
 
-        StorageBackend(final KeyValueAccess keyValueAccess) {
-            this.keyValueAccess = keyValueAccess;
+        StorageBackend(final URI root) {
+            this.root = root;
         }
 
         abstract void ensureWritableDirectory(URI uri);
 
         abstract void writeImage(BufferedImage image, URI uri, String format, RenderParameters parameters) throws IOException;
 
-        URI compose(final URI baseUri, final String... paths) throws URISyntaxException {
-            final URI base = keyValueAccess.uri(keyValueAccess.normalize(baseUri.toString()));
-            return keyValueAccess.uri(keyValueAccess.compose(base, paths));
-		}
+        URI resolvePath(final List<String> relativePathSegments) {
+            try {
+                final URIBuilder uriBuilder = new URIBuilder(root);
+                final List<String> pathSegments = uriBuilder.getPathSegments();
+                pathSegments.addAll(relativePathSegments);
+                return uriBuilder.setPathSegments(pathSegments).build();
+            } catch (final URISyntaxException e) {
+                throw new IllegalArgumentException("Failed to resolve root " + root + " with segments " + relativePathSegments, e);
+            }
+        }
     }
 
     private static class FileStorage extends StorageBackend {
-        FileStorage(final KeyValueAccess keyValueAccess) {
-            super(keyValueAccess);
+        FileStorage(final URI uri) {
+            super(uri);
         }
 
         @Override
@@ -610,15 +610,21 @@ public class RenderTilesClient {
     }
 
     private static class CloudStorage extends StorageBackend {
-        CloudStorage(final KeyValueAccess keyValueAccess) {
-            super(keyValueAccess);
+        final KeyValueAccess keyValueAccess;
+
+        CloudStorage(final URI uri) {
+            super(uri);
+            this.keyValueAccess = new GoogleCloudStorageKeyValueAccess(
+                    GoogleCloudUtils.createGoogleCloudStorage(null),
+                    new GoogleCloudStorageURI(uri),
+                    true);
         }
 
         @Override
         void ensureWritableDirectory(final URI uri) {
-            if (!keyValueAccess.exists(uri.toString())) {
+            if (!keyValueAccess.exists(uri.getPath())) {
                 try {
-                    keyValueAccess.createDirectories(uri.toString());
+                    keyValueAccess.createDirectories(uri.getPath());
                 } catch (final IOException e) {
                     throw new RuntimeException("Could not create directory " + uri, e);
                 }
@@ -638,6 +644,7 @@ public class RenderTilesClient {
                 final ByteArrayOutputStream oStream = new ByteArrayOutputStream();
                 ImageIO.write(image, format, oStream);
                 lockedChannel.newOutputStream().write(oStream.toByteArray());
+                LOG.info("image written to {}", uri);
             }
         }
     }
