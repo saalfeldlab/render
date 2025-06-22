@@ -131,7 +131,9 @@ public class DistributedSolveSpark extends DistributedSolve
 																parameters.blockMaxPlateauWidth,
 																parameters.minStitchingInliers,
 																parameters.blockMaxAllowedError,
-																parameters.dynamicLambdaFactor);
+																parameters.dynamicLambdaFactor,
+																parameters.zWithAdditionalIssues);
+
 				} else {
 					solveSetFactory = CustomSolveSetBuilder.build(parameters.customSolveClass,
 																  parameters.globalModel(),

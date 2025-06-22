@@ -291,6 +291,14 @@ public class DistributedSolveParameters extends CommandLineParameters
 			arity = 0)
 	public boolean visualizeResults = false;
 
+	@Parameter(
+			names = "--zWithAdditionalIssues",
+			description = "Flag these z layers as having additional issues so that SolveSetFactoryAdaptiveRigid " +
+						  "will set rigidPreAlign to true and apply a rigid/affine solve.",
+			variableArity = true
+	)
+	public List<Double> zWithAdditionalIssues = new ArrayList<>();
+
 	public DistributedSolveParameters() {}
 
 	public void initDefaultValues()
