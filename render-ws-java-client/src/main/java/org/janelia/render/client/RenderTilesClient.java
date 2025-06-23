@@ -256,7 +256,7 @@ public class RenderTilesClient {
             pathSegments.add(clientParameters.stack);
 
             final URI rootUri = uriBuilder.setPathSegments(pathSegments).build();
-            this.storageBackend = getStorageBackend(rootUri);
+            this.storageBackend = StorageBackend.create(rootUri);
             storageBackend.ensureWritableDirectory(storageBackend.root);
         } catch (final URISyntaxException e) {
             throw new IllegalArgumentException("Invalid root directory URI: " + clientParameters.rootDirectory, e);
@@ -305,26 +305,6 @@ public class RenderTilesClient {
 
         this.renderParametersQueryString = queryParameters.toString();
         this.zToResolvedTiles = new HashMap<>();
-    }
-
-    private static StorageBackend getStorageBackend(URI uri) {
-        final String scheme = uri.getScheme();
-        if (scheme == null) {
-            // Ensure that file scheme is explicit
-            try {
-                uri = new URI("file", uri.getAuthority(), uri.getPath(), null, null);
-            } catch (final URISyntaxException e) {
-                throw new IllegalArgumentException("Invalid URI: " + uri, e);
-            }
-        }
-
-        if (scheme == null || scheme.equals("file")) {
-            return new FileStorage(uri);
-        } else if (GoogleCloudUtils.GS_SCHEME.asPredicate().test(scheme)) {
-            return new CloudStorage(uri);
-        } else {
-            throw new IllegalArgumentException("Unsupported URI scheme: " + uri.getScheme());
-        }
     }
 
     private void collectTileInfo()
@@ -566,11 +546,36 @@ public class RenderTilesClient {
     }
 
 
+    /**
+     * An abstract class that provides a common interface for different storage backends.
+     * It handles the creation of the appropriate backend based on the URI scheme.
+     */
     private abstract static class StorageBackend {
         final URI root;
 
-        StorageBackend(final URI root) {
-            this.root = root;
+        StorageBackend(final URI uri) {
+            this.root = uri;
+        }
+
+        static StorageBackend create(URI uri) {
+            String scheme = uri.getScheme();
+            if (scheme == null) {
+                // Ensure that file scheme is explicit
+                try {
+                    uri = new URI("file", uri.getAuthority(), uri.getPath(), null, null);
+                } catch (final URISyntaxException e) {
+                    throw new IllegalArgumentException("Invalid URI: " + uri, e);
+                }
+            }
+
+            scheme = uri.getScheme();
+            if (scheme.equals("file")) {
+                return new FileStorage(uri);
+            } else if (GoogleCloudUtils.GS_SCHEME.asPredicate().test(scheme)) {
+                return new CloudStorage(uri);
+            } else {
+                throw new IllegalArgumentException("Unsupported URI scheme: " + scheme);
+            }
         }
 
         abstract void ensureWritableDirectory(URI uri);
@@ -589,6 +594,9 @@ public class RenderTilesClient {
         }
     }
 
+    /**
+     * A concrete implementation of StorageBackend that handles file system storage.
+     */
     private static class FileStorage extends StorageBackend {
         FileStorage(final URI uri) {
             super(uri);
@@ -609,6 +617,9 @@ public class RenderTilesClient {
         }
     }
 
+    /**
+     * A concrete implementation of StorageBackend that handles cloud storage (only Google Cloud Storage so far).
+     */
     private static class CloudStorage extends StorageBackend {
         final KeyValueAccess keyValueAccess;
 
