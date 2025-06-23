@@ -150,6 +150,12 @@ public class RenderTransformMeshMappingWithMasks {
             return e;
         }
 
+        // Slightly shrink the rendering area to avoid artifacts at the edges. This only happens for axis-aligned
+        // images with integer origin coordinates, which is a valid use case (unaligned images).
+        final double eps = 1e-8;
+        affineTransform2D.scale(1.0 - eps);
+        affineTransform2D.translate(eps / 2, eps / 2);
+
         final LineMapper lineMapper = pixelMapper.createLineMapper();
         final double dx = affineTransform2D.d(0).getDoublePosition(0);
         final double dy = affineTransform2D.d(0).getDoublePosition(1);
