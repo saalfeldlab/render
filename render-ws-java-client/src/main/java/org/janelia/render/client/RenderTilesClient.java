@@ -646,9 +646,6 @@ public class RenderTilesClient {
                         final URI uri,
                         final String format,
                         final RenderParameters renderParameters) throws IOException {
-            if (! Utils.PNG_FORMAT.equals(format)) {
-                throw new IllegalArgumentException("Only PNG format is supported for cloud storage: " + format);
-            }
 
             try (final LockedChannel lockedChannel = keyValueAccess.lockForWriting(uri.getPath())) {
                 final ByteArrayOutputStream oStream = new ByteArrayOutputStream();
