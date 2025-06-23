@@ -647,6 +647,7 @@ public class RenderTilesClient {
                         final String format,
                         final RenderParameters renderParameters) throws IOException {
 
+            // TODO: render parameters are currently ignored, so the behavior might differ from the file system version!
             try (final LockedChannel lockedChannel = keyValueAccess.lockForWriting(uri.getPath())) {
                 final ByteArrayOutputStream oStream = new ByteArrayOutputStream();
                 ImageIO.write(image, format, oStream);
