@@ -92,7 +92,7 @@ public class RenderTransformMeshMappingWithMasks {
         }
 
         @Override
-        final public void run() {
+        public void run() {
             int k = i.getAndIncrement();
             Exception lastIgnoredException = null;
             while (!isInterrupted() && k < triangles.size()) {
@@ -109,11 +109,11 @@ public class RenderTransformMeshMappingWithMasks {
      * Extract the inverse {@code model} transform
      * (mapping target to source coordinates).
      *
-     * @param model
+     * @param model the model to be inverted
      * @return the inverse model transform
-     * @throws NoninvertibleModelException
+     * @throws NoninvertibleModelException if the model is not invertible
      */
-    private static AffineTransform2D getTransformToSource(AffineModel2D model) throws NoninvertibleModelException {
+    private static AffineTransform2D getTransformToSource(final AffineModel2D model) throws NoninvertibleModelException {
         try {
             final AffineTransform2D transform = new AffineTransform2D();
             final double[] m = new double[6];
@@ -144,7 +144,7 @@ public class RenderTransformMeshMappingWithMasks {
         final int maxY = Math.min(pixelMapper.getTargetHeight() - 1, Util.roundPos(max[1]));
 
         final AffineTransform2D affineTransform2D;
-            try {
+        try {
             affineTransform2D = getTransformToSource(model);
         } catch (final NoninvertibleModelException e) {
             return e;
