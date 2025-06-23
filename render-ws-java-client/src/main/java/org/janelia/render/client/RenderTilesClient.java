@@ -440,7 +440,7 @@ public class RenderTilesClient {
             throw new IllegalArgumentException("unsupported render type: " + clientParameters.renderType);
         }
 
-        storageBackend.writeImage(bufferedImage, imageUri, format, renderParameters);
+        final String imageUrl = storageBackend.writeImage(bufferedImage, imageUri, format, renderParameters);
 
         if (clientParameters.hackStack != null) {
             final ResolvedTileSpecCollection resolvedTiles = zToResolvedTiles.get(tileSpec.getZ());
@@ -457,10 +457,10 @@ public class RenderTilesClient {
             final ChannelSpec channelSpec = allChannels.get(0);
 
             // Use the URI string directly instead of file path
-            ImageAndMask renderedImageAndMask =
-                    channelSpec.getFirstMipmapImageAndMask(tileId).copyWithImage(imageUri.toString(),
-                                                                                 null,
-                                                                                 null);
+            ImageAndMask renderedImageAndMask = channelSpec
+                    .getFirstMipmapImageAndMask(tileId)
+                    .copyWithImage(imageUrl, null, null);
+
             if (channelSpec.hasMask()) {
                 if (ImageLoader.LoaderType.DYNAMIC_MASK.equals(renderedImageAndMask.getMaskLoaderType())) {
                     // if original tile spec has a dynamic mask, update the width and height to match rendered tile
@@ -479,11 +479,9 @@ public class RenderTilesClient {
                     final URI maskUri = storageBackend.resolvePath(maskPathSegments);
 
                     // Create mask URI based on the same parent directory
-                    storageBackend.writeImage(imageProcessorWithMasks.mask.getBufferedImage(), maskUri, format, renderParameters);
+                    final String maskUrl = storageBackend.writeImage(imageProcessorWithMasks.mask.getBufferedImage(), maskUri, format, renderParameters);
 
-                    renderedImageAndMask = renderedImageAndMask.copyWithMask(maskUri.toString(),
-                                                                             null,
-                                                                             null);
+                    renderedImageAndMask = renderedImageAndMask.copyWithMask(maskUrl, null, null);
                 }
             }
 
@@ -580,7 +578,7 @@ public class RenderTilesClient {
 
         abstract void ensureWritableDirectory(URI uri);
 
-        abstract void writeImage(BufferedImage image, URI uri, String format, RenderParameters parameters) throws IOException;
+        abstract String writeImage(BufferedImage image, URI uri, String format, RenderParameters parameters) throws IOException;
 
         URI resolvePath(final List<String> relativePathSegments) {
             try {
@@ -608,12 +606,13 @@ public class RenderTilesClient {
         }
 
         @Override
-        void writeImage(final BufferedImage image,
+        String writeImage(final BufferedImage image,
                         final URI uri,
                         final String format,
                         final RenderParameters parameters) throws IOException {
-            Utils.saveImage(image, new File(uri).toString(), format, parameters.convertToGray, parameters.quality);
-
+            final String fullPath = new File(uri).toString();
+            Utils.saveImage(image, fullPath, format, parameters.convertToGray, parameters.quality);
+            return fullPath;
         }
     }
 
@@ -643,7 +642,7 @@ public class RenderTilesClient {
         }
 
         @Override
-        void writeImage(final BufferedImage image,
+        String writeImage(final BufferedImage image,
                         final URI uri,
                         final String format,
                         final RenderParameters renderParameters) throws IOException {
@@ -651,12 +650,15 @@ public class RenderTilesClient {
                 throw new IllegalArgumentException("Only PNG format is supported for cloud storage: " + format);
             }
 
-            try (final LockedChannel lockedChannel = keyValueAccess.lockForWriting(uri.toString())) {
+            try (final LockedChannel lockedChannel = keyValueAccess.lockForWriting(uri.getPath())) {
                 final ByteArrayOutputStream oStream = new ByteArrayOutputStream();
                 ImageIO.write(image, format, oStream);
                 lockedChannel.newOutputStream().write(oStream.toByteArray());
                 LOG.info("image written to {}", uri);
             }
+
+            // This yields the public URL for the image
+            return "https://storage.googleapis.com" + uri.toString().substring(4);
         }
     }
 
