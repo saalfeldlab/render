@@ -19,7 +19,7 @@ public class MFOVAsTileMontageMatchPatchClientTest {
                 "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
                 "--owner", "hess_wafers_60_61",
                 "--project", "w60_serial_360_to_369",
-                "--stack", "w60_s360_r00_gc_mt5",
+                "--stack", "w60_s360_r00_gc_mt5h",
                 "--xyNeighborFactor", "0.6",
                 "--startPositionMatchWeight", "0.005"
         };
