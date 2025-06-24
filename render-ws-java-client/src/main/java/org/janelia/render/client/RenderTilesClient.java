@@ -12,6 +12,7 @@ import java.net.URISyntaxException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Deque;
 import java.util.HashMap;
@@ -258,6 +259,7 @@ public class RenderTilesClient {
 
             final URI rootUri = uriBuilder.setPathSegments(pathSegments).build();
             this.storageBackend = StorageBackend.create(rootUri);
+            storageBackend.validateFormat(clientParameters.format);
             storageBackend.ensureWritableDirectory(storageBackend.root);
         } catch (final URISyntaxException e) {
             throw new IllegalArgumentException("Invalid root directory URI: " + clientParameters.rootDirectory, e);
@@ -578,6 +580,17 @@ public class RenderTilesClient {
         }
 
         abstract void ensureWritableDirectory(URI uri);
+
+        void validateFormat(final String format) throws IllegalArgumentException {
+            final Set<String> lowerCaseFormatNames = Arrays.stream(ImageIO.getWriterFormatNames())
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toSet());
+            if (! lowerCaseFormatNames.contains(format.toLowerCase())) {
+                throw new IllegalArgumentException(
+                        "Unsupported image format '" + format + "'. Supported formats are " +
+                        lowerCaseFormatNames.stream().sorted().collect(Collectors.joining(", ")));
+            }
+        }
 
         abstract String writeImage(BufferedImage image, URI uri, String format, RenderParameters parameters) throws IOException;
 
