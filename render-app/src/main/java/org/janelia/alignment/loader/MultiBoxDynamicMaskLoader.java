@@ -52,7 +52,8 @@ public class MultiBoxDynamicMaskLoader
 
         maskProcessor.setColor(255);
         for (final Rectangle box : description.boxList) {
-            maskProcessor.fillRect(box.x, box.y, box.width, box.height);
+            // TODO: this is an ad-hoc fix without strict justification; find out what's really causing the offset!
+            maskProcessor.fillRect(box.x + 1, box.y + 1, box.width, box.height);
         }
 
         final Matcher levelMatcher = LEVEL_PATTERN.matcher(urlString);
