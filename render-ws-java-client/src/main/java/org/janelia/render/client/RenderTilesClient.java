@@ -254,6 +254,7 @@ public class RenderTilesClient {
             final List<String> pathSegments = uriBuilder.getPathSegments();
             pathSegments.add(clientParameters.renderWeb.project);
             pathSegments.add(clientParameters.stack);
+            pathSegments.add(clientParameters.getRunTimestamp());
 
             final URI rootUri = uriBuilder.setPathSegments(pathSegments).build();
             this.storageBackend = StorageBackend.create(rootUri);
@@ -262,7 +263,7 @@ public class RenderTilesClient {
             throw new IllegalArgumentException("Invalid root directory URI: " + clientParameters.rootDirectory, e);
         }
 
-        // set cache size to 50MB so that masks get cached but most of RAM is left for target images
+        // set cache size to 50MB so that masks get cached but most RAM is left for target images
         final int maxCachedPixels = 50 * 1000000;
         this.imageProcessorCache = new ImageProcessorCache(maxCachedPixels,
                                                            false,
@@ -456,14 +457,14 @@ public class RenderTilesClient {
             }
             final ChannelSpec channelSpec = allChannels.get(0);
 
-            // Use the URI string directly instead of file path
+            // Use the URI string directly instead of the file path
             ImageAndMask renderedImageAndMask = channelSpec
                     .getFirstMipmapImageAndMask(tileId)
                     .copyWithImage(imageUrl, null, null);
 
             if (channelSpec.hasMask()) {
                 if (ImageLoader.LoaderType.DYNAMIC_MASK.equals(renderedImageAndMask.getMaskLoaderType())) {
-                    // if original tile spec has a dynamic mask, update the width and height to match rendered tile
+                    // if the original tile spec has a dynamic mask, update the width and height to match the rendered tile
                     final DynamicMaskLoader.DynamicMaskDescription description =
                             DynamicMaskLoader.parseUrl(renderedImageAndMask.getMaskUrl())
                                     .withWidthAndHeight(imageProcessorWithMasks.getWidth(),
