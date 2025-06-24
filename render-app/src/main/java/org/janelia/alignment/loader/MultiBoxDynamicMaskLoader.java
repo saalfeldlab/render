@@ -108,8 +108,8 @@ public class MultiBoxDynamicMaskLoader
                 final int scaledY = (int) Math.floor(fullScaleY * renderScale);
 
                 // note that width and height need to be floored (not ceiled) to be in sync with the image
-                final int scaledBoundWidth = (int) Math.floor(fullScaleBound.getDeltaX() * renderScale);
-                final int scaledBoundHeight = (int) Math.floor(fullScaleBound.getDeltaY() * renderScale);
+                final int scaledBoundWidth = (int) Math.floor(fullScaleBound.getWidth() * renderScale);
+                final int scaledBoundHeight = (int) Math.floor(fullScaleBound.getHeight() * renderScale);
 
                 this.boxList.add(new Rectangle(scaledX, scaledY, scaledBoundWidth, scaledBoundHeight));
             }
