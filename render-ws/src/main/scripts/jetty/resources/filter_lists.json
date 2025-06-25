@@ -301,6 +301,15 @@
       }
     ],
 
+    "jrc_zf-pancreas-1-destreak-16bit" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "parameters" : {
+          "dataString" : "3961,6160,50,7,0.0,10,10.0,0.05"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",
