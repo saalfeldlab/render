@@ -61,6 +61,8 @@ import org.janelia.saalfeldlab.n5.googlecloud.GoogleCloudStorageKeyValueAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import jakarta.annotation.Nonnull;
+
 
 /**
  * Java client for rendering individual tiles.  Images are placed in:
@@ -105,15 +107,9 @@ public class RenderTilesClient {
                     final RenderTilesClient client = new RenderTilesClient(projectDataClient,
                                                                            stackId.getStack(),
                                                                            parameters.tileRender);
-                    setupHackStackAsNeeded(projectDataClient,
-                                           stackId.getStack(),
-                                           parameters.tileRender.hackStack);
-
-                    client.collectTileInfoAndRenderTiles(stackWithZValues.getzValues());
-
-                    completeHackStackAsNeeded(projectDataClient,
-                                              parameters.tileRender.hackStack,
-                                              parameters.tileRender.completeHackStack);
+                    client.setupHackStackAsNeeded();
+                    client.renderTiles(stackWithZValues.getzValues());
+                    client.completeHackStackAsNeeded();
                 }
             }
         };
@@ -123,9 +119,7 @@ public class RenderTilesClient {
     private final String stack;
     private final TileRenderParameters tileRender;
 
-    private final ImageProcessorCache imageProcessorCache;
     private final RenderDataClient renderDataClient;
-    private final List<String> tileIds;
     private final String renderParametersQueryString;
     private final Map<Double, ResolvedTileSpecCollection> zToResolvedTiles;
     private final StorageBackend storageBackend;
@@ -152,15 +146,7 @@ public class RenderTilesClient {
             throw new IllegalArgumentException("Invalid root directory URI: " + tileRender.rootDirectory, e);
         }
 
-        // set cache size to 50MB so that masks get cached but most RAM is left for target images
-        final int maxCachedPixels = 50 * 1000000;
-        this.imageProcessorCache = new ImageProcessorCache(maxCachedPixels,
-                                                           false,
-                                                           false);
-
         this.renderDataClient = projectDataClient;
-
-        this.tileIds = new ArrayList<>();
 
         final StringBuilder queryParameters = new StringBuilder();
         queryParameters.append("?scale=").append(tileRender.scale);
@@ -197,19 +183,43 @@ public class RenderTilesClient {
         this.zToResolvedTiles = new HashMap<>();
     }
 
-    public void collectTileInfoAndRenderTiles(final List<Double> zValues)
+    public void renderTiles(final List<Double> zValues)
             throws IOException {
+
+        // set cache size to 50MB so that masks get cached but most RAM is left for target images
+        final int maxCachedPixels = 50 * 1000000;
+        final ImageProcessorCache imageProcessorCache = new ImageProcessorCache(maxCachedPixels,
+                                                                                false,
+                                                                                false);
+
+        final List<String> tileIds = buildTileIdsList(zValues);
+        for (final String tileId : tileIds) {
+            renderTile(tileId, imageProcessorCache);
+        }
+
+        if (tileRender.hackStack != null) {
+            for (final Double z : zValues) {
+                renderDataClient.saveResolvedTiles(zToResolvedTiles.get(z), tileRender.hackStack, z);
+            }
+        }
+    }
+
+    @Nonnull
+    private List<String> buildTileIdsList(final List<Double> zValues)
+            throws IOException {
+
+        final List<String> tileIds = new ArrayList<>();
 
         if (zValues != null) {
             for (final Double z : zValues) {
                 if (tileRender.hackStack == null) {
                     final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
-                    tileBoundsList.forEach(tileBounds -> this.tileIds.add(tileBounds.getTileId()));
+                    tileBoundsList.forEach(tileBounds -> tileIds.add(tileBounds.getTileId()));
                 } else {
                     final ResolvedTileSpecCollection resolvedTiles =
                             renderDataClient.getResolvedTiles(stack, z);
                     zToResolvedTiles.put(z, resolvedTiles);
-                    resolvedTiles.getTileSpecs().forEach(tileSpec -> this.tileIds.add(tileSpec.getTileId()));
+                    resolvedTiles.getTileSpecs().forEach(tileSpec -> tileIds.add(tileSpec.getTileId()));
                 }
             }
         }
@@ -236,38 +246,27 @@ public class RenderTilesClient {
             throw new IllegalArgumentException("There are no tiles to render!");
         }
 
-        for (final String tileId : tileIds) {
-            renderTile(tileId);
-        }
+        return tileIds;
+    }
 
+    public void setupHackStackAsNeeded()
+            throws IOException {
         if (tileRender.hackStack != null) {
-            for (final Double z : zToResolvedTiles.keySet().stream().sorted().collect(Collectors.toList())) {
-                renderDataClient.saveResolvedTiles(zToResolvedTiles.get(z), tileRender.hackStack, z);
-            }
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stack);
+            renderDataClient.setupDerivedStack(stackMetaData, tileRender.hackStack);
+            renderDataClient.deleteMipmapPathBuilder(tileRender.hackStack);
         }
     }
 
-    public static void setupHackStackAsNeeded(final RenderDataClient renderDataClient,
-                                              final String stackName,
-                                              final String hackStackName)
+    public void completeHackStackAsNeeded()
             throws IOException {
-        if (hackStackName != null) {
-            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stackName);
-            renderDataClient.setupDerivedStack(stackMetaData, hackStackName);
-            renderDataClient.deleteMipmapPathBuilder(hackStackName);
+        if (tileRender.completeHackStack && (tileRender.hackStack != null)){
+            renderDataClient.setStackState(tileRender.hackStack, StackMetaData.StackState.COMPLETE);
         }
     }
 
-    public static void completeHackStackAsNeeded(final RenderDataClient renderDataClient,
-                                                 final String hackStackName,
-                                                 final boolean completeHackStack)
-            throws IOException {
-        if (completeHackStack && (hackStackName != null)){
-            renderDataClient.setStackState(hackStackName, StackMetaData.StackState.COMPLETE);
-        }
-    }
-
-    private void renderTile(final String tileId)
+    private void renderTile(final String tileId,
+                            final ImageProcessorCache imageProcessorCache)
             throws IOException {
 
         final RenderWebServiceUrls urls = renderDataClient.getUrls();

@@ -4,8 +4,8 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -24,9 +24,6 @@ import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.janelia.render.client.tile.RenderTilesClient.completeHackStackAsNeeded;
-import static org.janelia.render.client.tile.RenderTilesClient.setupHackStackAsNeeded;
 
 /**
  * Spark client for rendering individual tiles.  Images are placed in:
@@ -119,18 +116,25 @@ public class RenderTilesClient
         // build a list of stacks with batched Z values since each z layer can be rendered in parallel
         final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithBatchedZ();
 
-        // if hack stacks are requested, set them up before rendering
-        final List<StackId> distinctStackIds = stackWithZValuesList.stream()
-                .map(StackWithZValues::getStackId).distinct().sorted().collect(Collectors.toList());
+        // build a java client for each stack before distributing the rendering tasks just to validate parameters
+        final List<org.janelia.render.client.tile.RenderTilesClient> javaStackSetupClients = new ArrayList<>();
+        stackWithZValuesList.stream()
+                .map(StackWithZValues::getStackId)
+                .distinct()
+                .sorted()
+                .forEach(stackId -> {
+                    final org.janelia.render.client.tile.RenderTilesClient jClient =
+                            buildJavaRenderTilesClient(baseDataUrl,
+                                                       stackId,
+                                                       tileRenderParameters);
+                    javaStackSetupClients.add(jClient);
+                });
+
+        // if hack stacks are requested, set them up before rendering using the javaStackSetupClients
         if (tileRenderParameters.hackStack != null) {
-           for(final StackId stackId : distinctStackIds) {
-               final RenderDataClient projectDataClient = new RenderDataClient(baseDataUrl,
-                                                                               stackId.getOwner(),
-                                                                               stackId.getProject());
-               setupHackStackAsNeeded(projectDataClient,
-                                      stackId.getStack(),
-                                      tileRenderParameters.hackStack);
-           }
+            for (final org.janelia.render.client.tile.RenderTilesClient jClient : javaStackSetupClients) {
+                jClient.setupHackStackAsNeeded();
+            }
         }
 
         final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
@@ -140,15 +144,10 @@ public class RenderTilesClient
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
             final StackId stackId = stackWithZ.getStackId();
-            final RenderDataClient projectDataClient = new RenderDataClient(baseDataUrl,
-                                                                           stackId.getOwner(),
-                                                                           stackId.getProject());
-
-            final org.janelia.render.client.tile.RenderTilesClient jClient =
-                    new org.janelia.render.client.tile.RenderTilesClient(projectDataClient,
-                                                                         stackId.getStack(),
-                                                                         tileRenderParameters);
-            jClient.collectTileInfoAndRenderTiles(stackWithZ.getzValues());
+            final org.janelia.render.client.tile.RenderTilesClient jClient = buildJavaRenderTilesClient(baseDataUrl,
+                                                                                                        stackId,
+                                                                                                        tileRenderParameters);
+            jClient.renderTiles(stackWithZ.getzValues());
 
             return 1;
         };
@@ -159,19 +158,25 @@ public class RenderTilesClient
 
         LOG.info("renderTiles: completed rendering for {} stacks", resultList.size());
 
-        // if hack stacks are requested, complete them after rendering
+        // if hack stacks and completion are requested, complete them after rendering
         if ((tileRenderParameters.hackStack != null) && tileRenderParameters.completeHackStack) {
-            for(final StackId stackId : distinctStackIds) {
-                final RenderDataClient projectDataClient = new RenderDataClient(baseDataUrl,
-                                                                                stackId.getOwner(),
-                                                                                stackId.getProject());
-                completeHackStackAsNeeded(projectDataClient,
-                                          tileRenderParameters.hackStack,
-                                          tileRenderParameters.completeHackStack);
+            for (final org.janelia.render.client.tile.RenderTilesClient jClient : javaStackSetupClients) {
+                jClient.completeHackStackAsNeeded();
             }
         }
 
         LOG.info("renderTiles: exit");
+    }
+
+    private static org.janelia.render.client.tile.RenderTilesClient buildJavaRenderTilesClient(final String baseDataUrl,
+                                                                                               final StackId stackId,
+                                                                                               final TileRenderParameters tileRenderParameters) {
+        final RenderDataClient projectDataClient = new RenderDataClient(baseDataUrl,
+                                                                        stackId.getOwner(),
+                                                                        stackId.getProject());
+        return new org.janelia.render.client.tile.RenderTilesClient(projectDataClient,
+                                                                    stackId.getStack(),
+                                                                    tileRenderParameters);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(RenderTilesClient.class);
