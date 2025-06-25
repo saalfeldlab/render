@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
@@ -23,6 +24,9 @@ import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.janelia.render.client.tile.RenderTilesClient.completeHackStackAsNeeded;
+import static org.janelia.render.client.tile.RenderTilesClient.setupHackStackAsNeeded;
 
 /**
  * Spark client for rendering individual tiles.  Images are placed in:
@@ -110,9 +114,24 @@ public class RenderTilesClient
 
         final MultiProjectParameters multiProjectParameters = clientParameters.multiProject;
         final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
-        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
+        final TileRenderParameters tileRenderParameters = clientParameters.tileRender;
 
-        // TODO: parallelize for each stack z instead of for each stack
+        // build a list of stacks with batched Z values since each z layer can be rendered in parallel
+        final List<StackWithZValues> stackWithZValuesList = multiProjectParameters.buildListOfStackWithBatchedZ();
+
+        // if hack stacks are requested, set them up before rendering
+        final List<StackId> distinctStackIds = stackWithZValuesList.stream()
+                .map(StackWithZValues::getStackId).distinct().sorted().collect(Collectors.toList());
+        if (tileRenderParameters.hackStack != null) {
+           for(final StackId stackId : distinctStackIds) {
+               final RenderDataClient projectDataClient = new RenderDataClient(baseDataUrl,
+                                                                               stackId.getOwner(),
+                                                                               stackId.getProject());
+               setupHackStackAsNeeded(projectDataClient,
+                                      stackId.getStack(),
+                                      tileRenderParameters.hackStack);
+           }
+        }
 
         final JavaRDD<StackWithZValues> rddStackWithZValues = sparkContext.parallelize(stackWithZValuesList);
 
@@ -128,8 +147,7 @@ public class RenderTilesClient
             final org.janelia.render.client.tile.RenderTilesClient jClient =
                     new org.janelia.render.client.tile.RenderTilesClient(projectDataClient,
                                                                          stackId.getStack(),
-                                                                         clientParameters.tileRender);
-
+                                                                         tileRenderParameters);
             jClient.collectTileInfoAndRenderTiles(stackWithZ.getzValues());
 
             return 1;
@@ -140,6 +158,18 @@ public class RenderTilesClient
         final List<Integer> resultList = rddSummaries.collect();
 
         LOG.info("renderTiles: completed rendering for {} stacks", resultList.size());
+
+        // if hack stacks are requested, complete them after rendering
+        if ((tileRenderParameters.hackStack != null) && tileRenderParameters.completeHackStack) {
+            for(final StackId stackId : distinctStackIds) {
+                final RenderDataClient projectDataClient = new RenderDataClient(baseDataUrl,
+                                                                                stackId.getOwner(),
+                                                                                stackId.getProject());
+                completeHackStackAsNeeded(projectDataClient,
+                                          tileRenderParameters.hackStack,
+                                          tileRenderParameters.completeHackStack);
+            }
+        }
 
         LOG.info("renderTiles: exit");
     }

@@ -99,13 +99,21 @@ public class RenderTilesClient {
                 for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
 
                     final StackId stackId = stackWithZValues.getStackId();
-                    final RenderDataClient projectClient =
+                    final RenderDataClient projectDataClient =
                             multiProjectDataClient.buildClientForProject(stackId.getProject());
 
-                    final RenderTilesClient client = new RenderTilesClient(projectClient,
+                    final RenderTilesClient client = new RenderTilesClient(projectDataClient,
                                                                            stackId.getStack(),
                                                                            parameters.tileRender);
+                    setupHackStackAsNeeded(projectDataClient,
+                                           stackId.getStack(),
+                                           parameters.tileRender.hackStack);
+
                     client.collectTileInfoAndRenderTiles(stackWithZValues.getzValues());
+
+                    completeHackStackAsNeeded(projectDataClient,
+                                              parameters.tileRender.hackStack,
+                                              parameters.tileRender.completeHackStack);
                 }
             }
         };
@@ -228,12 +236,6 @@ public class RenderTilesClient {
             throw new IllegalArgumentException("There are no tiles to render!");
         }
 
-        if (tileRender.hackStack != null) {
-            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stack);
-            renderDataClient.setupDerivedStack(stackMetaData, tileRender.hackStack);
-            renderDataClient.deleteMipmapPathBuilder(tileRender.hackStack);
-        }
-
         for (final String tileId : tileIds) {
             renderTile(tileId);
         }
@@ -242,9 +244,26 @@ public class RenderTilesClient {
             for (final Double z : zToResolvedTiles.keySet().stream().sorted().collect(Collectors.toList())) {
                 renderDataClient.saveResolvedTiles(zToResolvedTiles.get(z), tileRender.hackStack, z);
             }
-            if (tileRender.completeHackStack) {
-                renderDataClient.setStackState(tileRender.hackStack, StackMetaData.StackState.COMPLETE);
-            }
+        }
+    }
+
+    public static void setupHackStackAsNeeded(final RenderDataClient renderDataClient,
+                                              final String stackName,
+                                              final String hackStackName)
+            throws IOException {
+        if (hackStackName != null) {
+            final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stackName);
+            renderDataClient.setupDerivedStack(stackMetaData, hackStackName);
+            renderDataClient.deleteMipmapPathBuilder(hackStackName);
+        }
+    }
+
+    public static void completeHackStackAsNeeded(final RenderDataClient renderDataClient,
+                                                 final String hackStackName,
+                                                 final boolean completeHackStack)
+            throws IOException {
+        if (completeHackStack && (hackStackName != null)){
+            renderDataClient.setStackState(hackStackName, StackMetaData.StackState.COMPLETE);
         }
     }
 
