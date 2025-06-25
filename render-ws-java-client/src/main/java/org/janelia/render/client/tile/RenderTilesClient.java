@@ -1,6 +1,5 @@
 package org.janelia.render.client.tile;
 
-import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.awt.image.BufferedImage;
@@ -43,14 +42,16 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.RenderWebServiceUrls;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.TileRenderParameters;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudUtils;
@@ -74,13 +75,7 @@ public class RenderTilesClient {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
-
-        @Parameter(
-                names = "--stack",
-                description = "Stack name",
-                required = true)
-        public String stack;
+        public MultiProjectParameters multiProject = new MultiProjectParameters();
 
         @ParametersDelegate
         public TileRenderParameters tileRender = new TileRenderParameters();
@@ -99,11 +94,19 @@ public class RenderTilesClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final RenderTilesClient client = new RenderTilesClient(parameters.renderWeb,
-                                                                       parameters.stack,
-                                                                       parameters.tileRender);
-                client.collectTileInfo();
-                client.renderTiles();
+                final RenderDataClient multiProjectDataClient = parameters.multiProject.getDataClient();
+                final List<StackWithZValues> stackWithZValuesList = parameters.multiProject.buildListOfStackWithAllZ();
+                for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
+
+                    final StackId stackId = stackWithZValues.getStackId();
+                    final RenderDataClient projectClient =
+                            multiProjectDataClient.buildClientForProject(stackId.getProject());
+
+                    final RenderTilesClient client = new RenderTilesClient(projectClient,
+                                                                           stackId.getStack(),
+                                                                           parameters.tileRender);
+                    client.collectTileInfoAndRenderTiles(stackWithZValues.getzValues());
+                }
             }
         };
         clientRunner.run();
@@ -119,7 +122,7 @@ public class RenderTilesClient {
     private final Map<Double, ResolvedTileSpecCollection> zToResolvedTiles;
     private final StorageBackend storageBackend;
 
-    public RenderTilesClient(final RenderWebServiceParameters renderWeb,
+    public RenderTilesClient(final RenderDataClient projectDataClient,
                              final String stack,
                              final TileRenderParameters tileRender) {
 
@@ -129,7 +132,7 @@ public class RenderTilesClient {
         try {
             final URIBuilder uriBuilder = new URIBuilder(tileRender.rootDirectory);
             final List<String> pathSegments = uriBuilder.getPathSegments();
-            pathSegments.add(renderWeb.project);
+            pathSegments.add(projectDataClient.getProject());
             pathSegments.add(stack);
             pathSegments.add(tileRender.getRunTimestamp());
 
@@ -147,7 +150,7 @@ public class RenderTilesClient {
                                                            false,
                                                            false);
 
-        this.renderDataClient = renderWeb.getDataClient();
+        this.renderDataClient = projectDataClient;
 
         this.tileIds = new ArrayList<>();
 
@@ -186,11 +189,11 @@ public class RenderTilesClient {
         this.zToResolvedTiles = new HashMap<>();
     }
 
-    private void collectTileInfo()
+    public void collectTileInfoAndRenderTiles(final List<Double> zValues)
             throws IOException {
 
-        if (tileRender.zValues != null) {
-            for (final Double z : tileRender.zValues) {
+        if (zValues != null) {
+            for (final Double z : zValues) {
                 if (tileRender.hackStack == null) {
                     final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
                     tileBoundsList.forEach(tileBounds -> this.tileIds.add(tileBounds.getTileId()));
@@ -224,11 +227,6 @@ public class RenderTilesClient {
         if (tileIds.isEmpty()) {
             throw new IllegalArgumentException("There are no tiles to render!");
         }
-
-    }
-
-    private void renderTiles()
-            throws IOException {
 
         if (tileRender.hackStack != null) {
             final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stack);

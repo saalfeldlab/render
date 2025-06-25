@@ -110,12 +110,6 @@ public class TileRenderParameters
     public boolean renderMaskOnly = false;
 
     @Parameter(
-            names = "--z",
-            description = "Z values for tiles to render",
-            variableArity = true)
-    public List<Double> zValues;
-
-    @Parameter(
             names = "--tileIds",
             description = "Explicit IDs for tiles to render",
             variableArity = true
