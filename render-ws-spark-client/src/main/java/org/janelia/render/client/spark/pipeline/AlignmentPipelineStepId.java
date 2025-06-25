@@ -12,6 +12,7 @@ import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
 import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
 import org.janelia.render.client.spark.newsolver.DistributedAffineBlockSolverClient;
 import org.janelia.render.client.spark.newsolver.DistributedIntensityCorrectionBlockSolverClient;
+import org.janelia.render.client.spark.tile.RenderTilesClient;
 import org.janelia.render.client.spark.zspacing.ZPositionCorrectionClient;
 
 /**
@@ -31,7 +32,8 @@ public enum AlignmentPipelineStepId {
     CORRECT_Z_POSITIONS(ZPositionCorrectionClient::new),
     CORRECT_INTENSITY(DistributedIntensityCorrectionBlockSolverClient::new),
     HACK_MASK(MaskHackClient::new),
-    RENDER_SCAPE_IMAGES(ScapeClient::new);
+    RENDER_SCAPE_IMAGES(ScapeClient::new),
+    RENDER_TILES(RenderTilesClient::new);
 
     private final Supplier<AlignmentPipelineStep> stepClientSupplier;
 
