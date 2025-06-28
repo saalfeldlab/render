@@ -301,6 +301,33 @@
       }
     ],
 
+    "jrc_zf-pancreas-1-destreak-16bit" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "parameters" : {
+          "dataString" : "3961,6160,50,7,0.0,10,10.0,0.05"
+        }
+      }
+    ],
+
+    "jrc_mus_liver_8-destreak-16bit" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "parameters" : {
+          "dataString" : "5041,13104,50,7,0.0,10,7.0,0.05"
+        }
+      }
+    ],
+
+    "jrc_celegans_bw25113-destreak-16bit" : [
+      {
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "parameters" : {
+          "dataString" : "5041,10920,60,13,0.0,10,7.0,0.05"
+        }
+      }
+    ],
+
     "simpleTest" : [
       {
         "className" : "org.janelia.alignment.filter.CLAHE",

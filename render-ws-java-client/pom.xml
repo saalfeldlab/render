@@ -255,6 +255,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <dependency>
+            <groupId>org.janelia.saalfeldlab</groupId>
+            <artifactId>n5-universe</artifactId>
+        </dependency>
     </dependencies>
 
     <!--

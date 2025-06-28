@@ -1,4 +1,4 @@
-package org.janelia.render.client;
+package org.janelia.render.client.tile;
 
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
@@ -23,20 +23,22 @@ public class RenderTilesClientTest {
         try {
             final String[] testArgs = {
                     "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "fibsem",
-                    "--project", "jrc_mpi_psc120_1a1",
-                    "--stack", "v2_acquire_align_16bit",
-                    "--rootDirectory", "/Users/trautmane/Desktop/tiles_destreak",
-                    "--runTimestamp", "20241123_160000",
+                    "--owner", "hess_wafers_60_61",
+                    "--project", "w60_serial_360_to_369",
+                    "--stack", "w60_s360_r00_gc_mt5",
+                    "--rootDirectory", "/Users/trautmane/Desktop/tiles_test",
+//                    "--rootDirectory", "gs://storage.googleapis.com/janelia-spark-test/test_upload_ett/mfov_as_tile",
+//                    "--runTimestamp", "20241123_160000",
                     "--scale", "1.0",
                     "--format", "png",
                     "--excludeMask",
                     "--excludeAllTransforms",
-                    "--filterListName", "jrc_mpi_psc120_1a1-destreak-16bit",
+//                    "--filterListName", "jrc_mpi_psc120_1a1-destreak-16bit",
 //                    "--hackStack", "v3_acquire_align_16bit_destreak_test",
-                    "--renderType", "SIXTEEN_BIT",
+                    "--renderType", "EIGHT_BIT",
 //                    "--completeHackStack",
-                    "--z", "78.0"
+                    "--z", "1",
+                    "--tileIdPattern", ".*_m005."
             };
 
             RenderTilesClient.main(testArgs);
