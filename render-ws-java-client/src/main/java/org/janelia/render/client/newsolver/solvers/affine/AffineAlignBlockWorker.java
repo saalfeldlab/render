@@ -132,7 +132,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 		// NOTE: if you choose to stitch first, you need to pre-align, otherwise, it's OK to use the initial alignment for each tile
 		if (stitchFirst && parameters.preAlign() == PreAlign.NONE) {
-			throw new IllegalArgumentException("AffineBlockSolverSetup with --stitchFirst requires --preAlign to be TRANSLATION or RIGID");
+			throw new IllegalArgumentException("AffineBlockSolverSetup with --stitchFirst requires --preAlign to be TRANSLATION or RIGID or MULTI_SEM");
 		}
 
 		this.coreTileSpecIds = new HashSet<>(); // will be populated by call to assembleMatchData
@@ -922,6 +922,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			for (final Tile<?> tile : tileConfig.getTiles()) {
 				final AlignmentModel model = (AlignmentModel) tile.getModel();
 				model.setWeights(weights);
+				// TODO: per Tile sigmoidal weight regularization depending on numMatches * weights
 			}
 
 			final int numIterations = blockOptimizerIterations.get(k);

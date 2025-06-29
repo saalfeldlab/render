@@ -52,7 +52,7 @@ class IntensityTile {
 
 		for (int i = 0; i < N; i++) {
 			final Affine1D<?> model = modelSupplier.get();
-			this.subTiles.add(new Tile<>((Model) model));
+			this.subTiles.add(new Tile((Model) model));
 		}
 	}
 

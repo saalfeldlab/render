@@ -141,6 +141,15 @@
         -->
         <n5-version>3.3.0</n5-version>
 
+        <!--
+          NOTE: The default version of the n5-google-cloud is 4.1.1 for scijava pom 39.0.0,
+                but we need to revert n5-google-cloud to 4.1.0 here because our n5-version is 3.2.0.
+                For future updates, n5-google-cloud 4.1.1 depends upon n5-version 3.3.0.
+                This is all typically managed by the scijava pom, but we override it here because
+                the hot-knife repo is behind (see comment above).
+        -->
+        <n5-google-cloud.version>4.1.0</n5-google-cloud.version>
+
         <imglib2.version>7.1.4</imglib2.version>
         <imglib2-algorithm.version>0.17.2</imglib2-algorithm.version>
 

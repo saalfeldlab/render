@@ -38,10 +38,11 @@ import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.zspacing.ThicknessCorrectionData;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.GzipCompression;
-import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.spark.supplier.N5WriterSupplier;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -361,7 +362,7 @@ public class N5Client {
                                            Arrays.asList(min[0], min[1], min[2]),
                                            NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-        ngAttributes.write(Paths.get(parameters.n5Path),
+        ngAttributes.write(parameters.n5Path,
                            Paths.get(fullScaleDatasetName));
 
         if (downsampleStackForReview) {
@@ -406,7 +407,7 @@ public class N5Client {
                                                Arrays.asList(min[0], min[1], min[2]),
                                                NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-            reviewNgAttributes.write(Paths.get(parameters.n5Path),
+            reviewNgAttributes.write(parameters.n5Path,
                                      Paths.get(fullScaleReviewDatasetName));
         }
 
@@ -475,7 +476,7 @@ public class N5Client {
                                               final int[] blockSize,
                                               final DataType dataType) {
 
-        try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
+        try (final N5Writer n5 = new N5Factory().openWriter( StorageFormat.N5, parameters.n5Path )) /*new N5FSWriter(parameters.n5Path))*/ {
             n5.createDataset(fullScaleDatasetName,
                              dimensions,
                              blockSize,
@@ -494,7 +495,7 @@ public class N5Client {
 
         String exportAttributesDatasetName = fullScaleDatasetName;
 
-        try (final N5Writer n5 = new N5FSWriter(parameters.n5Path)) {
+        try (final N5Writer n5 = new N5Factory().openWriter( StorageFormat.N5, parameters.n5Path )/*new N5FSWriter(parameters.n5Path)*/) {
             final Map<String, Object> export_attributes = new HashMap<>();
             export_attributes.put("runTimestamp", new Date());
             export_attributes.put("runParameters", parameters);
@@ -661,8 +662,9 @@ public class N5Client {
                 }
             }
 
-            final N5Writer anotherN5Writer = new N5FSWriter(n5Path); // needed to prevent Spark serialization error
+            final N5Writer anotherN5Writer = new N5Factory().openWriter( StorageFormat.N5, n5Path )/*new N5FSWriter(n5Path)*/; // needed to prevent Spark serialization error
             N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock.gridPosition, new UnsignedByteType(0));
+            anotherN5Writer.close();
         });
     }
 
@@ -722,8 +724,9 @@ public class N5Client {
                 out.next().set(in.next());
             }
 
-            final N5Writer anotherN5Writer = new N5FSWriter(n5Path); // needed to prevent Spark serialization error
+            final N5Writer anotherN5Writer = new N5Factory().openWriter( StorageFormat.N5, n5Path ) /*new N5FSWriter(n5Path)*/; // needed to prevent Spark serialization error
             N5Utils.saveNonEmptyBlock(block, anotherN5Writer, datasetName, gridBlock.gridPosition, new UnsignedByteType(0));
+            anotherN5Writer.close();
         });
 
         LOG.info("save2DRenderStack: exit");
