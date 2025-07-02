@@ -1,5 +1,6 @@
 package org.janelia.render.client.multisem;
 
+import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
@@ -16,7 +17,6 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,8 +33,18 @@ public class MFOVAsTileStackClient {
         @ParametersDelegate
         public MultiProjectParameters multiProject = new MultiProjectParameters();
 
-        @ParametersDelegate
-        public MFOVAsTileParameters mfovAsTile = new MFOVAsTileParameters();
+        @Parameter(
+                names = "--mfovTileRenderScale",
+                description = "Scale for rendered SFOVs when creating the MFOV tiles.  " +
+                              "The default value of 0.1 works well because MFOVs have 91 SFOVs, " +
+                              "so each MFOV tile image will be roughly the same size as an original SFOV.",
+                required = true)
+        public Double mfovTileRenderScale = 0.1;
+
+        @Parameter(
+                names = "--mfovTileStackSuffix",
+                description = "Suffix to append to the source stack name when creating the MFOV as tile stack name.")
+        public String mfovTileStackSuffix = "_mt";
     }
 
     public static void main(final String[] args) {
@@ -80,28 +90,31 @@ public class MFOVAsTileStackClient {
         for (final StackWithZValues stackWithZ : stackWithZList) {
             buildOneMFOVAsTileStack(stackWithZ,
                                     renderDataClient,
-                                    parameters.mfovAsTile);
+                                    parameters.mfovTileRenderScale,
+                                    parameters.mfovTileStackSuffix);
         }
     }
 
     /**
      * Builds an MFOV as tile stack for the specified stack with Z values.
      *
-     * @param  stackWithZ        identifies the source stack.
-     * @param  renderDataClient  web service client for render stack data.
-     * @param  matParameters     MFOV as tile parameters.
+     * @param  stackWithZ           identifies the source stack.
+     * @param  renderDataClient     web service client for render stack data.
+     * @param  mfovTileRenderScale  scale for rendered SFOVs when creating the MFOV tiles.
+     * @param  mfovTileStackSuffix  suffix to append to the source stack name when creating the MFOV as tile stack name.
      *
      * @throws IOException
      *   if the build fails for any reason.
      */
     public static void buildOneMFOVAsTileStack(final StackWithZValues stackWithZ,
                                                final RenderDataClient renderDataClient,
-                                               final MFOVAsTileParameters matParameters)
+                                               final Double mfovTileRenderScale,
+                                               final String mfovTileStackSuffix)
             throws IOException, IllegalStateException {
 
         final StackId sourceStackId = stackWithZ.getStackId();
         final String sourceStackName = sourceStackId.getStack();
-        final StackId mfovAsTileStackId = stackWithZ.getStackId().withStackSuffix(matParameters.mfovTileStackSuffix);
+        final StackId mfovAsTileStackId = stackWithZ.getStackId().withStackSuffix(mfovTileStackSuffix);
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(sourceStackName);
         final String mfovAsTileStackName = mfovAsTileStackId.getStack();
@@ -122,7 +135,7 @@ public class MFOVAsTileStackClient {
             for (final MultiSemMfovColumn mfovColumn : mfovColumnList) {
                 mfovTileSpecs.addAll(mfovColumn.buildMfovTileSpecs(renderDataClient.getBaseDataUrl(),
                                                                    sourceStackId,
-                                                                   matParameters.mfovTileRenderScale));
+                                                                   mfovTileRenderScale));
             }
 
             final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(mfovTileSpecs);
