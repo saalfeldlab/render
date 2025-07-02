@@ -16,6 +16,7 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.UrlResourceUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
+import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MaskHackParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
@@ -53,10 +54,12 @@ public class AlignmentPipelineParameters
     private final MaskHackParameters maskHack;
     private final ScapeParameters scape;
     private final TileRenderParameters tileRender;
+    private final MFOVAsTileParameters mfovAsTile;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -87,7 +90,8 @@ public class AlignmentPipelineParameters
                                        final ZSpacingParameters zSpacing,
                                        final MaskHackParameters maskHack,
                                        final ScapeParameters scape,
-                                       final TileRenderParameters tileRender) {
+                                       final TileRenderParameters tileRender,
+                                       final MFOVAsTileParameters mfovAsTile) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -103,6 +107,7 @@ public class AlignmentPipelineParameters
         this.maskHack = maskHack;
         this.scape = scape;
         this.tileRender = tileRender;
+        this.mfovAsTile = mfovAsTile;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -177,6 +182,10 @@ public class AlignmentPipelineParameters
 
     public TileRenderParameters getTileRender() {
         return tileRender;
+    }
+
+    public MFOVAsTileParameters getMfovAsTile() {
+        return mfovAsTile;
     }
 
     /**
