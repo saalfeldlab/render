@@ -162,6 +162,37 @@ public class TileRenderParameters
         return parameters;
     }
 
+    public static TileRenderParameters buildMfovAsTileVersion(final String mfovRootDirectory,
+                                                              final String runTimestamp,
+                                                              final Double mfovRenderScale,
+                                                              final String hackStack) {
+
+        final TileRenderParameters trp = new TileRenderParameters();
+
+        trp.rootDirectory = mfovRootDirectory;
+        trp.runTimestamp = runTimestamp;
+        trp.scale = mfovRenderScale;
+        trp.format = Utils.PNG_FORMAT;
+        trp.renderType = TileRenderParameters.RenderType.EIGHT_BIT;
+        trp.hackStack = hackStack;
+        trp.completeHackStack = false;
+
+        trp.doFilter = false;
+        trp.filterListName = null;
+        trp.channels = null;
+        trp.fillWithNoise = false;
+        trp.maxIntensity = null;
+        trp.minIntensity = null;
+        trp.excludeMask = true;
+        trp.excludeAllTransforms = true;
+        trp.renderMaskOnly = false;
+        trp.tileIds = null;
+        trp.tileIdPattern = null; // ".*_m0052"
+        trp.hackTransformCount = null;
+
+        return trp;
+    }
+
     private static final JsonUtils.Helper<TileRenderParameters> JSON_HELPER =
             new JsonUtils.Helper<>(TileRenderParameters.class);
 }
