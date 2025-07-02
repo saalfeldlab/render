@@ -119,10 +119,10 @@ public class MultiStagePointMatchClient
         return AlignmentPipelineStepId.DERIVE_TILE_MATCHES;
     }
 
-    private void generatePairsAndMatchesForRunList(final JavaSparkContext sparkContext,
-                                                   final MultiProjectParameters multiProjectParameters,
-                                                   final List<StackWithZValues> stackWithZValuesList,
-                                                   final List<MatchRunParameters> matchRunList) {
+    public void generatePairsAndMatchesForRunList(final JavaSparkContext sparkContext,
+                                                  final MultiProjectParameters multiProjectParameters,
+                                                  final List<StackWithZValues> stackWithZValuesList,
+                                                  final List<MatchRunParameters> matchRunList) {
         for (int i = 0; i < matchRunList.size(); i++) {
             LOG.info("generatePairsAndMatchesForRunList: starting run {} of {}", (i+1), matchRunList.size());
             generatePairsAndMatchesForRun(sparkContext,
