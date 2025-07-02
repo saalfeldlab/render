@@ -103,8 +103,8 @@ public class RenderTilesClient
         return AlignmentPipelineStepId.RENDER_TILES;
     }
 
-    private void renderTiles(final JavaSparkContext sparkContext,
-                             final Parameters clientParameters)
+    public void renderTiles(final JavaSparkContext sparkContext,
+                            final Parameters clientParameters)
             throws IOException {
 
         LOG.info("renderTiles: entry, clientParameters={}", clientParameters);
