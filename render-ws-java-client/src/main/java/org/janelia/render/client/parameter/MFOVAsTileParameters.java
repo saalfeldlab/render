@@ -130,7 +130,15 @@ public class MFOVAsTileParameters
     private static MatchRunParameters buildMontageMatchRunParameters() {
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(new MatchStageParameters("montageMfovAsTilePass1",
-                                                 buildFeatureRenderParameters(1.0),
+                                                 buildFeatureRenderParameters(0.4), // 4 secs for 226 matches
+                                                 new FeatureRenderClipParameters(800, 800),
+                                                 buildFeatureExtractionParameters(),
+                                                 buildFeatureMatchDerivation(100),
+                                                 buildDisabledGeometricDescriptorAndMatch(),
+                                                 null,
+                                                 null),
+                        new MatchStageParameters("montageMfovAsTilePass2",
+                                                 buildFeatureRenderParameters(1.0), // 78 secs for 2500 matches
                                                  new FeatureRenderClipParameters(800, 800),
                                                  buildFeatureExtractionParameters(),
                                                  buildFeatureMatchDerivation(10),
@@ -146,10 +154,18 @@ public class MFOVAsTileParameters
     private static MatchRunParameters buildCrossMatchRunParameters() {
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(new MatchStageParameters("crossMfovAsTilePass1",
-                                                 buildFeatureRenderParameters(0.3),
+                                                 buildFeatureRenderParameters(0.2), // 4 secs for 276 matches
                                                  new FeatureRenderClipParameters(),
                                                  buildFeatureExtractionParameters(),
                                                  buildFeatureMatchDerivation(150),
+                                                 buildDisabledGeometricDescriptorAndMatch(),
+                                                 null,
+                                                 null),
+                        new MatchStageParameters("crossMfovAsTilePass2",
+                                                 buildFeatureRenderParameters(0.3), // 16 secs for 825 matches
+                                                 new FeatureRenderClipParameters(),
+                                                 buildFeatureExtractionParameters(),
+                                                 buildFeatureMatchDerivation(10),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null));
