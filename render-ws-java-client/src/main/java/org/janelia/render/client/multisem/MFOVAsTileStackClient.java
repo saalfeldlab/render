@@ -103,13 +103,15 @@ public class MFOVAsTileStackClient {
      * @param  mfovTileRenderScale  scale for rendered SFOVs when creating the MFOV tiles.
      * @param  mfovTileStackSuffix  suffix to append to the source stack name when creating the MFOV as tile stack name.
      *
+     * @return the identifier of the newly created MFOV as tile stack.
+     *
      * @throws IOException
      *   if the build fails for any reason.
      */
-    public static void buildOneMFOVAsTileStack(final StackWithZValues stackWithZ,
-                                               final RenderDataClient renderDataClient,
-                                               final Double mfovTileRenderScale,
-                                               final String mfovTileStackSuffix)
+    public static StackId buildOneMFOVAsTileStack(final StackWithZValues stackWithZ,
+                                                  final RenderDataClient renderDataClient,
+                                                  final Double mfovTileRenderScale,
+                                                  final String mfovTileStackSuffix)
             throws IOException, IllegalStateException {
 
         final StackId sourceStackId = stackWithZ.getStackId();
@@ -143,6 +145,8 @@ public class MFOVAsTileStackClient {
         }
 
         renderDataClient.setStackState(mfovAsTileStackName, StackMetaData.StackState.COMPLETE);
+
+        return mfovAsTileStackId;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVAsTileStackClient.class);
