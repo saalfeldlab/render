@@ -77,6 +77,11 @@ public class LayerMFOV
         return "z_" + z + "_mfov_" + name;
     }
 
+    public String getSimpleMfovName() {
+        // 0160_m0001 -> m0001
+        return name.substring(name.lastIndexOf('m'));
+    }
+
     public String toMfovAsTileName(final String stackName) {
         return String.format("%s_z%03d_%s", stackName, (int) z, name);
     }
