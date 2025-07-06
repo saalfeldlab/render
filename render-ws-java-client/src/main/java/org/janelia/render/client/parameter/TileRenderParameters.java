@@ -148,6 +148,38 @@ public class TileRenderParameters
         }
         return this.runTimestamp;
     }
+
+    public TileRenderParameters withTileIdPattern(final String tileIdPattern) {
+
+        final TileRenderParameters tp = new TileRenderParameters();
+
+        // copy everything ...
+        tp.rootDirectory = this.rootDirectory;
+        tp.runTimestamp = this.runTimestamp;
+        tp.scale = this.scale;
+        tp.format = this.format;
+        tp.doFilter = this.doFilter;
+        tp.renderType = this.renderType;
+        tp.filterListName = this.filterListName;
+        tp.channels = this.channels;
+        tp.fillWithNoise = this.fillWithNoise;
+        tp.maxIntensity = this.maxIntensity;
+        tp.minIntensity = this.minIntensity;
+        tp.excludeMask = this.excludeMask;
+        tp.excludeAllTransforms = this.excludeAllTransforms;
+        tp.renderMaskOnly = this.renderMaskOnly;
+        tp.tileIds = this.tileIds;
+        tp.tileIdPattern = this.tileIdPattern;
+        tp.hackStack = this.hackStack;
+        tp.hackTransformCount = this.hackTransformCount;
+        tp.completeHackStack = this.completeHackStack;
+
+        // and then overwrite the tileIdPattern
+        tp.tileIdPattern = tileIdPattern;
+
+        return tp;
+    }
+
     public static TileRenderParameters fromJson(final Reader json) {
         return JSON_HELPER.fromJson(json);
     }
@@ -164,14 +196,13 @@ public class TileRenderParameters
 
     public static TileRenderParameters buildMfovAsTileVersion(final String mfovRootDirectory,
                                                               final String runTimestamp,
-                                                              final Double mfovRenderScale,
                                                               final String hackStack) {
 
         final TileRenderParameters trp = new TileRenderParameters();
 
         trp.rootDirectory = mfovRootDirectory;
         trp.runTimestamp = runTimestamp;
-        trp.scale = mfovRenderScale;
+        trp.scale = 1.0; // MFOV-as-tile specs have source URLs with scale=0.2, so they should be rendered full scale
         trp.format = Utils.PNG_FORMAT;
         trp.renderType = TileRenderParameters.RenderType.EIGHT_BIT;
         trp.hackStack = hackStack;
