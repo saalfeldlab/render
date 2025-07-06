@@ -27,11 +27,13 @@ public class MFOVAsTileParameters
     private final Double mfovRenderScale;
     private final String mfovRootDirectory;
     private final String mfovStackSuffix;
+    private final String mfovHackStackSuffix;
     private final String alignedMfovStackSuffix;
     private final String roughStackSuffix;
 
     public MFOVAsTileParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -41,21 +43,39 @@ public class MFOVAsTileParameters
     public MFOVAsTileParameters(final Double mfovRenderScale,
                                 final String mfovRootDirectory,
                                 final String mfovStackSuffix,
+                                final String mfovHackStackSuffix,
                                 final String alignedMfovStackSuffix,
                                 final String roughStackSuffix) {
         this.mfovRenderScale = mfovRenderScale;
         this.mfovRootDirectory = mfovRootDirectory;
         this.mfovStackSuffix = mfovStackSuffix;
+        this.mfovHackStackSuffix = mfovHackStackSuffix;
         this.alignedMfovStackSuffix = alignedMfovStackSuffix;
         this.roughStackSuffix = roughStackSuffix;
     }
 
-    public TileRenderParameters buildTileRenderParameters(final String sfovStackName,
-                                                          final String runTimestamp) {
-        return TileRenderParameters.buildMfovAsTileVersion(mfovRootDirectory,
-                                                           runTimestamp,
-                                                           mfovRenderScale,
-                                                           sfovStackName + mfovStackSuffix);
+    public Double getMfovRenderScale() {
+        return mfovRenderScale;
+    }
+
+    public String getMfovRootDirectory() {
+        return mfovRootDirectory;
+    }
+
+    public String getMfovStackSuffix() {
+        return mfovStackSuffix;
+    }
+
+    public String getMfovHackStackSuffix() {
+        return mfovHackStackSuffix;
+    }
+
+    public String getAlignedMfovStackSuffix() {
+        return alignedMfovStackSuffix;
+    }
+
+    public String getRoughStackSuffix() {
+        return roughStackSuffix;
     }
 
     public List<MatchRunParameters> buildMfovMatchRunList() {
@@ -105,10 +125,6 @@ public class MFOVAsTileParameters
         setup.alternatingRuns.keepIntermediateStacks = false;
 
         return setup;
-    }
-
-    public String getRoughStackSuffix() {
-        return roughStackSuffix;
     }
 
     private static MatchRunParameters buildMontageMatchRunParameters() {
