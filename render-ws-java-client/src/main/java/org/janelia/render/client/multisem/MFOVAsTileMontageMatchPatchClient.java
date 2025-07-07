@@ -62,22 +62,19 @@ public class MFOVAsTileMontageMatchPatchClient {
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
-                final MFOVAsTileMontageMatchPatchClient client = new MFOVAsTileMontageMatchPatchClient(parameters);
-                client.deriveAndSaveMatchesForAllUnconnectedPairs();
+                final MFOVAsTileMontageMatchPatchClient client = new MFOVAsTileMontageMatchPatchClient();
+                client.deriveAndSaveMatchesForAllUnconnectedSameLayerPairs(parameters.multiProject,
+                                                                           parameters.patch);
             }
         };
         clientRunner.run();
     }
 
-    private final MultiProjectParameters multiProject;
-    private final MFOVMontageMatchPatchParameters patch;
-
-    public MFOVAsTileMontageMatchPatchClient(final Parameters parameters) {
-        this.multiProject = parameters.multiProject;
-        this.patch = parameters.patch;
+    public MFOVAsTileMontageMatchPatchClient() {
     }
 
-    public void deriveAndSaveMatchesForAllUnconnectedPairs()
+    public void deriveAndSaveMatchesForAllUnconnectedSameLayerPairs(final MultiProjectParameters multiProject,
+                                                                    final MFOVMontageMatchPatchParameters patch)
             throws Exception {
 
         final RenderDataClient defaultDataClient = multiProject.getDataClient();
@@ -85,9 +82,10 @@ public class MFOVAsTileMontageMatchPatchClient {
 
         for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
             final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackWithZValues.getStackId());
-            deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
-                                                           stackWithZValues,
-                                                           matchCollectionId);
+            deriveAndSaveMatchesForUnconnectedSameLayerPairsInStack(defaultDataClient,
+                                                                    stackWithZValues,
+                                                                    matchCollectionId,
+                                                                    patch);
         }
     }
 
@@ -96,12 +94,13 @@ public class MFOVAsTileMontageMatchPatchClient {
      *
      * @return the number of tile pairs that had derived matches saved.
      */
-    public int deriveAndSaveMatchesForUnconnectedPairsInStack(final RenderDataClient defaultDataClient,
-                                                              final StackWithZValues stackWithZValues,
-                                                              final MatchCollectionId matchCollectionId)
+    public int deriveAndSaveMatchesForUnconnectedSameLayerPairsInStack(final RenderDataClient defaultDataClient,
+                                                                       final StackWithZValues stackWithZValues,
+                                                                       final MatchCollectionId matchCollectionId,
+                                                                       final MFOVMontageMatchPatchParameters patch)
             throws IOException, IllegalStateException {
 
-        LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: entry, stackWithZValues={}", stackWithZValues);
+        LOG.info("deriveAndSaveMatchesForUnconnectedSameLayerPairsInStack: entry, stackWithZValues={}", stackWithZValues);
 
         if (patch.startPositionMatchWeight == null) {
             throw new IllegalStateException("startPositionMatchWeight must be specified");
@@ -125,7 +124,7 @@ public class MFOVAsTileMontageMatchPatchClient {
                                                                    patch.startPositionMatchWeight);
         }
 
-        LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: exit, returning {} for {}",
+        LOG.info("deriveAndSaveMatchesForUnconnectedSameLayerPairsInStack: exit, returning {} for {}",
                  numberOfDerivedMatchPairs, stackWithZValues);
 
         return numberOfDerivedMatchPairs;
