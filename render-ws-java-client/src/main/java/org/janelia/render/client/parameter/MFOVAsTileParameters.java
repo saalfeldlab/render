@@ -15,6 +15,7 @@ import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.match.parameters.MatchStageParameters;
 import org.janelia.alignment.match.parameters.TilePairDerivationParameters;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 
@@ -26,10 +27,10 @@ public class MFOVAsTileParameters
 
     private final Double mfovRenderScale;
     private final String mfovRootDirectory;
-    private final String mfovStackSuffix;
-    private final String mfovHackStackSuffix;
+    private final String dynamicMfovStackSuffix;
+    private final String renderedMfovStackSuffix;
     private final String alignedMfovStackSuffix;
-    private final String roughStackSuffix;
+    private final String roughSfovStackSuffix;
 
     public MFOVAsTileParameters() {
         this(null,
@@ -42,16 +43,16 @@ public class MFOVAsTileParameters
 
     public MFOVAsTileParameters(final Double mfovRenderScale,
                                 final String mfovRootDirectory,
-                                final String mfovStackSuffix,
-                                final String mfovHackStackSuffix,
+                                final String dynamicMfovStackSuffix,
+                                final String renderedMfovStackSuffix,
                                 final String alignedMfovStackSuffix,
-                                final String roughStackSuffix) {
+                                final String roughSfovStackSuffix) {
         this.mfovRenderScale = mfovRenderScale;
         this.mfovRootDirectory = mfovRootDirectory;
-        this.mfovStackSuffix = mfovStackSuffix;
-        this.mfovHackStackSuffix = mfovHackStackSuffix;
+        this.dynamicMfovStackSuffix = dynamicMfovStackSuffix;
+        this.renderedMfovStackSuffix = renderedMfovStackSuffix;
         this.alignedMfovStackSuffix = alignedMfovStackSuffix;
-        this.roughStackSuffix = roughStackSuffix;
+        this.roughSfovStackSuffix = roughSfovStackSuffix;
     }
 
     public Double getMfovRenderScale() {
@@ -62,20 +63,36 @@ public class MFOVAsTileParameters
         return mfovRootDirectory;
     }
 
-    public String getMfovStackSuffix() {
-        return mfovStackSuffix;
+    public String getDynamicMfovStackSuffix() {
+        return dynamicMfovStackSuffix;
     }
 
-    public String getMfovHackStackSuffix() {
-        return mfovHackStackSuffix;
+    public String getRenderedMfovStackSuffix() {
+        return renderedMfovStackSuffix;
     }
 
     public String getAlignedMfovStackSuffix() {
         return alignedMfovStackSuffix;
     }
 
-    public String getRoughStackSuffix() {
-        return roughStackSuffix;
+    public String getRoughSfovStackSuffix() {
+        return roughSfovStackSuffix;
+    }
+
+    public String getAlignedMfovStackSuffixForRawSfovStack() {
+        return dynamicMfovStackSuffix + renderedMfovStackSuffix + alignedMfovStackSuffix;
+    }
+
+    public StackId getDynamicMfovStackId(final StackId rawSfovStackId) {
+        return rawSfovStackId.withStackSuffix(dynamicMfovStackSuffix);
+    }
+
+    public StackId getRenderedMfovStackId(final StackId dynamicMfovStackId) {
+        return dynamicMfovStackId.withStackSuffix(renderedMfovStackSuffix);
+    }
+
+    public StackId getRoughSfovStackId(final StackId rawSfovStackId) {
+        return rawSfovStackId.withStackSuffix(roughSfovStackSuffix);
     }
 
     public List<MatchRunParameters> buildMfovMatchRunList() {
