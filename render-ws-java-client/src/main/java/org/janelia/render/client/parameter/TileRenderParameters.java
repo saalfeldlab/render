@@ -63,9 +63,22 @@ public class TileRenderParameters
 
     @Parameter(
             names = "--filterListName",
-            description = "Apply this filter list to all rendering (overrides doFilter option)"
+            description = "Apply this filter list to all rendering (overrides doFilter option).  " +
+                          "The specified filter list must be deployed on the render web services instance " +
+                          "being used for processing.  The common deployed filter list is " +
+                          "render-ws/src/main/scripts/jetty/resources/filter_lists.json."
     )
     public String filterListName;
+
+    @Parameter(
+            names = "--filterListPath",
+            description = "Path of JSON file that contains an org.janelia.alignment.filter.FilterFactory " +
+                          "namedFilterSpecLists element with one item.  That item (whatever it is named) " +
+                          "will be used.  This overrides the doFilter and filterListName options. " +
+                          "The render-ws/src/main/scripts/jetty/resources/filter_lists.json file " +
+                          "has multiple elements, but can be used as an example for the format."
+    )
+    public String filterListPath;
 
     @Parameter(
             names = "--channels",
