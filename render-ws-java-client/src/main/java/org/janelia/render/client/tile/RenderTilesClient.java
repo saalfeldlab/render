@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -33,6 +34,8 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
 import org.janelia.alignment.ShortRenderer;
 import org.janelia.alignment.Utils;
+import org.janelia.alignment.filter.FilterFactory;
+import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.loader.DynamicMaskLoader;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
@@ -123,6 +126,7 @@ public class RenderTilesClient {
     private final String renderParametersQueryString;
     private final Map<Double, ResolvedTileSpecCollection> zToResolvedTiles;
     private final StorageBackend storageBackend;
+    private final List<FilterSpec> filterSpecList;
 
     public RenderTilesClient(final RenderDataClient projectDataClient,
                              final String stack,
@@ -150,12 +154,44 @@ public class RenderTilesClient {
 
         final StringBuilder queryParameters = new StringBuilder();
         queryParameters.append("?scale=").append(tileRender.scale);
-        if (tileRender.doFilter) {
-            queryParameters.append("&doFilter=true");
+
+        List<FilterSpec> filterSpecList = null;
+        if (tileRender.filterListPath == null) {
+
+            if (tileRender.doFilter) {
+                queryParameters.append("&doFilter=true");
+            }
+            if (tileRender.filterListName != null) {
+                queryParameters.append("&filterListName=").append(tileRender.filterListName);
+            }
+
+        } else {
+
+            if ((tileRender.doFilter) || (tileRender.filterListName != null)) {
+                throw new IllegalArgumentException(
+                        "--filterListPath option cannot be used with --doFilter or --filterListName");
+            }
+
+            final File filterFile = new File(tileRender.filterListPath);
+            if (filterFile.exists()) {
+                try {
+                    final FilterFactory factory = FilterFactory.fromJson(new FileReader(filterFile));
+                    final List<String> filterListNames = factory.getSortedFilterListNames();
+                    if (filterListNames.size() != 1) {
+                        throw new IllegalArgumentException(
+                                "The filterListPath file " + filterFile.getAbsolutePath() + " contains " +
+                                filterListNames.size() + " lists but must contain one and only one list");
+                    }
+                    filterSpecList = factory.getFilterList(filterListNames.get(0));
+                } catch(final IOException ioe) {
+                    throw new IllegalArgumentException("Failed to read filterListPath " + filterFile.getAbsolutePath(),
+                                                       ioe);
+                }
+            }
+
         }
-        if (tileRender.filterListName != null) {
-            queryParameters.append("&filterListName=").append(tileRender.filterListName);
-        }
+        this.filterSpecList = filterSpecList;
+
         if (tileRender.channels != null) {
             if (tileRender.hackStack != null) {
                 throw new IllegalArgumentException("explicit channels cannot be specified when creating a hack stack");
@@ -275,6 +311,13 @@ public class RenderTilesClient {
 
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
         final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+
+        if (filterSpecList != null) {
+            tileSpec.setFilterSpec(filterSpecList.get(0));
+            for (int i = 1; i < filterSpecList.size(); i++) {
+                tileSpec.addFilterSpec(filterSpecList.get(i));
+            }
+        }
 
         if (tileRender.renderMaskOnly) {
 
