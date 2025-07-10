@@ -188,7 +188,7 @@ public class MFOVAsTileParameters
                                                  null));
         return new MatchRunParameters("crossMfovAsTileRun",
                                       buildMatchCommonParameters(10),
-                                      buildTilePairDerivationParameters(0.1, 3, true),
+                                      buildTilePairDerivationParameters(0.1, 1, true),
                                       matchStageParametersList);
     }
 
