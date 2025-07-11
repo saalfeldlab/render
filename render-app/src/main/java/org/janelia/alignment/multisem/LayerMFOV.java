@@ -77,6 +77,15 @@ public class LayerMFOV
         return "z_" + z + "_mfov_" + name;
     }
 
+    public String getSimpleMfovName() {
+        // 0160_m0001 -> m0001
+        return name.substring(name.lastIndexOf('m'));
+    }
+
+    public String toMfovAsTileName(final String stackName) {
+        return String.format("%s_z%03d_%s", stackName, (int) z, name);
+    }
+
     public String toJson() {
         return JSON_HELPER.toJson(this);
     }
@@ -147,7 +156,7 @@ public class LayerMFOV
 
         final TileSpec tileSpec = new TileSpec();
 
-        tileSpec.setTileId(this.toString());
+        tileSpec.setTileId(this.toMfovAsTileName(stackId.getStack()));
         tileSpec.setZ(z);
         tileSpec.setWidth((double) scaledImageWidth);
         tileSpec.setHeight((double) scaledImageHeight);
@@ -170,9 +179,20 @@ public class LayerMFOV
         final String pngImageUrl = renderParametersUrl.replace("render-parameters", "png-image") +
                                    "&maxTileSpecsToRender=" + MultiSemUtilities.NUMBER_OF_TILES_IN_MFOV;
 
+        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().get(0);
+        final ImageAndMask firstSfovImageAndMask = firstSfovTileSpec.getFirstMipmapEntry().getValue();
+        final ImageLoader.LoaderType firstSfovImageLoaderType = firstSfovImageAndMask.getImageLoaderType();
+        ImageLoader.LoaderType loaderType = null;
+        if (ImageLoader.LoaderType.IMAGEJ_DEFAULT_W_TIMEOUT.equals(firstSfovImageLoaderType)) {
+            // If the first SFOV uses LoaderType.IMAGEJ_DEFAULT_W_TIMEOUT
+            // (e.g., when source images are stored in Google buckets),
+            // use the same loader type for the MFOV image.
+            loaderType = ImageLoader.LoaderType.IMAGEJ_DEFAULT_W_TIMEOUT;
+        }
+
         channelSpec.putMipmap(0,
                               new ImageAndMask(pngImageUrl,
-                                               null,
+                                               loaderType,
                                                null,
                                                maskDescription.toString(),
                                                ImageLoader.LoaderType.MULTI_BOX_DYNAMIC_MASK,

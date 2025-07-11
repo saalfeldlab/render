@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -189,4 +190,13 @@ public class MultiProjectParameters
                 .collect(Collectors.toList());
     }
 
+    public static MultiProjectParameters singleStackInstance(final String baseDataUrl,
+                                                             final StackId stackId) {
+        final MultiProjectParameters multiProjectParameters = new MultiProjectParameters();
+        multiProjectParameters.baseDataUrl = baseDataUrl;
+        multiProjectParameters.owner = stackId.getOwner();
+        multiProjectParameters.project = stackId.getProject();
+        multiProjectParameters.stackIdWithZ.stackNames = Collections.singletonList(stackId.getStack());
+        return multiProjectParameters;
+    }
 }

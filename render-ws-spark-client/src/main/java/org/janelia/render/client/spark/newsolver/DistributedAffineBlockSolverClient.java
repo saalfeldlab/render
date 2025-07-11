@@ -238,8 +238,8 @@ public class DistributedAffineBlockSolverClient
         return setupListsForRuns;
     }
 
-    private void alignSetupList(final JavaSparkContext sparkContext,
-                                final List<AffineBlockSolverSetup> setupList)
+    public void alignSetupList(final JavaSparkContext sparkContext,
+                               final List<AffineBlockSolverSetup> setupList)
             throws IOException {
 
         LOG.info("alignSetupList: entry, setupList={}", setupList);

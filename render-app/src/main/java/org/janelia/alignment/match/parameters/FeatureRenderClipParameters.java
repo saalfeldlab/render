@@ -25,6 +25,15 @@ public class FeatureRenderClipParameters
     )
     public Integer clipHeight;
 
+    public FeatureRenderClipParameters() {
+    }
+
+    public FeatureRenderClipParameters(final Integer clipWidth,
+                                       final Integer clipHeight) {
+        this.clipWidth = clipWidth;
+        this.clipHeight = clipHeight;
+    }
+
     @JsonIgnore
     public boolean hasValue() {
         return (clipWidth != null) || (clipHeight != null);

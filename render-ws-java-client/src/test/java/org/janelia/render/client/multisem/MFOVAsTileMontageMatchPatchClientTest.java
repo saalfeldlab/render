@@ -4,9 +4,9 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.junit.Test;
 
 /**
- * Tests the {@link MFOVAsTileStackClient} class.
+ * Tests the {@link MFOVAsTileMontageMatchPatchClient} class.
  */
-public class MFOVAsTileStackClientTest {
+public class MFOVAsTileMontageMatchPatchClientTest {
 
     @Test
     public void testParameterParsing() throws Exception {
@@ -19,11 +19,11 @@ public class MFOVAsTileStackClientTest {
                 "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
                 "--owner", "hess_wafers_60_61",
                 "--project", "w60_serial_360_to_369",
-                "--stack", "w60_s360_r00_gc",
-                "--mfovTileRenderScale", "0.2",
-                "--mfovTileStackSuffix", "_mt5"
+                "--stack", "w60_s360_r00_gc_mt5h",
+                "--xyNeighborFactor", "0.6",
+                "--startPositionMatchWeight", "0.005"
         };
 
-        MFOVAsTileStackClient.main(effectiveArgs);
+        MFOVAsTileMontageMatchPatchClient.main(effectiveArgs);
     }
 }

@@ -2,21 +2,23 @@ package org.janelia.render.client.solver;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.janelia.render.client.solver.SolveSetFactory.SetInit;
-import org.janelia.render.client.solver.SolveSetFactory.SetInit.Location;
-
 import mpicbg.models.Affine2D;
+
+import org.janelia.render.client.solver.SolveSetFactory.SetInit.Location;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 {
-	public HashMap<Integer, String> additionalIssues = new HashMap<>();
+	private final Set<Integer> zWithAdditionalIssues;
 
 	/**
 	 * @param defaultGlobalSolveModel - the default model for the final global solve (here always used)
@@ -40,7 +42,40 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 			final List<Integer> defaultBlockMaxPlateauWidth,
 			final int defaultMinStitchingInliers,
 			final double defaultBlockMaxAllowedError,
-			final double defaultDynamicLambdaFactor )
+			final double defaultDynamicLambdaFactor) {
+
+		this(defaultGlobalSolveModel, defaultBlockSolveModel, defaultStitchingModel,
+			 defaultBlockOptimizerLambdasRigid, defaultBlockOptimizerLambdasTranslation,
+			 defaultBlockOptimizerIterations, defaultBlockMaxPlateauWidth,
+			 defaultMinStitchingInliers, defaultBlockMaxAllowedError, defaultDynamicLambdaFactor,
+			 null);
+	}
+
+	/**
+	 * @param defaultGlobalSolveModel - the default model for the final global solve (here always used)
+	 * @param defaultBlockSolveModel - the default model (if layer contains no 'restart' or 'problem' tag), otherwise using less stringent model
+	 * @param defaultStitchingModel - the default model when stitching per z slice (here always used)
+	 * @param defaultBlockOptimizerLambdasRigid - the default rigid/affine lambdas for a block (from parameters)
+	 * @param defaultBlockOptimizerLambdasTranslation - the default translation lambdas for a block (from parameters)
+	 * @param defaultBlockOptimizerIterations - the default iterations (from parameters)
+	 * @param defaultBlockMaxPlateauWidth - the default plateau with (from parameters)
+	 * @param defaultMinStitchingInliers - how many inliers per tile pair are necessary for "stitching first"
+	 * @param defaultBlockMaxAllowedError - the default max error for global opt (from parameters)
+	 * @param defaultDynamicLambdaFactor - the default dynamic lambda factor
+	 * @param zWithAdditionalIssuesList - optional list of z values with issues (from parameters)
+	 */
+	public SolveSetFactoryAdaptiveRigid(
+			final Affine2D<?> defaultGlobalSolveModel,
+			final Affine2D<?> defaultBlockSolveModel,
+			final Affine2D<?> defaultStitchingModel,
+			final List<Double> defaultBlockOptimizerLambdasRigid,
+			final List<Double> defaultBlockOptimizerLambdasTranslation,
+			final List<Integer> defaultBlockOptimizerIterations,
+			final List<Integer> defaultBlockMaxPlateauWidth,
+			final int defaultMinStitchingInliers,
+			final double defaultBlockMaxAllowedError,
+			final double defaultDynamicLambdaFactor,
+			final List<Double> zWithAdditionalIssuesList)
 	{
 		super(
 				defaultGlobalSolveModel,
@@ -53,6 +88,13 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 				defaultMinStitchingInliers,
 				defaultBlockMaxAllowedError,
 				defaultDynamicLambdaFactor );
+		if (zWithAdditionalIssuesList != null) {
+			this.zWithAdditionalIssues = zWithAdditionalIssuesList.stream().mapToInt(Double::intValue).boxed().collect(Collectors.toSet());
+			LOG.info("constructor: zWithAdditionalIssues has the following values {}",
+					 zWithAdditionalIssues.stream().sorted().collect(Collectors.toList()));
+		} else {
+			this.zWithAdditionalIssues = new HashSet<>();
+		}
 	}
 
 	@Override
@@ -74,8 +116,7 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
 			List<Integer> blockMaxPlateauWidth = defaultBlockMaxPlateauWidth;
 
-			if ( containsIssue( initSet.minZ(), initSet.maxZ(), zToGroupIdMap, additionalIssues ) )
-			{
+			if (containsIssue(initSet.minZ(), initSet.maxZ(), zToGroupIdMap)) {
 				// rigid alignment
 				rigidPreAlign = true;
 
@@ -120,18 +161,18 @@ public class SolveSetFactoryAdaptiveRigid extends SolveSetFactory
 		return new SolveSet( leftSets, rightSets );
 	}
 
-	protected static boolean containsIssue(
-			final int min,
-			final int max,
-			final Map<Integer, String> zToGroupIdMap,
-			final Map<Integer, String> additionalIssues )
-	{
-		for ( int i = min; i <= max; ++i )
-		{
-			if ( zToGroupIdMap.containsKey( i ) || additionalIssues.containsKey( i ) )
-				return true;
+	private boolean containsIssue(final int minZ,
+								  final int maxZ,
+								  final Map<Integer, String> zToGroupIdMap) {
+		boolean containsIssue = false;
+		for (int z = minZ; z <= maxZ; z++) {
+			if (zToGroupIdMap.containsKey(z) || zWithAdditionalIssues.contains(z)) {
+				containsIssue = true;
+				break;
+			}
 		}
-
-		return false;
+		return containsIssue;
 	}
+
+	private static final Logger LOG = LoggerFactory.getLogger(SolveSetFactoryAdaptiveRigid.class);
 }

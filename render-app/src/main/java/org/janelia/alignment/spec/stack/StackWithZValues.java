@@ -58,6 +58,11 @@ public class StackWithZValues implements Serializable {
         return zValues.isEmpty() ? null : zValues.get(zValues.size() - 1);
     }
 
+    @JsonIgnore
+    public int getZCount() {
+        return zValues.size();
+    }
+
     public boolean hasSameStack(final StackWithZValues that) {
         return (that != null) && this.stackId.equals(that.stackId);
     }
