@@ -79,8 +79,12 @@ public class MFOVAsTileParameters
         return roughSfovStackSuffix;
     }
 
+    public String getRenderedMfovStackSuffixForRawSfovStack() {
+        return dynamicMfovStackSuffix + renderedMfovStackSuffix;
+    }
+
     public String getAlignedMfovStackSuffixForRawSfovStack() {
-        return dynamicMfovStackSuffix + renderedMfovStackSuffix + alignedMfovStackSuffix;
+        return getRenderedMfovStackSuffixForRawSfovStack() + alignedMfovStackSuffix;
     }
 
     public StackId getDynamicMfovStackId(final StackId rawSfovStackId) {

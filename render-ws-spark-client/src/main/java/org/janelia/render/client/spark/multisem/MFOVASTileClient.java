@@ -5,8 +5,10 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -465,7 +467,8 @@ public class MFOVASTileClient
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
         final String roughSfovStackSuffix = mfovAsTile.getRoughSfovStackSuffix();
-        final String alignedStackSuffixForRaw = mfovAsTile.getAlignedMfovStackSuffixForRawSfovStack();
+        final String renderedMfovStackSuffix = mfovAsTile.getRenderedMfovStackSuffixForRawSfovStack();
+        final String alignedMfovStackSuffixForRaw = mfovAsTile.getAlignedMfovStackSuffixForRawSfovStack();
 
         final List<StackWithZValues> rawSfovStacksWithAllZ = mfovAsTileStackLists.getRawSfovStacksWithAllZ();
         final List<StackWithZValues> roughSfovStacksWithAllZ = mfovAsTileStackLists.getRoughSfovStacksWithAllZ();
@@ -495,7 +498,8 @@ public class MFOVASTileClient
                 LogUtilities.setupExecutorLog4j(stackWithAllZ.getStackId().toDevString());
 
                 final StackId rawSfovStackId = stackWithAllZ.getStackId();
-                final StackId alignedMfovStackId = rawSfovStackId.withStackSuffix(alignedStackSuffixForRaw);
+                final StackId renderedMfovStackId = rawSfovStackId.withStackSuffix(renderedMfovStackSuffix);
+                final StackId alignedMfovStackId = rawSfovStackId.withStackSuffix(alignedMfovStackSuffixForRaw);
                 final StackId roughSfovStackId = rawSfovStackId.withStackSuffix(roughSfovStackSuffix);
                 final String roughSfovStack = roughSfovStackId.getStack();
 
@@ -510,7 +514,9 @@ public class MFOVASTileClient
                     final ResolvedTileSpecCollection roughTiles = buildRoughTileSpecsForZ(workerDataClient,
                                                                                           rawSfovStackId.getStack(),
                                                                                           z,
-                                                                                          alignedMfovStackId.getStack());
+                                                                                          renderedMfovStackId.getStack(),
+                                                                                          alignedMfovStackId.getStack(),
+                                                                                          mfovAsTile.getMfovRenderScale());
                     workerDataClient.saveResolvedTiles(roughTiles, roughSfovStack, z);
                 }
 
@@ -531,8 +537,10 @@ public class MFOVASTileClient
     @Nonnull
     private static ResolvedTileSpecCollection buildRoughTileSpecsForZ(final RenderDataClient dataClient,
                                                                       final String rawSfovStack,
-                                                                      final Double z,
-                                                                      final String alignedMfovStack)
+                                                                      final double z,
+                                                                      final String renderedMfovStack,
+                                                                      final String alignedMfovStack,
+                                                                      final double mfovAsTileRenderScale)
             throws IOException {
 
         // example SFOV tile spec:
@@ -571,23 +579,22 @@ public class MFOVASTileClient
         //   },
         //   ...
         // }
-        final ResolvedTileSpecCollection mfovTiles = dataClient.getResolvedTiles(alignedMfovStack, z);
+        final ResolvedTileSpecCollection renderedMfovTiles = dataClient.getResolvedTiles(renderedMfovStack, z);
+        final ResolvedTileSpecCollection alignedMfovTiles = dataClient.getResolvedTiles(alignedMfovStack, z);
 
-        final Map<String, double[]> mfovToOffset =
-                mfovTiles.getTileSpecs().stream()
-                        .collect(Collectors.toMap(
-                                mfovTileSpec -> {
-                                    final String mfovTileId = mfovTileSpec.getTileId();
-                                    return mfovTileId.substring(mfovTileId.lastIndexOf('_') + 1); // e.g. "m0018"
-                                },
-                                mfovTileSpec -> {
-                                    final LeafTransformSpec transformSpec = (LeafTransformSpec) mfovTileSpec.getLastTransform();
-                                    final String[] mfovStrings = transformSpec.getDataString().split(" ");
-                                    return new double[] {
-                                            Double.parseDouble(mfovStrings[0]),
-                                            Double.parseDouble(mfovStrings[1])
-                                    };
-                                }));
+        final Map<String, double[]> mfovToOffset = new HashMap<>();
+        for (final String mfovTileId : renderedMfovTiles.getTileIds()) {
+            final TileSpec renderedMfovTileSpec = renderedMfovTiles.getTileSpec(mfovTileId);
+            final TileSpec alignedMfovTileSpec = alignedMfovTiles.getTileSpec(mfovTileId);
+            final String simpleMfovName = mfovTileId.substring(mfovTileId.lastIndexOf('_') + 1); // e.g. "m0018"
+            final double[] offset = new double[] {
+                    (alignedMfovTileSpec.getMinX() - renderedMfovTileSpec.getMinX()) / mfovAsTileRenderScale,
+                    (alignedMfovTileSpec.getMinY() - renderedMfovTileSpec.getMinY()) / mfovAsTileRenderScale
+            };
+            LOG.info("buildRoughTileSpecsForZ: renderedMfovStack={}, alignedMfovStack={}, mfovTileId={}, offset={}",
+                     renderedMfovStack, alignedMfovStack, mfovTileId, Arrays.toString(offset));
+            mfovToOffset.put(simpleMfovName, offset);
+        }
 
         final Collection<TileSpec> sfovTileSpecs = sfovTiles.getTileSpecs();
         sfovTileSpecs.forEach(tileSpec -> {
