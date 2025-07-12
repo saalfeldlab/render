@@ -5,6 +5,9 @@ import com.google.common.cache.CacheStats;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
@@ -46,9 +49,6 @@ public class ArgbRendererTest {
     @Test
     public void testStitching() throws Exception {
 
-        final File expectedFile =
-                new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
-
         final String[] args = {
                 "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles.json",
                 "--out", outputFile.getAbsolutePath(),
@@ -70,6 +70,9 @@ public class ArgbRendererTest {
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+
+        final File expectedFile = new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
+//        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         final String expectedDigestString = getDigestString(expectedFile);
         final String actualDigestString = getDigestString(outputFile);
@@ -106,9 +109,6 @@ public class ArgbRendererTest {
         // TODO: understand why v0.3 result differs slightly (at right edge) from v2.0 result
         //       see expected_stitched_4_tiles_with_mixed_masks_v0.3.jpg for comparison
 
-        final File expectedFile =
-                new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles_with_mixed_masks.jpg");
-
         final String[] args = {
                 "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles_with_mixed_masks.json",
                 "--out", outputFile.getAbsolutePath(),
@@ -121,6 +121,9 @@ public class ArgbRendererTest {
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
 
+        final File expectedFile = new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles_with_mixed_masks.jpg");
+//        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
+
         final String expectedDigestString = getDigestString(expectedFile);
         final String actualDigestString = getDigestString(outputFile);
 
@@ -130,8 +133,6 @@ public class ArgbRendererTest {
 
     @Test
     public void testMultichannelStitching() throws Exception {
-
-        File expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_1_0.jpg");
 
         String[] args = {
                 "--tile_spec_url", "src/test/resources/multichannel-test/test_2_channels.json",
@@ -148,13 +149,14 @@ public class ArgbRendererTest {
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
 
+        File expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_1_0.jpg");
+//        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
+
         String expectedDigestString = getDigestString(expectedFile);
         String actualDigestString = getDigestString(outputFile);
 
         Assert.assertEquals("for DAPI, stitched file MD5 hash differs from expected result",
                             expectedDigestString, actualDigestString);
-
-        expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_0_9_td_0_1.jpg");
 
         args = new String[] {
                 "--tile_spec_url", "src/test/resources/multichannel-test/test_2_channels.json",
@@ -170,6 +172,9 @@ public class ArgbRendererTest {
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+
+        expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_0_9_td_0_1.jpg");
+//        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         expectedDigestString = getDigestString(expectedFile);
         actualDigestString = getDigestString(outputFile);
@@ -207,9 +212,6 @@ public class ArgbRendererTest {
     @Test
     public void testComposite() throws Exception {
 
-        final File expectedFile =
-                new File(modulePath + "/src/test/resources/composite-test/expected_composite.jpg");
-
         final String[] args = {
                 "--tile_spec_url", "src/test/resources/composite-test/test_composite.json",
                 "--out", outputFile.getAbsolutePath(),
@@ -222,6 +224,9 @@ public class ArgbRendererTest {
 
         Assert.assertTrue("composite file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
 
+        final File expectedFile = new File(modulePath + "/src/test/resources/composite-test/expected_composite.jpg");
+//        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
+
         final String expectedDigestString = getDigestString(expectedFile);
         final String actualDigestString = getDigestString(outputFile);
 
@@ -231,9 +236,6 @@ public class ArgbRendererTest {
 
     @Test
     public void testMaskMipmap() throws Exception {
-
-        final File expectedFile =
-                new File(modulePath + "/src/test/resources/mipmap-test/mask_mipmap_expected_result.jpg");
 
         final String[] args = {
                 "--tile_spec_url", "src/test/resources/mipmap-test/mask_mipmap_test.json",
@@ -249,6 +251,9 @@ public class ArgbRendererTest {
 
         Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
                           outputFile.exists());
+
+        final File expectedFile = new File(modulePath + "/src/test/resources/mipmap-test/mask_mipmap_expected_result.jpg");
+//        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         final String expectedDigestString = getDigestString(expectedFile);
         final String actualDigestString = getDigestString(outputFile);
@@ -543,6 +548,27 @@ public class ArgbRendererTest {
                 LOG.info("deleteTestFile: failed to delete " + file.getAbsolutePath());
             }
         }
+    }
+
+    /**
+     * The expected files for renderer tests provide a quick way to check for code regressions.
+     * Every once in a (long) while, code changes require the expected files to be updated.
+     * If/when you are sure that the recent code change is correct,
+     * you can use this method to update the expected files.
+     * After running this method, you should comment out the call(s) and commit the updated files.
+     *
+     * @param  expectedFile  expected file that needs to be updated.
+     * @param  updatedFile   new file result to copy to the expected file.
+     *
+     * @throws IOException
+     *   if the copy operation fails.
+     */
+    public static void updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(final File expectedFile,
+                                                                              final File updatedFile)
+            throws IOException {
+        LOG.warn("updateExpectedFileSinceYouAreSureRecentChangeIsCorrect: updating {} with {}",
+                 expectedFile.getAbsolutePath(), updatedFile.getAbsolutePath());
+        Files.copy(updatedFile.toPath(), expectedFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(ArgbRendererTest.class);

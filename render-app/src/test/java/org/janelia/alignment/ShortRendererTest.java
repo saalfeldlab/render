@@ -35,9 +35,6 @@ public class ShortRendererTest {
     @Test
     public void testStitching() throws Exception {
 
-        final File expectedFile =
-                new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_16_bit.png");
-
         final String[] args = {
                 "--tile_spec_url", "src/test/resources/stitch-test/16_bit_tiles.json",
                 "--out", outputFile.getAbsolutePath(),
@@ -49,6 +46,9 @@ public class ShortRendererTest {
         ShortRenderer.renderUsingCommandLineArguments(args);
 
         Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+
+        final File expectedFile = new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_16_bit.png");
+//        org.janelia.alignment.ArgbRendererTest.updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         final String expectedDigestString = ArgbRendererTest.getDigestString(expectedFile);
         final String actualDigestString = ArgbRendererTest.getDigestString(outputFile);
