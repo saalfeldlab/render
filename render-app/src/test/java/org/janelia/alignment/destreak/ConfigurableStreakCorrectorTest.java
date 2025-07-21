@@ -148,10 +148,10 @@ public class ConfigurableStreakCorrectorTest {
         imp.show();
         // displayStreakCorrectionDetails(srcPath, HUM_AIRWAY_CORRECTOR);
 
-        final SmoothMaskStreakCorrector globalCorrector = new SmoothMaskStreakCorrector(8, 5545,
-                10920, 18, 8, 0.0);
-        final StreakCorrector corrector = new LocalSmoothMaskStreakCorrector(
-                globalCorrector, 20, 7, 0.05f);
+        final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(8, 5041,
+                9240, 75, 3, 0.0);
+//        final StreakCorrector corrector = new LocalSmoothMaskStreakCorrector(
+//                globalCorrector, 20, 7, 0.05f);
         final ImagePlus corrected = new ImagePlus(srcPath);
         corrector.process(corrected.getProcessor(), 1.0);
         corrected.setTitle(corrector.toParametersMap().toString());
