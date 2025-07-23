@@ -21,14 +21,15 @@ public class StreakFinderCorrector {
 		final ImagePlus secondChannel = new ImagePlus("Second", load(secondChannelPath));
 
 		// shift second channel to match intensity of first channel and smooth it with median filter
-		final ImageStatistics firstChannelStats = firstChannel.getStatistics();
-		final ImageStatistics secondChannelStats = secondChannel.getStatistics();
-		final float shift = (float) (firstChannelStats.mean - secondChannelStats.mean);
+//		final ImageStatistics firstChannelStats = firstChannel.getStatistics();
+//		final ImageStatistics secondChannelStats = secondChannel.getStatistics();
+//		final float shift = (float) (firstChannelStats.mean - secondChannelStats.mean);
+		matchHistograms(firstChannel, secondChannel);
+		IJ.run(secondChannel, "Gaussian Blur...", "sigma=0.7");
 
-		IJ.run(secondChannel, "Add...", String.format("value=%.2f", shift));
+//		IJ.run(secondChannel, "Add...", String.format("value=%.2f", shift));
 //		IJ.run(secondChannel, "Median...", "radius=1");
-//		IJ.run(secondChannel, "Gauss...", "sigma=3");
-		IJ.run(secondChannel, "Mean...", "radius=1");
+//		IJ.run(secondChannel, "Mean...", "radius=1");
 
 		new ImageJ();
 		firstChannel.show();
@@ -47,7 +48,7 @@ public class StreakFinderCorrector {
 				combine(firstChannel.getProcessor(), secondChannel.getProcessor(), mask.getProcessor(),
 //						(a, b, m) -> m) // Naive combination
 //						(a, b, m) -> Math.min(1, m / 0.8f)) // Saturate mask
-						(a, b, m) -> Math.min(1, m + 0.15f)) // Add constant part of second channel (works best so far)
+						(a, b, m) -> Math.min(1, m + 0.3f)) // Add constant part of second channel (works best so far)
 //						(a, b, m) -> (float) Math.sqrt(m * Math.exp(0.001 * (firstChannelStats.min - a)))) // Streak-aware weight
 		);
 		combined.show();
@@ -63,6 +64,35 @@ public class StreakFinderCorrector {
 
 
 		return cache.get(path, downsampleLevel, isMask, convertTo16Bit, loaderType, slice);
+	}
+
+	private static void matchHistograms(final ImagePlus source, final ImagePlus target) {
+		final float[] cdfSrc = computeCdf(source);
+		final float[] cdfTgt = computeCdf(target);
+		final int[] lut = new int[cdfSrc.length];
+		int j = 0;
+		for(int i = 0; i < lut.length; i++) {
+			while(j < cdfSrc.length && cdfTgt[i] > cdfSrc[j]) {
+				j++;
+			}
+			lut[i] = j;
+		}
+		target.getProcessor().applyTable(lut);
+	}
+
+	private static float[] computeCdf(final ImagePlus imp) {
+		final ImageProcessor ip = imp.getProcessor();
+		final int[] histogram = ip.getHistogram();
+		final float[] cdf = new float[histogram.length];
+		cdf[0] = histogram[0];
+		for (int i = 1; i < histogram.length; i++) {
+			cdf[i] = cdf[i - 1] + histogram[i];
+		}
+		final float total = cdf[cdf.length - 1];
+		for (int i = 0; i < cdf.length; i++) {
+			cdf[i] /= total; // Normalize to [0, 1]
+		}
+		return cdf;
 	}
 
 	private static ImageProcessor combine(final ImageProcessor firstChannel,
