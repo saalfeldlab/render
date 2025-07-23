@@ -4,7 +4,6 @@ import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
 import ij.process.ImageProcessor;
-import ij.process.ImageStatistics;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.util.ImageProcessorCache;
 
@@ -51,6 +50,10 @@ public class StreakFinderCorrector {
 						(a, b, m) -> Math.min(1, m + 0.3f)) // Add constant part of second channel (works best so far)
 //						(a, b, m) -> (float) Math.sqrt(m * Math.exp(0.001 * (firstChannelStats.min - a)))) // Streak-aware weight
 		);
+
+		final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(8, 3961, 6160, 75, 3, 0.0);
+		corrector.process16bit(combined.getProcessor(), 1.0);
+
 		combined.show();
 	}
 
