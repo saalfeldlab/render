@@ -7,7 +7,7 @@ import ij.process.ImageProcessor;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.util.ImageProcessorCache;
 
-public class StreakFinderCorrector {
+public class SecondChannelStreakCorrector {
 
 	public static void main(final String[] args) {
 		// Paths to the two channels
