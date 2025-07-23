@@ -68,8 +68,9 @@ public class SecondChannelStreakCorrector {
 				secondChannelBaseWeight);
 
 		final ImagePlus combined = new ImagePlus("Combined", combinedProcessor);
+		final FftDimensions fftDims = FftDimensions.getFor(combined.getWidth(), combined.getHeight());
 
-		final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(numThreads, 3961, 6160, INNER_CUTOFF, BAND_WIDTH, ANGLE);
+		final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(numThreads, fftDims.width, fftDims.height, INNER_CUTOFF, BAND_WIDTH, ANGLE);
 		corrector.process16bit(combined.getProcessor(), 1.0);
 
 		return combined;

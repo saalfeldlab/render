@@ -2,8 +2,6 @@ package org.janelia.render.client.destreak;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
-import edu.mines.jtk.dsp.FftComplex;
-import edu.mines.jtk.dsp.FftReal;
 import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
@@ -12,6 +10,7 @@ import ij.plugin.ImagesToStack;
 import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.destreak.FftDimensions;
 import org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector;
 import org.janelia.alignment.destreak.SmoothMaskStreakCorrector;
 import org.janelia.alignment.destreak.StreakCorrector;
@@ -219,7 +218,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 		}
 
 		public StreakCorrector getCorrector(final int width, final int height) {
-			final ImageDims fftDims = getFftDimensions(width, height);
+			final FftDimensions fftDims = FftDimensions.getFor(width, height);
 			final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(
 					Threads.numThreads() / 2, fftDims.width, fftDims.height, innerCutoff, bandWidth, angle);
 
@@ -229,15 +228,6 @@ public class StreakCorrection_Plugin implements PlugIn {
 			} else {
 				return corrector;
 			}
-		}
-
-		private static ImageDims getFftDimensions(final int width, final int height) {
-			// The following computations are based on the original code in net.imglib2.algorithm.fft.FourierTransform
-			final int extendedWidth = width + Math.max(Math.round(1.25f * width) - width, 12);
-			final int extendedHeight = height + Math.max(Math.round(1.25f * height) - height, 12);
-			final int fftWidth = FftReal.nfftFast(extendedWidth) / 2 + 1;
-			final int fftHeight = FftComplex.nfftFast(extendedHeight);
-			return new ImageDims(fftWidth, fftHeight);
 		}
 
 		public double addToParameter(final String parameter, final double increment) {
@@ -286,7 +276,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 		}
 
 		public String filterDataString(final int width, final int height) {
-			final ImageDims fftDims = getFftDimensions(width, height);
+			final FftDimensions fftDims = FftDimensions.getFor(width, height);
 			final String method = localize ? "LocalSmoothMaskStreakCorrector" : "SmoothMaskStreakCorrector";
 			final String parameters = fftDims.width + "," + fftDims.height + "," + innerCutoff + "," + bandWidth + "," + angle
 					+ "," + gaussianBlurRadius + "," + initialThreshold + "," + finalThreshold;
@@ -301,16 +291,6 @@ public class StreakCorrection_Plugin implements PlugIn {
 
 		public VariationParameters() {
 			// Default constructor
-		}
-	}
-
-	private static class ImageDims {
-		public int width;
-		public int height;
-
-		public ImageDims(final int width, final int height) {
-			this.width = width;
-			this.height = height;
 		}
 	}
 }
