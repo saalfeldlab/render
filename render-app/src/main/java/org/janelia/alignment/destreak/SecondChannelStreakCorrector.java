@@ -9,9 +9,19 @@ import org.janelia.alignment.util.ImageProcessorCache;
 
 public class SecondChannelStreakCorrector {
 
+	private static final int MEAN_FILTER_SIZE = 100;
+	private static final int INNER_CUTOFF = 75;
+	private static final int BAND_WIDTH = 3;
+	private static final double ANGLE = 0.0;
+
+	private final double threshold;
+	private final int blurRadius;
+	private final float secondChannelBaseWeight;
+	private final int numThreads;
+
 	public static void main(final String[] args) {
 		// Paths to the two channels
-		final String path = "file:///Users/innerbergerm/Data/streak-correction/second-channel-experiments/jrc_mpi_5g_1_hc_z7000.h5";
+		final String path = "file:///Users/innerbergerm/Data/streak-correction/second-channel-experiments/jrc_zf-pancreas-1_z0039.h5";
 		final String firstChannelPath = path + "?dataSet=/0-0-0/c0";
 		final String secondChannelPath = path + "?dataSet=/0-0-0/c1";
 
@@ -19,42 +29,50 @@ public class SecondChannelStreakCorrector {
 		final ImagePlus firstChannel = new ImagePlus("First", load(firstChannelPath));
 		final ImagePlus secondChannel = new ImagePlus("Second", load(secondChannelPath));
 
-		// shift second channel to match intensity of first channel and smooth it with median filter
-//		final ImageStatistics firstChannelStats = firstChannel.getStatistics();
-//		final ImageStatistics secondChannelStats = secondChannel.getStatistics();
-//		final float shift = (float) (firstChannelStats.mean - secondChannelStats.mean);
+		// Correct streaks by combining the two channels
+		final SecondChannelStreakCorrector corrector = new SecondChannelStreakCorrector();
+		final ImagePlus combined = corrector.process(firstChannel, secondChannel);
+		new ImageJ();
+		combined.setTitle("Combined");
+		combined.show();
+	}
+
+	public SecondChannelStreakCorrector() {
+		this(100, 5, 0.2f, 1);
+	}
+
+	public SecondChannelStreakCorrector(final double threshold,
+										final int blurRadius,
+										final float secondChannelBaseWeight,
+										final int numThreads) {
+		this.threshold = threshold;
+		this.blurRadius = blurRadius;
+		this.secondChannelBaseWeight = secondChannelBaseWeight;
+		this.numThreads = numThreads;
+	}
+
+	public ImagePlus process(final ImagePlus firstChannel, final ImagePlus secondChannel) {
+		// Shift second channel to match intensity of first channel and smooth it with median filter
 		matchHistograms(firstChannel, secondChannel);
 		IJ.run(secondChannel, "Gaussian Blur...", "sigma=0.7");
 
-//		IJ.run(secondChannel, "Add...", String.format("value=%.2f", shift));
-//		IJ.run(secondChannel, "Median...", "radius=1");
-//		IJ.run(secondChannel, "Mean...", "radius=1");
-
-		new ImageJ();
-		firstChannel.show();
-		secondChannel.show();
-
 		// Create a streak mask
-		final StreakFinder finder = new StreakFinder(100, 100, 5);
+		final StreakFinder finder = new StreakFinder(MEAN_FILTER_SIZE, threshold, blurRadius);
 		final ImagePlus mask = finder.createStreakMask(firstChannel);
 
-		mask.setTitle("Streak Mask");
-		mask.show();
-
 		// Combine the two channels using the mask
-		final ImagePlus combined = new ImagePlus(
-				"Combined",
-				combine(firstChannel.getProcessor(), secondChannel.getProcessor(), mask.getProcessor(),
-//						(a, b, m) -> m) // Naive combination
-//						(a, b, m) -> Math.min(1, m / 0.8f)) // Saturate mask
-						(a, b, m) -> Math.min(1, m + 0.3f)) // Add constant part of second channel (works best so far)
-//						(a, b, m) -> (float) Math.sqrt(m * Math.exp(0.001 * (firstChannelStats.min - a)))) // Streak-aware weight
-		);
+		final ImageProcessor combinedProcessor = combine(
+				firstChannel.getProcessor(),
+				secondChannel.getProcessor(),
+				mask.getProcessor(),
+				secondChannelBaseWeight);
 
-		final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(8, 3961, 6160, 75, 3, 0.0);
+		final ImagePlus combined = new ImagePlus("Combined", combinedProcessor);
+
+		final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(numThreads, 3961, 6160, INNER_CUTOFF, BAND_WIDTH, ANGLE);
 		corrector.process16bit(combined.getProcessor(), 1.0);
 
-		combined.show();
+		return combined;
 	}
 
 	private static ImageProcessor load(final String path) {
@@ -101,22 +119,18 @@ public class SecondChannelStreakCorrector {
 	private static ImageProcessor combine(final ImageProcessor firstChannel,
 										  final ImageProcessor secondChannel,
 										  final ImageProcessor mask,
-										  final WeightFunction weight) {
+										  final float baseWeight) {
 		final ImageProcessor combined = firstChannel.convertToFloat().duplicate();
 		final int n = firstChannel.getPixelCount();
 
 		for (int i = 0; i < n; ++i) {
 			final float m = mask.getf(i) / 255.0f;
+			final float w = Math.min(1.0f, baseWeight + m);
 			final float a = firstChannel.getf(i);
 			final float b = secondChannel.getf(i);
-			final float w = weight.get(a, b, m);
 			combined.setf(i, a * (1 - w) + b * w);
 		}
 
 		return combined;
-	}
-
-	private interface WeightFunction {
-		float get(float first, float second, float maskValue);
 	}
 }
