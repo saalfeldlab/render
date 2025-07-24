@@ -263,7 +263,7 @@ public class StreakCorrectionClient implements Serializable {
             final URIBuilder uriBuilder = new URIBuilder(clientParameters.outputDirectory);
 			final List<String> pathSegments = uriBuilder.getPathSegments();
             pathSegments.add(clientParameters.renderWeb.project);
-            pathSegments.add(clientParameters.outputStack);
+            pathSegments.add(clientParameters.inputStack);
             pathSegments.add(clientParameters.runTimestamp);
             pathSegments.add(String.format("%03d", thousands));
             pathSegments.add(String.valueOf(hundreds));
