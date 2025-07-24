@@ -121,7 +121,7 @@ public class SecondChannelStreakCorrector {
 										  final ImageProcessor secondChannel,
 										  final ImageProcessor mask,
 										  final float baseWeight) {
-		final ImageProcessor combined = firstChannel.convertToFloat().duplicate();
+		final ImageProcessor combined = firstChannel.duplicate();
 		final int n = firstChannel.getPixelCount();
 
 		for (int i = 0; i < n; ++i) {
