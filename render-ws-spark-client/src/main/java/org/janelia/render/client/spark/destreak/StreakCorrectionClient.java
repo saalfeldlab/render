@@ -24,6 +24,7 @@ import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.ShortRenderer;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.destreak.SecondChannelStreakCorrector;
+import org.janelia.alignment.loader.DynamicMaskLoader;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -277,15 +278,24 @@ public class StreakCorrectionClient implements Serializable {
     }
 
     private void updateTileSpecWithCorrectedImage(final TileSpec tileSpec, final String imagePath) {
-        // Replace all channels with a single channel pointing to the corrected image
-        final List<ChannelSpec> allChannels = tileSpec.getAllChannels();
-        allChannels.clear();
+        // Point the tile spec to the new image
+		final ChannelSpec channelSpec = tileSpec.getAllChannels().get(0);
+        ImageAndMask imageAndMask = channelSpec
+                .getFirstMipmapImageAndMask(tileSpec.getTileId())
+                .copyWithImage(imagePath, null, null);
 
-        final ChannelSpec correctedChannel = new ChannelSpec();
-        correctedChannel.putMipmap(0, new ImageAndMask(imagePath, null));
+        // If the channel has a mask, ensure it is a dynamic mask and update the URL
+        if (channelSpec.hasMask()) {
+            if (! ImageLoader.LoaderType.DYNAMIC_MASK.equals(imageAndMask.getMaskLoaderType())) {
+                throw new IllegalArgumentException("Channel " + channelSpec.getName() +
+                                                           " has a mask, but it is not a dynamic mask. Cannot update tile spec.");
+            }
 
-        tileSpec.addChannel(correctedChannel);
+            final DynamicMaskLoader.DynamicMaskDescription description = DynamicMaskLoader.parseUrl(imageAndMask.getMaskUrl());
+            imageAndMask = imageAndMask.copyWithMask(description.toString(), ImageLoader.LoaderType.DYNAMIC_MASK, null);
+        }
 
+        channelSpec.putMipmap(0, imageAndMask);
         LOG.debug("updateTileSpecWithCorrectedImage: updated tile {} with corrected image at {}",
                   tileSpec.getTileId(), imagePath);
     }
