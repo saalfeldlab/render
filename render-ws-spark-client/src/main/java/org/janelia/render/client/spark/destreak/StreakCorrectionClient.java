@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.awt.image.BufferedImage;
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
@@ -12,7 +13,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.spark.SparkConf;
@@ -22,7 +22,9 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.ShortRenderer;
+import org.janelia.alignment.Utils;
 import org.janelia.alignment.destreak.SecondChannelStreakCorrector;
+import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -203,74 +205,52 @@ public class StreakCorrectionClient implements Serializable {
         final String tileId = tileSpec.getTileId();
         LOG.debug("correctTile: processing tile {}", tileId);
 
-        // Validate that tile has exactly 2 channels
-        final List<ChannelSpec> channels = tileSpec.getAllChannels();
-        if (channels.size() != 2) {
-            throw new IllegalArgumentException(
-                    "Tile " + tileId + " must have exactly 2 channels for streak correction, but has " +
-                            channels.size() + " channels");
-        }
-
-        // Load both channels as ImageProcessor
-        final ImageProcessor channel1 = loadChannelAsImageProcessor(channels.get(0), tileId);
-        final ImageProcessor channel2 = loadChannelAsImageProcessor(channels.get(1), tileId);
-
-        // Convert to ImagePlus for streak corrector
-        final ImagePlus imagePlus1 = new ImagePlus(tileId + "_ch1", channel1);
-        final ImagePlus imagePlus2 = new ImagePlus(tileId + "_ch2", channel2);
+        // Load both channels
+        final ImagePlus channel1 = loadChannel(tileSpec, 0);
+        final ImagePlus channel2 = loadChannel(tileSpec, 1);
 
         // Apply streak correction
         final SecondChannelStreakCorrector corrector = clientParameters.streakCorrector.getCorrector();
-        final ImagePlus correctedImage = corrector.process(imagePlus1, imagePlus2);
-
-        // Convert corrected ImagePlus to BufferedImage (16-bit)
-        final ImageProcessor correctedProcessor = correctedImage.getProcessor();
-
-        // Create a dummy RenderParameters for the conversion
-        final RenderParameters dummyRenderParameters = new RenderParameters();
-        dummyRenderParameters.width = correctedProcessor.getWidth();
-        dummyRenderParameters.height = correctedProcessor.getHeight();
-
-        // Create TransformMeshMappingWithMasks.ImageProcessorWithMasks for conversion
-        final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
-                new TransformMeshMappingWithMasks.ImageProcessorWithMasks(correctedProcessor, null, null);
-
-        final BufferedImage bufferedImage = ShortRenderer.CONVERTER.convertProcessorWithMasksToImage(
-                dummyRenderParameters, imageProcessorWithMasks);
+        final ImagePlus correctedImage = corrector.process(channel1, channel2);
 
         // Save image to output directory
-        final String outputImagePath = saveImage(bufferedImage, clientParameters, tileSpec);
+        final String outputImagePath = saveImage(correctedImage, clientParameters, tileSpec);
 
         // Update tile spec with new image location
         updateTileSpecWithCorrectedImage(tileSpec, outputImagePath);
         LOG.debug("correctTile: completed tile {}", tileId);
     }
 
-    private ImageProcessor loadChannelAsImageProcessor(final ChannelSpec channelSpec, final String tileId) throws IOException {
-        final Map.Entry<Integer, ImageAndMask> firstMipmapEntry = channelSpec.getFirstMipmapEntry();
-        final ImageAndMask imageAndMask = firstMipmapEntry.getValue();
-        return ImageProcessorCache.DISABLED_CACHE.get(imageAndMask.getImageUrl(),
-                                                      firstMipmapEntry.getKey(),
-                                                      false,
-                                                      false,
-                                                      imageAndMask.getImageLoaderType(),
-                                                      null);
+    private ImagePlus loadChannel(final TileSpec tileSpec, final int channel) {
+        final String tileUrl = tileSpec.getTileImageUrl();
+        if (!tileUrl.endsWith("c0")) {
+            throw new IllegalArgumentException("Tile " + tileSpec.getTileId() + " does not have a valid channel URL: " + tileUrl);
+        }
+        final String channelUrl = tileUrl.replace("c0", "c" + channel);
+
+        final ImageProcessorCache cache = ImageProcessorCache.DISABLED_CACHE;
+        final ImageLoader.LoaderType h5Loader = ImageLoader.LoaderType.H5_SLICE;
+        final ImageProcessor ip = cache.get(channelUrl, 0, false, false, h5Loader, null);
+        return new ImagePlus(tileSpec.getTileId() + "_ch" + channel, ip);
     }
 
-    private String saveImage(final BufferedImage image,
+    private String saveImage(final ImagePlus image,
                              final Parameters clientParameters,
                              final TileSpec tileSpec) throws IOException {
 
+        // Get output path based on tile spec and client parameters
         final String outputPath = buildOutputPath(clientParameters, tileSpec);
-        FileUtil.ensureWritableDirectory(new java.io.File(outputPath).getParentFile());
+        FileUtil.ensureWritableDirectory(new File(outputPath).getParentFile());
 
-        try {
-            javax.imageio.ImageIO.write(image, "png", new java.io.File(outputPath));
-            LOG.debug("saveImage: saved image to {}", outputPath);
-            return outputPath;
-        } catch (final IOException e) {
-            throw new IOException("Failed to save image to " + outputPath, e);
-        }
+        // Convert ImagePlus to BufferedImage and mark it as 16bit
+        final RenderParameters renderParams = RenderParameters.fromTileSpec(tileSpec);
+        final TransformMeshMappingWithMasks.ImageProcessorWithMasks ipwm =
+                new TransformMeshMappingWithMasks.ImageProcessorWithMasks(image.getProcessor(), null, null);
+        final BufferedImage bufferedImage = ShortRenderer.CONVERTER.convertProcessorWithMasksToImage(renderParams, ipwm);
+
+        Utils.saveImage(bufferedImage, outputPath, "png", false, 1.0f);
+        LOG.debug("saveImage: saved image to {}", outputPath);
+        return outputPath;
     }
 
     private String buildOutputPath(final Parameters clientParameters, final TileSpec tileSpec) {
@@ -279,17 +259,18 @@ public class StreakCorrectionClient implements Serializable {
         final int hundreds = (zInt % 1000) / 100;
 
         try {
-			final List<String> pathSegments = new ArrayList<>();
+            final URIBuilder uriBuilder = new URIBuilder(clientParameters.outputDirectory);
+			final List<String> pathSegments = uriBuilder.getPathSegments();
             pathSegments.add(clientParameters.renderWeb.project);
-            pathSegments.add(clientParameters.inputStack);
+            pathSegments.add(clientParameters.outputStack);
             pathSegments.add(clientParameters.runTimestamp);
             pathSegments.add(String.format("%03d", thousands));
             pathSegments.add(String.valueOf(hundreds));
             pathSegments.add(String.valueOf(zInt));
             pathSegments.add(tileSpec.getTileId() + ".png");
 
-            final URI fullUri = new URIBuilder(clientParameters.outputDirectory).setPathSegments(pathSegments).build();
-            return new java.io.File(fullUri).getAbsolutePath();
+            final URI fullUri = uriBuilder.setScheme("file").setPathSegments(pathSegments).build();
+            return new File(fullUri).getAbsolutePath();
         } catch (final URISyntaxException e) {
             throw new IllegalArgumentException("Failed to build output path", e);
         }
