@@ -1,8 +1,8 @@
 package org.janelia.alignment.destreak;
 
-import ij.IJ;
 import ij.ImageJ;
 import ij.ImagePlus;
+import ij.plugin.filter.GaussianBlur;
 import ij.process.ImageProcessor;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -54,7 +54,8 @@ public class SecondChannelStreakCorrector {
 	public ImagePlus process(final ImagePlus firstChannel, final ImagePlus secondChannel) {
 		// Shift second channel to match intensity of first channel and smooth it with median filter
 		matchHistograms(firstChannel, secondChannel);
-		IJ.run(secondChannel, "Gaussian Blur...", "sigma=0.7");
+		final GaussianBlur gaussianBlur = new GaussianBlur();
+		gaussianBlur.blurGaussian(secondChannel.getProcessor(), 0.7);
 
 		// Create a streak mask
 		final StreakFinder finder = new StreakFinder(MEAN_FILTER_SIZE, threshold, blurRadius);

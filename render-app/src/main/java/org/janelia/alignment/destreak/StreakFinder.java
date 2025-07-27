@@ -1,7 +1,7 @@
 package org.janelia.alignment.destreak;
 
-import ij.IJ;
 import ij.ImagePlus;
+import ij.plugin.filter.GaussianBlur;
 import ij.process.FloatProcessor;
 import ij.process.ImageProcessor;
 
@@ -51,7 +51,8 @@ public class StreakFinder implements Serializable {
 
 		final ImagePlus mask = new ImagePlus("Mask", filtered);
 		if (blurRadius > 0) {
-			IJ.run(mask, "Gaussian Blur...", String.format("sigma=%d", blurRadius));
+			final GaussianBlur blur = new GaussianBlur();
+			blur.blurGaussian(mask.getProcessor(), blurRadius);
 		}
 		return mask;
 	}
