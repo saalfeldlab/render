@@ -886,7 +886,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		if (LOG.isInfoEnabled()) {
 			final DoubleSummaryStatistics errors = SolveTools.computeErrors(tileConfig.getTiles());
 			LOG.info("solve: block {}, optimizing {} tiles with preAlign {}, error stats before optimization are {}",
-					 blockData, solveItem.groupedTileToTiles().keySet().size(), preAlign, errors);
+					 blockData, solveItem.groupedTileToTiles().size(), preAlign, errors);
 		}
 
 		if ((preAlign != null) && (preAlign != PreAlign.NONE)) {
@@ -915,13 +915,15 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final BlockOptimizerParameters blockOptimizer = alignmentParameters.blockOptimizerParameters();
 		for (int k = 0; k < blockOptimizerIterations.size(); ++k) {
 
+			final WeightModificationStrategy weightModifier = blockOptimizer.weightModificationStrategy();
 			final Map<String, Double> weights = blockOptimizer.getWeightsForRun(k);
 			LOG.info("solve: block {}, run {}: l(rigid)={}, l(translation)={}, l(regularization)={}",
 					solveItem.blockData(), k, weights.get(AlignmentModelType.RIGID.name()), weights.get(AlignmentModelType.TRANSLATION.name()), weights.get(AlignmentModelType.REGULARIZATION.name()));
 
 			for (final Tile<?> tile : tileConfig.getTiles()) {
+				final Map<String, Double> dynamicWeights = weightModifier.applyTo(weights, tile);
 				final AlignmentModel model = (AlignmentModel) tile.getModel();
-				model.setWeights(weights);
+				model.setWeights(dynamicWeights);
 			}
 
 			final int numIterations = blockOptimizerIterations.get(k);
