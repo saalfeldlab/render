@@ -298,6 +298,19 @@ public class RenderTilesClient {
         }
     }
 
+    public void setupStorageDirectories()
+            throws IOException {
+        final List<Double> zValues = renderDataClient.getStackZValues(stack);
+        for (final Double z : zValues) {
+            final List<String> relativePathSegments = getImageParentPathSegments(z);
+            final URI parentUri = storageBackend.resolvePath(relativePathSegments);
+            // including this log statement seemed to help us avoid Google rate limit exceptions
+            LOG.info("setupStorageDirectories: ensuring writable directory for z {} at {}",
+                     z, parentUri);
+            storageBackend.ensureWritableDirectory(parentUri);
+        }
+    }
+
     public void completeHackStackAsNeeded()
             throws IOException {
         if (tileRender.completeHackStack && (tileRender.hackStack != null)){
@@ -475,8 +488,8 @@ public class RenderTilesClient {
         }
     }
 
-    private List<String> getImagePathSegments(final TileSpec tileSpec, final String format) {
-        final int zInt = tileSpec.getZ().intValue();
+    private List<String> getImageParentPathSegments(final Double z) {
+        final int zInt = z.intValue();
         final int thousands = zInt / 1000;
 
         // Build relative path components
@@ -484,6 +497,13 @@ public class RenderTilesClient {
         relativePathSegments.add(String.format("%03d", thousands));
         relativePathSegments.add(String.valueOf((zInt % 1000) / 100));
         relativePathSegments.add(String.valueOf(zInt));
+
+        return relativePathSegments;
+    }
+
+    private List<String> getImagePathSegments(final TileSpec tileSpec,
+                                              final String format) {
+        final List<String> relativePathSegments = getImageParentPathSegments(tileSpec.getZ());
 
         // Ensure the directory exists and if so append file name
         final URI parentUri = storageBackend.resolvePath(relativePathSegments);
