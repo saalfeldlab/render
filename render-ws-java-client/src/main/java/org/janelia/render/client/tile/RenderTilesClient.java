@@ -135,6 +135,10 @@ public class RenderTilesClient {
         this.stack = stack;
         this.tileRender = tileRender;
 
+        if ((tileRender.hackTransformCount != null) && (tileRender.renderTileImagesLocally)) {
+            throw new IllegalArgumentException("--hackTransformCount option cannot be used with --renderTileImagesLocally");
+        }
+
         try {
             final URIBuilder uriBuilder = new URIBuilder(tileRender.rootDirectory);
             final List<String> pathSegments = uriBuilder.getPathSegments();
@@ -309,8 +313,16 @@ public class RenderTilesClient {
         final String parametersUrl = urls.getTileUrlString(stack, tileId) + "/render-parameters" +
                                      renderParametersQueryString;
 
-        final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+        RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
         final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+
+        if (tileRender.renderTileImagesLocally) {
+            final String imageUrl = tileSpec.getFirstMipmapEntry().getValue().getImageUrl();
+            final String convertedUrl = Utils.replaceBasenameInImageUrlStringWithRenderParameters(imageUrl);
+            LOG.info("renderTile: to force local render, converted image URL {} to {}", imageUrl, convertedUrl);
+
+            renderParameters = RenderParameters.loadFromUrl(convertedUrl);
+        }
 
         if (filterSpecList != null) {
             tileSpec.setFilterSpec(filterSpecList.get(0));
@@ -339,7 +351,7 @@ public class RenderTilesClient {
 
         }
 
-        if (tileRender.hackStack != null) {
+        if ((tileRender.hackStack != null) && (! tileRender.renderTileImagesLocally)) {
             if (tileRender.hackTransformCount != null) {
                 for (int i = 0; i < tileRender.hackTransformCount; i++) {
                     tileSpec.removeLastTransformSpec();
