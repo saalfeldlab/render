@@ -300,14 +300,25 @@ public class RenderTilesClient {
 
     public void setupStorageDirectories()
             throws IOException {
-        final List<Double> zValues = renderDataClient.getStackZValues(stack);
-        for (final Double z : zValues) {
+
+        for (final Double z : renderDataClient.getStackZValues(stack)) {
+
             final List<String> relativePathSegments = getImageParentPathSegments(z);
             final URI parentUri = storageBackend.resolvePath(relativePathSegments);
-            // including this log statement seemed to help us avoid Google rate limit exceptions
+
             LOG.info("setupStorageDirectories: ensuring writable directory for z {} at {}",
                      z, parentUri);
-            storageBackend.ensureWritableDirectory(parentUri);
+            try {
+                storageBackend.ensureWritableDirectory(parentUri);
+            } catch (final Throwable t) {
+                LOG.warn("setupStorageDirectories: caught exception and will retry setup in 1 second", t);
+                try {
+                    Thread.sleep(1000);
+                } catch (final InterruptedException ie) {
+                    LOG.warn("setupStorageDirectories: caught exception while sleeping and will retry setup now", ie);
+                }
+                storageBackend.ensureWritableDirectory(parentUri);
+            }
         }
     }
 
