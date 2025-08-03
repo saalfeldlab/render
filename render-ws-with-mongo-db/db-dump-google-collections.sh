@@ -8,7 +8,7 @@ set -e
 # Dump files for the collections are written to:
 #   /mnt/disks/mongodb_dump_fs/dump/${HOSTNAME}/collections/${RUN_TIMESTAMP}/${DB}/${COLLECTION}.bson.gz
 
-if [ $# != 2 ]; then
+if [ $# != 3 ]; then
   echo "
 Usage:    $0 <hostname> <db> <collection-pattern>
 
@@ -29,7 +29,7 @@ if [ ! -d "${BASE_DUMP_DIR}" ]; then
   exit 1
 fi
 
-CONNECTION_URI="mongodb://localhost:27017"
+CONNECTION_URI="mongodb://localhost:27017/${DB}"
 EVAL_CMD="printjson(db.getCollectionNames().filter(c => /${PATTERN}/.test(c)).sort());"
 
 COLLECTIONS=$( mongosh "${CONNECTION_URI}" --quiet --eval "${EVAL_CMD}" | grep "'" | sed "s/[',]//g" )
