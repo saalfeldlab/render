@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -410,6 +411,50 @@ public class Utils {
             }
         }
         return uri;
+    }
+
+    /**
+     * @param  imageUrlString  original imageUrlString
+     *
+     * @return imageUrlString with the basename replaced by 'render-parameters' (e.g.
+     *         'http://.../render-ws/v1/owner/.../z/4.0/png-image?scale=0.2' becomes
+     *         'http://.../render-ws/v1/owner/.../z/4.0/render-parameters?scale=0.2')
+     *
+     * @throws IllegalArgumentException
+     *   if the imageUrlString is malformed or does not contain a path segment
+     */
+    public static String replaceBasenameInImageUrlStringWithRenderParameters(final String imageUrlString)
+            throws IllegalArgumentException {
+
+
+        final URI uri;
+        try {
+            uri = new URI(imageUrlString);
+        } catch (final URISyntaxException e) {
+            throw new IllegalArgumentException("failed to build original URI from '" + imageUrlString + "'", e);
+        }
+
+        final String path = uri.getPath();
+        final int lastSlashIndex = path.lastIndexOf('/');
+        if (lastSlashIndex < 0) {
+            throw new IllegalArgumentException("URL has no path segments: " + imageUrlString);
+        }
+        final String updatedPath = path.substring(0, lastSlashIndex + 1) + "render-parameters";
+
+        final URI updatedUri;
+        try {
+            updatedUri = new URI(uri.getScheme(),
+                                 uri.getUserInfo(),
+                                 uri.getHost(),
+                                 uri.getPort(),
+                                 updatedPath,
+                                 uri.getQuery(),
+                                 uri.getFragment());
+        } catch (final URISyntaxException e) {
+            throw new IllegalArgumentException("failed to build URI with updatedPath '" + updatedPath + "'", e);
+        }
+
+        return updatedUri.toString();
     }
 
     public static final Comparator<String> NULLS_FIRST_STRING_COMPARATOR =

@@ -34,9 +34,10 @@ public class RenderTilesClientTest {
                     "--excludeMask",
                     "--excludeAllTransforms",
 //                    "--filterListName", "jrc_mpi_psc120_1a1-destreak-16bit",
-//                    "--hackStack", "v3_acquire_align_16bit_destreak_test",
+                    "--hackStack", "test_hack_m0009",
                     "--renderType", "EIGHT_BIT",
-//                    "--completeHackStack",
+                    "--completeHackStack",
+                    "--renderTileImagesLocally",
                     "--z", "2",
                     "--tileIdPattern", ".*m0009"
             };

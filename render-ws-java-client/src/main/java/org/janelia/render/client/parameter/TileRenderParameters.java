@@ -154,6 +154,13 @@ public class TileRenderParameters
             arity = 0)
     public boolean completeHackStack = false;
 
+    @Parameter(
+            names = "--renderTileImagesLocally",
+            description = "Force local rendering of tile imageUrls like 'http://.../render-ws/v1/owner/.../z/4.0/png-image?scale=0.2' " +
+                          "by fetching render parameters like 'http://.../render-ws/v1/owner/.../z/4.0/render-parameters?scale=0.2'",
+            arity = 0)
+    public boolean renderTileImagesLocally = false;
+
     public String getRunTimestamp() {
         if (this.runTimestamp == null) {
             final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
@@ -186,6 +193,7 @@ public class TileRenderParameters
         tp.hackStack = this.hackStack;
         tp.hackTransformCount = this.hackTransformCount;
         tp.completeHackStack = this.completeHackStack;
+        tp.renderTileImagesLocally = this.renderTileImagesLocally;
 
         // and then overwrite the tileIdPattern
         tp.tileIdPattern = tileIdPattern;
@@ -220,6 +228,7 @@ public class TileRenderParameters
         trp.renderType = TileRenderParameters.RenderType.EIGHT_BIT;
         trp.hackStack = hackStack;
         trp.completeHackStack = false;
+        trp.renderTileImagesLocally = true;
 
         trp.doFilter = false;
         trp.filterListName = null;

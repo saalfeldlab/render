@@ -135,6 +135,10 @@ public class RenderTilesClient {
         this.stack = stack;
         this.tileRender = tileRender;
 
+        if ((tileRender.hackTransformCount != null) && (tileRender.renderTileImagesLocally)) {
+            throw new IllegalArgumentException("--hackTransformCount option cannot be used with --renderTileImagesLocally");
+        }
+
         try {
             final URIBuilder uriBuilder = new URIBuilder(tileRender.rootDirectory);
             final List<String> pathSegments = uriBuilder.getPathSegments();
@@ -294,6 +298,30 @@ public class RenderTilesClient {
         }
     }
 
+    public void setupStorageDirectories()
+            throws IOException {
+
+        for (final Double z : renderDataClient.getStackZValues(stack)) {
+
+            final List<String> relativePathSegments = getImageParentPathSegments(z);
+            final URI parentUri = storageBackend.resolvePath(relativePathSegments);
+
+            LOG.info("setupStorageDirectories: ensuring writable directory for z {} at {}",
+                     z, parentUri);
+            try {
+                storageBackend.ensureWritableDirectory(parentUri);
+            } catch (final Throwable t) {
+                LOG.warn("setupStorageDirectories: caught exception and will retry setup in 1 second", t);
+                try {
+                    Thread.sleep(1000);
+                } catch (final InterruptedException ie) {
+                    LOG.warn("setupStorageDirectories: caught exception while sleeping and will retry setup now", ie);
+                }
+                storageBackend.ensureWritableDirectory(parentUri);
+            }
+        }
+    }
+
     public void completeHackStackAsNeeded()
             throws IOException {
         if (tileRender.completeHackStack && (tileRender.hackStack != null)){
@@ -309,8 +337,16 @@ public class RenderTilesClient {
         final String parametersUrl = urls.getTileUrlString(stack, tileId) + "/render-parameters" +
                                      renderParametersQueryString;
 
-        final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
+        RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
         final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+
+        if (tileRender.renderTileImagesLocally) {
+            final String imageUrl = tileSpec.getFirstMipmapEntry().getValue().getImageUrl();
+            final String convertedUrl = Utils.replaceBasenameInImageUrlStringWithRenderParameters(imageUrl);
+            LOG.info("renderTile: to force local render, converted image URL {} to {}", imageUrl, convertedUrl);
+
+            renderParameters = RenderParameters.loadFromUrl(convertedUrl);
+        }
 
         if (filterSpecList != null) {
             tileSpec.setFilterSpec(filterSpecList.get(0));
@@ -339,7 +375,7 @@ public class RenderTilesClient {
 
         }
 
-        if (tileRender.hackStack != null) {
+        if ((tileRender.hackStack != null) && (! tileRender.renderTileImagesLocally)) {
             if (tileRender.hackTransformCount != null) {
                 for (int i = 0; i < tileRender.hackTransformCount; i++) {
                     tileSpec.removeLastTransformSpec();
@@ -463,8 +499,8 @@ public class RenderTilesClient {
         }
     }
 
-    private List<String> getImagePathSegments(final TileSpec tileSpec, final String format) {
-        final int zInt = tileSpec.getZ().intValue();
+    private List<String> getImageParentPathSegments(final Double z) {
+        final int zInt = z.intValue();
         final int thousands = zInt / 1000;
 
         // Build relative path components
@@ -472,6 +508,13 @@ public class RenderTilesClient {
         relativePathSegments.add(String.format("%03d", thousands));
         relativePathSegments.add(String.valueOf((zInt % 1000) / 100));
         relativePathSegments.add(String.valueOf(zInt));
+
+        return relativePathSegments;
+    }
+
+    private List<String> getImagePathSegments(final TileSpec tileSpec,
+                                              final String format) {
+        final List<String> relativePathSegments = getImageParentPathSegments(tileSpec.getZ());
 
         // Ensure the directory exists and if so append file name
         final URI parentUri = storageBackend.resolvePath(relativePathSegments);
