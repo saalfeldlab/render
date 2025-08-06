@@ -125,7 +125,7 @@ public class MFOVAsTileParameters
         setup.blockPartition.sizeZ = 100; // must be greater than total number of layers in each mfov-as-tile stack
 
         setup.stitching.lambda = 0.0;
-        setup.stitching.maxAllowedError = 0.5;
+        setup.stitching.maxAllowedError = 10.0;
         setup.stitching.maxIterations = 5000;
         setup.stitching.maxPlateauWidth = 1000;
         setup.stitching.minInliers = 25;
@@ -138,7 +138,7 @@ public class MFOVAsTileParameters
         setup.blockOptimizer.lambdasRegularization = emptyDoubleList;
         setup.blockOptimizer.iterations = emptyIntegerList;
         setup.blockOptimizer.maxPlateauWidth = emptyIntegerList;
-        setup.blockOptimizer.maxAllowedError = 5.0;
+        setup.blockOptimizer.maxAllowedError = 10.0;
 
         setup.maxNumMatches = 0;
 

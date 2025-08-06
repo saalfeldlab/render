@@ -233,7 +233,7 @@ public class MFOVASTileClient
                                                                          rawStackId.getOwner(),
                                                                          rawStackId.getProject());
 
-                boolean isRenderedStackSetupNeeded = true;
+                boolean isSetupNeeded = true;
                 for (final Double z : rawSfovStackWithAllZ.getzValues()) {
                     final List<String> mfovNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(dataClient,
                                                                                                         rawStackId.getStack(),
@@ -247,9 +247,9 @@ public class MFOVASTileClient
                                                                                              runTimestamp);
                         renderTilesClientInfoList.add(info);
 
-                        if (isRenderedStackSetupNeeded) {
-                            info.buildJavaRenderTilesClientAndSetupHackStack();
-                            isRenderedStackSetupNeeded = false;
+                        if (isSetupNeeded) {
+                            info.setupHackStackAndStorage();
+                            isSetupNeeded = false;
                             renderedMfovStackList.add(renderedMfovAsTileStackId);
                         }
 
@@ -649,9 +649,11 @@ public class MFOVASTileClient
                     tileRender.withTileIdPattern(tileIdPattern));
         }
 
-        public void buildJavaRenderTilesClientAndSetupHackStack()
+        public void setupHackStackAndStorage()
                 throws IOException {
-            buildJavaRenderTilesClient(null).setupHackStackAsNeeded();
+            final org.janelia.render.client.tile.RenderTilesClient jClient = buildJavaRenderTilesClient(null);
+            jClient.setupHackStackAsNeeded();
+            jClient.setupStorageDirectories();
         }
 
         public int renderTiles()
