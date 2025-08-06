@@ -27,6 +27,7 @@ public class MFOVAsTileParameters
 
     private final Double mfovRenderScale;
     private final String mfovRootDirectory;
+    private final String prealignedMfovStackSuffix;
     private final String dynamicMfovStackSuffix;
     private final String renderedMfovStackSuffix;
     private final String alignedMfovStackSuffix;
@@ -38,7 +39,24 @@ public class MFOVAsTileParameters
              null,
              null,
              null,
+             null,
              null);
+    }
+
+    public MFOVAsTileParameters(final Double mfovRenderScale,
+                                final String mfovRootDirectory,
+                                final String prealignedMfovStackSuffix,
+                                final String dynamicMfovStackSuffix,
+                                final String renderedMfovStackSuffix,
+                                final String alignedMfovStackSuffix,
+                                final String roughSfovStackSuffix) {
+        this.mfovRenderScale = mfovRenderScale;
+        this.mfovRootDirectory = mfovRootDirectory;
+        this.prealignedMfovStackSuffix = prealignedMfovStackSuffix;
+        this.dynamicMfovStackSuffix = dynamicMfovStackSuffix;
+        this.renderedMfovStackSuffix = renderedMfovStackSuffix;
+        this.alignedMfovStackSuffix = alignedMfovStackSuffix;
+        this.roughSfovStackSuffix = roughSfovStackSuffix;
     }
 
     public MFOVAsTileParameters(final Double mfovRenderScale,
@@ -47,12 +65,13 @@ public class MFOVAsTileParameters
                                 final String renderedMfovStackSuffix,
                                 final String alignedMfovStackSuffix,
                                 final String roughSfovStackSuffix) {
-        this.mfovRenderScale = mfovRenderScale;
-        this.mfovRootDirectory = mfovRootDirectory;
-        this.dynamicMfovStackSuffix = dynamicMfovStackSuffix;
-        this.renderedMfovStackSuffix = renderedMfovStackSuffix;
-        this.alignedMfovStackSuffix = alignedMfovStackSuffix;
-        this.roughSfovStackSuffix = roughSfovStackSuffix;
+        this(mfovRenderScale,
+             mfovRootDirectory,
+             null,
+             dynamicMfovStackSuffix,
+             renderedMfovStackSuffix,
+             alignedMfovStackSuffix,
+             roughSfovStackSuffix);
     }
 
     public Double getMfovRenderScale() {
@@ -61,6 +80,10 @@ public class MFOVAsTileParameters
 
     public String getMfovRootDirectory() {
         return mfovRootDirectory;
+    }
+
+    public String getPrealignedMfovStackSuffix() {
+        return prealignedMfovStackSuffix;
     }
 
     public String getDynamicMfovStackSuffix() {
@@ -97,6 +120,10 @@ public class MFOVAsTileParameters
 
     public StackId getRoughSfovStackId(final StackId rawSfovStackId) {
         return rawSfovStackId.withStackSuffix(roughSfovStackSuffix);
+    }
+
+    public boolean doPrealign() {
+        return prealignedMfovStackSuffix != null;
     }
 
     public List<MatchRunParameters> buildMfovMatchRunList() {

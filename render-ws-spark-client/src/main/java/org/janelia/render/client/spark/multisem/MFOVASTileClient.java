@@ -138,6 +138,10 @@ public class MFOVASTileClient
         final MFOVAsTileStackLists mfovAsTileStackLists = new MFOVAsTileStackLists(baseDataUrl,
                                                                                    clientParameters.multiProject,
                                                                                    clientParameters.mfovAsTile);
+        if (clientParameters.mfovAsTile.doPrealign()) {
+            alignAndIntensityCorrectMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
+        }
+
         buildDynamicMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
 
         buildRenderedMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
@@ -151,6 +155,11 @@ public class MFOVASTileClient
         buildRoughSfovStacks(sparkContext, mfovAsTileStackLists);
 
         LOG.info("run: exit");
+    }
+
+    private static void alignAndIntensityCorrectMfovAsTileStacks(final JavaSparkContext sparkContext,
+                                                                 final MFOVAsTileStackLists mfovAsTileStackLists) {
+        // TODO: implement pre-alignment of MFOV-as-tile stacks
     }
 
     private static void buildDynamicMfovAsTileStacks(final JavaSparkContext sparkContext,
