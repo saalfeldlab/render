@@ -40,6 +40,7 @@ import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -242,10 +243,16 @@ public class StreakStatisticsClient implements Serializable {
 
 			n5Writer.setAttribute(group, "StackBounds", Map.of("min", min, "max", max));
 			n5Writer.setAttribute(group, "Resolution_nm", stackMetaData.getCurrentResolutionValues());
-			final Map<String, Double> runParameters = Map.of(
-					"threshold", parameters.streakFinder.threshold,
-					"meanFilterSize", (double) parameters.streakFinder.meanFilterSize,
-					"blurRadius", (double) parameters.streakFinder.blurRadius);
+			final Map<String, String> runParameters = new HashMap<>();
+			runParameters.put("baseDataUrl", parameters.renderWeb.baseDataUrl);
+			runParameters.put("owner", parameters.renderWeb.owner);
+			runParameters.put("project", parameters.renderWeb.project);
+			runParameters.put("stack", parameters.stack);
+			runParameters.put("threshold", String.valueOf(parameters.streakFinder.threshold));
+			runParameters.put("meanFilterSize", String.valueOf(parameters.streakFinder.meanFilterSize));
+			runParameters.put("blurRadius", String.valueOf(parameters.streakFinder.blurRadius));
+			runParameters.put("nCellsX", String.valueOf(parameters.nCellsX()));
+			runParameters.put("nCellsY", String.valueOf(parameters.nCellsY()));
 			n5Writer.setAttribute(group, "RunParameters", runParameters);
 		}
 	}
