@@ -151,18 +151,18 @@ public class MFOVAsTileParameters
     private static MatchRunParameters buildMontageMatchRunParameters() {
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(new MatchStageParameters("montageMfovAsTilePass1",
-                                                 buildFeatureRenderParameters(0.4), // 4 secs for 226 matches
-                                                 new FeatureRenderClipParameters(800, 800),
+                                                 buildFeatureRenderParameters(0.4), // 11 secs for 15 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
+                                                 new FeatureRenderClipParameters(1500, 1500),
                                                  buildFeatureExtractionParameters(),
                                                  buildFeatureMatchDerivation(100),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null),
                         new MatchStageParameters("montageMfovAsTilePass2",
-                                                 buildFeatureRenderParameters(1.0), // 78 secs for 2500 matches
-                                                 new FeatureRenderClipParameters(800, 800),
+                                                 buildFeatureRenderParameters(1.0), // 220 secs for 261 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
+                                                 new FeatureRenderClipParameters(1500, 1500),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(10),
+                                                 buildFeatureMatchDerivation(100),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null));
@@ -186,7 +186,7 @@ public class MFOVAsTileParameters
                                                  buildFeatureRenderParameters(0.3), // 16 secs for 825 matches
                                                  new FeatureRenderClipParameters(),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(100),
+                                                 buildFeatureMatchDerivation(150),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null));
@@ -242,7 +242,7 @@ public class MFOVAsTileParameters
         featureMatchDerivation.matchFilter = MatchFilter.FilterType.SINGLE_SET;
         featureMatchDerivation.matchFullScaleCoverageRadius = 10.0;
         featureMatchDerivation.matchIterations = 1000;
-        featureMatchDerivation.matchMaxEpsilonFullScale = 5.0f;
+        featureMatchDerivation.matchMaxEpsilonFullScale = 20.0f;
         featureMatchDerivation.matchMaxTrust = 4.0;
         featureMatchDerivation.matchMinCoveragePercentage = 0.0;
         featureMatchDerivation.matchMinInlierRatio = 0.0f;
