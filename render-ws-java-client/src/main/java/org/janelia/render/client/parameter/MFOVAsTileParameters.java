@@ -186,7 +186,7 @@ public class MFOVAsTileParameters
                                                  buildFeatureRenderParameters(0.3), // 16 secs for 825 matches
                                                  new FeatureRenderClipParameters(),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(10),
+                                                 buildFeatureMatchDerivation(100),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null));
