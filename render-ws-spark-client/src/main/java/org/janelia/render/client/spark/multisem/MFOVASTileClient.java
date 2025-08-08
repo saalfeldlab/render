@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -596,17 +595,20 @@ public class MFOVASTileClient
             mfovToOffset.put(simpleMfovName, offset);
         }
 
-        final Collection<TileSpec> sfovTileSpecs = sfovTiles.getTileSpecs();
-        sfovTileSpecs.forEach(tileSpec -> {
+        for (final TileSpec tileSpec : sfovTiles.getTileSpecs()) {
             final String tileId = tileSpec.getTileId();
             final String mfovName = MultiSemUtilities.getSimpleMfovForTileId(tileId);
             final LeafTransformSpec sfovTransformSpec = (LeafTransformSpec) tileSpec.getLastTransform();
-            final LeafTransformSpec offsetTransformSpec = applyMfovOffset(mfovToOffset.get(mfovName),
+            final double[] mfovOffset = mfovToOffset.get(mfovName);
+            if (mfovOffset == null) {
+                throw new IllegalStateException("no offset for tileId " + tileId + " with mfovName " + mfovName + " found in " + alignedMfovStack);
+            }
+            final LeafTransformSpec offsetTransformSpec = applyMfovOffset(mfovOffset,
                                                                           sfovTransformSpec);
             sfovTiles.addTransformSpecToTile(tileId,
                                              offsetTransformSpec,
                                              TransformApplicationMethod.REPLACE_LAST);
-        });
+        }
 
         return sfovTiles;
     }
