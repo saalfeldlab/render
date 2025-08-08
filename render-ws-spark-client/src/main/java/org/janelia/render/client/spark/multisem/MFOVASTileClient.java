@@ -158,8 +158,74 @@ public class MFOVASTileClient
     }
 
     private static void alignAndIntensityCorrectMfovAsTileStacks(final JavaSparkContext sparkContext,
-                                                                 final MFOVAsTileStackLists mfovAsTileStackLists) {
-        // TODO: implement pre-alignment of MFOV-as-tile stacks
+                                                                 final MFOVAsTileStackLists mfovAsTileStackLists)
+            throws IOException {
+        LOG.info("alignAndIntensityCorrectMfovAsTileStacks: entry");
+
+        final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
+        final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
+        final List<StackWithZValues> rawSfovStacksWithAllZ = mfovAsTileStackLists.getRawSfovStacksWithAllZ();
+
+        // Collect all MFOV processing tasks
+        final List<MfovPrealignTask> mfovTasks = new ArrayList<>();
+        final List<StackId> prealignedStackIds = new ArrayList<>();
+
+        for (final StackWithZValues rawSfovStackWithZ : rawSfovStacksWithAllZ) {
+            final StackId rawSfovStackId = rawSfovStackWithZ.getStackId();
+            final StackId prealignedStackId = rawSfovStackId.withStackSuffix(mfovAsTile.getPrealignedMfovStackSuffix());
+
+            // Skip if prealigned stack already exists
+            if (mfovAsTileStackLists.isExistingStack(prealignedStackId)) {
+                LOG.info("alignAndIntensityCorrectMfovAsTileStacks: skipping {} because it already exists",
+                         prealignedStackId.toDevString());
+//                continue;
+            }
+
+            // Create prealigned stack
+            final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
+                                                                     rawSfovStackId.getOwner(),
+                                                                     rawSfovStackId.getProject());
+            final StackMetaData rawStackMetaData = dataClient.getStackMetaData(rawSfovStackId.getStack());
+            dataClient.setupDerivedStack(rawStackMetaData, prealignedStackId.getStack());
+            prealignedStackIds.add(prealignedStackId);
+
+            // Collect MFOV tasks for each layer
+            for (final Double z : rawSfovStackWithZ.getzValues()) {
+                final List<String> mfovNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(dataClient,
+                                                                                                    rawSfovStackId.getStack(),
+                                                                                                    z);
+                for (final String mfovName : mfovNames) {
+                    mfovTasks.add(new MfovPrealignTask(baseDataUrl,
+                                                        rawSfovStackId,
+                                                        prealignedStackId,
+                                                        new LayerMFOV(z, mfovName),
+                                                        mfovAsTile)
+                    );
+                }
+            }
+        }
+
+        if (!mfovTasks.isEmpty()) {
+            LOG.info("alignAndIntensityCorrectMfovAsTileStacks: distributing alignment of {} MFOV tasks across {} stacks",
+                     mfovTasks.size(), prealignedStackIds.size());
+
+            // Parallelize MFOV alignment tasks
+            LOG.info("alignAndIntensityCorrectMfovAsTileStacks: aligning {} MFOVs", mfovTasks.size());
+            final JavaRDD<MfovPrealignTask> rddMfovTasks = sparkContext.parallelize(mfovTasks);
+            rddMfovTasks.foreach(MfovPrealignTask::alignMfov);
+
+            // Complete all prealigned stacks
+            for (final StackId prealignedStackId : prealignedStackIds) {
+                final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
+                                                                         prealignedStackId.getOwner(),
+                                                                         prealignedStackId.getProject());
+                LOG.info("alignAndIntensityCorrectMfovAsTileStacks: completing stack {}",
+                         prealignedStackId.toDevString());
+                dataClient.setStackState(prealignedStackId.getStack(), StackMetaData.StackState.COMPLETE);
+            }
+        }
+
+        LOG.info("alignAndIntensityCorrectMfovAsTileStacks: exit");
     }
 
     private static void buildDynamicMfovAsTileStacks(final JavaSparkContext sparkContext,
