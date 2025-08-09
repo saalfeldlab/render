@@ -242,7 +242,7 @@ public class MFOVAsTileParameters
         featureMatchDerivation.matchFilter = MatchFilter.FilterType.SINGLE_SET;
         featureMatchDerivation.matchFullScaleCoverageRadius = 10.0;
         featureMatchDerivation.matchIterations = 1000;
-        featureMatchDerivation.matchMaxEpsilonFullScale = 20.0f;
+        featureMatchDerivation.matchMaxEpsilonFullScale = 10.0f;
         featureMatchDerivation.matchMaxTrust = 4.0;
         featureMatchDerivation.matchMinCoveragePercentage = 0.0;
         featureMatchDerivation.matchMinInlierRatio = 0.0f;
