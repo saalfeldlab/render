@@ -2,6 +2,7 @@ package org.janelia.render.client.newsolver;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -33,10 +34,16 @@ public class DistributedAffineBlockSolverTest {
     private static final String SOURCE_MATCH_COLLECTION = "w60_s360_r00_gc20250808a_mat_render_match";
 
     private static final String TEST_PROJECT = "mfov_as_tile_test";
-    private static final String TEST_STACK = "mfovs_02_05_06_09";
-    private static final String TEST_REAL_AND_FAKE_MATCH_COLLECTION = "mfovs_02_05_06_09_match_real_and_fake";
-    private static final String TEST_REAL_ONLY_MATCH_COLLECTION = "mfovs_02_05_06_09_match_real_only";
-    private static final String TEST_MFOV_REAL_AND_FAKE_WOUT_5_TO_6_MATCH_COLLECTION = "mfovs_02_05_06_09_match_real_and_fake_wout_5_to_6";
+
+    private static final String TEST_FOUR_STACK = "mfovs_02_05_06_09";
+    private static final String TEST_FOUR_REAL_AND_FAKE_MATCH_COLLECTION = "mfovs_02_05_06_09_match_real_and_fake";
+    private static final String TEST_FOUR_REAL_ONLY_MATCH_COLLECTION = "mfovs_02_05_06_09_match_real_only";
+    private static final String TEST_FOUR_MFOV_REAL_AND_FAKE_WOUT_5_TO_6_MATCH_COLLECTION = "mfovs_02_05_06_09_match_real_and_fake_wout_5_to_6";
+
+    private static final String TEST_ALL_STACK = "all_mfovs";
+    private static final String TEST_ALL_REAL_AND_FAKE_MATCH_COLLECTION = "all_mfovs_match_real_and_fake";
+    private static final String TEST_ALL_1EM6_WEIGHT_MATCH_COLLECTION = "all_mfovs_match_1em6_weight";
+    private static final String TEST_ALL_1EM20_WEIGHT_MATCH_COLLECTION = "all_mfovs_match_1em20_weight";
 
     public static void main(final String[] args) throws Exception {
 
@@ -48,18 +55,29 @@ public class DistributedAffineBlockSolverTest {
 
         final List<String> pointMatchExplorerUrls = List.of(
                 runAlignmentTest(TEST_PROJECT,
-                                 TEST_STACK,
-                                 TEST_REAL_AND_FAKE_MATCH_COLLECTION,
+                                 TEST_FOUR_STACK,
+                                 TEST_FOUR_REAL_AND_FAKE_MATCH_COLLECTION,
                                  testTime + "_real_and_fake"),
                 runAlignmentTest(TEST_PROJECT,
-                                 TEST_STACK,
-                                 TEST_REAL_ONLY_MATCH_COLLECTION,
+                                 TEST_FOUR_STACK,
+                                 TEST_FOUR_REAL_ONLY_MATCH_COLLECTION,
                                  testTime + "_real_only"),
                 runAlignmentTest(TEST_PROJECT,
-                                 TEST_STACK,
-                                 TEST_MFOV_REAL_AND_FAKE_WOUT_5_TO_6_MATCH_COLLECTION,
-                                 testTime + "_wout_5_to_6")
-        );
+                                 TEST_FOUR_STACK,
+                                 TEST_FOUR_MFOV_REAL_AND_FAKE_WOUT_5_TO_6_MATCH_COLLECTION,
+                                 testTime + "_wout_5_to_6"),
+                runAlignmentTest(TEST_PROJECT,
+                                 TEST_ALL_STACK,
+                                 TEST_ALL_REAL_AND_FAKE_MATCH_COLLECTION,
+                                 testTime + "_real_and_fake"),
+                runAlignmentTest(TEST_PROJECT,
+                                 TEST_ALL_STACK,
+                                 TEST_ALL_1EM6_WEIGHT_MATCH_COLLECTION,
+                                 testTime + "_real_and_fake_1em6"),
+                runAlignmentTest(TEST_PROJECT,
+                                 TEST_ALL_STACK,
+                                 TEST_ALL_1EM20_WEIGHT_MATCH_COLLECTION,
+                                 testTime + "_real_and_fake_1em20")        );
 
         System.out.println("\n\nTo view in Point Match Explorer:\n");
         for (final String pointMatchExplorerUrl : pointMatchExplorerUrls) {
@@ -126,20 +144,29 @@ public class DistributedAffineBlockSolverTest {
         final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(SOURCE_STACK);
 
         final RenderDataClient testDataClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_PROJECT);
-        testDataClient.setupDerivedStack(sourceStackMetaData, TEST_STACK);
+        testDataClient.setupDerivedStack(sourceStackMetaData, TEST_FOUR_STACK);
 
-        final ResolvedTileSpecCollection resolvedTiles = sourceDataClient.getResolvedTiles(SOURCE_STACK, Z);
+        ResolvedTileSpecCollection resolvedTiles = sourceDataClient.getResolvedTiles(SOURCE_STACK, Z);
         final Set<String> tileIdsToKeep = Set.of("w60_s360_r00_gc_z002_m0002",
                                                  "w60_s360_r00_gc_z002_m0005",
                                                  "w60_s360_r00_gc_z002_m0006",
                                                  "w60_s360_r00_gc_z002_m0009");
         resolvedTiles.retainTileSpecs(tileIdsToKeep);
 
-        testDataClient.saveResolvedTiles(resolvedTiles, TEST_STACK, Z);
-        testDataClient.setStackState(TEST_STACK, StackMetaData.StackState.COMPLETE);
+        testDataClient.saveResolvedTiles(resolvedTiles, TEST_FOUR_STACK, Z);
+        testDataClient.setStackState(TEST_FOUR_STACK, StackMetaData.StackState.COMPLETE);
 
         // --------------------------------------------------------------
-        // setup match collections for different tests
+        // setup test stack with all z 2 MFOV-as-tiles
+
+        testDataClient.setupDerivedStack(sourceStackMetaData, TEST_ALL_STACK);
+
+        resolvedTiles = sourceDataClient.getResolvedTiles(SOURCE_STACK, Z);
+        testDataClient.saveResolvedTiles(resolvedTiles, TEST_ALL_STACK, Z);
+        testDataClient.setStackState(TEST_ALL_STACK, StackMetaData.StackState.COMPLETE);
+
+        // --------------------------------------------------------------
+        // setup match collections for different 4 MFOV-as-tile tests
 
         final RenderDataClient sourceMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, SOURCE_MATCH_COLLECTION);
         final List<CanvasMatches> sourceCanvasMatchesList = sourceMatchClient.getMatchesWithinGroup(String.valueOf(Z));
@@ -151,7 +178,7 @@ public class DistributedAffineBlockSolverTest {
                                         tileIdsToKeep.contains(cm.getpId()) &&
                                         tileIdsToKeep.contains(cm.getqId()))
                         .collect(Collectors.toList());
-        RenderDataClient testMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_REAL_AND_FAKE_MATCH_COLLECTION);
+        RenderDataClient testMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_FOUR_REAL_AND_FAKE_MATCH_COLLECTION);
         testMatchClient.saveMatches(testCanvasMatchesListRealAndFake);
 
         // real only matches
@@ -159,7 +186,7 @@ public class DistributedAffineBlockSolverTest {
                 testCanvasMatchesListRealAndFake.stream()
                         .filter(cm -> cm.getMatches().getWs()[0] > 0.99)
                         .collect(Collectors.toList());
-        testMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_REAL_ONLY_MATCH_COLLECTION);
+        testMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_FOUR_REAL_ONLY_MATCH_COLLECTION);
         testMatchClient.saveMatches(testCanvasMatchesListRealOnly);
 
         // real and fake matches without M0005 to M0006 real matches
@@ -168,8 +195,38 @@ public class DistributedAffineBlockSolverTest {
                         .filter(cm -> !(cm.getpId().equals("w60_s360_r00_gc_z002_m0005") &&
                                         cm.getqId().equals("w60_s360_r00_gc_z002_m0006")))
                         .collect(Collectors.toList());
-        testMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_MFOV_REAL_AND_FAKE_WOUT_5_TO_6_MATCH_COLLECTION);
+        testMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_FOUR_MFOV_REAL_AND_FAKE_WOUT_5_TO_6_MATCH_COLLECTION);
         testMatchClient.saveMatches(testCanvasMatchesListRealAndFakeWout5To6);
+
+        // --------------------------------------------------------------
+        // setup match collections for different all MFOV-as-tile tests
+
+        testMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_ALL_REAL_AND_FAKE_MATCH_COLLECTION);
+        testMatchClient.saveMatches(sourceCanvasMatchesList);
+
+        // change patch match weights from 1e-3 to 1e-6
+        final List<CanvasMatches> testCanvasMatches1EM6Weight = new ArrayList<>();
+        for (final CanvasMatches cm : sourceCanvasMatchesList) {
+            final CanvasMatches lowerWeightCm = new CanvasMatches(cm.getpGroupId(), cm.getpId(),
+                                                                  cm.getqGroupId(), cm.getqId(),
+                                                                  cm.getMatches().withWeight(1e-6));
+            testCanvasMatches1EM6Weight.add(cm);
+        }
+
+        testMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_ALL_1EM6_WEIGHT_MATCH_COLLECTION);
+        testMatchClient.saveMatches(testCanvasMatches1EM6Weight);
+
+        // change patch match weights from 1e-3 to 1e-20
+        final List<CanvasMatches> testCanvasMatches1EM20Weight = new ArrayList<>();
+        for (final CanvasMatches cm : sourceCanvasMatchesList) {
+            final CanvasMatches lowerWeightCm = new CanvasMatches(cm.getpGroupId(), cm.getpId(),
+                                                                  cm.getqGroupId(), cm.getqId(),
+                                                                  cm.getMatches().withWeight(1e-20));
+            testCanvasMatches1EM20Weight.add(cm);
+        }
+
+        testMatchClient = new RenderDataClient(BASE_DATA_URL, OWNER, TEST_ALL_1EM20_WEIGHT_MATCH_COLLECTION);
+        testMatchClient.saveMatches(testCanvasMatches1EM20Weight);
 
     }
 }
