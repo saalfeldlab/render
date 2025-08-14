@@ -95,17 +95,17 @@ public class DistributedAffineBlockSolverTest {
 
         LogbackTestTools.setRootLogLevelToError(); // hide all logging
 
-        debugInconsistentAlignments(TEST_TWO_STACK,
-                                    TEST_TWO_ONLY_REAL_MATCH_COLLECTION,
-                                    alignSuffixWithTime + "_only_real");
+        // debugInconsistentAlignments(TEST_TWO_STACK,
+        //                             TEST_TWO_ONLY_REAL_MATCH_COLLECTION,
+        //                             alignSuffixWithTime + "_only_real");
 
         debugInconsistentAlignments(TEST_THREE_STACK,
                                     TEST_THREE_MATCH_COLLECTION,
                                     alignSuffixWithTime);
 
-        debugInconsistentAlignments(TEST_THREE_STACK,
-                                    TEST_THREE_ONLY_REAL_MATCH_COLLECTION,
-                                    alignSuffixWithTime + "_only_real");
+        // debugInconsistentAlignments(TEST_THREE_STACK,
+        //                             TEST_THREE_ONLY_REAL_MATCH_COLLECTION,
+        //                             alignSuffixWithTime + "_only_real");
 
         // debugInconsistentAlignments(TEST_FOUR_STACK,
         //                             TEST_FOUR_MATCH_COLLECTION,
