@@ -18,6 +18,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
+import org.janelia.alignment.util.LogbackTestTools;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
@@ -78,19 +79,29 @@ public class DistributedAffineBlockSolverTest {
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
         final String alignSuffixWithTime = "_align_" + sdf.format(System.currentTimeMillis());
 
-        debugInconsistentAlignments(alignSuffixWithTime);
+        LogbackTestTools.setRootLogLevelToError(); // hide all logging
+
+        // debugInconsistentAlignments(TEST_FOUR_STACK,
+        //                             TEST_FOUR_MATCH_COLLECTION,
+        //                             alignSuffixWithTime);
+
+        debugInconsistentAlignments(TEST_FOUR_STACK,
+                                    TEST_FOUR_ONLY_REAL_MATCH_COLLECTION,
+                                    alignSuffixWithTime + "_only_real");
 
         // runFourMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
         // runTenMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
         // runAllMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
     }
 
-    private static void debugInconsistentAlignments(final String alignSuffixWithTime)
+    private static void debugInconsistentAlignments(final String sourceStack,
+                                                    final String matchCollection,
+                                                    final String alignSuffixWithTime)
             throws Exception {
 
         final List<String> alignedStackNames =
-                runRepeatedAlignmentTests(TEST_FOUR_STACK,
-                                          TEST_FOUR_MATCH_COLLECTION,
+                runRepeatedAlignmentTests(sourceStack,
+                                          matchCollection,
                                           alignSuffixWithTime,
                                           new char[]{'a', 'b', 'c', 'd', 'e'});
 
@@ -119,11 +130,13 @@ public class DistributedAffineBlockSolverTest {
             testDataClient.deleteStack(stackName, null);
         }
 
+        System.out.println("\n\nResults for " + alignSuffixWithTime + " with collection " + matchCollection);
         for (final String tileId : tileIdToXOffsets.keySet().stream().sorted().collect(Collectors.toList())) {
             final List<Integer> xOffsets = tileIdToXOffsets.get(tileId);
             final List<Integer> yOffsets = tileIdToYOffsets.get(tileId);
             System.out.println(tileId + " - xOffsets: " + xOffsets + ", yOffsets: " + yOffsets);
         }
+        System.out.println("\n\n");
     }
 
     private static void runFourMFOVAlignmentTests(final String alignSuffixWithTime)
