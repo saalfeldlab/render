@@ -3,14 +3,20 @@ package org.janelia.render.client.newsolver;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
+import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileBounds;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
@@ -19,7 +25,7 @@ import org.janelia.render.client.parameter.MFOVAsTileParameters;
 /**
  * Tests the {@link DistributedAffineBlockSolver} class.
  */
-@SuppressWarnings("SameParameterValue")
+@SuppressWarnings({"SameParameterValue", "unused"})
 public class DistributedAffineBlockSolverTest {
 
     // --------------------------------------------------------------
@@ -69,12 +75,55 @@ public class DistributedAffineBlockSolverTest {
 
         // setupTestInputData(); // TODO: uncomment to setup test input data
 
-        final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
+        final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
         final String alignSuffixWithTime = "_align_" + sdf.format(System.currentTimeMillis());
 
-        runFourMFOVAlignmentTests(alignSuffixWithTime);
+        debugInconsistentAlignments(alignSuffixWithTime);
+
+        // runFourMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
         // runTenMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
         // runAllMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
+    }
+
+    private static void debugInconsistentAlignments(final String alignSuffixWithTime)
+            throws Exception {
+
+        final List<String> alignedStackNames =
+                runRepeatedAlignmentTests(TEST_FOUR_STACK,
+                                          TEST_FOUR_MATCH_COLLECTION,
+                                          alignSuffixWithTime,
+                                          new char[]{'a', 'b', 'c', 'd', 'e'});
+
+        final RenderDataClient testDataClient = buildClient(TEST_PROJECT);
+        final Map<String, List<Integer>> tileIdToXOffsets = new HashMap<>();
+        final Map<String, List<Integer>> tileIdToYOffsets = new HashMap<>();
+        for (final String stackName : alignedStackNames) {
+
+            final ResolvedTileSpecCollection resolvedTiles = testDataClient.getResolvedTiles(stackName, Z);
+            final List<TileBounds> tileBounds = resolvedTiles.getTileSpecs().stream()
+                    .map(TileSpec::toTileBounds)
+                    .sorted(Comparator.comparing(TileBounds::getTileId))
+                    .collect(Collectors.toList());
+
+            for (final TileBounds tb : tileBounds) {
+                final TileSpec tileSpec = resolvedTiles.getTileSpec(tb.getTileId());
+                final LeafTransformSpec leafTransformSpec = (LeafTransformSpec) tileSpec.getLastTransform();
+                final String[] transformData = leafTransformSpec.getDataString().split(" ");
+                final List<Integer> xOffsetList = tileIdToXOffsets.computeIfAbsent(tb.getTileId(), k -> new ArrayList<>());
+                xOffsetList.add((int) Double.parseDouble(transformData[4]));
+                final List<Integer> yOffsetList = tileIdToYOffsets.computeIfAbsent(tb.getTileId(), k -> new ArrayList<>());
+                yOffsetList.add((int) Double.parseDouble(transformData[5]));
+            }
+
+            testDataClient.setStackState(stackName, StackMetaData.StackState.LOADING);
+            testDataClient.deleteStack(stackName, null);
+        }
+
+        for (final String tileId : tileIdToXOffsets.keySet().stream().sorted().collect(Collectors.toList())) {
+            final List<Integer> xOffsets = tileIdToXOffsets.get(tileId);
+            final List<Integer> yOffsets = tileIdToYOffsets.get(tileId);
+            System.out.println(tileId + " - xOffsets: " + xOffsets + ", yOffsets: " + yOffsets);
+        }
     }
 
     private static void runFourMFOVAlignmentTests(final String alignSuffixWithTime)
@@ -129,20 +178,23 @@ public class DistributedAffineBlockSolverTest {
                                   new char[] {'a', 'b', 'c'});
     }
 
-    private static void runRepeatedAlignmentTests(final String stack,
-                                                  final String matchCollection,
-                                                  final String alignedStackSuffix,
-                                                  final char[] testIds) throws Exception {
+    private static List<String> runRepeatedAlignmentTests(final String stack,
+                                                          final String matchCollection,
+                                                          final String alignedStackSuffix,
+                                                          final char[] testIds) throws Exception {
+        final List<String> alignedStackNames = new ArrayList<>(testIds.length);
         for (final char testId : testIds) {
-            runAlignmentTest(stack,
-                             matchCollection,
-                             testId + alignedStackSuffix);
+            final String alignedStackName = runAlignmentTest(stack,
+                                                             matchCollection,
+                                                             alignedStackSuffix + testId);
+            alignedStackNames.add(alignedStackName);
         }
+        return alignedStackNames;
     }
 
-    private static void runAlignmentTest(final String stack,
-                                         final String matchCollection,
-                                         final String alignedStackSuffix) throws Exception {
+    private static String runAlignmentTest(final String stack,
+                                           final String matchCollection,
+                                           final String alignedStackSuffix) throws Exception {
 
         final String[] testArgs = {
                 "--baseDataUrl", BASE_DATA_URL,
@@ -185,6 +237,8 @@ public class DistributedAffineBlockSolverTest {
                 "&matchCollection=" + matchCollection;
 
         System.out.println("Point Match Explorer URL: " + pmeBase + pmeQuery);
+
+        return solverSetup.targetStack.stack;
     }
 
     @SuppressWarnings("unused")
