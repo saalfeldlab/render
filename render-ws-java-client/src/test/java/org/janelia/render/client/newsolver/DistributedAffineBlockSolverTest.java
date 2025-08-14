@@ -67,74 +67,87 @@ public class DistributedAffineBlockSolverTest {
 
     public static void main(final String[] args) throws Exception {
 
-        setupTestData();
+        // setupTestInputData(); // TODO: uncomment to setup test input data
 
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
         final String alignSuffixWithTime = "_align_" + sdf.format(System.currentTimeMillis());
 
-        final List<String> pointMatchExplorerUrls = List.of(
+        runFourMFOVAlignmentTests(alignSuffixWithTime);
+        // runTenMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
+        // runAllMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
+    }
 
-                // ------------------------------------------------------
-                // 4 MFOV tests
+    private static void runFourMFOVAlignmentTests(final String alignSuffixWithTime)
+            throws Exception {
 
-                runAlignmentTest(TEST_PROJECT,
-                                 TEST_FOUR_STACK,
-                                 TEST_FOUR_MATCH_COLLECTION,
-                                 alignSuffixWithTime),
-                runAlignmentTest(TEST_PROJECT,
-                                 TEST_FOUR_STACK,
-                                 TEST_FOUR_ONLY_REAL_MATCH_COLLECTION,
-                                 alignSuffixWithTime + "_only_real"),
-                runAlignmentTest(TEST_PROJECT,
-                                 TEST_FOUR_STACK,
-                                 TEST_FOUR_MFOV_WOUT_5_TO_6_MATCH_COLLECTION,
-                                 alignSuffixWithTime + "_wout_5_to_6"),
+        runRepeatedAlignmentTests(TEST_FOUR_STACK,
+                                  TEST_FOUR_MATCH_COLLECTION,
+                                  alignSuffixWithTime,
+                                  new char[]{'a', 'b', 'c'});
 
-                // ------------------------------------------------------
-                // 10 MFOV tests
+        runRepeatedAlignmentTests(TEST_FOUR_STACK,
+                                  TEST_FOUR_ONLY_REAL_MATCH_COLLECTION,
+                                  alignSuffixWithTime + "_only_real",
+                                  new char[]{'a', 'b', 'c'});
 
-                runAlignmentTest(TEST_PROJECT,
-                                 TEST_TEN_STACK,
-                                 TEST_TEN_MATCH_COLLECTION,
-                                 alignSuffixWithTime),
-                runAlignmentTest(TEST_PROJECT,
-                                 TEST_TEN_STACK,
-                                 TEST_TEN_ONLY_REAL_MATCH_COLLECTION,
-                                 alignSuffixWithTime + "_only_real"),
+        runRepeatedAlignmentTests(TEST_FOUR_STACK,
+                                  TEST_FOUR_MFOV_WOUT_5_TO_6_MATCH_COLLECTION,
+                                  alignSuffixWithTime + "_wout_5_to_6",
+                                  new char[]{'a', 'b', 'c'});
+    }
 
-                // ------------------------------------------------------
-                // all MFOV tests
+    private static void runTenMFOVAlignmentTests(final String alignSuffixWithTime)
+            throws Exception {
 
-                runAlignmentTest(TEST_PROJECT,
-                                 TEST_ALL_STACK,
-                                 TEST_ALL_MATCH_COLLECTION,
-                                 alignSuffixWithTime),
-                runAlignmentTest(TEST_PROJECT,
-                                 TEST_ALL_STACK,
-                                 TEST_ALL_PATCH_1EM6_MATCH_COLLECTION,
-                                 alignSuffixWithTime + "_patch_1em6"),
-                runAlignmentTest(TEST_PROJECT,
-                                 TEST_ALL_STACK,
-                                 TEST_ALL_PATCH_1EM20_MATCH_COLLECTION,
-                                 alignSuffixWithTime + "_patch_1em20")
+        runRepeatedAlignmentTests(TEST_TEN_STACK,
+                                  TEST_TEN_MATCH_COLLECTION,
+                                  alignSuffixWithTime,
+                                  new char[]{'a', 'b', 'c'});
 
-        );
+        runRepeatedAlignmentTests(TEST_TEN_STACK,
+                                  TEST_TEN_ONLY_REAL_MATCH_COLLECTION,
+                                  alignSuffixWithTime + "_only_real",
+                                  new char[]{'a', 'b', 'c'});
+    }
 
-        System.out.println("\n\nTo view in Point Match Explorer:\n");
-        for (final String pointMatchExplorerUrl : pointMatchExplorerUrls) {
-            System.out.println("  " + pointMatchExplorerUrl + "\n");
+    private static void runAllMFOVAlignmentTests(final String alignSuffixWithTime)
+            throws Exception {
+
+        runRepeatedAlignmentTests(TEST_ALL_STACK,
+                                  TEST_ALL_MATCH_COLLECTION,
+                                  alignSuffixWithTime,
+                                  new char[] {'a', 'b', 'c'});
+
+        runRepeatedAlignmentTests(TEST_ALL_STACK,
+                                  TEST_ALL_PATCH_1EM6_MATCH_COLLECTION,
+                                  alignSuffixWithTime + "_patch_1em6",
+                                  new char[] {'a', 'b', 'c'});
+
+        runRepeatedAlignmentTests(TEST_ALL_STACK,
+                                  TEST_ALL_PATCH_1EM20_MATCH_COLLECTION,
+                                  alignSuffixWithTime + "_patch_1em20",
+                                  new char[] {'a', 'b', 'c'});
+    }
+
+    private static void runRepeatedAlignmentTests(final String stack,
+                                                  final String matchCollection,
+                                                  final String alignedStackSuffix,
+                                                  final char[] testIds) throws Exception {
+        for (final char testId : testIds) {
+            runAlignmentTest(stack,
+                             matchCollection,
+                             testId + alignedStackSuffix);
         }
     }
 
-    private static String runAlignmentTest(final String project,
-                                           final String stack,
-                                           final String matchCollection,
-                                           final String alignedStackSuffix) throws Exception {
+    private static void runAlignmentTest(final String stack,
+                                         final String matchCollection,
+                                         final String alignedStackSuffix) throws Exception {
 
         final String[] testArgs = {
                 "--baseDataUrl", BASE_DATA_URL,
                 "--owner", OWNER,
-                "--project", project,
+                "--project", TEST_PROJECT,
                 "--matchCollection", matchCollection,
                 "--stack", stack,
                 "--completeTargetStack"
@@ -167,15 +180,15 @@ public class DistributedAffineBlockSolverTest {
                 "&matchOwner=" + OWNER +
                 "&renderDataHost=" + RENDER_DATA_HOST + "%3A8080" +
                 "&startZ=2&endZ=2" +
-                "&renderStackProject=" + project +
+                "&renderStackProject=" + TEST_PROJECT +
                 "&renderStack=" + solverSetup.targetStack.stack +
                 "&matchCollection=" + matchCollection;
 
-         return  pmeBase + pmeQuery;
+        System.out.println("Point Match Explorer URL: " + pmeBase + pmeQuery);
     }
 
     @SuppressWarnings("unused")
-    private static void setupTestData()
+    private static void setupTestInputData()
             throws IOException {
 
         final RenderDataClient sourceDataClient = buildClient(SOURCE_PROJECT);
