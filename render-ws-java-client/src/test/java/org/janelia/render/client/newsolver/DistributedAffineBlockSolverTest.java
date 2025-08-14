@@ -42,7 +42,21 @@ public class DistributedAffineBlockSolverTest {
     private static final double Z = 2.0;
     private static final String SOURCE_MATCH_COLLECTION = "w60_s360_r00_gc20250808a_mat_render_match";
 
+    private static final boolean PRINT_PME_LINKS = false; // set to true to print Point Match Explorer links
+
     private static final String TEST_PROJECT = "test_mfov_as_tile";
+
+    private static final String TEST_TWO_STACK = "test_two_mfovs";
+    private static final String TEST_TWO_ONLY_REAL_MATCH_COLLECTION = "test_two_mfovs_match_only_real";
+    private static final Set<String> TEST_TWO_TILE_IDS = Set.of("w60_s360_r00_gc_z002_m0005",
+                                                                "w60_s360_r00_gc_z002_m0006");
+
+    private static final String TEST_THREE_STACK = "test_three_mfovs";
+    private static final String TEST_THREE_MATCH_COLLECTION = "test_three_mfovs_match";
+    private static final String TEST_THREE_ONLY_REAL_MATCH_COLLECTION = "test_three_mfovs_match_only_real";
+    private static final Set<String> TEST_THREE_TILE_IDS = Set.of("w60_s360_r00_gc_z002_m0002",
+                                                                  "w60_s360_r00_gc_z002_m0005",
+                                                                  "w60_s360_r00_gc_z002_m0006");
 
     private static final String TEST_FOUR_STACK = "test_four_mfovs";
     private static final String TEST_FOUR_MATCH_COLLECTION = "test_four_mfovs_match";
@@ -81,13 +95,25 @@ public class DistributedAffineBlockSolverTest {
 
         LogbackTestTools.setRootLogLevelToError(); // hide all logging
 
+        debugInconsistentAlignments(TEST_TWO_STACK,
+                                    TEST_TWO_ONLY_REAL_MATCH_COLLECTION,
+                                    alignSuffixWithTime + "_only_real");
+
+        debugInconsistentAlignments(TEST_THREE_STACK,
+                                    TEST_THREE_MATCH_COLLECTION,
+                                    alignSuffixWithTime);
+
+        debugInconsistentAlignments(TEST_THREE_STACK,
+                                    TEST_THREE_ONLY_REAL_MATCH_COLLECTION,
+                                    alignSuffixWithTime + "_only_real");
+
         // debugInconsistentAlignments(TEST_FOUR_STACK,
         //                             TEST_FOUR_MATCH_COLLECTION,
         //                             alignSuffixWithTime);
 
-        debugInconsistentAlignments(TEST_FOUR_STACK,
-                                    TEST_FOUR_ONLY_REAL_MATCH_COLLECTION,
-                                    alignSuffixWithTime + "_only_real");
+        // debugInconsistentAlignments(TEST_FOUR_STACK,
+        //                            TEST_FOUR_ONLY_REAL_MATCH_COLLECTION,
+        //                            alignSuffixWithTime + "_only_real");
 
         // runFourMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
         // runTenMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
@@ -249,7 +275,9 @@ public class DistributedAffineBlockSolverTest {
                 "&renderStack=" + solverSetup.targetStack.stack +
                 "&matchCollection=" + matchCollection;
 
-        System.out.println("Point Match Explorer URL: " + pmeBase + pmeQuery);
+        if (PRINT_PME_LINKS) {
+            System.out.println("Point Match Explorer URL: " + pmeBase + pmeQuery);
+        }
 
         return solverSetup.targetStack.stack;
     }
@@ -261,12 +289,21 @@ public class DistributedAffineBlockSolverTest {
         final RenderDataClient sourceDataClient = buildClient(SOURCE_PROJECT);
         final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(SOURCE_STACK);
 
+        setupStack(sourceDataClient, sourceStackMetaData, TEST_TWO_STACK, TEST_TWO_TILE_IDS);
+        setupStack(sourceDataClient, sourceStackMetaData, TEST_THREE_STACK, TEST_THREE_TILE_IDS);
         setupStack(sourceDataClient, sourceStackMetaData, TEST_FOUR_STACK, TEST_FOUR_TILE_IDS);
         setupStack(sourceDataClient, sourceStackMetaData, TEST_TEN_STACK, TEST_TEN_TILE_IDS);
         setupStack(sourceDataClient, sourceStackMetaData, TEST_ALL_STACK, null);
 
         final RenderDataClient sourceMatchClient = buildClient(SOURCE_MATCH_COLLECTION);
         final List<CanvasMatches> sourceCmList = sourceMatchClient.getMatchesWithinGroup(String.valueOf(Z));
+
+        setupMatchCollection(sourceCmList, TEST_TWO_ONLY_REAL_MATCH_COLLECTION,
+                             TEST_TWO_TILE_IDS, null, true, null);
+        setupMatchCollection(sourceCmList, TEST_THREE_MATCH_COLLECTION,
+                             TEST_THREE_TILE_IDS, null, false, null);
+        setupMatchCollection(sourceCmList, TEST_THREE_ONLY_REAL_MATCH_COLLECTION,
+                             TEST_THREE_TILE_IDS, null, true, null);
 
         setupMatchCollection(sourceCmList, TEST_FOUR_MATCH_COLLECTION,
                              TEST_FOUR_TILE_IDS, null, false, null);
