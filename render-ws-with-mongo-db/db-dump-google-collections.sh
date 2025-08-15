@@ -12,7 +12,10 @@ if [ $# != 3 ]; then
   echo "
 Usage:    $0 <hostname> <db> <collection-pattern>
 
-Examples: $0 render-ws-mongodb-8c-32gb-abc render 'trautmane.*_google_cluster0_align.*'
+Examples: $0  render-ws-mongodb-8c-32gb-abf  render  '.*w60_s360_r00_gc_[mr].*'
+          $0  render-ws-mongodb-8c-32gb-abf  match   '.*w60_s360_r00_gc_.*'
+
+          $0  render-ws-mongodb-8c-32gb-abf  render  '.*w60_s360_r00_(gc|gc_mat|gc_mat_render)__.*'
 
 "
   exit 1
