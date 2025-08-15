@@ -90,7 +90,7 @@ public class DistributedAffineBlockSolverTest {
         // setupTestInputData(); // TODO: uncomment to setup test input data
 
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
-        final String alignSuffixWithTime = "_align_10000i" + sdf.format(System.currentTimeMillis());
+        final String alignSuffixWithTime = "_align_10000i_" + sdf.format(System.currentTimeMillis());
 
         // LogbackTestTools.setRootLogLevelToError(); // hide all logging
 
