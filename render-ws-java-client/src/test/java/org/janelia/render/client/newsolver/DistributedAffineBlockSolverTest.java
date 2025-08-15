@@ -18,7 +18,6 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.janelia.alignment.util.LogbackTestTools;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
@@ -91,17 +90,17 @@ public class DistributedAffineBlockSolverTest {
         // setupTestInputData(); // TODO: uncomment to setup test input data
 
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
-        final String alignSuffixWithTime = "_align_" + sdf.format(System.currentTimeMillis());
+        final String alignSuffixWithTime = "_align_10000i" + sdf.format(System.currentTimeMillis());
 
-        LogbackTestTools.setRootLogLevelToError(); // hide all logging
+        // LogbackTestTools.setRootLogLevelToError(); // hide all logging
 
         // debugInconsistentAlignments(TEST_TWO_STACK,
         //                             TEST_TWO_ONLY_REAL_MATCH_COLLECTION,
         //                             alignSuffixWithTime + "_only_real");
 
-        debugInconsistentAlignments(TEST_THREE_STACK,
-                                    TEST_THREE_MATCH_COLLECTION,
-                                    alignSuffixWithTime);
+        // debugInconsistentAlignments(TEST_THREE_STACK,
+        //                             TEST_THREE_MATCH_COLLECTION,
+        //                             alignSuffixWithTime);
 
         // debugInconsistentAlignments(TEST_THREE_STACK,
         //                             TEST_THREE_ONLY_REAL_MATCH_COLLECTION,

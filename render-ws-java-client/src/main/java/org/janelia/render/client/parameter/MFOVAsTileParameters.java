@@ -130,14 +130,11 @@ public class MFOVAsTileParameters
         setup.stitching.maxPlateauWidth = 1000;
         setup.stitching.minInliers = 25;
 
-        final List<Double> emptyDoubleList = List.of();
-        final List<Integer> emptyIntegerList = List.of();
-
-        setup.blockOptimizer.lambdasRigid = emptyDoubleList;
-        setup.blockOptimizer.lambdasTranslation = emptyDoubleList;
-        setup.blockOptimizer.lambdasRegularization = emptyDoubleList;
-        setup.blockOptimizer.iterations = emptyIntegerList;
-        setup.blockOptimizer.maxPlateauWidth = emptyIntegerList;
+        setup.blockOptimizer.lambdasRigid = List.of(1.0);
+        setup.blockOptimizer.lambdasTranslation = List.of(0.5);
+        setup.blockOptimizer.lambdasRegularization = List.of(0.05);
+        setup.blockOptimizer.iterations = List.of(10000);
+        setup.blockOptimizer.maxPlateauWidth = List.of(1000);
         setup.blockOptimizer.maxAllowedError = 10.0;
 
         setup.maxNumMatches = 0;
