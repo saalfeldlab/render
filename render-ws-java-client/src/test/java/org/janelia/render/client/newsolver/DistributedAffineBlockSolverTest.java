@@ -17,6 +17,7 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
@@ -38,7 +39,7 @@ public class DistributedAffineBlockSolverTest {
 
     private static final String SOURCE_PROJECT = "w60_serial_360_to_369";
     private static final String SOURCE_STACK = "w60_s360_r00_gc20250808a_mat_render_z_2";
-    private static final double Z = 2.0;
+    private static final List<Double> Z_VALUES = List.of(2.0);
     private static final String SOURCE_MATCH_COLLECTION = "w60_s360_r00_gc20250808a_mat_render_match";
 
     private static final boolean PRINT_PME_LINKS = false; // set to true to print Point Match Explorer links
@@ -94,65 +95,74 @@ public class DistributedAffineBlockSolverTest {
 
         // LogbackTestTools.setRootLogLevelToError(); // hide all logging
 
-        // debugInconsistentAlignments(TEST_TWO_STACK,
-        //                             TEST_TWO_ONLY_REAL_MATCH_COLLECTION,
-        //                             alignSuffixWithTime + "_only_real");
+        // TODO: uncomment to run one more of these tests
+//        final String[][] debugTestArgs = {
+//                { TEST_TWO_STACK, TEST_TWO_ONLY_REAL_MATCH_COLLECTION, alignSuffixWithTime + "_only_real" },
+//                { TEST_THREE_STACK, TEST_THREE_MATCH_COLLECTION, alignSuffixWithTime },
+//                { TEST_THREE_STACK, TEST_THREE_ONLY_REAL_MATCH_COLLECTION, alignSuffixWithTime + "_only_real" },
+//                { TEST_FOUR_STACK, TEST_FOUR_MATCH_COLLECTION, alignSuffixWithTime },
+//                { TEST_FOUR_STACK, TEST_FOUR_ONLY_REAL_MATCH_COLLECTION, alignSuffixWithTime + "_only_real" }
+//        };
+//        for (final String[] testArgs : debugTestArgs) {
+//            debugInconsistentAlignments(TEST_PROJECT,
+//                                        testArgs[0],
+//                                        Z_VALUES,
+//                                        testArgs[1],
+//                                        new char[]{'a', 'b', 'c', 'd', 'e'},
+//                                        testArgs[2],
+//                                        true);
+//        }
 
-        // debugInconsistentAlignments(TEST_THREE_STACK,
-        //                             TEST_THREE_MATCH_COLLECTION,
-        //                             alignSuffixWithTime);
-
-        // debugInconsistentAlignments(TEST_THREE_STACK,
-        //                             TEST_THREE_ONLY_REAL_MATCH_COLLECTION,
-        //                             alignSuffixWithTime + "_only_real");
-
-        // debugInconsistentAlignments(TEST_FOUR_STACK,
-        //                             TEST_FOUR_MATCH_COLLECTION,
-        //                             alignSuffixWithTime);
-
-        // debugInconsistentAlignments(TEST_FOUR_STACK,
-        //                            TEST_FOUR_ONLY_REAL_MATCH_COLLECTION,
-        //                            alignSuffixWithTime + "_only_real");
-
-        // runFourMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
-        // runTenMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
-        // runAllMFOVAlignmentTests(alignSuffixWithTime); // TODO: uncomment to run these tests
+        // runFourMFOVAlignmentTests(alignSuffixWithTime);
+        // runTenMFOVAlignmentTests(alignSuffixWithTime);
+        // runAllMFOVAlignmentTests(alignSuffixWithTime);
     }
 
-    private static void debugInconsistentAlignments(final String sourceStack,
-                                                    final String matchCollection,
-                                                    final String alignSuffixWithTime)
+    public static void debugInconsistentAlignments(final String testProject,
+                                                   final String testSourceStack,
+                                                   final List<Double> zValues,
+                                                   final String matchCollection,
+                                                   final char[] testIds,
+                                                   final String alignSuffixWithTime,
+                                                   final boolean deleteAlignStackAfterTest)
             throws Exception {
 
-        final List<String> alignedStackNames =
-                runRepeatedAlignmentTests(sourceStack,
+        final List<String> alignStackNames =
+                runRepeatedAlignmentTests(testProject,
+                                          testSourceStack,
                                           matchCollection,
                                           alignSuffixWithTime,
-                                          new char[]{'a', 'b', 'c', 'd', 'e'});
+                                          testIds);
 
-        final RenderDataClient testDataClient = buildClient(TEST_PROJECT);
+        final RenderDataClient testDataClient = buildClient(testProject);
         final Map<String, List<Integer>> tileIdToXOffsets = new HashMap<>();
         final Map<String, List<Integer>> tileIdToYOffsets = new HashMap<>();
-        for (final String stackName : alignedStackNames) {
+        for (final String alignStack : alignStackNames) {
 
-            final ResolvedTileSpecCollection resolvedTiles = testDataClient.getResolvedTiles(stackName, Z);
-            final List<TileBounds> tileBounds = resolvedTiles.getTileSpecs().stream()
-                    .map(TileSpec::toTileBounds)
-                    .sorted(Comparator.comparing(TileBounds::getTileId))
-                    .collect(Collectors.toList());
+            for (final double z : zValues) {
+                final ResolvedTileSpecCollection resolvedTiles = testDataClient.getResolvedTiles(alignStack, z);
+                final List<TileBounds> tileBounds = resolvedTiles.getTileSpecs().stream()
+                        .map(TileSpec::toTileBounds)
+                        .sorted(Comparator.comparing(TileBounds::getTileId))
+                        .collect(Collectors.toList());
 
-            for (final TileBounds tb : tileBounds) {
-                final TileSpec tileSpec = resolvedTiles.getTileSpec(tb.getTileId());
-                final LeafTransformSpec leafTransformSpec = (LeafTransformSpec) tileSpec.getLastTransform();
-                final String[] transformData = leafTransformSpec.getDataString().split(" ");
-                final List<Integer> xOffsetList = tileIdToXOffsets.computeIfAbsent(tb.getTileId(), k -> new ArrayList<>());
-                xOffsetList.add((int) Double.parseDouble(transformData[4]));
-                final List<Integer> yOffsetList = tileIdToYOffsets.computeIfAbsent(tb.getTileId(), k -> new ArrayList<>());
-                yOffsetList.add((int) Double.parseDouble(transformData[5]));
+                for (final TileBounds tb : tileBounds) {
+                    final TileSpec tileSpec = resolvedTiles.getTileSpec(tb.getTileId());
+                    final LeafTransformSpec leafTransformSpec = (LeafTransformSpec) tileSpec.getLastTransform();
+                    final String[] transformData = leafTransformSpec.getDataString().split(" ");
+                    final List<Integer> xOffsetList =
+                            tileIdToXOffsets.computeIfAbsent(tb.getTileId(), k -> new ArrayList<>());
+                    xOffsetList.add((int) Double.parseDouble(transformData[4]));
+                    final List<Integer> yOffsetList =
+                            tileIdToYOffsets.computeIfAbsent(tb.getTileId(), k -> new ArrayList<>());
+                    yOffsetList.add((int) Double.parseDouble(transformData[5]));
+                }
             }
 
-            testDataClient.setStackState(stackName, StackMetaData.StackState.LOADING);
-            testDataClient.deleteStack(stackName, null);
+            if (deleteAlignStackAfterTest) {
+                testDataClient.setStackState(alignStack, StackMetaData.StackState.LOADING);
+                testDataClient.deleteStack(alignStack, null);
+            }
         }
 
         System.out.println("\n\nResults for " + alignSuffixWithTime + " with collection " + matchCollection);
@@ -167,17 +177,20 @@ public class DistributedAffineBlockSolverTest {
     private static void runFourMFOVAlignmentTests(final String alignSuffixWithTime)
             throws Exception {
 
-        runRepeatedAlignmentTests(TEST_FOUR_STACK,
+        runRepeatedAlignmentTests(TEST_PROJECT,
+                                  TEST_FOUR_STACK,
                                   TEST_FOUR_MATCH_COLLECTION,
                                   alignSuffixWithTime,
                                   new char[]{'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_FOUR_STACK,
+        runRepeatedAlignmentTests(TEST_PROJECT,
+                                  TEST_FOUR_STACK,
                                   TEST_FOUR_ONLY_REAL_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_only_real",
                                   new char[]{'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_FOUR_STACK,
+        runRepeatedAlignmentTests(TEST_PROJECT,
+                                  TEST_FOUR_STACK,
                                   TEST_FOUR_MFOV_WOUT_5_TO_6_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_wout_5_to_6",
                                   new char[]{'a', 'b', 'c'});
@@ -186,12 +199,14 @@ public class DistributedAffineBlockSolverTest {
     private static void runTenMFOVAlignmentTests(final String alignSuffixWithTime)
             throws Exception {
 
-        runRepeatedAlignmentTests(TEST_TEN_STACK,
+        runRepeatedAlignmentTests(TEST_PROJECT,
+                                  TEST_TEN_STACK,
                                   TEST_TEN_MATCH_COLLECTION,
                                   alignSuffixWithTime,
                                   new char[]{'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_TEN_STACK,
+        runRepeatedAlignmentTests(TEST_PROJECT,
+                                  TEST_TEN_STACK,
                                   TEST_TEN_ONLY_REAL_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_only_real",
                                   new char[]{'a', 'b', 'c'});
@@ -200,29 +215,34 @@ public class DistributedAffineBlockSolverTest {
     private static void runAllMFOVAlignmentTests(final String alignSuffixWithTime)
             throws Exception {
 
-        runRepeatedAlignmentTests(TEST_ALL_STACK,
+        runRepeatedAlignmentTests(TEST_PROJECT,
+                                  TEST_ALL_STACK,
                                   TEST_ALL_MATCH_COLLECTION,
                                   alignSuffixWithTime,
                                   new char[] {'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_ALL_STACK,
+        runRepeatedAlignmentTests(TEST_PROJECT,
+                                  TEST_ALL_STACK,
                                   TEST_ALL_PATCH_1EM6_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_patch_1em6",
                                   new char[] {'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_ALL_STACK,
+        runRepeatedAlignmentTests(TEST_PROJECT,
+                                  TEST_ALL_STACK,
                                   TEST_ALL_PATCH_1EM20_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_patch_1em20",
                                   new char[] {'a', 'b', 'c'});
     }
 
-    private static List<String> runRepeatedAlignmentTests(final String stack,
-                                                          final String matchCollection,
-                                                          final String alignedStackSuffix,
-                                                          final char[] testIds) throws Exception {
+    public static List<String> runRepeatedAlignmentTests(final String project,
+                                                         final String stack,
+                                                         final String matchCollection,
+                                                         final String alignedStackSuffix,
+                                                         final char[] testIds) throws Exception {
         final List<String> alignedStackNames = new ArrayList<>(testIds.length);
         for (final char testId : testIds) {
-            final String alignedStackName = runAlignmentTest(stack,
+            final String alignedStackName = runAlignmentTest(project,
+                                                             stack,
                                                              matchCollection,
                                                              alignedStackSuffix + testId);
             alignedStackNames.add(alignedStackName);
@@ -230,14 +250,15 @@ public class DistributedAffineBlockSolverTest {
         return alignedStackNames;
     }
 
-    private static String runAlignmentTest(final String stack,
-                                           final String matchCollection,
-                                           final String alignedStackSuffix) throws Exception {
+    public static String runAlignmentTest(final String project,
+                                          final String stack,
+                                          final String matchCollection,
+                                          final String alignedStackSuffix) throws Exception {
 
         final String[] testArgs = {
                 "--baseDataUrl", BASE_DATA_URL,
                 "--owner", OWNER,
-                "--project", TEST_PROJECT,
+                "--project", project,
                 "--matchCollection", matchCollection,
                 "--stack", stack,
                 "--completeTargetStack"
@@ -261,6 +282,7 @@ public class DistributedAffineBlockSolverTest {
         solverSetup.targetStack.stack = solverSetup.stack + alignedStackSuffix;
         solverSetup.targetStack.completeStack = true;
 
+        System.out.println("running solve to create " + solverSetup.targetStack.stack);
         DistributedAffineBlockSolver.run(solverSetup);
 
         final String pmeBase = BASE_DATA_URL.replace("/v1", "/view/point-match-explorer.html");
@@ -270,7 +292,7 @@ public class DistributedAffineBlockSolverTest {
                 "&matchOwner=" + OWNER +
                 "&renderDataHost=" + RENDER_DATA_HOST + "%3A8080" +
                 "&startZ=2&endZ=2" +
-                "&renderStackProject=" + TEST_PROJECT +
+                "&renderStackProject=" + project +
                 "&renderStack=" + solverSetup.targetStack.stack +
                 "&matchCollection=" + matchCollection;
 
@@ -285,17 +307,18 @@ public class DistributedAffineBlockSolverTest {
     private static void setupTestInputData()
             throws IOException {
 
-        final RenderDataClient sourceDataClient = buildClient(SOURCE_PROJECT);
+        final RenderDataClient sourceDataClient = buildSourceProjectClient();
         final StackMetaData sourceStackMetaData = sourceDataClient.getStackMetaData(SOURCE_STACK);
 
-        setupStack(sourceDataClient, sourceStackMetaData, TEST_TWO_STACK, TEST_TWO_TILE_IDS);
-        setupStack(sourceDataClient, sourceStackMetaData, TEST_THREE_STACK, TEST_THREE_TILE_IDS);
-        setupStack(sourceDataClient, sourceStackMetaData, TEST_FOUR_STACK, TEST_FOUR_TILE_IDS);
-        setupStack(sourceDataClient, sourceStackMetaData, TEST_TEN_STACK, TEST_TEN_TILE_IDS);
-        setupStack(sourceDataClient, sourceStackMetaData, TEST_ALL_STACK, null);
+        setupStack(sourceDataClient, sourceStackMetaData, TEST_PROJECT, TEST_TWO_STACK, Z_VALUES,TEST_TWO_TILE_IDS);
+        setupStack(sourceDataClient, sourceStackMetaData, TEST_PROJECT, TEST_THREE_STACK, Z_VALUES,TEST_THREE_TILE_IDS);
+        setupStack(sourceDataClient, sourceStackMetaData, TEST_PROJECT, TEST_FOUR_STACK, Z_VALUES,TEST_FOUR_TILE_IDS);
+        setupStack(sourceDataClient, sourceStackMetaData, TEST_PROJECT, TEST_TEN_STACK, Z_VALUES,TEST_TEN_TILE_IDS);
+        setupStack(sourceDataClient, sourceStackMetaData, TEST_PROJECT, TEST_ALL_STACK, Z_VALUES,null);
 
         final RenderDataClient sourceMatchClient = buildClient(SOURCE_MATCH_COLLECTION);
-        final List<CanvasMatches> sourceCmList = sourceMatchClient.getMatchesWithinGroup(String.valueOf(Z));
+        final String groupId = String.valueOf(Z_VALUES.get(0));
+        final List<CanvasMatches> sourceCmList = sourceMatchClient.getMatchesWithinGroup(groupId);
 
         setupMatchCollection(sourceCmList, TEST_TWO_ONLY_REAL_MATCH_COLLECTION,
                              TEST_TWO_TILE_IDS, null, true, null);
@@ -327,30 +350,34 @@ public class DistributedAffineBlockSolverTest {
                              null, 1e-20, false, null);
     }
 
-    private static void setupStack(final RenderDataClient sourceDataClient,
-                                   final StackMetaData sourceStackMetaData,
-                                   final String targetStackName,
-                                   final Set<String> tileIds)
+    public static void setupStack(final RenderDataClient sourceDataClient,
+                                  final StackMetaData sourceStackMetaData,
+                                  final String targetProject,
+                                  final String targetStackName,
+                                  final List<Double> zValues,
+                                  final Set<String> tileIds)
             throws IOException {
 
-        final RenderDataClient testDataClient = buildClient(TEST_PROJECT);
+        final RenderDataClient testDataClient = buildClient(targetProject);
         testDataClient.setupDerivedStack(sourceStackMetaData, targetStackName);
 
-        final ResolvedTileSpecCollection resolvedTiles = sourceDataClient.getResolvedTiles(SOURCE_STACK, Z);
-        if (tileIds != null) {
-            resolvedTiles.retainTileSpecs(tileIds);
+        final StackId sourceStackId = sourceStackMetaData.getStackId();
+        for (final Double z : zValues) {
+            final ResolvedTileSpecCollection resolvedTiles = sourceDataClient.getResolvedTiles(sourceStackId.getStack(), z);
+            if (tileIds != null) {
+                resolvedTiles.retainTileSpecs(tileIds);
+            }
+            testDataClient.saveResolvedTiles(resolvedTiles, targetStackName, z);
         }
-
-        testDataClient.saveResolvedTiles(resolvedTiles, targetStackName, Z);
         testDataClient.setStackState(targetStackName, StackMetaData.StackState.COMPLETE);
     }
 
-    private static void setupMatchCollection(final List<CanvasMatches> sourceCanvasMatchesList,
-                                             final String targetCollectionName,
-                                             final Set<String> tileIds,
-                                             final Double patchWeight,
-                                             final boolean onlyRealMatches,
-                                             final OrderedCanvasIdPair excludedPair)
+    public static void setupMatchCollection(final List<CanvasMatches> sourceCanvasMatchesList,
+                                            final String targetCollectionName,
+                                            final Set<String> tileIds,
+                                            final Double patchWeight,
+                                            final boolean onlyRealMatches,
+                                            final OrderedCanvasIdPair excludedPair)
             throws IOException {
 
         List<CanvasMatches> testCanvasMatchesList = new ArrayList<>(sourceCanvasMatchesList.size());
@@ -405,7 +432,11 @@ public class DistributedAffineBlockSolverTest {
         testMatchClient.saveMatches(testCanvasMatchesList);
     }
 
-    private static RenderDataClient buildClient(final String projectOrCollection) {
+    public static RenderDataClient buildSourceProjectClient() {
+        return new RenderDataClient(BASE_DATA_URL, OWNER, SOURCE_PROJECT);
+    }
+
+    public static RenderDataClient buildClient(final String projectOrCollection) {
         return new RenderDataClient(BASE_DATA_URL, OWNER, projectOrCollection);
     }
 }
