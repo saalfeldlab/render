@@ -147,8 +147,16 @@ public class MFOVAsTileParameters
 //        setup.blockOptimizer.maxAllowedError = 10.0;
 
         // test_b_twelve_mfovs_align_20250818_092850a
+//        setup.blockOptimizer.lambdasRigid = List.of(1.0,1.0,0.9,0.3,0.01);
+//        setup.blockOptimizer.lambdasTranslation = List.of(1.0,0.0,0.0,0.0,0.0);
+//        setup.blockOptimizer.lambdasRegularization = List.of(0.0, 0.0, 0.0, 0.0, 0.0);
+//        setup.blockOptimizer.iterations = List.of(1000,1000,500,250,250);
+//        setup.blockOptimizer.maxPlateauWidth = List.of(250,250,150,100,100);
+//        setup.blockOptimizer.maxAllowedError = 10.0;
+
+        // test_c_24_mfovs_align_20250818_153209a
         setup.blockOptimizer.lambdasRigid = List.of(1.0,1.0,0.9,0.3,0.01);
-        setup.blockOptimizer.lambdasTranslation = List.of(1.0,0.0,0.0,0.0,0.0);
+        setup.blockOptimizer.lambdasTranslation = List.of(1.0,1.0,1.0,1.0,1.0);
         setup.blockOptimizer.lambdasRegularization = List.of(0.0, 0.0, 0.0, 0.0, 0.0);
         setup.blockOptimizer.iterations = List.of(1000,1000,500,250,250);
         setup.blockOptimizer.maxPlateauWidth = List.of(250,250,150,100,100);
