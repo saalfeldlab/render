@@ -20,9 +20,11 @@ import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
+import mpicbg.models.TranslationModel1D;
 import mpicbg.models.TranslationModel2D;
 
 import org.janelia.alignment.ImageAndMask;
+import org.janelia.alignment.filter.FilterSpec;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
@@ -54,7 +56,6 @@ public class MfovPrealignTask implements Serializable {
 	private final StackId rawSfovStackId;
 	private final StackId prealignedStackId;
 	private final LayerMFOV layerMfov;
-	private final ImageProcessorCache cache;
 
 	private static final FeatureExtractionParameters FEATURE_EXTRACTION_PARAMETERS = new FeatureExtractionParameters();
 	private static final MatchDerivationParameters MATCH_DERIVATION_PARAMETERS = new MatchDerivationParameters();
@@ -71,8 +72,6 @@ public class MfovPrealignTask implements Serializable {
 		this.prealignedStackId = prealignedStackId;
 		this.layerMfov = layerMfov;
 
-		// Initialize the image processor cache with ~1Gb size to hold all tiles in memory
-		this.cache = new ImageProcessorCache(1_000_000_000L, false, false);
 
 		FEATURE_EXTRACTION_PARAMETERS.fdSize = 4;
 		FEATURE_EXTRACTION_PARAMETERS.maxScale = 1.0;
@@ -125,11 +124,14 @@ public class MfovPrealignTask implements Serializable {
 			}
 			LOG.info("alignTiles: generated {} tile pairs", tilePairs.size());
 
+			// Initialize the image processor cache with ~1Gb size to hold all tiles in memory
+			final ImageProcessorCache cache = new ImageProcessorCache(1_000_000_000L, false, false);
+
 			// 3. Align tiles within this MFOV
-			final ResolvedTileSpecCollection alignedTiles = alignTiles(mfovTiles, tilePairs);
+			final ResolvedTileSpecCollection alignedTiles = alignTiles(mfovTiles, tilePairs, cache);
 
 			// 4. Perform intensity correction
-			final ResolvedTileSpecCollection alignedIcTiles = intensityCorrectTiles(alignedTiles, tilePairs);
+			final ResolvedTileSpecCollection alignedIcTiles = intensityCorrectTiles(alignedTiles, tilePairs, cache);
 
 			// 5. Push the aligned tile specs to the prealigned stack
 			final int savedTileCount = saveMfovTiles(dataClient, alignedIcTiles);
@@ -190,7 +192,8 @@ public class MfovPrealignTask implements Serializable {
 	 */
 	private ResolvedTileSpecCollection alignTiles(
 			final ResolvedTileSpecCollection tiles,
-			final List<OrderedCanvasIdPair> tilePairs
+			final List<OrderedCanvasIdPair> tilePairs,
+			final ImageProcessorCache cache
 	) {
 		// Extract features from all mfov tiles
 		final CanvasFeatureExtractor featureExtractor = CanvasFeatureExtractor.build(FEATURE_EXTRACTION_PARAMETERS);
@@ -240,7 +243,7 @@ public class MfovPrealignTask implements Serializable {
 
 		try {
 			final ErrorStatistic errorStatistic = new ErrorStatistic(1001);
-			tc.optimizeSilently(errorStatistic, 0.5, 5000, 1000);
+			tc.optimizeSilently(errorStatistic, 0.5, 1000, 100);
 		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
 			throw new RuntimeException("Failed to optimize tile transformations", e);
 		}
@@ -341,16 +344,103 @@ public class MfovPrealignTask implements Serializable {
 	 */
 	private ResolvedTileSpecCollection intensityCorrectTiles(
 			final ResolvedTileSpecCollection tiles,
-			final List<OrderedCanvasIdPair> tilePairs
+			final List<OrderedCanvasIdPair> tilePairs,
+			final ImageProcessorCache cache
 	) {
 		LOG.info("intensityCorrectTiles: entry, tile count={}", tiles.getTileCount());
+		final Map<String, Tile<TranslationModel1D>> modelTiles = new HashMap<>();
 
+		// Initialize models for each tile spec
+		for (final TileSpec tileSpec : tiles.getTileSpecs()) {
+			// Create a model tile for each tile spec
+			final Tile<TranslationModel1D> modelTile = new Tile<>(new TranslationModel1D());
+			modelTiles.put(tileSpec.getTileId(), modelTile);
+		}
+
+		// Compute intensity differences between tile pairs
 		for (final OrderedCanvasIdPair pair : tilePairs) {
-			// TODO
+			// Get the tile specs for the pair
+			final String tileIdI = pair.getP().getId();
+			final String tileIdJ = pair.getQ().getId();
+			final TileSpec tileSpecI = tiles.getTileSpec(tileIdI);
+			final TileSpec tileSpecJ = tiles.getTileSpec(tileIdJ);
+
+			// Update the bounding boxes, since we just moved the tiles
+			tileSpecI.deriveBoundingBox(tileSpecI.getMeshCellSize(), true);
+			tileSpecJ.deriveBoundingBox(tileSpecJ.getMeshCellSize(), true);
+
+			// Compute means on the overlap
+			final Rectangle2D rectI = new Rectangle2D.Double(tileSpecI.getMinX(), tileSpecI.getMinY(), tileSpecI.getWidth(), tileSpecI.getHeight());
+			final Rectangle2D rectJ = new Rectangle2D.Double(tileSpecJ.getMinX(), tileSpecJ.getMinY(), tileSpecJ.getWidth(), tileSpecJ.getHeight());
+			final Rectangle2D overlap = rectI.createIntersection(rectJ);
+
+			final double meanI = computeMeanIntensity(tileSpecI, overlap, cache);
+			final double meanJ = computeMeanIntensity(tileSpecJ, overlap, cache);
+
+			// Add point match
+			final PointMatch pointMatch = new PointMatch(
+					new Point(new double[] {meanI}),
+					new Point(new double[] {meanJ})
+			);
+			final Tile<TranslationModel1D> modelTileI = modelTiles.get(tileIdI);
+			final Tile<TranslationModel1D> modelTileJ = modelTiles.get(tileIdJ);
+			modelTileI.connect(modelTileJ, Collections.singletonList(pointMatch));
+		}
+
+		// Optimize the translation models for intensity correction
+		final TileConfiguration tc = new TileConfiguration();
+		tc.addTiles(modelTiles.values());
+		tc.fixTile(modelTiles.values().stream().findFirst().orElseThrow());
+
+		try {
+			final ErrorStatistic errorStatistic = new ErrorStatistic(1001);
+			tc.optimizeSilently(errorStatistic, 0.5, 1000, 100);
+		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+			throw new RuntimeException("Failed to optimize intensity correction", e);
+		}
+
+		// Apply the intensity shift to the tiles
+		final double[] translation = new double[2];
+		for (final Map.Entry<String, Tile<TranslationModel1D>> entry : modelTiles.entrySet()) {
+			final String tileId = entry.getKey();
+			final TranslationModel1D model = entry.getValue().getModel();
+			final TileSpec tileSpec = tiles.getTileSpec(tileId);
+
+			model.toArray(translation);
+			final FilterSpec filterSpec = new FilterSpec(
+					"org.janelia.alignment.filter.AffineIntensityFilter",
+					Map.of("a", String.valueOf(translation[0]), "b", String.valueOf(translation[1]))
+			);
+			tileSpec.setFilterSpec(filterSpec);
 		}
 
 		LOG.info("intensityCorrectTiles: exit");
 		return tiles;
+	}
+
+	private double computeMeanIntensity(
+			final TileSpec tileSpec,
+			final Rectangle2D roi,
+			final ImageProcessorCache cache
+	) {
+		// Get the pixels within the overlap region
+		final ImageProcessor ip = loadImageProcessor(cache, tileSpec);
+		final int roiMinX = (int) (roi.getMinX() - tileSpec.getMinX());
+		final int roiMinY = (int) (roi.getMinY() - tileSpec.getMinY());
+		ip.setRoi(roiMinX, roiMinY, (int) roi.getWidth(), (int) roi.getHeight());
+		final ImageProcessor roiIp = ip.crop();
+
+		// Compute the mean intensity in the ROI
+		double sum = 0.0;
+		int count = 0;
+		for (int y = 0; y < roiIp.getHeight(); y++) {
+			for (int x = 0; x < roiIp.getWidth(); x++) {
+				sum += roiIp.getf(x, y);
+				count++;
+			}
+		}
+
+		return count > 0 ? sum / count : 0.0;
 	}
 
 	/**
