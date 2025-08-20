@@ -234,6 +234,7 @@ public class MFOVASTileClient
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
         final double mfovRenderScale = mfovAsTile.getMfovRenderScale();
         final String dynamicMfovStackSuffix = mfovAsTile.getDynamicMfovStackSuffix();
+        final String prealignedStackSuffix = mfovAsTile.getPrealignedMfovStackSuffix();
 
         final List<StackWithZValues> rawSfovStacksWithAllZ = mfovAsTileStackLists.getRawSfovStacksWithAllZ();
 
@@ -261,6 +262,7 @@ public class MFOVASTileClient
                 builtStackId = MFOVAsTileStackClient.buildOneMFOVAsTileStack(stackWithAllZ,
                                                                              dataClient,
                                                                              mfovRenderScale,
+                                                                             prealignedStackSuffix,
                                                                              dynamicMfovStackSuffix);
             }
 

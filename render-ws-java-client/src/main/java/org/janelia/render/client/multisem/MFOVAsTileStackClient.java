@@ -91,6 +91,7 @@ public class MFOVAsTileStackClient {
             buildOneMFOVAsTileStack(stackWithZ,
                                     renderDataClient,
                                     parameters.mfovTileRenderScale,
+                                    "",
                                     parameters.mfovTileStackSuffix);
         }
     }
@@ -111,10 +112,11 @@ public class MFOVAsTileStackClient {
     public static StackId buildOneMFOVAsTileStack(final StackWithZValues stackWithZ,
                                                   final RenderDataClient renderDataClient,
                                                   final Double mfovTileRenderScale,
+                                                  final String sourceStackSuffix,
                                                   final String mfovTileStackSuffix)
             throws IOException, IllegalStateException {
 
-        final StackId sourceStackId = stackWithZ.getStackId();
+        final StackId sourceStackId = stackWithZ.getStackId().withStackSuffix(sourceStackSuffix);
         final String sourceStackName = sourceStackId.getStack();
         final StackId mfovAsTileStackId = stackWithZ.getStackId().withStackSuffix(mfovTileStackSuffix);
 
