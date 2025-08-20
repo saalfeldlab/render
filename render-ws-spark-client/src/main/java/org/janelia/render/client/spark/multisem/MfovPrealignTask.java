@@ -4,6 +4,7 @@ import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,18 +14,24 @@ import java.util.stream.Collectors;
 import ij.process.ImageProcessor;
 import mpicbg.imagefeatures.Feature;
 import mpicbg.models.ErrorStatistic;
+import mpicbg.models.IllDefinedDataPointsException;
+import mpicbg.models.NotEnoughDataPointsException;
+import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
 import mpicbg.models.TileConfiguration;
 import mpicbg.models.TileUtil;
 import mpicbg.models.TranslationModel2D;
 
+import net.imglib2.img.io.Load;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchFilter;
+import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
@@ -56,6 +63,10 @@ public class MfovPrealignTask implements Serializable {
     private final LayerMFOV layerMfov;
     private final MFOVAsTileParameters mfovAsTile;
 
+	private static final FeatureExtractionParameters FEATURE_EXTRACTION_PARAMETERS = new FeatureExtractionParameters();
+	private static final MatchDerivationParameters MATCH_DERIVATION_PARAMETERS = new MatchDerivationParameters();
+	private static final int CLIP_SIZE = 150;
+
     public MfovPrealignTask(final String baseDataUrl,
                             final StackId rawSfovStackId,
                             final StackId prealignedStackId,
@@ -66,6 +77,22 @@ public class MfovPrealignTask implements Serializable {
         this.prealignedStackId = prealignedStackId;
         this.layerMfov = layerMfov;
         this.mfovAsTile = mfovAsTile;
+
+		FEATURE_EXTRACTION_PARAMETERS.fdSize = 4;
+		FEATURE_EXTRACTION_PARAMETERS.maxScale = 1.0;
+		FEATURE_EXTRACTION_PARAMETERS.minScale = 0.25;
+		FEATURE_EXTRACTION_PARAMETERS.steps = 5;
+
+		MATCH_DERIVATION_PARAMETERS.matchFilter = MatchFilter.FilterType.SINGLE_SET;
+		MATCH_DERIVATION_PARAMETERS.matchFullScaleCoverageRadius = 300.0;
+		MATCH_DERIVATION_PARAMETERS.matchIterations = 1000;
+		MATCH_DERIVATION_PARAMETERS.matchMaxEpsilonFullScale = 5.0f;
+		MATCH_DERIVATION_PARAMETERS.matchMaxTrust = 4.0;
+		MATCH_DERIVATION_PARAMETERS.matchMinCoveragePercentage = 0.0;
+		MATCH_DERIVATION_PARAMETERS.matchMinInlierRatio = 0.0f;
+		MATCH_DERIVATION_PARAMETERS.matchMinNumInliers = 10;
+		MATCH_DERIVATION_PARAMETERS.matchModelType = ModelType.TRANSLATION;
+		MATCH_DERIVATION_PARAMETERS.matchRod = 0.92f;
     }
 
     /**
@@ -155,8 +182,9 @@ public class MfovPrealignTask implements Serializable {
 
             for (int j = i + 1; j < tileList.size(); j++) {
                 final TileSpec tj = tileList.get(j);
-                final Rectangle2D rectJ = new Rectangle2D.Double(tj.getMinX(), tj.getMaxY(), tj.getWidth(), tj.getHeight());
+                final Rectangle2D rectJ = new Rectangle2D.Double(tj.getMinX(), tj.getMinY(), tj.getWidth(), tj.getHeight());
 
+				final boolean intersects = rectI.intersects(rectJ);
                 if (rectI.intersects(rectJ)) {
                     final CanvasId canvasIdI = new CanvasId(ti.getGroupId(), ti.getTileId());
                     final CanvasId canvasIdJ = new CanvasId(tj.getGroupId(), tj.getTileId());
@@ -171,47 +199,50 @@ public class MfovPrealignTask implements Serializable {
     /**
      * Perform SIFT feature matching on the tile pairs.
      */
-	private ResolvedTileSpecCollection performSiftAlignment(final ResolvedTileSpecCollection mfovTiles,
-															final List<OrderedCanvasIdPair> tilePairs) {
+	private ResolvedTileSpecCollection performSiftAlignment(
+			final ResolvedTileSpecCollection mfovTiles,
+			final List<OrderedCanvasIdPair> tilePairs
+	) {
+		// Set cache size to ~1GB, so that all mfov tiles can be kept in memory
+		final ImageProcessorCache ipCache = new ImageProcessorCache(1_000_000_000L, false, false);
 
 		// Extract features from all mfov tiles
-		final FeatureExtractionParameters featureExtractionParameters = MFOVAsTileParameters.buildFeatureExtractionParameters();
-		final CanvasFeatureExtractor featureExtractor = CanvasFeatureExtractor.build(featureExtractionParameters);
-		final Map<CanvasId, List<Feature>> mfovFeatures = new HashMap<>(mfovTiles.getTileCount());
-		final Map<CanvasId, Tile<TranslationModel2D>> tiles = new HashMap<>();
+		final CanvasFeatureExtractor featureExtractor = CanvasFeatureExtractor.build(FEATURE_EXTRACTION_PARAMETERS);
+		final Map<String, List<Feature>> mfovFeatures = new HashMap<>(mfovTiles.getTileCount());
+		final Map<String, Tile<TranslationModel2D>> tiles = new HashMap<>();
 
 		for (final TileSpec tileSpec : mfovTiles.getTileSpecs()) {
-			// Set cache size to ~1GB, so that all mfov tiles can be kept in memory
-			final ImageProcessorCache ipCache = new ImageProcessorCache(1_000_000_000L, false, false);
-			final ChannelSpec firstChannel = tileSpec.getAllChannels().get(0);
-			final ImageAndMask image = firstChannel.getMipmap(0);
-			final ImageProcessor ip = ipCache.get(image.getImageUrl(), 0, false, false, image.getImageLoaderType(), null);
-			final List<Feature> tileFeatures = featureExtractor.extractFeaturesFromImageAndMask(ip, null);
+			final List<Feature> tileFeatures = extractBoundaryFeatures(ipCache, tileSpec, featureExtractor);
 
-			final CanvasId canvasId = new CanvasId(tileSpec.getGroupId(), tileSpec.getTileId());
-			mfovFeatures.put(canvasId, tileFeatures);
-			tiles.put(canvasId, new Tile<>(new TranslationModel2D()));
+			mfovFeatures.put(tileSpec.getTileId(), tileFeatures);
+			tiles.put(tileSpec.getTileId(), new Tile<>(new TranslationModel2D()));
 		}
 
 		// Match features between tile pairs
-		final MatchDerivationParameters matchDerivationParameters = MFOVAsTileParameters.buildFeatureMatchDerivation(10);
-		final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(matchDerivationParameters, 1.0);
+		final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(MATCH_DERIVATION_PARAMETERS, 1.0);
 
 		for (final OrderedCanvasIdPair pair : tilePairs) {
-			final CanvasId canvasIdI = pair.getP();
-			final CanvasId canvasIdJ = pair.getQ();
+			final String tileIdI = pair.getP().getId();
+			final String tileIdJ = pair.getQ().getId();
 
+			LOG.info("performSiftAlignment: matching features for canvas pair {} <-> {}", tileIdI, tileIdJ);
 			final CanvasMatchResult matchResult = featureMatcher.deriveMatchResult(
-					mfovFeatures.get(canvasIdI),
-					mfovFeatures.get(canvasIdJ)
+					mfovFeatures.get(tileIdI),
+					mfovFeatures.get(tileIdJ)
 			);
 
-			// Connect tiles for optimization using point matches
-			if (matchResult != null && matchResult.getTotalNumberOfInliers() > 0) {
+			// Connect tiles for optimization...
+			final Tile<TranslationModel2D> tileI = tiles.get(tileIdI);
+			final Tile<TranslationModel2D> tileJ = tiles.get(tileIdJ);
+			if (matchResult == null || matchResult.getTotalNumberOfInliers() == 0) {
+				// ... with fake matches if no inliers found
+				final PointMatch fakeMatch = new PointMatch(
+						new Point(new double[] {0.0, 0.0}), new Point(new double[] {0.0, 0.0}), 1e-4
+				);
+				tileI.connect(tileJ, Collections.singletonList(fakeMatch));
+			} else {
+				// ... with real matches if inliers found
 				final List<PointMatch> pointMatches = matchResult.getInlierPointMatchList();
-				final Tile<TranslationModel2D> tileI = tiles.get(canvasIdI);
-				final Tile<TranslationModel2D> tileJ = tiles.get(canvasIdJ);
-
 				tileI.connect(tileJ, pointMatches);
 			}
 		}
@@ -221,32 +252,27 @@ public class MfovPrealignTask implements Serializable {
 		tc.addTiles(tiles.values());
 		tc.fixTile(tiles.values().stream().findFirst().orElseThrow());
 
-		TileUtil.optimizeConcurrently(
-				new ErrorStatistic(1000),
-				0.5,
-				5000,
-				1000,
-				0.0f,
-				tc,
-				tc.getTiles(),
-				tc.getFixedTiles(),
-				1,
-				false
-		);
+		try {
+			final ErrorStatistic errorStatistic = new ErrorStatistic(1001);
+			tc.optimizeSilently(errorStatistic, 0.5, 5000, 1000);
+		} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
+			throw new RuntimeException("Failed to optimize tile transformations", e);
+		}
+
 
 		// Add the transformations to the tiles
-		for (final Map.Entry<CanvasId, Tile<TranslationModel2D>> entry : tiles.entrySet()) {
-			final String tileId = entry.getKey().getId();
+		final double[] translation = new double[6];
+		for (final Map.Entry<String, Tile<TranslationModel2D>> entry : tiles.entrySet()) {
+			final String tileId = entry.getKey();
 			final TranslationModel2D model = entry.getValue().getModel();
 
 			// Combine the translation from the model with the previous translation
-			final double[] translation = new double[2];
 			model.toArray(translation);
 			final LeafTransformSpec previousTransformSpec = (LeafTransformSpec) mfovTiles.getTileSpec(tileId).getLastTransform();
 
 			final String[] previousCoefficients = previousTransformSpec.getDataString().split(" ");
-			final double x = Double.parseDouble(previousCoefficients[4]) + translation[0];
-			final double y = Double.parseDouble(previousCoefficients[5]) + translation[1];
+			final double x = Double.parseDouble(previousCoefficients[4]) + translation[4];
+			final double y = Double.parseDouble(previousCoefficients[5]) + translation[5];
 			final LeafTransformSpec newTransformSpec =  new LeafTransformSpec(
 					"mpicbg.trakem2.transform.AffineModel2D",
 					"1 0 0 1 " + x + " " + y
@@ -258,6 +284,62 @@ public class MfovPrealignTask implements Serializable {
 
 		return mfovTiles;
     }
+
+	/**
+	 * Extract features from boundary regions.
+	 */
+	private static List<Feature> extractBoundaryFeatures(
+			final ImageProcessorCache cache,
+			final TileSpec tileSpec,
+			final CanvasFeatureExtractor featureExtractor
+	) {
+		// Load an image processor for the given tile.
+		final int downSampleLevel = 0;
+		final ChannelSpec firstChannel = tileSpec.getAllChannels().get(0);
+		final ImageAndMask image = firstChannel.getMipmap(downSampleLevel);
+		final ImageProcessor ip = cache.get(image.getImageUrl(), downSampleLevel, false, false, image.getImageLoaderType(), 0);
+		final int width = ip.getWidth();
+		final int height = ip.getHeight();
+
+		// Left
+		ip.setRoi(0, 0, CLIP_SIZE, height);
+		final List<Feature> features = new ArrayList<>(extractFeaturesFromRoi(featureExtractor, ip, 0, 0));
+		// Right
+		ip.setRoi(width - CLIP_SIZE, 0, CLIP_SIZE, height);
+		features.addAll(extractFeaturesFromRoi(featureExtractor, ip, width - CLIP_SIZE, 0));
+		// Top
+		ip.setRoi(CLIP_SIZE, 0, width - 2 * CLIP_SIZE, CLIP_SIZE);
+		features.addAll(extractFeaturesFromRoi(featureExtractor, ip, CLIP_SIZE, 0));
+		// Bottom
+		ip.setRoi(CLIP_SIZE, height - CLIP_SIZE, width - 2 * CLIP_SIZE, CLIP_SIZE);
+		features.addAll(extractFeaturesFromRoi(featureExtractor, ip, CLIP_SIZE, height));
+
+		// Move the features to the global coordinate system
+		for (final Feature feature : features) {
+			feature.location[0] += tileSpec.getMinX();
+			feature.location[1] += tileSpec.getMinY();
+		}
+
+		return features;
+	}
+
+	/**
+	 * Extract features from ROI and shift them
+	 */
+	private static List<Feature> extractFeaturesFromRoi(
+			final CanvasFeatureExtractor featureExtractor,
+			final ImageProcessor ip,
+			final int xShift,
+			final int yShift
+	) {
+		final ImageProcessor roiIp = ip.crop();
+		final List<Feature> features = featureExtractor.extractFeaturesFromImageAndMask(roiIp, null);
+		for (final Feature feature : features) {
+			feature.location[0] += xShift;
+			feature.location[1] += yShift;
+		}
+		return features;
+	}
 
     /**
      * Optimize tile transformations using the derived matches.

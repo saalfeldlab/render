@@ -197,7 +197,7 @@ public class MFOVAsTileParameters
         return setup;
     }
 
-    public static MatchRunParameters buildMontageMatchRunParameters() {
+    private static MatchRunParameters buildMontageMatchRunParameters() {
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(new MatchStageParameters("montageMfovAsTilePass1",
                                                  buildFeatureRenderParameters(0.4), // 11 secs for 15 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
@@ -277,7 +277,7 @@ public class MFOVAsTileParameters
         return featureRender;
     }
 
-    public static FeatureExtractionParameters buildFeatureExtractionParameters() {
+    private static FeatureExtractionParameters buildFeatureExtractionParameters() {
         final FeatureExtractionParameters featureExtraction = new FeatureExtractionParameters();
         featureExtraction.fdSize = 4;
         featureExtraction.maxScale = 1.0;
@@ -286,7 +286,7 @@ public class MFOVAsTileParameters
         return featureExtraction;
     }
 
-    public static MatchDerivationParameters buildFeatureMatchDerivation(final int matchMinNumInliers) {
+    private static MatchDerivationParameters buildFeatureMatchDerivation(final int matchMinNumInliers) {
         final MatchDerivationParameters featureMatchDerivation = new MatchDerivationParameters();
         featureMatchDerivation.matchFilter = MatchFilter.FilterType.SINGLE_SET;
         featureMatchDerivation.matchFullScaleCoverageRadius = 10.0;
