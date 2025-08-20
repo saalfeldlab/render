@@ -198,8 +198,7 @@ public class MFOVASTileClient
                     mfovTasks.add(new MfovPrealignTask(baseDataUrl,
                                                         rawSfovStackId,
                                                         prealignedStackId,
-                                                        new LayerMFOV(z, mfovName),
-                                                        mfovAsTile)
+                                                        new LayerMFOV(z, mfovName))
                     );
                 }
             }
@@ -212,7 +211,7 @@ public class MFOVASTileClient
             // Parallelize MFOV alignment tasks
             LOG.info("alignAndIntensityCorrectMfovAsTileStacks: aligning {} MFOVs", mfovTasks.size());
             final JavaRDD<MfovPrealignTask> rddMfovTasks = sparkContext.parallelize(mfovTasks);
-            rddMfovTasks.foreach(MfovPrealignTask::alignMfov);
+            rddMfovTasks.foreach(MfovPrealignTask::run);
 
             // Complete all prealigned stacks
             for (final StackId prealignedStackId : prealignedStackIds) {
