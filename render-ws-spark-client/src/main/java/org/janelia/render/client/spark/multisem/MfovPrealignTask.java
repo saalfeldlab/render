@@ -341,21 +341,6 @@ public class MfovPrealignTask implements Serializable {
 	}
 
     /**
-     * Optimize tile transformations using the derived matches.
-     */
-    private ResolvedTileSpecCollection optimizeTileTransformations(final ResolvedTileSpecCollection mfovTiles,
-                                                                  final List<CanvasMatches> matches) {
-        LOG.info("optimizeTileTransformations: applying basic local optimization for {} tiles with {} matches",
-                 mfovTiles.getTileCount(), matches.size());
-
-        // For now, return the original tiles without optimization
-        // This is a placeholder - you can implement actual tile optimization here
-        // using the Tile<TranslationModel2D> objects created in performSiftMatching
-
-        return mfovTiles;
-    }
-
-    /**
      * Save the aligned tiles to the prealigned stack.
      */
     private int saveMfovTiles(final RenderDataClient dataClient,
