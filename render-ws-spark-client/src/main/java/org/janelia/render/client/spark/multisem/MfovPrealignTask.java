@@ -301,18 +301,11 @@ public class MfovPrealignTask implements Serializable {
 		final int width = ip.getWidth();
 		final int height = ip.getHeight();
 
-		// Left
-		ip.setRoi(0, 0, CLIP_SIZE, height);
-		final List<Feature> features = new ArrayList<>(extractFeaturesFromRoi(featureExtractor, ip, 0, 0));
-		// Right
-		ip.setRoi(width - CLIP_SIZE, 0, CLIP_SIZE, height);
-		features.addAll(extractFeaturesFromRoi(featureExtractor, ip, width - CLIP_SIZE, 0));
-		// Top
-		ip.setRoi(CLIP_SIZE, 0, width - 2 * CLIP_SIZE, CLIP_SIZE);
-		features.addAll(extractFeaturesFromRoi(featureExtractor, ip, CLIP_SIZE, 0));
-		// Bottom
-		ip.setRoi(CLIP_SIZE, height - CLIP_SIZE, width - 2 * CLIP_SIZE, CLIP_SIZE);
-		features.addAll(extractFeaturesFromRoi(featureExtractor, ip, CLIP_SIZE, height));
+		// Left, right, top, and bottom boundaries
+		final List<Feature> features = new ArrayList<>(extractFeaturesFromRoi(featureExtractor, ip, 0, 0, CLIP_SIZE, height));
+		features.addAll(extractFeaturesFromRoi(featureExtractor, ip, width - CLIP_SIZE, 0, CLIP_SIZE, height));
+		features.addAll(extractFeaturesFromRoi(featureExtractor, ip, CLIP_SIZE, 0, width - 2 * CLIP_SIZE, CLIP_SIZE));
+		features.addAll(extractFeaturesFromRoi(featureExtractor, ip, CLIP_SIZE, height - CLIP_SIZE, width - 2 * CLIP_SIZE, CLIP_SIZE));
 
 		// Move the features to the global coordinate system
 		for (final Feature feature : features) {
@@ -330,9 +323,15 @@ public class MfovPrealignTask implements Serializable {
 			final CanvasFeatureExtractor featureExtractor,
 			final ImageProcessor ip,
 			final int xShift,
-			final int yShift
+			final int yShift,
+			final int w,
+			final int h
 	) {
+		// Extract the specified ROI from the image processor
+		ip.setRoi(xShift, yShift, w, h);
 		final ImageProcessor roiIp = ip.crop();
+
+		// Extract features from the ROI and place them in the tile coordinate system
 		final List<Feature> features = featureExtractor.extractFeaturesFromImageAndMask(roiIp, null);
 		for (final Feature feature : features) {
 			feature.location[0] += xShift;
