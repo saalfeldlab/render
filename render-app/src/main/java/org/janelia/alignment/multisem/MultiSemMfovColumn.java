@@ -229,12 +229,14 @@ public class MultiSemMfovColumn {
                                                       mfovBoundsList));
         }
 
-        final int minYForAllColumns = mfovColumnList.stream()
-                .mapToInt(MultiSemMfovColumn::getMinY)
-                .min()
-                .orElse(0);
+        if (mfovColumnList.size() > 1) {
+            final int minYForAllColumns = mfovColumnList.stream()
+                    .mapToInt(MultiSemMfovColumn::getMinY)
+                    .min()
+                    .orElse(0);
 
-        mfovColumnList.forEach(c -> c.assignRowsByMaxIntersection(minYForAllColumns));
+            mfovColumnList.forEach(c -> c.assignRowsByMaxIntersection(minYForAllColumns));
+        }
 
         LOG.info("assembleColumnData: exit, returning\n{}", mfovColumnList);
 
