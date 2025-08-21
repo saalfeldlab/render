@@ -697,7 +697,7 @@ public class MFOVASTileClient
     }
 
     // Serializable information that can be used to build RenderTilesClient instances in remote Spark workers
-    private static class JavaRenderTilesClientInfo implements Serializable {
+    public static class JavaRenderTilesClientInfo implements Serializable {
 
         private final String baseDataUrl;
         private final StackId stackId;
