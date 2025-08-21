@@ -59,21 +59,6 @@ public class MFOVAsTileParameters
         this.roughSfovStackSuffix = roughSfovStackSuffix;
     }
 
-    public MFOVAsTileParameters(final Double mfovRenderScale,
-                                final String mfovRootDirectory,
-                                final String dynamicMfovStackSuffix,
-                                final String renderedMfovStackSuffix,
-                                final String alignedMfovStackSuffix,
-                                final String roughSfovStackSuffix) {
-        this(mfovRenderScale,
-             mfovRootDirectory,
-             null,
-             dynamicMfovStackSuffix,
-             renderedMfovStackSuffix,
-             alignedMfovStackSuffix,
-             roughSfovStackSuffix);
-    }
-
     public Double getMfovRenderScale() {
         return mfovRenderScale;
     }

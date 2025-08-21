@@ -270,6 +270,7 @@ public class DistributedAffineBlockSolverTest {
         final MFOVAsTileParameters mfovAsTileParameters =
                 new MFOVAsTileParameters(0.2,
                                          "/tmp",
+                                         "_prealign",
                                          "_mat",
                                          "_render",
                                          alignedStackSuffix,
