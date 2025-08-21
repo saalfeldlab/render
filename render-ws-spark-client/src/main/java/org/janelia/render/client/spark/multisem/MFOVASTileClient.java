@@ -234,13 +234,12 @@ public class MFOVASTileClient
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
         final double mfovRenderScale = mfovAsTile.getMfovRenderScale();
         final String dynamicMfovStackSuffix = mfovAsTile.getDynamicMfovStackSuffix();
-        final String prealignedStackSuffix = mfovAsTile.getPrealignedMfovStackSuffix();
 
-        final List<StackWithZValues> rawSfovStacksWithAllZ = mfovAsTileStackLists.getRawSfovStacksWithAllZ();
+        final List<StackWithZValues> prealignedSfovStacksWithAllZ = mfovAsTileStackLists.getPrealignedSfovStacksWithAllZ();
 
-        LOG.info("buildDynamicMfovAsTileStacks: entry, distributing build of {} stack(s)", rawSfovStacksWithAllZ.size());
+        LOG.info("buildDynamicMfovAsTileStacks: entry, distributing build of {} stack(s)", prealignedSfovStacksWithAllZ.size());
 
-        final JavaRDD<StackWithZValues> rddRawStacks = sparkContext.parallelize(rawSfovStacksWithAllZ);
+        final JavaRDD<StackWithZValues> rddPrealignedSfovStacks = sparkContext.parallelize(prealignedSfovStacksWithAllZ);
 
         final Function<StackWithZValues, StackId> buildMfovStackFunction = stackWithAllZ -> {
 
@@ -262,14 +261,13 @@ public class MFOVASTileClient
                 builtStackId = MFOVAsTileStackClient.buildOneMFOVAsTileStack(stackWithAllZ,
                                                                              dataClient,
                                                                              mfovRenderScale,
-                                                                             prealignedStackSuffix,
                                                                              dynamicMfovStackSuffix);
             }
 
             return builtStackId;
         };
 
-        final JavaRDD<StackId> rddBuiltStacks = rddRawStacks.map(buildMfovStackFunction);
+        final JavaRDD<StackId> rddBuiltStacks = rddPrealignedSfovStacks.map(buildMfovStackFunction);
         final List<StackId> builtStacks = rddBuiltStacks.collect();
 
         final long skippedCount = rddBuiltStacks.filter(Objects::isNull).count();
