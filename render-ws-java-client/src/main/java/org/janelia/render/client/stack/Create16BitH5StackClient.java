@@ -59,6 +59,12 @@ public class Create16BitH5StackClient {
         public String rawRootDirectory;
 
         @Parameter(
+                names = "--rawH5Channel",
+                description = "Channel (0 or 1) to use in the raw h5 files",
+                required = true)
+        public int rawH5Channel = 0;
+
+        @Parameter(
                 names = "--completeRawStack",
                 description = "Complete the raw stack after saving all z layers",
                 arity = 0)
@@ -160,10 +166,12 @@ public class Create16BitH5StackClient {
 
                     if (LoaderType.H5_SLICE.equals(loaderType)) {
                         rawSourceUrl = buildRawSourceUrlForH5(tileSpec.getTileId(),
-                                                              sourceImageAndMask.getImageUrl());
+                                                              sourceImageAndMask.getImageUrl(),
+                                                              parameters.rawH5Channel);
                     } else if (LoaderType.IMAGEJ_DEFAULT.equals(loaderType)) {
                         rawSourceUrl = buildRawSourceUrlForInLens(tileSpec.getTileId(),
-                                                                  sourceImageAndMask.getImageUrl());
+                                                                  sourceImageAndMask.getImageUrl(),
+                                                                  parameters.rawH5Channel);
                     }
 
                     if (rawSourceUrl != null) {
@@ -196,8 +204,14 @@ public class Create16BitH5StackClient {
         }
     }
 
+    /**
+     * @param  tileId          id of source tile.
+     * @param  alignSourceUrl  source URL from aligned stack tile spec.
+     * @param  rawChannel      channel (0 or 1) to use in the raw h5 files.
+     */
     protected String buildRawSourceUrlForH5(final String tileId,
-                                            final String alignSourceUrl)
+                                            final String alignSourceUrl,
+                                            final int rawChannel)
             throws IllegalStateException {
         // From:
         //   file:///nrs/cellmap/data/jrc_mus-hippocampus-1/align/Merlin-6049/2023/06/07/11/Merlin-6049_23-06-07_110544.uint8.h5?dataSet=/0-0-0/mipmap.0&z=0
@@ -209,7 +223,7 @@ public class Create16BitH5StackClient {
             final String fileName = m.group(2) + ".raw-archive.h5";
             final File file = Paths.get(parameters.rawRootDirectory, m.group(1), fileName).toAbsolutePath().toFile();
             if (parameters.skipFileValidation || file.exists()) {
-                rawUrl = "file://" + file + "?dataSet=" + m.group(3) + "/c0"; // need to exclude z=0 parameter
+                rawUrl = "file://" + file + "?dataSet=" + m.group(3) + "/c" + rawChannel; // need to exclude z=0 parameter
             }  else {
                 throw new IllegalStateException(file + " not found for tile " + tileId);
             }
@@ -220,7 +234,8 @@ public class Create16BitH5StackClient {
     }
 
     protected String buildRawSourceUrlForInLens(final String tileId,
-                                                final String alignSourceUrl)
+                                                final String alignSourceUrl,
+                                                final int rawChannel)
             throws IllegalStateException {
 
         // From:
@@ -240,7 +255,7 @@ public class Create16BitH5StackClient {
                                         m.group(6),
                                         fileName).toAbsolutePath().toFile();
             if (parameters.skipFileValidation || file.exists()) {
-                rawUrl = "file://" + file + "?dataSet=/" + m.group(7) + "/c0"; // need to exclude z=0 parameter
+                rawUrl = "file://" + file + "?dataSet=/" + m.group(7) + "/c" + rawChannel; // need to exclude z=0 parameter
             }  else {
                 throw new IllegalStateException(file + " not found for tile " + tileId);
             }

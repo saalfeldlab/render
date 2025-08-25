@@ -33,10 +33,11 @@ public class Create16BitH5StackClientTest {
                 }
         };
 
+        final int rawChannel = 0;
         for (final String[] testDatum : testData) {
             final String sourceUrl = testDatum[0];
             final String expected = testDatum[1];
-            final String actual = client.buildRawSourceUrlForH5("testTile", sourceUrl);
+            final String actual = client.buildRawSourceUrlForH5("testTile", sourceUrl, rawChannel);
             Assert.assertEquals("returned invalid raw URL", expected, actual);
         }
     }
@@ -57,10 +58,11 @@ public class Create16BitH5StackClientTest {
                 }
         };
 
+        final int rawChannel = 0;
         for (final String[] testDatum : testData) {
             final String sourceUrl = testDatum[0];
             final String expected = testDatum[1];
-            final String actual = client.buildRawSourceUrlForInLens("testTile", sourceUrl);
+            final String actual = client.buildRawSourceUrlForInLens("testTile", sourceUrl, rawChannel);
             Assert.assertEquals("returned invalid raw URL", expected, actual);
         }
     }
