@@ -146,13 +146,22 @@ public class MFOVASTileClient
 
         buildRenderedMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
 
-        generateMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
+        for (final String crossMatchId : clientParameters.mfovAsTile.getCrossMatchIdList()) {
 
-        patchMissingMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
+            generateMfovAsTileMatches(sparkContext, mfovAsTileStackLists, crossMatchId);
 
-        alignRenderedMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
+            patchMissingMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
 
-        buildRoughSfovStacks(sparkContext, mfovAsTileStackLists);
+            alignRenderedMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
+
+            buildRoughSfovStacks(sparkContext, mfovAsTileStackLists);
+
+            renameMatchCollectionAlignStackAndRoughStack(baseDataUrl,
+                                                         clientParameters.mfovAsTile,
+                                                         mfovAsTileStackLists.getRawSfovStacksWithAllZ(),
+                                                         crossMatchId);
+        }
+
 
         LOG.info("run: exit");
     }
@@ -172,13 +181,13 @@ public class MFOVASTileClient
 
         for (final StackWithZValues rawSfovStackWithZ : rawSfovStacksWithAllZ) {
             final StackId rawSfovStackId = rawSfovStackWithZ.getStackId();
-            final StackId prealignedStackId = rawSfovStackId.withStackSuffix(mfovAsTile.getPrealignedMfovStackSuffix());
+            final StackId prealignedStackId = rawSfovStackId.withStackSuffix(mfovAsTile.getPrealignedSfovStackSuffix());
 
             // Skip if prealigned stack already exists
             if (mfovAsTileStackLists.isExistingStack(prealignedStackId)) {
                 LOG.info("alignAndIntensityCorrectMfovAsTileStacks: skipping {} because it already exists",
                          prealignedStackId.toDevString());
-//                continue;
+                continue;
             }
 
             // Create prealigned stack
@@ -356,13 +365,14 @@ public class MFOVASTileClient
     }
 
     private static void generateMfovAsTileMatches(final JavaSparkContext sparkContext,
-                                                  final MFOVAsTileStackLists mfovAsTileStackLists)
+                                                  final MFOVAsTileStackLists mfovAsTileStackLists,
+                                                  final String crossMatchId)
             throws IOException {
 
         LOG.info("generateMfovAsTileMatches: entry");
 
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
-        final List<MatchRunParameters> mfovMatchRunList = mfovAsTileStackLists.getMfovAsTile().buildMfovMatchRunList();
+        final List<MatchRunParameters> mfovMatchRunList = mfovAsTileStackLists.getMfovAsTile().buildMfovMatchRunList(crossMatchId);
 
         for (final String owner : mfovAsTileStackLists.getOwners()) {
 
@@ -742,6 +752,39 @@ public class MFOVASTileClient
                     buildJavaRenderTilesClient(tileIdPattern);
             jClient.renderTiles(Collections.singletonList(layerMFOV.getZ()));
             return 1;
+        }
+    }
+
+    private static void renameMatchCollectionAlignStackAndRoughStack(final String baseDataUrl,
+                                                                     final MFOVAsTileParameters mfovAsTile,
+                                                                     final List<StackWithZValues> rawSfovStacksWithAllZ,
+                                                                     final String crossMatchId)
+            throws IOException {
+
+
+        final String crossMatchSuffix = "_cm" + crossMatchId;
+
+        for (final StackWithZValues rawSfovStackWithZ : rawSfovStacksWithAllZ) {
+            final StackId rawSfovStackId = rawSfovStackWithZ.getStackId();
+            final StackId renderedMfovStackId = mfovAsTile.getRenderedMfovStackId(rawSfovStackId);
+            final MatchCollectionId fromMatchCollectionId = renderedMfovStackId.getDefaultMatchCollectionId(false);
+            final MatchCollectionId toMatchCollectionId =
+                    new MatchCollectionId(fromMatchCollectionId.getOwner(),
+                                          fromMatchCollectionId.getName() + crossMatchSuffix);
+            final RenderDataClient matchDataClient = new RenderDataClient(baseDataUrl,
+                                                                          fromMatchCollectionId.getOwner(),
+                                                                          fromMatchCollectionId.getName());
+            matchDataClient.renameMatchCollection(toMatchCollectionId);
+
+            final StackId alignedMfovStackId = mfovAsTile.getAlignedMfovStackId(rawSfovStackId);
+            final StackId roughSfovStackId = mfovAsTile.getRoughSfovStackId(rawSfovStackId);
+            final RenderDataClient stackDataClient = new RenderDataClient(baseDataUrl,
+                                                                          rawSfovStackId.getOwner(),
+                                                                          rawSfovStackId.getProject());
+            stackDataClient.renameStack(alignedMfovStackId.getStack(),
+                                        alignedMfovStackId.withStackSuffix(crossMatchSuffix));
+            stackDataClient.renameStack(roughSfovStackId.getStack(),
+                                        roughSfovStackId.withStackSuffix(crossMatchSuffix));
         }
     }
 

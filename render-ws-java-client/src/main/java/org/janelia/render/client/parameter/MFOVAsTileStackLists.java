@@ -42,9 +42,8 @@ public class MFOVAsTileStackLists implements Serializable {
         for (final StackWithZValues rawStackWithAllZ : this.rawSfovStacksWithAllZ) {
 
             final StackId rawSfovStackId = rawStackWithAllZ.getStackId();
-            final StackId prealignedSfovStackId = rawSfovStackId.withStackSuffix(mfovAsTile.getPrealignedMfovStackSuffix());
-            final StackId dynamicMfovStackId = mfovAsTile.getDynamicMfovStackId(rawSfovStackId);
-            final StackId renderedMfovStackId = mfovAsTile.getRenderedMfovStackId(dynamicMfovStackId);
+            final StackId prealignedSfovStackId = rawSfovStackId.withStackSuffix(mfovAsTile.getPrealignedSfovStackSuffix());
+            final StackId renderedMfovStackId = mfovAsTile.getRenderedMfovStackId(rawSfovStackId);
             final StackId roughSfovStackId = mfovAsTile.getRoughSfovStackId(rawSfovStackId);
 
             final List<Double> allZValues = rawStackWithAllZ.getzValues();
