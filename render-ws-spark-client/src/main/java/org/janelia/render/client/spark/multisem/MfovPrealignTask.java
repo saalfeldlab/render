@@ -99,7 +99,7 @@ public class MfovPrealignTask implements Serializable {
         try {
             LogUtilities.setupExecutorLog4j(prealignedStackId.toDevString() + "_" + layerMfov);
 
-            LOG.info("alignMfov: entry");
+            LOG.info("run: entry");
 
             final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
                                                                      rawSfovStackId.getOwner(),
@@ -109,19 +109,19 @@ public class MfovPrealignTask implements Serializable {
             final ResolvedTileSpecCollection mfovTiles = fetchMfovTileSpecs(dataClient);
 
             if (mfovTiles.getTileCount() == 0) {
-                LOG.warn("alignMfov: no tiles found");
+                LOG.warn("run: no tiles found");
             } else {
-                LOG.info("alignMfov: fetched {} tiles", mfovTiles.getTileCount());
+                LOG.info("run: fetched {} tiles", mfovTiles.getTileCount());
             }
 
             // 2. Generate tile pairs for matching
             final List<OrderedCanvasIdPair> tilePairs = generateTilePairs(mfovTiles);
 
             if (tilePairs.isEmpty()) {
-                LOG.warn("alignTiles: no tile pairs generated");
+                LOG.warn("run: no tile pairs generated");
                 return;
             }
-            LOG.info("alignTiles: generated {} tile pairs", tilePairs.size());
+            LOG.info("run: generated {} tile pairs", tilePairs.size());
 
             // Initialize the image processor cache with ~1Gb size to hold all tiles in memory
             final ImageProcessorCache cache = new ImageProcessorCache(1_000_000_000L, false, false);
@@ -135,10 +135,10 @@ public class MfovPrealignTask implements Serializable {
             // 5. Push the aligned tile specs to the prealigned stack
             final int savedTileCount = saveMfovTiles(dataClient, alignedIcTiles);
 
-            LOG.info("alignMfov: exit, aligned and saved {} tiles", savedTileCount);
+            LOG.info("run: exit, aligned and saved {} tiles", savedTileCount);
 
         } catch (final Exception e) {
-            LOG.error("alignMfov: failed", e);
+            LOG.error("run: failed", e);
             throw new RuntimeException("Failed to align MFOV " + layerMfov, e);
         }
     }
@@ -207,7 +207,7 @@ public class MfovPrealignTask implements Serializable {
             final String tileIdI = pair.getP().getId();
             final String tileIdJ = pair.getQ().getId();
 
-            LOG.info("performSiftAlignment: matching features for canvas pair {} <-> {}", tileIdI, tileIdJ);
+            LOG.info("alignTiles: matching features for canvas pair {} <-> {}", tileIdI, tileIdJ);
             final CanvasMatchResult matchResult = featureMatcher.deriveMatchResult(
                     mfovFeatures.get(tileIdI),
                     mfovFeatures.get(tileIdJ)
