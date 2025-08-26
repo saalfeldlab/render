@@ -27,6 +27,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -185,6 +186,33 @@ public class RenderDataClient {
         LOG.info("getOwnerMatchCollections: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * Renames this client's match collection.
+     *
+     * @param  toMatchCollectionId  new owner and/or collection names.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void renameMatchCollection(final MatchCollectionId toMatchCollectionId)
+            throws IOException {
+
+        final String json = toMatchCollectionId.toJson();
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+
+        final URI uri = getUri(urls.getMatchCollectionUrlString() + "/collectionId");
+
+        final String requestContext = "PUT " + uri;
+        final EmptyResponseHandler responseHandler = new EmptyResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("renameMatchCollection: submitting {} with body {}", requestContext, json);
+
+        httpClient.execute(httpPut, responseHandler);
     }
 
     /**
