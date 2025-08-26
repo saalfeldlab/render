@@ -1,5 +1,7 @@
 package org.janelia.render.client.spark.multisem;
 
+import ij.process.ImageProcessor;
+
 import java.awt.geom.Rectangle2D;
 import java.io.IOException;
 import java.io.Serializable;
@@ -8,10 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
-import ij.process.ImageProcessor;
 import mpicbg.imagefeatures.Feature;
 import mpicbg.models.ErrorStatistic;
 import mpicbg.models.IllDefinedDataPointsException;
@@ -148,16 +147,10 @@ public class MfovPrealignTask implements Serializable {
      * Fetch tile specs for all SFOVs belonging to this MFOV at the specified z layer.
      */
     private ResolvedTileSpecCollection fetchMfovTileSpecs(final RenderDataClient dataClient) throws IOException {
-        final ResolvedTileSpecCollection mfovTiles = dataClient.getResolvedTiles(rawSfovStackId.getStack(), layerMfov.getZ());
-
-        // Filter tiles that belong to this MFOV and add them to the collection
-        final Set<String> tileIdsToKeep = mfovTiles.getTileSpecs().stream()
-                .map(TileSpec::getTileId)
-                .filter(tileId -> tileId.contains("_" + layerMfov.getSimpleMfovName() + "_"))
-                .collect(Collectors.toSet());
-        mfovTiles.retainTileSpecs(tileIdsToKeep);
-
-        return mfovTiles;
+        final String matchPattern = "_" + layerMfov.getSimpleMfovName() + "_"; // limit to tiles in this MFOV
+        return dataClient.getResolvedTiles(rawSfovStackId.getStack(),
+                                           layerMfov.getZ(),
+                                           matchPattern);
     }
 
     /**
