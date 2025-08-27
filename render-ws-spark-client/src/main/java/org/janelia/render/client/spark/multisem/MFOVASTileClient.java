@@ -214,11 +214,10 @@ public class MFOVASTileClient
         }
 
         if (!mfovTasks.isEmpty()) {
-            LOG.info("alignAndIntensityCorrectMfovAsTileStacks: distributing alignment of {} MFOV tasks across {} stacks",
+
+            LOG.info("alignAndIntensityCorrectMfovAsTileStacks: distributing {} MFOV tasks across {} stacks",
                      mfovTasks.size(), prealignedStackIds.size());
 
-            // Parallelize MFOV alignment tasks
-            LOG.info("alignAndIntensityCorrectMfovAsTileStacks: aligning {} MFOVs", mfovTasks.size());
             final JavaRDD<MfovPrealignTask> rddMfovTasks = sparkContext.parallelize(mfovTasks);
             rddMfovTasks.foreach(MfovPrealignTask::run);
 
