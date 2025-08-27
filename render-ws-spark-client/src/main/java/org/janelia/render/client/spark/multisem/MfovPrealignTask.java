@@ -34,7 +34,6 @@ import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.multisem.LayerMFOV;
-import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
@@ -56,8 +55,6 @@ public class MfovPrealignTask implements Serializable {
     private final StackId prealignedStackId;
     private final LayerMFOV layerMfov;
 
-    private static final FeatureExtractionParameters FEATURE_EXTRACTION_PARAMETERS = new FeatureExtractionParameters();
-    private static final MatchDerivationParameters MATCH_DERIVATION_PARAMETERS = new MatchDerivationParameters();
     private static final int CLIP_SIZE = 150;
 
     public MfovPrealignTask(
@@ -70,77 +67,58 @@ public class MfovPrealignTask implements Serializable {
         this.rawSfovStackId = rawSfovStackId;
         this.prealignedStackId = prealignedStackId;
         this.layerMfov = layerMfov;
-
-
-        FEATURE_EXTRACTION_PARAMETERS.fdSize = 4;
-        FEATURE_EXTRACTION_PARAMETERS.maxScale = 1.0;
-        FEATURE_EXTRACTION_PARAMETERS.minScale = 0.25;
-        FEATURE_EXTRACTION_PARAMETERS.steps = 5;
-
-        MATCH_DERIVATION_PARAMETERS.matchFilter = MatchFilter.FilterType.SINGLE_SET;
-        MATCH_DERIVATION_PARAMETERS.matchFullScaleCoverageRadius = 300.0;
-        MATCH_DERIVATION_PARAMETERS.matchIterations = 1000;
-        MATCH_DERIVATION_PARAMETERS.matchMaxEpsilonFullScale = 5.0f;
-        MATCH_DERIVATION_PARAMETERS.matchMaxTrust = 4.0;
-        MATCH_DERIVATION_PARAMETERS.matchMinCoveragePercentage = 0.0;
-        MATCH_DERIVATION_PARAMETERS.matchMinInlierRatio = 0.0f;
-        MATCH_DERIVATION_PARAMETERS.matchMinNumInliers = 10;
-        MATCH_DERIVATION_PARAMETERS.matchModelType = ModelType.TRANSLATION;
-        MATCH_DERIVATION_PARAMETERS.matchRod = 0.92f;
     }
 
     /**
      * Align and intensity correct all SFOVs within this MFOV and save the aligned tile specs to the prealigned stack.
      * Both alignment and intensity correction are performed by simple translation models.
      *
-     * @throws RuntimeException if alignment fails
+     * @throws IOException if alignment fails
      */
-    public void run() {
-        try {
-            LogUtilities.setupExecutorLog4j(prealignedStackId.toDevString() + "_" + layerMfov);
+    public void run()
+            throws IOException {
 
-            LOG.info("run: entry");
+        // Setup executor log4j for runs at Janelia which will place layerMfovDevString in the %X{context} element.
+        // For Logs Explorer views of Google Dataproc runs, the context does not seem to be available/selectable
+        // as a summary field.  To work around this limitation, the layerMfovDevString is logged explicitly at
+        // the entry and exit of this run method.  You can then see which executorId maps to layerMfovDevString
+        // and filter accordingly in Logs Explorer.
+        final String layerMfovDevString = prealignedStackId.toDevString() + "::" + layerMfov;
+        LogUtilities.setupExecutorLog4j(layerMfovDevString);
+        LOG.info("[{}] run: entry", layerMfovDevString);
 
-            final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
-                                                                     rawSfovStackId.getOwner(),
-                                                                     rawSfovStackId.getProject());
+        final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
+                                                                 rawSfovStackId.getOwner(),
+                                                                 rawSfovStackId.getProject());
 
-            // 1. Fetch tile specs for all SFOVs in this MFOV
-            final ResolvedTileSpecCollection mfovTiles = fetchMfovTileSpecs(dataClient);
+        // 1. Fetch tile specs for all SFOVs in this MFOV
+        final ResolvedTileSpecCollection mfovTiles = fetchMfovTileSpecs(dataClient);
 
-            if (mfovTiles.getTileCount() == 0) {
-                LOG.warn("run: no tiles found");
-            } else {
-                LOG.info("run: fetched {} tiles", mfovTiles.getTileCount());
-            }
-
-            // 2. Generate tile pairs for matching
-            final List<OrderedCanvasIdPair> tilePairs = generateTilePairs(mfovTiles);
-
-            if (tilePairs.isEmpty()) {
-                LOG.warn("run: no tile pairs generated");
-                return;
-            }
-            LOG.info("run: generated {} tile pairs", tilePairs.size());
-
-            // Initialize the image processor cache with ~1Gb size to hold all tiles in memory
-            final ImageProcessorCache cache = new ImageProcessorCache(1_000_000_000L, false, false);
-
-            // 3. Align tiles within this MFOV
-            final ResolvedTileSpecCollection alignedTiles = alignTiles(mfovTiles, tilePairs, cache);
-
-            // 4. Perform intensity correction
-            final ResolvedTileSpecCollection alignedIcTiles = intensityCorrectTiles(alignedTiles, tilePairs, cache);
-
-            // 5. Push the aligned tile specs to the prealigned stack
-            final int savedTileCount = saveMfovTiles(dataClient, alignedIcTiles);
-
-            LOG.info("run: exit, aligned and saved {} tiles", savedTileCount);
-
-        } catch (final Exception e) {
-            LOG.error("run: failed", e);
-            throw new RuntimeException("Failed to align MFOV " + layerMfov, e);
+        if (mfovTiles.getTileCount() == 0) {
+            throw new IOException("no tile specs found for " + layerMfovDevString);
         }
+
+        // 2. Generate tile pairs for matching
+        final List<OrderedCanvasIdPair> tilePairs = generateTilePairs(mfovTiles);
+
+        if (tilePairs.isEmpty()) {
+            LOG.info("[{}] run: exit, no tile pairs generated", layerMfovDevString);
+            return;
+        }
+
+        // Initialize the image processor cache with ~1Gb size to hold all tiles in memory
+        final ImageProcessorCache cache = new ImageProcessorCache(1_000_000_000L, false, false);
+
+        // 3. Align tiles within this MFOV
+        final ResolvedTileSpecCollection alignedTiles = alignTiles(mfovTiles, tilePairs, cache);
+
+        // 4. Perform intensity correction
+        final ResolvedTileSpecCollection alignedIcTiles = intensityCorrectTiles(alignedTiles, tilePairs, cache);
+
+        // 5. Push the aligned tile specs to the prealigned stack
+        dataClient.saveResolvedTiles(alignedIcTiles, prealignedStackId.getStack(), layerMfov.getZ());
+
+        LOG.info("[{}] run: exit", layerMfovDevString);
     }
 
     /**
@@ -148,9 +126,11 @@ public class MfovPrealignTask implements Serializable {
      */
     private ResolvedTileSpecCollection fetchMfovTileSpecs(final RenderDataClient dataClient) throws IOException {
         final String matchPattern = "_" + layerMfov.getSimpleMfovName() + "_"; // limit to tiles in this MFOV
-        return dataClient.getResolvedTiles(rawSfovStackId.getStack(),
-                                           layerMfov.getZ(),
-                                           matchPattern);
+        final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTiles(rawSfovStackId.getStack(),
+                                                                                     layerMfov.getZ(),
+                                                                                     matchPattern);
+        LOG.info("fetchMfovTileSpecs: exit, returning collection with {} tiles", resolvedTiles.getTileCount());
+        return resolvedTiles;
     }
 
     /**
@@ -177,6 +157,8 @@ public class MfovPrealignTask implements Serializable {
             }
         }
 
+        LOG.info("generateTilePairs: exit, returning {} pairs", pairs.size());
+
         return pairs;
     }
 
@@ -188,6 +170,9 @@ public class MfovPrealignTask implements Serializable {
             final List<OrderedCanvasIdPair> tilePairs,
             final ImageProcessorCache cache
     ) {
+
+        LOG.info("alignTiles: entry");
+
         // Extract features from all mfov tiles
         final CanvasFeatureExtractor featureExtractor = CanvasFeatureExtractor.build(FEATURE_EXTRACTION_PARAMETERS);
         final Map<String, List<Feature>> mfovFeatures = new HashMap<>(tiles.getTileCount());
@@ -207,7 +192,6 @@ public class MfovPrealignTask implements Serializable {
             final String tileIdI = pair.getP().getId();
             final String tileIdJ = pair.getQ().getId();
 
-            LOG.info("alignTiles: matching features for canvas pair {} <-> {}", tileIdI, tileIdJ);
             final CanvasMatchResult matchResult = featureMatcher.deriveMatchResult(
                     mfovFeatures.get(tileIdI),
                     mfovFeatures.get(tileIdJ)
@@ -229,6 +213,8 @@ public class MfovPrealignTask implements Serializable {
             }
         }
 
+        LOG.info("alignTiles: start optimization");
+
         // Optimize the tiles
         final TileConfiguration tc = new TileConfiguration();
         tc.addTiles(modelTiles.values());
@@ -240,7 +226,6 @@ public class MfovPrealignTask implements Serializable {
         } catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
             throw new RuntimeException("Failed to optimize tile transformations", e);
         }
-
 
         // Add the transformations to the tiles
         final double[] translation = new double[6];
@@ -264,13 +249,15 @@ public class MfovPrealignTask implements Serializable {
             tiles.addTransformSpecToTile(tileId, newTransformSpec, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
         }
 
+        LOG.info("alignTiles: exit, returning collection with {} tiles", tiles.getTileCount());
+
         return tiles;
     }
 
     /**
      * Extract features from boundary regions.
      */
-    private static List<Feature> extractBoundaryFeatures(
+    private List<Feature> extractBoundaryFeatures(
             final ImageProcessorCache cache,
             final TileSpec tileSpec,
             final CanvasFeatureExtractor featureExtractor
@@ -292,20 +279,32 @@ public class MfovPrealignTask implements Serializable {
             feature.location[1] += tileSpec.getMinY();
         }
 
+        /*
+         NOTE: this will get written for every tile in every pair so only include it to debug issues
+         LOG.info("extractBoundaryFeatures: exit, returning {} features for tile ID {}",
+                  features.size(), tileSpec.getTileId());
+        */
         return features;
     }
 
-    private static ImageProcessor loadImageProcessor(
+    private ImageProcessor loadImageProcessor(
             final ImageProcessorCache cache,
             final TileSpec tileSpec
     ) {
-        final int downSampleLevel = 0;
-        final boolean isMask = false;
-        final boolean convertTo16Bit = false;
-        final int slice = 0;
-        final ChannelSpec firstChannel = tileSpec.getAllChannels().get(0);
-        final ImageAndMask image = firstChannel.getMipmap(downSampleLevel);
-        return cache.get(image.getImageUrl(), downSampleLevel, isMask, convertTo16Bit, image.getImageLoaderType(), slice);
+        final ImageAndMask imageAndMask = tileSpec.getFirstMipmapEntry().getValue();
+        return cache.get(imageAndMask.getImageUrl(),
+                         0,
+                         false,
+                         false,
+                         imageAndMask.getImageLoaderType(),
+                         0);
+        /*
+         NOTE: this will get written for every tile in every pair so only include it to debug issues
+         final String size = ip != null ? (ip.getWidth() + "x" + ip.getHeight()) : "null";
+         LOG.debug("loadImageProcessor: exit, returning {} image for tile ID {}",
+                   size, tileSpec.getTileId());
+         return ip;
+        */
     }
 
     /**
@@ -436,23 +435,31 @@ public class MfovPrealignTask implements Serializable {
         return count > 0 ? sum / count : 0.0;
     }
 
-    /**
-     * Save the aligned tiles to the prealigned stack.
-     */
-    private int saveMfovTiles(final RenderDataClient dataClient,
-                              final ResolvedTileSpecCollection alignedTiles) throws IOException {
-
-        if (alignedTiles.getTileCount() == 0) {
-            LOG.warn("saveMfovTiles: no aligned tiles to save for mfov={}, z={}",
-                     layerMfov.getName(), layerMfov.getZ());
-            return 0;
-        }
-
-        // Save tiles to the prealigned stack
-        dataClient.saveResolvedTiles(alignedTiles, prealignedStackId.getStack(), layerMfov.getZ());
-
-        return alignedTiles.getTileCount();
+    private static FeatureExtractionParameters buildFeatureExtractionParameters() {
+        final FeatureExtractionParameters p = new FeatureExtractionParameters();
+        p.fdSize = 4;
+        p.maxScale = 1.0;
+        p.minScale = 0.25;
+        p.steps = 5;
+        return p;
     }
+    private static final FeatureExtractionParameters FEATURE_EXTRACTION_PARAMETERS = buildFeatureExtractionParameters();
+
+    private static MatchDerivationParameters buildMatchDerivationParameters() {
+        final MatchDerivationParameters p = new MatchDerivationParameters();
+        p.matchFilter = MatchFilter.FilterType.SINGLE_SET;
+        p.matchFullScaleCoverageRadius = 300.0;
+        p.matchIterations = 1000;
+        p.matchMaxEpsilonFullScale = 5.0f;
+        p.matchMaxTrust = 4.0;
+        p.matchMinCoveragePercentage = 0.0;
+        p.matchMinInlierRatio = 0.0f;
+        p.matchMinNumInliers = 10;
+        p.matchModelType = ModelType.TRANSLATION;
+        p.matchRod = 0.92f;
+        return p;
+    }
+    private static final MatchDerivationParameters MATCH_DERIVATION_PARAMETERS = buildMatchDerivationParameters();
 
     private static final Logger LOG = LoggerFactory.getLogger(MfovPrealignTask.class);
 }
