@@ -79,21 +79,21 @@ public class MfovPrealignTaskTest {
         final StackId renderedMfovStackId = dynamicMfovStackId.withStackSuffix(mfovAsTile.getRenderedMfovStackSuffix());
         final String runTimestamp = new TileRenderParameters().getRunTimestamp();
 
-        final MFOVASTileClient.JavaRenderTilesClientInfo z17Info =
-                new MFOVASTileClient.JavaRenderTilesClientInfo(baseDataUrl,
-                                                               dynamicMfovStackId,
-                                                               z17LayerMfov,
-                                                               mfovAsTile,
-                                                               runTimestamp);
+        final MFOVASTileClient.JavaRenderTilesClientInfoForLayerMfov z17Info =
+                new MFOVASTileClient.JavaRenderTilesClientInfoForLayerMfov(baseDataUrl,
+                                                                           dynamicMfovStackId,
+                                                                           z17LayerMfov,
+                                                                           mfovAsTile,
+                                                                           runTimestamp);
         z17Info.setupHackStackAndStorage();
         z17Info.renderTiles();
 
-        final MFOVASTileClient.JavaRenderTilesClientInfo z18Info =
-                new MFOVASTileClient.JavaRenderTilesClientInfo(baseDataUrl,
-                                                               dynamicMfovStackId,
-                                                               z18LayerMfov,
-                                                               mfovAsTile,
-                                                               runTimestamp);
+        final MFOVASTileClient.JavaRenderTilesClientInfoForLayerMfov z18Info =
+                new MFOVASTileClient.JavaRenderTilesClientInfoForLayerMfov(baseDataUrl,
+                                                                           dynamicMfovStackId,
+                                                                           z18LayerMfov,
+                                                                           mfovAsTile,
+                                                                           runTimestamp);
         z18Info.renderTiles();
 
 

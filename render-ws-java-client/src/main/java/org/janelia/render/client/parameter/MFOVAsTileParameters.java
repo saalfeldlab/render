@@ -111,24 +111,32 @@ public class MFOVAsTileParameters
         return crossMatchIdList == null ? List.of("A") : crossMatchIdList;
     }
 
+    public String getDynamicMfovStackSuffixForRawSfovStack() {
+        return prealignedSfovStackSuffix + dynamicMfovStackSuffix;
+    }
+
     public String getRenderedMfovStackSuffixForRawSfovStack() {
-        return dynamicMfovStackSuffix + renderedMfovStackSuffix;
+        return getDynamicMfovStackSuffixForRawSfovStack() + renderedMfovStackSuffix;
     }
 
     public String getAlignedMfovStackSuffixForRawSfovStack() {
         return getRenderedMfovStackSuffixForRawSfovStack() + alignedMfovStackSuffix;
     }
 
+    public StackId getPrealignedStackId(final StackId rawSfovStackId) {
+        return rawSfovStackId.withStackSuffix(prealignedSfovStackSuffix);
+    }
+
     public StackId getDynamicMfovStackId(final StackId rawSfovStackId) {
-        return rawSfovStackId.withStackSuffix(dynamicMfovStackSuffix);
+        return rawSfovStackId.withStackSuffix(getDynamicMfovStackSuffixForRawSfovStack());
     }
 
     public StackId getRenderedMfovStackId(final StackId rawSfovStackId) {
-        return getDynamicMfovStackId(rawSfovStackId).withStackSuffix(renderedMfovStackSuffix);
+        return rawSfovStackId.withStackSuffix(getRenderedMfovStackSuffixForRawSfovStack());
     }
 
     public StackId getAlignedMfovStackId(final StackId rawSfovStackId) {
-        return getRenderedMfovStackId(rawSfovStackId).withStackSuffix(alignedMfovStackSuffix);
+        return rawSfovStackId.withStackSuffix(getAlignedMfovStackSuffixForRawSfovStack());
     }
 
     public StackId getRoughSfovStackId(final StackId rawSfovStackId) {

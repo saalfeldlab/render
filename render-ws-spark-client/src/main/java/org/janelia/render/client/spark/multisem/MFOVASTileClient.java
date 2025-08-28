@@ -172,7 +172,7 @@ public class MFOVASTileClient
         LOG.info("alignAndIntensityCorrectMfovAsTileStacks: entry");
 
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
-        final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
+        final String prealignedSfovStackSuffix  = mfovAsTileStackLists.getMfovAsTile().getPrealignedSfovStackSuffix();
         final List<StackWithZValues> rawSfovStacksWithAllZ = mfovAsTileStackLists.getRawSfovStacksWithAllZ();
 
         // Collect all MFOV processing tasks
@@ -181,11 +181,10 @@ public class MFOVASTileClient
 
         for (final StackWithZValues rawSfovStackWithZ : rawSfovStacksWithAllZ) {
             final StackId rawSfovStackId = rawSfovStackWithZ.getStackId();
-            final StackId prealignedStackId = rawSfovStackId.withStackSuffix(mfovAsTile.getPrealignedSfovStackSuffix());
+            final StackId prealignedStackId = rawSfovStackId.withStackSuffix(prealignedSfovStackSuffix);
 
-            // Skip if prealigned stack already exists
             if (mfovAsTileStackLists.isExistingStack(prealignedStackId)) {
-                LOG.info("alignAndIntensityCorrectMfovAsTileStacks: skipping {} because it already exists",
+                LOG.info("alignAndIntensityCorrectMfovAsTileStacks: skipping build of {} because it already exists",
                          prealignedStackId.toDevString());
                 continue;
             }
@@ -213,10 +212,13 @@ public class MFOVASTileClient
             }
         }
 
-        if (!mfovTasks.isEmpty()) {
+        if (! mfovTasks.isEmpty()) {
 
-            LOG.info("alignAndIntensityCorrectMfovAsTileStacks: distributing {} MFOV tasks across {} stacks",
-                     mfovTasks.size(), prealignedStackIds.size());
+            // Note: it takes about 1 minute to process 1 MFOV with 91 SFOV tiles
+            final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, mfovTasks.size());
+
+            LOG.info("alignAndIntensityCorrectMfovAsTileStacks: distributing {} MFOV tasks across {} stacks with parallelism {} (defaultParallelism={})",
+                     mfovTasks.size(), prealignedStackIds.size(), parallelism, sparkContext.defaultParallelism());
 
             final JavaRDD<MfovPrealignTask> rddMfovTasks = sparkContext.parallelize(mfovTasks);
             rddMfovTasks.foreach(MfovPrealignTask::run);
@@ -255,16 +257,16 @@ public class MFOVASTileClient
 
             LogUtilities.setupExecutorLog4j(stackWithAllZ.getStackId().toDevString());
 
-            final StackId rawStackId = stackWithAllZ.getStackId();
-            final StackId dynamicMfovAsTileStackId = rawStackId.withStackSuffix(dynamicMfovStackSuffix);
+            final StackId prealignedStackId = stackWithAllZ.getStackId();
+            final StackId dynamicMfovAsTileStackId = prealignedStackId.withStackSuffix(dynamicMfovStackSuffix);
 
             if (mfovAsTileStackLists.isExistingStack(dynamicMfovAsTileStackId)) {
                 LOG.info("buildMfovStackFunction: skipping build of {} because it already exists",
                          dynamicMfovAsTileStackId.toDevString());
             } else {
                 final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
-                                                                         rawStackId.getOwner(),
-                                                                         rawStackId.getProject());
+                                                                         prealignedStackId.getOwner(),
+                                                                         prealignedStackId.getProject());
 
                 builtStackId = MFOVAsTileStackClient.buildOneMFOVAsTileStack(stackWithAllZ,
                                                                              dataClient,
@@ -295,13 +297,13 @@ public class MFOVASTileClient
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
         final String runTimestamp = new TileRenderParameters().getRunTimestamp();
 
-        final List<JavaRenderTilesClientInfo> renderTilesClientInfoList = new ArrayList<>();
+        final List<JavaRenderTilesClientInfoForLayerMfov> layerMfovClientInfoList = new ArrayList<>();
         final List<StackId> renderedMfovStackList = new ArrayList<>();
         for (final StackWithZValues rawSfovStackWithAllZ : mfovAsTileStackLists.getRawSfovStacksWithAllZ()) {
 
             final StackId rawStackId = rawSfovStackWithAllZ.getStackId();
-            final StackId dynamicMfovAsTileStackId = rawStackId.withStackSuffix(mfovAsTile.getDynamicMfovStackSuffix());
-            final StackId renderedMfovAsTileStackId = dynamicMfovAsTileStackId.withStackSuffix(mfovAsTile.getRenderedMfovStackSuffix());
+            final StackId dynamicMfovAsTileStackId = mfovAsTile.getDynamicMfovStackId(rawStackId);
+            final StackId renderedMfovAsTileStackId = mfovAsTile.getRenderedMfovStackId(rawStackId);
 
             if (mfovAsTileStackLists.isExistingStack(renderedMfovAsTileStackId)) {
 
@@ -321,12 +323,13 @@ public class MFOVASTileClient
                                                                                                         z);
                     for (final String mfovName : mfovNames) {
 
-                        final JavaRenderTilesClientInfo info = new JavaRenderTilesClientInfo(baseDataUrl,
-                                                                                             dynamicMfovAsTileStackId,
-                                                                                             new LayerMFOV(z, mfovName),
-                                                                                             mfovAsTile,
-                                                                                             runTimestamp);
-                        renderTilesClientInfoList.add(info);
+                        final JavaRenderTilesClientInfoForLayerMfov info =
+                                new JavaRenderTilesClientInfoForLayerMfov(baseDataUrl,
+                                                                          dynamicMfovAsTileStackId,
+                                                                          new LayerMFOV(z, mfovName),
+                                                                          mfovAsTile,
+                                                                          runTimestamp);
+                        layerMfovClientInfoList.add(info);
 
                         if (isSetupNeeded) {
                             info.setupHackStackAndStorage();
@@ -339,13 +342,16 @@ public class MFOVASTileClient
             }
         }
 
-        if (! renderTilesClientInfoList.isEmpty()) {
+        if (! layerMfovClientInfoList.isEmpty()) {
 
-            LOG.info("buildRenderedMfovAsTileStacks: distributing rendering for {} stack(s)",
-                     renderedMfovStackList.size());
+            final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, layerMfovClientInfoList.size());
 
-            final JavaRDD<JavaRenderTilesClientInfo> rddRenderTiles = sparkContext.parallelize(renderTilesClientInfoList);
-            final Function<JavaRenderTilesClientInfo, Integer> renderTilesFunction = JavaRenderTilesClientInfo::renderTiles;
+            LOG.info("buildRenderedMfovAsTileStacks: distributing rendering for {} layer MFOVs with parallelism {} (defaultParallelism={})",
+                     layerMfovClientInfoList.size(), parallelism, sparkContext.defaultParallelism());
+
+            final JavaRDD<JavaRenderTilesClientInfoForLayerMfov> rddRenderTiles = sparkContext.parallelize(layerMfovClientInfoList,
+                                                                                                           parallelism);
+            final Function<JavaRenderTilesClientInfoForLayerMfov, Integer> renderTilesFunction = JavaRenderTilesClientInfoForLayerMfov::renderTiles;
             final JavaRDD<Integer> rddRenderedTileCounts = rddRenderTiles.map(renderTilesFunction);
 
             final List<Integer> resultList = rddRenderedTileCounts.collect();
@@ -706,18 +712,19 @@ public class MFOVASTileClient
     }
 
     // Serializable information that can be used to build RenderTilesClient instances in remote Spark workers
-    public static class JavaRenderTilesClientInfo implements Serializable {
+    public static class JavaRenderTilesClientInfoForLayerMfov
+            implements Serializable {
 
         private final String baseDataUrl;
         private final StackId stackId;
         private final LayerMFOV layerMFOV;
         private final TileRenderParameters tileRender;
 
-        public JavaRenderTilesClientInfo(final String baseDataUrl,
-                                         final StackId stackId,
-                                         final LayerMFOV layerMFOV,
-                                         final MFOVAsTileParameters mfovAsTile,
-                                         final String runTimestamp) {
+        public JavaRenderTilesClientInfoForLayerMfov(final String baseDataUrl,
+                                                     final StackId stackId,
+                                                     final LayerMFOV layerMFOV,
+                                                     final MFOVAsTileParameters mfovAsTile,
+                                                     final String runTimestamp) {
             this.baseDataUrl = baseDataUrl;
             this.stackId = stackId;
             this.layerMFOV = layerMFOV;
@@ -786,6 +793,8 @@ public class MFOVASTileClient
                                         roughSfovStackId.withStackSuffix(crossMatchSuffix));
         }
     }
+
+    private static final int MAX_PARTITIONS_FOR_ONE_WEB_SERVER = 100000;
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVASTileClient.class);
 }
