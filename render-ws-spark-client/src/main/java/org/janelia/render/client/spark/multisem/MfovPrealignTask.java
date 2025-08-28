@@ -78,6 +78,8 @@ public class MfovPrealignTask implements Serializable {
     public void run()
             throws IOException {
 
+        final long startTime = System.currentTimeMillis();
+
         // Setup executor log4j for runs at Janelia which will place layerMfovDevString in the %X{context} element.
         // For Logs Explorer views of Google Dataproc runs, the context does not seem to be available/selectable
         // as a summary field.  To work around this limitation, the layerMfovDevString is logged explicitly at
@@ -85,7 +87,7 @@ public class MfovPrealignTask implements Serializable {
         // and filter accordingly in Logs Explorer.
         final String layerMfovDevString = prealignedStackId.toDevString() + "::" + layerMfov;
         LogUtilities.setupExecutorLog4j(layerMfovDevString);
-        LOG.info("[{}] run: entry", layerMfovDevString);
+        LOG.info("run: entry, layerMfovDevString={}", layerMfovDevString);
 
         final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
                                                                  rawSfovStackId.getOwner(),
@@ -118,7 +120,10 @@ public class MfovPrealignTask implements Serializable {
         // 5. Push the aligned tile specs to the prealigned stack
         dataClient.saveResolvedTiles(alignedIcTiles, prealignedStackId.getStack(), layerMfov.getZ());
 
-        LOG.info("[{}] run: exit", layerMfovDevString);
+        final long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
+
+        LOG.info("run: exit, layerMfovDevString={}, elapsedSeconds={}",
+                 layerMfovDevString, elapsedSeconds);
     }
 
     /**
@@ -361,22 +366,30 @@ public class MfovPrealignTask implements Serializable {
             tileSpecI.deriveBoundingBox(tileSpecI.getMeshCellSize(), true);
             tileSpecJ.deriveBoundingBox(tileSpecJ.getMeshCellSize(), true);
 
-            // Compute means on the overlap
             final Rectangle2D rectI = new Rectangle2D.Double(tileSpecI.getMinX(), tileSpecI.getMinY(), tileSpecI.getWidth(), tileSpecI.getHeight());
             final Rectangle2D rectJ = new Rectangle2D.Double(tileSpecJ.getMinX(), tileSpecJ.getMinY(), tileSpecJ.getWidth(), tileSpecJ.getHeight());
-            final Rectangle2D overlap = rectI.createIntersection(rectJ);
 
-            final double meanI = computeMeanIntensity(tileSpecI, overlap, cache);
-            final double meanJ = computeMeanIntensity(tileSpecJ, overlap, cache);
+            if (rectI.intersects(rectJ)) {
 
-            // Add point match
-            final PointMatch pointMatch = new PointMatch(
-                    new Point(new double[] {meanI}),
-                    new Point(new double[] {meanJ})
-            );
-            final Tile<TranslationModel1D> modelTileI = modelTiles.get(tileIdI);
-            final Tile<TranslationModel1D> modelTileJ = modelTiles.get(tileIdJ);
-            modelTileI.connect(modelTileJ, Collections.singletonList(pointMatch));
+                // Compute means on the overlap
+                final Rectangle2D overlap = rectI.createIntersection(rectJ);
+
+                final double meanI = computeMeanIntensity(tileSpecI, overlap, cache);
+                final double meanJ = computeMeanIntensity(tileSpecJ, overlap, cache);
+
+                // Add point match
+                final PointMatch pointMatch = new PointMatch(
+                        new Point(new double[]{meanI}),
+                        new Point(new double[]{meanJ})
+                );
+                final Tile<TranslationModel1D> modelTileI = modelTiles.get(tileIdI);
+                final Tile<TranslationModel1D> modelTileJ = modelTiles.get(tileIdJ);
+                modelTileI.connect(modelTileJ, Collections.singletonList(pointMatch));
+
+            } else {
+                LOG.warn("intensityCorrectTiles: tiles {} and {} do not overlap after alignment",
+                         tileIdI, tileIdJ);
+            }
         }
 
         // Optimize the translation models for intensity correction
