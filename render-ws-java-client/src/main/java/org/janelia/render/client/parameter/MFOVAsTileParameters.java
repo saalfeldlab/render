@@ -166,7 +166,7 @@ public class MFOVAsTileParameters
 
         final AffineBlockSolverSetup setup = new AffineBlockSolverSetup();
 
-        setup.preAlign = FIBSEMAlignmentParameters.PreAlign.TRANSLATION;
+        setup.preAlign = FIBSEMAlignmentParameters.PreAlign.RIGID;
 
         setup.distributedSolve.maxAllowedErrorGlobal = 10.0;
         setup.distributedSolve.maxIterationsGlobal = 1000;
@@ -259,7 +259,7 @@ public class MFOVAsTileParameters
                                                      null,
                                                      null));
 
-        } else if ("B".equals(crossMatchId) || "D".equals(crossMatchId)) {
+        } else if ("B".equals(crossMatchId) || "D".equals(crossMatchId) || "F".equals(crossMatchId)) {
 
             // 2 passes, render scales 0.2 and 0.3, minInliers 250
             matchStageParametersList =
