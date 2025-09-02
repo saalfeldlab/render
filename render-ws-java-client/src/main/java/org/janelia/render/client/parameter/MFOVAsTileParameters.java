@@ -187,7 +187,8 @@ public class MFOVAsTileParameters
         setup.stitching.minInliers = 25;
 
         setup.blockOptimizer.lambdasRigid = List.of(1.0,1.0,0.9,0.3,0.01);
-        setup.blockOptimizer.lambdasTranslation = List.of(1.0,1.0,1.0,1.0,1.0);
+        //setup.blockOptimizer.lambdasTranslation = List.of(1.0,1.0,1.0,1.0,1.0);
+        setup.blockOptimizer.lambdasTranslation = List.of(1.0,0.0,0.0,0.0,0.0);
         setup.blockOptimizer.lambdasRegularization = List.of(0.0, 0.0, 0.0, 0.0, 0.0);
         setup.blockOptimizer.iterations = List.of(1000,1000,500,250,250);
         setup.blockOptimizer.maxPlateauWidth = List.of(250,250,150,100,100);
@@ -259,7 +260,8 @@ public class MFOVAsTileParameters
                                                      null,
                                                      null));
 
-        } else if ("B".equals(crossMatchId) || "D".equals(crossMatchId) || "F".equals(crossMatchId)) {
+        } else if ("B".equals(crossMatchId) || "D".equals(crossMatchId) || 
+                   "F".equals(crossMatchId) || "H".equals(crossMatchId)) {
 
             // 2 passes, render scales 0.2 and 0.3, minInliers 250
             matchStageParametersList =
