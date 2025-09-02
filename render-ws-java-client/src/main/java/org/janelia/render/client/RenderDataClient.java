@@ -26,6 +26,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
@@ -1363,6 +1364,7 @@ public class RenderDataClient {
                           urlString,
                           excludeMatchDetails);
     }
+
     /**
      * Deletes matches with the specified pGroupId.
      *
@@ -1381,6 +1383,58 @@ public class RenderDataClient {
         final HttpDelete httpDelete = new HttpDelete(uri);
 
         LOG.info("deleteMatchesWithPGroupId: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
+    }
+
+    /**
+     * Deletes matches between the specified groupId and all other canvases that have a different groupId.
+     *
+     * @param  groupId  group identifier (usually the section id).
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteMatchesOutsideGroup(final String groupId)
+            throws IOException {
+
+        final String urlString = String.format("%s/group/%s/matchesOutsideGroup",
+                                               urls.getMatchCollectionUrlString(), groupId);
+        final URI uri = getUri(urlString);
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteMatchesOutsideGroup: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
+    }
+
+    /**
+     * Deletes matches between the specified canvas pair.
+     *
+     * @param  pCanvasId  p canvas id.
+     * @param  qCanvasId  q canvas id.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteMatchPair(final CanvasId pCanvasId,
+                                final CanvasId qCanvasId)
+            throws IOException {
+
+        final String urlString = String.format("%s/group/%s/id/%s/matchesWith/%s/id/%s",
+                                               urls.getMatchCollectionUrlString(),
+                                               pCanvasId.getGroupId(), pCanvasId.getId(),
+                                               qCanvasId.getGroupId(), qCanvasId.getId());
+        final URI uri = getUri(urlString);
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteMatchPair: submitting {}", requestContext);
 
         httpClient.execute(httpDelete, responseHandler);
     }
