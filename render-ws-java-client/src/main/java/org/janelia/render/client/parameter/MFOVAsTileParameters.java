@@ -166,7 +166,7 @@ public class MFOVAsTileParameters
 
         final AffineBlockSolverSetup setup = new AffineBlockSolverSetup();
 
-        setup.preAlign = FIBSEMAlignmentParameters.PreAlign.RIGID;
+        setup.preAlign = FIBSEMAlignmentParameters.PreAlign.TRANSLATION;
 
         setup.distributedSolve.maxAllowedErrorGlobal = 10.0;
         setup.distributedSolve.maxIterationsGlobal = 1000;
