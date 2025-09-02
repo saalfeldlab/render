@@ -33,6 +33,7 @@ public class MFOVAsTileParameters
     private final String alignedMfovStackSuffix;
     private final String roughSfovStackSuffix;
     private final List<String> crossMatchIdList;
+    private final Double minCrossMatchPixelDistance;
 
     public MFOVAsTileParameters() {
         this(null,
@@ -58,7 +59,8 @@ public class MFOVAsTileParameters
              renderedMfovStackSuffix,
              alignedMfovStackSuffix,
              roughSfovStackSuffix,
-             List.of("A"));
+             List.of("A"),
+             null);
     }
 
     public MFOVAsTileParameters(final Double mfovRenderScale,
@@ -68,7 +70,8 @@ public class MFOVAsTileParameters
                                 final String renderedMfovStackSuffix,
                                 final String alignedMfovStackSuffix,
                                 final String roughSfovStackSuffix,
-                                final List<String> crossMatchIdList) {
+                                final List<String> crossMatchIdList,
+                                final Double minCrossMatchPixelDistance) {
         this.mfovRenderScale = mfovRenderScale;
         this.mfovRootDirectory = mfovRootDirectory;
         this.prealignedSfovStackSuffix = prealignedSfovStackSuffix;
@@ -77,6 +80,7 @@ public class MFOVAsTileParameters
         this.alignedMfovStackSuffix = alignedMfovStackSuffix;
         this.roughSfovStackSuffix = roughSfovStackSuffix;
         this.crossMatchIdList = crossMatchIdList;
+        this.minCrossMatchPixelDistance = minCrossMatchPixelDistance;
     }
 
     public Double getMfovRenderScale() {
@@ -109,6 +113,10 @@ public class MFOVAsTileParameters
 
     public List<String> getCrossMatchIdList() {
         return crossMatchIdList == null ? List.of("A") : crossMatchIdList;
+    }
+
+    public Double getMinCrossMatchPixelDistance() {
+        return minCrossMatchPixelDistance;
     }
 
     public String getDynamicMfovStackSuffixForRawSfovStack() {
@@ -178,31 +186,6 @@ public class MFOVAsTileParameters
         setup.stitching.maxPlateauWidth = 1000;
         setup.stitching.minInliers = 25;
 
-        // 20250815 parameters - allowed shifts between z 10 and 11
-//        setup.blockOptimizer.lambdasRigid = List.of(1.0);
-//        setup.blockOptimizer.lambdasTranslation = List.of(0.5);
-//        setup.blockOptimizer.lambdasRegularization = List.of(0.05);
-//        setup.blockOptimizer.iterations = List.of(10000);
-//        setup.blockOptimizer.maxPlateauWidth = List.of(1000);
-//        setup.blockOptimizer.maxAllowedError = 10.0;
-
-        // test_b_twelve_mfovs_align_20250818_092149a - introduces rotation
-//        setup.blockOptimizer.lambdasRigid = List.of(1.0,1.0,0.9,0.3,0.01);
-//        setup.blockOptimizer.lambdasTranslation = List.of(1.0,0.0,0.0,0.0,0.0);
-//        setup.blockOptimizer.lambdasRegularization = List.of(0.05, 0.01, 0.0, 0.0, 0.0);
-//        setup.blockOptimizer.iterations = List.of(1000,1000,500,250,250);
-//        setup.blockOptimizer.maxPlateauWidth = List.of(250,250,150,100,100);
-//        setup.blockOptimizer.maxAllowedError = 10.0;
-
-        // test_b_twelve_mfovs_align_20250818_092850a
-//        setup.blockOptimizer.lambdasRigid = List.of(1.0,1.0,0.9,0.3,0.01);
-//        setup.blockOptimizer.lambdasTranslation = List.of(1.0,0.0,0.0,0.0,0.0);
-//        setup.blockOptimizer.lambdasRegularization = List.of(0.0, 0.0, 0.0, 0.0, 0.0);
-//        setup.blockOptimizer.iterations = List.of(1000,1000,500,250,250);
-//        setup.blockOptimizer.maxPlateauWidth = List.of(250,250,150,100,100);
-//        setup.blockOptimizer.maxAllowedError = 10.0;
-
-        // test_c_24_mfovs_align_20250818_153209a
         setup.blockOptimizer.lambdasRigid = List.of(1.0,1.0,0.9,0.3,0.01);
         setup.blockOptimizer.lambdasTranslation = List.of(1.0,1.0,1.0,1.0,1.0);
         setup.blockOptimizer.lambdasRegularization = List.of(0.0, 0.0, 0.0, 0.0, 0.0);
@@ -255,7 +238,7 @@ public class MFOVAsTileParameters
 
         final List<MatchStageParameters> matchStageParametersList;
 
-        if ("A".equals(crossMatchId)) {
+        if ("A".equals(crossMatchId) || "E".equals(crossMatchId)) {
 
             // 2 passes, render scales 0.2 and 0.3, minInliers 150
             matchStageParametersList =
@@ -276,7 +259,7 @@ public class MFOVAsTileParameters
                                                      null,
                                                      null));
 
-        } else if ("B".equals(crossMatchId)) {
+        } else if ("B".equals(crossMatchId) || "D".equals(crossMatchId)) {
 
             // 2 passes, render scales 0.2 and 0.3, minInliers 250
             matchStageParametersList =

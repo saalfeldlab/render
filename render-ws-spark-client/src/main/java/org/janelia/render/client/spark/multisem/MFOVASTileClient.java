@@ -33,6 +33,7 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.ClusterCountClient;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.match.RemoveMatchClient;
 import org.janelia.render.client.multisem.MFOVAsTileMontageMatchPatchClient;
 import org.janelia.render.client.multisem.MFOVAsTileStackClient;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
@@ -40,6 +41,7 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MFOVAsTileStackLists;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
+import org.janelia.render.client.parameter.MatchRemovalParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.TileRenderParameters;
@@ -150,6 +152,8 @@ public class MFOVASTileClient
 
             generateMfovAsTileMatches(sparkContext, mfovAsTileStackLists, crossMatchId);
 
+            removeCrossResinMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
+
             patchMissingMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
 
             alignRenderedMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
@@ -161,7 +165,6 @@ public class MFOVASTileClient
                                                          mfovAsTileStackLists.getRawSfovStacksWithAllZ(),
                                                          crossMatchId);
         }
-
 
         LOG.info("run: exit");
     }
@@ -428,6 +431,50 @@ public class MFOVASTileClient
         }
 
         LOG.info("generateMfovAsTileMatches: exit");
+    }
+
+    private static void removeCrossResinMfovAsTileMatches(final JavaSparkContext sparkContext,
+                                                          final MFOVAsTileStackLists mfovAsTileStackLists) {
+
+        final Double minCrossMatchPixelDistance = mfovAsTileStackLists.getMfovAsTile().getMinCrossMatchPixelDistance();
+        if (minCrossMatchPixelDistance == null) {
+            LOG.info("removeCrossResinMfovAsTileMatches: skipping because minCrossMatchPixelDistance is null");
+            return;
+        }
+
+        // NOTE: Removal is run regardless of whether removal has been run before.
+
+        final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
+        final List<StackWithZValues> renderedMfovStacksWithAllZ = mfovAsTileStackLists.getRenderedMfovStacksWithAllZ();
+
+        LOG.info("removeCrossResinMfovAsTileMatches: entry, distributing removal for {} stack(s)",
+                 renderedMfovStacksWithAllZ.size());
+
+        final JavaRDD<StackWithZValues> rddStacks = sparkContext.parallelize(renderedMfovStacksWithAllZ);
+
+        final Function<StackWithZValues, Integer> removalFunction = stackWithZValues -> {
+
+            LogUtilities.setupExecutorLog4j(stackWithZValues.getStackId().toDevString());
+
+            final StackId stackId = stackWithZValues.getStackId();
+            final MatchCollectionId matchCollectionId = stackId.getDefaultMatchCollectionId(false);
+            final RenderDataClient matchClient = new RenderDataClient(baseDataUrl,
+                                                                      matchCollectionId.getOwner(),
+                                                                      matchCollectionId.getName());
+
+            final MatchRemovalParameters matchRemovalParameters = new MatchRemovalParameters();
+            matchRemovalParameters.minCrossMatchPixelDistance = minCrossMatchPixelDistance;
+
+            return RemoveMatchClient.removeMatchPairsForCollection(matchClient, matchRemovalParameters);
+        };
+
+        final JavaRDD<Integer> rddRemovedPairCounts = rddStacks.map(removalFunction);
+
+        final long totalNumberOfRemovedPairs =
+                rddRemovedPairCounts.collect().stream().mapToInt(Integer::intValue).sum();
+
+        LOG.info("removeCrossResinMfovAsTileMatches: removed {} match pairs across all stacks",
+                 totalNumberOfRemovedPairs);
     }
 
     private static void patchMissingMfovAsTileMatches(final JavaSparkContext sparkContext,
