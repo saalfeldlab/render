@@ -60,8 +60,7 @@ public class Create16BitH5StackClient {
 
         @Parameter(
                 names = "--rawH5Channel",
-                description = "Channel (0 or 1) to use in the raw h5 files",
-                required = true)
+                description = "Channel (0 or 1) to use in the raw h5 files")
         public int rawH5Channel = 0;
 
         @Parameter(
