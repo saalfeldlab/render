@@ -5,12 +5,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackMetaData.StackState;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -191,9 +193,9 @@ public class Unbend
 			effectiveArgs = new String[] {
 				"http://em-services-1.int.janelia.org:8080/render-ws/v1",
 				"cellmap",
-				"jrc_ut23_0590_100",
-				"v1_acquire_align_straightened_final",
-				"v1_acquire_align_straightened_final2"
+				"jrc_mus_cortex_2",
+				"v1_acquire_align",
+				"v1_acquire_align_straightened"
 			};
 		} else {
 			effectiveArgs = args;
@@ -206,6 +208,12 @@ public class Unbend
 		final String targetStack = effectiveArgs[4];
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
+
+        final Set<String> projectStackNames = renderDataClient.getProjectStacks().stream().map(StackId::getStack).collect(Collectors.toSet());
+        if (projectStackNames.contains(targetStack)) {
+            throw new IllegalArgumentException("target stack " + targetStack + " already exists");
+        }
+
 		final StackMetaData meta =  renderDataClient.getStackMetaData( stack );
 		//final StackMetaData meta = RenderTools.openStackMetaData(baseUrl, owner, project, stack);
 		final Interval interval = RenderTools.stackBounds( meta );
