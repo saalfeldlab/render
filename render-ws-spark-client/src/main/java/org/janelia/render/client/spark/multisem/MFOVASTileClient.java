@@ -553,7 +553,10 @@ public class MFOVASTileClient
 
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
-        final AffineBlockSolverSetup setup = mfovAsTile.buildMfovAffineBlockSolverSetup();
+        final AffineBlockSolverSetup translationSetup =
+                mfovAsTile.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.TRANSLATION);
+        final AffineBlockSolverSetup affineSetup =
+                mfovAsTile.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.AFFINE);
 
         final boolean deriveMatchCollectionNamesFromProject = false; // use standard stack-based match collection names
         final String matchSuffix = "";                               // without any suffix
@@ -569,10 +572,14 @@ public class MFOVASTileClient
                 LOG.info("alignRenderedMfovAsTileStacks: skipping alignment of {} because {} already exists",
                          renderedMfovStackId.toDevString(), alignedMfovStackId.toDevString());
             } else {
-                setupList.add(setup.buildPipelineClone(baseDataUrl,
-                                                       renderedMfovStackWithAllZ,
-                                                       deriveMatchCollectionNamesFromProject,
-                                                       matchSuffix));
+                setupList.add(translationSetup.buildPipelineClone(baseDataUrl,
+                                                                  renderedMfovStackWithAllZ,
+                                                                  deriveMatchCollectionNamesFromProject,
+                                                                  matchSuffix));
+                setupList.add(affineSetup.buildPipelineClone(baseDataUrl,
+                                                             renderedMfovStackWithAllZ,
+                                                             deriveMatchCollectionNamesFromProject,
+                                                             matchSuffix));
             }
         }
 

@@ -135,10 +135,6 @@ public class MFOVAsTileParameters
         return rawSfovStackId.withStackSuffix(getRenderedMfovStackSuffixForRawSfovStack());
     }
 
-    public StackId getAlignedMfovStackId(final StackId rawSfovStackId) {
-        return rawSfovStackId.withStackSuffix(getAlignedMfovStackSuffixForRawSfovStack());
-    }
-
     public StackId getRoughSfovStackId(final StackId rawSfovStackId) {
         return rawSfovStackId.withStackSuffix(roughSfovStackSuffix);
     }
@@ -154,7 +150,45 @@ public class MFOVAsTileParameters
         return mfovMatchRunList;
     }
 
-    public AffineBlockSolverSetup buildMfovAffineBlockSolverSetup() {
+    /**
+     * See line 342 of render/render-ws-java-client/src/main/java/org/janelia/render/client/solver/DistributedSolveParameters.java
+     * to understand how the lambdasTranslation values affect the result.
+     * <pre>
+     *  ... new InterpolatedAffineModel2D(
+     *
+     *          new InterpolatedAffineModel2D(
+     *
+     *              new InterpolatedAffineModel2D(
+     *                  new AffineModel2D(),
+     *                  new RigidModel2D(),
+     *                  blockOptimizerLambdasRigid.get(0)
+     *              ),
+     *
+     *              new TranslationModel2D(),
+     *              blockOptimizerLambdasTranslation.get(0)
+     *          ),
+     *
+     *          new StabilizingAffineModel2D( new RigidModel2D() ),
+     *          0.0
+     *      );
+     * </pre>
+     */
+    public enum SolveType {
+
+        TRANSLATION("", List.of(1.0,1.0,1.0,1.0,1.0)), // keep stackSuffix empty so that rough SFOV stack build works
+        AFFINE("_affine", List.of(1.0,0.0,0.0,0.0,0.0));
+
+        private final String stackSuffix;
+        private final List<Double> lambdasTranslation;
+
+        SolveType(final String stackSuffix,
+                  final List<Double> lambdasTranslation) {
+            this.stackSuffix = stackSuffix;
+            this.lambdasTranslation = lambdasTranslation;
+        }
+    }
+
+    public AffineBlockSolverSetup buildMfovAffineBlockSolverSetup(final SolveType solveType) {
 
         final AffineBlockSolverSetup setup = new AffineBlockSolverSetup();
 
@@ -167,7 +201,7 @@ public class MFOVAsTileParameters
         setup.distributedSolve.threadsGlobal = 1;
         setup.distributedSolve.deriveThreadsUsingSparkConfig = true;
 
-        setup.targetStack.stackSuffix = this.alignedMfovStackSuffix;
+        setup.targetStack.stackSuffix = this.alignedMfovStackSuffix + solveType.stackSuffix;
         setup.targetStack.completeStack = true;
 
         setup.blockPartition.sizeZ = 100; // must be greater than total number of layers in each mfov-as-tile stack
@@ -179,9 +213,10 @@ public class MFOVAsTileParameters
         setup.stitching.minInliers = 25;
 
         setup.blockOptimizer.lambdasRigid = List.of(1.0,1.0,0.9,0.3,0.01);
-        //setup.blockOptimizer.lambdasTranslation = List.of(1.0,1.0,1.0,1.0,1.0);
-        setup.blockOptimizer.lambdasTranslation = List.of(1.0,0.0,0.0,0.0,0.0);
+        // NOTE: lambda's translation means how much do you want to regularize with a translation model, thus 1.0 means 100% translation
+        setup.blockOptimizer.lambdasTranslation = solveType.lambdasTranslation;
         setup.blockOptimizer.lambdasRegularization = List.of(0.0, 0.0, 0.0, 0.0, 0.0);
+
         setup.blockOptimizer.iterations = List.of(1000,1000,500,250,250);
         setup.blockOptimizer.maxPlateauWidth = List.of(250,250,150,100,100);
         setup.blockOptimizer.maxAllowedError = 10.0;
