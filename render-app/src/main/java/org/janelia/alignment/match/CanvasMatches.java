@@ -314,20 +314,19 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
     }
 
     public boolean isPOffsetFromQ(final double minDistanceForOffset) {
-        boolean isOffset = false;
         final double[][] ps = matches.getPs();
         final double[][] qs = matches.getQs();
+
+        double distanceSum = 0;
         final int numMatchPoints = ps[0].length;
         for (int i = 0; i < numMatchPoints; i++) {
             final double deltaX = ps[0][i] - qs[0][i];
             final double deltaY = ps[1][i] - qs[1][i];
-            final double distance = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
-            if (distance >= minDistanceForOffset) {
-                isOffset = true;
-                break;
-            }
+            distanceSum += Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
         }
-        return isOffset;
+
+        final double averageDistance = distanceSum / numMatchPoints;
+        return averageDistance > minDistanceForOffset;
     }
 
     public static CanvasMatches fromJson(final String json) {
