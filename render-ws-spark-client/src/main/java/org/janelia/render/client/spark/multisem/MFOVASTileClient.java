@@ -148,23 +148,15 @@ public class MFOVASTileClient
 
         buildRenderedMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
 
-        for (final String crossMatchId : clientParameters.mfovAsTile.getCrossMatchIdList()) {
+        generateMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
 
-            generateMfovAsTileMatches(sparkContext, mfovAsTileStackLists, crossMatchId);
+        removeCrossResinMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
 
-            removeCrossResinMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
+        patchMissingMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
 
-            patchMissingMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
+        alignRenderedMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
 
-            alignRenderedMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
-
-            buildRoughSfovStacks(sparkContext, mfovAsTileStackLists);
-
-            renameMatchCollectionAlignStackAndRoughStack(baseDataUrl,
-                                                         clientParameters.mfovAsTile,
-                                                         mfovAsTileStackLists.getRawSfovStacksWithAllZ(),
-                                                         crossMatchId);
-        }
+        buildRoughSfovStacks(sparkContext, mfovAsTileStackLists);
 
         LOG.info("run: exit");
     }
@@ -373,14 +365,13 @@ public class MFOVASTileClient
     }
 
     private static void generateMfovAsTileMatches(final JavaSparkContext sparkContext,
-                                                  final MFOVAsTileStackLists mfovAsTileStackLists,
-                                                  final String crossMatchId)
+                                                  final MFOVAsTileStackLists mfovAsTileStackLists)
             throws IOException {
 
         LOG.info("generateMfovAsTileMatches: entry");
 
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
-        final List<MatchRunParameters> mfovMatchRunList = mfovAsTileStackLists.getMfovAsTile().buildMfovMatchRunList(crossMatchId);
+        final List<MatchRunParameters> mfovMatchRunList = mfovAsTileStackLists.getMfovAsTile().buildMfovMatchRunList();
 
         for (final String owner : mfovAsTileStackLists.getOwners()) {
 
@@ -805,39 +796,6 @@ public class MFOVASTileClient
                     buildJavaRenderTilesClient(tileIdPattern);
             jClient.renderTiles(Collections.singletonList(layerMFOV.getZ()));
             return 1;
-        }
-    }
-
-    private static void renameMatchCollectionAlignStackAndRoughStack(final String baseDataUrl,
-                                                                     final MFOVAsTileParameters mfovAsTile,
-                                                                     final List<StackWithZValues> rawSfovStacksWithAllZ,
-                                                                     final String crossMatchId)
-            throws IOException {
-
-
-        final String crossMatchSuffix = "_cm" + crossMatchId;
-
-        for (final StackWithZValues rawSfovStackWithZ : rawSfovStacksWithAllZ) {
-            final StackId rawSfovStackId = rawSfovStackWithZ.getStackId();
-            final StackId renderedMfovStackId = mfovAsTile.getRenderedMfovStackId(rawSfovStackId);
-            final MatchCollectionId fromMatchCollectionId = renderedMfovStackId.getDefaultMatchCollectionId(false);
-            final MatchCollectionId toMatchCollectionId =
-                    new MatchCollectionId(fromMatchCollectionId.getOwner(),
-                                          fromMatchCollectionId.getName() + crossMatchSuffix);
-            final RenderDataClient matchDataClient = new RenderDataClient(baseDataUrl,
-                                                                          fromMatchCollectionId.getOwner(),
-                                                                          fromMatchCollectionId.getName());
-            matchDataClient.renameMatchCollection(toMatchCollectionId);
-
-            final StackId alignedMfovStackId = mfovAsTile.getAlignedMfovStackId(rawSfovStackId);
-            final StackId roughSfovStackId = mfovAsTile.getRoughSfovStackId(rawSfovStackId);
-            final RenderDataClient stackDataClient = new RenderDataClient(baseDataUrl,
-                                                                          rawSfovStackId.getOwner(),
-                                                                          rawSfovStackId.getProject());
-            stackDataClient.renameStack(alignedMfovStackId.getStack(),
-                                        alignedMfovStackId.withStackSuffix(crossMatchSuffix));
-            stackDataClient.renameStack(roughSfovStackId.getStack(),
-                                        roughSfovStackId.withStackSuffix(crossMatchSuffix));
         }
     }
 

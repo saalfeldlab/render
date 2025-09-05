@@ -32,7 +32,6 @@ public class MFOVAsTileParameters
     private final String renderedMfovStackSuffix;
     private final String alignedMfovStackSuffix;
     private final String roughSfovStackSuffix;
-    private final List<String> crossMatchIdList;
     private final Double minCrossMatchPixelDistance;
 
     public MFOVAsTileParameters() {
@@ -59,7 +58,6 @@ public class MFOVAsTileParameters
              renderedMfovStackSuffix,
              alignedMfovStackSuffix,
              roughSfovStackSuffix,
-             List.of("A"),
              null);
     }
 
@@ -70,7 +68,6 @@ public class MFOVAsTileParameters
                                 final String renderedMfovStackSuffix,
                                 final String alignedMfovStackSuffix,
                                 final String roughSfovStackSuffix,
-                                final List<String> crossMatchIdList,
                                 final Double minCrossMatchPixelDistance) {
         this.mfovRenderScale = mfovRenderScale;
         this.mfovRootDirectory = mfovRootDirectory;
@@ -79,7 +76,6 @@ public class MFOVAsTileParameters
         this.renderedMfovStackSuffix = renderedMfovStackSuffix;
         this.alignedMfovStackSuffix = alignedMfovStackSuffix;
         this.roughSfovStackSuffix = roughSfovStackSuffix;
-        this.crossMatchIdList = crossMatchIdList;
         this.minCrossMatchPixelDistance = minCrossMatchPixelDistance;
     }
 
@@ -109,10 +105,6 @@ public class MFOVAsTileParameters
 
     public String getRoughSfovStackSuffix() {
         return roughSfovStackSuffix;
-    }
-
-    public List<String> getCrossMatchIdList() {
-        return crossMatchIdList == null ? List.of("A") : crossMatchIdList;
     }
 
     public Double getMinCrossMatchPixelDistance() {
@@ -155,10 +147,10 @@ public class MFOVAsTileParameters
         return prealignedSfovStackSuffix != null;
     }
 
-    public List<MatchRunParameters> buildMfovMatchRunList(final String crossMatchId) {
+    public List<MatchRunParameters> buildMfovMatchRunList() {
         final List<MatchRunParameters> mfovMatchRunList = new ArrayList<>();
         mfovMatchRunList.add(buildMontageMatchRunParameters());
-        mfovMatchRunList.add(buildCrossMatchRunParameters(crossMatchId));
+        mfovMatchRunList.add(buildCrossMatchRunParameters());
         return mfovMatchRunList;
     }
 
@@ -235,69 +227,25 @@ public class MFOVAsTileParameters
     //     renderScale 0.6:  372 seconds ( 6 minutes) for  8319 matches
     //     renderScale 1.0: 2915 seconds (49 minutes) for 25210 matches - at this scale, matching would take 8 days
 
-    private static MatchRunParameters buildCrossMatchRunParameters(final String crossMatchId) {
-
-        final List<MatchStageParameters> matchStageParametersList;
-
-        if ("A".equals(crossMatchId) || "E".equals(crossMatchId)) {
-
-            // 2 passes, render scales 0.2 and 0.3, minInliers 150
-            matchStageParametersList =
-                    List.of(new MatchStageParameters("crossMfovAsTilePass1",
-                                                     buildFeatureRenderParameters(0.2),
-                                                     new FeatureRenderClipParameters(),
-                                                     buildFeatureExtractionParameters(),
-                                                     buildFeatureMatchDerivation(150),
-                                                     buildDisabledGeometricDescriptorAndMatch(),
-                                                     null,
-                                                     null),
-                            new MatchStageParameters("crossMfovAsTilePass2",
-                                                     buildFeatureRenderParameters(0.3),
-                                                     new FeatureRenderClipParameters(),
-                                                     buildFeatureExtractionParameters(),
-                                                     buildFeatureMatchDerivation(150),
-                                                     buildDisabledGeometricDescriptorAndMatch(),
-                                                     null,
-                                                     null));
-
-        } else if ("B".equals(crossMatchId) || "D".equals(crossMatchId) || 
-                   "F".equals(crossMatchId) || "H".equals(crossMatchId)) {
-
-            // 2 passes, render scales 0.2 and 0.3, minInliers 250
-            matchStageParametersList =
-                    List.of(new MatchStageParameters("crossMfovAsTilePass1",
-                                                     buildFeatureRenderParameters(0.2),
-                                                     new FeatureRenderClipParameters(),
-                                                     buildFeatureExtractionParameters(),
-                                                     buildFeatureMatchDerivation(250),
-                                                     buildDisabledGeometricDescriptorAndMatch(),
-                                                     null,
-                                                     null),
-                            new MatchStageParameters("crossMfovAsTilePass2",
-                                                     buildFeatureRenderParameters(0.3),
-                                                     new FeatureRenderClipParameters(),
-                                                     buildFeatureExtractionParameters(),
-                                                     buildFeatureMatchDerivation(250),
-                                                     buildDisabledGeometricDescriptorAndMatch(),
-                                                     null,
-                                                     null));
-
-        } else if ("C".equals(crossMatchId)) {
-
-            // 1 pass, render scale 0.5, minInliers 150
-            matchStageParametersList =
-                    List.of(new MatchStageParameters("crossMfovAsTilePass1",
-                                                     buildFeatureRenderParameters(0.5),
-                                                     new FeatureRenderClipParameters(),
-                                                     buildFeatureExtractionParameters(),
-                                                     buildFeatureMatchDerivation(150),
-                                                     buildDisabledGeometricDescriptorAndMatch(),
-                                                     null,
-                                                     null));
-
-        } else {
-            throw new IllegalArgumentException("unrecognized crossMatchId " + crossMatchId);
-        }
+    private static MatchRunParameters buildCrossMatchRunParameters() {
+        // 2 passes, render scales 0.2 and 0.3, minInliers 150
+        final List<MatchStageParameters> matchStageParametersList =
+                List.of(new MatchStageParameters("crossMfovAsTilePass1",
+                                                 buildFeatureRenderParameters(0.2),
+                                                 new FeatureRenderClipParameters(),
+                                                 buildFeatureExtractionParameters(),
+                                                 buildFeatureMatchDerivation(150),
+                                                 buildDisabledGeometricDescriptorAndMatch(),
+                                                 null,
+                                                 null),
+                        new MatchStageParameters("crossMfovAsTilePass2",
+                                                 buildFeatureRenderParameters(0.3),
+                                                 new FeatureRenderClipParameters(),
+                                                 buildFeatureExtractionParameters(),
+                                                 buildFeatureMatchDerivation(150),
+                                                 buildDisabledGeometricDescriptorAndMatch(),
+                                                 null,
+                                                 null));
 
         return new MatchRunParameters("crossMfovAsTileRun",
                                       buildMatchCommonParameters(10),
