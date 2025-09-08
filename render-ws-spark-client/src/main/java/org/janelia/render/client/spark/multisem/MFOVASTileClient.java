@@ -210,13 +210,13 @@ public class MFOVASTileClient
 
         if (! mfovTasks.isEmpty()) {
 
-            // Note: it takes about 1 minute to process 1 MFOV with 91 SFOV tiles
+            // Note: it takes about 2 minutes to process 1 MFOV with 91 SFOV tiles
             final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, mfovTasks.size());
 
             LOG.info("alignAndIntensityCorrectMfovAsTileStacks: distributing {} MFOV tasks across {} stacks with parallelism {} (defaultParallelism={})",
                      mfovTasks.size(), prealignedStackIds.size(), parallelism, sparkContext.defaultParallelism());
 
-            final JavaRDD<MfovPrealignTask> rddMfovTasks = sparkContext.parallelize(mfovTasks);
+            final JavaRDD<MfovPrealignTask> rddMfovTasks = sparkContext.parallelize(mfovTasks, parallelism);
             rddMfovTasks.foreach(MfovPrealignTask::run);
 
             // Complete all prealigned stacks

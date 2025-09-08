@@ -41,8 +41,12 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.spark.LogUtilities;
+import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
 
 /**
  * Serializable task for aligning SFOVs within a single MFOV.
@@ -69,6 +73,10 @@ public class MfovPrealignTask implements Serializable {
         this.layerMfov = layerMfov;
     }
 
+    public String toString() {
+        return prealignedStackId.toDevString() + "::" + layerMfov;
+    }
+
     /**
      * Align and intensity correct all SFOVs within this MFOV and save the aligned tile specs to the prealigned stack.
      * Both alignment and intensity correction are performed by simple translation models.
@@ -79,15 +87,8 @@ public class MfovPrealignTask implements Serializable {
             throws IOException {
 
         final long startTime = System.currentTimeMillis();
-
-        // Setup executor log4j for runs at Janelia which will place layerMfovDevString in the %X{context} element.
-        // For Logs Explorer views of Google Dataproc runs, the context does not seem to be available/selectable
-        // as a summary field.  To work around this limitation, the layerMfovDevString is logged explicitly at
-        // the entry and exit of this run method.  You can then see which executorId maps to layerMfovDevString
-        // and filter accordingly in Logs Explorer.
-        final String layerMfovDevString = prealignedStackId.toDevString() + "::" + layerMfov;
-        LogUtilities.setupExecutorLog4j(layerMfovDevString);
-        LOG.info("run: entry, layerMfovDevString={}", layerMfovDevString);
+        setupLogging();
+        LOG.info("run: entry, {}", this);
 
         final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
                                                                  rawSfovStackId.getOwner(),
@@ -97,14 +98,14 @@ public class MfovPrealignTask implements Serializable {
         final ResolvedTileSpecCollection mfovTiles = fetchMfovTileSpecs(dataClient);
 
         if (mfovTiles.getTileCount() == 0) {
-            throw new IOException("no tile specs found for " + layerMfovDevString);
+            throw new IOException("no tile specs found for " + this);
         }
 
         // 2. Generate tile pairs for matching
         final List<OrderedCanvasIdPair> tilePairs = generateTilePairs(mfovTiles);
 
         if (tilePairs.isEmpty()) {
-            LOG.info("[{}] run: exit, no tile pairs generated", layerMfovDevString);
+            LOG.info("run: exit, {}, no tile pairs generated", this);
             return;
         }
 
@@ -121,9 +122,46 @@ public class MfovPrealignTask implements Serializable {
         dataClient.saveResolvedTiles(alignedIcTiles, prealignedStackId.getStack(), layerMfov.getZ());
 
         final long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
+        LOG.info("run: exit, {}, elapsedSeconds={}", this, elapsedSeconds);
+    }
 
-        LOG.info("run: exit, layerMfovDevString={}, elapsedSeconds={}",
-                 layerMfovDevString, elapsedSeconds);
+    private void setupLogging() {
+
+        // remove info messages for these classes to reduce messages logged per MFOV from ~3100 to ~30
+        final String[] reducedLoggerNames = {
+                CanvasFeatureExtractor.class.getName(),
+                CanvasFeatureMatcher.class.getName(),
+                MatchFilter.class.getName()
+        };
+
+        final ILoggerFactory factory = LoggerFactory.getILoggerFactory();
+        for (final String loggerName : reducedLoggerNames) {
+
+            if (factory instanceof LoggerContext) {
+
+                // Janelia Spark clusters use logback
+                final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+                final ch.qos.logback.classic.Logger logger = loggerContext.getLogger(loggerName);
+                if (logger == null) {
+                    throw new IllegalArgumentException("logger with name '" + loggerName + "' not found");
+                }
+                logger.setLevel(Level.WARN);
+
+            } else if ("org.apache.logging.slf4j.Log4jLoggerFactory".equals(factory.getClass().getName())) {
+
+                // Google Dataproc Spark clusters use Log4j
+                org.apache.logging.log4j.core.config.Configurator.setLevel(loggerName,
+                                                                           org.apache.logging.log4j.Level.WARN);
+
+            }
+        }
+
+        // Setup executor log4j for runs at Janelia which will place layerMfovDevString in the %X{context} element.
+        // For Logs Explorer views of Google Dataproc runs, the context does not seem to be available/selectable
+        // as a summary field.  To work around this limitation, the layerMfovDevString is logged explicitly
+        // from methods in this class.
+        // You can then see which executorId maps to layerMfovDevString and filter accordingly in Logs Explorer.
+        LogUtilities.setupExecutorLog4j(this.toString());
     }
 
     /**
@@ -131,11 +169,9 @@ public class MfovPrealignTask implements Serializable {
      */
     private ResolvedTileSpecCollection fetchMfovTileSpecs(final RenderDataClient dataClient) throws IOException {
         final String matchPattern = "_" + layerMfov.getSimpleMfovName() + "_"; // limit to tiles in this MFOV
-        final ResolvedTileSpecCollection resolvedTiles = dataClient.getResolvedTiles(rawSfovStackId.getStack(),
-                                                                                     layerMfov.getZ(),
-                                                                                     matchPattern);
-        LOG.info("fetchMfovTileSpecs: exit, returning collection with {} tiles", resolvedTiles.getTileCount());
-        return resolvedTiles;
+        return dataClient.getResolvedTiles(rawSfovStackId.getStack(),
+                                           layerMfov.getZ(),
+                                           matchPattern);
     }
 
     /**
@@ -162,8 +198,6 @@ public class MfovPrealignTask implements Serializable {
             }
         }
 
-        LOG.info("generateTilePairs: exit, returning {} pairs", pairs.size());
-
         return pairs;
     }
 
@@ -176,7 +210,8 @@ public class MfovPrealignTask implements Serializable {
             final ImageProcessorCache cache
     ) {
 
-        LOG.info("alignTiles: entry");
+        final long startTime = System.currentTimeMillis();
+        LOG.info("alignTiles: entry, {}", this);
 
         // Extract features from all mfov tiles
         final CanvasFeatureExtractor featureExtractor = CanvasFeatureExtractor.build(FEATURE_EXTRACTION_PARAMETERS);
@@ -218,7 +253,7 @@ public class MfovPrealignTask implements Serializable {
             }
         }
 
-        LOG.info("alignTiles: start optimization");
+        LOG.info("alignTiles: start optimization, {}", this);
 
         // Optimize the tiles
         final TileConfiguration tc = new TileConfiguration();
@@ -254,7 +289,9 @@ public class MfovPrealignTask implements Serializable {
             tiles.addTransformSpecToTile(tileId, newTransformSpec, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
         }
 
-        LOG.info("alignTiles: exit, returning collection with {} tiles", tiles.getTileCount());
+        final long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
+        LOG.info("alignTiles: exit, {}, returning collection with {} tiles, elapsedSeconds={}",
+                 this, tiles.getTileCount(), elapsedSeconds);
 
         return tiles;
     }
@@ -344,7 +381,7 @@ public class MfovPrealignTask implements Serializable {
             final List<OrderedCanvasIdPair> tilePairs,
             final ImageProcessorCache cache
     ) {
-        LOG.info("intensityCorrectTiles: entry, tile count={}", tiles.getTileCount());
+
         final Map<String, Tile<TranslationModel1D>> modelTiles = new HashMap<>();
 
         // Initialize models for each tile spec
@@ -419,7 +456,7 @@ public class MfovPrealignTask implements Serializable {
             tileSpec.setFilterSpec(filterSpec);
         }
 
-        LOG.info("intensityCorrectTiles: exit");
+        LOG.info("intensityCorrectTiles: exit, {}", this);
         return tiles;
     }
 
