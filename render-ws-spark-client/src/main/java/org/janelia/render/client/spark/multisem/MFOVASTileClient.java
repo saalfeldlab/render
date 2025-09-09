@@ -243,9 +243,13 @@ public class MFOVASTileClient
 
         final List<StackWithZValues> prealignedSfovStacksWithAllZ = mfovAsTileStackLists.getPrealignedSfovStacksWithAllZ();
 
-        LOG.info("buildDynamicMfovAsTileStacks: entry, distributing build of {} stack(s)", prealignedSfovStacksWithAllZ.size());
+        final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, prealignedSfovStacksWithAllZ.size());
 
-        final JavaRDD<StackWithZValues> rddPrealignedSfovStacks = sparkContext.parallelize(prealignedSfovStacksWithAllZ);
+        LOG.info("buildDynamicMfovAsTileStacks: entry, distributing build of {} stack(s) with parallelism {} (defaultParallelism={})",
+                 prealignedSfovStacksWithAllZ.size(), parallelism, sparkContext.defaultParallelism());
+
+        final JavaRDD<StackWithZValues> rddPrealignedSfovStacks = sparkContext.parallelize(prealignedSfovStacksWithAllZ,
+                                                                                           parallelism);
 
         final Function<StackWithZValues, StackId> buildMfovStackFunction = stackWithAllZ -> {
 
@@ -255,6 +259,9 @@ public class MFOVASTileClient
 
             final StackId prealignedStackId = stackWithAllZ.getStackId();
             final StackId dynamicMfovAsTileStackId = prealignedStackId.withStackSuffix(dynamicMfovStackSuffix);
+
+            LOG.info("buildMfovStackFunction: entry, prealignedStackId={}, dynamicMfovAsTileStackId={}",
+                     prealignedStackId.toDevString(), dynamicMfovAsTileStackId.toDevString());
 
             if (mfovAsTileStackLists.isExistingStack(dynamicMfovAsTileStackId)) {
                 LOG.info("buildMfovStackFunction: skipping build of {} because it already exists",
@@ -269,6 +276,9 @@ public class MFOVASTileClient
                                                                              mfovRenderScale,
                                                                              dynamicMfovStackSuffix);
             }
+
+            LOG.info("buildMfovStackFunction: exit, prealignedStackId={}, dynamicMfovAsTileStackId={}",
+                     prealignedStackId.toDevString(), dynamicMfovAsTileStackId.toDevString());
 
             return builtStackId;
         };
@@ -439,10 +449,13 @@ public class MFOVASTileClient
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
         final List<StackWithZValues> renderedMfovStacksWithAllZ = mfovAsTileStackLists.getRenderedMfovStacksWithAllZ();
 
-        LOG.info("removeCrossResinMfovAsTileMatches: entry, distributing removal for {} stack(s)",
-                 renderedMfovStacksWithAllZ.size());
+        final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, renderedMfovStacksWithAllZ.size());
 
-        final JavaRDD<StackWithZValues> rddStacks = sparkContext.parallelize(renderedMfovStacksWithAllZ);
+        LOG.info("removeCrossResinMfovAsTileMatches: entry, distributing removal for {} stack(s) with parallelism {} (defaultParallelism={})",
+                 renderedMfovStacksWithAllZ.size(), parallelism, sparkContext.defaultParallelism());
+
+        final JavaRDD<StackWithZValues> rddStacks = sparkContext.parallelize(renderedMfovStacksWithAllZ,
+                                                                             parallelism);
 
         final Function<StackWithZValues, String> removalFunction = stackWithZValues -> {
 
@@ -485,10 +498,13 @@ public class MFOVASTileClient
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
         final List<StackWithZValues> renderedMfovStacksWithAllZ = mfovAsTileStackLists.getRenderedMfovStacksWithAllZ();
 
-        LOG.info("patchMissingMfovAsTileMatches: entry, distributing patching for {} stack(s)",
-                 renderedMfovStacksWithAllZ.size());
+        final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, renderedMfovStacksWithAllZ.size());
 
-        final JavaRDD<StackWithZValues> rddPatchStacks = sparkContext.parallelize(renderedMfovStacksWithAllZ);
+        LOG.info("patchMissingMfovAsTileMatches: entry, distributing patching for {} stack(s) with parallelism {} (defaultParallelism={})",
+                 renderedMfovStacksWithAllZ.size(), parallelism, sparkContext.defaultParallelism());
+
+        final JavaRDD<StackWithZValues> rddPatchStacks = sparkContext.parallelize(renderedMfovStacksWithAllZ,
+                                                                                  parallelism);
 
         final Function<StackWithZValues, Integer> patchFunction = stackWithZValues -> {
 
@@ -629,10 +645,13 @@ public class MFOVASTileClient
 
         if (! rawSfovStacksNeedingRoughStack.isEmpty()) {
 
-            LOG.info("buildRoughSfovStacks: distributing build of {} stack(s)",
-                     rawSfovStacksNeedingRoughStack.size());
+            final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, rawSfovStacksNeedingRoughStack.size());
 
-            final JavaRDD<StackWithZValues> rddAlignedStacks = sparkContext.parallelize(rawSfovStacksNeedingRoughStack);
+            LOG.info("buildRoughSfovStacks: distributing build of {} stack(s) with parallelism {} (defaultParallelism={})",
+                     rawSfovStacksNeedingRoughStack.size(), parallelism, sparkContext.defaultParallelism());
+
+            final JavaRDD<StackWithZValues> rddAlignedStacks = sparkContext.parallelize(rawSfovStacksNeedingRoughStack,
+                                                                                        parallelism);
 
             final Function<StackWithZValues, StackId> buildRoughStackFunction = stackWithAllZ -> {
 
