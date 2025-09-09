@@ -197,6 +197,7 @@ public class RenderDataClient {
      * @throws IOException
      *   if the request fails for any reason.
      */
+    @SuppressWarnings("unused")
     public void renameMatchCollection(final MatchCollectionId toMatchCollectionId)
             throws IOException {
 
@@ -436,6 +437,7 @@ public class RenderDataClient {
      * @throws IOException
      *   if the request fails for any reason.
      */
+    @SuppressWarnings("unused")
     public List<String> getDistinctSortedSectionIds(final String stack)
             throws IOException {
         return getStackSectionData(stack, null, null).stream()
@@ -476,7 +478,7 @@ public class RenderDataClient {
             derivedVersion = derivedStackMetaData.getCurrentVersion();
         } catch (final Throwable t) {
 
-            LOG.info("setupDerivedStack: derived stack does not exist, creating it ...");
+            LOG.info("setupDerivedStack: derived stack {} does not exist, creating it ...", derivedStack);
 
             derivedVersion = new StackVersion(new Date(),
                                               "derived from " + sourceStackMetaData.getStackId(),
@@ -499,7 +501,7 @@ public class RenderDataClient {
                 (sourceVersion.getStackResolutionY() != null) ||
                 (sourceVersion.getStackResolutionZ() != null)) {
 
-                LOG.info("setupDerivedStack: derived stack is missing resolution data, setting it ...");
+                LOG.info("setupDerivedStack: derived stack {} is missing resolution data, setting it ...", derivedStack);
 
                 final List<Double> commonResolutionValues = sourceVersion.getStackResolutionValues();
                 derivedVersion.setStackResolutionValues(commonResolutionValues);
@@ -512,7 +514,7 @@ public class RenderDataClient {
 
         if ((derivedVersion.getMipmapPathBuilder() == null) && (commonMipmapPathBuilder != null)) {
 
-            LOG.info("setupDerivedStack: derived stack is missing mipmap path builder, setting it ...");
+            LOG.info("setupDerivedStack: derived stack {} is missing mipmap path builder, setting it ...", derivedStack);
 
             derivedVersion.setMipmapPathBuilder(commonMipmapPathBuilder);
             setMipmapPathBuilder(derivedStack, commonMipmapPathBuilder);
@@ -1395,6 +1397,7 @@ public class RenderDataClient {
      * @throws IOException
      *   if the request fails for any reason.
      */
+    @SuppressWarnings("unused")
     public void deleteMatchesOutsideGroup(final String groupId)
             throws IOException {
 
@@ -1682,7 +1685,8 @@ public class RenderDataClient {
         final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext,
                                                                                                    helper);
 
-        LOG.info(context + ": submitting {}", requestContext);
+        //noinspection LoggingSimilarMessage
+        LOG.info("{}: submitting {}", context, requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
     }
