@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory;
 /**
  * For a column of MFOVs within a single z layer, this class maps the bounds of each MFOV to its row number.
  * <br/>
- * The static method {@link #assembleColumnData(double, List)} assembles a list of
+ * The static method {@link #assembleColumnData(StackId, double, List)} assembles a list of
  * MultiSemMfovColumn data for a given z layer.
  */
 public class MultiSemMfovColumn {
@@ -39,9 +39,14 @@ public class MultiSemMfovColumn {
         this.columnIndex = columnIndex;
         this.mfovBoundsList = mfovBoundsList;
         this.rowList = new ArrayList<>();
-        this.minY = mfovBoundsList.get(0).getMinY().intValue();
-        this.maxY = mfovBoundsList.get(mfovBoundsList.size() - 1).getMaxY().intValue();
-        this.minDeltaY = findMinimumDeltaY(mfovBoundsList);
+
+        final TileBounds firstMfovBounds = mfovBoundsList.get(0);
+        this.minY = firstMfovBounds.getMinY().intValue();
+
+        final TileBounds lastMfovBounds = mfovBoundsList.get(mfovBoundsList.size() - 1);
+        this.maxY = lastMfovBounds.getMaxY().intValue();
+
+        this.minDeltaY = mfovBoundsList.size() > 1 ? findMinimumDeltaY(mfovBoundsList) : firstMfovBounds.getHeight();
 
         // Save halfMinDeltaY value because the y value for an MFOV in one column is
         // half an MFOV above or below the MFOV adjacent to it in the next column:
@@ -173,8 +178,11 @@ public class MultiSemMfovColumn {
      * @return a list of MultiSemMfovColumn objects,
      *         each representing a column of MFOVs in the z layer (ordered left to right).
      */
-    public static List<MultiSemMfovColumn> assembleColumnData(final double z,
+    public static List<MultiSemMfovColumn> assembleColumnData(final StackId stackId,
+                                                              final double z,
                                                               final List<TileBounds> boundsForEachSfovInZLayer) {
+
+        LOG.info("assembleColumnData: entry, {} z {}", stackId.toDevString(), z);
 
         final List<MultiSemMfovColumn> mfovColumnList = new ArrayList<>();
 
@@ -238,7 +246,7 @@ public class MultiSemMfovColumn {
             mfovColumnList.forEach(c -> c.assignRowsByMaxIntersection(minYForAllColumns));
         }
 
-        LOG.info("assembleColumnData: exit, returning\n{}", mfovColumnList);
+        LOG.info("assembleColumnData: exit, {} z {}, returning\n{}", stackId.toDevString(), z, mfovColumnList);
 
         return mfovColumnList;
     }
