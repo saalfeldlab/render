@@ -243,7 +243,7 @@ public class MFOVAsTileParameters
                                                  buildFeatureRenderParameters(1.0), // 220 secs for 261 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
                                                  new FeatureRenderClipParameters(1500, 1500),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(100),
+                                                 buildFeatureMatchDerivation(25),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null));
