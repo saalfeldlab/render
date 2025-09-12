@@ -196,13 +196,13 @@ public class StreakCorrection_Plugin implements PlugIn {
 
 
 	private static class StreakCorrectionParameters {
-		public int innerCutoff = 15;
+		public int innerCutoff = 50;
 		public int bandWidth = 10;
 		public double angle = 0.0;
 		public int gaussianBlurRadius = 10;
 		public double initialThreshold = 7.0;
 		public double finalThreshold = 0.05;
-		public boolean localize = true;
+		public boolean localize = false;
 
 		public StreakCorrectionParameters() {
 			// Default constructor
