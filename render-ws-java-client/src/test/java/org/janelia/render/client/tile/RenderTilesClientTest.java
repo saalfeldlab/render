@@ -25,8 +25,8 @@ public class RenderTilesClientTest {
                     "--baseDataUrl", "http://em-services-1.int.janelia.org:8080/render-ws/v1",
                     "--owner", "hess_wafers_60_61",
                     "--project", "w60_serial_360_to_369",
-                    "--stack", "w60_s360_r00_gc_z_1_and_2_mat",
-                    "--rootDirectory", "/nrs/hess/data/hess_wafers_60_61/tiles_mfov",
+                    "--stack", "w60_s360_r00_gc_mat_dev",
+                    "--rootDirectory", "/Users/trautmane/Desktop/tiles_test",
 //                    "--rootDirectory", "gs://storage.googleapis.com/janelia-spark-test/test_upload_ett/mfov_as_tile",
 //                    "--runTimestamp", "20241123_160000",
                     "--scale", "1.0",
@@ -34,12 +34,12 @@ public class RenderTilesClientTest {
                     "--excludeMask",
                     "--excludeAllTransforms",
 //                    "--filterListName", "jrc_mpi_psc120_1a1-destreak-16bit",
-                    "--hackStack", "test_hack_m0026",
+//                    "--hackStack", "test_hack_m0009",
                     "--renderType", "EIGHT_BIT",
-                    "--completeHackStack",
+//                    "--completeHackStack",
                     "--renderTileImagesLocally",
-                    "--z", "1",
-                    "--tileIdPattern", ".*_m005."
+                    "--z", "2",
+                    "--tileIdPattern", ".*m0009"
             };
 
             RenderTilesClient.main(testArgs);

@@ -9,7 +9,7 @@
 
 set -e
 
-BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump/janelia"
+BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
 
 if [ ! -d "${BASE_DUMP_DIR}" ]; then
   echo "ERROR: ${BASE_DUMP_DIR} not found"

@@ -8,11 +8,14 @@ set -e
 # Dump files for the collections are written to:
 #   /mnt/disks/mongodb_dump_fs/dump/${HOSTNAME}/collections/${RUN_TIMESTAMP}/${DB}/${COLLECTION}.bson.gz
 
-if [ $# != 2 ]; then
+if [ $# != 3 ]; then
   echo "
 Usage:    $0 <hostname> <db> <collection-pattern>
 
-Examples: $0 render-ws-mongodb-8c-32gb-abc render 'trautmane.*_google_cluster0_align.*'
+Examples: $0  render-ws-mongodb-8c-32gb-abf  render  '.*w60_s360_r00_gc_[mr].*'
+          $0  render-ws-mongodb-8c-32gb-abf  match   '.*w60_s360_r00_gc_.*'
+
+          $0  render-ws-mongodb-8c-32gb-abf  render  '.*w60_s360_r00_(gc|gc_mat|gc_mat_render)__.*'
 
 "
   exit 1
@@ -29,7 +32,7 @@ if [ ! -d "${BASE_DUMP_DIR}" ]; then
   exit 1
 fi
 
-CONNECTION_URI="mongodb://localhost:27017"
+CONNECTION_URI="mongodb://localhost:27017/${DB}"
 EVAL_CMD="printjson(db.getCollectionNames().filter(c => /${PATTERN}/.test(c)).sort());"
 
 COLLECTIONS=$( mongosh "${CONNECTION_URI}" --quiet --eval "${EVAL_CMD}" | grep "'" | sed "s/[',]//g" )

@@ -1,5 +1,10 @@
 package org.janelia.alignment.spec;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.util.Arrays;
+import java.util.List;
+
 import org.janelia.alignment.json.JsonUtils;
 
 /**
@@ -64,6 +69,15 @@ public class TileBounds extends Bounds {
 
     public static TileBounds fromJson(final String json) {
         return JSON_HELPER.fromJson(json);
+    }
+
+    public static List<TileBounds> fromJsonArray(final Reader json)
+            throws IllegalArgumentException {
+        try {
+            return Arrays.asList(JsonUtils.MAPPER.readValue(json, TileBounds[].class));
+        } catch (final IOException e) {
+            throw new IllegalArgumentException(e);
+        }
     }
 
     private static final JsonUtils.Helper<TileBounds> JSON_HELPER =

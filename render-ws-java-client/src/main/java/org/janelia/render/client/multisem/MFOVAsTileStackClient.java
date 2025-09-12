@@ -131,7 +131,7 @@ public class MFOVAsTileStackClient {
                     renderDataClient.getTileBounds(sourceStackId.getStack(), z);
 
             final List<MultiSemMfovColumn> mfovColumnList =
-                    MultiSemMfovColumn.assembleColumnData(z, sourceTileBoundsListForZLayer);
+                    MultiSemMfovColumn.assembleColumnData(sourceStackId, z, sourceTileBoundsListForZLayer);
 
             final List<TileSpec> mfovTileSpecs = new ArrayList<>();
             for (final MultiSemMfovColumn mfovColumn : mfovColumnList) {

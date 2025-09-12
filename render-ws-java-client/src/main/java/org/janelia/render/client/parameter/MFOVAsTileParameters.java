@@ -27,13 +27,16 @@ public class MFOVAsTileParameters
 
     private final Double mfovRenderScale;
     private final String mfovRootDirectory;
+    private final String prealignedSfovStackSuffix;
     private final String dynamicMfovStackSuffix;
     private final String renderedMfovStackSuffix;
     private final String alignedMfovStackSuffix;
     private final String roughSfovStackSuffix;
+    private final Double minCrossMatchPixelDistance;
 
     public MFOVAsTileParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -43,16 +46,37 @@ public class MFOVAsTileParameters
 
     public MFOVAsTileParameters(final Double mfovRenderScale,
                                 final String mfovRootDirectory,
+                                final String prealignedSfovStackSuffix,
                                 final String dynamicMfovStackSuffix,
                                 final String renderedMfovStackSuffix,
                                 final String alignedMfovStackSuffix,
                                 final String roughSfovStackSuffix) {
+        this(mfovRenderScale,
+             mfovRootDirectory,
+             prealignedSfovStackSuffix,
+             dynamicMfovStackSuffix,
+             renderedMfovStackSuffix,
+             alignedMfovStackSuffix,
+             roughSfovStackSuffix,
+             null);
+    }
+
+    public MFOVAsTileParameters(final Double mfovRenderScale,
+                                final String mfovRootDirectory,
+                                final String prealignedSfovStackSuffix,
+                                final String dynamicMfovStackSuffix,
+                                final String renderedMfovStackSuffix,
+                                final String alignedMfovStackSuffix,
+                                final String roughSfovStackSuffix,
+                                final Double minCrossMatchPixelDistance) {
         this.mfovRenderScale = mfovRenderScale;
         this.mfovRootDirectory = mfovRootDirectory;
+        this.prealignedSfovStackSuffix = prealignedSfovStackSuffix;
         this.dynamicMfovStackSuffix = dynamicMfovStackSuffix;
         this.renderedMfovStackSuffix = renderedMfovStackSuffix;
         this.alignedMfovStackSuffix = alignedMfovStackSuffix;
         this.roughSfovStackSuffix = roughSfovStackSuffix;
+        this.minCrossMatchPixelDistance = minCrossMatchPixelDistance;
     }
 
     public Double getMfovRenderScale() {
@@ -61,6 +85,10 @@ public class MFOVAsTileParameters
 
     public String getMfovRootDirectory() {
         return mfovRootDirectory;
+    }
+
+    public String getPrealignedSfovStackSuffix() {
+        return prealignedSfovStackSuffix;
     }
 
     public String getDynamicMfovStackSuffix() {
@@ -79,24 +107,40 @@ public class MFOVAsTileParameters
         return roughSfovStackSuffix;
     }
 
+    public Double getMinCrossMatchPixelDistance() {
+        return minCrossMatchPixelDistance;
+    }
+
+    public String getDynamicMfovStackSuffixForRawSfovStack() {
+        return prealignedSfovStackSuffix + dynamicMfovStackSuffix;
+    }
+
     public String getRenderedMfovStackSuffixForRawSfovStack() {
-        return dynamicMfovStackSuffix + renderedMfovStackSuffix;
+        return getDynamicMfovStackSuffixForRawSfovStack() + renderedMfovStackSuffix;
     }
 
     public String getAlignedMfovStackSuffixForRawSfovStack() {
         return getRenderedMfovStackSuffixForRawSfovStack() + alignedMfovStackSuffix;
     }
 
-    public StackId getDynamicMfovStackId(final StackId rawSfovStackId) {
-        return rawSfovStackId.withStackSuffix(dynamicMfovStackSuffix);
+    public StackId getPrealignedStackId(final StackId rawSfovStackId) {
+        return rawSfovStackId.withStackSuffix(prealignedSfovStackSuffix);
     }
 
-    public StackId getRenderedMfovStackId(final StackId dynamicMfovStackId) {
-        return dynamicMfovStackId.withStackSuffix(renderedMfovStackSuffix);
+    public StackId getDynamicMfovStackId(final StackId rawSfovStackId) {
+        return rawSfovStackId.withStackSuffix(getDynamicMfovStackSuffixForRawSfovStack());
+    }
+
+    public StackId getRenderedMfovStackId(final StackId rawSfovStackId) {
+        return rawSfovStackId.withStackSuffix(getRenderedMfovStackSuffixForRawSfovStack());
     }
 
     public StackId getRoughSfovStackId(final StackId rawSfovStackId) {
         return rawSfovStackId.withStackSuffix(roughSfovStackSuffix);
+    }
+
+    public boolean doPrealign() {
+        return prealignedSfovStackSuffix != null;
     }
 
     public List<MatchRunParameters> buildMfovMatchRunList() {
@@ -106,7 +150,45 @@ public class MFOVAsTileParameters
         return mfovMatchRunList;
     }
 
-    public AffineBlockSolverSetup buildMfovAffineBlockSolverSetup() {
+    /**
+     * See line 342 of render/render-ws-java-client/src/main/java/org/janelia/render/client/solver/DistributedSolveParameters.java
+     * to understand how the lambdasTranslation values affect the result.
+     * <pre>
+     *  ... new InterpolatedAffineModel2D(
+     *
+     *          new InterpolatedAffineModel2D(
+     *
+     *              new InterpolatedAffineModel2D(
+     *                  new AffineModel2D(),
+     *                  new RigidModel2D(),
+     *                  blockOptimizerLambdasRigid.get(0)
+     *              ),
+     *
+     *              new TranslationModel2D(),
+     *              blockOptimizerLambdasTranslation.get(0)
+     *          ),
+     *
+     *          new StabilizingAffineModel2D( new RigidModel2D() ),
+     *          0.0
+     *      );
+     * </pre>
+     */
+    public enum SolveType {
+
+        TRANSLATION("", List.of(1.0,1.0,1.0,1.0,1.0)), // keep stackSuffix empty so that rough SFOV stack build works
+        AFFINE("_affine", List.of(1.0,0.0,0.0,0.0,0.0));
+
+        private final String stackSuffix;
+        private final List<Double> lambdasTranslation;
+
+        SolveType(final String stackSuffix,
+                  final List<Double> lambdasTranslation) {
+            this.stackSuffix = stackSuffix;
+            this.lambdasTranslation = lambdasTranslation;
+        }
+    }
+
+    public AffineBlockSolverSetup buildMfovAffineBlockSolverSetup(final SolveType solveType) {
 
         final AffineBlockSolverSetup setup = new AffineBlockSolverSetup();
 
@@ -119,7 +201,7 @@ public class MFOVAsTileParameters
         setup.distributedSolve.threadsGlobal = 1;
         setup.distributedSolve.deriveThreadsUsingSparkConfig = true;
 
-        setup.targetStack.stackSuffix = this.alignedMfovStackSuffix;
+        setup.targetStack.stackSuffix = this.alignedMfovStackSuffix + solveType.stackSuffix;
         setup.targetStack.completeStack = true;
 
         setup.blockPartition.sizeZ = 100; // must be greater than total number of layers in each mfov-as-tile stack
@@ -130,14 +212,13 @@ public class MFOVAsTileParameters
         setup.stitching.maxPlateauWidth = 1000;
         setup.stitching.minInliers = 25;
 
-        final List<Double> emptyDoubleList = List.of();
-        final List<Integer> emptyIntegerList = List.of();
+        setup.blockOptimizer.lambdasRigid = List.of(1.0,1.0,0.9,0.3,0.01);
+        // NOTE: lambda's translation means how much do you want to regularize with a translation model, thus 1.0 means 100% translation
+        setup.blockOptimizer.lambdasTranslation = solveType.lambdasTranslation;
+        setup.blockOptimizer.lambdasRegularization = List.of(0.0, 0.0, 0.0, 0.0, 0.0);
 
-        setup.blockOptimizer.lambdasRigid = emptyDoubleList;
-        setup.blockOptimizer.lambdasTranslation = emptyDoubleList;
-        setup.blockOptimizer.lambdasRegularization = emptyDoubleList;
-        setup.blockOptimizer.iterations = emptyIntegerList;
-        setup.blockOptimizer.maxPlateauWidth = emptyIntegerList;
+        setup.blockOptimizer.iterations = List.of(1000,1000,500,250,250);
+        setup.blockOptimizer.maxPlateauWidth = List.of(250,250,150,100,100);
         setup.blockOptimizer.maxAllowedError = 10.0;
 
         setup.maxNumMatches = 0;
@@ -151,18 +232,18 @@ public class MFOVAsTileParameters
     private static MatchRunParameters buildMontageMatchRunParameters() {
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(new MatchStageParameters("montageMfovAsTilePass1",
-                                                 buildFeatureRenderParameters(0.4), // 4 secs for 226 matches
-                                                 new FeatureRenderClipParameters(800, 800),
+                                                 buildFeatureRenderParameters(0.4), // 11 secs for 15 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
+                                                 new FeatureRenderClipParameters(1500, 1500),
                                                  buildFeatureExtractionParameters(),
                                                  buildFeatureMatchDerivation(100),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null),
                         new MatchStageParameters("montageMfovAsTilePass2",
-                                                 buildFeatureRenderParameters(1.0), // 78 secs for 2500 matches
-                                                 new FeatureRenderClipParameters(800, 800),
+                                                 buildFeatureRenderParameters(1.0), // 220 secs for 261 matches between w60_s360_r00_gc_z025_m0017 and w60_s360_r00_gc_z025_m0026
+                                                 new FeatureRenderClipParameters(1500, 1500),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(10),
+                                                 buildFeatureMatchDerivation(25),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null));
@@ -172,10 +253,20 @@ public class MFOVAsTileParameters
                                       matchStageParametersList);
     }
 
+    // match trial times:
+    //   stack: w60_s360_r00_gc_20250815a_mat_render
+    //   cross tile pair: w60_s360_r00_gc_z001_m0037 to w60_s360_r00_gc_z002_m0037
+    //     renderScale 0.2:    4 seconds              for   418 matches
+    //     renderScale 0.3:   19 seconds              for  1374 matches
+    //     renderScale 0.5:  108 seconds              for  5985 matches
+    //     renderScale 0.6:  372 seconds ( 6 minutes) for  8319 matches
+    //     renderScale 1.0: 2915 seconds (49 minutes) for 25210 matches - at this scale, matching would take 8 days
+
     private static MatchRunParameters buildCrossMatchRunParameters() {
+        // 2 passes, render scales 0.2 and 0.3, minInliers 150
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(new MatchStageParameters("crossMfovAsTilePass1",
-                                                 buildFeatureRenderParameters(0.2), // 4 secs for 276 matches
+                                                 buildFeatureRenderParameters(0.2),
                                                  new FeatureRenderClipParameters(),
                                                  buildFeatureExtractionParameters(),
                                                  buildFeatureMatchDerivation(150),
@@ -183,13 +274,14 @@ public class MFOVAsTileParameters
                                                  null,
                                                  null),
                         new MatchStageParameters("crossMfovAsTilePass2",
-                                                 buildFeatureRenderParameters(0.3), // 16 secs for 825 matches
+                                                 buildFeatureRenderParameters(0.3),
                                                  new FeatureRenderClipParameters(),
                                                  buildFeatureExtractionParameters(),
-                                                 buildFeatureMatchDerivation(10),
+                                                 buildFeatureMatchDerivation(150),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
                                                  null));
+
         return new MatchRunParameters("crossMfovAsTileRun",
                                       buildMatchCommonParameters(10),
                                       buildTilePairDerivationParameters(0.1, 1, true),
@@ -242,7 +334,7 @@ public class MFOVAsTileParameters
         featureMatchDerivation.matchFilter = MatchFilter.FilterType.SINGLE_SET;
         featureMatchDerivation.matchFullScaleCoverageRadius = 10.0;
         featureMatchDerivation.matchIterations = 1000;
-        featureMatchDerivation.matchMaxEpsilonFullScale = 5.0f;
+        featureMatchDerivation.matchMaxEpsilonFullScale = 10.0f;
         featureMatchDerivation.matchMaxTrust = 4.0;
         featureMatchDerivation.matchMinCoveragePercentage = 0.0;
         featureMatchDerivation.matchMinInlierRatio = 0.0f;

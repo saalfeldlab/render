@@ -2,6 +2,9 @@ package org.janelia.render.client.tile;
 
 import com.beust.jcommander.ParametersDelegate;
 
+import ij.process.Blitter;
+import ij.process.ImageProcessor;
+
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -389,8 +392,26 @@ public class RenderTilesClient {
             renderParameters.binaryMask = true;
         }
 
-        final TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
+        TransformMeshMappingWithMasks.ImageProcessorWithMasks imageProcessorWithMasks =
                 Renderer.renderImageProcessorWithMasks(renderParameters, imageProcessorCache, null);
+
+        if (tileRender.renderTileImagesLocally) {
+            if ((imageProcessorWithMasks.ip.getWidth() != tileSpec.getWidth()) ||
+                (imageProcessorWithMasks.ip.getHeight() != tileSpec.getHeight())) {
+
+                LOG.info("renderTile: changing locally rendered image size for tileId {} from {}x{} to {}x{} so that it matches the tile spec",
+                         tileId,
+                         imageProcessorWithMasks.ip.getWidth(), imageProcessorWithMasks.ip.getHeight(),
+                         tileSpec.getWidth(), tileSpec.getHeight());
+
+                final ImageProcessor resizedIp = imageProcessorWithMasks.ip.createProcessor(tileSpec.getWidth(),
+                                                                                            tileSpec.getHeight());
+                resizedIp.copyBits(imageProcessorWithMasks.ip, 0, 0, Blitter.COPY);
+                imageProcessorWithMasks = new TransformMeshMappingWithMasks.ImageProcessorWithMasks(resizedIp,
+                                                                                                    null,
+                                                                                                    null);
+            }
+        }
 
         // Get URI for the tile file and convert to File for backwards compatibility
         final String format = tileRender.format.toLowerCase();

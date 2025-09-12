@@ -26,7 +26,9 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.json.JsonUtils;
+import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -185,6 +187,34 @@ public class RenderDataClient {
         LOG.info("getOwnerMatchCollections: submitting {}", requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
+    }
+
+    /**
+     * Renames this client's match collection.
+     *
+     * @param  toMatchCollectionId  new owner and/or collection names.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    @SuppressWarnings("unused")
+    public void renameMatchCollection(final MatchCollectionId toMatchCollectionId)
+            throws IOException {
+
+        final String json = toMatchCollectionId.toJson();
+        final StringEntity stringEntity = new StringEntity(json, ContentType.APPLICATION_JSON);
+
+        final URI uri = getUri(urls.getMatchCollectionUrlString() + "/collectionId");
+
+        final String requestContext = "PUT " + uri;
+        final EmptyResponseHandler responseHandler = new EmptyResponseHandler(requestContext);
+
+        final HttpPut httpPut = new HttpPut(uri);
+        httpPut.setEntity(stringEntity);
+
+        LOG.info("renameMatchCollection: submitting {} with body {}", requestContext, json);
+
+        httpClient.execute(httpPut, responseHandler);
     }
 
     /**
@@ -407,6 +437,7 @@ public class RenderDataClient {
      * @throws IOException
      *   if the request fails for any reason.
      */
+    @SuppressWarnings("unused")
     public List<String> getDistinctSortedSectionIds(final String stack)
             throws IOException {
         return getStackSectionData(stack, null, null).stream()
@@ -447,7 +478,7 @@ public class RenderDataClient {
             derivedVersion = derivedStackMetaData.getCurrentVersion();
         } catch (final Throwable t) {
 
-            LOG.info("setupDerivedStack: derived stack does not exist, creating it ...");
+            LOG.info("setupDerivedStack: derived stack {} does not exist, creating it ...", derivedStack);
 
             derivedVersion = new StackVersion(new Date(),
                                               "derived from " + sourceStackMetaData.getStackId(),
@@ -470,7 +501,7 @@ public class RenderDataClient {
                 (sourceVersion.getStackResolutionY() != null) ||
                 (sourceVersion.getStackResolutionZ() != null)) {
 
-                LOG.info("setupDerivedStack: derived stack is missing resolution data, setting it ...");
+                LOG.info("setupDerivedStack: derived stack {} is missing resolution data, setting it ...", derivedStack);
 
                 final List<Double> commonResolutionValues = sourceVersion.getStackResolutionValues();
                 derivedVersion.setStackResolutionValues(commonResolutionValues);
@@ -483,7 +514,7 @@ public class RenderDataClient {
 
         if ((derivedVersion.getMipmapPathBuilder() == null) && (commonMipmapPathBuilder != null)) {
 
-            LOG.info("setupDerivedStack: derived stack is missing mipmap path builder, setting it ...");
+            LOG.info("setupDerivedStack: derived stack {} is missing mipmap path builder, setting it ...", derivedStack);
 
             derivedVersion.setMipmapPathBuilder(commonMipmapPathBuilder);
             setMipmapPathBuilder(derivedStack, commonMipmapPathBuilder);
@@ -1335,6 +1366,7 @@ public class RenderDataClient {
                           urlString,
                           excludeMatchDetails);
     }
+
     /**
      * Deletes matches with the specified pGroupId.
      *
@@ -1353,6 +1385,59 @@ public class RenderDataClient {
         final HttpDelete httpDelete = new HttpDelete(uri);
 
         LOG.info("deleteMatchesWithPGroupId: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
+    }
+
+    /**
+     * Deletes matches between the specified groupId and all other canvases that have a different groupId.
+     *
+     * @param  groupId  group identifier (usually the section id).
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    @SuppressWarnings("unused")
+    public void deleteMatchesOutsideGroup(final String groupId)
+            throws IOException {
+
+        final String urlString = String.format("%s/group/%s/matchesOutsideGroup",
+                                               urls.getMatchCollectionUrlString(), groupId);
+        final URI uri = getUri(urlString);
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteMatchesOutsideGroup: submitting {}", requestContext);
+
+        httpClient.execute(httpDelete, responseHandler);
+    }
+
+    /**
+     * Deletes matches between the specified canvas pair.
+     *
+     * @param  pCanvasId  p canvas id.
+     * @param  qCanvasId  q canvas id.
+     *
+     * @throws IOException
+     *   if the request fails for any reason.
+     */
+    public void deleteMatchPair(final CanvasId pCanvasId,
+                                final CanvasId qCanvasId)
+            throws IOException {
+
+        final String urlString = String.format("%s/group/%s/id/%s/matchesWith/%s/id/%s",
+                                               urls.getMatchCollectionUrlString(),
+                                               pCanvasId.getGroupId(), pCanvasId.getId(),
+                                               qCanvasId.getGroupId(), qCanvasId.getId());
+        final URI uri = getUri(urlString);
+        final String requestContext = "DELETE " + uri;
+        final TextResponseHandler responseHandler = new TextResponseHandler(requestContext);
+
+        final HttpDelete httpDelete = new HttpDelete(uri);
+
+        LOG.info("deleteMatchPair: submitting {}", requestContext);
 
         httpClient.execute(httpDelete, responseHandler);
     }
@@ -1600,7 +1685,8 @@ public class RenderDataClient {
         final JsonResponseHandler<List<CanvasMatches>> responseHandler = new JsonResponseHandler<>(requestContext,
                                                                                                    helper);
 
-        LOG.info(context + ": submitting {}", requestContext);
+        //noinspection LoggingSimilarMessage
+        LOG.info("{}: submitting {}", context, requestContext);
 
         return httpClient.execute(httpGet, responseHandler);
     }

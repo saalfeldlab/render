@@ -101,7 +101,7 @@ public class UrlMipmapSource
 
         final ChannelMap channels = new ChannelMap();
 
-        if ((channelSpecList != null) && (channelSpecList.size() > 0)) {
+        if ((channelSpecList != null) && (! channelSpecList.isEmpty())) {
 
             final long loadMipStart = System.currentTimeMillis();
 
@@ -139,8 +139,10 @@ public class UrlMipmapSource
 
             if (imageProcessor.getWidth() == 0 || imageProcessor.getHeight() == 0) {
 
-                LOG.debug("skipping " + getSourceName() + " mipmap " + imageAndMask.getImageUrl() +
-                          " with zero dimension after down-sampling " + downSampleLevels + " levels");
+                LOG.debug("skipping {} mipmap {} with zero dimension after down-sampling {} levels",
+                          getSourceName(),
+                          imageAndMask.getImageUrl(),
+                          downSampleLevels);
 
             } else {
 
@@ -154,6 +156,24 @@ public class UrlMipmapSource
                                                             false,
                                                             imageAndMask.getMaskLoaderType(),
                                                             imageAndMask.getMaskSliceNumber());
+
+                    // Confirm that mask size matches image size because if it does not match,
+                    // ImageProcessorWithMasks will drop the mask with just a System.err.println statement.
+
+                    if (maskProcessor.getHeight() != imageProcessor.getHeight()) {
+                        throw new IllegalArgumentException(
+                                "imageProcessor height " + imageProcessor.getHeight() +
+                                " differs from maskProcessor height " + maskProcessor.getHeight() +
+                                " for " + sourceName);
+                    }
+
+                    if (maskProcessor.getWidth() != imageProcessor.getWidth()) {
+                        throw new IllegalArgumentException(
+                                "imageProcessor width " + imageProcessor.getWidth() +
+                                " differs from maskProcessor width " + maskProcessor.getWidth() +
+                                " for " + sourceName);
+                    }
+
                 } else {
                     maskProcessor = null;
                 }
@@ -164,14 +184,6 @@ public class UrlMipmapSource
 
                 final ImageProcessorWithMasks firstChannel =
                         new ImageProcessorWithMasks(imageProcessor, maskProcessor, null);
-
-                // log warning if source.mask gets "quietly" removed (because of size)
-                if ((maskProcessor != null) && (firstChannel.mask == null)) {
-                    LOG.warn("getChannels: {} mask removed because image {} size ({}x{}) differs from mask {} size ({}x{})",
-                             sourceName,
-                             imageAndMask.getImageUrl(), imageProcessor.getWidth(), imageProcessor.getHeight(),
-                             imageAndMask.getMaskUrl(), maskProcessor.getWidth(), maskProcessor.getHeight());
-                }
 
                 channels.put(firstChannelSpec.getName(), firstChannel);
 

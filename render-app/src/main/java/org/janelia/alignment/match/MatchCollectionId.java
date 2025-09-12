@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.io.Serializable;
 import java.util.Objects;
 
+import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.util.CollectionNameUtil;
 
 /**
@@ -64,6 +65,10 @@ public class MatchCollectionId
         return owner + "::" + name;
     }
 
+    public String toJson() {
+        return JSON_HELPER.toJson(this);
+    }
+
     @Override
     public boolean equals(final Object o) {
         final boolean result;
@@ -108,6 +113,9 @@ public class MatchCollectionId
 
         return new MatchCollectionId(fields[0], fields[1]);
     }
+
+    private static final JsonUtils.Helper<MatchCollectionId> JSON_HELPER =
+            new JsonUtils.Helper<>(MatchCollectionId.class);
 
     private static final CollectionNameUtil COLLECTION_NAME_UTIL = new CollectionNameUtil("match");
 }

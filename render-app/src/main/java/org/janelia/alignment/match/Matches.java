@@ -20,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAccessType;
@@ -150,6 +151,19 @@ public class Matches implements Serializable {
     @JsonIgnore
     public List<RealPoint> getQList() {
         return buildPointList(getQs());
+    }
+
+    @JsonIgnore
+    public Matches withWeight(final double w) {
+        final double [][] newPs = new double[this.p.length][];
+        final double [][] newQs = new double[this.q.length][];
+        for (int d = 0; d < this.p.length; ++d) {
+            newPs[d] = Arrays.copyOf(this.p[d], this.p[d].length);
+            newQs[d] = Arrays.copyOf(this.q[d], this.q[d].length);
+        }
+        final double[] newWeights = new double[this.w.length];
+        Arrays.fill(newWeights, w);
+        return new Matches(newPs, newQs, newWeights);
     }
 
     private static List<RealPoint> buildPointList(final double[][] locations) {
