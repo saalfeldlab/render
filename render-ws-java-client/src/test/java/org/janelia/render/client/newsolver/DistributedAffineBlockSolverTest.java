@@ -270,12 +270,14 @@ public class DistributedAffineBlockSolverTest {
         final MFOVAsTileParameters mfovAsTileParameters =
                 new MFOVAsTileParameters(0.2,
                                          "/tmp",
+                                         "_prealign",
                                          "_mat",
                                          "_render",
                                          alignedStackSuffix,
                                          "_rough");
 
-        final AffineBlockSolverSetup solverSetup = mfovAsTileParameters.buildMfovAffineBlockSolverSetup();
+        final AffineBlockSolverSetup solverSetup =
+                mfovAsTileParameters.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.TRANSLATION);
         solverSetup.renderWeb = cmdLineSetup.renderWeb;
         solverSetup.stack = cmdLineSetup.stack;
         solverSetup.matches = cmdLineSetup.matches;

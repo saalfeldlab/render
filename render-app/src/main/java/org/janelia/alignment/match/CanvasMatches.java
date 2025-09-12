@@ -251,12 +251,20 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         return pId;
     }
 
+    public CanvasId getpCanvasId() {
+        return new CanvasId(pGroupId, pId);
+    }
+
     public String getqGroupId() {
         return qGroupId;
     }
 
     public String getqId() {
         return qId;
+    }
+
+    public CanvasId getqCanvasId() {
+        return new CanvasId(qGroupId, qId);
     }
 
     public Matches getMatches() {
@@ -303,6 +311,22 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         final CanvasId p = new CanvasId(pGroupId, pId);
         final CanvasId q = new CanvasId(qGroupId, qId);
         return new OrderedCanvasIdPair(p, q, null);
+    }
+
+    public boolean isPOffsetFromQ(final double minDistanceForOffset) {
+        final double[][] ps = matches.getPs();
+        final double[][] qs = matches.getQs();
+
+        double distanceSum = 0;
+        final int numMatchPoints = ps[0].length;
+        for (int i = 0; i < numMatchPoints; i++) {
+            final double deltaX = ps[0][i] - qs[0][i];
+            final double deltaY = ps[1][i] - qs[1][i];
+            distanceSum += Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
+        }
+
+        final double averageDistance = distanceSum / numMatchPoints;
+        return averageDistance > minDistanceForOffset;
     }
 
     public static CanvasMatches fromJson(final String json) {

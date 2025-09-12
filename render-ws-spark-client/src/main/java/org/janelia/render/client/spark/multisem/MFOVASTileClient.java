@@ -20,6 +20,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
 import org.janelia.alignment.match.MatchCollectionId;
+import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.multisem.LayerMFOV;
 import org.janelia.alignment.multisem.MultiSemUtilities;
@@ -33,6 +34,7 @@ import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.ClusterCountClient;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.match.RemoveMatchPairClient;
 import org.janelia.render.client.multisem.MFOVAsTileMontageMatchPatchClient;
 import org.janelia.render.client.multisem.MFOVAsTileStackClient;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
@@ -40,6 +42,7 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MFOVAsTileStackLists;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
+import org.janelia.render.client.parameter.MatchPairRemovalParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.TileRenderParameters;
@@ -138,11 +141,17 @@ public class MFOVASTileClient
         final MFOVAsTileStackLists mfovAsTileStackLists = new MFOVAsTileStackLists(baseDataUrl,
                                                                                    clientParameters.multiProject,
                                                                                    clientParameters.mfovAsTile);
+        if (clientParameters.mfovAsTile.doPrealign()) {
+            alignAndIntensityCorrectMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
+        }
+
         buildDynamicMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
 
         buildRenderedMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
 
         generateMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
+
+        removeCrossResinMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
 
         patchMissingMfovAsTileMatches(sparkContext, mfovAsTileStackLists);
 
@@ -153,6 +162,77 @@ public class MFOVASTileClient
         LOG.info("run: exit");
     }
 
+    private static void alignAndIntensityCorrectMfovAsTileStacks(final JavaSparkContext sparkContext,
+                                                                 final MFOVAsTileStackLists mfovAsTileStackLists)
+            throws IOException {
+        LOG.info("alignAndIntensityCorrectMfovAsTileStacks: entry");
+
+        final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
+        final String prealignedSfovStackSuffix  = mfovAsTileStackLists.getMfovAsTile().getPrealignedSfovStackSuffix();
+        final List<StackWithZValues> rawSfovStacksWithAllZ = mfovAsTileStackLists.getRawSfovStacksWithAllZ();
+
+        // Collect all MFOV processing tasks
+        final List<MfovPrealignTask> mfovTasks = new ArrayList<>();
+        final List<StackId> prealignedStackIds = new ArrayList<>();
+
+        for (final StackWithZValues rawSfovStackWithZ : rawSfovStacksWithAllZ) {
+            final StackId rawSfovStackId = rawSfovStackWithZ.getStackId();
+            final StackId prealignedStackId = rawSfovStackId.withStackSuffix(prealignedSfovStackSuffix);
+
+            if (mfovAsTileStackLists.isExistingStack(prealignedStackId)) {
+                LOG.info("alignAndIntensityCorrectMfovAsTileStacks: skipping build of {} because it already exists",
+                         prealignedStackId.toDevString());
+                continue;
+            }
+
+            // Create prealigned stack
+            final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
+                                                                     rawSfovStackId.getOwner(),
+                                                                     rawSfovStackId.getProject());
+            final StackMetaData rawStackMetaData = dataClient.getStackMetaData(rawSfovStackId.getStack());
+            dataClient.setupDerivedStack(rawStackMetaData, prealignedStackId.getStack());
+            prealignedStackIds.add(prealignedStackId);
+
+            // Collect MFOV tasks for each layer
+            for (final Double z : rawSfovStackWithZ.getzValues()) {
+                final List<String> mfovNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(dataClient,
+                                                                                                    rawSfovStackId.getStack(),
+                                                                                                    z);
+                for (final String mfovName : mfovNames) {
+                    mfovTasks.add(new MfovPrealignTask(baseDataUrl,
+                                                        rawSfovStackId,
+                                                        prealignedStackId,
+                                                        new LayerMFOV(z, mfovName))
+                    );
+                }
+            }
+        }
+
+        if (! mfovTasks.isEmpty()) {
+
+            // Note: it takes about 2 minutes to process 1 MFOV with 91 SFOV tiles
+            final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, mfovTasks.size());
+
+            LOG.info("alignAndIntensityCorrectMfovAsTileStacks: distributing {} MFOV tasks across {} stacks with parallelism {} (defaultParallelism={})",
+                     mfovTasks.size(), prealignedStackIds.size(), parallelism, sparkContext.defaultParallelism());
+
+            final JavaRDD<MfovPrealignTask> rddMfovTasks = sparkContext.parallelize(mfovTasks, parallelism);
+            rddMfovTasks.foreach(MfovPrealignTask::run);
+
+            // Complete all prealigned stacks
+            for (final StackId prealignedStackId : prealignedStackIds) {
+                final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
+                                                                         prealignedStackId.getOwner(),
+                                                                         prealignedStackId.getProject());
+                LOG.info("alignAndIntensityCorrectMfovAsTileStacks: completing stack {}",
+                         prealignedStackId.toDevString());
+                dataClient.setStackState(prealignedStackId.getStack(), StackMetaData.StackState.COMPLETE);
+            }
+        }
+
+        LOG.info("alignAndIntensityCorrectMfovAsTileStacks: exit");
+    }
+
     private static void buildDynamicMfovAsTileStacks(final JavaSparkContext sparkContext,
                                                      final MFOVAsTileStackLists mfovAsTileStackLists) {
 
@@ -161,11 +241,15 @@ public class MFOVASTileClient
         final double mfovRenderScale = mfovAsTile.getMfovRenderScale();
         final String dynamicMfovStackSuffix = mfovAsTile.getDynamicMfovStackSuffix();
 
-        final List<StackWithZValues> rawSfovStacksWithAllZ = mfovAsTileStackLists.getRawSfovStacksWithAllZ();
+        final List<StackWithZValues> prealignedSfovStacksWithAllZ = mfovAsTileStackLists.getPrealignedSfovStacksWithAllZ();
 
-        LOG.info("buildDynamicMfovAsTileStacks: entry, distributing build of {} stack(s)", rawSfovStacksWithAllZ.size());
+        final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, prealignedSfovStacksWithAllZ.size());
 
-        final JavaRDD<StackWithZValues> rddRawStacks = sparkContext.parallelize(rawSfovStacksWithAllZ);
+        LOG.info("buildDynamicMfovAsTileStacks: entry, distributing build of {} stack(s) with parallelism {} (defaultParallelism={})",
+                 prealignedSfovStacksWithAllZ.size(), parallelism, sparkContext.defaultParallelism());
+
+        final JavaRDD<StackWithZValues> rddPrealignedSfovStacks = sparkContext.parallelize(prealignedSfovStacksWithAllZ,
+                                                                                           parallelism);
 
         final Function<StackWithZValues, StackId> buildMfovStackFunction = stackWithAllZ -> {
 
@@ -173,16 +257,19 @@ public class MFOVASTileClient
 
             LogUtilities.setupExecutorLog4j(stackWithAllZ.getStackId().toDevString());
 
-            final StackId rawStackId = stackWithAllZ.getStackId();
-            final StackId dynamicMfovAsTileStackId = rawStackId.withStackSuffix(dynamicMfovStackSuffix);
+            final StackId prealignedStackId = stackWithAllZ.getStackId();
+            final StackId dynamicMfovAsTileStackId = prealignedStackId.withStackSuffix(dynamicMfovStackSuffix);
+
+            LOG.info("buildMfovStackFunction: entry, prealignedStackId={}, dynamicMfovAsTileStackId={}",
+                     prealignedStackId.toDevString(), dynamicMfovAsTileStackId.toDevString());
 
             if (mfovAsTileStackLists.isExistingStack(dynamicMfovAsTileStackId)) {
                 LOG.info("buildMfovStackFunction: skipping build of {} because it already exists",
                          dynamicMfovAsTileStackId.toDevString());
             } else {
                 final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
-                                                                         rawStackId.getOwner(),
-                                                                         rawStackId.getProject());
+                                                                         prealignedStackId.getOwner(),
+                                                                         prealignedStackId.getProject());
 
                 builtStackId = MFOVAsTileStackClient.buildOneMFOVAsTileStack(stackWithAllZ,
                                                                              dataClient,
@@ -190,10 +277,13 @@ public class MFOVASTileClient
                                                                              dynamicMfovStackSuffix);
             }
 
+            LOG.info("buildMfovStackFunction: exit, prealignedStackId={}, dynamicMfovAsTileStackId={}",
+                     prealignedStackId.toDevString(), dynamicMfovAsTileStackId.toDevString());
+
             return builtStackId;
         };
 
-        final JavaRDD<StackId> rddBuiltStacks = rddRawStacks.map(buildMfovStackFunction);
+        final JavaRDD<StackId> rddBuiltStacks = rddPrealignedSfovStacks.map(buildMfovStackFunction);
         final List<StackId> builtStacks = rddBuiltStacks.collect();
 
         final long skippedCount = rddBuiltStacks.filter(Objects::isNull).count();
@@ -213,13 +303,13 @@ public class MFOVASTileClient
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
         final String runTimestamp = new TileRenderParameters().getRunTimestamp();
 
-        final List<JavaRenderTilesClientInfo> renderTilesClientInfoList = new ArrayList<>();
+        final List<JavaRenderTilesClientInfoForLayerMfov> layerMfovClientInfoList = new ArrayList<>();
         final List<StackId> renderedMfovStackList = new ArrayList<>();
         for (final StackWithZValues rawSfovStackWithAllZ : mfovAsTileStackLists.getRawSfovStacksWithAllZ()) {
 
             final StackId rawStackId = rawSfovStackWithAllZ.getStackId();
-            final StackId dynamicMfovAsTileStackId = rawStackId.withStackSuffix(mfovAsTile.getDynamicMfovStackSuffix());
-            final StackId renderedMfovAsTileStackId = dynamicMfovAsTileStackId.withStackSuffix(mfovAsTile.getRenderedMfovStackSuffix());
+            final StackId dynamicMfovAsTileStackId = mfovAsTile.getDynamicMfovStackId(rawStackId);
+            final StackId renderedMfovAsTileStackId = mfovAsTile.getRenderedMfovStackId(rawStackId);
 
             if (mfovAsTileStackLists.isExistingStack(renderedMfovAsTileStackId)) {
 
@@ -239,12 +329,13 @@ public class MFOVASTileClient
                                                                                                         z);
                     for (final String mfovName : mfovNames) {
 
-                        final JavaRenderTilesClientInfo info = new JavaRenderTilesClientInfo(baseDataUrl,
-                                                                                             dynamicMfovAsTileStackId,
-                                                                                             new LayerMFOV(z, mfovName),
-                                                                                             mfovAsTile,
-                                                                                             runTimestamp);
-                        renderTilesClientInfoList.add(info);
+                        final JavaRenderTilesClientInfoForLayerMfov info =
+                                new JavaRenderTilesClientInfoForLayerMfov(baseDataUrl,
+                                                                          dynamicMfovAsTileStackId,
+                                                                          new LayerMFOV(z, mfovName),
+                                                                          mfovAsTile,
+                                                                          runTimestamp);
+                        layerMfovClientInfoList.add(info);
 
                         if (isSetupNeeded) {
                             info.setupHackStackAndStorage();
@@ -257,13 +348,16 @@ public class MFOVASTileClient
             }
         }
 
-        if (! renderTilesClientInfoList.isEmpty()) {
+        if (! layerMfovClientInfoList.isEmpty()) {
 
-            LOG.info("buildRenderedMfovAsTileStacks: distributing rendering for {} stack(s)",
-                     renderedMfovStackList.size());
+            final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, layerMfovClientInfoList.size());
 
-            final JavaRDD<JavaRenderTilesClientInfo> rddRenderTiles = sparkContext.parallelize(renderTilesClientInfoList);
-            final Function<JavaRenderTilesClientInfo, Integer> renderTilesFunction = JavaRenderTilesClientInfo::renderTiles;
+            LOG.info("buildRenderedMfovAsTileStacks: distributing rendering for {} layer MFOVs with parallelism {} (defaultParallelism={})",
+                     layerMfovClientInfoList.size(), parallelism, sparkContext.defaultParallelism());
+
+            final JavaRDD<JavaRenderTilesClientInfoForLayerMfov> rddRenderTiles = sparkContext.parallelize(layerMfovClientInfoList,
+                                                                                                           parallelism);
+            final Function<JavaRenderTilesClientInfoForLayerMfov, Integer> renderTilesFunction = JavaRenderTilesClientInfoForLayerMfov::renderTiles;
             final JavaRDD<Integer> rddRenderedTileCounts = rddRenderTiles.map(renderTilesFunction);
 
             final List<Integer> resultList = rddRenderedTileCounts.collect();
@@ -341,6 +435,60 @@ public class MFOVASTileClient
         LOG.info("generateMfovAsTileMatches: exit");
     }
 
+    private static void removeCrossResinMfovAsTileMatches(final JavaSparkContext sparkContext,
+                                                          final MFOVAsTileStackLists mfovAsTileStackLists) {
+
+        final Double minCrossMatchPixelDistance = mfovAsTileStackLists.getMfovAsTile().getMinCrossMatchPixelDistance();
+        if (minCrossMatchPixelDistance == null) {
+            LOG.info("removeCrossResinMfovAsTileMatches: skipping because minCrossMatchPixelDistance is null");
+            return;
+        }
+
+        // NOTE: Removal is run regardless of whether removal has been run before.
+
+        final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
+        final List<StackWithZValues> renderedMfovStacksWithAllZ = mfovAsTileStackLists.getRenderedMfovStacksWithAllZ();
+
+        final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, renderedMfovStacksWithAllZ.size());
+
+        LOG.info("removeCrossResinMfovAsTileMatches: entry, distributing removal for {} stack(s) with parallelism {} (defaultParallelism={})",
+                 renderedMfovStacksWithAllZ.size(), parallelism, sparkContext.defaultParallelism());
+
+        final JavaRDD<StackWithZValues> rddStacks = sparkContext.parallelize(renderedMfovStacksWithAllZ,
+                                                                             parallelism);
+
+        final Function<StackWithZValues, String> removalFunction = stackWithZValues -> {
+
+            LogUtilities.setupExecutorLog4j(stackWithZValues.getStackId().toDevString());
+
+            final StackId stackId = stackWithZValues.getStackId();
+            final MatchCollectionId matchCollectionId = stackId.getDefaultMatchCollectionId(false);
+            final RenderDataClient matchClient = new RenderDataClient(baseDataUrl,
+                                                                      matchCollectionId.getOwner(),
+                                                                      matchCollectionId.getName());
+
+            final MatchPairRemovalParameters matchPairRemovalParameters = new MatchPairRemovalParameters();
+            matchPairRemovalParameters.minCrossMatchPixelDistance = minCrossMatchPixelDistance;
+            matchPairRemovalParameters.maxNumberOfPairsToRemove = 1;
+
+            final List<OrderedCanvasIdPair> removedPairs =
+                    RemoveMatchPairClient.removeMatchPairsForCollection(matchClient, matchPairRemovalParameters);
+
+            final String removedPairsString = removedPairs.stream()
+                    .map(OrderedCanvasIdPair::toString)
+                    .collect(Collectors.joining(", "));
+            return stackId.toDevString()  + " had " + removedPairs.size() + " pairs removed: " + removedPairsString;
+        };
+
+        final List<String> removedPairsMessages = rddStacks.map(removalFunction).collect();
+
+        for (final String msg : removedPairsMessages) {
+            LOG.info("removeCrossResinMfovAsTileMatches: {}", msg);
+        }
+
+        LOG.info("removeCrossResinMfovAsTileMatches: exit");
+    }
+
     private static void patchMissingMfovAsTileMatches(final JavaSparkContext sparkContext,
                                                       final MFOVAsTileStackLists mfovAsTileStackLists) {
 
@@ -350,10 +498,13 @@ public class MFOVASTileClient
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
         final List<StackWithZValues> renderedMfovStacksWithAllZ = mfovAsTileStackLists.getRenderedMfovStacksWithAllZ();
 
-        LOG.info("patchMissingMfovAsTileMatches: entry, distributing patching for {} stack(s)",
-                 renderedMfovStacksWithAllZ.size());
+        final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, renderedMfovStacksWithAllZ.size());
 
-        final JavaRDD<StackWithZValues> rddPatchStacks = sparkContext.parallelize(renderedMfovStacksWithAllZ);
+        LOG.info("patchMissingMfovAsTileMatches: entry, distributing patching for {} stack(s) with parallelism {} (defaultParallelism={})",
+                 renderedMfovStacksWithAllZ.size(), parallelism, sparkContext.defaultParallelism());
+
+        final JavaRDD<StackWithZValues> rddPatchStacks = sparkContext.parallelize(renderedMfovStacksWithAllZ,
+                                                                                  parallelism);
 
         final Function<StackWithZValues, Integer> patchFunction = stackWithZValues -> {
 
@@ -426,7 +577,10 @@ public class MFOVASTileClient
 
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
-        final AffineBlockSolverSetup setup = mfovAsTile.buildMfovAffineBlockSolverSetup();
+        final AffineBlockSolverSetup translationSetup =
+                mfovAsTile.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.TRANSLATION);
+        final AffineBlockSolverSetup affineSetup =
+                mfovAsTile.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.AFFINE);
 
         final boolean deriveMatchCollectionNamesFromProject = false; // use standard stack-based match collection names
         final String matchSuffix = "";                               // without any suffix
@@ -442,10 +596,14 @@ public class MFOVASTileClient
                 LOG.info("alignRenderedMfovAsTileStacks: skipping alignment of {} because {} already exists",
                          renderedMfovStackId.toDevString(), alignedMfovStackId.toDevString());
             } else {
-                setupList.add(setup.buildPipelineClone(baseDataUrl,
-                                                       renderedMfovStackWithAllZ,
-                                                       deriveMatchCollectionNamesFromProject,
-                                                       matchSuffix));
+                setupList.add(translationSetup.buildPipelineClone(baseDataUrl,
+                                                                  renderedMfovStackWithAllZ,
+                                                                  deriveMatchCollectionNamesFromProject,
+                                                                  matchSuffix));
+                setupList.add(affineSetup.buildPipelineClone(baseDataUrl,
+                                                             renderedMfovStackWithAllZ,
+                                                             deriveMatchCollectionNamesFromProject,
+                                                             matchSuffix));
             }
         }
 
@@ -487,10 +645,13 @@ public class MFOVASTileClient
 
         if (! rawSfovStacksNeedingRoughStack.isEmpty()) {
 
-            LOG.info("buildRoughSfovStacks: distributing build of {} stack(s)",
-                     rawSfovStacksNeedingRoughStack.size());
+            final int parallelism = Math.min(MAX_PARTITIONS_FOR_ONE_WEB_SERVER, rawSfovStacksNeedingRoughStack.size());
 
-            final JavaRDD<StackWithZValues> rddAlignedStacks = sparkContext.parallelize(rawSfovStacksNeedingRoughStack);
+            LOG.info("buildRoughSfovStacks: distributing build of {} stack(s) with parallelism {} (defaultParallelism={})",
+                     rawSfovStacksNeedingRoughStack.size(), parallelism, sparkContext.defaultParallelism());
+
+            final JavaRDD<StackWithZValues> rddAlignedStacks = sparkContext.parallelize(rawSfovStacksNeedingRoughStack,
+                                                                                        parallelism);
 
             final Function<StackWithZValues, StackId> buildRoughStackFunction = stackWithAllZ -> {
 
@@ -623,18 +784,19 @@ public class MFOVASTileClient
     }
 
     // Serializable information that can be used to build RenderTilesClient instances in remote Spark workers
-    private static class JavaRenderTilesClientInfo implements Serializable {
+    public static class JavaRenderTilesClientInfoForLayerMfov
+            implements Serializable {
 
         private final String baseDataUrl;
         private final StackId stackId;
         private final LayerMFOV layerMFOV;
         private final TileRenderParameters tileRender;
 
-        public JavaRenderTilesClientInfo(final String baseDataUrl,
-                                         final StackId stackId,
-                                         final LayerMFOV layerMFOV,
-                                         final MFOVAsTileParameters mfovAsTile,
-                                         final String runTimestamp) {
+        public JavaRenderTilesClientInfoForLayerMfov(final String baseDataUrl,
+                                                     final StackId stackId,
+                                                     final LayerMFOV layerMFOV,
+                                                     final MFOVAsTileParameters mfovAsTile,
+                                                     final String runTimestamp) {
             this.baseDataUrl = baseDataUrl;
             this.stackId = stackId;
             this.layerMFOV = layerMFOV;
@@ -670,6 +832,8 @@ public class MFOVASTileClient
             return 1;
         }
     }
+
+    private static final int MAX_PARTITIONS_FOR_ONE_WEB_SERVER = 100000;
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVASTileClient.class);
 }

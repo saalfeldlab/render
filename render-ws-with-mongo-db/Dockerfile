@@ -44,10 +44,10 @@
 FROM ubuntu:22.04
 LABEL maintainer="Eric Trautman <trautmane@janelia.hhmi.org>"
 
-# 1: Install Git, Maven, curl, vim
+# 1: Install Git, Maven, curl, vim, jq
 RUN apt-get update && \
     apt-get -y upgrade && \
-    apt-get install -y git maven curl vim
+    apt-get install -y git maven curl vim jq
 
 # 2. Clone the Repository
 WORKDIR /var/www/
@@ -61,7 +61,9 @@ RUN git checkout newsolver
 
 RUN ./render-ws/src/main/scripts/install.sh && \
     cp ./render-ws-with-mongo-db/*.sh . && \
-    chmod 755 *.sh
+    chmod 755 *.sh && \
+    cp -r ./render-ws-with-mongo-db/other . && \
+    chmod 755 other/*.sh
 
 # 4. Build only the render-app and render-ws modules and skip tests
 RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc  && \
