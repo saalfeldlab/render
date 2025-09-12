@@ -58,7 +58,7 @@ public class ShadingCorrection_Plugin implements PlugIn {
 	}
 
 
-	public static int defaultType = 0;
+	public static int defaultType = 1;
 	public static boolean defaultShowBackground = false;
 	public static String[] fitTypes = new String[] { "Quadratic", "Fourth Order" };
 
