@@ -148,7 +148,7 @@ public class ResolvedTileSpecsWithMatchPairs
                 distinctCoreMatchPairs.stream().sorted().collect(Collectors.toList());
 
         final String countMsg = normalizedMatchPairs.size() < matchPairs.size() ? "was reduced to" : "remained as";
-        LOG.info("resolveTileSpecsAndNormalizeMatchPairs: with maxZDistance {} match pair count of {} {} {}",
+        LOG.info("normalize: with maxZDistance {} match pair count of {} {} {}",
                  maxZDistance, matchPairs.size(), countMsg, normalizedMatchPairs.size());
 
         this.matchPairs = normalizedMatchPairs;
