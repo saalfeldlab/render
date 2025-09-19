@@ -99,4 +99,5 @@ RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key 
 # expose the render port
 EXPOSE 8080
 
-CMD ./startup_mongodb_and_jetty.sh
+# use exec form of ENTRYPOINT so that signals are properly delivered to the script
+CMD ["./startup_mongodb_and_jetty.sh"]
