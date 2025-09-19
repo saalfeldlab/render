@@ -30,10 +30,7 @@ import org.slf4j.LoggerFactory;
 import static org.janelia.render.client.multisem.UnconnectedCrossMFOVClient.logUnconnectedMFOVPairs;
 
 /**
- * Spark client for patching matches missing from adjacent SFOV tile pairs within the same MFOV and z layer.
- * Core logic is implemented in {@link org.janelia.render.client.multisem.MFOVMontageMatchPatchClient}.
- *
- * @author Eric Trautman
+ * Spark client for finding MFOVs that are unconnected (or very poorly connected) across adjacent z layers.
  */
 public class UnconnectedCrossMFOVClient
         implements Serializable, AlignmentPipelineStep {
