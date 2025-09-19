@@ -614,8 +614,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			for (final String tileId : blockResults.getMatchedTileIdsForZLayer(z)) {
 				solveItemTileIdsForConsistencyCheck.add(tileId);
 				if (! idTotile.containsKey(tileId)) {
-					LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, unconnected tileId {}", blockData, tileId);
-
+					// LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, unconnected tileId {}", blockData, tileId); // 1.25 million log statements for w60 s360
 					final Tile<S> tile = new Tile<>(blockData.solveTypeParameters().stitchingSolveModelInstance(z).copy());
 					idTotile.put( tileId, tile );
 					tileToId.put( tile, tileId );
@@ -625,14 +624,12 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 			// Now identify connected graphs within all tiles
 			final ArrayList<Set<Tile<?>>> sets = WorkerTools.safelyIdentifyConnectedGraphs(new ArrayList<>(idTotile.values()));
 
-			LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, z={}, #sets={}", blockData, z, sets.size());
+			LOG.info("stitchSectionsAndCreateGroupedTiles: block {}, z={}, solving {} sets", blockData, z, sets.size());
 
 			// solve each set (if size > 1)
-			int setCount = 0;
 			for ( final Set< Tile< ? > > set : sets )
 			{
-				setCount++;
-				LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Set={}", blockData, setCount);
+				//LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: Set={}", blockData, setCount); // 1.8 million log statements for w60 s360
 
 				//
 				// the grouped tile for this set of one layer
@@ -747,7 +744,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final Set<String> solveItemOnlyTileIds = new HashSet<>(solveItemTileIdsForConsistencyCheck);
 		solveItemOnlyTileIds.removeAll(blockResults.getTileIds());
 		if (blockOnlyTileIds.isEmpty() && solveItemOnlyTileIds.isEmpty()) {
-			LOG.info("stitchSectionsAndCreateGroupedTiles: exit, tileIds are consistent");
+			LOG.info("stitchSectionsAndCreateGroupedTiles: block {}: exit, tileIds are consistent", blockData);
 		} else {
 			// log error in worker thread before throwing exception that will get logged in main/driver thread
 			final String errorMsg = "inconsistent tileIds for block " + blockData.toDetailsString() +
