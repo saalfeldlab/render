@@ -178,8 +178,13 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 		clone.renderWeb.project = sourceStackId.getProject();
 		clone.stack = sourceStackId.getStack();
 
-		clone.zRange.minZ = stackWithZValues.getFirstZ();
-		clone.zRange.maxZ = stackWithZValues.getLastZ();
+        if (zRange != null) {
+            clone.zRange.minZ = zRange.minZ == null ? stackWithZValues.getFirstZ() : zRange.minZ;
+            clone.zRange.maxZ = zRange.maxZ == null ? stackWithZValues.getLastZ() : zRange.maxZ;
+        } else {
+            clone.zRange.minZ = stackWithZValues.getFirstZ();
+            clone.zRange.maxZ = stackWithZValues.getLastZ();
+        }
 
 		// TODO: should we log a warning and/or abort if the zValues have "holes" and don't cover the entire zRange?
 
