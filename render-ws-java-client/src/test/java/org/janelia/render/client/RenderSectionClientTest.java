@@ -23,15 +23,15 @@ public class RenderSectionClientTest {
         try {
             final String[] testArgs = {
                     "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                    "--owner", "cellmap",
-                    "--project", "jrc_mus_thymus_1",
-                    "--stack", "v1_acquire",
+                    "--owner", "hess_wafers_60_61",
+                    "--project", "w61_serial_080_to_089",
+                    "--stack", "w61_s080_r01",
 //                    "--resolutionUnit", "nm",
                     "--rootDirectory", "/Users/trautmane/Desktop/scape_test",
-                    "--scale", "0.1",
-                    "--format", "tif",
+                    "--scale", "0.05",
+                    "--format", "jpg",
                     "--convertToGray",
-                    "1000"
+                    "1"
                     };
 
             RenderSectionClient.main(testArgs);
