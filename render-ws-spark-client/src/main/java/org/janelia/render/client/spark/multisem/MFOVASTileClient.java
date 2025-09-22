@@ -301,7 +301,7 @@ public class MFOVASTileClient
 
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
-        final String runTimestamp = new TileRenderParameters().getRunTimestamp();
+        final String runTimestamp = mfovAsTile.getRenderedMfovRunTimestamp();
 
         final List<JavaRenderTilesClientInfoForLayerMfov> layerMfovClientInfoList = new ArrayList<>();
         final List<StackId> renderedMfovStackList = new ArrayList<>();

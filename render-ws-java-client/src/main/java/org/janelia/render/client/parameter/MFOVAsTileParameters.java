@@ -1,7 +1,9 @@
 package org.janelia.render.client.parameter;
 
 import java.io.Serializable;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.janelia.alignment.match.MatchFilter;
@@ -30,6 +32,7 @@ public class MFOVAsTileParameters
     private final String prealignedSfovStackSuffix;
     private final String dynamicMfovStackSuffix;
     private final String renderedMfovStackSuffix;
+    private String renderedMfovRunTimestamp;
     private final String alignedMfovStackSuffix;
     private final String roughSfovStackSuffix;
     private final Double minCrossMatchPixelDistance;
@@ -56,6 +59,7 @@ public class MFOVAsTileParameters
              prealignedSfovStackSuffix,
              dynamicMfovStackSuffix,
              renderedMfovStackSuffix,
+             null,
              alignedMfovStackSuffix,
              roughSfovStackSuffix,
              null);
@@ -66,6 +70,7 @@ public class MFOVAsTileParameters
                                 final String prealignedSfovStackSuffix,
                                 final String dynamicMfovStackSuffix,
                                 final String renderedMfovStackSuffix,
+                                final String renderedMfovRunTimestamp,
                                 final String alignedMfovStackSuffix,
                                 final String roughSfovStackSuffix,
                                 final Double minCrossMatchPixelDistance) {
@@ -74,6 +79,7 @@ public class MFOVAsTileParameters
         this.prealignedSfovStackSuffix = prealignedSfovStackSuffix;
         this.dynamicMfovStackSuffix = dynamicMfovStackSuffix;
         this.renderedMfovStackSuffix = renderedMfovStackSuffix;
+        this.renderedMfovRunTimestamp = renderedMfovRunTimestamp;
         this.alignedMfovStackSuffix = alignedMfovStackSuffix;
         this.roughSfovStackSuffix = roughSfovStackSuffix;
         this.minCrossMatchPixelDistance = minCrossMatchPixelDistance;
@@ -141,6 +147,14 @@ public class MFOVAsTileParameters
 
     public boolean doPrealign() {
         return prealignedSfovStackSuffix != null;
+    }
+
+    public String getRenderedMfovRunTimestamp() {
+        if (this.renderedMfovRunTimestamp == null) {
+            final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+            this.renderedMfovRunTimestamp = sdf.format(new Date());
+        }
+        return this.renderedMfovRunTimestamp;
     }
 
     public List<MatchRunParameters> buildMfovMatchRunList() {
