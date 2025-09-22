@@ -34,4 +34,4 @@ curl -X PUT --header 'Content-Type: application/json' --header 'Accept: text/pla
 
 echo "
 Stacks for ${TO_OWNER} :: ${TO_PROJECT} are now:"
-curl -X GET --silent --header 'Accept: application/json' "${BASE_URL}/owner/${TO_OWNER}/project/${TO_PROJECT}/stackIds" | jq '.'
+curl -X GET --silent --header 'Accept: application/json' "${BASE_URL}/owner/${TO_OWNER}/project/${TO_PROJECT}/stackIds" | jq -r '.[] | "\(.stack)"' | sort

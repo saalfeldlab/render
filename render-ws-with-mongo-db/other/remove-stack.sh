@@ -28,4 +28,4 @@ curl -X DELETE --header 'Accept: application/json' "${URL}"
 
 echo "
 Stacks for ${OWNER} :: ${PROJECT} are now:"
-curl -X GET --silent --header 'Accept: application/json' "${BASE_URL}/owner/${OWNER}/project/${PROJECT}/stackIds" | jq '.'
+curl -X GET --silent --header 'Accept: application/json' "${BASE_URL}/owner/${OWNER}/project/${PROJECT}/stackIds" | jq -r '.[] | "\(.stack)"' | sort

@@ -32,4 +32,4 @@ curl -X PUT --header 'Content-Type: application/json' --header 'Accept: text/pla
 
 echo "
 Match collections for owner ${TO_OWNER} are now:"
-curl -X GET --silent --header 'Accept: application/json' "${BASE_URL}/owner/${TO_OWNER}/matchCollections" | jq '.'
+curl -X GET --silent --header 'Accept: application/json' "${BASE_URL}/owner/${TO_OWNER}/matchCollections" | jq -r '.[] | "\(.collectionId.name)"' | sort

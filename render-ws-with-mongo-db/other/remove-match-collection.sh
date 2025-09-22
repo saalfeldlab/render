@@ -27,4 +27,4 @@ curl -X DELETE --header 'Accept: application/json' "${URL}"
 
 echo "
 Match collections for ${OWNER} are now:"
-curl -X GET --silent --header 'Accept: application/json' "${BASE_URL}/owner/${OWNER}/matchCollections" | jq '.'
+curl -X GET --silent --header 'Accept: application/json' "${BASE_URL}/owner/${OWNER}/matchCollections" | jq -r '.[] | "\(.collectionId.name)"' | sort
