@@ -301,27 +301,39 @@ public class RenderTilesClient {
         }
     }
 
+    @SuppressWarnings("BusyWait")
     public void setupStorageDirectories()
             throws IOException {
 
-        for (final Double z : renderDataClient.getStackZValues(stack)) {
+        final List<Double> zValues = renderDataClient.getStackZValues(stack);
+        for (int i = 0; i < zValues.size(); i++) {
+
+            final double z = zValues.get(i);
 
             final List<String> relativePathSegments = getImageParentPathSegments(z);
             final URI parentUri = storageBackend.resolvePath(relativePathSegments);
 
-            LOG.info("setupStorageDirectories: ensuring writable directory for z {} at {}",
+            LOG.info("setupStorageDirectories: ensuring writable directory (or bucket 'prefix') for z {} at {}",
                      z, parentUri);
             try {
                 storageBackend.ensureWritableDirectory(parentUri);
+
+                if (i > 10) {
+                    // for Google storage ~1000 object mutations per second per bucket per project are allowed so
+                    // sleep a bit to reduce chance of "exceeded the rate limit for object mutation operations" exception
+                    Thread.sleep(50);
+                }
+
             } catch (final Throwable t) {
-                LOG.warn("setupStorageDirectories: caught exception and will retry setup in 1 second", t);
+                LOG.warn("setupStorageDirectories: caught exception and will retry setup in 5 seconds", t);
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(5000);
                 } catch (final InterruptedException ie) {
                     LOG.warn("setupStorageDirectories: caught exception while sleeping and will retry setup now", ie);
                 }
                 storageBackend.ensureWritableDirectory(parentUri);
             }
+
         }
     }
 
