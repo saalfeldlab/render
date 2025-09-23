@@ -336,13 +336,12 @@ public class N5Client {
         }
 
         int numberOfDownSampledDatasets = 0;
+        final N5WriterSupplier n5Supplier = new Util.N5PathSupplier(parameters.n5Path);
         if (downsampleStack) {
 
             LOG.info("run: downsample stack with factors {}", Arrays.toString(downsampleFactors));
 
             // Now that the full resolution image is saved into n5, generate the scale pyramid
-            final N5WriterSupplier n5Supplier = new Util.N5PathSupplier(parameters.n5Path);
-
             final List<String> downsampledDatasetPaths =
                     downsampleScalePyramid(sparkContext,
                                            n5Supplier,
@@ -362,8 +361,7 @@ public class N5Client {
                                            Arrays.asList(min[0], min[1], min[2]),
                                            NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-        ngAttributes.write(Paths.get(parameters.n5Path),
-                           Paths.get(fullScaleDatasetName));
+        ngAttributes.write(n5Supplier.get(), Paths.get(fullScaleDatasetName));
 
         if (downsampleStackForReview) {
 
@@ -407,8 +405,7 @@ public class N5Client {
                                                Arrays.asList(min[0], min[1], min[2]),
                                                NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
 
-            reviewNgAttributes.write(Paths.get(parameters.n5Path),
-                                     Paths.get(fullScaleReviewDatasetName));
+            reviewNgAttributes.write(n5ReviewSupplier.get(), Paths.get(fullScaleReviewDatasetName));
         }
 
         sparkContext.close();
