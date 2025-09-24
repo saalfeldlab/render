@@ -301,14 +301,10 @@ public class RenderTilesClient {
         }
     }
 
-    @SuppressWarnings("BusyWait")
     public void setupStorageDirectories()
             throws IOException {
 
-        final List<Double> zValues = renderDataClient.getStackZValues(stack);
-        for (int i = 0; i < zValues.size(); i++) {
-
-            final double z = zValues.get(i);
+        for (final double z : renderDataClient.getStackZValues(stack)) {
 
             final List<String> relativePathSegments = getImageParentPathSegments(z);
             final URI parentUri = storageBackend.resolvePath(relativePathSegments);
@@ -318,10 +314,13 @@ public class RenderTilesClient {
             try {
                 storageBackend.ensureWritableDirectory(parentUri);
 
-                if (i > 10) {
-                    // for Google storage ~1000 object mutations per second per bucket per project are allowed so
-                    // sleep a bit to reduce chance of "exceeded the rate limit for object mutation operations" exception
-                    Thread.sleep(50);
+                final String scheme = storageBackend.root.getScheme();
+                if ((scheme != null) && scheme.startsWith("gs:")) {
+                    // Supposedly, ~1000 object mutations per second per bucket per project are allowed by Google.
+                    // We have seen "exceeded the rate limit for object mutation operations" exceptions even after
+                    // limiting the rate to 20 per second.
+                    // Limiting the rate to 10 per second to try to avoid this.
+                    Thread.sleep(100);
                 }
 
             } catch (final Throwable t) {
