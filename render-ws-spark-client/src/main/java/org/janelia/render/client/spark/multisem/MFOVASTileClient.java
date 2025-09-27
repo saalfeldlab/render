@@ -417,6 +417,9 @@ public class MFOVASTileClient
 
                 if (! projectStackNameList.isEmpty()) {
 
+                    LOG.info("generateMfovAsTileMatches: starting generation for project {} with stacks {}",
+                             project, projectStackNameList);
+
                     final MultiProjectParameters multiProject = new MultiProjectParameters();
                     multiProject.baseDataUrl = baseDataUrl;
                     multiProject.owner = owner;
