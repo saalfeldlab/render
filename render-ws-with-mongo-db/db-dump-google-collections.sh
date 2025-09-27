@@ -17,6 +17,9 @@ Examples: $0  render-ws-mongodb-8c-32gb-abf  render  '.*w60_s360_r00_gc_[mr].*'
 
           $0  render-ws-mongodb-8c-32gb-abf  render  '.*w60_s360_r00_(gc|gc_mat|gc_mat_render)__.*'
 
+          $0  render-ws-mongodb-8c-32gb-abm  render  '.*_pa_.*'
+          $0  render-ws-mongodb-8c-32gb-abn  match   '.*_s15[0-4]_.*'
+
 "
   exit 1
 fi
@@ -26,6 +29,7 @@ DB="${2}"
 PATTERN="${3}"
 
 BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
+DUMP_WAIT_SECONDS=3
 
 if [ ! -d "${BASE_DUMP_DIR}" ]; then
   echo "ERROR: ${BASE_DUMP_DIR} not found"
@@ -108,7 +112,15 @@ DUMP_DIR="${BASE_DUMP_DIR}/${DUMP_SUBDIR}/collections/${RUN_TIMESTAMP}"
 mkdir -p "${DUMP_DIR}"
 
 for COLLECTION in ${COLLECTIONS}; do
+
   mongodump --uri="${CONNECTION_URI}" --db="${DB}" --collection="${COLLECTION}" --gzip --out="${DUMP_DIR}"
+
+  if [ "${DB}" == "match" ]; then
+    echo "sleeping for ${DUMP_WAIT_SECONDS} seconds in attempt to avoid container crash on larger dumps"
+    sync # tell the kernel to flush all dirty buffers in memory to their backing storage right now
+    sleep ${DUMP_WAIT_SECONDS}
+  fi
+
 done
 
 if [[ -v SMD_QUERY ]]; then
@@ -121,7 +133,6 @@ ${SMD_QUERY}]}
 
   COLLECTION_COUNT=$((COLLECTION_COUNT+1))
 fi
-
 
 echo "
 Dumped ${COLLECTION_COUNT} collections to:
