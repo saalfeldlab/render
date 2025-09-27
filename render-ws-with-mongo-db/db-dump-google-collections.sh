@@ -17,8 +17,8 @@ Examples: $0  render-ws-mongodb-8c-32gb-abf  render  '.*w60_s360_r00_gc_[mr].*'
 
           $0  render-ws-mongodb-8c-32gb-abf  render  '.*w60_s360_r00_(gc|gc_mat|gc_mat_render)__.*'
 
-          $0  render-ws-mongodb-8c-32gb-abm  render  '.*_pa_.*'
-          $0  render-ws-mongodb-8c-32gb-abn  match   '.*_s15[0-4]_.*'
+          $0  render-ws-mongodb-16c-64gb-aaa  render  '.*_pa_.*'
+          $0  render-ws-mongodb-16c-64gb-aaa  match   '.*_s15[0-4]_.*'
 
 "
   exit 1
