@@ -7,7 +7,7 @@ OWNER_URL="http://localhost:8080/render-ws/v1/owner/${OWNER}"
 mapfile -t PROJECT_NAMES < <(curl -s "${OWNER_URL}/projects" | tr -d '[]" ' | tr ',' '\n')
 
 if [ "${#PROJECT_NAMES[@]}" -eq 0 ]; then
-  echo "No projects found for owner ${OWNER}, exiting"
+  printf "\nNo projects found for owner %s, exiting\n\n" "${OWNER}"
   exit 0
 fi
 
