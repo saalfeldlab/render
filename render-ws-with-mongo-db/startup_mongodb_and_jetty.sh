@@ -51,13 +51,29 @@ export RENDER_JETTY_MIN_AND_MAX_MEMORY="${JETTY_MEM_GB}g"
 # ----------------------------------------------------------
 
 MONGOD_CONF_FILE="/etc/mongod.conf"
-MONGOD_BACKUP_FILE="/etc/mongod.conf.bak"
+MONGOD_BACKUP_FILE="${MONGOD_CONF_FILE}.bak"
 
 # update mongod.conf to set wiredTiger cache size if not already done
 if [ ! -f "${MONGOD_BACKUP_FILE}" ]; then
-    cp "${MONGOD_CONF_FILE}" "${MONGOD_BACKUP_FILE}"
-    sed -i "/^#  wiredTiger:/c\
-  wiredTiger:\n    engineConfig:\n      cacheSizeGB: ${MONGOD_CACHE_SIZE_GB}" "${MONGOD_CONF_FILE}"
+
+  # Change ...
+  #
+  #   storage:
+  #     dbPath: /var/lib/mongodb
+  #   #  engine:
+  #   #  wiredTiger:
+  #
+  # To ...
+  #
+  #   storage:
+  #     dbPath: /var/lib/mongodb
+  #   #  engine:
+  #     wiredTiger:
+  #       engineConfig:
+  #         cacheSizeGB: 27
+
+  sed -i.bak "s/#  wiredTiger:.*/  wiredTiger:\n    engineConfig:\n      cacheSizeGB: ${MONGOD_CACHE_SIZE_GB}/" "${MONGOD_CONF_FILE}"
+
 fi
 
 # ------------------------------------------------------------------------------------------------------
