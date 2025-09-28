@@ -6,6 +6,11 @@ OWNER_URL="http://localhost:8080/render-ws/v1/owner/${OWNER}"
 
 mapfile -t PROJECT_NAMES < <(curl -s "${OWNER_URL}/projects" | tr -d '[]" ' | tr ',' '\n')
 
+if [ "${#PROJECT_NAMES[@]}" -eq 0 ]; then
+  echo "No projects found for owner ${OWNER}, exiting"
+  exit 0
+fi
+
 if [ "${#PROJECT_NAMES[@]}" -eq 1 ]; then
   PROJECT="${PROJECT_NAMES[0]}"
 else
@@ -24,7 +29,7 @@ STACK_IDS_URL="${OWNER_URL}/project/${PROJECT}/stackIds"
 mapfile -t STACK_NAMES < <(curl -s "${STACK_IDS_URL}" | jq -r '.[].stack' | sort)
 
 if (( ${#STACK_NAMES[@]} == 0 )); then
-    printf "\nExiting, no stacks exist for project %s\n\n" "${PROJECT}"
+    printf "\nNo stacks exist for project %s, exiting\n\n" "${PROJECT}"
     exit 1
 fi
 
@@ -62,7 +67,7 @@ else
     if [[ $i =~ ^[0-9]+$ ]] && (( i >= 1 && i <= ${#STACK_NAMES[@]} )); then
       SELECTED_STACK_NAMES+=("${STACK_NAMES[i-1]}")
     else
-      printf "\nExiting, choices must be between 1 and %d\n\n" "${#STACK_NAMES[@]}"
+      printf "\nChoices must be between 1 and %d, exiting\n\n" "${#STACK_NAMES[@]}"
       exit 1
     fi
   done
