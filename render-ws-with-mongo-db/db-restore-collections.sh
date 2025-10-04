@@ -23,21 +23,44 @@ if [ ${#DUMP_DIRECTORIES[@]} -eq 0 ]; then
     exit 1
 fi
 
-PS3="Enter the number of the dump directory you want to restore: "
-select DUMP_DIR in "${DUMP_DIRECTORIES[@]}"; do
-  if [ ! -d "${DUMP_DIR}" ]; then
-    echo "ERROR: ${DUMP_DIR} not found"
-  else
-    break
+for i in "${!DUMP_DIRECTORIES[@]}"; do
+  printf " %2d) %s\n" "$((i+1))" "${DUMP_DIRECTORIES[$i]}"
+done
+echo
+
+read -rp "Enter the numbers of the dump directories you want to restore (space-separated): " CHOICES
+# shellcheck disable=SC2086
+set -- ${CHOICES}
+DUMP_DIR_NUMS=("$@")
+
+if (( ${#DUMP_DIR_NUMS[@]} == 0 )); then
+    printf "\nExiting, no choice entered\n\n"
+    exit 1
+fi
+
+SELECTED_DIRS=()
+for n in "${DUMP_DIR_NUMS[@]}"; do
+  if [[ ! "$n" =~ ^[0-9]+$ ]]; then
+    echo "ERROR: '$n' is not a number" >&2
+    exit 1
   fi
+  idx=$((n-1))
+  if (( idx < 0 || idx >= ${#DUMP_DIRECTORIES[@]} )); then
+    echo "ERROR: selection $n out of range (1..${#DUMP_DIRECTORIES[@]})" >&2
+    exit 1
+  fi
+  SELECTED_DIRS+=("${DUMP_DIRECTORIES[$idx]}")
 done
 
 URI="mongodb://localhost:27017"
 
-for DUMP_FILE in "${DUMP_DIR}"/*.bson.gz; do
-  echo "restoring ${DUMP_FILE} ..."
-  # see https://www.mongodb.com/docs/database-tools/mongorestore/
-  # notes: --dryRun option exists
-  #        you can load into a different database and/or collection by specifying --db and --collection
-  mongorestore --uri="${URI}" --gzip "${DUMP_FILE}"
+shopt -s nullglob
+for DUMP_DIR in "${SELECTED_DIRS[@]}"; do
+  for DUMP_FILE in "${DUMP_DIR}"/*.bson.gz; do
+    echo "restoring ${DUMP_FILE} ..."
+    # see https://www.mongodb.com/docs/database-tools/mongorestore/
+    # notes: --dryRun option exists
+    #        you can load into a different database and/or collection by specifying --db and --collection
+    mongorestore --uri="${URI}" --gzip "${DUMP_FILE}"
+  done
 done
