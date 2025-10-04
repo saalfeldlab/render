@@ -22,10 +22,11 @@ else
   DUMP_DIR_NAME="w61_s${FIRST_SLAB}_to_${LAST_SLAB}_r00_align"
 fi
 
+DUMP_DATE=$( date +%Y%m%d )
 ./db-dump-google-collections.sh render-ws-mongodb-16c-64gb-align render '.*_align.*'
 
 ALIGN_COL_DIR="/mnt/disks/mongodb_dump_fs/dump/render-ws-mongodb-16c-64gb-align/collections"
-mv ${ALIGN_COL_DIR}/20251003* ${ALIGN_COL_DIR}/"${DUMP_DIR_NAME}"
+mv ${ALIGN_COL_DIR}/"${DUMP_DATE}"* ${ALIGN_COL_DIR}/"${DUMP_DIR_NAME}"
 
 printf "\n%s now contains:\n\n" "${ALIGN_COL_DIR}"
 ls -1 "${ALIGN_COL_DIR}"
