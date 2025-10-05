@@ -44,7 +44,6 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		extends Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> {
 
 	private final FIBSEMIntensityCorrectionParameters<M> parameters;
-	private static final int ITERATIONS = 2000;
 
 	public AffineIntensityCorrectionBlockWorker(
 			final BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> blockData,
@@ -114,7 +113,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		final Map<String, IntensityTile> coefficientTiles = splitIntoCoefficientTiles(tiles, imageProcessorCache);
 
 		if (tiles.size() > 1) {
-			solveForGlobalCoefficients(coefficientTiles, ITERATIONS);
+			solveForGlobalCoefficients(coefficientTiles);
 		} else {
 			LOG.info("computeCoefficients: skipping solveForGlobalCoefficients because there is only 1 tile");
 		}
@@ -225,10 +224,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	}
 
 	@SuppressWarnings("SameParameterValue")
-	private void solveForGlobalCoefficients(
-			final Map<String, IntensityTile> coefficientTiles,
-			final int iterations
-	) {
+	private void solveForGlobalCoefficients(final Map<String, IntensityTile> coefficientTiles) {
 		final IntensityTile equilibrationTile = new IntensityTile(IdentityModel::new, 1, 1);
 
 		connectTilesWithinPatches(coefficientTiles, equilibrationTile);
@@ -246,7 +242,12 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		}
 
 		LOG.info("solveForGlobalCoefficients: optimizing {} tiles with {} threads", tiles.size(), numThreads);
-		final IntensityTileOptimizer optimizer = new IntensityTileOptimizer(0.01, iterations, iterations, 0.75, numThreads);
+		final IntensityTileOptimizer optimizer = new IntensityTileOptimizer(
+				blockData.solveTypeParameters().maxAllowedError(),
+				blockData.solveTypeParameters().maxIterations(),
+				blockData.solveTypeParameters().maxPlateauWidth(),
+				1.0,
+				numThreads);
 		optimizer.optimize(tiles, fixedTile);
 
 		// TODO: this is not the right error measure, what is idToBlockErrorMap supposed to be exactly?

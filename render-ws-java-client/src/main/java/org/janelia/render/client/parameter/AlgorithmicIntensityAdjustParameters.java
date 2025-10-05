@@ -64,6 +64,24 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public double equilibrationWeight = 0.0;
 
+	@Parameter(
+			names = "--maxAllowedError",
+			description = "Max allowed error for the optimizer"
+	)
+	public Double maxAllowedError = 0.1;
+
+	@Parameter(
+			names = "--maxIterations",
+			description = "Max iterations for the optimizer"
+	)
+	public Integer maxIterations = 10000;
+
+	@Parameter(
+			names = "--maxPlateauWidth",
+			description = "Max plateau width for the optimizer"
+	)
+	public Integer maxPlateauWidth = 500;
+
 
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();

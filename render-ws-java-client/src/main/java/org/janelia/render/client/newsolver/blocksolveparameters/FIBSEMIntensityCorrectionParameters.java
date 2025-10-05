@@ -29,6 +29,9 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final int numCoefficients;
 	private final ZDistanceParameters zDistance;
 	private final double equilibrationWeight;
+	private final double maxAllowedError;
+	private final int maxIterations;
+	private final int maxPlateauWidth;
 
 	public FIBSEMIntensityCorrectionParameters(
 			final M blockSolveModel,
@@ -47,7 +50,10 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			 intensityAdjust.crossLayerRenderScale,
 			 intensityAdjust.numCoefficients,
 			 intensityAdjust.zDistance,
-			 intensityAdjust.equilibrationWeight);
+			 intensityAdjust.equilibrationWeight,
+			 intensityAdjust.maxAllowedError,
+			 intensityAdjust.maxIterations,
+			 intensityAdjust.maxPlateauWidth);
 	}
 
 	public FIBSEMIntensityCorrectionParameters(
@@ -63,7 +69,10 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final double crossLayerRenderScale,
 			final int numCoefficients,
 			final ZDistanceParameters zDistance,
-			final double equilibrationWeight) {
+			final double equilibrationWeight,
+			final double maxAllowedError,
+			final int maxIterations,
+			final int maxPlateauWidth) {
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
@@ -75,6 +84,9 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.numCoefficients = numCoefficients;
 		this.zDistance = zDistance;
 		this.equilibrationWeight = equilibrationWeight;
+		this.maxAllowedError = maxAllowedError;
+		this.maxIterations = maxIterations;
+		this.maxPlateauWidth = maxPlateauWidth;
 	}
 
 	public long maxNumberOfCachedPixels() { return maxNumberOfCachedPixels; }
@@ -85,6 +97,9 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public int numCoefficients() { return numCoefficients; }
 	public ZDistanceParameters zDistance() { return zDistance; }
 	public double equilibrationWeight() { return equilibrationWeight; }
+	public double maxAllowedError() { return maxAllowedError; }
+	public int maxIterations() { return maxIterations; }
+	public int maxPlateauWidth() { return maxPlateauWidth; }
 
 	@Override
 	public Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(
