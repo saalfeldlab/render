@@ -155,16 +155,19 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		for (final Future<?> result : matchTasks)
 			result.get();
 
-		final Map<String, Future<List<Double>>> tileIdToAverage = new HashMap<>();
-		for (final TileSpec tile : tiles) {
-			final Future<List<Double>> result = exec.submit(() -> matcher.computeAverages(tile));
-			tileIdToAverage.put(tile.getTileId(), result);
-			blockData.getResults().recordMatchedTile(tile.getIntegerZ(), tile.getTileId());
-		}
+		if (parameters.equilibrationWeight() > 0.0) {
+			LOG.info("splitIntoCoefficientTiles: equilibrationWeight is {}, adding equilibration matches", parameters.equilibrationWeight());
+			final Map<String, Future<List<Double>>> tileIdToAverage = new HashMap<>();
+			for (final TileSpec tile : tiles) {
+				final Future<List<Double>> result = exec.submit(() -> matcher.computeAverages(tile));
+				tileIdToAverage.put(tile.getTileId(), result);
+				blockData.getResults().recordMatchedTile(tile.getIntegerZ(), tile.getTileId());
+			}
 
-		final ResultContainer<ArrayList<AffineModel1D>> results = blockData.getResults();
-		for (final Entry<String, Future<List<Double>>> tileToAverages : tileIdToAverage.entrySet()) {
-			results.recordAverages(tileToAverages.getKey(), tileToAverages.getValue().get());
+			final ResultContainer<ArrayList<AffineModel1D>> results = blockData.getResults();
+			for (final Entry<String, Future<List<Double>>> tileToAverages : tileIdToAverage.entrySet()) {
+				results.recordAverages(tileToAverages.getKey(), tileToAverages.getValue().get());
+			}
 		}
 
 		exec.shutdown();
