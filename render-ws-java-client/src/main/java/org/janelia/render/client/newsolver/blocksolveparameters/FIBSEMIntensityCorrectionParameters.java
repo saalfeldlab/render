@@ -21,7 +21,7 @@ import org.janelia.render.client.parameter.ZDistanceParameters;
 public class FIBSEMIntensityCorrectionParameters<M>
 		extends BlockDataSolveParameters<M, ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> {
 	private static final long serialVersionUID = -5349107301431384524L;
-	private final long maxNumberOfCachedPixels;
+	private final long maxPixelCacheGb;
 	private final double lambdaTranslation;
 	private final double lambdaIdentity;
 	private final double renderScale;
@@ -62,7 +62,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final String owner,
 			final String project,
 			final String stack,
-			final long maxNumberOfCachedPixels,
+			final long maxPixelCacheGb,
 			final double lambdaTranslation,
 			final double lambdaIdentity,
 			final double renderScale,
@@ -76,7 +76,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
-		this.maxNumberOfCachedPixels = maxNumberOfCachedPixels;
+		this.maxPixelCacheGb = maxPixelCacheGb;
 		this.lambdaTranslation = lambdaTranslation;
 		this.lambdaIdentity = lambdaIdentity;
 		this.renderScale = renderScale;
@@ -89,7 +89,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.maxPlateauWidth = maxPlateauWidth;
 	}
 
-	public long maxNumberOfCachedPixels() { return maxNumberOfCachedPixels; }
+	public long maxPixelCacheGb() { return maxPixelCacheGb; }
 	public double lambdaTranslation() { return lambdaTranslation; }
 	public double lambdaIdentity() { return lambdaIdentity; }
 	public double renderScale() { return renderScale; }

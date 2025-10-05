@@ -105,10 +105,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		LOG.info("computeCoefficients: entry");
 
-		final long maxCachedPixels = parameters.maxNumberOfCachedPixels();
+		final long maxCachedPixels = parameters.maxPixelCacheGb() * 1024L * 1024L * 1024L;  // assume 8bit images
 		final ImageProcessorCache imageProcessorCache = (maxCachedPixels == 0)
 				? ImageProcessorCache.DISABLED_CACHE
-				: new ImageProcessorCache(parameters.maxNumberOfCachedPixels(), true, false);
+				: new ImageProcessorCache(maxCachedPixels, true, false);
 
 		final Map<String, IntensityTile> coefficientTiles = splitIntoCoefficientTiles(tiles, imageProcessorCache);
 
