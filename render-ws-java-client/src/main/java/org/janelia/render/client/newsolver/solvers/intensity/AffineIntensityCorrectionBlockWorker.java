@@ -61,7 +61,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	public List<BlockData<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>>> call()
 			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
-		LOG.info("call: entry, blockData={}", blockData);
+        final long startTime = System.currentTimeMillis();
+
+		LOG.info("call: entry, renderStack={}, blockData={}", renderStack, blockData);
+
 		fetchResolvedTiles();
 
 		if (blockData.rtsc().getTileCount() == 0) {
@@ -82,7 +85,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			blockData.getResults().recordModel(tileId, models);
 		});
 
-		LOG.info("call: exit, blockData={}", blockData);
+		LOG.info("call: exit, renderStack={}, blockData={}, processing took {} seconds",
+                 renderStack, blockData, (System.currentTimeMillis() - startTime) / 1000.0);
+
 		return new ArrayList<>(List.of(blockData));
 	}
 
@@ -103,7 +108,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	private Map<String, IntensityTile> computeCoefficients(final List<TileSpec> tiles)
 			throws ExecutionException, InterruptedException {
 
-		LOG.info("computeCoefficients: entry");
+		LOG.info("computeCoefficients: entry, renderStack={}, blockData={}", renderStack, blockData);
 
 		final long maxCachedPixels = parameters.maxPixelCacheGb() * 1024L * 1024L * 1024L;  // assume 8bit images
 		final ImageProcessorCache imageProcessorCache = (maxCachedPixels == 0)
@@ -115,7 +120,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		if (tiles.size() > 1) {
 			solveForGlobalCoefficients(coefficientTiles);
 		} else {
-			LOG.info("computeCoefficients: skipping solveForGlobalCoefficients because there is only 1 tile");
+			LOG.info("computeCoefficients: skipping solve because there is only 1 tile, renderStack={}, blockData={}",
+                    renderStack, blockData);
 		}
 
 		return coefficientTiles;
@@ -127,18 +133,21 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	) throws InterruptedException, ExecutionException {
 
 		if (tiles == null || tiles.isEmpty()) {
-			LOG.info("splitIntoCoefficientTiles: skipping because there are no tiles");
+			LOG.info("splitIntoCoefficientTiles: skipping because there are no tiles, renderStack={}, blockData={}",
+                     renderStack, blockData);
 			return new HashMap<>();
 		}
 
-		LOG.info("splitIntoCoefficientTiles: entry, collecting pairs for {} patches with zDistance {}", tiles.size(), parameters.zDistance());
+		LOG.info("splitIntoCoefficientTiles: entry, renderStack={}, blockData={}, tiles.size={}, zDistance={}",
+                 renderStack, blockData, tiles.size(), parameters.zDistance());
 
 		// generate coefficient tiles for all patches
 		final HashMap<String, IntensityTile> coefficientTiles = generateCoefficientsTiles(tiles);
 
 		final List<ValuePair<TileSpec, TileSpec>> patchPairs = findOverlappingPatches(tiles, parameters.zDistance());
 
-		LOG.info("splitIntoCoefficientTiles: found {} pairs for {} patches with zDistance {} -- matching intensities with {} threads", patchPairs.size(), tiles.size(), parameters.zDistance(), numThreads);
+		LOG.info("splitIntoCoefficientTiles:  matching intensities, renderStack={}, blockData={}, patchPairs.size={}, numThreads={}",
+                 renderStack, blockData, patchPairs.size(), numThreads);
 
 		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
 		final IntensityMatcher matcher = getIntensityMatcher(tiles, imageProcessorCache);
@@ -156,7 +165,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			result.get();
 
 		if (parameters.equilibrationWeight() > 0.0) {
-			LOG.info("splitIntoCoefficientTiles: equilibrationWeight is {}, adding equilibration matches", parameters.equilibrationWeight());
+
+			LOG.info("splitIntoCoefficientTiles: adding equilibration matches, renderStack={}, blockData={}, equilibrationWeight={}",
+                     renderStack, blockData, parameters.equilibrationWeight());
+
 			final Map<String, Future<List<Double>>> tileIdToAverage = new HashMap<>();
 			for (final TileSpec tile : tiles) {
 				final Future<List<Double>> result = exec.submit(() -> matcher.computeAverages(tile));
@@ -171,7 +183,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		}
 
 		exec.shutdown();
-		LOG.info("splitIntoCoefficientTiles: after matching, imageProcessorCache stats are: {}", imageProcessorCache.getStats());
+
+		LOG.info("splitIntoCoefficientTiles: exit, renderStack={}, blockData={}, imageProcessorCache.getStats={}",
+                 renderStack, blockData, imageProcessorCache.getStats());
+
 		return coefficientTiles;
 	}
 
@@ -228,6 +243,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	@SuppressWarnings("SameParameterValue")
 	private void solveForGlobalCoefficients(final Map<String, IntensityTile> coefficientTiles) {
+
+        LOG.info("solveForGlobalCoefficients: entry, renderStack={}, blockData={}",
+                 renderStack, blockData);
+
 		final IntensityTile equilibrationTile = new IntensityTile(IdentityModel::new, 1, 1);
 
 		connectTilesWithinPatches(coefficientTiles, equilibrationTile);
@@ -244,7 +263,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			fixedTile = tiles.get(0);
 		}
 
-		LOG.info("solveForGlobalCoefficients: optimizing {} tiles with {} threads", tiles.size(), numThreads);
+		LOG.info("solveForGlobalCoefficients: optimize tiles, renderStack={}, blockData={}, tiles.size={}, numThreads={}",
+                 renderStack, blockData, tiles.size(), numThreads);
+
 		final IntensityTileOptimizer optimizer = new IntensityTileOptimizer(
 				blockData.solveTypeParameters().maxAllowedError(),
 				blockData.solveTypeParameters().maxIterations(),
@@ -262,7 +283,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			blockData.getResults().recordAllErrors(tileId, errorMap);
 		});
 
-		LOG.info("solveForGlobalCoefficients: exit, returning intensity coefficients for {} tiles", coefficientTiles.size());
+		LOG.info("solveForGlobalCoefficients: exit, renderStack={}, blockData={}, returning intensity coefficients for {} tiles",
+                 renderStack, blockData, coefficientTiles.size());
 	}
 
 	private void connectTilesWithinPatches(
