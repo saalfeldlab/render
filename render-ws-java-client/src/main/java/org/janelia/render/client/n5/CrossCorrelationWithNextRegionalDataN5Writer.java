@@ -132,7 +132,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                                                                       stackResolutionUnit,
                                                                       rowCount,
                                                                       columnCount);
-        ngAttributes.write(Paths.get(basePath), Paths.get(datasetName));
+        ngAttributes.write(n5Writer, Paths.get(datasetName));
 
         final String dataSetPath = attributesPath.getParent().toString();
         final Path ccDataPath = Paths.get(dataSetPath, "cc_regional_data.json.gz");
@@ -161,7 +161,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                 Files.write(ngUrlPath, ngUrlString.getBytes());
                 LOG.info("createDataSet: neuroglancer URL written to {}", ngUrlPath);
             } catch (final IOException e) {
-                LOG.warn("ignoring failure to write " + ngUrlPath, e);
+                LOG.warn("ignoring failure to write {}", ngUrlPath, e);
             }
         }
 
@@ -327,7 +327,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                              exportPrefix, renderExportProjectDir);
                 }
             } catch (final IOException e) {
-                LOG.warn("ignoring failure to list files in " + renderExportProjectDir, e);
+                LOG.warn("ignoring failure to list files in {}", renderExportProjectDir, e);
             }
         } else {
             LOG.warn("buildNgLayerStringForLatestRenderExport: failed to find render export directory {}",

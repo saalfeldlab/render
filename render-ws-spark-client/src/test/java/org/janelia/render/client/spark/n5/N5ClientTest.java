@@ -150,13 +150,13 @@ public class N5ClientTest {
     @Test
     public void testNeuroglancerAttributes() throws Exception {
 
-        final Path n5Path = n5PathDirectory.toPath().toAbsolutePath();
+        final String n5Path = n5PathDirectory.getAbsolutePath();
         final Path fullScaleDatasetPath = Paths.get("/render/test_stack/one_more_nested_dir/s0");
         final String datasetName = fullScaleDatasetPath.toString();
 
         final long[] dimensions = { 100L, 200L, 300L };
         final int[] blockSize = { 10, 20, 30 };
-        try (final N5Writer n5Writer = new N5FSWriter(n5Path.toString())) {
+        try (final N5Writer n5Writer = new N5FSWriter(n5Path)) {
 
             final DatasetAttributes datasetAttributes = new DatasetAttributes(dimensions,
                                                                               blockSize,
@@ -164,7 +164,7 @@ public class N5ClientTest {
                                                                               new GzipCompression());
             n5Writer.createDataset(datasetName, datasetAttributes);
 
-            final N5Reader n5Reader = new N5FSReader(n5Path.toString());
+            final N5Reader n5Reader = new N5FSReader(n5Path);
             Assert.assertTrue("dataset " + datasetName + " is missing", n5Reader.datasetExists(datasetName));
 
             final Map<String, Object> originalDatasetAttributes = datasetAttributes.asMap();
@@ -198,7 +198,7 @@ public class N5ClientTest {
                                                Arrays.asList(5L, 25L, 125L),
                                                NeuroglancerAttributes.NumpyContiguousOrdering.C);
 
-            ngAttributes.write(n5Path, fullScaleDatasetPath);
+            ngAttributes.write(n5Writer, fullScaleDatasetPath);
 
             final String testStackDatasetName = fullScaleDatasetPath.getParent().toString();
 

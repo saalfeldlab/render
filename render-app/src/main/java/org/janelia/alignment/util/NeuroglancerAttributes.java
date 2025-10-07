@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -135,13 +134,13 @@ public class NeuroglancerAttributes {
     /**
      * Writes all attribute.json files required by neuroglancer to display the specified dataset.
      *
-     * @param  n5BasePath            base path for n5.
+     * @param  n5Writer              N5 writer to use for writing the attributes.
      * @param  fullScaleDatasetPath  path of the full scale data set.
      *
      * @throws IOException
      *   if the writes fail for any reason.
      */
-    public void write(final Path n5BasePath,
+    public void write(final N5Writer n5Writer,
                       final Path fullScaleDatasetPath)
             throws IOException {
 
@@ -150,10 +149,8 @@ public class NeuroglancerAttributes {
         final Path ngAttributesPath = isMultiScaleDataset ?
                                       fullScaleDatasetPath.getParent() : fullScaleDatasetPath;
 
-        LOG.info("write: entry, n5BasePath={}, fullScaleDatasetPath={}, ngAttributesPath={}",
-                 n5BasePath, fullScaleDatasetPath, ngAttributesPath);
-
-        final N5Writer n5Writer = new N5FSWriter(n5BasePath.toAbsolutePath().toString());
+        LOG.info("write: entry, n5Base={}, fullScaleDatasetPath={}, ngAttributesPath={}",
+                 n5Writer.getURI(), fullScaleDatasetPath, ngAttributesPath);
 
         // Neuroglancer recursively looks for attribute.json files from root path and stops at
         // the first subdirectory without an attributes.json file.
@@ -164,7 +161,7 @@ public class NeuroglancerAttributes {
         for (Path path = ngAttributesPath.getParent();
              (path != null) && (! path.endsWith("/"));
              path = path.getParent()) {
-            LOG.info("write: saving supported attribute to {}{}/attributes.json", n5BasePath, path);
+            LOG.info("write: saving supported attribute to {}{}/attributes.json", n5Writer.getURI(), path);
             n5Writer.setAttribute(path.toString(), SUPPORTED_KEY, true);
         }
 
@@ -180,7 +177,7 @@ public class NeuroglancerAttributes {
         attributes.put("pixelResolution", pixelResolution);
         attributes.put("translate", translate);
 
-        LOG.info("write: saving neuroglancer attributes to {}{}/attributes.json", n5BasePath, ngAttributesPath);
+        LOG.info("write: saving neuroglancer attributes to {}{}/attributes.json", n5Writer.getURI(), ngAttributesPath);
         n5Writer.setAttributes(ngAttributesPath.toString(), attributes);
 
         if (isMultiScaleDataset) {
@@ -188,7 +185,7 @@ public class NeuroglancerAttributes {
                 writeScaleLevelTransformAttributes(scaleLevel,
                                                    scales.get(scaleLevel),
                                                    n5Writer,
-                                                   n5BasePath,
+                                                   n5Writer.getURI().toString(),
                                                    ngAttributesPath);
             }
         }
@@ -197,16 +194,18 @@ public class NeuroglancerAttributes {
     private void writeScaleLevelTransformAttributes(final int scaleLevel,
                                                     final List<Integer> scaleLevelFactors,
                                                     final N5Writer n5Writer,
-                                                    final Path n5BasePath,
+                                                    final String n5Base,
                                                     final Path ngAttributesPath)
             throws IOException {
 
         final String scaleName = "s" + scaleLevel;
         final Path scaleAttributesPath = Paths.get(ngAttributesPath.toString(), scaleName);
 
-        final Path scaleLevelDirectoryPath = Paths.get(n5BasePath.toString(), ngAttributesPath.toString(), scaleName);
-        if (! scaleLevelDirectoryPath.toFile().exists()) {
-            throw new IOException(scaleLevelDirectoryPath.toAbsolutePath() + " does not exist");
+        if (n5Base.startsWith("/") || n5Base.startsWith("\\")) {
+            final Path scaleLevelDirectoryPath = Paths.get(n5Base, ngAttributesPath.toString(), scaleName);
+            if (! scaleLevelDirectoryPath.toFile().exists()) {
+                throw new IOException(scaleLevelDirectoryPath.toAbsolutePath() + " does not exist");
+            }
         }
 
         final Map<String, Object> transformAttributes = new HashMap<>();
@@ -232,7 +231,7 @@ public class NeuroglancerAttributes {
         final Map<String, Object> attributes = new HashMap<>();
         attributes.put("transform", transformAttributes);
 
-        LOG.info("writeScaleLevelTransformAttributes: saving {}{}/attributes.json", n5BasePath, scaleAttributesPath);
+        LOG.info("writeScaleLevelTransformAttributes: saving {}{}/attributes.json", n5Base, scaleAttributesPath);
         n5Writer.setAttributes(scaleAttributesPath.toString(), attributes);
     }
 
