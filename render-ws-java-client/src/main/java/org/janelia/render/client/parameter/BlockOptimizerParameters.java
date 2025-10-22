@@ -74,6 +74,7 @@ public class BlockOptimizerParameters implements Serializable {
 			description = "Number of tiles where 0.1 (L) and 0.9 (H) weight modification are assumed, in the format 'LxH'. " +
 					"E.g., '5x100' means a tile that has 5 matches has the affine part of the model reduced to 0.1 of the given weight " +
 					"and a tile with 100 matches has the affine part of the model reduced to 0.9 of the given weight. " +
+					"OR single number (B) so that matches << B -> pure regularizer, matches >> B -> pure affine." +
 					"If not specified, no weight modification is applied."
 	)
 	public String weightModificationDeciles = null;
@@ -121,12 +122,17 @@ public class BlockOptimizerParameters implements Serializable {
 			return WeightModificationStrategy.none();
 		}
 		final String[] parts = weightModificationDeciles.split("x");
-		if (parts.length != 2) {
-			throw new IllegalArgumentException("Invalid format for weight modification deciles: " + weightModificationDeciles);
+		switch (parts.length) {
+			case 1:
+				final int breakEven = Integer.parseInt(parts[0]);
+				return WeightModificationStrategy.exponential(breakEven);
+			case 2:
+				final int low = Integer.parseInt(parts[0]);
+				final int high = Integer.parseInt(parts[1]);
+				return WeightModificationStrategy.sigmoid(low, high);
+			default:
+				throw new IllegalArgumentException("Invalid format for weight modification deciles: " + weightModificationDeciles);
 		}
-		final int low = Integer.parseInt(parts[0]);
-		final int high = Integer.parseInt(parts[1]);
-		return WeightModificationStrategy.sigmoid(low, high);
 	}
 
 	public int nRuns() {

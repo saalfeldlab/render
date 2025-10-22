@@ -51,4 +51,30 @@ public interface WeightModificationStrategy {
 		};
 	}
 
+	/**
+	 * Creates a WeightModificationStrategy that modifies the weights based on the
+	 * number of matches in the tile, using an exponential function that satisfies
+	 * exponential(breakEven) = 1.0 and is capped at roughly Double.MAX_VALUE / 2.
+	 * This basically realizes
+	 * - Pure regularizer for nMatches << breakEven
+	 * - Pure affine for nMatches >> breakEven
+	 *
+	 * @param breakEven the break-even point for scaling
+	 * @return a WeightModificationStrategy that applies exponential scaling
+	 */
+	static WeightModificationStrategy exponential(final int breakEven) {
+		// Compute the exponent and cap
+		final double exponent = Math.log(2) / breakEven;
+		final double cap = Math.log(Double.MAX_VALUE / 2);
+
+		// Create the WeightModificationStrategy that applies the exponential function
+		return (weights, tile) -> {
+			final Map<String, Double> modifiedWeights = new HashMap<>(weights);
+			final int nMatches = tile.getMatches().size();
+			final double factor = Math.exp(Math.min(nMatches * exponent, cap));
+			modifiedWeights.compute(AlignmentModelType.AFFINE.name(), (key, affine) -> affine * factor);
+			return modifiedWeights;
+		};
+	}
+
 }
