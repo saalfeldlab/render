@@ -33,9 +33,9 @@ public class DistributedAffineBlockSolverTest {
     // The following methods support ad-hoc interactive testing with external render web services.
     // Consequently, they aren't included in the unit test suite.
 
-    private static final String RENDER_DATA_HOST = "renderer-dev.int.janelia.org";
-    private static final String BASE_DATA_URL = "http://" + RENDER_DATA_HOST + ":8080/render-ws/v1";
-    private static final String OWNER = "hess_wafers_60_61";
+    public static final String RENDER_DATA_HOST = "renderer-dev.int.janelia.org";
+    public static final String BASE_DATA_URL = "http://" + RENDER_DATA_HOST + ":8080/render-ws/v1";
+    public static final String OWNER = "hess_wafers_60_61";
 
     private static final String SOURCE_PROJECT = "w60_serial_360_to_369";
     private static final String SOURCE_STACK = "w60_s360_r00_gc20250808a_mat_render_z_2";
