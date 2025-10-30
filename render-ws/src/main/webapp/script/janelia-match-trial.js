@@ -928,7 +928,7 @@ JaneliaMatchTrial.prototype.toggleLinesAndPoints = function() {
     }
 };
 
-JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner, saveToCollection, errorMessageSelector) {
+JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner, saveToCollection, errorMessageSelector, pGroupId, qGroupId) {
 
     // Typical tile render URL pattern is:
     //   <base_url>/owner/<owner>/project/<project>/stack/<stack>/tile/<tile_id>/render-parameters?...
@@ -936,9 +936,26 @@ JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner,
     //   <acquisition_timestamp>.<section_id>
     const typicalTileRenderRegEx = /(.*\/render-ws).*\/owner\/([^\/]+)\/project\/([^\/]+)\/stack\/([^\/]+)\/tile\/([^\\.]+\.(\d+\.\d+))\/render-parameters.*/;
 
-    const pUrlMatch = this.trialResults.parameters.pRenderParametersUrl.match(typicalTileRenderRegEx);
-    const qUrlMatch = this.trialResults.parameters.qRenderParametersUrl.match(typicalTileRenderRegEx);
+    // /tile/w61_magc0145_scan015_m0009_r70_s90/
+    let pUrlMatch = this.trialResults.parameters.pRenderParametersUrl.match(typicalTileRenderRegEx);
+    let qUrlMatch = this.trialResults.parameters.qRenderParametersUrl.match(typicalTileRenderRegEx);
 
+    if (pUrlMatch && qUrlMatch) {
+
+        pGroupId = pUrlMatch[6];
+        qGroupId = qUrlMatch[6];
+
+    } else if (pGroupId && qGroupId) {
+
+        // multi-SEM <tile_id> pattern is:
+        //   w<aa>_magc<bbbb>_scan<ccc>_m<dddd>_r<ee>_s<ff>
+        //   w61_magc0145_scan015_m0009_r70_s90
+        //   <acquisition_timestamp>.<section_id>
+        const msemTileRenderRegEx = /(.*\/render-ws).*\/owner\/([^\/]+)\/project\/([^\/]+)\/stack\/([^\/]+)\/tile\/([^\/]+)\/render-parameters.*/;
+        pUrlMatch = this.trialResults.parameters.pRenderParametersUrl.match(msemTileRenderRegEx);
+        qUrlMatch = this.trialResults.parameters.qRenderParametersUrl.match(msemTileRenderRegEx);
+
+    }
 
     if ((typeof saveToCollection === 'undefined') || (saveToCollection.length === 0)) {
 
@@ -966,9 +983,7 @@ JaneliaMatchTrial.prototype.saveTrialResultsToCollection = function(saveToOwner,
         const renderStack = pUrlMatch[4];
 
         const pTileId = pUrlMatch[5];
-        const pGroupId = pUrlMatch[6];
         const qTileId = qUrlMatch[5];
-        const qGroupId = qUrlMatch[6];
 
         const matchPairData = {
             "pGroupId": pGroupId,
