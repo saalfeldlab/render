@@ -20,6 +20,7 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TileSpecComparatorUtil;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -31,10 +32,10 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Utility for rendering uniform (but arbitrarily sized) boxes (derived tiles) to disk for one or more layers.
- *
+ * <br/>
  * An {@link ArgbRenderer} instance is first used to produce the full scale (level 0) boxes.
  * {@link BoxMipmapGenerator} instances are then used to produce any requested down-sampled mipmaps.
- *
+ * <br/>
  * All generated images have the same dimensions and pixel count and are stored within a
  * CATMAID LargeDataTileSource directory structure that looks like this:
  * <pre>
@@ -44,7 +45,7 @@ import org.slf4j.LoggerFactory;
  * Details about the CATMAID LargeDataTileSource can be found at
  * <a href="https://github.com/catmaid/CATMAID/blob/master/django/applications/catmaid/static/js/tile-source.js">
  *     https://github.com/catmaid/CATMAID/blob/master/django/applications/catmaid/static/js/tile-source.js
- * </a>).
+ * </a>.
  *
  * @author Eric Trautman
  */
@@ -408,7 +409,7 @@ public class BoxGenerator implements Serializable {
         if (renderParameters.hasTileSpecs()) {
 
             if (boxParameters.sortByClusterGroupId) {
-                renderParameters.sortTileSpecs(MaterializedBoxParameters.CLUSTER_GROUP_ID_COMPARATOR);
+                renderParameters.sortTileSpecs(TileSpecComparatorUtil.CLUSTER_GROUP_ID_COMPARATOR);
             }
 
             final BufferedImage levelZeroImage = BoxMipmapGenerator.renderBoxImage(renderParameters,
@@ -434,7 +435,7 @@ public class BoxGenerator implements Serializable {
     /**
      * Wrapper for capturing location of the last already generated box image.
      */
-    private class AlreadyGeneratedState {
+    private static class AlreadyGeneratedState {
 
         int x;
         int y;

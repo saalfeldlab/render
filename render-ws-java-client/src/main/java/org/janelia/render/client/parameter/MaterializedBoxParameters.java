@@ -1,12 +1,10 @@
 package org.janelia.render.client.parameter;
 
+import com.beust.jcommander.Parameter;
+
 import java.io.Serializable;
-import java.util.Comparator;
 
 import org.janelia.alignment.Utils;
-import org.janelia.alignment.spec.TileSpec;
-
-import com.beust.jcommander.Parameter;
 
 /**
  * Parameters for rendering box images to disk.
@@ -153,33 +151,5 @@ public class MaterializedBoxParameters implements Serializable {
 
         return p;
     }
-
-    /**
-     * Orders tile specs by groupId descending and tileId ascending.
-     * Specs with groupIds are ordered before specs without groupIds.
-     *
-     * Cluster groupIds are expected to be in reverse order by size with
-     * the largest cluster having the least lexical groupId.
-     *
-     * This supports rendering smaller clusters before larger clusters,
-     * ensuring that larger clusters are "on top" in cases where clusters intersect.
-     */
-    public static final Comparator<TileSpec> CLUSTER_GROUP_ID_COMPARATOR = (o1, o2) -> {
-        int result = 0;
-        if (o1.getGroupId() == null) {
-            if (o2.getGroupId() != null) {
-                result = 1;
-            }
-        } else if (o2.getGroupId() == null) {
-            result = -1;
-        } else {
-            result = o2.getGroupId().compareTo(o1.getGroupId());
-        }
-        if (result == 0) {
-            result = o1.getTileId().compareTo(o2.getTileId());
-        }
-        return result;
-    };
-
 
 }

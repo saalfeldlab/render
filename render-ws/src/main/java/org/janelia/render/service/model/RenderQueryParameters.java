@@ -5,6 +5,7 @@ import java.io.Serializable;
 import javax.ws.rs.QueryParam;
 
 import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.spec.TileSpecComparatorUtil;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.RenderDataService;
 
@@ -52,6 +53,9 @@ public class RenderQueryParameters
     @QueryParam("scale")
     private Double scale;
 
+    @QueryParam("tileSpecOrder")
+    private final TileSpecComparatorUtil.Order tileSpecOrder;
+
     public RenderQueryParameters() {
         this(null);
     }
@@ -68,7 +72,8 @@ public class RenderQueryParameters
              null,
              null,
              null,
-             scale);
+             scale,
+             null);
     }
 
     private RenderQueryParameters(final Boolean binaryMask,
@@ -82,7 +87,8 @@ public class RenderQueryParameters
                                   final String filterListName,
                                   final Double minIntensity,
                                   final Double maxIntensity,
-                                  final Double scale) {
+                                  final Double scale,
+                                  final TileSpecComparatorUtil.Order tileSpecOrder) {
         this.binaryMask = binaryMask;
         this.channels = channels;
         this.convertToGray = convertToGray;
@@ -95,6 +101,7 @@ public class RenderQueryParameters
         this.minIntensity = minIntensity;
         this.maxIntensity = maxIntensity;
         this.scale = scale;
+        this.tileSpecOrder = tileSpecOrder;
     }
 
     @SuppressWarnings("unused") // getter required for Swagger to detect parameter
@@ -133,6 +140,16 @@ public class RenderQueryParameters
     }
 
     @SuppressWarnings("unused") // getter required for Swagger to detect parameter
+    public Integer getMaskMinX() {
+        return maskMinX;
+    }
+
+    @SuppressWarnings("unused") // getter required for Swagger to detect parameter
+    public Integer getMaskMinY() {
+        return maskMinY;
+    }
+
+    @SuppressWarnings("unused") // getter required for Swagger to detect parameter
     public Double getMinIntensity() {
         return minIntensity;
     }
@@ -145,6 +162,11 @@ public class RenderQueryParameters
     @SuppressWarnings("unused") // getter required for Swagger to detect parameter
     public Double getScale() {
         return scale;
+    }
+
+    @SuppressWarnings("unused") // getter required for Swagger to detect parameter
+    public TileSpecComparatorUtil.Order getTileSpecOrder() {
+        return tileSpecOrder;
     }
 
     public void setDefaultScale(final Double defaultScale) {
@@ -198,6 +220,10 @@ public class RenderQueryParameters
         // then the query parameter "wins".
         if (scale != null) {
             renderParameters.setScale(scale);
+        }
+
+        if (tileSpecOrder != null) {
+            renderParameters.sortTileSpecs(tileSpecOrder.getComparator());
         }
     }
 

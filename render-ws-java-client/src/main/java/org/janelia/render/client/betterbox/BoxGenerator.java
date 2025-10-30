@@ -24,6 +24,7 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TileSpecComparatorUtil;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.LabelImageProcessorCache;
@@ -38,7 +39,7 @@ import mpicbg.trakem2.transform.AffineModel2D;
 
 /**
  * Utility for rendering uniform (but arbitrarily sized) boxes (derived tiles) to disk.
- *
+ * <br/>
  * All generated images have the same dimensions and pixel count and are stored within a
  * CATMAID LargeDataTileSource directory structure that looks like this:
  * <pre>
@@ -48,7 +49,7 @@ import mpicbg.trakem2.transform.AffineModel2D;
  * Details about the CATMAID LargeDataTileSource can be found at
  * <a href="https://github.com/catmaid/CATMAID/blob/master/django/applications/catmaid/static/js/tile-source.js">
  *     https://github.com/catmaid/CATMAID/blob/master/django/applications/catmaid/static/js/tile-source.js
- * </a>).
+ * </a>.
  *
  * @author Eric Trautman
  */
@@ -176,7 +177,7 @@ public class BoxGenerator
 
     /**
      * Renders the specified boxes.
-     *
+     * <br/>
      * If the next level of mipmaps is to be rendered, parent boxes for complete 'families'
      * (where all siblings are specified) will also be rendered.
      *
@@ -404,7 +405,7 @@ public class BoxGenerator
                 if (renderParameters.hasTileSpecs()) {
 
                     if (boxParameters.sortByClusterGroupId) {
-                        renderParameters.sortTileSpecs(MaterializedBoxParameters.CLUSTER_GROUP_ID_COMPARATOR);
+                        renderParameters.sortTileSpecs(TileSpecComparatorUtil.CLUSTER_GROUP_ID_COMPARATOR);
                     }
 
                     boxImage = BoxMipmapGenerator.renderBoxImage(renderParameters,
@@ -456,7 +457,7 @@ public class BoxGenerator
     /**
      * Utility to support logging of progress during long running layer render processes.
      */
-    private class Progress {
+    private static class Progress {
 
         private final double z;
         private final int level;
