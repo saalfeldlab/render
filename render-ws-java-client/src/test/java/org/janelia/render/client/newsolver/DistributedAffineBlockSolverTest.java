@@ -126,11 +126,31 @@ public class DistributedAffineBlockSolverTest {
                                                    final String alignSuffixWithTime,
                                                    final boolean deleteAlignStackAfterTest)
             throws Exception {
+        debugInconsistentAlignments(testProject,
+                                    testSourceStack,
+                                    zValues,
+                                    matchCollection,
+                                    testIds,
+                                    MFOVAsTileParameters.SolveType.TRANSLATION,
+                                    alignSuffixWithTime,
+                                    deleteAlignStackAfterTest);
+    }
+
+    public static void debugInconsistentAlignments(final String testProject,
+                                                   final String testSourceStack,
+                                                   final List<Double> zValues,
+                                                   final String matchCollection,
+                                                   final char[] testIds,
+                                                   final MFOVAsTileParameters.SolveType solveType,
+                                                   final String alignSuffixWithTime,
+                                                   final boolean deleteAlignStackAfterTest)
+            throws Exception {
 
         final List<String> alignStackNames =
                 runRepeatedAlignmentTests(testProject,
                                           testSourceStack,
                                           matchCollection,
+                                          solveType,
                                           alignSuffixWithTime,
                                           testIds);
 
@@ -177,20 +197,17 @@ public class DistributedAffineBlockSolverTest {
     private static void runFourMFOVAlignmentTests(final String alignSuffixWithTime)
             throws Exception {
 
-        runRepeatedAlignmentTests(TEST_PROJECT,
-                                  TEST_FOUR_STACK,
+        runRepeatedAlignmentTests(TEST_FOUR_STACK,
                                   TEST_FOUR_MATCH_COLLECTION,
                                   alignSuffixWithTime,
                                   new char[]{'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_PROJECT,
-                                  TEST_FOUR_STACK,
+        runRepeatedAlignmentTests(TEST_FOUR_STACK,
                                   TEST_FOUR_ONLY_REAL_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_only_real",
                                   new char[]{'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_PROJECT,
-                                  TEST_FOUR_STACK,
+        runRepeatedAlignmentTests(TEST_FOUR_STACK,
                                   TEST_FOUR_MFOV_WOUT_5_TO_6_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_wout_5_to_6",
                                   new char[]{'a', 'b', 'c'});
@@ -199,14 +216,12 @@ public class DistributedAffineBlockSolverTest {
     private static void runTenMFOVAlignmentTests(final String alignSuffixWithTime)
             throws Exception {
 
-        runRepeatedAlignmentTests(TEST_PROJECT,
-                                  TEST_TEN_STACK,
+        runRepeatedAlignmentTests(TEST_TEN_STACK,
                                   TEST_TEN_MATCH_COLLECTION,
                                   alignSuffixWithTime,
                                   new char[]{'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_PROJECT,
-                                  TEST_TEN_STACK,
+        runRepeatedAlignmentTests(TEST_TEN_STACK,
                                   TEST_TEN_ONLY_REAL_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_only_real",
                                   new char[]{'a', 'b', 'c'});
@@ -215,45 +230,57 @@ public class DistributedAffineBlockSolverTest {
     private static void runAllMFOVAlignmentTests(final String alignSuffixWithTime)
             throws Exception {
 
-        runRepeatedAlignmentTests(TEST_PROJECT,
-                                  TEST_ALL_STACK,
+        runRepeatedAlignmentTests(TEST_ALL_STACK,
                                   TEST_ALL_MATCH_COLLECTION,
                                   alignSuffixWithTime,
                                   new char[] {'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_PROJECT,
-                                  TEST_ALL_STACK,
+        runRepeatedAlignmentTests(TEST_ALL_STACK,
                                   TEST_ALL_PATCH_1EM6_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_patch_1em6",
                                   new char[] {'a', 'b', 'c'});
 
-        runRepeatedAlignmentTests(TEST_PROJECT,
-                                  TEST_ALL_STACK,
+        runRepeatedAlignmentTests(TEST_ALL_STACK,
                                   TEST_ALL_PATCH_1EM20_MATCH_COLLECTION,
                                   alignSuffixWithTime + "_patch_1em20",
                                   new char[] {'a', 'b', 'c'});
     }
 
-    public static List<String> runRepeatedAlignmentTests(final String project,
-                                                         final String stack,
-                                                         final String matchCollection,
-                                                         final String alignedStackSuffix,
-                                                         final char[] testIds) throws Exception {
+    private static void runRepeatedAlignmentTests(final String stack,
+                                                  final String matchCollection,
+                                                  final String alignedStackSuffix,
+                                                  final char[] testIds) throws Exception {
+        runRepeatedAlignmentTests(TEST_PROJECT,
+                                  stack,
+                                  matchCollection,
+                                  MFOVAsTileParameters.SolveType.TRANSLATION,
+                                  alignedStackSuffix,
+                                  testIds);
+    }
+
+    private static List<String> runRepeatedAlignmentTests(final String project,
+                                                          final String stack,
+                                                          final String matchCollection,
+                                                          final MFOVAsTileParameters.SolveType solveType,
+                                                          final String alignedStackSuffix,
+                                                          final char[] testIds) throws Exception {
         final List<String> alignedStackNames = new ArrayList<>(testIds.length);
         for (final char testId : testIds) {
             final String alignedStackName = runAlignmentTest(project,
                                                              stack,
                                                              matchCollection,
+                                                             solveType,
                                                              alignedStackSuffix + testId);
             alignedStackNames.add(alignedStackName);
         }
         return alignedStackNames;
     }
 
-    public static String runAlignmentTest(final String project,
-                                          final String stack,
-                                          final String matchCollection,
-                                          final String alignedStackSuffix) throws Exception {
+    private static String runAlignmentTest(final String project,
+                                           final String stack,
+                                           final String matchCollection,
+                                           final MFOVAsTileParameters.SolveType solveType,
+                                           final String alignedStackSuffix) throws Exception {
 
         final String[] testArgs = {
                 "--baseDataUrl", BASE_DATA_URL,
@@ -276,8 +303,7 @@ public class DistributedAffineBlockSolverTest {
                                          alignedStackSuffix,
                                          "_rough");
 
-        final AffineBlockSolverSetup solverSetup =
-                mfovAsTileParameters.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.TRANSLATION);
+        final AffineBlockSolverSetup solverSetup = mfovAsTileParameters.buildMfovAffineBlockSolverSetup(solveType);
         solverSetup.renderWeb = cmdLineSetup.renderWeb;
         solverSetup.stack = cmdLineSetup.stack;
         solverSetup.matches = cmdLineSetup.matches;

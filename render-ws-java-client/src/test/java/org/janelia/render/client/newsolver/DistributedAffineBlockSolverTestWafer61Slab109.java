@@ -9,6 +9,7 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.LogbackTestTools;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.parameter.MFOVAsTileParameters;
 
 import static org.janelia.render.client.newsolver.DistributedAffineBlockSolverTest.*;
 
@@ -32,24 +33,24 @@ public class DistributedAffineBlockSolverTestWafer61Slab109 {
 
     @SuppressWarnings("CommentedOutCode")
     public static void main(final String[] args) throws Exception {
-        //debugProblemAWithOriginalSetup();
-        //debugProblemAWithAgg0p4Setup();
-        //debugProblemAWithAgg0p6Setup();
+        debugProblemAWithOriginalSetup();
+        debugProblemAWithAgg0p4Setup();
+        debugProblemAWithAgg0p6Setup();
     }
 
     private static void debugProblemAWithOriginalSetup() throws Exception {
         final String stackName = "w61_s109_problem_a_original_sgl0p2"; // note: keep w61_s109 in name for matchCollection
         final String matchCollection = stackName + "_match";
 
-        setupProblemA(stackName, matchCollection, null);
-        debugProblemA(stackName, PROBLEM_A_Z_VALUES, matchCollection);
+        // setupProblemA(stackName, matchCollection, null);
+        // debugProblemA(stackName, PROBLEM_A_Z_VALUES, matchCollection);
     }
 
     private static void debugProblemAWithAgg0p4Setup() throws Exception {
         final String stackName = "w61_s109_problem_a_test_a_agg0p4"; // note: keep w61_s109 in name for matchCollection
         final String matchCollection = stackName + "_match";
 
-        setupProblemA(stackName, matchCollection, "0.4");
+        // setupProblemA(stackName, matchCollection, "0.4");
         // TODO: hack matches, then rerun with setup commented out and debug (solve) uncommented
         // debugProblemA(stackName, PROBLEM_A_Z_VALUES, matchCollection);
     }
@@ -58,7 +59,7 @@ public class DistributedAffineBlockSolverTestWafer61Slab109 {
         final String stackName = "w61_s109_problem_a_test_a_agg0p6"; // note: keep w61_s109 in name for matchCollection
         final String matchCollection = stackName + "_match";
 
-        setupProblemA(stackName, matchCollection, "0.6");
+        // setupProblemA(stackName, matchCollection, "0.6");
         // TODO: hack matches, then rerun with setup commented out and debug (solve) uncommented
         // debugProblemA(stackName, PROBLEM_A_Z_VALUES, matchCollection);
     }
@@ -106,7 +107,8 @@ public class DistributedAffineBlockSolverTestWafer61Slab109 {
                                     zValues,
                                     matchCollection,
                                     new char[]{'a'},
-                                    "_align_",
+                                    MFOVAsTileParameters.SolveType.AFFINE,
+                                    "_align_affine_",
                                     false);
     }
 
