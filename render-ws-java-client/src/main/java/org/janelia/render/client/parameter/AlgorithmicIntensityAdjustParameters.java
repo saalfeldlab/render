@@ -82,6 +82,12 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public Integer maxPlateauWidth = 500;
 
+	@Parameter(
+			names = "--useRansacMatching",
+			description = "Match raw pixel intensities and use RANSAC to find inliers instead of histogram matching"
+	)
+	public boolean useRansacMatching = false;
+
 
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();

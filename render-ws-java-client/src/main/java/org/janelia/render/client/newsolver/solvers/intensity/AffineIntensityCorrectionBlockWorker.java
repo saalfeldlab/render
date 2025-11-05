@@ -15,8 +15,6 @@ import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.AdjustBlock;
-import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
-import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduceFilter;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
@@ -194,7 +192,12 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			final List<TileSpec> tiles,
 			final ImageProcessorCache imageProcessorCache
 	) {
-		final MatchFilter filter = new RansacMatchFilter();
+		final MatchFilter filter;
+		if (this.parameters.useRansacMatching()) {
+			filter = new RansacMatchFilter();
+		} else {
+			filter = new HistogramMatchFilter();
+		}
 		final int meshResolution = (int) tiles.get(0).getMeshCellSize();
 		return new IntensityMatcher(filter, parameters, meshResolution, imageProcessorCache);
 	}
