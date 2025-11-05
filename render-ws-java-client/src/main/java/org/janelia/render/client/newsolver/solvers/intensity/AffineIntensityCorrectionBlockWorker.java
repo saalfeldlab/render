@@ -194,7 +194,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			final List<TileSpec> tiles,
 			final ImageProcessorCache imageProcessorCache
 	) {
-		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
+		final MatchFilter filter = new RansacMatchFilter();
 		final int meshResolution = (int) tiles.get(0).getMeshCellSize();
 		return new IntensityMatcher(filter, parameters, meshResolution, imageProcessorCache);
 	}
