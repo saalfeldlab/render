@@ -2,9 +2,16 @@ package org.janelia.render.client.newsolver.solvers.intensity;
 
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
+
+import java.awt.Rectangle;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
-import net.imglib2.util.StopWatch;
+
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.intensity.Render;
@@ -12,10 +19,7 @@ import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityC
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.Rectangle;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import net.imglib2.util.StopWatch;
 
 
 /*
@@ -46,7 +50,10 @@ class IntensityMatcher {
 		this.imageProcessorCache = imageProcessorCache;
 	}
 
-	public void match(final TileSpec p1, final TileSpec p2, final HashMap<String, IntensityTile> intensityTiles) {
+	public void match(final String renderStack,
+                      final TileSpec p1,
+                      final TileSpec p2,
+                      final HashMap<String, IntensityTile> intensityTiles) {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
 
@@ -100,8 +107,14 @@ class IntensityMatcher {
 				continue;
 			}
 
-			final List<PointMatch> filteredMatchesForPair = filter.filter(coefficientsForPair);
-			filteredMatches.add(filteredMatchesForPair);
+            final List<PointMatch> filteredMatchesForPair;
+            try {
+                filteredMatchesForPair = filter.filter(coefficientsForPair);
+            } catch (final IOException e) {
+                throw new RuntimeException("failed to filter coefficients for pair " + p1 + " (z " + p1.getZ() + "), " +
+                                           p2 + " (z " + p2.getZ() + ") in " + renderStack, e);
+            }
+            filteredMatches.add(filteredMatchesForPair);
 		}
 
 		// Connect tiles across patches
@@ -141,15 +154,6 @@ class IntensityMatcher {
 			coefficients.add(new FlatIntensityMatches(maxMatchesPerPair));
 		}
 		return coefficients;
-	}
-
-	private static FlatIntensityMatches get(
-			final List<FlatIntensityMatches> pairwiseCoefficients,
-			final int i,
-			final int j,
-			final int size
-	) {
-		return pairwiseCoefficients.get(i * size + j);
 	}
 
 	private static int numberOfPixels(final int length, final double scale) {

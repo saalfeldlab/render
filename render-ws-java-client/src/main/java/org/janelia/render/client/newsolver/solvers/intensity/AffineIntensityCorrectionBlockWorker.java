@@ -144,7 +144,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		final List<ValuePair<TileSpec, TileSpec>> patchPairs = findOverlappingPatches(tiles, parameters.zDistance());
 
-		LOG.info("splitIntoCoefficientTiles:  matching intensities, renderStack={}, blockData={}, patchPairs.size={}, numThreads={}",
+		LOG.info("splitIntoCoefficientTiles: matching intensities, renderStack={}, blockData={}, patchPairs.size={}, numThreads={}",
                  renderStack, blockData, patchPairs.size(), numThreads);
 
 		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
@@ -155,7 +155,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		for (final ValuePair<TileSpec, TileSpec> patchPair : patchPairs) {
 			final TileSpec p1 = patchPair.getA();
 			final TileSpec p2 = patchPair.getB();
-			final Runnable matchJob = () -> matcher.match(p1, p2, coefficientTiles);
+			final Runnable matchJob = () -> matcher.match(renderStack, p1, p2, coefficientTiles);
 			matchTasks.add(exec.submit(matchJob));
 		}
 

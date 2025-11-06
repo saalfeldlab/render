@@ -1,17 +1,12 @@
 package org.janelia.render.client.newsolver.solvers.intensity;
 
-import mpicbg.models.AffineModel1D;
-import mpicbg.models.PointMatch;
-import net.imglib2.util.Pair;
-import net.imglib2.util.ValuePair;
-import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
-import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduceFilter;
-
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+
+import mpicbg.models.AffineModel1D;
+import mpicbg.models.PointMatch;
 
 
 /**
@@ -24,7 +19,7 @@ public class HistogramMatchFilter implements MatchFilter {
     final AffineModel1D model = new AffineModel1D();
 
     @Override
-    public List<PointMatch> filter(final FlatIntensityMatches matches) {
+    public List<PointMatch> filter(final FlatIntensityMatches matches) throws IOException {
         // Sort values to easily get percentiles
         final double[] sortedPValues = Arrays.copyOf(matches.p, matches.size());
         Arrays.sort(sortedPValues);
@@ -47,7 +42,7 @@ public class HistogramMatchFilter implements MatchFilter {
         try {
             model.fit(candidates);
         } catch (final Exception e) {
-            throw new RuntimeException("Error fitting affine model to histogram matches", e);
+            throw new IOException("error fitting affine model to histogram matches", e);
         }
 
         // Reduce to two surrogate matches that yield the same model
