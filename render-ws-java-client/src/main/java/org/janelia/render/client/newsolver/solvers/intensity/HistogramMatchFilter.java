@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import mpicbg.models.AffineModel1D;
+import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.PointMatch;
 
 
@@ -41,6 +42,16 @@ public class HistogramMatchFilter implements MatchFilter {
         // Fit an affine model to the percentile matches
         try {
             model.fit(candidates);
+        } catch (final IllDefinedDataPointsException e) {
+            // All intensity values are identical -> assume translation only and
+            // return the same match with a small offset to have two distinct points
+            final double p = sortedPValues[0];
+            final double q = sortedQValues[0];
+            final double offset = 1.0 / 256.0;
+            final List<PointMatch> reducedCandidates = new ArrayList<>(2);
+            reducedCandidates.add(new PointMatch(new Point1D(p - offset), new Point1D(q - offset), 1.0));
+            reducedCandidates.add(new PointMatch(new Point1D(p + offset), new Point1D(q + offset), 1.0));
+            return reducedCandidates;
         } catch (final Exception e) {
             throw new IOException("error fitting affine model to histogram matches", e);
         }
