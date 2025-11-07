@@ -9,6 +9,12 @@
 
 set -e
 
+if [ $# -gt 0 ]; then
+  DUMP_PATTERN="*${1}*"
+else
+  DUMP_PATTERN="*"
+fi
+
 BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
 
 if [ ! -d "${BASE_DUMP_DIR}" ]; then
@@ -17,7 +23,7 @@ if [ ! -d "${BASE_DUMP_DIR}" ]; then
 fi
 
 # /mnt/disks/mongodb_dump_fs/dump/janelia/20250201_094952/render/admin__stack_meta_data.bson.gz
-mapfile -t DUMP_DIRECTORIES < <(find "${BASE_DUMP_DIR}" -name '*.bson.gz' -type f -exec dirname {} \; | sort -u)
+mapfile -t DUMP_DIRECTORIES < <(find "${BASE_DUMP_DIR}" -name "${DUMP_PATTERN}.bson.gz" -type f -exec dirname {} \; | sort -u)
 if [ ${#DUMP_DIRECTORIES[@]} -eq 0 ]; then
     echo "ERROR: no dump files found in ${BASE_DUMP_DIR}"
     exit 1

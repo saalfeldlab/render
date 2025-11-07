@@ -9,6 +9,9 @@ import mpicbg.models.AffineModel1D;
 import mpicbg.models.IllDefinedDataPointsException;
 import mpicbg.models.PointMatch;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * A match filter that
@@ -53,7 +56,12 @@ public class HistogramMatchFilter implements MatchFilter {
             reducedCandidates.add(new PointMatch(new Point1D(p + offset), new Point1D(q + offset), 1.0));
             return reducedCandidates;
         } catch (final Exception e) {
-            throw new IOException("error fitting affine model to histogram matches", e);
+            final int modelIdentityHashCode = System.identityHashCode(model);
+            final String sortedPValuesString = Arrays.toString(sortedPValues);
+            final String sortedQValuesString = Arrays.toString(sortedQValues);
+            LOG.error("failed to fit candidates to affine model {}, sortedPValues={}, sortedQValues={}",
+                      modelIdentityHashCode, sortedPValuesString, sortedQValuesString);
+            throw new IOException("error fitting affine model " + modelIdentityHashCode + " to histogram matches", e);
         }
 
         // Reduce to two surrogate matches that yield the same model
@@ -70,4 +78,6 @@ public class HistogramMatchFilter implements MatchFilter {
 
         return reducedCandidates;
     }
+
+    private static final Logger LOG = LoggerFactory.getLogger(HistogramMatchFilter.class);
 }
