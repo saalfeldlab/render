@@ -47,13 +47,9 @@ public class HistogramMatchFilter implements MatchFilter {
             model.fit(candidates);
         } catch (final IllDefinedDataPointsException e) {
             // All intensity values are identical -> assume translation only and
-            // return the same match with a small offset to have two distinct points
-            final double p = sortedPValues[0];
-            final double q = sortedQValues[0];
-            final double offset = 1.0 / 256.0;
+            // return the single match and hope that there's more matches with other tiles
             final List<PointMatch> reducedCandidates = new ArrayList<>(2);
-            reducedCandidates.add(new PointMatch(new Point1D(p - offset), new Point1D(q - offset), 1.0));
-            reducedCandidates.add(new PointMatch(new Point1D(p + offset), new Point1D(q + offset), 1.0));
+            reducedCandidates.add(new PointMatch(new Point1D(sortedPValues[0]), new Point1D(sortedQValues[0]), 2.0));
             return reducedCandidates;
         } catch (final Exception e) {
             final int modelIdentityHashCode = System.identityHashCode(model);
