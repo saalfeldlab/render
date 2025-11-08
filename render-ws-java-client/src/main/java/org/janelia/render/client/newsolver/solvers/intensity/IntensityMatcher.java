@@ -141,7 +141,7 @@ class IntensityMatcher {
 		}
 
 		stopWatch.stop();
-		LOG.info("match: pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
+		LOG.debug("match: pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
 	}
 
 	private static List<FlatIntensityMatches> getPairwiseCoefficients(
