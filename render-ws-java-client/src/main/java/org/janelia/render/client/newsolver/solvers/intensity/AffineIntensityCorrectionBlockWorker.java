@@ -84,9 +84,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		});
 
 		LOG.info("call: exit, renderStack={}, blockData={}, processing took {} seconds",
-                 renderStack, blockData, (System.currentTimeMillis() - startTime) / 1000.0);
+                 renderStack, blockData.toDetailsString(), (System.currentTimeMillis() - startTime) / 1000.0);
 
-		return new ArrayList<>(List.of(blockData));
+		return List.of(blockData);
 	}
 
 	private void fetchResolvedTiles()
@@ -247,8 +247,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	@SuppressWarnings("SameParameterValue")
 	private void solveForGlobalCoefficients(final Map<String, IntensityTile> coefficientTiles) {
 
-        LOG.info("solveForGlobalCoefficients: entry, renderStack={}, blockData={}",
-                 renderStack, blockData);
+        final String stackAndBlockForLog = "stack=" + renderStack + ", blockData=" + blockData;
+        LOG.info("solveForGlobalCoefficients: entry, {}, coefficientTiles.size={}, numThreads={}",
+                 stackAndBlockForLog, coefficientTiles.size(), numThreads);
 
 		final IntensityTile equilibrationTile = new IntensityTile(IdentityModel::new, 1, 1);
 
@@ -266,16 +267,13 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			fixedTile = tiles.get(0);
 		}
 
-		LOG.info("solveForGlobalCoefficients: optimize tiles, renderStack={}, blockData={}, tiles.size={}, numThreads={}",
-                 renderStack, blockData, tiles.size(), numThreads);
-
 		final IntensityTileOptimizer optimizer = new IntensityTileOptimizer(
 				blockData.solveTypeParameters().maxAllowedError(),
 				blockData.solveTypeParameters().maxIterations(),
 				blockData.solveTypeParameters().maxPlateauWidth(),
 				1.0,
 				numThreads);
-		optimizer.optimize(tiles, fixedTile);
+		optimizer.optimize(tiles, fixedTile, stackAndBlockForLog);
 
 		// TODO: this is not the right error measure, what is idToBlockErrorMap supposed to be exactly?
 		coefficientTiles.forEach((tileId, tile) -> {
@@ -286,8 +284,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			blockData.getResults().recordAllErrors(tileId, errorMap);
 		});
 
-		LOG.info("solveForGlobalCoefficients: exit, renderStack={}, blockData={}, returning intensity coefficients for {} tiles",
-                 renderStack, blockData, coefficientTiles.size());
+		LOG.info("solveForGlobalCoefficients: exit, {}, returning intensity coefficients for {} tiles",
+                 stackAndBlockForLog, coefficientTiles.size());
 	}
 
 	private void connectTilesWithinPatches(
