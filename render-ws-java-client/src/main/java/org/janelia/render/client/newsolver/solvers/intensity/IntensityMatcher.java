@@ -2,24 +2,24 @@ package org.janelia.render.client.newsolver.solvers.intensity;
 
 import ij.process.ColorProcessor;
 import ij.process.FloatProcessor;
+
+import java.awt.Rectangle;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
-import net.imglib2.util.Pair;
-import net.imglib2.util.StopWatch;
-import net.imglib2.util.ValuePair;
+
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
 import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.awt.Rectangle;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import net.imglib2.util.StopWatch;
 
 
 /*
@@ -28,13 +28,9 @@ import java.util.Map;
  * partially overlapping) can be downscaled differently from tiles in different
  * layers (i.e., almost completely overlapping).
  * Also, computation of averages for a tile is done here.
- *
- * @author Michael Innerberger
  */
 class IntensityMatcher {
-	private static final int N_BINS = 256;
-
-	final private PointMatchFilter filter;
+	final private MatchFilter filter;
 	final private double sameLayerScale;
 	final private double crossLayerScale;
 	final private int numCoefficients;
@@ -42,7 +38,7 @@ class IntensityMatcher {
 	final ImageProcessorCache imageProcessorCache;
 
 	public IntensityMatcher(
-			final PointMatchFilter filter,
+			final MatchFilter filter,
 			final FIBSEMIntensityCorrectionParameters<?> parameters,
 			final int meshResolution,
 			final ImageProcessorCache imageProcessorCache) {
@@ -54,7 +50,10 @@ class IntensityMatcher {
 		this.imageProcessorCache = imageProcessorCache;
 	}
 
-	public void match(final TileSpec p1, final TileSpec p2, final HashMap<String, IntensityTile> intensityTiles) {
+	public void match(final String renderStack,
+                      final TileSpec p1,
+                      final TileSpec p2,
+                      final HashMap<String, IntensityTile> intensityTiles) {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
 
@@ -74,46 +73,51 @@ class IntensityMatcher {
 		Render.render(p1, numCoefficients, numCoefficients, pixels1, weights1, subTiles1, box.x, box.y, scale, meshResolution, imageProcessorCache);
 		Render.render(p2, numCoefficients, numCoefficients, pixels2, weights2, subTiles2, box.x, box.y, scale, meshResolution, imageProcessorCache);
 
-		// generate a matrix of all coefficients in p1 to all coefficients in p2 to store matches
+		// Generate a matrix of all coefficients in p1 to all coefficients in p2 to store matches
 		final int nCoefficientTiles = numCoefficients * numCoefficients;
-		final List<List<PointMatch>> matrix = getPairwiseCoefficientMatrix(nCoefficientTiles);
+		final List<FlatIntensityMatches> pairwiseCoefficients = getPairwiseCoefficients(w * h, nCoefficientTiles);
 
-		// iterate over all pixels and feed matches into the match matrix
+		// Iterate over all pixels and feed matches into the match matrix
 		int label1, label2 = 0;
 		float weight1 = 0, weight2 = 0;
-		for (int i = 0; i < n; ++i) {
-			// lazily check if it pays to create a match
-			final boolean matchCanContribute = (label1 = subTiles1.get(i)) > 0
-					&& (label2 = subTiles2.get(i)) > 0
-					&& (weight1 = weights1.getf(i)) > 0
-					&& (weight2 = weights2.getf(i)) > 0;
+		for (int k = 0; k < n; ++k) {
+			// Lazily check if it pays to create a match
+			final boolean matchCanContribute = (label1 = subTiles1.get(k)) > 0
+					&& (label2 = subTiles2.get(k)) > 0
+					&& (weight1 = weights1.getf(k)) > 0
+					&& (weight2 = weights2.getf(k)) > 0;
 
 			if (matchCanContribute) {
-				final double p = pixels1.getf(i);
-				final double q = pixels2.getf(i);
-				final PointMatch pq = new PointMatch1D(new Point1D(p), new Point1D(q), weight1 * weight2);
+				final double p = pixels1.getf(k);
+				final double q = pixels2.getf(k);
 
-				/* first sub-tile label is 1 */
-				final List<PointMatch> matches = get(matrix, label1 - 1, label2 - 1, nCoefficientTiles);
-				matches.add(pq);
+				// First sub-tile label is 1 -> adjust to 0-based indexing
+				final int i = label1 - 1;
+				final int j = label2 - 1;
+				final FlatIntensityMatches matches = pairwiseCoefficients.get(i * nCoefficientTiles + j);
+				matches.put(p, q, weight1 * weight2);
 			}
 		}
 
-		/* filter matches */
-		final List<PointMatch> inliers = new ArrayList<>();
-		for (final List<PointMatch> candidates : matrix) {
-			if (candidates.isEmpty())
+		// Filter matches
+		final List<List<PointMatch>> filteredMatches = new ArrayList<>();
+		for (final FlatIntensityMatches coefficientsForPair : pairwiseCoefficients) {
+			if (coefficientsForPair.isEmpty()) {
+				filteredMatches.add(new ArrayList<>());
 				continue;
+			}
 
-			final List<PointMatch> compressedCandidates = compressByBinning(candidates, N_BINS);
-
-			inliers.clear();
-			filter.filter(compressedCandidates, inliers);
-			candidates.clear();
-			candidates.addAll(inliers);
+            final List<PointMatch> filteredMatchesForPair;
+            try {
+                filteredMatchesForPair = filter.filter(coefficientsForPair);
+            } catch (final IOException e) {
+                throw new RuntimeException("failed to filter coefficients for pair " + p1 + " (z " + p1.getZ() + "), " +
+                                           p2 + " (z " + p2.getZ() + ") in " + renderStack, e);
+            }
+            filteredMatches.add(filteredMatchesForPair);
 		}
 
-		/* connect tiles across patches */
+		// Connect tiles across patches
 		final IntensityTile p1IntensityTile = intensityTiles.get(p1.getTileId());
 		final IntensityTile p2IntensityTile = intensityTiles.get(p2.getTileId());
 		int connectionCount = 0;
@@ -122,7 +126,7 @@ class IntensityMatcher {
 			final Tile<?> t1 = p1IntensityTile.getSubTile(i);
 
 			for (int j = 0; j < nCoefficientTiles; ++j) {
-				final List<PointMatch> matches = get(matrix, i, j, nCoefficientTiles);
+				final List<PointMatch> matches = filteredMatches.get(i * nCoefficientTiles + j);
 				if (matches.isEmpty())
 					continue;
 
@@ -137,53 +141,23 @@ class IntensityMatcher {
 		}
 
 		stopWatch.stop();
-		LOG.info("match: pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
+		LOG.debug("match: pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
 	}
 
-	private static List<List<PointMatch>> getPairwiseCoefficientMatrix(final int dimSize) {
-		final int matrixSize = dimSize * dimSize;
-		final List<List<PointMatch>> coefficients = new ArrayList<>(matrixSize);
-		for (int i = 0; i < matrixSize; ++i) {
-			coefficients.add(new ArrayList<>());
+	private static List<FlatIntensityMatches> getPairwiseCoefficients(
+			final int maxMatchesPerPair,
+			final int nCoefficientTiles
+	) {
+		final int nPairs = nCoefficientTiles * nCoefficientTiles;
+		final List<FlatIntensityMatches> coefficients = new ArrayList<>(nPairs);
+		for (int i = 0; i < nPairs; ++i) {
+			coefficients.add(new FlatIntensityMatches(maxMatchesPerPair));
 		}
 		return coefficients;
 	}
 
-	private static List<PointMatch> get(final List<List<PointMatch>> matrix, final int i, final int j, final int size) {
-		return matrix.get(i * size + j);
-	}
-
 	private static int numberOfPixels(final int length, final double scale) {
 		return (int) Math.round(length * scale);
-	}
-
-	// Since there is a good chance that some intensity matches are redundant, we can try to compress them by binning
-	private static List<PointMatch> compressByBinning(final List<PointMatch> candidates, final int nBins) {
-		final Map<Pair<Integer, Integer>, Double> pairToWeights = new HashMap<>(nBins * nBins);
-		for (final PointMatch candidate : candidates) {
-			// Use the fact that the intensity matches are integers in the range [0, 255]
-			final int x = (int) Math.round(candidate.getP1().getL()[0] * nBins);
-			final int y = (int) Math.round(candidate.getP2().getL()[0] * nBins);
-			final Pair<Integer, Integer> pair = new ValuePair<>(x, y);
-			final double previousWeight = pairToWeights.getOrDefault(pair, 0.0);
-			pairToWeights.put(pair, previousWeight + candidate.getWeight());
-		}
-
-		if (pairToWeights.size() == candidates.size()) {
-			// Compression was not successful
-			return candidates;
-		}
-
-		final List<PointMatch> compressedCandidates = new ArrayList<>(pairToWeights.size());
-		for (final Map.Entry<Pair<Integer, Integer>, Double> entry : pairToWeights.entrySet()) {
-			final Pair<Integer, Integer> pair = entry.getKey();
-			final double weight = entry.getValue();
-			final Point1D p1 = new Point1D((double) pair.getA() / nBins);
-			final Point1D p2 = new Point1D((double) pair.getB() / nBins);
-			compressedCandidates.add(new PointMatch1D(p1, p2, weight));
-		}
-
-		return compressedCandidates;
 	}
 
 	List<Double> computeAverages(final TileSpec tile) {

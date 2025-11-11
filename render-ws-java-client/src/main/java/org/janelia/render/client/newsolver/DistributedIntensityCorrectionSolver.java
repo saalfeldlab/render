@@ -138,7 +138,9 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 			throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException {
 
 		final Worker<ArrayList<AffineModel1D>, ?> worker = block.createWorker(solverSetup.distributedSolve.threadsWorker);
-		return new ArrayList<>(worker.call());
+        final List<BlockData<ArrayList<AffineModel1D>, ?>> resultList = new ArrayList<>(worker.call());
+        LOG.info("createAndRunWorker: returning resultList with {} entries", resultList.size());
+        return resultList;
 	}
 
 	public ResultContainer<ArrayList<AffineModel1D>> assembleBlocks(final List<BlockData<ArrayList<AffineModel1D>, ?>> allItems) {

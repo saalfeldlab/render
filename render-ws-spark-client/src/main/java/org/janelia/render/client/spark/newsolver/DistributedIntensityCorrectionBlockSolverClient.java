@@ -96,8 +96,12 @@ public class DistributedIntensityCorrectionBlockSolverClient
 		final JavaPairRDD<Integer, BlockData<ArrayList<AffineModel1D>, ?>> rddInputBlocks =
 				sparkContext.parallelizePairs(inputBlocksWithSetupIndexes, parallelism);
 
+        LOG.info("intensityCorrectSetupList: setup output blocks");
+
 		final JavaPairRDD<Integer, BlockData<ArrayList<AffineModel1D>, ?>> rddOutputBlocks =
 				rddInputBlocks.flatMapToPair(tuple2 -> solveInputBlock(setupList, tuple2._1, tuple2._2));
+
+        LOG.info("intensityCorrectSetupList: setup global solve");
 
 		if (setupList.size() > 1) {
 			globallySolveMultipleSetups(setupList, rddOutputBlocks, solverList);
@@ -141,15 +145,22 @@ public class DistributedIntensityCorrectionBlockSolverClient
 
 		LogUtilities.setupExecutorLog4j(""); // block info already in most log calls so leave context empty
 
+        LOG.info("solveInputBlock: setupIndex {}, entry", setupIndex);
+
 		final IntensityCorrectionSetup setup = setupList.get(setupIndex);
 		final List<BlockData<ArrayList<AffineModel1D>, ?>> outputBlockList =
 				DistributedIntensityCorrectionSolver.createAndRunWorker(inputBlock, setup);
+
+        LOG.info("solveInputBlock: setupIndex {}, worker returned results for {} blocks",
+                 setupIndex, outputBlockList.size());
 
 		final List<Tuple2<Integer, BlockData<ArrayList<AffineModel1D>, ?>>> outputBlocksWithSetupIndexes =
 				new ArrayList<>(outputBlockList.size());
 		for (final BlockData<ArrayList<AffineModel1D>, ?> outputBlock : outputBlockList) {
 			outputBlocksWithSetupIndexes.add(new Tuple2<>(setupIndex, outputBlock));
 		}
+
+        LOG.info("solveInputBlock: setupIndex {}, exit", setupIndex);
 
 		return outputBlocksWithSetupIndexes.iterator();
 	}

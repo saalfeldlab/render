@@ -60,10 +60,12 @@ class IntensityTileOptimizer {
 	 * context means that one of the sub-tiles is fixed, while the other sub-tiles are optimized.
 	 * @param tiles the intensity tiles to optimize
 	 * @param fixedTile the intensity tile where one sub-tile is fixed
+     * @param stackAndBlockForLog string to include in all log calls (for context)
 	 */
 	public void optimize(
 			final List<IntensityTile> tiles,
-			final IntensityTile fixedTile
+			final IntensityTile fixedTile,
+            final String stackAndBlockForLog
 		) {
 
 		final ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(nThreads);
@@ -76,13 +78,13 @@ class IntensityTileOptimizer {
 			Collections.shuffle(freeTiles);
 
 			final long t1 = System.currentTimeMillis();
-			LOG.debug("Shuffling took {} ms", t1 - t0);
+			LOG.debug("optimize: {}, shuffling took {} ms", stackAndBlockForLog, t1 - t0);
 
 			/* initialize the configuration with the current model of each tile */
-			applyAll(tiles, executor);
+			applyAll(tiles, executor, stackAndBlockForLog);
 
 			final long t2 = System.currentTimeMillis();
-			LOG.debug("First apply took {} ms", t2 - t1);
+			LOG.debug("optimize: {}, first apply took {} ms", stackAndBlockForLog, t2 - t1);
 
 			int i = 0;
 			boolean proceed = i < maxIterations;
@@ -115,7 +117,9 @@ class IntensityTileOptimizer {
 							subTile.fitModel();
 							subTile.apply(damp);
 						} catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
-							LOG.warn("Error while fitting and applying fixed tile: {}", e.getMessage());
+                            final String msg = "optimize: " + stackAndBlockForLog +
+                                               ", ignoring error while fitting fixed tile, j=" + j + ", k=" + k;
+							LOG.warn(msg, e);
 						}
 					}
 				}
@@ -123,7 +127,9 @@ class IntensityTileOptimizer {
 				final double error = computeErrors(tiles, executor);
 				observer.add(error);
 
-				LOG.debug("{}: {} {}", i, error, observer.max);
+                if (i % 500 == 0) {
+                    LOG.debug("optimize: {}, i={}, error={}, max={}", stackAndBlockForLog, i, error, observer.max);
+                }
 
 				if (i > maxPlateauWidth) {
 					proceed = error > maxAllowedError;
@@ -133,7 +139,9 @@ class IntensityTileOptimizer {
 						try {
 							proceed = Math.abs(observer.getWideSlope(d)) > 0.0001;
 						} catch (final Exception e) {
-							LOG.warn("Error while computing slope: {}", e.getMessage());
+                            final String msg = "optimize: " + stackAndBlockForLog +
+                                               ", error while computing slope, i=" + i + ", d=" + d;
+                            LOG.warn(msg, e);
 						}
 						d /= 2;
 					}
@@ -143,18 +151,24 @@ class IntensityTileOptimizer {
 			}
 
 			final long t3 = System.currentTimeMillis();
-			LOG.info("Concurrent tile optimization loop took {} ms, total took {} ms", t3 - t2, t3 - t0);
+			LOG.info("optimize: {}, concurrent tile optimization loop took {} ms, total took {} ms",
+                     stackAndBlockForLog, t3 - t2, t3 - t0);
 
 		} finally {
 			executor.shutdownNow();
 		}
 	}
 
-	private static void applyAll(final List<IntensityTile> tiles, final ThreadPoolExecutor executor) {
+	private static void applyAll(final List<IntensityTile> tiles,
+                                 final ThreadPoolExecutor executor,
+                                 final String stackAndBlockForLog) {
 		final int nTiles = tiles.size();
 		final int nThreads = executor.getMaximumPoolSize();
 		final int tilesPerThread = nTiles / nThreads + (nTiles % nThreads == 0 ? 0 : 1);
 		final List<Future<Void>> applyTasks = new ArrayList<>(nThreads);
+
+        LOG.debug("applyAll: {}, entry, nTiles={}, nThreads={}, tilesPerThread={}",
+                  stackAndBlockForLog, nTiles, nThreads, tilesPerThread);
 
 		for (int j = 0; j < nThreads; j++) {
 			final int start = j * tilesPerThread;

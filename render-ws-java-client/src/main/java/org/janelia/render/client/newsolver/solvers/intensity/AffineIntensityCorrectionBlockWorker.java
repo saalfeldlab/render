@@ -15,8 +15,6 @@ import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.AdjustBlock;
-import org.janelia.render.client.intensityadjust.intensity.PointMatchFilter;
-import org.janelia.render.client.intensityadjust.intensity.RansacRegressionReduceFilter;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
@@ -86,9 +84,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		});
 
 		LOG.info("call: exit, renderStack={}, blockData={}, processing took {} seconds",
-                 renderStack, blockData, (System.currentTimeMillis() - startTime) / 1000.0);
+                 renderStack, blockData.toDetailsString(), (System.currentTimeMillis() - startTime) / 1000.0);
 
-		return new ArrayList<>(List.of(blockData));
+		return List.of(blockData);
 	}
 
 	private void fetchResolvedTiles()
@@ -146,7 +144,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		final List<ValuePair<TileSpec, TileSpec>> patchPairs = findOverlappingPatches(tiles, parameters.zDistance());
 
-		LOG.info("splitIntoCoefficientTiles:  matching intensities, renderStack={}, blockData={}, patchPairs.size={}, numThreads={}",
+		LOG.info("splitIntoCoefficientTiles: matching intensities, renderStack={}, blockData={}, patchPairs.size={}, numThreads={}",
                  renderStack, blockData, patchPairs.size(), numThreads);
 
 		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
@@ -157,7 +155,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		for (final ValuePair<TileSpec, TileSpec> patchPair : patchPairs) {
 			final TileSpec p1 = patchPair.getA();
 			final TileSpec p2 = patchPair.getB();
-			final Runnable matchJob = () -> matcher.match(p1, p2, coefficientTiles);
+			final Runnable matchJob = () -> matcher.match(renderStack, p1, p2, coefficientTiles);
 			matchTasks.add(exec.submit(matchJob));
 		}
 
@@ -194,7 +192,12 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			final List<TileSpec> tiles,
 			final ImageProcessorCache imageProcessorCache
 	) {
-		final PointMatchFilter filter = new RansacRegressionReduceFilter(new AffineModel1D());
+		final MatchFilter filter;
+		if (this.parameters.useRansacMatching()) {
+			filter = new RansacMatchFilter();
+		} else {
+			filter = new HistogramMatchFilter();
+		}
 		final int meshResolution = (int) tiles.get(0).getMeshCellSize();
 		return new IntensityMatcher(filter, parameters, meshResolution, imageProcessorCache);
 	}
@@ -244,8 +247,9 @@ public class AffineIntensityCorrectionBlockWorker<M>
 	@SuppressWarnings("SameParameterValue")
 	private void solveForGlobalCoefficients(final Map<String, IntensityTile> coefficientTiles) {
 
-        LOG.info("solveForGlobalCoefficients: entry, renderStack={}, blockData={}",
-                 renderStack, blockData);
+        final String stackAndBlockForLog = "stack=" + renderStack + ", blockData=" + blockData;
+        LOG.info("solveForGlobalCoefficients: entry, {}, coefficientTiles.size={}, numThreads={}",
+                 stackAndBlockForLog, coefficientTiles.size(), numThreads);
 
 		final IntensityTile equilibrationTile = new IntensityTile(IdentityModel::new, 1, 1);
 
@@ -263,16 +267,13 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			fixedTile = tiles.get(0);
 		}
 
-		LOG.info("solveForGlobalCoefficients: optimize tiles, renderStack={}, blockData={}, tiles.size={}, numThreads={}",
-                 renderStack, blockData, tiles.size(), numThreads);
-
 		final IntensityTileOptimizer optimizer = new IntensityTileOptimizer(
 				blockData.solveTypeParameters().maxAllowedError(),
 				blockData.solveTypeParameters().maxIterations(),
 				blockData.solveTypeParameters().maxPlateauWidth(),
 				1.0,
 				numThreads);
-		optimizer.optimize(tiles, fixedTile);
+		optimizer.optimize(tiles, fixedTile, stackAndBlockForLog);
 
 		// TODO: this is not the right error measure, what is idToBlockErrorMap supposed to be exactly?
 		coefficientTiles.forEach((tileId, tile) -> {
@@ -283,8 +284,8 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			blockData.getResults().recordAllErrors(tileId, errorMap);
 		});
 
-		LOG.info("solveForGlobalCoefficients: exit, renderStack={}, blockData={}, returning intensity coefficients for {} tiles",
-                 renderStack, blockData, coefficientTiles.size());
+		LOG.info("solveForGlobalCoefficients: exit, {}, returning intensity coefficients for {} tiles",
+                 stackAndBlockForLog, coefficientTiles.size());
 	}
 
 	private void connectTilesWithinPatches(
