@@ -5,7 +5,6 @@ import com.beust.jcommander.ParametersDelegate;
 
 import ij.process.ByteProcessor;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,6 +37,7 @@ import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.zspacing.ThicknessCorrectionData;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.GzipCompression;
+import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.spark.supplier.N5WriterSupplier;
@@ -265,6 +265,12 @@ public class N5Client {
         final int[] reviewDownsampleFactors = parameters.getReviewDownsampleFactors();
         final boolean downsampleStackForReview = downsampleStack && (reviewDownsampleFactors != null);
 
+        if (downsampleStackForReview && (! parameters.n5Path.startsWith("/"))) {
+            throw new IllegalArgumentException(
+                    "cannot create review dataset symbolic link when n5Path '" +
+                    parameters.n5Path + "' is not an absolute file path");
+        }
+
         final String fullScaleDatasetName = downsampleStack ?
                                             Paths.get(datasetName, "s" + 0).toString() : datasetName;
 
@@ -304,8 +310,11 @@ public class N5Client {
         LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",
                  parameters.n5Path, datasetName, viewStackCommandOffsets);
 
-        final File datasetDir = new File(Paths.get(parameters.n5Path, fullScaleDatasetName).toString());
-        if (! datasetDir.exists()) {
+        final N5Reader n5Reader = new N5Factory().openReader(StorageFormat.N5, parameters.n5Path);
+        if (! n5Reader.datasetExists(fullScaleDatasetName)) {
+
+            LOG.info("run: full scale dataset {}{} not found",
+                     parameters.n5Path, fullScaleDatasetName);
 
             setupFullScaleExportN5(parameters,
                                    fullScaleDatasetName,
@@ -325,12 +334,20 @@ public class N5Client {
                         buildImageProcessorCacheSpec(),
                         null); // always ignore minZToRender for initial render
 
+        } else if (! downsampleStack) {
+
+            throw new IllegalArgumentException(
+                    "Dataset " + parameters.n5Path + fullScaleDatasetName + " already exists.  " +
+                    "Please remove the existing dataset if you wish to regenerate it.");
+
         } else {
 
-            final File s1Dir = new File(datasetDir.getParent(), "s1");
-            if ((! downsampleStack) || s1Dir.exists()) {
-                throw new IllegalArgumentException("Dataset " + datasetDir.getAbsolutePath() + " already exists.  " +
-                                                   "Please remove the existing dataset if you wish to regenerate it.");
+            final String s1DatasetName = fullScaleDatasetName.replaceFirst("s0$", "s1");
+            if (n5Reader.datasetExists(s1DatasetName)) {
+                throw new IllegalArgumentException(
+                        "Dataset " + parameters.n5Path + s1DatasetName + " already exists.  " +
+                        "Please remove s0, s1, s2, ... if you wish to regenerate everything or " +
+                        "s1, s2, ... if you wish to regenerate the downsampled areas.");
             }
 
         }
@@ -366,12 +383,14 @@ public class N5Client {
         if (downsampleStackForReview) {
 
             final String reviewDatasetName = datasetName + "_review";
-            final Path reviewDatasetPath = Paths.get(parameters.n5Path, reviewDatasetName);
 
-            if (Files.exists(reviewDatasetPath)) {
-                throw new IllegalArgumentException("review dataset " + reviewDatasetPath + " already exists");
+            if (n5Reader.datasetExists(reviewDatasetName)) {
+                throw new IllegalArgumentException(
+                        "review dataset " + parameters.n5Path + reviewDatasetName + " already exists");
             }
 
+            // TODO: if there is some way to symbolically link google cloud sub-paths, replace Files usage here
+            final Path reviewDatasetPath = Paths.get(parameters.n5Path, reviewDatasetName);
             Files.createDirectory(reviewDatasetPath);
 
             final String fullScaleReviewDatasetName = reviewDatasetName + "/s0";
