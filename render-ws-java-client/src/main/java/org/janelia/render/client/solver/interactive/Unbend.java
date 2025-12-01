@@ -3,12 +3,16 @@ package org.janelia.render.client.solver.interactive;
 import java.awt.Color;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import org.janelia.alignment.RenderParameters;
+import org.janelia.alignment.mipmap.RenderedCanvasMipmapSource;
+import org.janelia.alignment.mipmap.UrlMipmapSource;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.TileSpec;
@@ -19,8 +23,11 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.solver.SolveTools;
 import org.janelia.render.client.solver.visualize.RenderTools;
+import org.slf4j.LoggerFactory;
 
 import bdv.util.BdvStackSource;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.LoggerContext;
 import net.imglib2.Interval;
 import net.imglib2.RealPoint;
 import net.imglib2.cache.Invalidate;
@@ -193,14 +200,15 @@ public class Unbend
 			effectiveArgs = new String[] {
 				"http://em-services-1.int.janelia.org:8080/render-ws/v1",
 				"cellmap",
-				"jrc_mus_cortex_2",
-				"v1_acquire_align",
-				"v1_acquire_align_straightened"
+				"jrc_mus_heart_6",
+                "v4_acquire_align_16bit_destreak_sc",
+                "v4_acquire_align_16bit_destreak_sc_straightened"
 			};
 		} else {
 			effectiveArgs = args;
 		}
 
+        // note: needed to hack RenderTools.renderImage to handle 16-bit data (see commented out lines there)
 		final String baseUrl = effectiveArgs[0];
 		final String owner = effectiveArgs[1];
 		final String project = effectiveArgs[2];
@@ -225,6 +233,19 @@ public class Unbend
 		// make imageProcessor cache large enough for masks and some images, but leave most RAM for BDV
 		final long cachedPixels = 2000000;
 		final ImageProcessorCache ipCache = new ImageProcessorCache( cachedPixels, recordStats, cacheOriginalsForDownSampledImages );
+
+        // reduce logging so that it is easier to see problems
+        for (final String loggerName : Arrays.asList(ImageProcessorCache.class.getName(),
+                                                     RenderParameters.class.getName(),
+                                                     RenderedCanvasMipmapSource.class.getName(),
+                                                     UrlMipmapSource.class.getName())) {
+            final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
+            final ch.qos.logback.classic.Logger logger = loggerContext.getLogger(loggerName);
+            if (logger == null) {
+                throw new IllegalArgumentException("logger with name '" + loggerName + "' not found");
+            }
+            logger.setLevel(Level.WARN);
+        }
 
 		// make most cores available for viewer
 		final double totalThreadUsage = 1.0;

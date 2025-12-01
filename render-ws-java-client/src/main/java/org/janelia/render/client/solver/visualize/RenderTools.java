@@ -170,6 +170,9 @@ public class RenderTools
 		final RenderParameters renderParameters = RenderParameters.loadFromUrl(renderParametersUrlString); // we do have that info locally
 		renderParameters.setDoFilter(filter);
 
+        // replace first channel with mask for 16-bit-data
+        // renderParameters.getTileSpecs().forEach( (tileSpec) -> tileSpec.replaceFirstChannelImageWithMask( false ));
+
 		/*
 		final BufferedImage image = renderParameters.openTargetImage(); // opens an empty buffer
 		ArgbRenderer.render(renderParameters, image, ipCache); // loads the entire image and crops the requested size
@@ -178,7 +181,8 @@ public class RenderTools
 		*/
 
 		return Renderer.renderImageProcessorWithMasks( renderParameters, ipCache );
-	}
+        // return Renderer.renderImageProcessorWithMasks( renderParameters, ImageProcessorCache.DISABLED_CACHE ); // for running without cache for 16-bit data
+    }
 
 	public static ImageProcessorWithMasks renderRemoteImage(final ImageProcessorCache ipCache,
 															final String baseUrl,
