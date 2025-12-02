@@ -1,7 +1,12 @@
 package org.janelia.render.client;
 
+import com.beust.jcommander.Parameter;
+import com.beust.jcommander.ParametersDelegate;
+
 import java.io.IOException;
 import java.util.List;
+
+import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
@@ -12,15 +17,10 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.beust.jcommander.Parameter;
-import com.beust.jcommander.ParametersDelegate;
-
-import mpicbg.trakem2.transform.AffineModel2D;
-
 /**
  * Java client for straightening a stack by gradually applying an offset
  * computed from the midpoints of the first and last layer bounding boxes.
- *
+ * <br>
  * The offset is linearly interpolated across layers:
  * layer z is moved by (z - zmin) / (zmax - zmin) * offset
  */
@@ -113,8 +113,7 @@ public class StackStraighteningClient {
     }
 
     private double[] getLayerBoundingBoxMidpoint(final double z) throws Exception {
-        final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(parameters.stack, z);
-        final Bounds layerBounds = tiles.toBounds();
+        final Bounds layerBounds = renderDataClient.getLayerBounds(parameters.stack, z);
 
         if (layerBounds == null || layerBounds.getMinX() == null) {
             throw new IllegalArgumentException("Cannot compute bounding box for layer z=" + z);
