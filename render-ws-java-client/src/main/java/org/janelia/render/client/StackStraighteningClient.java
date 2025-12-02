@@ -4,13 +4,17 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -42,6 +46,11 @@ public class StackStraighteningClient {
                 description = "Name of target stack",
                 required = true)
         public String targetStack;
+
+        @Parameter(
+                names = "--numberOfZLayersPerChunk",
+                description = "Number of Z layers to process per chunk")
+        public int numberOfZLayersPerChunk = 1000;
     }
 
     public static void main(final String[] args) {
@@ -82,6 +91,10 @@ public class StackStraighteningClient {
         this.minZ = zValues.get(0);
         this.maxZ = zValues.get(zValues.size() - 1);
         this.zRange = maxZ - minZ;
+
+        if (parameters.numberOfZLayersPerChunk < 1) {
+            throw new IllegalArgumentException("numberOfZLayersPerChunk must be at least 1");
+        }
     }
 
     private void straightenStack() throws Exception {
@@ -104,9 +117,10 @@ public class StackStraighteningClient {
                  lastLayerMidpoint[0], lastLayerMidpoint[1],
                  totalOffsetX, totalOffsetY);
 
-        // Process each layer
-        for (final Double z : zValues) {
-            straightenLayer(z, totalOffsetX, totalOffsetY);
+        for (int start = 0; start < zValues.size(); start += parameters.numberOfZLayersPerChunk) {
+            final int end = Math.min(start + parameters.numberOfZLayersPerChunk, zValues.size());
+            final List<Double> zLayersChunk = zValues.subList(start, end);
+            straightenLayers(zLayersChunk, totalOffsetX, totalOffsetY);
         }
 
         renderDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
@@ -130,44 +144,74 @@ public class StackStraighteningClient {
         return new double[] { midX, midY };
     }
 
-    private void straightenLayer(final Double z,
-                                 final double totalOffsetX,
-                                 final double totalOffsetY)
+    private void straightenLayers(final List<Double> zLayersChunk,
+                                  final double totalOffsetX,
+                                  final double totalOffsetY)
             throws Exception {
 
-        LOG.info("straightenLayer: entry, z={}", z);
+        final Double firstZ = zLayersChunk.get(0);
+        final Double lastZ = zLayersChunk.get(zLayersChunk.size() - 1);
 
-        final ResolvedTileSpecCollection tiles = renderDataClient.getResolvedTiles(parameters.stack, z);
+        LOG.info("straightenLayers: entry, firstZ={}, lastZ={}", firstZ, lastZ);
 
-        if (tiles.getTileCount() == 0) {
-            LOG.info("straightenLayer: no tiles for z={}, skipping", z);
-            return;
+        final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(parameters.stack,
+                                                                                           firstZ,
+                                                                                           lastZ,
+                                                                                           null,
+                                                                                           null,
+                                                                                           null,
+                                                                                           null,
+                                                                                           null,
+                                                                                           null);
+
+        final Map<Double, List<TileSpec>> zToTileSpecs = new HashMap<>();
+        final Map<Double, LeafTransformSpec> zToTranslation = new HashMap<>();
+
+        for (final TileSpec tileSpec : resolvedTiles.getTileSpecs()) {
+
+            final List<TileSpec> tileSpecsForZ = zToTileSpecs.computeIfAbsent(tileSpec.getZ(),
+                                                                              k -> new ArrayList<>());
+            tileSpecsForZ.add(tileSpec);
+
+            if (! zToTranslation.containsKey(tileSpec.getZ())) {
+
+                final Double z = tileSpec.getZ();
+
+                // Compute the interpolation factor for this layer
+                // At zMin, factor = 0 (no movement)
+                // At zMax, factor = 1 (full offset applied, but negated to bring it back to first layer position)
+                final double factor = (z - minZ) / zRange;
+
+                // The translation needed to straighten this layer
+                final double translateX = -factor * totalOffsetX;
+                final double translateY = -factor * totalOffsetY;
+
+                final AffineModel2D translationModel = new AffineModel2D();
+                translationModel.set(1, 0, 0, 1, translateX, translateY);
+
+                zToTranslation.put(z, new LeafTransformSpec(translationModel.getClass().getName(),
+                                                            translationModel.toDataString()));
+            }
         }
 
-        // Compute the interpolation factor for this layer
-        // At zMin, factor = 0 (no movement)
-        // At zMax, factor = 1 (full offset applied, but negated to bring it back to first layer position)
-        final double factor = (z - minZ) / zRange;
+        for (final Double z : zLayersChunk) {
 
-        // The translation needed to straighten this layer
-        final double translateX = -factor * totalOffsetX;
-        final double translateY = -factor * totalOffsetY;
+            final List<TileSpec> layerTileSpecs = zToTileSpecs.get(z);
+            final LeafTransformSpec transformSpec = zToTranslation.get(z);
 
-        final AffineModel2D translationModel = new AffineModel2D();
-        translationModel.set(1, 0, 0, 1, translateX, translateY);
+            for (final TileSpec tileSpec : layerTileSpecs) {
+                resolvedTiles.addTransformSpecToTile(tileSpec.getTileId(),
+                                                     transformSpec,
+                                                     ResolvedTileSpecCollection.TransformApplicationMethod.PRE_CONCATENATE_LAST);
+            }
 
-        final LeafTransformSpec translationTransform = new LeafTransformSpec(
-                translationModel.getClass().getName(),
-                translationModel.toDataString());
+            LOG.debug("straightenLayers: applied affine transform {} to {} tiles for z={}",
+                      transformSpec.getDataString(), layerTileSpecs.size(), z);
+        }
 
-        tiles.preConcatenateTransformToAllTiles(translationTransform);
+        renderDataClient.saveResolvedTiles(resolvedTiles, parameters.targetStack, null);
 
-        LOG.info("straightenLayer: applied translation ({}, {}) to {} tiles for z={}",
-                 translateX, translateY, tiles.getTileCount(), z);
-
-        renderDataClient.saveResolvedTiles(tiles, parameters.targetStack, z);
-
-        LOG.info("straightenLayer: exit, saved {} tiles for z={}", tiles.getTileCount(), z);
+        LOG.info("straightenLayers: exit, saved {} tiles for z {} to {}", resolvedTiles.getTileCount(), firstZ, lastZ);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StackStraighteningClient.class);
