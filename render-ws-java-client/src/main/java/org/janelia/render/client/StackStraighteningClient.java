@@ -64,6 +64,9 @@ public class StackStraighteningClient {
     private final Parameters parameters;
     private final RenderDataClient renderDataClient;
     private final List<Double> zValues;
+    private final double minZ;
+    private final double maxZ;
+    private final double zRange;
 
     private StackStraighteningClient(final Parameters parameters)
             throws IOException {
@@ -75,6 +78,10 @@ public class StackStraighteningClient {
         if (zValues.size() < 2) {
             throw new IllegalArgumentException("Stack must have at least 2 layers for straightening");
         }
+
+        this.minZ = zValues.get(0);
+        this.maxZ = zValues.get(zValues.size() - 1);
+        this.zRange = maxZ - minZ;
     }
 
     private void straightenStack() throws Exception {
@@ -82,14 +89,11 @@ public class StackStraighteningClient {
         final StackMetaData sourceStackMetaData = renderDataClient.getStackMetaData(parameters.stack);
         renderDataClient.setupDerivedStack(sourceStackMetaData, parameters.targetStack);
 
-        final double zMin = zValues.get(0);
-        final double zMax = zValues.get(zValues.size() - 1);
-
-        LOG.info("straightenStack: zMin={}, zMax={}", zMin, zMax);
+        LOG.info("straightenStack: minZ={}, maxZ={}", minZ, maxZ);
 
         // Get bounding box midpoints for first and last layers
-        final double[] firstLayerMidpoint = getLayerBoundingBoxMidpoint(zMin);
-        final double[] lastLayerMidpoint = getLayerBoundingBoxMidpoint(zMax);
+        final double[] firstLayerMidpoint = getLayerBoundingBoxMidpoint(minZ);
+        final double[] lastLayerMidpoint = getLayerBoundingBoxMidpoint(maxZ);
 
         // Compute the total offset between first and last layer midpoints
         final double totalOffsetX = lastLayerMidpoint[0] - firstLayerMidpoint[0];
@@ -100,11 +104,9 @@ public class StackStraighteningClient {
                  lastLayerMidpoint[0], lastLayerMidpoint[1],
                  totalOffsetX, totalOffsetY);
 
-        final double zRange = zMax - zMin;
-
         // Process each layer
         for (final Double z : zValues) {
-            straightenLayer(z, zMin, zRange, totalOffsetX, totalOffsetY);
+            straightenLayer(z, totalOffsetX, totalOffsetY);
         }
 
         renderDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
@@ -129,8 +131,6 @@ public class StackStraighteningClient {
     }
 
     private void straightenLayer(final Double z,
-                                 final double zMin,
-                                 final double zRange,
                                  final double totalOffsetX,
                                  final double totalOffsetY)
             throws Exception {
@@ -147,7 +147,7 @@ public class StackStraighteningClient {
         // Compute the interpolation factor for this layer
         // At zMin, factor = 0 (no movement)
         // At zMax, factor = 1 (full offset applied, but negated to bring it back to first layer position)
-        final double factor = (z - zMin) / zRange;
+        final double factor = (z - minZ) / zRange;
 
         // The translation needed to straighten this layer
         final double translateX = -factor * totalOffsetX;
