@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.File;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 public class HackImageUrlPathClient {
 
     public enum PathTransformationType {
+        HAYWORTH_CREEP_CORRECTION,
         HAYWORTH_CONTRAST,
         BASIC_BACKGROUND_CORRECTION,
         GOOGLE_CLOUD_TEST,
@@ -44,6 +46,8 @@ public class HackImageUrlPathClient {
         NO_PATH_TRANSFORMATION;
         public UnaryOperator<String> getOperator() {
             switch (this) {
+                case HAYWORTH_CREEP_CORRECTION:
+                    return new HayworthCreepCorrectionPathTransformation();
                 case HAYWORTH_CONTRAST:
                     return new HayworthContrastPathTransformation();
                 case BASIC_BACKGROUND_CORRECTION:
@@ -180,6 +184,38 @@ public class HackImageUrlPathClient {
         }
     }
 
+
+
+    private static class HayworthCreepCorrectionPathTransformation implements UnaryOperator<String> {
+        private final Pattern PATH_PATTERN = Pattern.compile(
+                "^file:/nearline/hess/ibeammsem/system_02/wafers/wafer_61/acquisition/scans/(scan_(\\d+))/slabs/slab_0145/mfovs/(mfov_(\\d+))/(sfov_\\d+\\.png)$");
+        private static final Set<Integer> SCANS_TO_PATCH = Set.of(7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+        private static final Set<Integer> MFOVS_TO_PATCH = Set.of(4, 5, 6, 9, 10, 13, 14, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26);
+
+        // original:    file:/nearline/hess/ibeammsem/system_02/wafers/wafer_61/acquisition/scans/scan_007/slabs/slab_0145/mfovs/mfov_0026/sfov_062.png
+        // target:      file:/nrs/hess/render/distortion_correction_20251215/data/scan_007/slab_0145/mfov_0026/sfov_062.png
+        // conditional: file:/nrs/hess/Hayworth/DISTORTION_CORRECTED/wafer_61/scan_007/slab_0145/mfov_0026/sfov_062.png
+        @Override
+        public String apply(final String path) {
+            final Matcher matcher = PATH_PATTERN.matcher(path);
+            if (matcher.matches()) {
+                // Extract relevant numbers from the path
+                final String scan = matcher.group(1);
+                final int scanNumber = Integer.parseInt(matcher.group(2));
+                final String mfov = matcher.group(3);
+                final int mfovNumber = Integer.parseInt(matcher.group(4));
+                final String sfov = matcher.group(5);
+
+                if (SCANS_TO_PATCH.contains(scanNumber) && MFOVS_TO_PATCH.contains(mfovNumber)) {
+                    return "/nrs/hess/Hayworth/DISTORTION_CORRECTED/wafer_61/" + scan + "/slab_0145/" + mfov + "/" + sfov;
+                } else {
+                    return "/nrs/hess/render/distortion_correction_20251215/data/" + scan + "/slab_0145/" + mfov + "/" + sfov;
+                }
+            } else {
+                return null;
+            }
+        }
+    }
 
     private static class HayworthContrastPathTransformation implements UnaryOperator<String> {
         private final Pattern PATH_PATTERN = Pattern.compile("^file:/nrs.*/(scan_\\d\\d\\d/)wafer.*/(\\d\\d\\d_/.*png)$");
