@@ -32,6 +32,7 @@ public class MaskHackParameters
     public String dynamicMaskValue;
 
     public MaskHackParameters() {
+        this.targetStack = new TargetStackParameters();
     }
 
     public void validate()
