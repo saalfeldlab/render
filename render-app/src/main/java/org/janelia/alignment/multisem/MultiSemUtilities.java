@@ -89,11 +89,11 @@ public class MultiSemUtilities {
      * @return 01 for w60_magc0399_scan005_m0013_r46_s01
      */
     public static String getSFOVIndexForTileId(final String tileId) throws IllegalArgumentException {
-        final int scanIndex = tileId.indexOf("scan");
+        final int scanIndex = tileId.indexOf("_sc"); // tileIds can contain _scan005_ or _sc01234_
         if ((scanIndex < 0) || (tileId.length() < (scanIndex + 21))) {
             throw new IllegalArgumentException("SFOV index cannot be derived from tileId " + tileId);
         }
-        return tileId.substring(scanIndex + 19);
+        return tileId.substring(scanIndex + 20);
     }
 
     /**

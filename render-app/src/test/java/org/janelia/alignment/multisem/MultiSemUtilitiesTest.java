@@ -21,6 +21,16 @@ public class MultiSemUtilitiesTest {
                             "m0013_s01", MultiSemUtilities.getMfovSfovForTileId(tileId));
         Assert.assertEquals("invalid SFOVIndexForTileId",
                             "01", MultiSemUtilities.getSFOVIndexForTileId(tileId));
+
+        final String manyScanTileId = "w66_magc0000_sc09876_m0005_r65_s16";
+        Assert.assertEquals("invalid MagcMfov",
+                            "0000_m0005", MultiSemUtilities.getMagcMfovForTileId(manyScanTileId));
+        Assert.assertEquals("invalid MagcMfovSfov",
+                            "0000_m0005_s16", MultiSemUtilities.getMagcMfovSfovForTileId(manyScanTileId));
+        Assert.assertEquals("invalid MfovSfov",
+                            "m0005_s16", MultiSemUtilities.getMfovSfovForTileId(manyScanTileId));
+        Assert.assertEquals("invalid SFOVIndexForTileId",
+                            "16", MultiSemUtilities.getSFOVIndexForTileId(manyScanTileId));
     }
 
 }
