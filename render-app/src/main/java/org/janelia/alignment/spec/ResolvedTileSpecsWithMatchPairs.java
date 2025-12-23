@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.io.Reader;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,15 +26,19 @@ public class ResolvedTileSpecsWithMatchPairs
     private final ResolvedTileSpecCollection resolvedTileSpecs;
     private List<CanvasMatches> matchPairs;
 
-    @SuppressWarnings("unused")
-    private ResolvedTileSpecsWithMatchPairs() {
-        this(null, null);
+    public ResolvedTileSpecsWithMatchPairs() {
+        this(new ResolvedTileSpecCollection(), new ArrayList<>());
     }
 
     public ResolvedTileSpecsWithMatchPairs(final ResolvedTileSpecCollection resolvedTileSpecs,
                                            final List<CanvasMatches> matchPairs) {
         this.resolvedTileSpecs = resolvedTileSpecs;
         this.matchPairs = matchPairs;
+    }
+
+    public void append(final ResolvedTileSpecsWithMatchPairs other) {
+        this.resolvedTileSpecs.merge(other.getResolvedTileSpecs());
+        this.matchPairs.addAll(other.matchPairs);
     }
 
     public ResolvedTileSpecCollection getResolvedTileSpecs() {

@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -1132,46 +1133,132 @@ public class RenderDataClient {
             throws IOException {
 
         final String baseUrlString = urls.getStackUrlString(stack);
-        final URI baseUri =  getUri(baseUrlString + "/resolvedTilesWithMatchesFrom/" + collectionName);
+        final URI baseUri = getUri(baseUrlString + "/resolvedTilesWithMatchesFrom/" + collectionName);
 
-        final URIBuilder uriBuilder = new URIBuilder(baseUri);
-        if (bounds != null) {
-            addParameterIfDefined("minX", bounds.getMinX(), uriBuilder);
-            addParameterIfDefined("maxX", bounds.getMaxX(), uriBuilder);
-            addParameterIfDefined("minY", bounds.getMinY(), uriBuilder);
-            addParameterIfDefined("maxY", bounds.getMaxY(), uriBuilder);
-            addParameterIfDefined("minZ", bounds.getMinZ(), uriBuilder);
-            addParameterIfDefined("maxZ", bounds.getMaxZ(), uriBuilder);
-        }
-        addParameterIfDefined("groupId", groupId, uriBuilder);
-        addParameterIfDefined("matchPattern", matchPattern, uriBuilder);
+        ResolvedTileSpecsWithMatchPairs result = new ResolvedTileSpecsWithMatchPairs();
 
-        final URI uri = getUri(uriBuilder);
+        final List<Bounds> requestBoundsList = buildRequestBoundsList(stack, bounds);
+        for (final Bounds requestBounds : requestBoundsList) {
 
-        final HttpGet httpGet = new HttpGet(uri);
-        final String requestContext = "GET " + uri;
-        final JsonUtils.Helper<ResolvedTileSpecsWithMatchPairs> helper =
-                new JsonUtils.Helper<>(ResolvedTileSpecsWithMatchPairs.class);
-        final JsonResponseHandler<ResolvedTileSpecsWithMatchPairs> responseHandler =
-                new JsonResponseHandler<>(requestContext, helper);
+            final URIBuilder uriBuilder = new URIBuilder(baseUri);
+            if (requestBounds != null) {
+                addParameterIfDefined("minX", requestBounds.getMinX(), uriBuilder);
+                addParameterIfDefined("maxX", requestBounds.getMaxX(), uriBuilder);
+                addParameterIfDefined("minY", requestBounds.getMinY(), uriBuilder);
+                addParameterIfDefined("maxY", requestBounds.getMaxY(), uriBuilder);
+                addParameterIfDefined("minZ", requestBounds.getMinZ(), uriBuilder);
+                addParameterIfDefined("maxZ", requestBounds.getMaxZ(), uriBuilder);
+            }
+            addParameterIfDefined("groupId", groupId, uriBuilder);
+            addParameterIfDefined("matchPattern", matchPattern, uriBuilder);
 
-        LOG.info("getResolvedTilesWithMatchPairs: submitting {}", requestContext);
+            final URI uri = getUri(uriBuilder);
 
-        ResolvedTileSpecsWithMatchPairs result;
-        try {
-            result = httpClient.execute(httpGet, responseHandler);
-        } catch (final IOException e) {
-            final String msg = e.getMessage();
-            if (handleTilesNotFound && (msg != null) && msg.contains("no tile specifications found")) {
-                LOG.info("getResolvedTilesWithMatchPairs: handling request exception: {}", msg);
-                result = new ResolvedTileSpecsWithMatchPairs(new ResolvedTileSpecCollection(),
-                                                             new ArrayList<>());
+            final HttpGet httpGet = new HttpGet(uri);
+            final String requestContext = "GET " + uri;
+            final JsonUtils.Helper<ResolvedTileSpecsWithMatchPairs> helper =
+                    new JsonUtils.Helper<>(ResolvedTileSpecsWithMatchPairs.class);
+            final JsonResponseHandler<ResolvedTileSpecsWithMatchPairs> responseHandler =
+                    new JsonResponseHandler<>(requestContext, helper);
+
+            LOG.info("getResolvedTilesWithMatchPairs: submitting {}", requestContext);
+
+            ResolvedTileSpecsWithMatchPairs requestResult;
+            try {
+                requestResult = httpClient.execute(httpGet, responseHandler);
+            } catch (final IOException e) {
+                final String msg = e.getMessage();
+                if (handleTilesNotFound && (msg != null) && msg.contains("no tile specifications found")) {
+                    LOG.info("getResolvedTilesWithMatchPairs: handling request exception: {}", msg);
+                    requestResult = new ResolvedTileSpecsWithMatchPairs(new ResolvedTileSpecCollection(),
+                                                                        new ArrayList<>());
+                } else {
+                    throw e;
+                }
+            }
+
+            if (requestBoundsList.size() > 1) {
+                result.append(requestResult);
             } else {
-                throw e;
+                result = requestResult;
             }
         }
 
         return result;
+    }
+
+    public List<Bounds> buildRequestBoundsList(final String stack,
+                                               final Bounds bounds)
+            throws IOException {
+
+        LOG.info("buildRequestBoundsList: entry, stack={}, bounds={}", stack, bounds);
+
+        final List<Bounds> requestBoundsList = new ArrayList<>();
+
+        final StackMetaData stackMetaData = getStackMetaData(stack);
+        final long maxTilesPerRequest = 100_000L; // RenderDao.MAX_TILE_SPEC_COUNT_FOR_QUERIES = 500_000, but using a lower value here to keep response sizes smaller
+        final int numberOfRequestsNeeded = 1 + (int) (stackMetaData.getStats().getTileCount() / maxTilesPerRequest);
+
+        if (numberOfRequestsNeeded > 1) {
+
+            final Bounds stackBounds = stackMetaData.getStackBounds();
+
+            final Double minX = (bounds != null) && (bounds.getMinX() != null) ? bounds.getMinX() : stackBounds.getMinX();
+            final Double maxX = (bounds != null) && (bounds.getMaxX() != null) ? bounds.getMaxX() : stackBounds.getMaxX();
+            final Double minY = (bounds != null) && (bounds.getMinY() != null) ? bounds.getMinY() : stackBounds.getMinY();
+            final Double maxY = (bounds != null) && (bounds.getMaxY() != null) ? bounds.getMaxY() : stackBounds.getMaxY();
+
+            double minZ = (bounds != null) && (bounds.getMinZ() != null) ? bounds.getMinZ() : stackBounds.getMinZ();
+            double maxZ = (bounds != null) && (bounds.getMaxZ() != null) ? bounds.getMaxZ() : stackBounds.getMaxZ();
+
+            // ensure min and max Z are within stack bounds
+            minZ = Math.max(minZ, stackBounds.getMinZ());
+            maxZ = Math.min(maxZ, stackBounds.getMaxZ());
+
+            final List<SectionData> sectionDataList = getStackSectionData(stack, minZ, maxZ);
+            sectionDataList.sort(Comparator.comparingDouble(SectionData::getZ));
+
+            long tileCount = 0;
+            Bounds b;
+            maxZ = minZ;
+
+            for (final SectionData sectionData : sectionDataList) {
+
+                final long sectionTileCount = sectionData.getTileCount();
+
+                if (sectionTileCount > maxTilesPerRequest) {
+                    throw new IOException("Cannot process request: section " + sectionData.getSectionId() +
+                                          " has " + sectionTileCount + " tiles, which exceeds max of " +
+                                          maxTilesPerRequest + " tiles per request");
+                }
+
+                if ((tileCount + sectionTileCount) < maxTilesPerRequest) {
+                    tileCount += sectionTileCount;
+                    maxZ = sectionData.getZ();
+                } else {
+                    b = new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
+                    LOG.info("buildRequestBoundsList: adding split bounds {} for {} tiles to list", b, tileCount);
+                    requestBoundsList.add(b);
+                    tileCount = sectionTileCount;
+                    minZ = sectionData.getZ();
+                    maxZ = minZ;
+                }
+            }
+
+            b = new Bounds(minX, minY, minZ, maxX, maxY, maxZ);
+            LOG.info("buildRequestBoundsList: adding last split bounds {} for {} tiles to list", b, tileCount);
+            requestBoundsList.add(b);
+
+        } else {
+
+            LOG.info("buildRequestBoundsList:adding original bounds {} to list", bounds);
+            requestBoundsList.add(bounds);
+
+        }
+
+        LOG.info("buildRequestBoundsList: returning list with {} element(s)", requestBoundsList.size());
+
+        return requestBoundsList;
     }
 
     /**
