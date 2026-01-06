@@ -39,7 +39,7 @@ USAGE="USAGE:
       # see https://docs.docker.com/engine/reference/commandline/swarm_leave/
       docker swarm leave --force
 
-  - Get the join token for a worker to join the swarm:
+  - Get the join token (and command) for a worker to join the swarm:
       # see https://docs.docker.com/engine/reference/commandline/swarm_join-token/
       docker swarm join-token worker
       
