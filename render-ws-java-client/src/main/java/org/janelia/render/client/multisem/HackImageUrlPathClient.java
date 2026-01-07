@@ -43,7 +43,8 @@ public class HackImageUrlPathClient {
         BASIC_BACKGROUND_CORRECTION,
         GOOGLE_CLOUD_TEST,
         GOOGLE_CLOUD_WAFER_60,
-        NO_PATH_TRANSFORMATION;
+        NO_PATH_TRANSFORMATION,
+        FIBSEM_CHANNEL_ONE;
         public UnaryOperator<String> getOperator() {
             switch (this) {
                 case HAYWORTH_CREEP_CORRECTION:
@@ -58,6 +59,8 @@ public class HackImageUrlPathClient {
                     return new GoogleCloudWafer60PathTransformation();
                 case NO_PATH_TRANSFORMATION:
                     return new NoPathTransformation();
+                case FIBSEM_CHANNEL_ONE:
+                    return new FibsemChannelOneTransformation();
                 default:
                     throw new IllegalArgumentException("unsupported transformation type: " + this);
             }
@@ -145,11 +148,11 @@ public class HackImageUrlPathClient {
 
         for (final ChannelSpec channelSpec : tileSpec.getAllChannels()) {
             final Map.Entry<Integer, ImageAndMask> entry = channelSpec.getFirstMipmapEntry();
-			if ((entry == null) || !zeroLevelKey.equals(entry.getKey())) {
+            if ((entry == null) || !zeroLevelKey.equals(entry.getKey())) {
                 continue;
-			}
+            }
 
-			final ImageAndMask sourceImageAndMask = entry.getValue();
+            final ImageAndMask sourceImageAndMask = entry.getValue();
 
             final String imageUrl = sourceImageAndMask.getImageUrl();
             final String transformedUrl = pathTransformation.apply(imageUrl);
@@ -160,11 +163,26 @@ public class HackImageUrlPathClient {
 
             final String derivedImageUrl;
             if (transformedUrl.startsWith("file:")) {
-                final File hackFile = new File(transformedUrl);
-                if (!hackFile.exists()) {
-                    throw new IllegalArgumentException("target file does not exist: " + hackFile);
+
+                if (transformedUrl.contains("?")) {
+
+                    final String[] splitUrl = transformedUrl.split("\\?");
+                    final File hackFile = new File(splitUrl[0].substring(5));
+                    if (! hackFile.exists()) {
+                        throw new IllegalArgumentException("target file does not exist: " + hackFile);
+                    }
+                    derivedImageUrl = "file:" + hackFile.getAbsolutePath() + "?" + splitUrl[1];
+
+                } else {
+
+                    final File hackFile = new File(transformedUrl.substring(5));
+                    if (! hackFile.exists()) {
+                        throw new IllegalArgumentException("target file does not exist: " + hackFile);
+                    }
+                    derivedImageUrl = "file:" + hackFile.getAbsolutePath();
+
                 }
-                derivedImageUrl = "file:" + hackFile.getAbsolutePath();
+
             } else {
                 derivedImageUrl = transformedUrl;
             }
@@ -271,6 +289,16 @@ public class HackImageUrlPathClient {
         @Override
         public String apply(final String path) {
             return path;
+        }
+    }
+
+    private static class FibsemChannelOneTransformation
+            implements UnaryOperator<String> {
+        // original: file:///nrs/fibsem/data/jrc_P3-E5-D1-N2/align/Merlin-6284/2024/04/26/05/Merlin-6284_24-04-26_055351.uint8.h5?dataSet=/0-0-0/mipmap.0&z=0
+        // target:   file:///nrs/fibsem/data/jrc_P3-E5-D1-N2/align_c1/Merlin-6284/2024/04/26/05/Merlin-6284_24-04-26_055351.uint8.h5?dataSet=/0-0-0/mipmap.0&z=0
+        @Override
+        public String apply(final String path) {
+            return path.replace("/align/", "/align_c1/");
         }
     }
 
