@@ -297,7 +297,49 @@ public class DistributedSolveParameters extends CommandLineParameters
 						  "will set rigidPreAlign to true and apply a rigid/affine solve.",
 			variableArity = true
 	)
-	public List<Double> zWithAdditionalIssues = new ArrayList<>();
+    private List<Double> zWithAdditionalIssues = new ArrayList<>();
+
+    @Parameter(
+            names = "--additionalIssuesZRange",
+            description = "Flag z layers in this inclusive range (min:max, e.g. 6000:10423) as having additional issues."
+    )
+    private String additionalIssuesZRange;
+
+    public List<Double> getZWithAdditionalIssues()
+            throws IllegalArgumentException {
+
+        final List<Double> zValues;
+        if (additionalIssuesZRange != null) {
+
+            final String[] parts = additionalIssuesZRange.split(":");
+            if (parts.length == 2) {
+                try {
+                    final int minZ = Integer.parseInt(parts[0]);
+                    final int maxZ = Integer.parseInt(parts[1]);
+                    zValues = new ArrayList<>(maxZ - minZ + 1);
+                    for (int z = minZ; z <= maxZ; z++) {
+                        zValues.add((double) z);
+                    }
+                } catch (final NumberFormatException e) {
+                    throw new IllegalArgumentException(
+                            "Invalid min or max value.  " +
+                            "Format for --additionalIssuesZRange should be min:max (e.g. 6000:10423)",
+                            e);
+                }
+            } else {
+                throw new IllegalArgumentException(
+                        "Invalid parts count (" + parts.length + ").  " +
+                        "Format for --additionalIssuesZRange should be min:max (e.g. 6000:10423)");
+            }
+
+            zValues.addAll(zWithAdditionalIssues); // duplicates are removed later by SolveSetFactoryAdaptiveRigid
+
+        } else {
+            zValues = this.zWithAdditionalIssues;
+        }
+
+        return zValues;
+    }
 
 	public DistributedSolveParameters() {}
 

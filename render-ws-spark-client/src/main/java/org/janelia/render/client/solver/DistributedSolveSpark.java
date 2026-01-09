@@ -132,7 +132,7 @@ public class DistributedSolveSpark extends DistributedSolve
 																parameters.minStitchingInliers,
 																parameters.blockMaxAllowedError,
 																parameters.dynamicLambdaFactor,
-																parameters.zWithAdditionalIssues);
+																parameters.getZWithAdditionalIssues());
 
 				} else {
 					solveSetFactory = CustomSolveSetBuilder.build(parameters.customSolveClass,
