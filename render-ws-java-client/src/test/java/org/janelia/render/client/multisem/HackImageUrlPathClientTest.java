@@ -25,7 +25,15 @@ public class HackImageUrlPathClientTest {
                 "--targetStack", "w60_s360_r00_d20_gc_timeout",
                 "--transformationType", "NO_PATH_TRANSFORMATION"
         };
-         HackImageUrlPathClient.main(effectiveArgs);
+//        final String[] effectiveArgs = {
+//                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+//                "--owner", "fibsem",
+//                "--project", "jrc_P3_E5_D1_N2",
+//                "--stack", "v1_acquire_trimmed_align_v2",
+//                "--targetStack", "v1_acquire_trimmed_align_v2_channel_1",
+//                "--transformationType", "FIBSEM_CHANNEL_ONE"
+//        };
+        HackImageUrlPathClient.main(effectiveArgs);
 
 //        for (int serialNumber = 360; serialNumber < 370; serialNumber++) {
 //            final String stack = String.format("w60_s%d_r00_d30", serialNumber);
@@ -37,7 +45,7 @@ public class HackImageUrlPathClientTest {
 
     }
 
-    @SuppressWarnings("SameParameterValue")
+    @SuppressWarnings({"SameParameterValue", "unused"})
     private static void createGoogleCloudStackWithTimeoutLoader(final String owner,
                                                                 final String project,
                                                                 final String stack,
