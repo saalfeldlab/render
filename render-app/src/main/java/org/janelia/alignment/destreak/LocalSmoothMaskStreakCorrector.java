@@ -12,6 +12,7 @@ import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
@@ -83,23 +84,45 @@ public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
     @Override
     public void process(final ImageProcessor ip, final double scale) {
 		// save original image for later subtraction
-		final ImagePlus originalIP = new ImagePlus("original", ip.convertToByteProcessor());
-		final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalIP);
-		checkWrappingSucceeded(original, ip, UnsignedByteType.class);
+		final boolean is16Bit = ip.getBitDepth() == 16;
+		final ImagePlus originalIP;
+		final RandomAccessibleInterval<FloatType> weight;
 
-		// de-streak image
-		super.process(ip, scale);
+		if (is16Bit) {
+			originalIP = new ImagePlus("original", ip.convertToShortProcessor());
+			final Img<UnsignedShortType> original = ImageJFunctions.wrapShort(originalIP);
+			checkWrappingSucceeded(original, ip, UnsignedShortType.class);
 
-		final ImagePlus fixedIP = new ImagePlus("fixed", ip);
-		final Img<UnsignedByteType> fixed = ImageJFunctions.wrapByte(fixedIP);
-		checkWrappingSucceeded(fixed, ip, UnsignedByteType.class);
+			// de-streak image
+			super.process(ip, scale);
 
-		// subtract fixed from original to get streaks, which is where the correction should be applied
-		final RandomAccessibleInterval<FloatType> weight =
-				Converters.convertRAI(original,
-									  fixed,
-									  (i1,i2,o) -> o.set(Math.abs(i1.get() - i2.get())),
-									  new FloatType());
+			final ImagePlus fixedIP = new ImagePlus("fixed", ip);
+			final Img<UnsignedShortType> fixed = ImageJFunctions.wrapShort(fixedIP);
+			checkWrappingSucceeded(fixed, ip, UnsignedShortType.class);
+
+			// subtract fixed from original to get streaks, which is where the correction should be applied
+			weight = Converters.convertRAI(original,
+										   fixed,
+										   (i1, i2, o) -> o.set(Math.abs(i1.get() - i2.get())),
+										   new FloatType());
+		} else {
+			originalIP = new ImagePlus("original", ip.convertToByteProcessor());
+			final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalIP);
+			checkWrappingSucceeded(original, ip, UnsignedByteType.class);
+
+			// de-streak image
+			super.process(ip, scale);
+
+			final ImagePlus fixedIP = new ImagePlus("fixed", ip);
+			final Img<UnsignedByteType> fixed = ImageJFunctions.wrapByte(fixedIP);
+			checkWrappingSucceeded(fixed, ip, UnsignedByteType.class);
+
+			// subtract fixed from original to get streaks, which is where the correction should be applied
+			weight = Converters.convertRAI(original,
+										   fixed,
+										   (i1, i2, o) -> o.set(Math.abs(i1.get() - i2.get())),
+										   new FloatType());
+		}
 
 		weightedSum(ip, originalIP.getProcessor(), weight);
 	}
