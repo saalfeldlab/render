@@ -182,27 +182,32 @@ public class SmoothMaskStreakCorrector
         final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);
 
         // convert back to original bit depth
-        final boolean is16Bit = ip.getBitDepth() == 16;
-        if (is16Bit) {
-            final RandomAccessibleInterval<UnsignedShortType> fixed =
-                    Converters.convertRAI(imgCorr,
-                                          (i, o) -> o.set(Math.max(0, Math.min(65535, Math.round(i.get())))),
-                                          new UnsignedShortType());
-            final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
-            final ImageProcessor fixedIp = fixedImp.getProcessor().convertToShortProcessor();
-            for (int i = 0; i < ip.getPixelCount(); i++) {
-                ip.set(i, fixedIp.get(i));
-            }
-        } else {
+        final int bitDepth = ip.getBitDepth();
+        final ImageProcessor fixedIp;
+
+        if (bitDepth == 8) {
             final RandomAccessibleInterval<UnsignedByteType> fixed =
                     Converters.convertRAI(imgCorr,
                                           (i, o) -> o.set(Math.max(0, Math.min(255, Math.round(i.get())))),
                                           new UnsignedByteType());
             final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
-            final ImageProcessor fixedIp = fixedImp.getProcessor().convertToByteProcessor();
+            fixedIp = fixedImp.getProcessor().convertToByteProcessor();
+        } else if (bitDepth == 16) {
+            final RandomAccessibleInterval<UnsignedShortType> fixed =
+                    Converters.convertRAI(imgCorr,
+                                          (i, o) -> o.set(Math.max(0, Math.min(65535, Math.round(i.get())))),
+                                          new UnsignedShortType());
+            final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
+            fixedIp = fixedImp.getProcessor().convertToShortProcessor();
             for (int i = 0; i < ip.getPixelCount(); i++) {
                 ip.set(i, fixedIp.get(i));
             }
+        } else {
+            throw new UnsupportedOperationException("Unsupported bit depth: " + bitDepth + " (only 8 and 16 are supported).");
+        }
+
+        for (int i = 0; i < ip.getPixelCount(); i++) {
+            ip.set(i, fixedIp.get(i));
         }
     }
 
