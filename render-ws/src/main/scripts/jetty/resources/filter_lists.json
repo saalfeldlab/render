@@ -186,7 +186,7 @@
 
     "jrc_mpi_psc120_1b-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "6553,10920,40,8,0.0,5,15.0,0.05"
         }
@@ -204,7 +204,7 @@
 
     "jrc_mpi_psc120_1a1-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "5545,10920,24,8,0.0,5,15.0,0.05"
         }
@@ -213,7 +213,7 @@
 
     "jrc_mpi_psc120_1a2-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "5545,10920,24,8,0.0,5,15.0,0.05"
         }
@@ -222,7 +222,7 @@
 
     "jrc_celegans_20240819-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "3466,5544,40,8,0.0,5,10.0,0.05"
         }
@@ -231,7 +231,7 @@
 
     "jrc_mus_cerebellum_2-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "5545,9240,40,6,0.0,10,7.0,0.05"
         }
@@ -240,7 +240,7 @@
 
     "jrc_mus_cerebellum_3-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "6161,8190,50,8,0.0,5,8.0,0.05"
         }
@@ -249,7 +249,7 @@
 
     "jrc_atla114_224_1-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "6161,9240,40,6,0.0,10,10.0,0.05"
         }
@@ -258,7 +258,7 @@
 
     "jrc_mpi_psc883_2f-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "6161,11088,40,10,0.0,10,18.0,0.05"
         }
@@ -267,7 +267,7 @@
 
     "jrc_mus_pancreas_7-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "5545,8190,50,4,0.0,10,5.0,0.05"
         }
@@ -276,7 +276,7 @@
 
     "jrc_mosquito_stylet_5-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "2773,5544,70,7,0.0,10,7.0,0.05"
         }
@@ -285,7 +285,7 @@
 
     "jrc_mpi_5g_1_hc-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "5041,9240,60,7,0.0,10,10.0,0.05"
         }
@@ -294,7 +294,7 @@
 
     "jrc_hum_airway_15056_1-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "4621,8190,35,8,0.0,10,10.0,0.05"
         }
@@ -303,7 +303,7 @@
 
     "jrc_zf-pancreas-1-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "3961,6160,50,7,0.0,10,10.0,0.05"
         }
@@ -312,7 +312,7 @@
 
     "jrc_mus_liver_8-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "5041,13104,50,7,0.0,10,7.0,0.05"
         }
@@ -321,7 +321,7 @@
 
     "jrc_celegans_bw25113-destreak-16bit" : [
       {
-        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit",
+        "className" : "org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector",
         "parameters" : {
           "dataString" : "5041,10920,60,13,0.0,10,7.0,0.05"
         }
