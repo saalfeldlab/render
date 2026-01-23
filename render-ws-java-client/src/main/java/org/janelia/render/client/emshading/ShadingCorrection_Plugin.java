@@ -61,6 +61,7 @@ public class ShadingCorrection_Plugin implements PlugIn {
 	public static int defaultType = 1;
 	public static boolean defaultShowBackground = false;
 	public static String[] fitTypes = new String[] { "Quadratic", "Fourth Order" };
+	public static int currentZ = 0;
 
 	@Override
 	public void run(final String arg) {
@@ -105,6 +106,19 @@ public class ShadingCorrection_Plugin implements PlugIn {
 		return Arrays.asList(rm.getRoisAsArray());
 	}
 
+	private static String toShadingJson(final int z, final String modelType, final double[] coefficients) {
+		final StringBuilder sb = new StringBuilder();
+		sb.append("{\"z\":").append(z);
+		sb.append(",\"modelType\":\"").append(modelType).append("\"");
+		sb.append(",\"coefficients\":[");
+		for (int i = 0; i < coefficients.length; i++) {
+			if (i > 0) sb.append(",");
+			sb.append(coefficients[i]);
+		}
+		sb.append("]}");
+		return sb.toString();
+	}
+
 	public static void fit(final int type, final List<Roi> rois, final boolean showBackground) throws NotEnoughDataPointsException, IllDefinedDataPointsException {
 		IJ.log("Fitting with " + fitTypes[type] + " model...");
 
@@ -125,8 +139,7 @@ public class ShadingCorrection_Plugin implements PlugIn {
 		CorrectShading.fitBackgroundModel(rois, img, shadingModel);
 		IJ.log("Fitted shading model: " + shadingModel);
 		IJ.log("Fitting took " + (System.currentTimeMillis() - start) + "ms.");
-		IJ.log("\"modelType\": \"" + modelType + "\",");
-		IJ.log("\"coefficients\": " + Arrays.toString(shadingModel.getCoefficients()));
+		IJ.log("Shading correction JSON:\n    " + toShadingJson(currentZ, modelType, shadingModel.getCoefficients()));
 
 		final RandomAccessibleInterval<FloatType> shading = CorrectShading.createBackgroundImage(shadingModel, img);
 		final RandomAccessibleInterval<UnsignedShortType> corrected = CorrectShading.correctBackground(img, shading, new UnsignedShortType());
@@ -162,6 +175,7 @@ public class ShadingCorrection_Plugin implements PlugIn {
 		IJ.log("Opening " + params.renderWebService.owner + "/" + params.renderWebService.project + "/" + params.stack);
 		IJ.log("Showing slice " + params.z);
 
+		currentZ = params.z;
 		final ImagePlus img = renderImage(params);
 		img.show();
 	}

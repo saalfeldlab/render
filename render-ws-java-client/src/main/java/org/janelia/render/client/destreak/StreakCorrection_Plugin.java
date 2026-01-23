@@ -148,7 +148,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 		final ImagePlus img = IJ.getImage();
 		final int width = img.getWidth();
 		final int height = img.getHeight();
-		IJ.log("Filter spec JSON: " + defaultParameters.toFilterSpecJson(width, height));
+		IJ.log("Filter spec JSON:\n    " + defaultParameters.toFilterSpecJson(width, height));
 
 
 		final String parameterToVary = parameterChoices[defaultVariationParameters.parameterIndex];
