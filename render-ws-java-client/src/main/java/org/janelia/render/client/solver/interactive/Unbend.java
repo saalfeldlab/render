@@ -199,10 +199,10 @@ public class Unbend
 
 			effectiveArgs = new String[] {
 				"http://em-services-1.int.janelia.org:8080/render-ws/v1",
-				"cellmap",
-				"jrc_mus_heart_6",
-                "v4_acquire_align_16bit_destreak_sc",
-                "v4_acquire_align_16bit_destreak_sc_straightened"
+				"fibsem",
+				"jrc_maph_mefs_1_mask_test",
+				"v2_acquire_align_with_original_mask",  // "v2_acquire_align_destreak_sc"
+				"v2_acquire_align_with_original_mask_straightened"
 			};
 		} else {
 			effectiveArgs = args;
