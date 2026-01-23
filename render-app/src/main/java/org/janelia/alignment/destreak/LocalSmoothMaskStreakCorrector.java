@@ -12,13 +12,13 @@ import net.imglib2.img.imageplus.ImagePlusImg;
 import net.imglib2.img.imageplus.ImagePlusImgs;
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
+import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
 import org.janelia.alignment.filter.Filter;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Map;
 
 /**
@@ -55,20 +55,20 @@ public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
 
 	@Override
 	public void init(final Map<String, String> params) {
-		final List<String> values = new LinkedList<>(List.of(Filter.getCommaSeparatedStringParameter(DATA_STRING_NAME, params)));
+		final String[] values = Filter.getCommaSeparatedStringParameter(DATA_STRING_NAME, params);
 
-		final int nParams = values.size();
+		final int nParams = values.length;
 		final boolean canHoldAllParameters = (nParams >= 3);
 		if (! canHoldAllParameters) {
 			throw new IllegalArgumentException(DATA_STRING_NAME +
 													   " must have pattern <corrector arguments>,<gaussianBlurRadius>,<initialThreshold>,<finalThreshold>");
 		}
 
-		this.finalThreshold = Double.parseDouble(values.remove(nParams - 1));
-		this.initialThreshold = Double.parseDouble(values.remove(nParams - 2));
-		this.gaussianBlurRadius = Integer.parseInt(values.remove(nParams - 3));
+		this.finalThreshold = Double.parseDouble(values[nParams - 1]);
+		this.initialThreshold = Double.parseDouble(values[nParams - 2]);
+		this.gaussianBlurRadius = Integer.parseInt(values[nParams - 3]);
 
-		final String remainingParams = String.join(",", values);
+		final String remainingParams = String.join(",", Arrays.copyOfRange(values, 0, nParams - 3));
 		super.init(Map.of(DATA_STRING_NAME, remainingParams));
 	}
 
@@ -83,23 +83,47 @@ public class LocalSmoothMaskStreakCorrector extends SmoothMaskStreakCorrector {
     @Override
     public void process(final ImageProcessor ip, final double scale) {
 		// save original image for later subtraction
-		final ImagePlus originalIP = new ImagePlus("original", ip.convertToByteProcessor());
-		final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalIP);
-		checkWrappingSucceeded(original, ip, UnsignedByteType.class);
+		final ImagePlus originalIP;
+		final RandomAccessibleInterval<FloatType> weight;
 
-		// de-streak image
-		super.process(ip, scale);
+        final int bitDepth = ip.getBitDepth();
+        if (bitDepth == 8) {
+            originalIP = new ImagePlus("original", ip.convertToByteProcessor());
+            final Img<UnsignedByteType> original = ImageJFunctions.wrapByte(originalIP);
+            checkWrappingSucceeded(original, ip, UnsignedByteType.class);
 
-		final ImagePlus fixedIP = new ImagePlus("fixed", ip);
-		final Img<UnsignedByteType> fixed = ImageJFunctions.wrapByte(fixedIP);
-		checkWrappingSucceeded(fixed, ip, UnsignedByteType.class);
+            // de-streak image
+            super.process(ip, scale);
 
-		// subtract fixed from original to get streaks, which is where the correction should be applied
-		final RandomAccessibleInterval<FloatType> weight =
-				Converters.convertRAI(original,
-									  fixed,
-									  (i1,i2,o) -> o.set(Math.abs(i1.get() - i2.get())),
-									  new FloatType());
+            final ImagePlus fixedIP = new ImagePlus("fixed", ip);
+            final Img<UnsignedByteType> fixed = ImageJFunctions.wrapByte(fixedIP);
+            checkWrappingSucceeded(fixed, ip, UnsignedByteType.class);
+
+            // subtract fixed from original to get streaks, which is where the correction should be applied
+            weight = Converters.convertRAI(original,
+                                           fixed,
+                                           (i1, i2, o) -> o.set(Math.abs(i1.get() - i2.get())),
+                                           new FloatType());
+        } else if (bitDepth == 16) {
+            originalIP = new ImagePlus("original", ip.convertToShortProcessor());
+            final Img<UnsignedShortType> original = ImageJFunctions.wrapShort(originalIP);
+            checkWrappingSucceeded(original, ip, UnsignedShortType.class);
+
+            // de-streak image
+            super.process(ip, scale);
+
+            final ImagePlus fixedIP = new ImagePlus("fixed", ip);
+            final Img<UnsignedShortType> fixed = ImageJFunctions.wrapShort(fixedIP);
+            checkWrappingSucceeded(fixed, ip, UnsignedShortType.class);
+
+            // subtract fixed from original to get streaks, which is where the correction should be applied
+            weight = Converters.convertRAI(original,
+                                           fixed,
+                                           (i1, i2, o) -> o.set(Math.abs(i1.get() - i2.get())),
+                                           new FloatType());
+        } else {
+            throw new IllegalArgumentException("Unsupported bit depth: " + bitDepth + " (only 8 and 16 are supported)");
+        }
 
 		weightedSum(ip, originalIP.getProcessor(), weight);
 	}

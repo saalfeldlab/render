@@ -181,40 +181,31 @@ public class SmoothMaskStreakCorrector
         // remove streaking
         final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);
 
-        // convert to 8-bit grayscale
-        final RandomAccessibleInterval<UnsignedByteType> fixed =
-                Converters.convertRAI(imgCorr,
-                                      (i,o) -> o.set(Math.max(0, Math.min(255, Math.round(i.get())))),
-                                      new UnsignedByteType());
+        // convert back to original bit depth
+        final int bitDepth = ip.getBitDepth();
+        final ImageProcessor fixedIp;
 
-        // TODO: check with @StephanPreibisch to see if there is a better way to copy fixedIp to input
-        final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
-        final ImageProcessor fixedIp = fixedImp.getProcessor().convertToByteProcessor();
-        for (int i = 0; i < ip.getPixelCount(); i++) {
-            ip.set(i, fixedIp.get(i));
+        if (bitDepth == 8) {
+            final RandomAccessibleInterval<UnsignedByteType> fixed =
+                    Converters.convertRAI(imgCorr,
+                                          (i, o) -> o.set(Math.max(0, Math.min(255, Math.round(i.get())))),
+                                          new UnsignedByteType());
+            final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
+            fixedIp = fixedImp.getProcessor().convertToByteProcessor();
+        } else if (bitDepth == 16) {
+            final RandomAccessibleInterval<UnsignedShortType> fixed =
+                    Converters.convertRAI(imgCorr,
+                                          (i, o) -> o.set(Math.max(0, Math.min(65535, Math.round(i.get())))),
+                                          new UnsignedShortType());
+            final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
+            fixedIp = fixedImp.getProcessor().convertToShortProcessor();
+            for (int i = 0; i < ip.getPixelCount(); i++) {
+                ip.set(i, fixedIp.get(i));
+            }
+        } else {
+            throw new UnsupportedOperationException("Unsupported bit depth: " + bitDepth + " (only 8 and 16 are supported).");
         }
-    }
 
-    public void process16bit(final ImageProcessor ip, final double scale) {
-        if (scale != 1.0) {
-            throw new UnsupportedOperationException("this filter only supports full scale images");
-        }
-
-        final ImagePlus floatIP = new ImagePlus("input", ip.convertToFloat());
-        final Img<FloatType> img = ImageJFunctions.wrapFloat(floatIP);
-        checkWrappingSucceeded(img, ip, FloatType.class);
-
-        // remove streaking
-        final Img<FloatType> imgCorr = fftBandpassCorrection(img, false);
-
-        // convert to 8-bit grayscale
-        final RandomAccessibleInterval<UnsignedShortType> fixed =
-                Converters.convertRAI(imgCorr,
-                                      (i,o) -> o.set(Math.max(0, Math.min(65535, Math.round(i.get())))),
-                                      new UnsignedShortType());
-
-        final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
-        final ImageProcessor fixedIp = fixedImp.getProcessor().convertToShortProcessor();
         for (int i = 0; i < ip.getPixelCount(); i++) {
             ip.set(i, fixedIp.get(i));
         }
