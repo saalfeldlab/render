@@ -13,7 +13,9 @@ import ij.plugin.PlugIn;
 import ij.process.ImageProcessor;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector;
+import org.janelia.alignment.destreak.LocalSmoothMaskStreakCorrector16Bit;
 import org.janelia.alignment.destreak.SmoothMaskStreakCorrector;
+import org.janelia.alignment.destreak.SmoothMaskStreakCorrector16Bit;
 import org.janelia.alignment.destreak.StreakCorrector;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -63,6 +65,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 	private static final VariationParameters defaultVariationParameters = new VariationParameters();
 	private static final String[] parameterChoices = new String[] { "None", "innerCutoff", "bandWidth", "angle",
 			"gaussianBlurRadius", "initialThreshold", "finalThreshold" };
+	private static String currentProject = "unknown";
 
 
 	@Override
@@ -147,12 +150,13 @@ public class StreakCorrection_Plugin implements PlugIn {
 		final ImagePlus img = IJ.getImage();
 		final int width = img.getWidth();
 		final int height = img.getHeight();
-		IJ.log("Filter data string: " + defaultParameters.filterDataString(width, height));
+		final boolean is16Bit = img.getBitDepth() == 16;
+		IJ.log("Filter spec JSON: " + defaultParameters.toFilterSpecJson(width, height, is16Bit));
 
 
 		final String parameterToVary = parameterChoices[defaultVariationParameters.parameterIndex];
 		if (parameterToVary.equals("None")) {
-			final StreakCorrector corrector = defaultParameters.getCorrector(width, height);
+			final StreakCorrector corrector = defaultParameters.getCorrector(width, height, is16Bit);
 			final ImagePlus corrected = new ImagePlus("Corrected", img.getProcessor().duplicate());
 			corrector.process(corrected.getProcessor(), 1.0);
 			corrected.show();
@@ -166,7 +170,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 				final double value = variedParameters.addToParameter(parameterToVary, increment);
 
 				final String title = parameterToVary + "=" + value;
-				final StreakCorrector corrector = variedParameters.getCorrector(width, height);
+				final StreakCorrector corrector = variedParameters.getCorrector(width, height, is16Bit);
 				final ImagePlus corrected = new ImagePlus(title, img.getProcessor().duplicate());
 				corrector.process(corrected.getProcessor(), 1.0);
 				correctedImages.add(corrected);
@@ -188,6 +192,7 @@ public class StreakCorrection_Plugin implements PlugIn {
 
 		IJ.log("Opening " + params.renderWebService.owner + "/" + params.renderWebService.project + "/" + params.stack);
 
+		currentProject = params.renderWebService.project;
 		final RenderDataClient client = params.renderWebService.getDataClient();
 		final ImagePlus img = loadImage(client, params);
 
@@ -218,16 +223,25 @@ public class StreakCorrection_Plugin implements PlugIn {
 			this.localize = other.localize;
 		}
 
-		public StreakCorrector getCorrector(final int width, final int height) {
+		public StreakCorrector getCorrector(final int width, final int height, final boolean is16Bit) {
 			final ImageDims fftDims = getFftDimensions(width, height);
-			final SmoothMaskStreakCorrector corrector = new SmoothMaskStreakCorrector(
+			final SmoothMaskStreakCorrector baseCorrector = new SmoothMaskStreakCorrector(
 					Threads.numThreads() / 2, fftDims.width, fftDims.height, innerCutoff, bandWidth, angle);
 
 			if (localize) {
-				return new LocalSmoothMaskStreakCorrector(
-						corrector, gaussianBlurRadius, (float) initialThreshold, (float) finalThreshold);
+				if (is16Bit) {
+					return new LocalSmoothMaskStreakCorrector16Bit(
+							baseCorrector, gaussianBlurRadius, (float) initialThreshold, (float) finalThreshold);
+				} else {
+					return new LocalSmoothMaskStreakCorrector(
+							baseCorrector, gaussianBlurRadius, (float) initialThreshold, (float) finalThreshold);
+				}
 			} else {
-				return corrector;
+				if (is16Bit) {
+					return new SmoothMaskStreakCorrector16Bit(baseCorrector);
+				} else {
+					return baseCorrector;
+				}
 			}
 		}
 
@@ -285,12 +299,24 @@ public class StreakCorrection_Plugin implements PlugIn {
 					'}';
 		}
 
-		public String filterDataString(final int width, final int height) {
+		public String toFilterSpecJson(final int width, final int height, final boolean is16Bit) {
 			final ImageDims fftDims = getFftDimensions(width, height);
-			final String method = localize ? "LocalSmoothMaskStreakCorrector" : "SmoothMaskStreakCorrector";
-			final String parameters = fftDims.width + "," + fftDims.height + "," + innerCutoff + "," + bandWidth + "," + angle
-					+ "," + gaussianBlurRadius + "," + initialThreshold + "," + finalThreshold;
-			return "method=" + method + " data=" + parameters;
+			final String baseClass;
+			final String dataString;
+
+			if (localize) {
+				baseClass = is16Bit ? "LocalSmoothMaskStreakCorrector16Bit" : "LocalSmoothMaskStreakCorrector";
+				dataString = fftDims.width + "," + fftDims.height + "," + innerCutoff + "," + bandWidth + "," + angle
+						+ "," + gaussianBlurRadius + "," + initialThreshold + "," + finalThreshold;
+			} else {
+				baseClass = is16Bit ? "SmoothMaskStreakCorrector16Bit" : "SmoothMaskStreakCorrector";
+				dataString = fftDims.width + "," + fftDims.height + "," + innerCutoff + "," + bandWidth + "," + angle;
+			}
+
+			final String className = "org.janelia.alignment.destreak." + baseClass;
+			final String filterName = currentProject + "-destreak";
+			return "{\"namedFilterSpecLists\":{\"" + filterName + "\":[{\"className\":\"" + className
+					+ "\",\"parameters\":{\"dataString\":\"" + dataString + "\"}}]}}";
 		}
 	}
 
