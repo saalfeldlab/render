@@ -100,7 +100,7 @@ public class InterpolatingZInpainter {
 		final List<Interval> nonEmptyMaskBlocks = new ArrayList<>();
 		for (final Grid.Block block : maskBlocks) {
 			final IntervalView<FloatType> pixels = Views.interval(mask, block);
-			for (final FloatType pixel : Views.iterable(pixels)) {
+			for (final FloatType pixel : pixels) {
 				if (pixel.get() > 0) {
 					nonEmptyMaskBlocks.add(block);
 					break;
