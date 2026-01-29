@@ -39,6 +39,7 @@ public class HackImageUrlPathClient {
 
     public enum PathTransformationType {
         HAYWORTH_CREEP_CORRECTION,
+        HAYWORTH_CREEP_CORRECTION_BASELINE,
         HAYWORTH_CONTRAST,
         BASIC_BACKGROUND_CORRECTION,
         GOOGLE_CLOUD_TEST,
@@ -48,7 +49,9 @@ public class HackImageUrlPathClient {
         public UnaryOperator<String> getOperator() {
             switch (this) {
                 case HAYWORTH_CREEP_CORRECTION:
-                    return new HayworthCreepCorrectionPathTransformation();
+                    return new HayworthCreepCorrectionPathTransformation(false);
+                case HAYWORTH_CREEP_CORRECTION_BASELINE:
+                    return new HayworthCreepCorrectionPathTransformation(true);
                 case HAYWORTH_CONTRAST:
                     return new HayworthContrastPathTransformation();
                 case BASIC_BACKGROUND_CORRECTION:
@@ -211,6 +214,11 @@ public class HackImageUrlPathClient {
         private static final Set<Integer> SCANS_TO_PATCH = Set.of(7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
         private static final Set<Integer> MFOVS_TO_PATCH = Set.of(4, 5, 6, 9, 10, 13, 14, 15, 17, 18, 19, 21, 22, 23, 24, 25, 26);
 
+        private final boolean isBaseline;
+        public HayworthCreepCorrectionPathTransformation(final boolean isBaseline) {
+            this.isBaseline = isBaseline;
+        }
+
         // original:    https://storage.googleapis.com/janelia-spark-test/hess_wafer_61_data/scan_007/slab_0145/mfov_0026/sfov_062.png
         // target:      file:/nrs/hess/render/distortion_correction_20251215/data/scan_007/slab_0145/mfov_0026/sfov_062.png
         // conditional: file:/nrs/hess/Hayworth/DISTORTION_CORRECTED/wafer_61/scan_007/slab_0145/mfov_0026/sfov_062.png
@@ -225,13 +233,13 @@ public class HackImageUrlPathClient {
                 final int mfovNumber = Integer.parseInt(matcher.group(4));
                 final String sfov = matcher.group(5);
 
-                if (SCANS_TO_PATCH.contains(scanNumber) && MFOVS_TO_PATCH.contains(mfovNumber)) {
+                if ((! isBaseline) && SCANS_TO_PATCH.contains(scanNumber) && MFOVS_TO_PATCH.contains(mfovNumber)) {
                     return "/nrs/hess/Hayworth/DISTORTION_CORRECTED/wafer_61/" + scan + "/slab_0145/" + mfov + "/" + sfov;
                 } else {
                     return "/nrs/hess/render/distortion_correction_20251215/data/" + scan + "/slab_0145/" + mfov + "/" + sfov;
                 }
             } else {
-                return null;
+                throw new IllegalArgumentException("HayworthCreepCorrectionPathTransformation.apply could not transform image URL: " + path);
             }
         }
     }

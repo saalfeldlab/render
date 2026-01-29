@@ -22,8 +22,10 @@ public class HackImageUrlPathClientTest {
                 "--owner", "hess_wafers_60_61",
                 "--project", "test_creep_try2",
                 "--stack", "w61_s109_r00_gc_par",
-                "--targetStack", "w61_s109_r00_gc_par_corrected",
-                "--transformationType", "HAYWORTH_CREEP_CORRECTION"
+//                "--targetStack", "w61_s109_r00_gc_par_corrected",
+//                "--transformationType", "HAYWORTH_CREEP_CORRECTION"
+                "--targetStack", "w61_s109_r00_gc_par_baseline",
+                "--transformationType", "HAYWORTH_CREEP_CORRECTION_BASELINE"
         };
 //        final String[] effectiveArgs = {
 //                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
