@@ -20,11 +20,19 @@ public class HackImageUrlPathClientTest {
         final String[] effectiveArgs = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
                 "--owner", "hess_wafers_60_61",
-                "--project", "w60_serial_360_to_369",
-                "--stack", "w60_s360_r00_d20_gc",
-                "--targetStack", "w60_s360_r00_d20_gc_timeout",
-                "--transformationType", "NO_PATH_TRANSFORMATION"
+                "--project", "test_creep_try2",
+                "--stack", "w61_s109_r00_gc_par",
+                "--targetStack", "w61_s109_r00_gc_par_corrected",
+                "--transformationType", "HAYWORTH_CREEP_CORRECTION"
         };
+//        final String[] effectiveArgs = {
+//                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+//                "--owner", "hess_wafers_60_61",
+//                "--project", "w60_serial_360_to_369",
+//                "--stack", "w60_s360_r00_d20_gc",
+//                "--targetStack", "w60_s360_r00_d20_gc_timeout",
+//                "--transformationType", "NO_PATH_TRANSFORMATION"
+//        };
 //        final String[] effectiveArgs = {
 //                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
 //                "--owner", "fibsem",
