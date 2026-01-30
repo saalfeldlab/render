@@ -1,7 +1,6 @@
 package org.janelia.render.client;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
@@ -28,14 +27,15 @@ public class ClusterCountClientTest {
     public static void main(final String[] args)
             throws Exception {
 
+        // 8080/render-ws/v1/owner/hess_wafers_60_61/project/test_creep/stack/w61_s109_r00_corrected_masked/zValues
         final String[] effectiveArgs = (args != null) && (args.length > 0) ? args : new String[]{
                 "--baseDataUrl", "http://em-services-1:8080/render-ws/v1",
                 "--owner", "hess_wafers_60_61",
-                "--project", "w61_serial_070_to_079",
-                "--stack", "w61_s073_r00_gc_pa_rough",
-                "--matchCollection", "w61_s073_r00_gc_par_match",
+                "--project", "test_creep_try2",
+                "--stack", "w61_s109_r00_gc_par_corrected_masked_trim",
+                "--matchCollection", "w61_s109_r00_gc_par_corrected_masked_match",
                 "--maxSmallClusterSize", "0",
-//                "--includeMatchesOutsideGroup",
+                "--includeMatchesOutsideGroup",
                 "--maxLayersPerBatch", "1000",
                 "--maxOverlapLayers", "6",
 //                "--maxSmallClusterSizeToSave", "100"
