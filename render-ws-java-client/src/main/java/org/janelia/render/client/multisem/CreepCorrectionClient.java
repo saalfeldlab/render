@@ -241,7 +241,7 @@ public class CreepCorrectionClient {
 
             final boolean xCondition = lowerRight
                     ? (stage.x > target.x + MIN_NEIGHBOR_OFFSET)
-                    : (stage.x < target.y - MIN_NEIGHBOR_OFFSET);
+                    : (stage.x < target.x - MIN_NEIGHBOR_OFFSET);
 
             if (xCondition && (stage.y > target.y + MIN_NEIGHBOR_OFFSET)) {
                 final double dist = Math.sqrt(Math.pow(stage.x - target.x, 2) + Math.pow(stage.y - target.y, 2));
