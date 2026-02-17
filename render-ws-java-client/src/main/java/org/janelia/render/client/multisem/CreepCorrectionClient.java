@@ -297,8 +297,10 @@ public class CreepCorrectionClient {
     }
 
     /**
-     * Computes the correction amplitude from the median y-stretch, using the double-exponential derivative model.
-     * Faithfully translates the Python prototype's {@code calculate_a_helper_func}.
+     * Computes the creep correction amplitude from the median y-stretch.
+     * Returns a negative value (same sign as the Python prototype's {@code calculate_a_helper_func}),
+     * which is used directly as the coefficient in {@link StageCreepCorrectionTransform}'s backward map:
+     * {@code y_source = y_world + a * exp(-y_world / L)}.
      */
     static double computeCorrectionAmplitude(final double medianStretch) {
         final double b = (-1.0 / L0) * Math.exp(-(double) TOP_LINE / L0)
@@ -387,12 +389,14 @@ public class CreepCorrectionClient {
     }
 
     /**
-     * Builds a {@link LeafTransformSpec} for the creep correction using {@code SEMDistortionTransformA}.
-     * Formula: {@code y += amplitude * exp(-y/L0) + amplitude * exp(-y/L1)}
+     * Builds a {@link LeafTransformSpec} for the creep correction using {@code StageCreepCorrectionTransform}.
+     * The amplitude is negative (same as the Python prototype), defining the backward map
+     * {@code y_s = y_w + a*exp(-y_w/L0) + a*exp(-y_w/L1)} where negative {@code a} reads from above,
+     * compressing the top of the image to correct for creep stretch.
      */
     static TransformSpec buildCorrectionTransformSpec(final double amplitude) {
         final String dataString = amplitude + "," + L0 + "," + amplitude + "," + L1 + ",1";
-        return new LeafTransformSpec("org.janelia.alignment.transform.SEMDistortionTransformA", dataString);
+        return new LeafTransformSpec("org.janelia.alignment.transform.StageCreepCorrectionTransform", dataString);
     }
 
     /**
