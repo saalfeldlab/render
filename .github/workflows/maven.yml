@@ -23,12 +23,6 @@ jobs:
         distribution: 'zulu'
         cache: maven
 
-    - name: Install Maven 3.9.11
-      run: |
-        curl -fsSL https://archive.apache.org/dist/maven/maven-3/3.9.11/binaries/apache-maven-3.9.11-bin.tar.gz -o maven.tar.gz
-        tar -xzf maven.tar.gz
-        echo "$PWD/apache-maven-3.9.11/bin" >> "$GITHUB_PATH"
-
     - name: Verify Maven version
       run: mvn -version
 
