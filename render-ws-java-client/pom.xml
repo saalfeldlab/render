@@ -243,16 +243,25 @@
             <version>5.15.0</version>
             <scope>test</scope>
             <exclusions>
+
                 <!-- filter out slf4j jar so that it does not conflict with jetty version -->
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-api</artifactId>
                 </exclusion>
+
                 <!-- filter out javax.activation so that it does not duplicate jakarta.activation -->
                 <exclusion>
                     <groupId>javax.activation</groupId>
                     <artifactId>activation</artifactId>
                 </exclusion>
+
+                <!-- filter out jackson-coreutils-equivalence so that it does not duplicate json-schema-core -->
+                <exclusion>
+                    <groupId>com.github.java-json-tools</groupId>
+                    <artifactId>jackson-coreutils-equivalence</artifactId>
+                </exclusion>
+
             </exclusions>
         </dependency>
 
