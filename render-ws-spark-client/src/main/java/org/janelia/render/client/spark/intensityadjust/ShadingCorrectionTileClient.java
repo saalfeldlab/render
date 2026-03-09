@@ -193,8 +193,9 @@ public class ShadingCorrectionTileClient implements Serializable {
         // create a new shading model for the tile (use fourth order as the greatest common multiple of quadratic and fourth order)
         final ShadingModel tileModel = new FourthOrderShading();
 
-		// get uniform grid of points in tile
-        final int nSamples = (int) Math.ceil(Math.sqrt(tileModel.getMinNumMatches()));
+        // get uniform grid of points in tile
+        // add 2 to ensure sufficient separation between polynomial basis functions (e.g. x^2 vs x^4)
+        final int nSamples = (int) Math.ceil(Math.sqrt(tileModel.getMinNumMatches())) + 2;
         final List<double[]> gridPoints = uniformGrid(nSamples);
 
         final CoordinateTransformList<CoordinateTransform> transforms = tileSpec.getTransformList();
