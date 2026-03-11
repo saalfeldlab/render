@@ -19,14 +19,22 @@ public class HackImageUrlPathClientTest {
 
         final String[] effectiveArgs = {
                 "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
-                "--owner", "hess_wafers_60_61",
-                "--project", "test_creep_try2",
-                "--stack", "w61_s109_r00_gc_par",
-//                "--targetStack", "w61_s109_r00_gc_par_corrected",
-//                "--transformationType", "HAYWORTH_CREEP_CORRECTION"
-                "--targetStack", "w61_s109_r00_gc_par_baseline",
-                "--transformationType", "HAYWORTH_CREEP_CORRECTION_BASELINE"
+                "--owner", "hess_sample_68_full",
+                "--project", "w68_serial_000_to_009",
+                "--stack", "w68_s000_r00_par_align_c",
+                "--targetStack", "w68_s000_r00_bgc_par_align_c",
+                "--transformationType", "SAMPLE_68_BACKGROUND_CORRECTION"
         };
+//        final String[] effectiveArgs = {
+//                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+//                "--owner", "hess_wafers_60_61",
+//                "--project", "test_creep_try2",
+//                "--stack", "w61_s109_r00_gc_par",
+////                "--targetStack", "w61_s109_r00_gc_par_corrected",
+////                "--transformationType", "HAYWORTH_CREEP_CORRECTION"
+//                "--targetStack", "w61_s109_r00_gc_par_baseline",
+//                "--transformationType", "HAYWORTH_CREEP_CORRECTION_BASELINE"
+//        };
 //        final String[] effectiveArgs = {
 //                "--baseDataUrl", "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
 //                "--owner", "hess_wafers_60_61",
