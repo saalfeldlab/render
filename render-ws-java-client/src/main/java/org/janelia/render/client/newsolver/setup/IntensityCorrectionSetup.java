@@ -80,8 +80,8 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 		clone.renderWeb.project = sourceStackId.getProject();
 		clone.intensityAdjust.stack = sourceStackId.getStack();
 
-		clone.layerRange.minZ = stackWithZValues.getFirstZ();
-		clone.layerRange.maxZ = stackWithZValues.getLastZ();
+		clone.layerRange.minZ = ((layerRange != null) && (layerRange.minZ != null)) ? layerRange.minZ : stackWithZValues.getFirstZ();
+		clone.layerRange.maxZ = ((layerRange != null) && (layerRange.maxZ != null)) ? layerRange.maxZ : stackWithZValues.getLastZ();
 
 		// TODO: should we log a warning and/or abort if the zValues have "holes" and don't cover the entire zRange?
 
