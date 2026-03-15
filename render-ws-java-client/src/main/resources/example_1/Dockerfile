@@ -34,7 +34,7 @@ RUN apt-get -y upgrade
 # From
 
 # 1: Install Git and Maven (curl and vim also added here for convenience)
-RUN apt-get install -y git maven curl vim
+RUN apt-get install -y git maven=3.9.11* curl vim
 
 # 2. Clone the Repository
 WORKDIR /var/www/
@@ -50,7 +50,7 @@ RUN ./render-ws/src/main/scripts/install.sh
 
 # 4. Build the Render Modules
 RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc
-RUN mvn --version; mvn --batch-mode -Dproject.build.sourceEncoding=UTF-8 package
+RUN mvn --version; mvn -e --batch-mode -Dproject.build.sourceEncoding=UTF-8 package
 
 # 5. Deploy Web Service
 RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
