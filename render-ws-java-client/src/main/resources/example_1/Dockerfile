@@ -36,8 +36,8 @@ RUN apt-get -y upgrade
 # 1: Install Git (curl and vim also added here for convenience)
 RUN apt-get install -y git curl vim
 
-# Install maven 3.9.11
-ARG MAVEN_VERSION=3.9.11
+# Install maven 3.9.14
+ARG MAVEN_VERSION=3.9.14
 RUN curl -fsSL https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
     | tar -xz -C /opt && \
     ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven
