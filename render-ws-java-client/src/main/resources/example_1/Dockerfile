@@ -33,17 +33,8 @@ RUN apt-get -y upgrade
 
 # From
 
-# 1: Install Git (curl and vim also added here for convenience)
-RUN apt-get install -y git curl vim
-
-# Install maven 3.9.14
-ARG MAVEN_VERSION=3.9.14
-RUN curl -fsSL https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
-    | tar -xz -C /opt && \
-    ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven
-
-ENV MAVEN_HOME=/opt/maven
-ENV PATH=$MAVEN_HOME/bin:$PATH
+# 1: Install Git and Maven (curl and vim also added here for convenience)
+RUN apt-get install -y git maven curl vim
 
 # 2. Clone the Repository
 WORKDIR /var/www/
@@ -59,7 +50,7 @@ RUN ./render-ws/src/main/scripts/install.sh
 
 # 4. Build the Render Modules
 RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc
-RUN mvn --version; mvn -e -X --batch-mode -Dproject.build.sourceEncoding=UTF-8 package
+RUN mvn --version; mvn --batch-mode -Dproject.build.sourceEncoding=UTF-8 package
 
 # 5. Deploy Web Service
 RUN cp render-ws/target/render-ws-*.war deploy/jetty_base/webapps/render-ws.war
