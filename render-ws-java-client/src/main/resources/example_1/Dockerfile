@@ -33,8 +33,17 @@ RUN apt-get -y upgrade
 
 # From
 
-# 1: Install Git and Maven (curl and vim also added here for convenience)
-RUN apt-get install -y git maven=3.9.11* curl vim
+# 1: Install Git (curl and vim also added here for convenience)
+RUN apt-get install -y git curl vim
+
+# Install maven 3.9.11
+ARG MAVEN_VERSION=3.9.11
+RUN curl -fsSL https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
+    | tar -xz -C /opt && \
+    ln -s /opt/apache-maven-${MAVEN_VERSION} /opt/maven
+
+ENV MAVEN_HOME=/opt/maven
+ENV PATH=$MAVEN_HOME/bin:$PATH
 
 # 2. Clone the Repository
 WORKDIR /var/www/
