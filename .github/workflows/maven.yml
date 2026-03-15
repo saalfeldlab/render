@@ -20,6 +20,5 @@ jobs:
       with:
         java-version: '11'
         distribution: 'zulu'
-        cache: maven
     - name: Build with Maven
       run: mvn --no-transfer-progress -Dproject.build.sourceEncoding=UTF-8 package --file pom.xml
