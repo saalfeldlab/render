@@ -107,24 +107,13 @@
         <module>docs</module>
     </modules>
 
-<!--    <repositories>-->
-<!--        <repository>-->
-<!--            <id>central</id>-->
-<!--            <name>Maven Central</name>-->
-<!--            <url>https://repo.maven.apache.org/maven2</url>-->
-<!--            <releases>-->
-<!--                <enabled>true</enabled>-->
-<!--            </releases>-->
-<!--            <snapshots>-->
-<!--                <enabled>false</enabled>-->
-<!--            </snapshots>-->
-<!--        </repository>-->
-<!--        &lt;!&ndash; NB: for project parent &ndash;&gt;-->
-<!--        <repository>-->
-<!--            <id>imagej.public</id>-->
-<!--            <url>https://maven.scijava.org/content/groups/public</url>-->
-<!--        </repository>-->
-<!--    </repositories>-->
+    <repositories>
+        <!-- NB: for project parent -->
+        <repository>
+            <id>imagej.public</id>
+            <url>https://maven.scijava.org/content/groups/public</url>
+        </repository>
+    </repositories>
 
     <dependencies>
         <!--
