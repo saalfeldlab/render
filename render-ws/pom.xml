@@ -262,7 +262,7 @@
 
     <properties>
         <resteasy.version>4.7.9.Final</resteasy.version>
-        <jetty.version>10.0.13</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
+        <jetty.version>10.0.16</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
         <mongodb.driver.version>4.4.1</mongodb.driver.version>
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
