@@ -219,7 +219,6 @@ public class CreepCorrectionSparkClient implements Serializable {
             throws IOException {
         LogUtilities.setupExecutorLog4j("matchTransform " + groupId);
 
-        final RenderDataClient executorRenderClient = parameters.renderWeb.getDataClient();
         final RenderDataClient sourceMatchClient = new RenderDataClient(
                 parameters.renderWeb.baseDataUrl,
                 parameters.getMatchOwner(),
@@ -232,10 +231,8 @@ public class CreepCorrectionSparkClient implements Serializable {
         final CreepCorrectionClient correctionClient = new CreepCorrectionClient();
         correctionClient.transformMatchesForGroup(groupId,
                                                   allResults,
-                                                  executorRenderClient,
                                                   sourceMatchClient,
-                                                  targetMatchClient,
-                                                  parameters.stack);
+                                                  targetMatchClient);
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CreepCorrectionSparkClient.class);

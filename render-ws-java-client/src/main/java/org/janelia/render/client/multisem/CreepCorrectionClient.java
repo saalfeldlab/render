@@ -7,7 +7,6 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,9 +28,6 @@ import org.slf4j.LoggerFactory;
 
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.CoordinateTransform;
-import mpicbg.models.InvertibleCoordinateTransform;
-import mpicbg.models.InvertibleCoordinateTransformList;
-import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
 
@@ -435,10 +431,8 @@ public class CreepCorrectionClient {
      */
     public void transformMatchesForGroup(final String groupId,
                                          final Map<String, ZLayerResult> allResults,
-                                         final RenderDataClient renderDataClient,
                                          final RenderDataClient sourceMatchClient,
-                                         final RenderDataClient targetMatchClient,
-                                         final String stack)
+                                         final RenderDataClient targetMatchClient)
             throws IOException {
 
         LOG.info("transformMatchesForGroup: entry, groupId={}", groupId);
@@ -455,28 +449,10 @@ public class CreepCorrectionClient {
             return;
         }
 
-        // collect all z-layers referenced by these matches
-        final Set<String> neededZLayers = new HashSet<>();
-        neededZLayers.add(groupId);
-        for (final CanvasMatches cm : outsideMatches) {
-            neededZLayers.add(cm.getpGroupId());
-            neededZLayers.add(cm.getqGroupId());
-        }
-
-        // load tile specs for all referenced z-layers from source stack
-        final Map<String, TileSpec> tileIdToSpec = new HashMap<>();
-        for (final String zString : neededZLayers) {
-            final ResolvedTileSpecCollection resolved =
-                    renderDataClient.getResolvedTiles(stack, Double.parseDouble(zString));
-            for (final TileSpec ts : resolved.getTileSpecs()) {
-                tileIdToSpec.put(ts.getTileId(), ts);
-            }
-        }
-
         // transform and collect matches
         final List<CanvasMatches> transformedMatches = new ArrayList<>();
         for (final CanvasMatches cm : allMatches) {
-            transformedMatches.add(transformCanvasMatches(cm, allResults, tileIdToSpec));
+            transformedMatches.add(transformCanvasMatches(cm, allResults));
         }
 
         // save to target match collection
@@ -490,8 +466,7 @@ public class CreepCorrectionClient {
      * Transforms a single CanvasMatches by applying creep corrections to both p and q coordinates.
      */
     static CanvasMatches transformCanvasMatches(final CanvasMatches cm,
-                                                final Map<String, ZLayerResult> allResults,
-                                                final Map<String, TileSpec> tileIdToSpec) {
+                                                final Map<String, ZLayerResult> allResults) {
         final Matches matches = cm.getMatches();
         final double[][] ps = matches.getPs();
         final double[][] qs = matches.getQs();
@@ -503,8 +478,8 @@ public class CreepCorrectionClient {
         final double[][] newQs = new double[][] { Arrays.copyOf(qs[0], n), Arrays.copyOf(qs[1], n) };
 
         // transform p and q coordinates using their respective tile's creep correction
-        transformMatchCoordinates(newPs, cm.getpId(), cm.getpGroupId(), allResults, tileIdToSpec);
-        transformMatchCoordinates(newQs, cm.getqId(), cm.getqGroupId(), allResults, tileIdToSpec);
+        transformMatchCoordinates(newPs, cm.getpId(), cm.getpGroupId(), allResults);
+        transformMatchCoordinates(newQs, cm.getqId(), cm.getqGroupId(), allResults);
 
         return new CanvasMatches(cm.getpGroupId(), cm.getpId(),
                                  cm.getqGroupId(), cm.getqId(),
@@ -513,14 +488,14 @@ public class CreepCorrectionClient {
 
     /**
      * Transforms match coordinates in place by applying creep correction.
-     * Uses the pattern from {@link MultiSemUtilities#transformMFOVMatchesForTile}:
-     * invert post-matching transforms, apply CC, re-apply post-matching transforms.
+     * Match coordinates are in post-lens/pre-alignment space (montage matches are derived before
+     * alignment), which is the same space where the CC transform operates (it is inserted
+     * before the alignment transform). So we apply CC directly without touching alignment.
      */
     static void transformMatchCoordinates(final double[][] coords,
                                           final String tileId,
                                           final String groupId,
-                                          final Map<String, ZLayerResult> allResults,
-                                          final Map<String, TileSpec> tileIdToSpec) {
+                                          final Map<String, ZLayerResult> allResults) {
 
         // look up CC spec for this tile's mFOV
         final String mfov = MultiSemUtilities.getMagcMfovForTileId(tileId);
@@ -533,53 +508,12 @@ public class CreepCorrectionClient {
             return;
         }
 
-        // get tile's post-matching transforms (alignment transforms applied after feature matching)
-        final TileSpec tileSpec = tileIdToSpec.get(tileId);
-        if (tileSpec == null) {
-            LOG.warn("transformMatchCoordinates: no tile spec found for {}", tileId);
-            return;
-        }
-
-        final List<CoordinateTransform> postMatchingTransformList =
-                tileSpec.getPostMatchingTransformList().getList(null);
-
-        if (postMatchingTransformList.isEmpty()) {
-            // no post-matching transforms; CC applies directly to match coordinates
-            final CoordinateTransform ccTransform = ccSpec.getNewInstance();
-            for (int i = 0; i < coords[0].length; i++) {
-                final double[] point = new double[] { coords[0][i], coords[1][i] };
-                ccTransform.applyInPlace(point);
-                coords[0][i] = point[0];
-                coords[1][i] = point[1];
-            }
-            return;
-        }
-
-        // build invertible post-matching transform list
-        final InvertibleCoordinateTransformList<InvertibleCoordinateTransform> invertiblePostMatching =
-                new InvertibleCoordinateTransformList<>();
-        for (final CoordinateTransform ct : postMatchingTransformList) {
-            invertiblePostMatching.add((InvertibleCoordinateTransform) ct);
-        }
-
         final CoordinateTransform ccTransform = ccSpec.getNewInstance();
-
-        // transform each point: new_world = postMatching(CC(postMatching^(-1)(old_world)))
         for (int i = 0; i < coords[0].length; i++) {
             final double[] point = new double[] { coords[0][i], coords[1][i] };
-            try {
-                // step 1: invert post-matching transforms to get intermediate coordinates
-                invertiblePostMatching.applyInverseInPlace(point);
-                // step 2: apply creep correction
-                ccTransform.applyInPlace(point);
-                // step 3: re-apply post-matching transforms
-                invertiblePostMatching.applyInPlace(point);
-
-                coords[0][i] = point[0];
-                coords[1][i] = point[1];
-            } catch (final NoninvertibleModelException e) {
-                LOG.warn("transformMatchCoordinates: skipping non-invertible point for tile {}, index {}", tileId, i);
-            }
+            ccTransform.applyInPlace(point);
+            coords[0][i] = point[0];
+            coords[1][i] = point[1];
         }
     }
 
