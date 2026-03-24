@@ -3,8 +3,11 @@ package org.janelia.render.client.multisem;
 import static org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod.INSERT_BEFORE_LAST;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -13,6 +16,7 @@ import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.multisem.MultiSemUtilities;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.LayoutData;
@@ -24,6 +28,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mpicbg.models.AffineModel2D;
+import mpicbg.models.CoordinateTransform;
+import mpicbg.models.InvertibleCoordinateTransform;
+import mpicbg.models.InvertibleCoordinateTransformList;
+import mpicbg.models.NoninvertibleModelException;
 import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
 
@@ -71,13 +79,13 @@ public class CreepCorrectionClient {
      * Processes all mFOVs for a given z-layer: loads tiles and matches, estimates creep correction,
      * applies it where valid, and saves the results to the target stack.
      *
-     * @return number of tiles processed
+     * @return result containing tile count and per-mFOV correction specs
      */
-    public int processZLayer(final double z,
-                             final RenderDataClient renderDataClient,
-                             final RenderDataClient matchDataClient,
-                             final String stack,
-                             final String targetStack)
+    public ZLayerResult processZLayer(final double z,
+                                      final RenderDataClient renderDataClient,
+                                      final RenderDataClient matchDataClient,
+                                      final String stack,
+                                      final String targetStack)
             throws IOException {
 
         LOG.info("processZLayer: entry, z={}", z);
@@ -104,14 +112,16 @@ public class CreepCorrectionClient {
         }
 
         // process each mFOV independently
+        final Map<String, TransformSpec> mfovCorrections = new HashMap<>();
         int correctedMFOVCount = 0;
         int skippedMFOVCount = 0;
         for (final Map.Entry<String, List<TileSpec>> entry : mfovToTiles.entrySet()) {
             final String mfov = entry.getKey();
             final List<TileSpec> mfovTiles = entry.getValue();
 
-            final boolean corrected = processMFOV(mfov, mfovTiles, pairKeyToMatches, resolvedTiles);
-            if (corrected) {
+            final TransformSpec correctionSpec = processMFOV(mfov, mfovTiles, pairKeyToMatches, resolvedTiles);
+            if (correctionSpec != null) {
+                mfovCorrections.put(mfov, correctionSpec);
                 correctedMFOVCount++;
             } else {
                 skippedMFOVCount++;
@@ -124,25 +134,25 @@ public class CreepCorrectionClient {
         LOG.info("processZLayer: exit, z={}, correctedMFOVs={}, skippedMFOVs={}, totalTiles={}",
                  z, correctedMFOVCount, skippedMFOVCount, resolvedTiles.getTileCount());
 
-        return resolvedTiles.getTileCount();
+        return new ZLayerResult(resolvedTiles.getTileCount(), mfovCorrections);
     }
 
     /**
      * Processes a single mFOV: finds neighbor pairs, estimates stretch, validates, and applies correction.
      *
-     * @return true if correction was applied, false if skipped
+     * @return the correction transform spec if applied, or null if skipped
      */
-    boolean processMFOV(final String mfov,
-                        final List<TileSpec> mfovTiles,
-                        final Map<String, CanvasMatches> pairKeyToMatches,
-                        final ResolvedTileSpecCollection resolvedTiles) {
+    TransformSpec processMFOV(final String mfov,
+                              final List<TileSpec> mfovTiles,
+                              final Map<String, CanvasMatches> pairKeyToMatches,
+                              final ResolvedTileSpecCollection resolvedTiles) {
 
         // find geometric neighbor pairs
         final List<TilePair> neighborPairs = findGeometricNeighborPairs(mfovTiles);
 
         if (neighborPairs.isEmpty()) {
             LOG.warn("processMFOV: no geometric neighbor pairs found for mFOV {}, skipping", mfov);
-            return false;
+            return null;
         }
 
         // estimate y-stretch for each pair that has matches
@@ -172,7 +182,7 @@ public class CreepCorrectionClient {
 
         if (!validation.isValid) {
             LOG.warn("processMFOV: skipping mFOV {} - {}", mfov, validation.diagnosticMessage);
-            return false;
+            return null;
         }
 
         // build and apply correction transform
@@ -185,7 +195,7 @@ public class CreepCorrectionClient {
         LOG.info("processMFOV: applied creep correction to mFOV {} with amplitude={}, medianStretch={}, stddev={}",
                  mfov, validation.amplitude, validation.medianStretch, validation.stddev);
 
-        return true;
+        return correctionSpec;
     }
 
     /**
@@ -417,6 +427,171 @@ public class CreepCorrectionClient {
      */
     private static String pairKey(final String id1, final String id2) {
         return id1.compareTo(id2) < 0 ? id1 + "::" + id2 : id2 + "::" + id1;
+    }
+
+    /**
+     * Transforms all matches for a given group (z-layer) using the collected creep corrections.
+     * Handles both within-group and outside-group matches.
+     */
+    public void transformMatchesForGroup(final String groupId,
+                                         final Map<String, ZLayerResult> allResults,
+                                         final RenderDataClient renderDataClient,
+                                         final RenderDataClient sourceMatchClient,
+                                         final RenderDataClient targetMatchClient,
+                                         final String stack)
+            throws IOException {
+
+        LOG.info("transformMatchesForGroup: entry, groupId={}", groupId);
+
+        // get within-group and outside-group matches
+        final List<CanvasMatches> withinMatches = sourceMatchClient.getMatchesWithinGroup(groupId, false);
+        final List<CanvasMatches> outsideMatches = sourceMatchClient.getMatchesOutsideGroup(groupId, false);
+
+        final List<CanvasMatches> allMatches = new ArrayList<>(withinMatches);
+        allMatches.addAll(outsideMatches);
+
+        if (allMatches.isEmpty()) {
+            LOG.info("transformMatchesForGroup: no matches found for groupId={}", groupId);
+            return;
+        }
+
+        // collect all z-layers referenced by these matches
+        final Set<String> neededZLayers = new HashSet<>();
+        neededZLayers.add(groupId);
+        for (final CanvasMatches cm : outsideMatches) {
+            neededZLayers.add(cm.getpGroupId());
+            neededZLayers.add(cm.getqGroupId());
+        }
+
+        // load tile specs for all referenced z-layers from source stack
+        final Map<String, TileSpec> tileIdToSpec = new HashMap<>();
+        for (final String zString : neededZLayers) {
+            final ResolvedTileSpecCollection resolved =
+                    renderDataClient.getResolvedTiles(stack, Double.parseDouble(zString));
+            for (final TileSpec ts : resolved.getTileSpecs()) {
+                tileIdToSpec.put(ts.getTileId(), ts);
+            }
+        }
+
+        // transform and collect matches
+        final List<CanvasMatches> transformedMatches = new ArrayList<>();
+        for (final CanvasMatches cm : allMatches) {
+            transformedMatches.add(transformCanvasMatches(cm, allResults, tileIdToSpec));
+        }
+
+        // save to target match collection
+        targetMatchClient.saveMatches(transformedMatches);
+
+        LOG.info("transformMatchesForGroup: exit, groupId={}, transformed {} matches",
+                 groupId, transformedMatches.size());
+    }
+
+    /**
+     * Transforms a single CanvasMatches by applying creep corrections to both p and q coordinates.
+     */
+    static CanvasMatches transformCanvasMatches(final CanvasMatches cm,
+                                                final Map<String, ZLayerResult> allResults,
+                                                final Map<String, TileSpec> tileIdToSpec) {
+        final Matches matches = cm.getMatches();
+        final double[][] ps = matches.getPs();
+        final double[][] qs = matches.getQs();
+        final double[] ws = matches.getWs();
+        final int n = ws.length;
+
+        // deep copy coordinate arrays
+        final double[][] newPs = new double[][] { Arrays.copyOf(ps[0], n), Arrays.copyOf(ps[1], n) };
+        final double[][] newQs = new double[][] { Arrays.copyOf(qs[0], n), Arrays.copyOf(qs[1], n) };
+
+        // transform p and q coordinates using their respective tile's creep correction
+        transformMatchCoordinates(newPs, cm.getpId(), cm.getpGroupId(), allResults, tileIdToSpec);
+        transformMatchCoordinates(newQs, cm.getqId(), cm.getqGroupId(), allResults, tileIdToSpec);
+
+        return new CanvasMatches(cm.getpGroupId(), cm.getpId(),
+                                 cm.getqGroupId(), cm.getqId(),
+                                 new Matches(newPs, newQs, Arrays.copyOf(ws, n)));
+    }
+
+    /**
+     * Transforms match coordinates in place by applying creep correction.
+     * Uses the pattern from {@link MultiSemUtilities#transformMFOVMatchesForTile}:
+     * invert post-matching transforms, apply CC, re-apply post-matching transforms.
+     */
+    static void transformMatchCoordinates(final double[][] coords,
+                                          final String tileId,
+                                          final String groupId,
+                                          final Map<String, ZLayerResult> allResults,
+                                          final Map<String, TileSpec> tileIdToSpec) {
+
+        // look up CC spec for this tile's mFOV
+        final String mfov = MultiSemUtilities.getMagcMfovForTileId(tileId);
+        final ZLayerResult layerResult = allResults.get(groupId);
+        if (layerResult == null) {
+            return;
+        }
+        final TransformSpec ccSpec = layerResult.mfovCorrections.get(mfov);
+        if (ccSpec == null) {
+            return;
+        }
+
+        // get tile's post-matching transforms (alignment transforms applied after feature matching)
+        final TileSpec tileSpec = tileIdToSpec.get(tileId);
+        if (tileSpec == null) {
+            LOG.warn("transformMatchCoordinates: no tile spec found for {}", tileId);
+            return;
+        }
+
+        final List<CoordinateTransform> postMatchingTransformList =
+                tileSpec.getPostMatchingTransformList().getList(null);
+
+        if (postMatchingTransformList.isEmpty()) {
+            // no post-matching transforms; CC applies directly to match coordinates
+            final CoordinateTransform ccTransform = ccSpec.getNewInstance();
+            for (int i = 0; i < coords[0].length; i++) {
+                final double[] point = new double[] { coords[0][i], coords[1][i] };
+                ccTransform.applyInPlace(point);
+                coords[0][i] = point[0];
+                coords[1][i] = point[1];
+            }
+            return;
+        }
+
+        // build invertible post-matching transform list
+        final InvertibleCoordinateTransformList<InvertibleCoordinateTransform> invertiblePostMatching =
+                new InvertibleCoordinateTransformList<>();
+        for (final CoordinateTransform ct : postMatchingTransformList) {
+            invertiblePostMatching.add((InvertibleCoordinateTransform) ct);
+        }
+
+        final CoordinateTransform ccTransform = ccSpec.getNewInstance();
+
+        // transform each point: new_world = postMatching(CC(postMatching^(-1)(old_world)))
+        for (int i = 0; i < coords[0].length; i++) {
+            final double[] point = new double[] { coords[0][i], coords[1][i] };
+            try {
+                // step 1: invert post-matching transforms to get intermediate coordinates
+                invertiblePostMatching.applyInverseInPlace(point);
+                // step 2: apply creep correction
+                ccTransform.applyInPlace(point);
+                // step 3: re-apply post-matching transforms
+                invertiblePostMatching.applyInPlace(point);
+
+                coords[0][i] = point[0];
+                coords[1][i] = point[1];
+            } catch (final NoninvertibleModelException e) {
+                LOG.warn("transformMatchCoordinates: skipping non-invertible point for tile {}, index {}", tileId, i);
+            }
+        }
+    }
+
+    /** Result of processing a z-layer, containing tile count and per-mFOV correction specs. */
+    public static class ZLayerResult implements Serializable {
+        public final int tileCount;
+        public final Map<String, TransformSpec> mfovCorrections;
+
+        ZLayerResult(final int tileCount, final Map<String, TransformSpec> mfovCorrections) {
+            this.tileCount = tileCount;
+            this.mfovCorrections = mfovCorrections;
+        }
     }
 
     /** A pair of tile IDs representing geometrically adjacent sFOVs. */
