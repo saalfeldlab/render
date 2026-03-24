@@ -19,7 +19,6 @@ import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.janelia.alignment.spec.TransformSpecMetaData;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -397,10 +396,7 @@ public class CreepCorrectionClient {
      */
     static TransformSpec buildCorrectionTransformSpec(final double amplitude) {
         final String dataString = amplitude + "," + L0 + "," + amplitude + "," + L1 + ",1";
-        final LeafTransformSpec spec = new LeafTransformSpec(
-                "org.janelia.alignment.transform.StageCreepCorrectionTransform", dataString);
-        spec.addLabel(TransformSpecMetaData.INCLUDE_LABEL);
-        return spec;
+        return new LeafTransformSpec("org.janelia.alignment.transform.StageCreepCorrectionTransform", dataString);
     }
 
     /**
