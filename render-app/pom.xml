@@ -193,9 +193,9 @@
         </dependency>
 
         <dependency>
-            <groupId>com.github.PreibischLab</groupId>
-            <artifactId>FunctionFit</artifactId>
-            <version>157ab01</version>
+            <groupId>net.imglib2.simulation</groupId>
+            <artifactId>function-fit-mpicbg</artifactId>
+            <version>0.0.6</version>
         </dependency>
 
     </dependencies>
