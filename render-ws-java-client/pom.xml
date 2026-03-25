@@ -73,6 +73,7 @@
                                         <exclude>plugins.config</exclude>
                                         <exclude>LICENSE</exclude>
                                         <exclude>META-INF/*</exclude>
+                                        <exclude>META-INF/services/**</exclude>  <!-- overlaps in grpc-... jars -->
                                         <exclude>META-INF/versions/**</exclude>
                                     </excludes>
                                 </filter>
@@ -92,6 +93,16 @@
                                     <artifact>org.janelia.render:render-app</artifact>
                                     <excludes>
                                         <exclude>git.properties</exclude> <!-- will get pulled in from render-ws-java-client -->
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janelia.saalfeldlab:n5-imglib2</artifact>
+                                    <excludes> <!-- will get pulled in from n5-universe -->
+                                        <exclude>canonical.json</exclude>
+                                        <exclude>cosem.json</exclude>
+                                        <exclude>n5-compression.jq</exclude>
+                                        <exclude>n5.jq</exclude>
+                                        <exclude>zyx.zattrs.json</exclude>
                                     </excludes>
                                 </filter>
 
