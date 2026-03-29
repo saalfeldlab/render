@@ -61,6 +61,7 @@ public class CreepCorrectionClient {
     private static final double MAX_STRETCH = 1.1;
     private static final int MIN_VALID_STRETCHES = 10;
     private static final double MAX_STRETCH_STDDEV = 0.02;
+    private static final double MIN_MEDIAN_STRETCH = 0.995;
 
     // RANSAC parameters for pairwise affine estimation
     private static final int RANSAC_ITERATIONS = 1000;
@@ -368,6 +369,12 @@ public class CreepCorrectionClient {
             return new MfovResult(mfov, medianStretch, stddev, Double.NaN,
                                   validStretches.size(), totalPairs, null,
                                   "stretch stddev exceeds threshold " + MAX_STRETCH_STDDEV);
+        }
+
+        if (medianStretch > MIN_MEDIAN_STRETCH) {
+            return new MfovResult(mfov, medianStretch, stddev, Double.NaN,
+                                  validStretches.size(), totalPairs, null,
+                                  "median stretch " + medianStretch + " above threshold " + MIN_MEDIAN_STRETCH);
         }
 
         // compute amplitude
