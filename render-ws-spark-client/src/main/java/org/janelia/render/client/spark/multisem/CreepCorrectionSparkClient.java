@@ -4,7 +4,9 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +19,7 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.multisem.CreepCorrectionClient;
-import org.janelia.render.client.multisem.CreepCorrectionClient.ZLayerResult;
+import org.janelia.render.client.multisem.CreepCorrectionClient.MfovResult;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
@@ -80,6 +82,11 @@ public class CreepCorrectionSparkClient implements Serializable {
                 description = "Skip transforming match coordinates (default is to transform them)")
         public boolean skipMatchCorrection = false;
 
+        @Parameter(
+                names = "--parameterCsv",
+                description = "Path to write per-mFOV parameter CSV with stretch estimates and validation results")
+        public String parameterCsv;
+
         String getMatchOwner() {
             return matchOwner != null ? matchOwner : renderWeb.owner;
         }
@@ -140,19 +147,25 @@ public class CreepCorrectionSparkClient implements Serializable {
 
             final JavaRDD<Double> rddZValues = sparkContext.parallelize(zValues);
 
-            final JavaRDD<ZLayerResult> rddResults = rddZValues.map(this::processSingleLayer);
-            final List<ZLayerResult> resultList = rddResults.collect();
+            final JavaRDD<List<MfovResult>> rddResults = rddZValues.map(this::processSingleLayer);
+            final List<List<MfovResult>> resultList = rddResults.collect();
 
             // collect all corrections on the driver
-            final Map<String, ZLayerResult> allResults = new HashMap<>();
-            long totalTiles = 0;
+            final Map<String, List<MfovResult>> allResults = new HashMap<>();
             for (int i = 0; i < zValues.size(); i++) {
-                final ZLayerResult result = resultList.get(i);
-                totalTiles += result.tileCount;
-                allResults.put(String.valueOf(zValues.get(i).doubleValue()), result);
+                allResults.put(String.valueOf(zValues.get(i).doubleValue()), resultList.get(i));
             }
 
-            LOG.info("run: Phase 1 complete - processed {} tiles across {} z-layers", totalTiles, zValues.size());
+            LOG.info("run: Phase 1 complete - processed {} z-layers", zValues.size());
+
+            // write parameter CSV if requested (non-fatal if it fails)
+            if (parameters.parameterCsv != null) {
+                try {
+                    writeParameterCsv(parameters.parameterCsv, allResults);
+                } catch (final Exception e) {
+                    LOG.error("run: failed to write parameter CSV to " + parameters.parameterCsv, e);
+                }
+            }
 
             // complete target stack on the driver
             sourceDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
@@ -169,7 +182,7 @@ public class CreepCorrectionSparkClient implements Serializable {
     }
 
     private void transformMatches(final JavaSparkContext sparkContext,
-                                  final Map<String, ZLayerResult> allResults)
+                                  final Map<String, List<MfovResult>> allResults)
             throws IOException {
 
         final RenderDataClient driverMatchClient = new RenderDataClient(
@@ -186,7 +199,7 @@ public class CreepCorrectionSparkClient implements Serializable {
 
         LOG.info("run: Phase 2 - distributing {} match groups for coordinate transformation", pGroupIds.size());
 
-        final Broadcast<Map<String, ZLayerResult>> broadcastResults = sparkContext.broadcast(allResults);
+        final Broadcast<Map<String, List<MfovResult>>> broadcastResults = sparkContext.broadcast(allResults);
 
         final JavaRDD<String> rddGroupIds = sparkContext.parallelize(pGroupIds);
 
@@ -197,7 +210,7 @@ public class CreepCorrectionSparkClient implements Serializable {
         LOG.info("run: Phase 2 complete - transformed matches for {} groups", pGroupIds.size());
     }
 
-    private ZLayerResult processSingleLayer(final Double z) throws IOException {
+    private List<MfovResult> processSingleLayer(final Double z) throws IOException {
         LogUtilities.setupExecutorLog4j("z " + z);
 
         final RenderDataClient executorRenderClient = parameters.renderWeb.getDataClient();
@@ -215,7 +228,7 @@ public class CreepCorrectionSparkClient implements Serializable {
     }
 
     private void transformMatchesForSingleGroup(final String groupId,
-                                                final Map<String, ZLayerResult> allResults)
+                                                final Map<String, List<MfovResult>> allResults)
             throws IOException {
         LogUtilities.setupExecutorLog4j("matchTransform " + groupId);
 
@@ -233,6 +246,29 @@ public class CreepCorrectionSparkClient implements Serializable {
                                                   allResults,
                                                   sourceMatchClient,
                                                   targetMatchClient);
+    }
+
+    private void writeParameterCsv(final String csvPath,
+                                    final Map<String, List<MfovResult>> allResults)
+            throws IOException {
+
+        LOG.info("writeParameterCsv: writing to {}", csvPath);
+
+        // sort by scan (z) for deterministic output
+        final List<String> sortedScans = new ArrayList<>(allResults.keySet());
+        sortedScans.sort((a, b) -> Double.compare(Double.parseDouble(a), Double.parseDouble(b)));
+
+        try (final PrintWriter writer = new PrintWriter(csvPath)) {
+            writer.println("scan," + MfovResult.CSV_HEADER);
+
+            for (final String scan : sortedScans) {
+                for (final MfovResult result : allResults.get(scan)) {
+                    writer.println(scan + "," + result.toCsvRow());
+                }
+            }
+        }
+
+        LOG.info("writeParameterCsv: done");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CreepCorrectionSparkClient.class);

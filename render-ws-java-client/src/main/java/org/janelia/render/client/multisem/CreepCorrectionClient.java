@@ -22,6 +22,7 @@ import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
+import org.janelia.alignment.transform.StageCreepCorrectionTransform;
 import org.janelia.render.client.RenderDataClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,13 +76,13 @@ public class CreepCorrectionClient {
      * Processes all mFOVs for a given z-layer: loads tiles and matches, estimates creep correction,
      * applies it where valid, and saves the results to the target stack.
      *
-     * @return result containing tile count and per-mFOV correction specs
+     * @return per-mFOV results (one per mFOV, including skipped ones)
      */
-    public ZLayerResult processZLayer(final double z,
-                                      final RenderDataClient renderDataClient,
-                                      final RenderDataClient matchDataClient,
-                                      final String stack,
-                                      final String targetStack)
+    public List<MfovResult> processZLayer(final double z,
+                                          final RenderDataClient renderDataClient,
+                                          final RenderDataClient matchDataClient,
+                                          final String stack,
+                                          final String targetStack)
             throws IOException {
 
         LOG.info("processZLayer: entry, z={}", z);
@@ -108,16 +109,18 @@ public class CreepCorrectionClient {
         }
 
         // process each mFOV independently
-        final Map<String, TransformSpec> mfovCorrections = new HashMap<>();
+        final List<MfovResult> mfovResults = new ArrayList<>();
         int correctedMFOVCount = 0;
         int skippedMFOVCount = 0;
         for (final Map.Entry<String, List<TileSpec>> entry : mfovToTiles.entrySet()) {
             final String mfov = entry.getKey();
             final List<TileSpec> mfovTiles = entry.getValue();
 
-            final TransformSpec correctionSpec = processMFOV(mfov, mfovTiles, pairKeyToMatches, resolvedTiles);
-            if (correctionSpec != null) {
-                mfovCorrections.put(mfov, correctionSpec);
+            final MfovResult result = processMFOV(mfov, mfovTiles, pairKeyToMatches, resolvedTiles);
+            mfovResults.add(result);
+            LOG.info("processMFOV: {}", result.toCsvRow());
+
+            if (result.isValid) {
                 correctedMFOVCount++;
             } else {
                 skippedMFOVCount++;
@@ -130,25 +133,22 @@ public class CreepCorrectionClient {
         LOG.info("processZLayer: exit, z={}, correctedMFOVs={}, skippedMFOVs={}, totalTiles={}",
                  z, correctedMFOVCount, skippedMFOVCount, resolvedTiles.getTileCount());
 
-        return new ZLayerResult(resolvedTiles.getTileCount(), mfovCorrections);
+        return mfovResults;
     }
 
     /**
      * Processes a single mFOV: finds neighbor pairs, estimates stretch, validates, and applies correction.
-     *
-     * @return the correction transform spec if applied, or null if skipped
      */
-    TransformSpec processMFOV(final String mfov,
-                              final List<TileSpec> mfovTiles,
-                              final Map<String, CanvasMatches> pairKeyToMatches,
-                              final ResolvedTileSpecCollection resolvedTiles) {
+    MfovResult processMFOV(final String mfov,
+                            final List<TileSpec> mfovTiles,
+                            final Map<String, CanvasMatches> pairKeyToMatches,
+                            final ResolvedTileSpecCollection resolvedTiles) {
 
         // find geometric neighbor pairs
         final List<TilePair> neighborPairs = findGeometricNeighborPairs(mfovTiles);
 
         if (neighborPairs.isEmpty()) {
-            LOG.warn("processMFOV: no geometric neighbor pairs found for mFOV {}, skipping", mfov);
-            return null;
+            return MfovResult.invalid(mfov, 0, "no geometric neighbor pairs found");
         }
 
         // estimate y-stretch for each pair that has matches
@@ -173,25 +173,17 @@ public class CreepCorrectionClient {
                      pairsWithoutMatches, neighborPairs.size(), mfov);
         }
 
-        // validate results
-        final ValidationResult validation = validateResults(stretches, mfov);
+        // validate and build result
+        final MfovResult result = validateStretches(stretches, mfov);
 
-        if (!validation.isValid) {
-            LOG.warn("processMFOV: skipping mFOV {} - {}", mfov, validation.diagnosticMessage);
-            return null;
+        if (result.isValid) {
+            final Set<String> mfovTileIds = mfovTiles.stream()
+                    .map(TileSpec::getTileId)
+                    .collect(Collectors.toSet());
+            applyCorrectionToMFOV(resolvedTiles, mfovTileIds, result.correctionSpec);
         }
 
-        // build and apply correction transform
-        final TransformSpec correctionSpec = buildCorrectionTransformSpec(validation.amplitude);
-        final Set<String> mfovTileIds = mfovTiles.stream()
-                .map(TileSpec::getTileId)
-                .collect(Collectors.toSet());
-        applyCorrectionToMFOV(resolvedTiles, mfovTileIds, correctionSpec);
-
-        LOG.info("processMFOV: applied creep correction to mFOV {} with amplitude={}, medianStretch={}, stddev={}",
-                 mfov, validation.amplitude, validation.medianStretch, validation.stddev);
-
-        return correctionSpec;
+        return result;
     }
 
     /**
@@ -317,14 +309,13 @@ public class CreepCorrectionClient {
     }
 
     /**
-     * Centralized validation of all stretch estimates for a single mFOV.
-     * On failure, returns an invalid result; the mFOV should be skipped (uploaded without correction).
+     * Validates stretch estimates for a single mFOV and returns the result.
      */
-    ValidationResult validateResults(final List<Double> stretches, final String mfov) {
+    MfovResult validateStretches(final List<Double> stretches, final String mfov) {
         final int totalPairs = stretches.size();
 
         if (totalPairs == 0) {
-            return ValidationResult.invalid("no stretch estimates available");
+            return MfovResult.invalid(mfov, 0, "no stretch estimates available");
         }
 
         // filter out NaN and out-of-range values
@@ -342,18 +333,18 @@ public class CreepCorrectionClient {
         }
 
         if (nanCount > totalPairs / 2) {
-            LOG.warn("validateResults: mFOV {} has {} NaN stretches out of {} total",
+            LOG.warn("validateStretches: mFOV {} has {} NaN stretches out of {} total",
                      mfov, nanCount, totalPairs);
         }
         if (outOfRangeCount > 0) {
-            LOG.info("validateResults: mFOV {} had {} stretches outside [{}, {}]",
+            LOG.info("validateStretches: mFOV {} had {} stretches outside [{}, {}]",
                      mfov, outOfRangeCount, MIN_STRETCH, MAX_STRETCH);
         }
 
         if (validStretches.size() < MIN_VALID_STRETCHES) {
-            return ValidationResult.invalid(
+            return MfovResult.invalid(mfov, totalPairs,
                     "only " + validStretches.size() + " valid stretches (need " + MIN_VALID_STRETCHES +
-                    "), nanCount=" + nanCount + ", outOfRange=" + outOfRangeCount);
+                    ") nanCount=" + nanCount + " outOfRange=" + outOfRangeCount);
         }
 
         // compute median
@@ -374,24 +365,21 @@ public class CreepCorrectionClient {
         final double stddev = Math.sqrt(variance);
 
         if (stddev > MAX_STRETCH_STDDEV) {
-            return ValidationResult.invalid(
+            return MfovResult.invalid(mfov, totalPairs,
                     "stretch stddev " + stddev + " exceeds threshold " + MAX_STRETCH_STDDEV +
-                    " (median=" + medianStretch + ", validCount=" + validStretches.size() + ")");
+                    " (median=" + medianStretch + " validCount=" + validStretches.size() + ")");
         }
 
         // compute amplitude
         final double amplitude = computeCorrectionAmplitude(medianStretch);
         if (!Double.isFinite(amplitude)) {
-            return ValidationResult.invalid(
+            return MfovResult.invalid(mfov, totalPairs,
                     "computed amplitude is not finite (median=" + medianStretch + ")");
         }
 
-        LOG.info("validateResults: mFOV {} - totalPairs={}, valid={}, nan={}, outOfRange={}, " +
-                 "median={}, stddev={}, amplitude={}",
-                 mfov, totalPairs, validStretches.size(), nanCount, outOfRangeCount,
-                 medianStretch, stddev, amplitude);
-
-        return new ValidationResult(true, medianStretch, stddev, amplitude, "OK");
+        return new MfovResult(mfov, medianStretch, stddev, amplitude,
+                              validStretches.size(), totalPairs,
+                              buildCorrectionTransformSpec(amplitude));
     }
 
     /**
@@ -430,7 +418,7 @@ public class CreepCorrectionClient {
      * Handles both within-group and outside-group matches.
      */
     public void transformMatchesForGroup(final String groupId,
-                                         final Map<String, ZLayerResult> allResults,
+                                         final Map<String, List<MfovResult>> allResults,
                                          final RenderDataClient sourceMatchClient,
                                          final RenderDataClient targetMatchClient)
             throws IOException {
@@ -466,7 +454,7 @@ public class CreepCorrectionClient {
      * Transforms a single CanvasMatches by applying creep corrections to both p and q coordinates.
      */
     static CanvasMatches transformCanvasMatches(final CanvasMatches cm,
-                                                final Map<String, ZLayerResult> allResults) {
+                                                final Map<String, List<MfovResult>> allResults) {
         final Matches matches = cm.getMatches();
         final double[][] ps = matches.getPs();
         final double[][] qs = matches.getQs();
@@ -495,15 +483,22 @@ public class CreepCorrectionClient {
     static void transformMatchCoordinates(final double[][] coords,
                                           final String tileId,
                                           final String groupId,
-                                          final Map<String, ZLayerResult> allResults) {
+                                          final Map<String, List<MfovResult>> allResults) {
 
         // look up CC spec for this tile's mFOV
         final String mfov = MultiSemUtilities.getMagcMfovForTileId(tileId);
-        final ZLayerResult layerResult = allResults.get(groupId);
-        if (layerResult == null) {
+        final List<MfovResult> layerResults = allResults.get(groupId);
+        if (layerResults == null) {
             return;
         }
-        final TransformSpec ccSpec = layerResult.mfovCorrections.get(mfov);
+
+        TransformSpec ccSpec = null;
+        for (final MfovResult r : layerResults) {
+            if (r.mfov.equals(mfov) && r.correctionSpec != null) {
+                ccSpec = r.correctionSpec;
+                break;
+            }
+        }
         if (ccSpec == null) {
             return;
         }
@@ -517,14 +512,60 @@ public class CreepCorrectionClient {
         }
     }
 
-    /** Result of processing a z-layer, containing tile count and per-mFOV correction specs. */
-    public static class ZLayerResult implements Serializable {
-        public final int tileCount;
-        public final Map<String, TransformSpec> mfovCorrections;
+    /** Result of processing a single mFOV, including validation outcome and correction spec. */
+    public static class MfovResult implements Serializable {
 
-        ZLayerResult(final int tileCount, final Map<String, TransformSpec> mfovCorrections) {
-            this.tileCount = tileCount;
-            this.mfovCorrections = mfovCorrections;
+        public static final String CSV_HEADER = "mfov,medianStretch,stddev,amplitude,validPairs,totalPairs,isValid,diagnosticMessage";
+
+        public final String mfov;
+        public final double medianStretch;
+        public final double stddev;
+        public final double amplitude;
+        public final int validPairs;
+        public final int totalPairs;
+        public final boolean isValid;
+        public final String diagnosticMessage;
+        public final TransformSpec correctionSpec;
+
+        MfovResult(final String mfov,
+                   final double medianStretch,
+                   final double stddev,
+                   final double amplitude,
+                   final int validPairs,
+                   final int totalPairs,
+                   final TransformSpec correctionSpec) {
+            this.mfov = mfov;
+            this.medianStretch = medianStretch;
+            this.stddev = stddev;
+            this.amplitude = amplitude;
+            this.validPairs = validPairs;
+            this.totalPairs = totalPairs;
+            this.isValid = true;
+            this.diagnosticMessage = "OK";
+            this.correctionSpec = correctionSpec;
+        }
+
+        private MfovResult(final String mfov,
+                           final int totalPairs,
+                           final String diagnosticMessage) {
+            this.mfov = mfov;
+            this.medianStretch = Double.NaN;
+            this.stddev = Double.NaN;
+            this.amplitude = Double.NaN;
+            this.validPairs = 0;
+            this.totalPairs = totalPairs;
+            this.isValid = false;
+            this.diagnosticMessage = diagnosticMessage;
+            this.correctionSpec = null;
+        }
+
+        static MfovResult invalid(final String mfov, final int totalPairs, final String reason) {
+            return new MfovResult(mfov, totalPairs, reason);
+        }
+
+        public String toCsvRow() {
+            return mfov + "," + medianStretch + "," + stddev + "," + amplitude + ","
+                   + validPairs + "," + totalPairs + "," + isValid + "," + diagnosticMessage;
         }
     }
 
@@ -536,31 +577,6 @@ public class CreepCorrectionClient {
         TilePair(final String pTileId, final String qTileId) {
             this.pTileId = pTileId;
             this.qTileId = qTileId;
-        }
-    }
-
-    /** Result of validating stretch estimates for an mFOV. */
-    static class ValidationResult {
-        final boolean isValid;
-        final double medianStretch;
-        final double stddev;
-        final double amplitude;
-        final String diagnosticMessage;
-
-        ValidationResult(final boolean isValid,
-                         final double medianStretch,
-                         final double stddev,
-                         final double amplitude,
-                         final String diagnosticMessage) {
-            this.isValid = isValid;
-            this.medianStretch = medianStretch;
-            this.stddev = stddev;
-            this.amplitude = amplitude;
-            this.diagnosticMessage = diagnosticMessage;
-        }
-
-        static ValidationResult invalid(final String diagnosticMessage) {
-            return new ValidationResult(false, Double.NaN, Double.NaN, Double.NaN, diagnosticMessage);
         }
     }
 
