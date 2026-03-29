@@ -365,21 +365,22 @@ public class CreepCorrectionClient {
         final double stddev = Math.sqrt(variance);
 
         if (stddev > MAX_STRETCH_STDDEV) {
-            return MfovResult.invalid(mfov, totalPairs,
-                    "stretch stddev " + stddev + " exceeds threshold " + MAX_STRETCH_STDDEV +
-                    " (median=" + medianStretch + " validCount=" + validStretches.size() + ")");
+            return new MfovResult(mfov, medianStretch, stddev, Double.NaN,
+                                  validStretches.size(), totalPairs, null,
+                                  "stretch stddev exceeds threshold " + MAX_STRETCH_STDDEV);
         }
 
         // compute amplitude
         final double amplitude = computeCorrectionAmplitude(medianStretch);
         if (!Double.isFinite(amplitude)) {
-            return MfovResult.invalid(mfov, totalPairs,
-                    "computed amplitude is not finite (median=" + medianStretch + ")");
+            return new MfovResult(mfov, medianStretch, stddev, amplitude,
+                                  validStretches.size(), totalPairs, null,
+                                  "computed amplitude is not finite");
         }
 
         return new MfovResult(mfov, medianStretch, stddev, amplitude,
                               validStretches.size(), totalPairs,
-                              buildCorrectionTransformSpec(amplitude));
+                              buildCorrectionTransformSpec(amplitude), "OK");
     }
 
     /**
@@ -533,34 +534,21 @@ public class CreepCorrectionClient {
                    final double amplitude,
                    final int validPairs,
                    final int totalPairs,
-                   final TransformSpec correctionSpec) {
+                   final TransformSpec correctionSpec,
+                   final String diagnosticMessage) {
             this.mfov = mfov;
             this.medianStretch = medianStretch;
             this.stddev = stddev;
             this.amplitude = amplitude;
             this.validPairs = validPairs;
             this.totalPairs = totalPairs;
-            this.isValid = true;
-            this.diagnosticMessage = "OK";
+            this.isValid = correctionSpec != null;
+            this.diagnosticMessage = diagnosticMessage;
             this.correctionSpec = correctionSpec;
         }
 
-        private MfovResult(final String mfov,
-                           final int totalPairs,
-                           final String diagnosticMessage) {
-            this.mfov = mfov;
-            this.medianStretch = Double.NaN;
-            this.stddev = Double.NaN;
-            this.amplitude = Double.NaN;
-            this.validPairs = 0;
-            this.totalPairs = totalPairs;
-            this.isValid = false;
-            this.diagnosticMessage = diagnosticMessage;
-            this.correctionSpec = null;
-        }
-
         static MfovResult invalid(final String mfov, final int totalPairs, final String reason) {
-            return new MfovResult(mfov, totalPairs, reason);
+            return new MfovResult(mfov, Double.NaN, Double.NaN, Double.NaN, 0, totalPairs, null, reason);
         }
 
         public String toCsvRow() {
