@@ -117,14 +117,16 @@ public class CreepCorrectionClient {
             final String mfov = entry.getKey();
             final List<TileSpec> mfovTiles = entry.getValue();
 
+            LOG.info("processZLayer: processing mFOV {}", mfov);
             final MfovResult result = processMFOV(mfov, mfovTiles, pairKeyToMatches, resolvedTiles);
             mfovResults.add(result);
-            LOG.info("processMFOV: {}", result.toCsvRow());
 
             if (result.isValid) {
                 correctedMFOVCount++;
+                LOG.info("processZLayer: successfully corrected mFOV {}", mfov);
             } else {
                 skippedMFOVCount++;
+                LOG.info("processZLayer: failed correcting mFOV {}: {}", mfov, result.diagnosticMessage);
             }
         }
 
@@ -331,15 +333,6 @@ public class CreepCorrectionClient {
             } else {
                 validStretches.add(s);
             }
-        }
-
-        if (nanCount > totalPairs / 2) {
-            LOG.warn("validateStretches: mFOV {} has {} NaN stretches out of {} total",
-                     mfov, nanCount, totalPairs);
-        }
-        if (outOfRangeCount > 0) {
-            LOG.info("validateStretches: mFOV {} had {} stretches outside [{}, {}]",
-                     mfov, outOfRangeCount, MIN_STRETCH, MAX_STRETCH);
         }
 
         if (validStretches.size() < MIN_VALID_STRETCHES) {

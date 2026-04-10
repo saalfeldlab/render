@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -158,14 +159,8 @@ public class CreepCorrectionSparkClient implements Serializable {
 
             LOG.info("run: Phase 1 complete - processed {} z-layers", zValues.size());
 
-            // write parameter CSV if requested (non-fatal if it fails)
-            if (parameters.parameterCsv != null) {
-                try {
-                    writeParameterCsv(parameters.parameterCsv, allResults);
-                } catch (final Exception e) {
-                    LOG.error("run: failed to write parameter CSV to " + parameters.parameterCsv, e);
-                }
-            }
+            // write or log results on the driver
+            reportResults(allResults);
 
             // complete target stack on the driver
             sourceDataClient.setStackState(parameters.targetStack, StackMetaData.StackState.COMPLETE);
@@ -203,9 +198,7 @@ public class CreepCorrectionSparkClient implements Serializable {
 
         final JavaRDD<String> rddGroupIds = sparkContext.parallelize(pGroupIds);
 
-        rddGroupIds.foreach(groupId -> {
-            transformMatchesForSingleGroup(groupId, broadcastResults.value());
-        });
+        rddGroupIds.foreach(groupId -> transformMatchesForSingleGroup(groupId, broadcastResults.value()));
 
         LOG.info("run: Phase 2 complete - transformed matches for {} groups", pGroupIds.size());
     }
@@ -248,27 +241,34 @@ public class CreepCorrectionSparkClient implements Serializable {
                                                   targetMatchClient);
     }
 
-    private void writeParameterCsv(final String csvPath,
-                                    final Map<String, List<MfovResult>> allResults)
-            throws IOException {
-
-        LOG.info("writeParameterCsv: writing to {}", csvPath);
-
-        // sort by scan (z) for deterministic output
+    private void reportResults(final Map<String, List<MfovResult>> allResults) {
         final List<String> sortedScans = new ArrayList<>(allResults.keySet());
-        sortedScans.sort((a, b) -> Double.compare(Double.parseDouble(a), Double.parseDouble(b)));
+        sortedScans.sort(Comparator.comparingDouble(Double::parseDouble));
 
-        try (final PrintWriter writer = new PrintWriter(csvPath)) {
-            writer.println("scan," + MfovResult.CSV_HEADER);
-
-            for (final String scan : sortedScans) {
-                for (final MfovResult result : allResults.get(scan)) {
-                    writer.println(scan + "," + result.toCsvRow());
+        boolean written = false;
+        if (parameters.parameterCsv != null) {
+            try (final PrintWriter writer = new PrintWriter(parameters.parameterCsv)) {
+                writer.println("scan," + MfovResult.CSV_HEADER);
+                for (final String scan : sortedScans) {
+                    for (final MfovResult result : allResults.get(scan)) {
+                        writer.println(scan + "," + result.toCsvRow());
+                    }
                 }
+                written = true;
+                LOG.info("reportResults: wrote creep correction parameters to {}", parameters.parameterCsv);
+            } catch (final Exception e) {
+				LOG.error("reportResults: failed to write CSV to {}, logging instead", parameters.parameterCsv, e);
             }
         }
 
-        LOG.info("writeParameterCsv: done");
+        if (!written) {
+            LOG.info("reportResults: scan,{}", MfovResult.CSV_HEADER);
+            for (final String scan : sortedScans) {
+                for (final MfovResult result : allResults.get(scan)) {
+                    LOG.info("reportResults: {},{}", scan, result.toCsvRow());
+                }
+            }
+        }
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CreepCorrectionSparkClient.class);
