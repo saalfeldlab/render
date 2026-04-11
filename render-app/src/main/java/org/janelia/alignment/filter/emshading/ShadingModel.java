@@ -126,7 +126,10 @@ public abstract class ShadingModel extends AbstractModel<ShadingModel> implement
 
 		// set up Cholesky decomposition for A^T * A x = A^T * b (only upper triangle of A^T * A is used)
 		final LinearSolverDense<DMatrixRMaj> solver = LinearSolverFactory_DDRM.chol(nCoefficients());
-		solver.setA(ATA);
+		final boolean success = solver.setA(ATA);
+		if (!success) {
+			throw new IllDefinedDataPointsException("Matrix factorization failed. This may be due to insufficient or collinear data points.");
+		}
 
 		// coefficients are modified in place
 		final DMatrixRMaj x = new DMatrixRMaj(nCoefficients(), 1);

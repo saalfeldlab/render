@@ -42,6 +42,7 @@ public class HackImageUrlPathClient {
         HAYWORTH_CREEP_CORRECTION_BASELINE,
         HAYWORTH_CONTRAST,
         BASIC_BACKGROUND_CORRECTION,
+        SAMPLE_68_BACKGROUND_CORRECTION,
         GOOGLE_CLOUD_TEST,
         GOOGLE_CLOUD_WAFER_60,
         NO_PATH_TRANSFORMATION,
@@ -56,6 +57,8 @@ public class HackImageUrlPathClient {
                     return new HayworthContrastPathTransformation();
                 case BASIC_BACKGROUND_CORRECTION:
                     return new BasicBackgroundCorrectionPathTransformation();
+                case SAMPLE_68_BACKGROUND_CORRECTION:
+                    return new Sample68BackgroundCorrectionPathTransformation();
                 case GOOGLE_CLOUD_TEST:
                     return new GoogleCloudTestPathTransformation();
                 case GOOGLE_CLOUD_WAFER_60:
@@ -267,6 +270,22 @@ public class HackImageUrlPathClient {
         @Override
         public String apply(final String path) {
             return path.substring(5, 62) + "/background_corrected" + path.substring(62);
+        }
+    }
+
+    private static class Sample68BackgroundCorrectionPathTransformation implements UnaryOperator<String> {
+        // original: file:/nrs/hess/Hayworth/DATA_Sample68_FULL_FINAL/scan_000126/mFOVs/mFOV_0012/sfov_002.png
+        // target:   file:/nrs/hess/data/hess_sample_68_full/bg_corrected_inverted/scan_126/mfov_0012/sfov_002.png
+        private final Pattern PATH_PATTERN = Pattern.compile("^file:/nrs.*/scan_(\\d{6})/.*/mFOV_(\\d{4}/sfov_\\d{3}.png)$");
+        @Override
+        public String apply(final String path) {
+            final Matcher matcher = PATH_PATTERN.matcher(path);
+            if (matcher.matches()) {
+                final int scanNumber = Integer.parseInt(matcher.group(1));
+                return "file:/nrs/hess/data/hess_sample_68_full/bg_corrected_inverted/scan_" + scanNumber + "/mfov_" + matcher.group(2);
+            } else {
+                throw new RuntimeException("path '" + path + "' could not be matched");
+            }
         }
     }
 

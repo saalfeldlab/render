@@ -175,18 +175,26 @@
                         <release>11</release>
                     </configuration>
                 </plugin>
-                <!--
-                  Uncomment plugin block below to disable maven-enforcer-plugin rules from scijava.
-                -->
-<!--                <plugin>-->
-<!--                    <artifactId>maven-enforcer-plugin</artifactId>-->
+                <plugin>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.5.0</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.codehaus.mojo</groupId>
+                            <artifactId>extra-enforcer-rules</artifactId>
+                            <version>1.8.0</version>  <!-- must be >= 1.8.0 for Java 21-23 support which avoids "Unknown bytecodeVersion" warnings -->
+                        </dependency>
+                    </dependencies>
+                    <!--
+                      Uncomment executions block below to disable maven-enforcer-plugin rules from scijava.
+                    -->
 <!--                    <executions>-->
 <!--                        <execution>-->
 <!--                            <id>enforce-rules</id>-->
 <!--                            <phase>none</phase>-->
 <!--                        </execution>-->
 <!--                    </executions>-->
-<!--                </plugin>-->
+                </plugin>
 
                 <!-- Uncomment this block to deploy to local path -->
 <!--                <plugin>-->
