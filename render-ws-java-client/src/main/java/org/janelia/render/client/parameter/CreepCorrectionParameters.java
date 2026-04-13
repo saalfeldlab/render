@@ -66,7 +66,7 @@ public class CreepCorrectionParameters
 
 
     public List<Double> buildCorrectedZValues(final List<Double> allZValues) {
-        final List<Double> correctedZValues = new ArrayList<>(allZValues);
+        final List<Double> correctedZValues = new ArrayList<>();
         for (final Double z : allZValues) {
             if ( (minZ == null || (z >= minZ)) && (maxZ == null || (z <= maxZ)) ) {
                 correctedZValues.add(z);
@@ -76,7 +76,7 @@ public class CreepCorrectionParameters
     }
 
     public List<Double> buildUncorrectedZValues(final List<Double> allZValues) {
-        final List<Double> uncorrectedZValues = new ArrayList<>(allZValues);
+        final List<Double> uncorrectedZValues = new ArrayList<>();
         for (final Double z : allZValues) {
             if ( (minZ != null && (z < minZ)) || (maxZ != null && (z > maxZ)) ) {
                 uncorrectedZValues.add(z);
