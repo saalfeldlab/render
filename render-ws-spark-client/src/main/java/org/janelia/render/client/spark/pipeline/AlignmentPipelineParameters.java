@@ -16,6 +16,7 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.UrlResourceUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
+import org.janelia.render.client.parameter.CreepCorrectionParameters;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MaskHackParameters;
@@ -48,6 +49,7 @@ public class AlignmentPipelineParameters
     private final UnconnectedCrossMFOVParameters unconnectedCrossMfov;
     private final TileClusterParameters tileCluster;
     private final MatchCopyParameters matchCopy;
+    private final CreepCorrectionParameters creepCorrection;
     private final AffineBlockSolverSetup affineBlockSolverSetup;
     private final IntensityCorrectionSetup intensityCorrectionSetup;
     private final ZSpacingParameters zSpacing;
@@ -59,6 +61,7 @@ public class AlignmentPipelineParameters
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -85,6 +88,7 @@ public class AlignmentPipelineParameters
                                        final UnconnectedCrossMFOVParameters unconnectedCrossMfov,
                                        final TileClusterParameters tileCluster,
                                        final MatchCopyParameters matchCopy,
+                                       final CreepCorrectionParameters creepCorrection,
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
                                        final IntensityCorrectionSetup intensityCorrectionSetup,
                                        final ZSpacingParameters zSpacing,
@@ -101,6 +105,7 @@ public class AlignmentPipelineParameters
         this.unconnectedCrossMfov = unconnectedCrossMfov;
         this.tileCluster = tileCluster;
         this.matchCopy = matchCopy;
+        this.creepCorrection = creepCorrection;
         this.affineBlockSolverSetup = affineBlockSolverSetup;
         this.intensityCorrectionSetup = intensityCorrectionSetup;
         this.zSpacing = zSpacing;
@@ -154,6 +159,10 @@ public class AlignmentPipelineParameters
 
     public MatchCopyParameters getMatchCopy() {
         return matchCopy;
+    }
+
+    public CreepCorrectionParameters getCreepCorrection() {
+        return creepCorrection;
     }
 
     public String getMatchCopyToCollectionSuffix() {
