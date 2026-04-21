@@ -6,41 +6,98 @@ set -e
 # Generate mongodb collection dump files from a render-ws-mongodb Google Cloud VM container.
 #
 # Dump files for the collections are written to:
-#   /mnt/disks/mongodb_dump_fs/dump/render-ws-mongodb-16c-64gb-[dump-suffix]/collections/[collection-dir | run-time]
-
-if [ $# -lt 3 ]; then
-  echo "
-Usage:    $0 <db> <dump-suffix> <collection-pattern> [collection-dir]
-
-Examples: $0  render  par    '.*_par_.*'       w61_s140_to_149_par
-          $0  match   match  '.*_s15[5-9]_.*'  w61_s155_to_159
-          $0  render  align  '.*align.*'       w61_s070_to_071_r00_align
-          $0  render  ic2d   '.*ic2d.*'        w61_s100_to_s109_r00_ic2d_nc4_hist
-
-          $0  render  mat    '.*w60_s360_r00_(gc|gc_mat|gc_mat_render)__.*'
-"
-  exit 1
-fi
-
-RUN_TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-
-DB="${1}"
-BASE_DUMP_SUFFIX="${2}"
-COLLECTION_PATTERN="${3}"
-COLLECTION_DIR="${4:-${RUN_TIMESTAMP}}"
+#   /mnt/disks/mongodb_dump_fs/dump/<location>/<stage>/<project>/<slab-group>/<db>
+#
+# For example:
+#   /mnt/disks/mongodb_dump_fs/dump/google/01_match/w61_serial_110_to_119/s115_to_s119_r00/match
+#   /mnt/disks/mongodb_dump_fs/dump/google/02_align/w61_serial_090_to_099/s094_r00/render
 
 BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
+
 if [ ! -d "${BASE_DUMP_DIR}" ]; then
   echo "ERROR: ${BASE_DUMP_DIR} not found"
   exit 1
 fi
 
-# /mnt/disks/mongodb_dump_fs/dump/render-ws-mongodb-16c-64gb-align/collections/w61_s100_to_101_r00_align
-FULL_DUMP_DIR="${BASE_DUMP_DIR}/render-ws-mongodb-16c-64gb-${BASE_DUMP_SUFFIX}/collections/${COLLECTION_DIR}"
-if [ -d "${FULL_DUMP_DIR}" ]; then
-  echo "ERROR: ${FULL_DUMP_DIR} already exists"
+echo "
+Select database:"
+select DB in "render" "match"; do
+  case "${DB}" in
+    render|match) break ;;
+    *) echo "  Invalid selection, please enter 1 or 2." ;;
+  esac
+done
+
+LOCATION="google"
+
+echo "
+Select stage:"
+select STAGE_CHOICE in "00_par" "01_match" "02_align" "03_ic2d_nc4_hist_rs0p5" "timestamp"; do
+  case "${STAGE_CHOICE}" in
+    00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5)
+      STAGE="${STAGE_CHOICE}"
+      break
+      ;;
+    timestamp)
+      STAGE=$(date +"%Y%m%d_%H%M%S")
+      break
+      ;;
+    *) echo "  Invalid selection, please enter a number from the list." ;;
+  esac
+done
+
+echo "
+Select project:"
+PROJECTS=()
+for i in $(seq 0 10 150); do
+  PROJECTS+=("$(printf "w61_serial_%03d_to_%03d" "$i" "$((i+9))")")
+done
+select PROJECT in "${PROJECTS[@]}"; do
+  if [[ -n "${PROJECT}" ]]; then
+    break
+  else
+    echo "  Invalid selection, please enter a number from the list."
+  fi
+done
+
+echo "
+Enter slab-group (e.g.    s115_to_s119_r00    s094_r00    20260421_test    ):"
+while true; do
+  read -rp "  Slab-group: " SLAB_GROUP
+  if [[ -n "${SLAB_GROUP}" ]]; then
+    break
+  fi
+  echo "  Slab-group must not be empty."
+done
+
+echo "
+Enter collection pattern regex (e.g.    .*_par_.*    .*_s11[5-9]_.*    .*align.*    ):"
+while true; do
+  read -rp "  Pattern: " COLLECTION_PATTERN
+  if [[ -n "${COLLECTION_PATTERN}" ]]; then
+    break
+  fi
+  echo "  Pattern must not be empty."
+done
+
+# ----------------------------------------------------------------------------
+# Build and validate the target dump directory
+
+FULL_SLAB_GROUP_DIR="${BASE_DUMP_DIR}/${LOCATION}/${STAGE}/${PROJECT}/${SLAB_GROUP}"
+FULL_DB_DUMP_DIR="${FULL_SLAB_GROUP_DIR}/${DB}"
+
+if [ -d "${FULL_DB_DUMP_DIR}" ]; then
+  echo "ERROR: ${FULL_DB_DUMP_DIR} already exists"
   exit 1
+else
+  echo "
+  Dump directory will be:
+    ${FULL_DB_DUMP_DIR}
+  "
 fi
+
+# ----------------------------------------------------------------------------
+# Find matching collections
 
 CONNECTION_URI="mongodb://localhost:27017/${DB}"
 EVAL_CMD="printjson(db.getCollectionNames().filter(c => /${COLLECTION_PATTERN}/.test(c)).sort());"
@@ -112,13 +169,13 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
   exit 1
 fi
 
-mkdir -p "${FULL_DUMP_DIR}"
+mkdir -p "${FULL_SLAB_GROUP_DIR}"
 
 DUMP_WAIT_SECONDS=3
 
 for COLLECTION in ${COLLECTIONS}; do
 
-  mongodump --uri="${CONNECTION_URI}" --db="${DB}" --collection="${COLLECTION}" --gzip --out="${FULL_DUMP_DIR}"
+  mongodump --uri="${CONNECTION_URI}" --db="${DB}" --collection="${COLLECTION}" --gzip --out="${FULL_SLAB_GROUP_DIR}"
 
   if [ "${DB}" == "match" ]; then
     echo "sleeping for ${DUMP_WAIT_SECONDS} seconds in attempt to avoid container crash on larger dumps"
@@ -133,13 +190,13 @@ if [[ -v SMD_QUERY ]]; then
 dumping admin__stack_meta_data with query:
 ${SMD_QUERY}]}
 "
-  echo "${SMD_QUERY}]}" > "${FULL_DUMP_DIR}/render/admin__stack_meta_data.query.txt"
-  mongodump --uri="${CONNECTION_URI}" --db="${DB}" --collection=admin__stack_meta_data --query "${SMD_QUERY}]}" --gzip --out="${FULL_DUMP_DIR}"
+  echo "${SMD_QUERY}]}" > "${FULL_DB_DUMP_DIR}/admin__stack_meta_data.query.txt"
+  mongodump --uri="${CONNECTION_URI}" --db="${DB}" --collection=admin__stack_meta_data --query "${SMD_QUERY}]}" --gzip --out="${FULL_SLAB_GROUP_DIR}"
 
   COLLECTION_COUNT=$((COLLECTION_COUNT+1))
 fi
 
 echo "
 Dumped ${COLLECTION_COUNT} collections to:
-  ${FULL_DUMP_DIR}
+  ${FULL_DB_DUMP_DIR}
 "
