@@ -216,19 +216,6 @@
             <version>0.2.3</version>
         </dependency>
 
-        <dependency>
-            <groupId>net.imglib2.simulation</groupId>
-            <artifactId>function-fit-mpicbg</artifactId>
-            <version>0.0.6</version>
-            <exclusions>
-                <!-- filter out unneeded Google version of old ejml jar which causes duplicate class failures -->
-                <exclusion>
-                    <groupId>com.googlecode.efficient-java-matrix-library</groupId>
-                    <artifactId>ejml</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-
     </dependencies>
 
     <!--

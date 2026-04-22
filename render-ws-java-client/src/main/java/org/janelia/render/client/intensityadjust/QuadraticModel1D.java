@@ -1,10 +1,8 @@
 package org.janelia.render.client.intensityadjust;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 
-import fit.util.MatrixFunctions;
 import mpicbg.models.AbstractModel;
 import mpicbg.models.Affine1D;
 import mpicbg.models.IllDefinedDataPointsException;

@@ -1,16 +1,18 @@
 package org.janelia.render.client.intensityadjust;
 
-import static org.janelia.alignment.util.ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS;
+import ij.ImageJ;
+import ij.ImagePlus;
+import ij.ImageStack;
+import ij.measure.Calibration;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
+
+import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Renderer;
@@ -24,43 +26,10 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.intensityadjust.intensity.IntensityMatcher;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
 import org.janelia.render.client.solver.visualize.RenderTools;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import fit.polynomial.QuadraticFunction;
-import ij.ImageJ;
-import ij.ImagePlus;
-import ij.ImageStack;
-import ij.gui.Line;
-import ij.gui.ProfilePlot;
-import ij.measure.Calibration;
-import ij.process.ByteProcessor;
-import ij.process.FloatProcessor;
-import mpicbg.models.AffineModel2D;
-import mpicbg.models.Point;
-import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
-import mpicbg.util.RealSum;
-import net.imglib2.Cursor;
-import net.imglib2.FinalRealInterval;
 import net.imglib2.Interval;
-import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.RealInterval;
-import net.imglib2.RealRandomAccess;
-import net.imglib2.RealRandomAccessible;
-import net.imglib2.converter.Converters;
-import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.display.imagej.ImageJFunctions;
-import net.imglib2.img.imageplus.ImagePlusImgs;
-import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.iterator.IntervalIterator;
-import net.imglib2.realtransform.AffineTransform2D;
-import net.imglib2.realtransform.RealViews;
-import net.imglib2.type.numeric.integer.UnsignedByteType;
-import net.imglib2.type.numeric.real.FloatType;
-import net.imglib2.util.Intervals;
-import net.imglib2.util.Pair;
-import net.imglib2.util.ValuePair;
-import net.imglib2.view.Views;
+
+import static org.janelia.alignment.util.ImageProcessorCache.DEFAULT_MAX_CACHED_PIXELS;
 
 public class AdjustBlock {
 
@@ -70,285 +39,6 @@ public class AdjustBlock {
 				.stream()
 				.sorted(Comparator.comparing(TileSpec::getTileId))
 				.collect(Collectors.toList());
-	}
-
-	/**
-	 * Fits a quadratic function along X and removes the difference, independently for each image
-	 */
-	public static FloatProcessor correct( final ImageProcessorWithMasks imp, final boolean debug )
-	{
-		final double[] avg = new double[ imp.ip.getWidth() ];
-		final ArrayList< Point > points = new ArrayList<>();
-
-		// use only 70% of the pixels in the middle
-		final int startY = Math.round( imp.ip.getHeight() * 0.15f );
-		final int endY = Math.round( imp.ip.getHeight() * 0.85f );
-
-		for ( int x = 0; x < avg.length; ++x )
-		{
-			//final ArrayList< Float > median = new ArrayList<>();
-
-			int count = 0;
-
-			for ( int y = startY; y <= endY; ++y )
-			{
-				final double value = imp.ip.getf(x, y);
-				if ( value >= 10 && value <= 245 )
-				{
-					//median.add( (float)value );
-					avg[ x ] += value;
-					++count;
-				}
-			}
-
-			avg[ x ] /= (double)count;
-
-			//Collections.sort( median );
-			//avg[ x ] = median.get( median.size() / 2 );
-
-			points.add( new Point( new double[] { x, avg[ x ] } ) );
-		}
-
-		if ( debug )
-		{
-			final ImagePlus line = ImageJFunctions.wrapFloat(Views.addDimension(ArrayImgs.doubles(avg, avg.length), 0, 0), "");
-			line.setRoi(new Line(0,0,avg.length,0));
-			new ProfilePlot( line ).createWindow();
-		}
-
-		try
-		{
-			/*
-			final double[] fit = avg.clone();
-			RandomAccessibleInterval<DoubleType> img = ArrayImgs.doubles( fit, avg.length );
-			Gauss3.gauss( 500, Views.extendBorder( img ), img );
-
-			double avgFit = 0.0;
-
-			for ( int x = 0; x < avg.length; ++x )
-			{
-				avgFit += fit[ x ];
-			}
-			
-			avgFit /= (double)fit.length;
-			*/
-
-			//HigherOrderPolynomialFunction q = new HigherOrderPolynomialFunction( 3 );
-			final QuadraticFunction q = new QuadraticFunction();
-			q.fitFunction(points);
-
-			double avgFit = 0.0;
-
-			final double[] fit = new double[avg.length];
-
-			for ( int x = 0; x < avg.length; ++x )
-			{
-				fit[ x ] = q.predict( x );
-
-				avgFit += fit[ x ];
-			}
-			
-			avgFit /= (double)fit.length;
-
-			final double[] correctedAvg = new double[avg.length];
-			final FloatProcessor corrected = new FloatProcessor( imp.ip.getWidth(), imp.ip.getHeight() );
-
-			for ( int x = 0; x < avg.length; ++x )
-			{
-				final double correction = ( fit[ x ] - avgFit );
-
-				correctedAvg[ x ] = avg[ x ] - correction;
-
-				for ( int y = 0; y < imp.ip.getHeight(); ++y )
-					corrected.setf(x, y, (float)Math.min( 255, Math.max( 0, imp.ip.getf(x, y) - correction ) ) );
-			}
-
-			if ( debug )
-			{
-				final ImagePlus fitImp = ImageJFunctions.wrapFloat(Views.addDimension(ArrayImgs.doubles(fit, fit.length), 0, 0), "");
-				fitImp.setRoi(new Line(0,0,avg.length,0));
-				new ProfilePlot( fitImp ).createWindow();
-
-				final ImagePlus correctedImp = ImageJFunctions.wrapFloat(Views.addDimension(ArrayImgs.doubles(correctedAvg, correctedAvg.length), 0, 0), "");
-				correctedImp.setRoi(new Line(0,0,avg.length,0));
-				new ProfilePlot( correctedImp ).createWindow();
-			}
-
-			return corrected;
-		}
-		catch (final Exception e) {
-			LOG.error("correct: caught exception ", e);
-		}
-
-		return null;
-	}
-
-	public static HashMap< Integer, double[] > computeAdjustments(
-			final List<Pair<AffineModel2D, TileSpec>> data,
-			final List<Pair<ByteProcessor, FloatProcessor>> corrected )
-	{
-		// we need to go from inside to outside adjusting avg and stdev of the overlapping areas
-		final ArrayList<Pair<Integer, Integer>> inputOrder = new ArrayList<>();
-
-		for ( int i = 0; i < data.size(); ++i )
-			inputOrder.add(new ValuePair<>(data.get(i).getB().getLayout().getImageCol(), i));
-
-		// sort by column order
-		inputOrder.sort(Comparator.comparing(Pair::getA));
-
-		final ArrayList<Integer> order = new ArrayList<>();
-
-		// [1,2,3,4] -> 3
-		// [1,2,4] -> 2
-		// [1,4] -> 4
-		// [1] -> 1
-		while(!inputOrder.isEmpty())
-		{
-			final int index = inputOrder.size() / 2;
-			order.add( inputOrder.get( index ).getB() ); // just remember the index
-			inputOrder.remove( index );
-		}
-
-		// order maps to [sub, mul, add]
-		final HashMap< Integer, double[] > adjustments = new HashMap<>();
-
-		// first tile is not adjusted for overlap (add 0, mul with 1, sub 0)
-		adjustments.put( order.get( 0 ), new double[] { 0, 1, 0 } );
-
-		for ( int o = 1; o < order.size(); ++o )
-		{
-			final int i = order.get( o );
-
-			final AffineModel2D model = data.get( i ).getA();
-			final AffineTransform2D affine = toImgLib( model );
-			final TileSpec tileSpec = data.get(i).getB();
-			final RealInterval boundingBox = boundingBox( 0,0,corrected.get( i ).getB().getWidth() - 1,corrected.get( i ).getB().getHeight() - 1, model );
-
-			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-			final RealRandomAccessible<FloatType> interpolantMask = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getA()) )), (in,out) -> out.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
-
-			final RealRandomAccess<FloatType> im = RealViews.affine( interpolant, affine ).realRandomAccess();
-			final RealRandomAccess<FloatType> ma = RealViews.affine( interpolantMask, affine ).realRandomAccess();
-
-			// which one do we overlap with that already has statistics
-			for ( int q = 0; q < order.size(); ++q )
-			{
-				if ( o == q )
-					continue;
-
-				final int j = order.get( q );
-
-				// it makes sense to look if we overlap
-				if ( adjustments.containsKey( j ) )
-				{
-					final double[] adjust = adjustments.get( j );
-					final AffineModel2D modelQ = data.get( j ).getA();
-					final AffineTransform2D affineQ = toImgLib( modelQ );
-					final RealInterval boundingBoxQ = boundingBox( 0,0,corrected.get( j ).getB().getWidth() - 1,corrected.get( j ).getB().getHeight() - 1, modelQ );
-
-					if ( intersects( boundingBox, boundingBoxQ ) )
-					{
-						//System.out.println( "Testing " + tileSpec.getImageCol() + " vs " + tileSpecQ.getImageCol() );
-
-						final RealRandomAccessible<FloatType> interpolantQ = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-						final RealRandomAccessible<FloatType> interpolantMaskQ = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( j ).getA()) )), (in,out) -> out.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
-
-						final RealRandomAccess<FloatType> imQ = RealViews.affine( interpolantQ, affineQ ).realRandomAccess();
-						final RealRandomAccess<FloatType> maQ = RealViews.affine( interpolantMaskQ, affineQ ).realRandomAccess();
-
-						// iterate over the intersection of both tiles
-						final Interval testInterval = Intervals.smallestContainingInterval( Intervals.intersect( boundingBox, boundingBoxQ ) );
-
-						final IntervalIterator it = new IntervalIterator( testInterval );
-						final long[] l = new long[ testInterval.numDimensions() ];
-
-						RealSum sumO = new RealSum();
-						RealSum sumQ = new RealSum();
-						int count = 0;
-
-						while ( it.hasNext() )
-						{
-							it.fwd();
-							it.localize( l );
-
-							ma.setPosition( l );
-							if ( ma.get().get() < 254.99 )
-								continue;
-
-							maQ.setPosition( l );
-							if ( maQ.get().get() < 254.99 )
-								continue;
-
-							im.setPosition( l );
-							sumO.add( im.get().get() );
-
-							imQ.setPosition( l );
-							sumQ.add( ( ( imQ.get().get() - adjust[ 0 ] ) * adjust[ 1 ] ) + adjust[ 2 ] );
-
-							++count;
-						}
-
-						if ( count > 0 )
-						{
-							final double avgO = sumO.getSum() / (double)count;
-							final double avgQ = sumQ.getSum() / (double)count;
-
-							//System.out.println( count + ": " + avgO + ", " + avgQ );
-
-							sumO = new RealSum();
-							sumQ = new RealSum();
-							count = 0;
-							it.reset();
-
-							while ( it.hasNext() )
-							{
-								it.fwd();
-								it.localize( l );
-
-								ma.setPosition( l );
-								if ( ma.get().get() < 254.99 )
-									continue;
-
-								maQ.setPosition( l );
-								if ( maQ.get().get() < 254.99 )
-									continue;
-
-								im.setPosition( l );
-								sumO.add( Math.pow( im.get().get() - avgO, 2 ) );
-
-								imQ.setPosition( l );
-								sumQ.add( Math.pow( ( ( ( imQ.get().get() - adjust[ 0 ] ) * adjust[ 1 ] ) + adjust[ 2 ] ) - avgQ, 2 ) );
-
-								++count;
-							}
-
-							final double stDevO = Math.sqrt( sumO.getSum() / (double)count );
-							final double stDevQ = Math.sqrt( sumQ.getSum() / (double)count );
-
-							//System.out.println( count + ": " + stDevO + ", " + stDevQ );
-
-							// TODO: there is a mistake if there are more than two overlaps
-							// Apply the already computed transformation
-							final double mul = stDevQ / stDevO;
-							adjustments.put( i, new double[] { avgO, mul, avgQ } );
-
-							LOG.debug("computeAdjustments: adjustment for column {} is: sub {}, mul {}, add {}",
-									  tileSpec.getLayout().getImageCol(), avgO, mul, avgQ);
-							break;
-						}
-					}
-				}
-			}
-
-			if ( !adjustments.containsKey( i ) )
-			{
-				LOG.warn("computeAdjustments: COULD NOT ADJUST column {}, setting to identity",
-						 tileSpec.getLayout().getImageCol());
-				adjustments.put( i, new double[] { 0, 1, 0 } );
-			}
-		}
-
-		return adjustments;
 	}
 
 	public static ImageProcessorWithMasks fuseFinal(
@@ -383,118 +73,6 @@ public class AdjustBlock {
 		return Renderer.renderImageProcessorWithMasks(sliceRenderParameters, preloadedImageProcessorCache);
 	}
 
-	public static ImageProcessorWithMasks fuseFinal(
-			final RenderParameters sliceRenderParameters,
-			final List<TileSpec> data1,
-			final List<Pair<ByteProcessor, FloatProcessor>> corrected1 ) // TODO: this will likely cause outofmemory
-	{
-		// TODO: pass pre-loaded cache in and clear source data so that masks can be cached and reused across z
-		final PreloadedImageProcessorCache preloadedImageProcessorCache =
-				new PreloadedImageProcessorCache(DEFAULT_MAX_CACHED_PIXELS,
-												 false,
-												 false);
-
-		for (int i = 0; i < data1.size(); i++) {
-			final TileSpec wrapper = data1.get(i);
-			final FloatProcessor correctedSource = corrected1.get(i).getB();
-
-			// Need to reset intensity range back to full 8-bit before converting to byte processor!
-			correctedSource.setMinAndMax(0, 255);
-			final ByteProcessor correctedSource8Bit = correctedSource.convertToByteProcessor();
-			
-			preloadedImageProcessorCache.put(wrapper.getTileImageUrl(), correctedSource8Bit);
-		}
-		// TODO: this will be bigger than 2^31
-		return Renderer.renderImageProcessorWithMasks(sliceRenderParameters, preloadedImageProcessorCache);
-	}
-
-	public static RandomAccessibleInterval< UnsignedByteType > fuse2d(
-			final Interval interval,
-			final List<Pair<AffineModel2D, TileSpec>> data,
-			final List<Pair<ByteProcessor, FloatProcessor>> corrected,
-			final Map< Integer, double[] > adjustments  )
-	{
-		// draw
-		final RandomAccessibleInterval< UnsignedByteType > slice = Views.translate( ArrayImgs.unsignedBytes( interval.dimension( 0 ), interval.dimension( 1 ) ), interval.min( 0 ), interval.min( 1 ) );
-
-		for ( int i = 0; i < data.size(); ++i )
-		{
-			final double[] adjust = adjustments.get( i );
-			//System.out.println( i + " " + Util.printCoordinates( adjust ) );
-
-			final AffineModel2D model = data.get( i ).getA();
-
-			final RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getB() ) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-			final RealRandomAccessible<FloatType> interpolantMask = Views.interpolate( Views.extendZero( Converters.convert( ((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", corrected.get( i ).getA()) )), (in,o) -> o.setReal( in.getRealFloat() ), new FloatType() ) ), new NLinearInterpolatorFactory<>() );
-
-			//final IterableInterval< UnsignedByteType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
-			final Cursor< UnsignedByteType > c = Views.iterable( slice ).cursor();
-
-			final AffineTransform2D affine = toImgLib( model );
-
-			final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), slice ).cursor();
-			final Cursor< FloatType > cMask = Views.interval( RealViews.affine( interpolantMask, affine ), slice ).cursor();
-
-			// Math.min( 255, Math.max( 0, 
-
-			while ( c.hasNext() )
-			{
-				c.fwd();
-				cMask.fwd();
-				cSrc.fwd();
-				if (cMask.get().get() >= 254.99 ) {
-					final FloatType srcType = cSrc.get();
-					final float value = (float)( ((srcType.get() - adjust[ 0 ]) * adjust[ 1 ] ) + adjust[ 2 ] );
-					if (value >= 0) {
-						final UnsignedByteType type = c.get();
-						final float currentValue = type.get();
-						if ( currentValue > 0 )
-							type.setReal( Math.min( 255, Math.max( 0, ( value + currentValue ) / 2 ) ) );
-						else
-							type.setReal( Math.min( 255, Math.max( 0, value ) ) );
-					}
-				}
-			}
-		}
-
-		return slice;
-	}
-
-	public static AffineTransform2D toImgLib( final AffineModel2D model )
-	{
-		final AffineTransform2D affine = new AffineTransform2D();
-		final double[] array = new double[6];
-		model.toArray( array );
-		affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
-		return affine;
-	}
-
-	public static boolean intersects( final RealInterval intervalA, final RealInterval intervalB )
-	{
-		final RealInterval intersection = Intervals.intersect( intervalA, intervalB );
-
-		for ( int d = 0; d < intersection.numDimensions(); ++d )
-			if ( intersection.realMax( d ) <= intersection.realMin( d ) )
-				return false;
-
-		return true;
-	}
-
-	public static RealInterval boundingBox( final int minX, final int minY, final int maxX, final int maxY, final AffineModel2D model )
-	{
-		final double[] tmpMin = new double[ 2 ];
-		final double[] tmpMax = new double[ 2 ];
-
-		tmpMin[ 0 ] = 0;
-		tmpMin[ 1 ] = 0;
-		tmpMax[ 0 ] = maxX;
-		tmpMax[ 1 ] = maxY;
-
-		model.estimateBounds( tmpMin, tmpMax );
-
-		return new FinalRealInterval( tmpMin, tmpMax );
-	}
-
 	public static ArrayList<OnTheFlyIntensity> correctIntensitiesForSliceTiles(
 			final List<TileSpec> sliceTiles,
 			final double renderScale,
@@ -527,7 +105,6 @@ public class AdjustBlock {
 			final double renderScale,
 			final Integer zDistance,
 			final ImageProcessorCache imageProcessorCache,
-			final int z,
 			final int numCoefficients,
 			final IntensityCorrectionStrategy strategy,
 			final int numThreads) throws InterruptedException, ExecutionException
@@ -730,7 +307,6 @@ public class AdjustBlock {
 		final int minZ = 23850;//27759;//20000;
 		final int maxZ = 23850;//27759;//20000;
 		final double stackScale = 1.0; // only full res supported right now
-		final boolean cacheOnDisk = true;
 
 		new ImageJ();
 
@@ -767,7 +343,6 @@ public class AdjustBlock {
 															   0.1,
 															   null,
 															   imageProcessorCache,
-															   z,
 															   DEFAULT_NUM_COEFFICIENTS,
 															   new AffineIntensityCorrectionStrategy(),
 															   1);
@@ -789,7 +364,5 @@ public class AdjustBlock {
 	}
 
 	public static int DEFAULT_NUM_COEFFICIENTS = 8;
-
-	private static final Logger LOG = LoggerFactory.getLogger(AdjustBlock.class);
 
 }

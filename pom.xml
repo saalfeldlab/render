@@ -108,33 +108,6 @@
     </modules>
 
     <repositories>
-        <!--
-          Explicitly list central first to increase successful build chances when
-          maven.scijava.org is down or is missing components.
-          Note that if the connection to central is directly refused, the build will fail.
-        -->
-        <repository>
-            <id>central</id>
-            <name>Maven Central</name>
-            <url>https://repo.maven.apache.org/maven2</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-        <repository>
-            <id>scijava.public</id>
-            <name>SciJava Public</name>
-            <url>https://maven.scijava.org/content/groups/public</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
         <repository>
             <id>imagej.public</id>
             <url>https://maven.scijava.org/content/groups/public</url>
