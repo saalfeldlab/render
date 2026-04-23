@@ -1,0 +1,102 @@
+{
+  "meshCellSize": 64,
+  "minMeshCellSize": 0,
+  "x": 48200,
+  "y": 59300,
+  "width": 4,
+  "height": 5,
+  "scale": 1,
+  "areaOffset": false,
+  "convertToGray": false,
+  "quality": 0.85,
+  "numberOfThreads": 1,
+  "skipInterpolation": false,
+  "binaryMask": false,
+  "excludeMask": false,
+  "doFilter": false,
+  "addWarpFieldDebugOverlay": false,
+  "fillWithNoise": false,
+  "tileSpecs": [
+    {
+      "tileId": "w61_magc0145_scan015_m0015_r14_s74",
+      "layout": {
+        "sectionId": "12.0",
+        "imageRow": 51,
+        "imageCol": 51,
+        "stageX": -36545.27105209528,
+        "stageY": -13410.214592926066
+      },
+      "z": 12,
+      "minX": 48103,
+      "minY": 58051,
+      "maxX": 50107,
+      "maxY": 59799,
+      "width": 2000,
+      "height": 1748,
+      "minIntensity": 0,
+      "maxIntensity": 255,
+      "mipmapLevels": {
+        "0": {
+          "imageUrl": "src/test/resources/stitch-test/w61_s109_z12_m0015_sfov_074.png"
+        }
+      },
+      "transforms": {
+        "type": "list",
+        "specList": [
+          {
+            "type": "leaf",
+            "className": "org.janelia.alignment.transform.ExponentialFunctionOffsetTransform",
+            "dataString": "3.164065083689898,0.010223592506552219,0.0,0"
+          },
+          {
+            "type": "leaf",
+            "className": "mpicbg.trakem2.transform.AffineModel2D",
+            "dataString": "1.0 0.0 0.0 1.0 48106.65601272403 58051.74176269165"
+          }
+        ]
+      },
+      "meshCellSize": 64
+    },
+    {
+      "tileId": "w61_magc0145_scan015_m0009_r70_s90",
+      "layout": {
+        "sectionId": "12.0",
+        "imageRow": 50,
+        "imageCol": 50,
+        "stageX": -36840.73885339055,
+        "stageY": -14313.184546360093
+      },
+      "z": 12,
+      "minX": 47842,
+      "minY": 57554,
+      "maxX": 49846,
+      "maxY": 59302,
+      "width": 2000,
+      "height": 1748,
+      "minIntensity": 0,
+      "maxIntensity": 255,
+      "mipmapLevels": {
+        "0": {
+          "imageUrl": "src/test/resources/stitch-test/w61_s109_z12_m0009_sfov_090.png"
+        }
+      },
+      "transforms": {
+        "type": "list",
+        "specList": [
+          {
+            "type": "leaf",
+            "className": "org.janelia.alignment.transform.ExponentialFunctionOffsetTransform",
+            "dataString": "3.164065083689898,0.010223592506552219,0.0,0"
+          },
+          {
+            "type": "leaf",
+            "className": "mpicbg.trakem2.transform.AffineModel2D",
+            "dataString": "1.0 0.0 0.0 1.0 47845.959522659396 57554.743480678524"
+          }
+        ]
+      },
+      "meshCellSize": 64
+    }
+  ],
+  "minBoundsMeshCellSize": 64
+}
