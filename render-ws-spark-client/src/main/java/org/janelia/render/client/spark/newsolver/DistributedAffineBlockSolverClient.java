@@ -100,7 +100,7 @@ public class DistributedAffineBlockSolverClient
             throws IllegalArgumentException, IOException {
 
         final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
-        final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
+        final List<AffineBlockSolverSetup> basicSetupList = new ArrayList<>();
         final AffineBlockSolverSetup setup = pipelineParameters.getAffineBlockSolverSetup();
         final List<StackWithZValues> stackList = multiProject.buildListOfStackWithAllZ();
         final int nRuns = setup.alternatingRuns.nRuns;
@@ -109,63 +109,76 @@ public class DistributedAffineBlockSolverClient
         final String matchSuffix = pipelineParameters.getMatchCopyToCollectionSuffix();
         for (final StackWithZValues stackWithZValues : stackList) {
             if (setup.stitchOnly) {
-                setupList.addAll(buildSetupForEachZLayer(stackWithZValues,
-                                                         multiProject,
-                                                         setup,
-                                                         matchSuffix));
+                basicSetupList.addAll(buildSetupForEachZLayer(stackWithZValues,
+                                                              multiProject,
+                                                              setup,
+                                                              matchSuffix));
             } else {
-                setupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
-                                                       stackWithZValues,
-                                                       multiProject.deriveMatchCollectionNamesFromProject,
-                                                       matchSuffix));
+                basicSetupList.add(setup.buildPipelineClone(multiProject.getBaseDataUrl(),
+                                                            stackWithZValues,
+                                                            multiProject.deriveMatchCollectionNamesFromProject,
+                                                            matchSuffix));
             }
         }
 
         final DistributedAffineBlockSolverClient affineBlockSolverClient = new DistributedAffineBlockSolverClient();
 
-        if (setup.stitchOnly) {
-
-            // stitch each layer
-            affineBlockSolverClient.alignSetupList(sparkContext, setupList);
-
-            if (setup.targetStack.completeStack) {
-                final Set<String> completedTargetStacks = new HashSet<>();
-                for (final AffineBlockSolverSetup stackSetup : setupList) {
-                    final String targetStack = stackSetup.targetStack.stack;
-                    if (completedTargetStacks.contains(targetStack)) {
-                        continue;
-                    }
-                    final RenderDataClient renderDataClient = stackSetup.renderWeb.getDataClient();
-                    renderDataClient.setStackState(stackSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
-                    completedTargetStacks.add(targetStack);
-                }
-            }
-
-        } else if (nRuns == 1) {
-
-            affineBlockSolverClient.alignSetupList(sparkContext, setupList);
-
+        final List<List<AffineBlockSolverSetup>> listOfSetupLists = new ArrayList<>();
+        if (setup.processMultipleStacksInParallel) {
+            LOG.info("runPipelineStep: processing {} setups in parallel", basicSetupList.size());
+            listOfSetupLists.add(basicSetupList);
         } else {
-
-            // Different stacks can be aligned in parallel, but each run must be done sequentially.
-            // So, for each run, create a list of setups that will be aligned in parallel.
-            final List<List<AffineBlockSolverSetup>> setupListsForRuns = buildSetupListsForRuns(nRuns, setupList);
-
-            // loop through each run and align the stacks in parallel ...
-            for (int runIndex = 0; runIndex < nRuns; runIndex++) {
-
-                final List<AffineBlockSolverSetup> setupListForRun = setupListsForRuns.get(runIndex);
-
-                // align all stacks for this run
-                affineBlockSolverClient.alignSetupList(sparkContext, setupListForRun);
-
-                // clean-up intermediate stacks for prior runs if requested
-                if (cleanUpIntermediateStacks && (runIndex > 0)) {
-                    setupListForRun.forEach(s -> AlternatingSolveUtils.cleanUpIntermediateStack(s.renderWeb,
-                                                                                                s.stack));
-                }
+            LOG.info("runPipelineStep: processing {} setups serially", basicSetupList.size());
+            for (final AffineBlockSolverSetup serialSetup : basicSetupList) {
+                listOfSetupLists.add(Collections.singletonList(serialSetup));
             }
+        }
 
+        for (final List<AffineBlockSolverSetup> setupList : listOfSetupLists) {
+            if (setup.stitchOnly) {
+
+                // stitch each layer
+                affineBlockSolverClient.alignSetupList(sparkContext, setupList);
+
+                if (setup.targetStack.completeStack) {
+                    final Set<String> completedTargetStacks = new HashSet<>();
+                    for (final AffineBlockSolverSetup stackSetup : setupList) {
+                        final String targetStack = stackSetup.targetStack.stack;
+                        if (completedTargetStacks.contains(targetStack)) {
+                            continue;
+                        }
+                        final RenderDataClient renderDataClient = stackSetup.renderWeb.getDataClient();
+                        renderDataClient.setStackState(stackSetup.targetStack.stack, StackMetaData.StackState.COMPLETE);
+                        completedTargetStacks.add(targetStack);
+                    }
+                }
+
+            } else if (nRuns == 1) {
+
+                affineBlockSolverClient.alignSetupList(sparkContext, setupList);
+
+            } else {
+
+                // Different stacks can be aligned in parallel, but each run must be done sequentially.
+                // So, for each run, create a list of setups that will be aligned in parallel.
+                final List<List<AffineBlockSolverSetup>> setupListsForRuns = buildSetupListsForRuns(nRuns, setupList);
+
+                // loop through each run and align the stacks in parallel ...
+                for (int runIndex = 0; runIndex < nRuns; runIndex++) {
+
+                    final List<AffineBlockSolverSetup> setupListForRun = setupListsForRuns.get(runIndex);
+
+                    // align all stacks for this run
+                    affineBlockSolverClient.alignSetupList(sparkContext, setupListForRun);
+
+                    // clean-up intermediate stacks for prior runs if requested
+                    if (cleanUpIntermediateStacks && (runIndex > 0)) {
+                        setupListForRun.forEach(s -> AlternatingSolveUtils.cleanUpIntermediateStack(s.renderWeb,
+                                                                                                    s.stack));
+                    }
+                }
+
+            }
         }
 
     }

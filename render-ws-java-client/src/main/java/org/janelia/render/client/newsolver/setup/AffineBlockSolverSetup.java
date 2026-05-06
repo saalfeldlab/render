@@ -89,14 +89,11 @@ public class AffineBlockSolverSetup extends CommandLineParameters
     @Parameter(names = "--maxZRangeMatches", description = "max z-range in which to load matches (default: '-1' - no limit)")
     public int maxZRangeMatches = -1;
 
-	// TODO: remove this parameter if it remains unused after we are done with the wafer 53 alignment
-    // Parameter for testing
-	@SuppressWarnings("unused")
-	@Parameter(
-			names = "--visualizeResults",
-			description = "Visualize results (if running interactively)",
-			arity = 0)
-	public boolean visualizeResults = false;
+    @Parameter(
+            names = "--processMultipleStacksInParallel",
+            description = "If multiple stacks are to be solved, process them in parallel (default is to process them serially)."
+    )
+    public boolean processMultipleStacksInParallel = false;
 
 	public void initDefaultValues() {
 		if (!blockOptimizer.isConsistent())
