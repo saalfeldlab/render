@@ -1137,7 +1137,8 @@ public class RenderDataClient {
 
         ResolvedTileSpecsWithMatchPairs result = new ResolvedTileSpecsWithMatchPairs();
 
-        final List<Bounds> requestBoundsList = buildRequestBoundsList(stack, bounds);
+        final long maxTilesPerRequest = 20_000L; // RenderDao.MAX_TILE_SPEC_COUNT_FOR_QUERIES = 500_000, but using a lower value here to keep response sizes smaller
+        final List<Bounds> requestBoundsList = buildRequestBoundsList(stack, bounds, maxTilesPerRequest);
         for (final Bounds requestBounds : requestBoundsList) {
 
             final URIBuilder uriBuilder = new URIBuilder(baseUri);
@@ -1188,7 +1189,8 @@ public class RenderDataClient {
     }
 
     public List<Bounds> buildRequestBoundsList(final String stack,
-                                               final Bounds bounds)
+                                               final Bounds bounds,
+                                               final long maxTilesPerRequest)
             throws IOException {
 
         LOG.info("buildRequestBoundsList: entry, stack={}, bounds={}", stack, bounds);
@@ -1196,7 +1198,6 @@ public class RenderDataClient {
         final List<Bounds> requestBoundsList = new ArrayList<>();
 
         final StackMetaData stackMetaData = getStackMetaData(stack);
-        final long maxTilesPerRequest = 100_000L; // RenderDao.MAX_TILE_SPEC_COUNT_FOR_QUERIES = 500_000, but using a lower value here to keep response sizes smaller
         final int numberOfRequestsNeeded = 1 + (int) (stackMetaData.getStats().getTileCount() / maxTilesPerRequest);
 
         if (numberOfRequestsNeeded > 1) {
