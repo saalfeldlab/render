@@ -24,85 +24,85 @@ PATTERN_IS_ARG=false
 
 # List unique child directory names one level below $1.
 list_level() {
-    local base="${1%/}"
-    find "$base" -mindepth 1 -maxdepth 1 -type d | sed "s|^${base}/||" | sort
+    local BASE="${1%/}"
+    find "$BASE" -mindepth 1 -maxdepth 1 -type d | sed "s|^${BASE}/||" | sort
 }
 
 # Display a numbered list and prompt for one or more selections.
 # Prepends "all" as option 1. Sets SELECTED array to chosen items.
 pick_many() {
-    local prompt="$1"; shift
-    local items=("$@")
-    printf "\n%s\n" "$prompt"
-    for (( i=0; i<${#items[@]}; i++ )); do
-        printf "%5d) %s\n" $(( i+1 )) "${items[$i]#"$BASE_DUMP_DIR/"}"
+    local PROMPT="$1"; shift
+    local ITEMS=("$@")
+    printf "\n%s\n" "$PROMPT"
+    for (( I=0; I<${#ITEMS[@]}; I++ )); do
+        printf "%5d) %s\n" $(( I+1 )) "${ITEMS[$I]#"$BASE_DUMP_DIR/"}"
     done
     printf "\nEnter numbers separated by spaces or commas, or 'all'.\n"
     while true; do
-        read -rp "Selection: " raw
-        raw="${raw//,/ }"
-        if [[ "$raw" == "all" ]]; then
-            SELECTED=("${items[@]}"); return 0
+        read -rp "Selection: " RAW
+        RAW="${RAW//,/ }"
+        if [[ "$RAW" == "all" ]]; then
+            SELECTED=("${ITEMS[@]}"); return 0
         fi
         SELECTED=()
-        local valid=true
-        for tok in $raw; do
-            if [[ "$tok" =~ ^[0-9]+$ ]] && (( tok >= 1 && tok <= ${#items[@]} )); then
-                SELECTED+=("${items[$((tok-1))]}")
+        local VALID=true
+        for TOK in $RAW; do
+            if [[ "$TOK" =~ ^[0-9]+$ ]] && (( TOK >= 1 && TOK <= ${#ITEMS[@]} )); then
+                SELECTED+=("${ITEMS[$((TOK-1))]}")
             else
-                echo "  Invalid entry '$tok' — enter numbers between 1 and ${#items[@]}."
-                valid=false; break
+                echo "  Invalid entry '$TOK' — enter numbers between 1 and ${#ITEMS[@]}."
+                VALID=false; break
             fi
         done
-        $valid && [[ ${#SELECTED[@]} -gt 0 ]] && return 1
-        $valid && echo "  No selection made — please choose at least one."
+        $VALID && [[ ${#SELECTED[@]} -gt 0 ]] && return 1
+        $VALID && echo "  No selection made — please choose at least one."
     done
 }
 
 # build DUMP_PATTERN interactively if not supplied
-# glob_patterns holds a list of full -path glob patterns, one per selected branch
+# GLOB_PATTERNS holds a list of full -path glob patterns, one per selected branch
 if [[ -z "$DUMP_PATTERN" ]]; then
-    levels=("LOCATION" "STAGE" "PROJECT" "SLAB_GROUP" "DB")
-    # partial_paths: relative paths being drilled into, e.g. ("google/")
-    partial_paths=("")
+    LEVELS=("LOCATION" "STAGE" "PROJECT" "SLAB_GROUP" "DB")
+    # PARTIAL_PATHS: relative paths being drilled into, e.g. ("google/")
+    PARTIAL_PATHS=("")
 
-    for (( lvl=0; lvl<${#levels[@]}; lvl++ )); do
-        label="${levels[$lvl]}"
+    for (( LVL=0; LVL<${#LEVELS[@]}; LVL++ )); do
+        LABEL="${LEVELS[$LVL]}"
 
         # Collect deduplicated children across all current partial paths
-        children=()
-        while IFS= read -r u; do children+=("$u"); done < <(
-            for p in "${partial_paths[@]}"; do
-                list_level "$BASE_DUMP_DIR/$p"
+        CHILDREN=()
+        while IFS= read -r U; do CHILDREN+=("$U"); done < <(
+            for P in "${PARTIAL_PATHS[@]}"; do
+                list_level "$BASE_DUMP_DIR/$P"
             done | sort -u)
 
-        pick_many "Select one or more ${label}s:" "${children[@]}"
+        pick_many "Select one or more ${LABEL}s:" "${CHILDREN[@]}"
 
         if (( $? == 0 )); then
             # Append wildcards for remaining levels to each partial path
-            stars=""
-            for (( r=lvl; r<${#levels[@]}; r++ )); do stars="${stars}*/"; done
-            glob_patterns=()
-            for p in "${partial_paths[@]}"; do
-                glob_patterns+=("$BASE_DUMP_DIR/${p}${stars%/}")
+            STARS=""
+            for (( R=LVL; R<${#LEVELS[@]}; R++ )); do STARS="${STARS}*/"; done
+            GLOB_PATTERNS=()
+            for P in "${PARTIAL_PATHS[@]}"; do
+                GLOB_PATTERNS+=("$BASE_DUMP_DIR/${P}${STARS%/}")
             done
             break
         else
             # Fan out partial paths with each selected child, skipping
             # combinations that do not exist on disk (e.g. google_test/00_gc/).
-            new_paths=()
-            for p in "${partial_paths[@]}"; do
-                for sel in "${SELECTED[@]}"; do
-                    [[ -d "$BASE_DUMP_DIR/${p}${sel}" ]] && new_paths+=("${p}${sel}/")
+            NEW_PATHS=()
+            for P in "${PARTIAL_PATHS[@]}"; do
+                for SEL in "${SELECTED[@]}"; do
+                    [[ -d "$BASE_DUMP_DIR/${P}${SEL}" ]] && NEW_PATHS+=("${P}${SEL}/")
                 done
             done
-            partial_paths=("${new_paths[@]}")
+            PARTIAL_PATHS=("${NEW_PATHS[@]}")
 
             # Last level: exact paths, no wildcards needed
-            if (( lvl == ${#levels[@]} - 1 )); then
-                glob_patterns=()
-                for p in "${partial_paths[@]}"; do
-                    glob_patterns+=("$BASE_DUMP_DIR/${p%/}")
+            if (( LVL == ${#LEVELS[@]} - 1 )); then
+                GLOB_PATTERNS=()
+                for P in "${PARTIAL_PATHS[@]}"; do
+                    GLOB_PATTERNS+=("$BASE_DUMP_DIR/${P%/}")
                 done
             fi
 
@@ -111,34 +111,34 @@ if [[ -z "$DUMP_PATTERN" ]]; then
 fi
 
 # collect matching directories
-matches=()
+MATCHES=()
 if $PATTERN_IS_ARG; then
     # Argument is a free-form substring — match anywhere in the path
-    while IFS= read -r d; do matches+=("$d"); done < <(
+    while IFS= read -r D; do MATCHES+=("$D"); done < <(
         find "$BASE_DUMP_DIR" -mindepth 5 -maxdepth 5 -type d | grep "$DUMP_PATTERN" | sort)
-elif [[ -n "${glob_patterns[*]}" ]]; then
+elif [[ -n "${GLOB_PATTERNS[*]}" ]]; then
     # One or more glob patterns built interactively
-    while IFS= read -r d; do matches+=("$d"); done < <(
-        for pat in "${glob_patterns[@]}"; do
-            eval "find \"$BASE_DUMP_DIR\" -mindepth 5 -maxdepth 5 -type d -path \"$pat\""
+    while IFS= read -r D; do MATCHES+=("$D"); done < <(
+        for PAT in "${GLOB_PATTERNS[@]}"; do
+            eval "find \"$BASE_DUMP_DIR\" -mindepth 5 -maxdepth 5 -type d -path \"$PAT\""
         done | sort -u)
 fi
 
-if [[ ${#matches[@]} -eq 0 ]]; then
+if [[ ${#MATCHES[@]} -eq 0 ]]; then
     echo "No mongodb dump directories found."
     exit 1
 fi
 
 # multi-select and print results
-pick_many "Select one or more mongodb dump directories:" "${matches[@]}"
-all_selected=$?
+pick_many "Select one or more mongodb dump directories:" "${MATCHES[@]}"
+ALL_SELECTED=$?
 
 printf "\nYou selected the following mongodb dump directories:\n"
-if (( all_selected == 0 )); then
-    printf '  %s\n' "${matches[@]}"
+if (( ALL_SELECTED == 0 )); then
+    printf '  %s\n' "${MATCHES[@]}"
 else
-    for sel in "${SELECTED[@]}"; do
-        echo "  $sel"
+    for SEL in "${SELECTED[@]}"; do
+        echo "  $SEL"
     done
 fi
 
