@@ -89,9 +89,7 @@ if [[ -z "$DUMP_PATTERN" ]]; then
                 list_level "$BASE_DUMP_DIR/$P"
             done | sort -u)
 
-        pick_many "Select one or more ${LABEL}s:" "${CHILDREN[@]}"
-
-        if (( $? == 0 )); then
+        if pick_many "Select one or more ${LABEL}s:" "${CHILDREN[@]}"; then
             # Append wildcards for remaining levels to each partial path
             STARS=""
             for (( R=LVL; R<${#LEVELS[@]}; R++ )); do STARS="${STARS}*/"; done
