@@ -11,6 +11,53 @@ set -e
 # For example:
 #   /mnt/disks/mongodb_dump_fs/dump/google/01_match/w61_serial_110_to_119/s115_to_s119_r00/match
 #   /mnt/disks/mongodb_dump_fs/dump/google/02_align/w61_serial_090_to_099/s094_r00/render
+#
+# Optional parameters (if omitted, you will be prompted interactively):
+#   --db        <render|match>
+#   --stage     <00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5|timestamp>
+#   --project   <w61_serial_NNN_to_NNN>
+#   --slab-group <slab-group>
+#   --pattern   <collection-pattern-regex>
+
+# ----------------------------------------------------------------------------
+# Parse optional named parameters
+
+ARG_DB=""
+ARG_STAGE=""
+ARG_PROJECT=""
+ARG_SLAB_GROUP=""
+ARG_PATTERN=""
+
+while [[ $# -gt 0 ]]; do
+  case "${1}" in
+    --db)
+      ARG_DB="${2:?'--db requires a value'}"
+      shift 2
+      ;;
+    --stage)
+      ARG_STAGE="${2:?'--stage requires a value'}"
+      shift 2
+      ;;
+    --project)
+      ARG_PROJECT="${2:?'--project requires a value'}"
+      shift 2
+      ;;
+    --slab-group)
+      ARG_SLAB_GROUP="${2:?'--slab-group requires a value'}"
+      shift 2
+      ;;
+    --pattern)
+      ARG_PATTERN="${2:?'--pattern requires a value'}"
+      shift 2
+      ;;
+    *)
+      echo "WARNING: unrecognized parameter '${1}' ignored"
+      shift
+      ;;
+  esac
+done
+
+# ----------------------------------------------------------------------------
 
 BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
 
@@ -19,66 +66,128 @@ if [ ! -d "${BASE_DUMP_DIR}" ]; then
   exit 1
 fi
 
-echo "
-Select database:"
-select DB in "render" "match"; do
-  case "${DB}" in
-    render|match) break ;;
-    *) echo "  Invalid selection, please enter 1 or 2." ;;
+# ----------------------------------------------------------------------------
+# Resolve DB
+
+if [[ -n "${ARG_DB}" ]]; then
+  case "${ARG_DB}" in
+    render|match) DB="${ARG_DB}" ;;
+    *) echo "Invalid --db value '${ARG_DB}' entered, please select from the list."; ARG_DB="" ;;
   esac
-done
+fi
+if [[ -z "${ARG_DB}" && -z "${DB}" ]]; then
+  echo "
+Select database:"
+  select DB in "render" "match"; do
+    case "${DB}" in
+      render|match) break ;;
+      *) echo "  Invalid selection, please enter 1 or 2." ;;
+    esac
+  done
+fi
+
+# ----------------------------------------------------------------------------
+# Resolve STAGE
 
 LOCATION="google"
 
-echo "
-Select stage:"
-select STAGE_CHOICE in "00_par" "01_match" "02_align" "03_ic2d_nc4_hist_rs0p5" "timestamp"; do
-  case "${STAGE_CHOICE}" in
+if [[ -n "${ARG_STAGE}" ]]; then
+  case "${ARG_STAGE}" in
     00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5)
-      STAGE="${STAGE_CHOICE}"
-      break
+      STAGE="${ARG_STAGE}"
       ;;
     timestamp)
       STAGE=$(date +"%Y%m%d_%H%M%S")
-      break
       ;;
-    *) echo "  Invalid selection, please enter a number from the list." ;;
+    *)
+      echo "Invalid --stage value '${ARG_STAGE}' entered, please select from the list."
+      ARG_STAGE=""
+      ;;
   esac
-done
+fi
+if [[ -z "${ARG_STAGE}" && -z "${STAGE}" ]]; then
+  echo "
+Select stage:"
+  select STAGE_CHOICE in "00_par" "01_match" "02_align" "03_ic2d_nc4_hist_rs0p5" "timestamp"; do
+    case "${STAGE_CHOICE}" in
+      00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5)
+        STAGE="${STAGE_CHOICE}"
+        break
+        ;;
+      timestamp)
+        STAGE=$(date +"%Y%m%d_%H%M%S")
+        break
+        ;;
+      *) echo "  Invalid selection, please enter a number from the list." ;;
+    esac
+  done
+fi
 
-echo "
+# ----------------------------------------------------------------------------
+# Resolve PROJECT
+
+if [[ -n "${ARG_PROJECT}" ]]; then
+  PROJECT="${ARG_PROJECT}"
+else
+  echo "
 Select project:"
-PROJECTS=()
-for i in $(seq 0 10 150); do
-  PROJECTS+=("$(printf "w61_serial_%03d_to_%03d" "$i" "$((i+9))")")
-done
-select PROJECT in "${PROJECTS[@]}"; do
-  if [[ -n "${PROJECT}" ]]; then
-    break
-  else
-    echo "  Invalid selection, please enter a number from the list."
-  fi
-done
+  PROJECTS=()
+  for i in $(seq 0 10 150); do
+    PROJECTS+=("$(printf "w61_serial_%03d_to_%03d" "$i" "$((i+9))")")
+  done
+  select PROJECT in "${PROJECTS[@]}"; do
+    if [[ -n "${PROJECT}" ]]; then
+      break
+    else
+      echo "  Invalid selection, please enter a number from the list."
+    fi
+  done
+fi
 
-echo "
+# ----------------------------------------------------------------------------
+# Resolve SLAB_GROUP
+
+if [[ -n "${ARG_SLAB_GROUP}" ]]; then
+  SLAB_GROUP="${ARG_SLAB_GROUP}"
+fi
+if [[ -z "${SLAB_GROUP}" ]]; then
+  echo "
 Enter slab-group (e.g.    s115_to_s119_r00    s094_r00    20260421_test    ):"
-while true; do
-  read -rp "  Slab-group: " SLAB_GROUP
-  if [[ -n "${SLAB_GROUP}" ]]; then
-    break
-  fi
-  echo "  Slab-group must not be empty."
-done
+  while true; do
+    read -rp "  Slab-group: " SLAB_GROUP
+    if [[ -n "${SLAB_GROUP}" ]]; then
+      break
+    fi
+    echo "  Slab-group must not be empty."
+  done
+fi
 
-echo "
+# ----------------------------------------------------------------------------
+# Resolve COLLECTION_PATTERN
+
+if [[ -n "${ARG_PATTERN}" ]]; then
+  COLLECTION_PATTERN="${ARG_PATTERN}"
+else
+  echo "
 Enter collection pattern regex (e.g.    .*_par_.*    .*_s11[5-9]_.*    .*align.*    ):"
-while true; do
-  read -rp "  Pattern: " COLLECTION_PATTERN
-  if [[ -n "${COLLECTION_PATTERN}" ]]; then
-    break
-  fi
-  echo "  Pattern must not be empty."
-done
+  while true; do
+    read -rp "  Pattern: " COLLECTION_PATTERN
+    if [[ -n "${COLLECTION_PATTERN}" ]]; then
+      break
+    fi
+    echo "  Pattern must not be empty."
+  done
+fi
+
+# ----------------------------------------------------------------------------
+# Pad COLLECTION_PATTERN with .* anchors if not already anchored
+
+if [[ "${COLLECTION_PATTERN}" != ^* ]]; then
+  COLLECTION_PATTERN=".*${COLLECTION_PATTERN}"
+fi
+if [[ "${COLLECTION_PATTERN}" != *$ ]]; then
+  COLLECTION_PATTERN="${COLLECTION_PATTERN}.*"
+fi
 
 # ----------------------------------------------------------------------------
 # Build and validate the target dump directory
