@@ -3,9 +3,12 @@
 # ----------------------------------------------------------------------------
 # Usage: db-restore-collection.sh [DUMP_PATTERN]
 #
+# Example DUMP_PATTERNS are: 'par.*s70', 'match.*s115', 'align.*s90', 'ic2d.*s080'
+#
 # Restore dump files to the mongodb database running on the current Google Cloud VM container.
 #
-# You will be prompted to select one or more dump directories within
+# If you do not specify a dump pattern,
+# you will be prompted to select one or more dump directories within
 #   /mnt/disks/mongodb_dump_fs/dump/janelia
 #
 # Dump directories have the pattern:
@@ -112,8 +115,7 @@ matches=()
 if $PATTERN_IS_ARG; then
     # Argument is a free-form substring — match anywhere in the path
     while IFS= read -r d; do matches+=("$d"); done < <(
-        find "$BASE_DUMP_DIR" -mindepth 5 -maxdepth 5 -type d \
-            | grep -F "$DUMP_PATTERN" | sort)
+        find "$BASE_DUMP_DIR" -mindepth 5 -maxdepth 5 -type d | grep "$DUMP_PATTERN" | sort)
 elif [[ -n "${glob_patterns[*]}" ]]; then
     # One or more glob patterns built interactively
     while IFS= read -r d; do matches+=("$d"); done < <(
