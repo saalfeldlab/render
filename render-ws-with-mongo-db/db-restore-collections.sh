@@ -162,6 +162,20 @@ URI="mongodb://localhost:27017"
 shopt -s nullglob
 for DUMP_DIR in "${SELECTED[@]}"; do
   for DUMP_FILE in "${DUMP_DIR}"/*.bson.gz; do
+
+    # check for match db dumps and prompt for load since they are typically large and take ~3 minutes to load
+    if [[ "$DUMP_FILE" == *match.bson.gz ]]; then
+      while true; do
+        DUMP_BASENAME=$(basename "${DUMP_FILE}")
+        read -rp "Do you want to load ${DUMP_BASENAME}? [y/n]: " CONFIRM
+        case "$CONFIRM" in
+          y) break ;;
+          n) continue 2 ;;
+          *) echo "  Please enter 'y' or 'n'." ;;
+        esac
+      done
+    fi
+
     echo "restoring ${DUMP_FILE} ..."
     # see https://www.mongodb.com/docs/database-tools/mongorestore/
     # notes: --dryRun option exists
