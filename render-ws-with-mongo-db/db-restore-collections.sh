@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 
 # ----------------------------------------------------------------------------
-# Usage: db-restore-collection.sh [DUMP_PATTERN]
+# Usage: db-restore-collection.sh [--pattern DUMP_PATTERN]
 #
 # Example DUMP_PATTERNS are: 'par.*s70', 'match.*s115', 'align.*s90', 'ic2d.*s080'
 #
 # Restore dump files to the mongodb database running on the current Google Cloud VM container.
 #
-# If you do not specify a dump pattern,
-# you will be prompted to select one or more dump directories within
+# If you do not specify a dump pattern, you will be prompted to select one or more dump directories within
 #   /mnt/disks/mongodb_dump_fs/dump/janelia
 #
 # Dump directories have the pattern:
@@ -18,9 +17,23 @@
 #   /mnt/disks/mongodb_dump_fs/dump/google/01_match/w61_serial_110_to_119/s115_to_s119_r00/match
 
 BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
-DUMP_PATTERN="${1:-}"
+DUMP_PATTERN=""
 PATTERN_IS_ARG=false
-[[ -n "${1:-}" ]] && PATTERN_IS_ARG=true
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --pattern)
+            DUMP_PATTERN="${2:-}"
+            PATTERN_IS_ARG=true
+            shift 2
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            echo "Usage: $0 [--pattern DUMP_PATTERN]"
+            exit 1
+            ;;
+    esac
+done
 
 # List unique child directory names one level below $1.
 list_level() {
