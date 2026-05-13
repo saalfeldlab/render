@@ -65,8 +65,8 @@ public class MichalLayerNorm implements Serializable {
         @Parameter(names = "--threshold", description = "Only pixels with value strictly greater than this contribute to the histogram")
         public int threshold = 100;
 
-        @Parameter(names = "--referenceZ", description = "z-value of the reference layer (applied to every stack). When omitted, each stack uses its smallest z")
-        public Double referenceZ = null;
+        @Parameter(names = "--referenceZ", description = "z-value of the reference layer (applied to every stack). When omitted, the first layer is used")
+        public double referenceZ = 1.0;
 
         @Parameter(names = "--completeTargetStack", description = "If true, target stacks are marked COMPLETE after processing")
         public boolean completeTargetStack = false;
@@ -110,10 +110,11 @@ public class MichalLayerNorm implements Serializable {
             return;
         }
 
-        // Driver-side: set up derived stacks and determine per-stack reference z values.
-        final Map<StackId, Double> referenceZByStack = new HashMap<>();
+        // Driver-side: set up derived stacks and build the flat (stack, z) work list.
+        final double referenceZ = parameters.referenceZ;
+        final String targetStackSuffix = parameters.targetStackSuffix;
+        final Set<StackId> stackIds = new HashSet<>();
         final List<StackAndZ> allLayers = new ArrayList<>();
-        final Map<StackId, String> targetStackByStack = new HashMap<>();
 
         for (final StackWithZValues stackWithAllZ : allStacks) {
             final StackId sourceStackId = stackWithAllZ.getStackId();
@@ -122,24 +123,17 @@ public class MichalLayerNorm implements Serializable {
                 LOG.warn("normalizeAllStacks: stack {} has no z values, skipping", sourceStackId.toDevString());
                 continue;
             }
-
-            final double refZ = (parameters.referenceZ != null)
-                    ? parameters.referenceZ
-                    : stackWithAllZ.getFirstZ();
-            if (! zValues.contains(refZ)) {
-                throw new IllegalArgumentException("reference z " + refZ +
+            if (! zValues.contains(referenceZ)) {
+                throw new IllegalArgumentException("reference z " + referenceZ +
                                                    " is not present in stack " + sourceStackId.toDevString());
             }
-            referenceZByStack.put(sourceStackId, refZ);
-
-            final String targetStack = sourceStackId.getStack() + parameters.targetStackSuffix;
-            targetStackByStack.put(sourceStackId, targetStack);
+            stackIds.add(sourceStackId);
 
             final RenderDataClient driverClient = new RenderDataClient(baseDataUrl,
                                                                        sourceStackId.getOwner(),
                                                                        sourceStackId.getProject());
             final StackMetaData sourceStackMetaData = driverClient.getStackMetaData(sourceStackId.getStack());
-            driverClient.setupDerivedStack(sourceStackMetaData, targetStack);
+            driverClient.setupDerivedStack(sourceStackMetaData, sourceStackId.getStack() + targetStackSuffix);
 
             for (final Double z : zValues) {
                 allLayers.add(new StackAndZ(sourceStackId, z));
@@ -152,7 +146,7 @@ public class MichalLayerNorm implements Serializable {
         }
 
         LOG.info("normalizeAllStacks: phase 1 - computing histograms for {} layers across {} stacks",
-                 allLayers.size(), referenceZByStack.size());
+                 allLayers.size(), stackIds.size());
 
         final int threshold = parameters.threshold;
         final JavaPairRDD<StackAndZ, long[]> rddHistograms =
@@ -163,38 +157,28 @@ public class MichalLayerNorm implements Serializable {
         LOG.info("normalizeAllStacks: phase 2 - building LUTs on driver");
 
         final Map<StackAndZ, int[]> lutsByKey = new HashMap<>();
-        for (final Map.Entry<StackId, Double> e : referenceZByStack.entrySet()) {
-            final StackId stackId = e.getKey();
-            final long[] referenceHist = histogramsByKey.get(new StackAndZ(stackId, e.getValue()));
+        for (final StackAndZ sz : allLayers) {
+            final long[] referenceHist = histogramsByKey.get(new StackAndZ(sz.stackId, referenceZ));
             if (referenceHist == null) {
-                throw new IllegalStateException("missing reference histogram for stack " + stackId.toDevString());
+                throw new IllegalStateException("missing reference histogram for stack " + sz.stackId.toDevString());
             }
-            for (final StackAndZ sz : allLayers) {
-                if (! sz.stackId.equals(stackId)) {
-                    continue;
-                }
-                final long[] sourceHist = histogramsByKey.get(sz);
-                lutsByKey.put(sz, buildLut(referenceHist, sourceHist));
-            }
+            lutsByKey.put(sz, buildLut(referenceHist, histogramsByKey.get(sz)));
         }
 
         LOG.info("normalizeAllStacks: phase 3 - applying LUTs and saving tiles");
 
-        final Map<StackId, String> targetStackByStackFinal = new HashMap<>(targetStackByStack);
         final Broadcast<Map<StackAndZ, int[]>> bcLuts = sparkContext.broadcast(lutsByKey);
-        final Broadcast<Map<StackId, String>> bcTargets = sparkContext.broadcast(targetStackByStackFinal);
-
         final JavaRDD<StackAndZ> rddLayers = sparkContext.parallelize(allLayers);
         rddLayers.foreach(sz -> applyLutAndSave(
-                baseDataUrl, sz.stackId, bcTargets.value().get(sz.stackId), sz.z, bcLuts.value().get(sz)));
+                baseDataUrl, sz.stackId, sz.stackId.getStack() + targetStackSuffix, sz.z, bcLuts.value().get(sz)));
 
         if (parameters.completeTargetStack) {
-            final Set<StackId> uniqueStacks = new HashSet<>(targetStackByStack.keySet());
-            for (final StackId stackId : uniqueStacks) {
+            for (final StackId stackId : stackIds) {
                 final RenderDataClient driverClient = new RenderDataClient(baseDataUrl,
                                                                            stackId.getOwner(),
                                                                            stackId.getProject());
-                driverClient.setStackState(targetStackByStack.get(stackId), StackMetaData.StackState.COMPLETE);
+                driverClient.setStackState(stackId.getStack() + targetStackSuffix,
+                                           StackMetaData.StackState.COMPLETE);
             }
         }
 
