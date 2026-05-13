@@ -63,7 +63,7 @@ public class MichalLayerNorm implements Serializable {
         public String targetStackSuffix = "_norm";
 
         @Parameter(names = "--threshold", description = "Only pixels with value strictly greater than this contribute to the histogram")
-        public int threshold = 0;
+        public int threshold = 100;
 
         @Parameter(names = "--referenceZ", description = "z-value of the reference layer (applied to every stack). When omitted, each stack uses its smallest z")
         public Double referenceZ = null;
@@ -288,7 +288,7 @@ public class MichalLayerNorm implements Serializable {
             while (j < 255 && cdfRef[j] < target) {
                 j++;
             }
-            lut[v] = Math.max(0, Math.min(255, j));
+            lut[v] = Math.min(255, j);
         }
         return lut;
     }
