@@ -57,7 +57,7 @@ public class MichalLayerNorm implements Serializable {
     public static class Parameters extends CommandLineParameters {
 
         @ParametersDelegate
-        public MultiProjectParameters multiProject;
+        public MultiProjectParameters multiProject = new MultiProjectParameters();
 
         @Parameter(names = "--targetStackSuffix", description = "Suffix to append to each source stack name for the output stack")
         public String targetStackSuffix = "_norm";
@@ -162,7 +162,7 @@ public class MichalLayerNorm implements Serializable {
             if (referenceHist == null) {
                 throw new IllegalStateException("missing reference histogram for stack " + sz.stackId.toDevString());
             }
-            lutsByKey.put(sz, buildLut(referenceHist, histogramsByKey.get(sz)));
+            lutsByKey.put(sz, buildLut(referenceHist, histogramsByKey.get(sz), threshold));
         }
 
         LOG.info("normalizeAllStacks: phase 3 - applying LUTs and saving tiles");
@@ -246,10 +246,13 @@ public class MichalLayerNorm implements Serializable {
 
     /**
      * Build a 256-entry CDF-matching LUT mapping the {@code source} histogram to the
-     * {@code reference} histogram. Output values are clipped to [0, 255].
-     * Returns the identity LUT if either histogram has no pixels above the threshold.
+     * {@code reference} histogram. The above-threshold range is filled by CDF matching;
+     * the below-threshold range (which has no histogram data) is filled by a linear ramp
+     * from (0, 0) to (threshold+1, lut[threshold+1]) so the LUT is continuous and monotone
+     * across the threshold boundary. All entries are clipped to [0, 255]. Returns the
+     * identity LUT if either histogram is empty.
      */
-    static int[] buildLut(final long[] reference, final long[] source) {
+    static int[] buildLut(final long[] reference, final long[] source, final int threshold) {
         final int[] lut = new int[256];
 
         final double refTotal = sum(reference);
@@ -257,8 +260,8 @@ public class MichalLayerNorm implements Serializable {
         if (refTotal == 0 || srcTotal == 0) {
             LOG.warn("buildLut: degenerate histogram (refTotal={}, srcTotal={}), using identity LUT",
                      refTotal, srcTotal);
-            for (int i = 0; i < 256; i++) {
-                lut[i] = i;
+            for (int v = 0; v < 256; v++) {
+                lut[v] = v;
             }
             return lut;
         }
@@ -266,13 +269,21 @@ public class MichalLayerNorm implements Serializable {
         final double[] cdfRef = normalizedCdf(reference, refTotal);
         final double[] cdfSrc = normalizedCdf(source, srcTotal);
 
-        int j = 0;
-        for (int v = 0; v < 256; v++) {
+        // CDF-matched portion (v > threshold).
+        final int firstMappedV = Math.min(255, threshold + 1);
+        int j = firstMappedV;
+        for (int v = firstMappedV; v < 256; v++) {
             final double target = cdfSrc[v];
             while (j < 255 && cdfRef[j] < target) {
                 j++;
             }
             lut[v] = Math.min(255, j);
+        }
+
+        // Linear ramp from (0, 0) to (firstMappedV, lut[firstMappedV]) for v <= threshold.
+        final int anchor = lut[firstMappedV];
+        for (int v = 0; v < firstMappedV; v++) {
+            lut[v] = (int) Math.round(((double) v / firstMappedV) * anchor);
         }
         return lut;
     }
