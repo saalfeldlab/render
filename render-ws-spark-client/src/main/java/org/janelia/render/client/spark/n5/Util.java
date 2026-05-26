@@ -26,5 +26,17 @@ public class Util {
         }
     }
 
+    public static int[] parseCSIntArray(final String csvString) {
+        int[] intValues = null;
+        if (csvString != null) {
+            final String[] stringValues = csvString.split(",");
+            intValues = new int[stringValues.length];
+            for (int i = 0; i < stringValues.length; i++) {
+                intValues[i] = Integer.parseInt(stringValues[i]);
+            }
+        }
+        return intValues;
+    }
+
 
 }

@@ -26,7 +26,6 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.util.Grid;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.alignment.util.ImageProcessorCacheSpec;
-import org.janelia.alignment.util.NeuroglancerAttributes;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -40,7 +39,6 @@ import org.janelia.saalfeldlab.n5.GzipCompression;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.spark.supplier.N5WriterSupplier;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
 import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.slf4j.Logger;
@@ -56,8 +54,6 @@ import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.util.Intervals;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
-
-import static org.janelia.saalfeldlab.n5.spark.downsample.scalepyramid.N5ScalePyramidSpark.downsampleScalePyramid;
 
 /**
  * Export a render stack to N5.
@@ -110,7 +106,7 @@ public class N5Client {
         public String blockSizeString;
 
         public int[] getBlockSize() {
-            return parseCSIntArray(blockSizeString);
+            return Util.parseCSIntArray(blockSizeString);
         }
 
         @Parameter(
@@ -119,7 +115,7 @@ public class N5Client {
         public String downsampleFactorsString;
 
         public int[] getDownsampleFactors() {
-            return parseCSIntArray(downsampleFactorsString);
+            return Util.parseCSIntArray(downsampleFactorsString);
         }
 
         @Parameter(
@@ -128,7 +124,7 @@ public class N5Client {
         public String reviewDownsampleFactorsString;
 
         public int[] getReviewDownsampleFactors() {
-            return parseCSIntArray(reviewDownsampleFactorsString);
+            return Util.parseCSIntArray(reviewDownsampleFactorsString);
         }
 
         @ParametersDelegate
@@ -141,6 +137,11 @@ public class N5Client {
                 names = "--stackResolutionUnit",
                 description = "Unit description for stack resolution values (e.g. nm, um, ...)")
         public String stackResolutionUnit = "nm";
+
+        @Parameter(
+                names = "--requiredSLevel",
+                description = "The minimum s-level that must be produced, e.g. 9")
+        public int requiredSLevel = 0;
 
         @Parameter(
                 names = "--exportMask",
@@ -181,18 +182,6 @@ public class N5Client {
                 description = "Max intensity for all render source tiles (omit to use default)"
         )
         public Double maxIntensity;
-
-        private int[] parseCSIntArray(final String csvString) {
-            int[] intValues = null;
-            if (csvString != null) {
-                final String[] stringValues = csvString.split(",");
-                intValues = new int[stringValues.length];
-                for (int i = 0; i < stringValues.length; i++) {
-                    intValues[i] = Integer.parseInt(stringValues[i]);
-                }
-            }
-            return intValues;
-        }
 
         public void validate() throws IllegalArgumentException {
             final int[] blockSize = getBlockSize();
@@ -352,33 +341,21 @@ public class N5Client {
 
         }
 
-        int numberOfDownSampledDatasets = 0;
-        final N5WriterSupplier n5Supplier = new Util.N5PathSupplier(parameters.n5Path);
         if (downsampleStack) {
 
             LOG.info("run: downsample stack with factors {}", Arrays.toString(downsampleFactors));
 
             // Now that the full resolution image is saved into n5, generate the scale pyramid
-            final List<String> downsampledDatasetPaths =
-                    downsampleScalePyramid(sparkContext,
-                                           n5Supplier,
-                                           fullScaleDatasetName,
-                                           datasetName,
-                                           downsampleFactors);
-
-            numberOfDownSampledDatasets = downsampledDatasetPaths.size();
+            final DownsampleHelper helper = new DownsampleHelper(parameters.n5Path,
+                                                                 fullScaleDatasetName,
+                                                                 parameters.getDownsampleFactors(),
+                                                                 parameters.requiredSLevel,
+                                                                 resolutionValues,
+                                                                 parameters.stackResolutionUnit,
+                                                                 Arrays.asList(min[0], min[1], min[2]),
+                                                                 new N5RetryUtil.RetryParameters());
+            helper.run(sparkContext);
         }
-
-        // save additional parameters so that n5 can be viewed in neuroglancer
-        final NeuroglancerAttributes ngAttributes =
-                new NeuroglancerAttributes(resolutionValues,
-                                           parameters.stackResolutionUnit,
-                                           numberOfDownSampledDatasets,
-                                           downsampleFactors,
-                                           Arrays.asList(min[0], min[1], min[2]),
-                                           NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
-
-        ngAttributes.write(n5Supplier.get(), Paths.get(fullScaleDatasetName));
 
         if (downsampleStackForReview) {
 
@@ -404,27 +381,15 @@ public class N5Client {
                      Arrays.toString(reviewDownsampleFactors));
 
             // Now that the full resolution image is saved into n5, generate the scale pyramid
-            final N5WriterSupplier n5ReviewSupplier = new Util.N5PathSupplier(parameters.n5Path);
-
-            final List<String> downsampledDatasetPaths =
-                    downsampleScalePyramid(sparkContext,
-                                           n5ReviewSupplier,
-                                           fullScaleReviewDatasetName,
-                                           reviewDatasetName,
-                                           reviewDownsampleFactors);
-
-            numberOfDownSampledDatasets = downsampledDatasetPaths.size();
-
-            // save additional parameters so that n5 can be viewed in neuroglancer
-            final NeuroglancerAttributes reviewNgAttributes =
-                    new NeuroglancerAttributes(resolutionValues,
-                                               parameters.stackResolutionUnit,
-                                               numberOfDownSampledDatasets,
-                                               reviewDownsampleFactors,
-                                               Arrays.asList(min[0], min[1], min[2]),
-                                               NeuroglancerAttributes.NumpyContiguousOrdering.FORTRAN);
-
-            reviewNgAttributes.write(n5ReviewSupplier.get(), Paths.get(fullScaleReviewDatasetName));
+            final DownsampleHelper helper = new DownsampleHelper(parameters.n5Path,
+                                                                 fullScaleReviewDatasetName,
+                                                                 reviewDownsampleFactors,
+                                                                 parameters.requiredSLevel,
+                                                                 resolutionValues,
+                                                                 parameters.stackResolutionUnit,
+                                                                 Arrays.asList(min[0], min[1], min[2]),
+                                                                 new N5RetryUtil.RetryParameters());
+            helper.run(sparkContext);
         }
 
         sparkContext.close();
