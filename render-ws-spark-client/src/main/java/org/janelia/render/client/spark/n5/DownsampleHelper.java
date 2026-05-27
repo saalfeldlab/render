@@ -106,8 +106,8 @@ public class DownsampleHelper
         final String outputGroupPath = sZeroDatasetPath.substring(0, sZeroDatasetPath.lastIndexOf('/'));
 
         int numberOfDownsampledDatasets = 0;
-        long downsampledBlockCount = 2;
-        for (int scale = 1; (downsampledBlockCount > 1) || scale <= requiredSLevel; scale++) {
+        long previousDownsampledBlockCount = -1;
+        for (int scale = 1; ; scale++) {
 
             final String fromDataset = scale == 1 ? sZeroDatasetPath : outputGroupPath + "/s" + (scale - 1);
             final String toDataset = outputGroupPath + "/s" + scale;
@@ -117,14 +117,15 @@ public class DownsampleHelper
                 scaleFactors[d] = (int) Math.round(Math.pow(downsampleFactors[d], scale));
             }
 
-            long blockCount = 1;
+            // note that the downsampledBlockCount reflects potential grid blocks
+            // and is likely more than the actual block count since empty blocks are not written
+            long downsampledBlockCount = 1;
             final long[] downsampledDimensions = new long[numberOfDimensions];
             for (int d = 0; d < numberOfDimensions; d++) {
                 downsampledDimensions[d] = dimensions[d] / scaleFactors[d];
                 final long blocksInDim = (downsampledDimensions[d] + outputBlockSize[d] - 1) / outputBlockSize[d];
-                blockCount *= blocksInDim;
+                downsampledBlockCount *= blocksInDim;
             }
-            downsampledBlockCount = blockCount;
 
             if (n5.datasetExists(toDataset)) {
 
@@ -176,6 +177,13 @@ public class DownsampleHelper
             }
 
             numberOfDownsampledDatasets++;
+
+            final boolean moreBlocksToDownsample = ((downsampledBlockCount > 1) &&
+                                                    (downsampledBlockCount != previousDownsampledBlockCount));
+            if ((! moreBlocksToDownsample) || (scale <= requiredSLevel)) {
+                break;
+            }
+            previousDownsampledBlockCount = downsampledBlockCount;
         }
 
         // save additional parameters so that n5 can be viewed in neuroglancer
