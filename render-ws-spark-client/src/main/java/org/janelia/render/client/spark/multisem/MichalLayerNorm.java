@@ -247,10 +247,13 @@ public class MichalLayerNorm implements Serializable {
     /**
      * Build a 256-entry CDF-matching LUT mapping the {@code source} histogram to the
      * {@code reference} histogram. The above-threshold range is filled by CDF matching;
-     * the below-threshold range (which has no histogram data) is filled by a linear ramp
-     * from (0, 0) to (threshold+1, lut[threshold+1]) so the LUT is continuous and monotone
-     * across the threshold boundary. All entries are clipped to [0, 255]. Returns the
-     * identity LUT if either histogram is empty.
+     * the below-threshold range (which has no histogram data) is filled by a monotone
+     * cubic (PCHIP) "sigmoid" curve that is anchored at (0, 0), pulled toward identity in
+     * the lower half via a (2T/3, T/3) control point, and matched to the above-threshold
+     * LUT shape just past the threshold so the LUT stays continuous and monotone across the
+     * boundary. This mirrors the {@code --sub-threshold sigmoid} path of the prototype
+     * {@code match_histograms.py}. All entries are clipped to [0, 255]. Returns the identity
+     * LUT if either histogram is empty.
      */
     static int[] buildLut(final long[] reference, final long[] source, final int threshold) {
         final int[] lut = new int[256];
@@ -280,12 +283,113 @@ public class MichalLayerNorm implements Serializable {
             lut[v] = Math.min(255, j);
         }
 
-        // Linear ramp from (0, 0) to (firstMappedV, lut[firstMappedV]) for v <= threshold.
-        final int anchor = lut[firstMappedV];
-        for (int v = 0; v < firstMappedV; v++) {
-            lut[v] = (int) Math.round(((double) v / firstMappedV) * anchor);
-        }
+        extendSubThresholdSigmoid(lut, threshold);
         return lut;
+    }
+
+    /**
+     * Fill {@code lut[0..threshold]} in place with the "sigmoid" sub-threshold curve from
+     * {@code match_histograms.py}: a monotone cubic (PCHIP) interpolation through the control
+     * points (0, 0), (2T/3, T/3), and (for each offset in {1, 6, 16} whose intensity is &le;
+     * 255) (T+off, lut[T+off]) drawn from the already-computed above-threshold mapping. The
+     * y-values are made non-decreasing (running max) before interpolating, and results are
+     * rounded and clamped to [0, 255].
+     */
+    private static void extendSubThresholdSigmoid(final int[] lut, final int threshold) {
+        final double h = threshold / 3.0;
+        final List<Double> xsList = new ArrayList<>();
+        final List<Double> ysList = new ArrayList<>();
+        xsList.add(0.0);          ysList.add(0.0);
+        xsList.add(2.0 * h);      ysList.add(h);
+        for (final int off : new int[] {1, 6, 16}) {
+            final int x = threshold + off;
+            if (x <= 255) {
+                xsList.add((double) x);
+                ysList.add((double) lut[x]);
+            }
+        }
+
+        final int n = xsList.size();
+        final double[] xs = new double[n];
+        final double[] ys = new double[n];
+        double runningMax = Double.NEGATIVE_INFINITY;
+        for (int i = 0; i < n; i++) {
+            xs[i] = xsList.get(i);
+            // np.maximum.accumulate: enforce a non-decreasing y sequence.
+            runningMax = Math.max(runningMax, ysList.get(i));
+            ys[i] = runningMax;
+        }
+
+        final double[] slopes = pchipSlopes(xs, ys);
+        for (int v = 0; v < firstMappedV(threshold); v++) {
+            // Math.rint matches numpy's round-half-to-even (np.rint) used by match_histograms.py.
+            final double y = Math.rint(pchipEval(xs, ys, slopes, v));
+            lut[v] = (int) Math.max(0, Math.min(255, y));
+        }
+    }
+
+    private static int firstMappedV(final int threshold) {
+        return Math.min(255, threshold + 1);
+    }
+
+    /**
+     * Compute Fritsch-Carlson derivatives for a monotone cubic (PCHIP) interpolant,
+     * matching scipy's {@code PchipInterpolator}. {@code x} must be strictly increasing
+     * with at least three points.
+     */
+    private static double[] pchipSlopes(final double[] x, final double[] y) {
+        final int n = x.length;
+        final double[] hk = new double[n - 1];
+        final double[] mk = new double[n - 1];
+        for (int i = 0; i < n - 1; i++) {
+            hk[i] = x[i + 1] - x[i];
+            mk[i] = (y[i + 1] - y[i]) / hk[i];
+        }
+
+        final double[] d = new double[n];
+
+        // Interior points: zero at sign changes / flats, weighted harmonic mean otherwise.
+        for (int i = 1; i < n - 1; i++) {
+            if (Math.signum(mk[i - 1]) != Math.signum(mk[i]) || mk[i - 1] == 0.0 || mk[i] == 0.0) {
+                d[i] = 0.0;
+            } else {
+                final double w1 = 2.0 * hk[i] + hk[i - 1];
+                final double w2 = hk[i] + 2.0 * hk[i - 1];
+                d[i] = (w1 + w2) / (w1 / mk[i - 1] + w2 / mk[i]);
+            }
+        }
+
+        d[0] = pchipEdge(hk[0], hk[1], mk[0], mk[1]);
+        d[n - 1] = pchipEdge(hk[n - 2], hk[n - 3], mk[n - 2], mk[n - 3]);
+        return d;
+    }
+
+    /** One-sided three-point endpoint derivative with shape preservation (scipy _edge_case). */
+    private static double pchipEdge(final double h0, final double h1, final double m0, final double m1) {
+        double d = ((2.0 * h0 + h1) * m0 - h0 * m1) / (h0 + h1);
+        if (Math.signum(d) != Math.signum(m0)) {
+            d = 0.0;
+        } else if (Math.signum(m0) != Math.signum(m1) && Math.abs(d) > 3.0 * Math.abs(m0)) {
+            d = 3.0 * m0;
+        }
+        return d;
+    }
+
+    /** Evaluate the cubic Hermite interpolant defined by (x, y, slopes) at query point q. */
+    private static double pchipEval(final double[] x, final double[] y, final double[] d, final double q) {
+        int k = 0;
+        while (k < x.length - 2 && q >= x[k + 1]) {
+            k++;
+        }
+        final double h = x[k + 1] - x[k];
+        final double s = (q - x[k]) / h;
+        final double s2 = s * s;
+        final double s3 = s2 * s;
+        final double h00 = 2.0 * s3 - 3.0 * s2 + 1.0;
+        final double h10 = s3 - 2.0 * s2 + s;
+        final double h01 = -2.0 * s3 + 3.0 * s2;
+        final double h11 = s3 - s2;
+        return y[k] * h00 + h * d[k] * h10 + y[k + 1] * h01 + h * d[k + 1] * h11;
     }
 
     private static double sum(final long[] hist) {
