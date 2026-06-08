@@ -192,5 +192,5 @@ public class BoundingBoxRenderer {
 
     private static final Logger LOG = LoggerFactory.getLogger(BoundingBoxRenderer.class);
 
-    private static final Font TILE_ID_FONT = new Font(Font.MONOSPACED, Font.BOLD, TILE_ID_FONT_SIZE);
+    private static final Font TILE_ID_FONT = new Font(Font.MONOSPACED, Font.PLAIN, TILE_ID_FONT_SIZE);
 }
