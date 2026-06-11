@@ -104,7 +104,7 @@ if [ -n "${MONGO_DUMP_DATA_DIR}" ]; then
   done
 
   echo "mongod is ready after ${WAITED} seconds, running mongorestore from '${MONGO_DUMP_DATA_DIR}' ..."
-  for DUMP_FILE in "${DUMP_DIR}"/*.bson.gz; do
+  for DUMP_FILE in "${MONGO_DUMP_DATA_DIR}"/*.bson.gz; do
     mongorestore --uri="mongodb://localhost:27017" --gzip "${DUMP_FILE}"
     RESTORE_EXIT_CODE=$?
 
