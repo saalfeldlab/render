@@ -103,8 +103,8 @@ RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key 
 # expose the render port
 EXPOSE 8080
 
-# Use shell form of CMD so that optional arguments passed to `docker run` are forwarded
+# Use ENTRYPOINT so that optional arguments passed to `docker run` are forwarded
 # to startup_mongodb_and_jetty.sh as positional parameters:
 #   $1  HEADROOM_MEM_GB  (default: 8)
 #   $2  TEST_DATA_DIR    (optional mongodump directory; triggers mongorestore before Jetty starts)
-CMD ["./startup_mongodb_and_jetty.sh"]
+ENTRYPOINT ["./startup_mongodb_and_jetty.sh"]
