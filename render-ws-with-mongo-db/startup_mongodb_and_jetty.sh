@@ -104,13 +104,15 @@ if [ -n "${MONGO_DUMP_DATA_DIR}" ]; then
   done
 
   echo "mongod is ready after ${WAITED} seconds, running mongorestore from '${MONGO_DUMP_DATA_DIR}' ..."
-  mongorestore --uri="mongodb://localhost:27017" "${MONGO_DUMP_DATA_DIR}"
-  RESTORE_EXIT_CODE=$?
+  for DUMP_FILE in "${DUMP_DIR}"/*.bson.gz; do
+    mongorestore --uri="mongodb://localhost:27017" --gzip "${DUMP_FILE}"
+    RESTORE_EXIT_CODE=$?
 
-  if [ "${RESTORE_EXIT_CODE}" -ne 0 ]; then
-    echo "ERROR: mongorestore exited with code ${RESTORE_EXIT_CODE}, exiting"
-    exit "${RESTORE_EXIT_CODE}"
-  fi
+    if [ "${RESTORE_EXIT_CODE}" -ne 0 ]; then
+      echo "ERROR: mongorestore exited with code ${RESTORE_EXIT_CODE}, exiting"
+      exit "${RESTORE_EXIT_CODE}"
+    fi
+  done
 
   echo "mongorestore completed successfully"
 fi
