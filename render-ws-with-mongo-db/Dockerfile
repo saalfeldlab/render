@@ -66,7 +66,8 @@ RUN ./render-ws/src/main/scripts/install.sh && \
     cp ./render-ws-with-mongo-db/*.sh . && \
     chmod 755 *.sh && \
     cp -r ./render-ws-with-mongo-db/other . && \
-    chmod 755 other/*.sh
+    chmod 755 other/*.sh && \
+    cp -r ./render-ws-with-mongo-db/test .
 
 # 4. Build only the render-app and render-ws modules and skip tests
 RUN { echo 'JAVA_HOME="$(readlink -m ./deploy/*jdk*)"'; } >> ~/.mavenrc  && \
