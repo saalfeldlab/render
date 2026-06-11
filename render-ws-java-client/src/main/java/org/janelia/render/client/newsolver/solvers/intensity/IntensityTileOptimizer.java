@@ -60,11 +60,13 @@ class IntensityTileOptimizer {
 	 * context means that one of the sub-tiles is fixed, while the other sub-tiles are optimized.
 	 * @param tiles the intensity tiles to optimize
 	 * @param fixedTile the intensity tile where one sub-tile is fixed
+	 * @param fixedSubTileIndex the index of the sub-tile (within {@code fixedTile}) that is held fixed
      * @param stackAndBlockForLog string to include in all log calls (for context)
 	 */
 	public void optimize(
 			final List<IntensityTile> tiles,
 			final IntensityTile fixedTile,
+			final int fixedSubTileIndex,
             final String stackAndBlockForLog
 		) {
 
@@ -109,9 +111,12 @@ class IntensityTileOptimizer {
 					}
 				}
 
-				// Fit and apply the fixed tile separately (don't fit the first sub-tile)
+				// Fit and apply the fixed tile separately (don't fit the held sub-tile, which pins the gauge)
 				for (int j = 0; j < fixedTile.nFittingCycles(); j++) {
-					for (int k = 1; k < fixedTile.nSubTiles(); k++) {
+					for (int k = 0; k < fixedTile.nSubTiles(); k++) {
+						if (k == fixedSubTileIndex) {
+							continue;
+						}
 						final Tile<?> subTile = fixedTile.getSubTile(k);
 						try {
 							subTile.fitModel();

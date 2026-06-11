@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -258,13 +259,17 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		/* optimize */
 		final List<IntensityTile> tiles = new ArrayList<>(coefficientTiles.values());
 
-		// anchor the equilibration tile if it is used, otherwise anchor a random tile (the first one)
+		// anchor the equilibration tile if it is used, otherwise pin a representative seam sub-tile
 		final IntensityTile fixedTile;
+		final int fixedSubTileIndex;
 		if (blockData.solveTypeParameters().equilibrationWeight() > 0.0) {
 			tiles.add(equilibrationTile);
 			fixedTile = equilibrationTile;
+			fixedSubTileIndex = 0;
 		} else {
-			fixedTile = tiles.get(0);
+			final FixedAnchor anchor = selectFixedAnchor(coefficientTiles);
+			fixedTile = anchor.tile();
+			fixedSubTileIndex = anchor.subTileIndex();
 		}
 
 		final IntensityTileOptimizer optimizer = new IntensityTileOptimizer(
@@ -273,7 +278,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 				blockData.solveTypeParameters().maxPlateauWidth(),
 				1.0,
 				numThreads);
-		optimizer.optimize(tiles, fixedTile, stackAndBlockForLog);
+		optimizer.optimize(tiles, fixedTile, fixedSubTileIndex, stackAndBlockForLog);
 
 		// TODO: this is not the right error measure, what is idToBlockErrorMap supposed to be exactly?
 		coefficientTiles.forEach((tileId, tile) -> {
@@ -286,6 +291,67 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		LOG.info("solveForGlobalCoefficients: exit, {}, returning intensity coefficients for {} tiles",
                  stackAndBlockForLog, coefficientTiles.size());
+	}
+
+	/** The sub-tile pinned as the gauge anchor: its owning {@link IntensityTile} and the index of the held sub-tile. */
+	private static final class FixedAnchor {
+		private final IntensityTile tile;
+		private final int subTileIndex;
+		private FixedAnchor(final IntensityTile tile, final int subTileIndex) {
+			this.tile = tile;
+			this.subTileIndex = subTileIndex;
+		}
+		private IntensityTile tile() { return tile; }
+		private int subTileIndex() { return subTileIndex; }
+	}
+
+	/**
+	 * Choose a deterministic, representative gauge anchor (pinned sub-tile) for the gauge-free per-block solve.
+	 * Pinning an extreme (e.g. the brightest) sub-tile can leave a visible bright gradient with sharp seams,
+	 * depending on regularization (especially with identity). To avoid that, we pin the sub-tile that already
+	 * agrees best with its neighbors across tile boundaries. Only tiles actually overlap with neighbors are eligible.
+	 */
+	private FixedAnchor selectFixedAnchor(final Map<String, IntensityTile> coefficientTiles) {
+
+		String bestTileId = null;
+		IntensityTile bestTile = null;
+		int bestIndex = -1;
+		double bestMismatch = Double.POSITIVE_INFINITY;
+
+		// Iterate tileIds in sorted order so ties resolve deterministically
+		for (final String tileId : new TreeSet<>(coefficientTiles.keySet())) {
+			final IntensityTile tile = coefficientTiles.get(tileId);
+			for (int i = 0; i < tile.nSubTiles(); i++) {
+				final Tile<?> subTile = tile.getSubTile(i);
+				subTile.updateCost(); // residual under the current (identity) model
+				final double mismatch = subTile.getDistance();
+
+				// Skip sub-tiles not overlapping with anything (identity connections have error of 0 initially)
+				if (mismatch <= 0.0) {
+					continue;
+				}
+
+				if (mismatch < bestMismatch) {
+					bestMismatch = mismatch;
+					bestTileId = tileId;
+					bestTile = tile;
+					bestIndex = i;
+				}
+			}
+		}
+
+		if (bestTile == null) {
+			// No overlapping sub-tiles (e.g., a single tile): fall back to the first tile
+			final Entry<String, IntensityTile> first = coefficientTiles.entrySet().iterator().next();
+			bestTile = first.getValue();
+			bestIndex = 0;
+			LOG.info("selectFixedAnchor: no seam sub-tiles found, falling back to tile {}, sub-tile 0", first.getKey());
+		} else {
+			LOG.info("selectFixedAnchor: anchoring on tile {} sub-tile {} (initial mismatch {})",
+					 bestTileId, bestIndex, bestMismatch);
+		}
+
+		return new FixedAnchor(bestTile, bestIndex);
 	}
 
 	private void connectTilesWithinPatches(
