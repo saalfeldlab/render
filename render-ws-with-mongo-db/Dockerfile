@@ -11,16 +11,19 @@
 #
 # To build:
 #   cd ${RENDER_REPO_ROOT_DIR}
-#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.17 .
+#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.18 .
 #
 # To run a container in detached mode:
-#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.17
+#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.18
 #
 # To run a container in detached mode with the standard MongoDB dump directory mounted:
-#   docker run --publish 8080:8080 --detach --rm --mount type=bind,source=/mnt/disks/mongodb_dump_fs/dump,target=/mnt/disks/mongodb_dump_fs/dump ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.17
+#   docker run --publish 8080:8080 --detach --rm --mount type=bind,source=/mnt/disks/mongodb_dump_fs/dump,target=/mnt/disks/mongodb_dump_fs/dump ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.18
+#
+# To run a container with 4GB headroom and the test/ic2d_7_tile/render collections loaded at startup:
+#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.18 4 test/ic2d_7_tile/render
 #
 # To launch an interactive bash shell within a new container:
-#   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.17
+#   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.18
 #
 # To launch an interactive bash shell within an already running container:
 #   docker ps -a     # to get the container id
@@ -30,7 +33,7 @@
 #   docker exec --interactive --tty "$(docker ps -q)" /bin/bash
 #
 # To push the image to the janeliascicomp containers GitHub registry (see https://github.com/JaneliaSciComp/containers/tree/main):
-#   docker push ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.17
+#   docker push ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.18
 #
 # Published Containers Notes:
 #   - Before pushing, your docker instance needs to be logged in to GitHub.
@@ -99,5 +102,8 @@ RUN wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | sudo apt-key 
 # expose the render port
 EXPOSE 8080
 
-# use exec form of ENTRYPOINT so that signals are properly delivered to the script
+# Use shell form of CMD so that optional arguments passed to `docker run` are forwarded
+# to startup_mongodb_and_jetty.sh as positional parameters:
+#   $1  HEADROOM_MEM_GB  (default: 8)
+#   $2  TEST_DATA_DIR    (optional mongodump directory; triggers mongorestore before Jetty starts)
 CMD ["./startup_mongodb_and_jetty.sh"]

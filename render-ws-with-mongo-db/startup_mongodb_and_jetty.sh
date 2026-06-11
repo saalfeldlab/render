@@ -3,6 +3,9 @@
 # Leave ~6–10 GB free for the OS and filesystem cache since MongoDB benefits a lot from page cache
 HEADROOM_MEM_GB=${1:-8}
 
+# Optional: path to a mongodump directory to restore at startup
+MONGO_DUMP_DATA_DIR=${2:-}
+
 # ----------------------------------------------------------
 # Detect container memory (GB)
 # ----------------------------------------------------------
@@ -81,6 +84,39 @@ fi
 
 echo "starting mongodb with cache size ${MONGOD_CACHE_SIZE_GB} GB"
 /usr/bin/mongod -f ${MONGOD_CONF_FILE} &
+
+# ------------------------------------------------------------------------------------------------------
+# Optional mongorestore from MONGO_DUMP_DATA_DIR (second argument)
+
+if [ -n "${MONGO_DUMP_DATA_DIR}" ]; then
+  echo "MONGO_DUMP_DATA_DIR is set to '${MONGO_DUMP_DATA_DIR}', waiting for mongod to become ready ..."
+
+  # Wait up to 60 seconds for mongod to accept connections
+  MAX_WAIT=60
+  WAITED=0
+  until mongosh --quiet --eval "db.adminCommand('ping')" > /dev/null 2>&1; do
+    if [ "${WAITED}" -ge "${MAX_WAIT}" ]; then
+      echo "ERROR: mongod did not become ready within ${MAX_WAIT} seconds, exiting"
+      exit 1
+    fi
+    sleep 1
+    WAITED=$(( WAITED + 1 ))
+  done
+
+  echo "mongod is ready after ${WAITED} seconds, running mongorestore from '${MONGO_DUMP_DATA_DIR}' ..."
+  mongorestore --uri="mongodb://localhost:27017" "${MONGO_DUMP_DATA_DIR}"
+  RESTORE_EXIT_CODE=$?
+
+  if [ "${RESTORE_EXIT_CODE}" -ne 0 ]; then
+    echo "ERROR: mongorestore exited with code ${RESTORE_EXIT_CODE}, exiting"
+    exit "${RESTORE_EXIT_CODE}"
+  fi
+
+  echo "mongorestore completed successfully"
+fi
+
+# ------------------------------------------------------------------------------------------------------
+# Start jetty ...
 
 export RENDER_JETTY_MIN_AND_MAX_MEMORY="${JETTY_MEM_GB}g"
 
