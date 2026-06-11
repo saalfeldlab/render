@@ -73,7 +73,7 @@
                                         <exclude>plugins.config</exclude>
                                         <exclude>LICENSE</exclude>
                                         <exclude>META-INF/*</exclude>
-                                        <exclude>META-INF/services/**</exclude>  <!-- overlaps in grpc-... jars -->
+                                        <exclude>META-INF/services/io.grpc.*</exclude> <!-- overlaps in grpc-... jars -->
                                         <exclude>META-INF/versions/**</exclude>
                                     </excludes>
                                 </filter>
