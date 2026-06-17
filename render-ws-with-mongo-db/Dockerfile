@@ -76,7 +76,7 @@ RUN ./render-ws/src/main/scripts/install.sh && \
     cp -r ./render-ws-with-mongo-db/other . && \
     chmod 755 other/*.sh && \
     cp -r ./render-ws-with-mongo-db/test . && \
-    mkdir /var/www/render/test/two-z-with-four-tiles/images && \
+    mkdir -p /var/www/render/test/two-z-with-four-tiles/images && \
     cp ./render-app/src/test/resources/stitch-test/col007?_row002?_cam?.png /var/www/render/test/two-z-with-four-tiles/images
 
 # Optional: uncomment allowedOrigins in web.xml to enable CORS for the specified origins.
