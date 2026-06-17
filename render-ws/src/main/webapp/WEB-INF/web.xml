@@ -33,12 +33,12 @@
     <filter>
         <filter-name>cross-origin</filter-name>
         <filter-class>org.eclipse.jetty.servlets.CrossOriginFilter</filter-class>
-        <!--
+        <!-- REMOVE LINE TO ALLOW CROSS ORIGIN REQUESTS
         <init-param>
             <param-name>allowedOrigins</param-name>
             <param-value>*</param-value>
         </init-param>
-        -->
+        REMOVE LINE TO ALLOW CROSS ORIGIN REQUESTS -->
         <init-param>
             <param-name>allowedMethods</param-name>
             <param-value>GET,POST,PUT,OPTIONS,HEAD</param-value>
