@@ -9,17 +9,13 @@
 # The steps in this Dockerfile should match the basic installation steps listed at:
 #   https://github.com/saalfeldlab/render/blob/master/docs/src/site/markdown/render-ws.md
 #
-# To build "normally":
-#   cd ${RENDER_REPO_ROOT_DIR}
-#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19 .
-#
-# To build with CORS enabled for all origins:
-#   cd ${RENDER_REPO_ROOT_DIR}
-#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --build-arg CORS_ALLOWED_ORIGINS='*' --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19 .
-#
-# To build with CORS enabled for a specific origin:
+# To build with CORS enabled only for https://neuroglancer-demo.appspot.com (the default build):
 #   cd ${RENDER_REPO_ROOT_DIR}
 #   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --build-arg CORS_ALLOWED_ORIGINS='https://neuroglancer-demo.appspot.com' --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19 .
+#
+# To build with CORS enabled for all origins (note tag suffix '.cors-star'):
+#   cd ${RENDER_REPO_ROOT_DIR}
+#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --build-arg CORS_ALLOWED_ORIGINS='*' --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19.cors-star .
 #
 # To run a container in detached mode:
 #   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19
