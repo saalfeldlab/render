@@ -227,8 +227,9 @@ public class RenderServiceUtil {
         final BufferedImage targetImage;
 
         if (renderBoundingBoxesOnly) {
-            targetImage = renderParameters.openTargetImage();
-            final BoundingBoxRenderer boundingBoxRenderer = new BoundingBoxRenderer(renderParameters, Color.GREEN);
+
+            targetImage = renderParameters.openTargetImage(BufferedImage.TYPE_BYTE_GRAY);
+            final BoundingBoxRenderer boundingBoxRenderer = new BoundingBoxRenderer(renderParameters, Color.WHITE);
             boundingBoxRenderer.render(targetImage);
 
         } else {
