@@ -52,6 +52,7 @@ public class IntensityMatcherTest {
         final HashMap<String, IntensityTile> coefficientTiles = new HashMap<>();
 
         final IntensityMatcher matcher = new IntensityMatcher(matchFilter,
+                                                              matchFilter,
                                                               intensityParameters,
                                                               meshResolution,
                                                               ImageProcessorCache.DISABLED_CACHE);

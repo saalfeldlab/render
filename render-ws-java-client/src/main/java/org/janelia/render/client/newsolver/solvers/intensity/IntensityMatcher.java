@@ -30,32 +30,28 @@ import net.imglib2.util.StopWatch;
  * Also, computation of averages for a tile is done here.
  */
 class IntensityMatcher {
-	final private MatchFilter filter;
+	// separate filters per layer relationship: a per-pixel cutoff (when configured) only applies to cross-layer pairs
+	final private MatchFilter sameLayerFilter;
+	final private MatchFilter crossLayerFilter;
 	final private double sameLayerScale;
 	final private double crossLayerScale;
 	final private int numCoefficients;
 	final int meshResolution;
 	final ImageProcessorCache imageProcessorCache;
-	// cutoff for cross-layer matches, expressed in normalized [0,1] intensity units (null cutoff => disabled)
-	final private boolean applyCutoff;
-	final private double cutoffShiftNormalized;
 
 	public IntensityMatcher(
-			final MatchFilter filter,
+			final MatchFilter sameLayerFilter,
+			final MatchFilter crossLayerFilter,
 			final FIBSEMIntensityCorrectionParameters<?> parameters,
 			final int meshResolution,
 			final ImageProcessorCache imageProcessorCache) {
-		this.filter = filter;
+		this.sameLayerFilter = sameLayerFilter;
+		this.crossLayerFilter = crossLayerFilter;
 		this.sameLayerScale = parameters.renderScale();
 		this.crossLayerScale = parameters.crossLayerRenderScale();
 		this.numCoefficients = parameters.numCoefficients();
 		this.meshResolution = meshResolution;
 		this.imageProcessorCache = imageProcessorCache;
-
-		// the cutoff is given in 8-bit gray levels but compared against intensities normalized to [0,1]
-		final Double cutoffDifference = parameters.cutoffDifference();
-		this.applyCutoff = (cutoffDifference != null);
-		this.cutoffShiftNormalized = this.applyCutoff ? (cutoffDifference / 255.0) : 0.0;
 	}
 
 	public void match(final String renderStack,
@@ -67,6 +63,7 @@ class IntensityMatcher {
 
 		final boolean crossLayer = (p1.zDistanceFrom(p2) != 0);
 		final double scale = crossLayer ? crossLayerScale : sameLayerScale;
+		final MatchFilter filter = crossLayer ? crossLayerFilter : sameLayerFilter;
 		final Rectangle box = computeIntersection(p1, p2);
 		final int w = numberOfPixels(box.width, scale);
 		final int h = numberOfPixels(box.height, scale);
@@ -123,11 +120,6 @@ class IntensityMatcher {
                 throw new RuntimeException("failed to filter coefficients for pair " + p1 + " (z " + p1.getZ() + "), " +
                                            p2 + " (z " + p2.getZ() + ") in " + renderStack, e);
             }
-
-            // suppress bad cross-layer matches (e.g. at tissue-to-resin transitions in z) by zeroing their weight
-            if (applyCutoff && crossLayer)
-                zeroWeightIfShiftExceedsCutoff(filteredMatchesForPair);
-
             filteredMatches.add(filteredMatchesForPair);
 		}
 
@@ -156,30 +148,6 @@ class IntensityMatcher {
 
 		stopWatch.stop();
 		LOG.debug("match: pair {} <-> {} has {} connections, matching took {}", p1.getTileId(), p2.getTileId(), connectionCount, stopWatch);
-	}
-
-	/**
-	 * Computes the mean intensity shift of the (already reduced) matches for a single coefficient-tile pair and,
-	 * if it exceeds the configured cutoff, sets the weight of all these matches to 0 so that they do not contribute
-	 * to the solve. Both point locations are stored in normalized [0,1] intensity units, so the shift is compared
-	 * against the (likewise normalized) cutoff. The matches are left in place (rather than removed) to honor the
-	 * "set weight to 0" semantics.
-	 */
-	private void zeroWeightIfShiftExceedsCutoff(final List<PointMatch> matches) {
-		if (matches.isEmpty())
-			return;
-
-		double shiftSum = 0.0;
-		for (final PointMatch match : matches)
-			shiftSum += match.getP2().getL()[0] - match.getP1().getL()[0];
-		final double meanShift = Math.abs(shiftSum / matches.size());
-
-		if (meanShift > cutoffShiftNormalized) {
-			for (final PointMatch match : matches)
-				match.setWeights(new double[] { 0.0 });
-			LOG.debug("zeroWeightIfShiftExceedsCutoff: zeroed {} match(es), meanShift {} > cutoff {} (normalized)",
-					  matches.size(), meanShift, cutoffShiftNormalized);
-		}
 	}
 
 	private static List<FlatIntensityMatches> getPairwiseCoefficients(

@@ -193,14 +193,27 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			final List<TileSpec> tiles,
 			final ImageProcessorCache imageProcessorCache
 	) {
-		final MatchFilter filter;
-		if (this.parameters.useRansacMatching()) {
-			filter = new RansacMatchFilter();
+		final MatchFilter sameLayerFilter;
+		final MatchFilter crossLayerFilter;
+
+		final Double cutoffDifference = this.parameters.cutoffDifference();
+		if (cutoffDifference != null) {
+			// a per-pixel cutoff requires pixel-by-pixel matching, so histogram matching cannot be used here;
+			// the cutoff only applies to cross-layer pairs (a large same-layer shift is what 2D correction fixes)
+			LOG.info("getIntensityMatcher: applying cross-layer cutoff of {} gray levels (forces pixel-by-pixel matching), renderStack={}, blockData={}",
+					 cutoffDifference, renderStack, blockData);
+			sameLayerFilter = new RansacMatchFilter();
+			crossLayerFilter = new CutoffRansacMatchFilter(cutoffDifference / 255.0);
+		} else if (this.parameters.useRansacMatching()) {
+			sameLayerFilter = new RansacMatchFilter();
+			crossLayerFilter = sameLayerFilter;
 		} else {
-			filter = new HistogramMatchFilter();
+			sameLayerFilter = new HistogramMatchFilter();
+			crossLayerFilter = sameLayerFilter;
 		}
+
 		final int meshResolution = (int) tiles.get(0).getMeshCellSize();
-		return new IntensityMatcher(filter, parameters, meshResolution, imageProcessorCache);
+		return new IntensityMatcher(sameLayerFilter, crossLayerFilter, parameters, meshResolution, imageProcessorCache);
 	}
 
 	private  HashMap<String, IntensityTile> generateCoefficientsTiles(final Collection<TileSpec> patches) {
