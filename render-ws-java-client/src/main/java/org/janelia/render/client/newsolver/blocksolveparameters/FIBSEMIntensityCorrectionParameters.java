@@ -33,6 +33,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final int maxIterations;
 	private final int maxPlateauWidth;
 	private final boolean useRansacMatching;
+	private final Double cutoffDifference;
 
 
 	public FIBSEMIntensityCorrectionParameters(
@@ -56,7 +57,8 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			 intensityAdjust.maxAllowedError,
 			 intensityAdjust.maxIterations,
 			 intensityAdjust.maxPlateauWidth,
-			 intensityAdjust.useRansacMatching);
+			 intensityAdjust.useRansacMatching,
+			 intensityAdjust.cutoffDifference);
 	}
 
 	public FIBSEMIntensityCorrectionParameters(
@@ -76,7 +78,8 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final double maxAllowedError,
 			final int maxIterations,
 			final int maxPlateauWidth,
-			final boolean useRansacMatching) {
+			final boolean useRansacMatching,
+			final Double cutoffDifference) {
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
@@ -92,6 +95,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.maxIterations = maxIterations;
 		this.maxPlateauWidth = maxPlateauWidth;
 		this.useRansacMatching = useRansacMatching;
+		this.cutoffDifference = cutoffDifference;
 	}
 
 	public long maxPixelCacheGb() { return maxPixelCacheGb; }
@@ -106,6 +110,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public int maxIterations() { return maxIterations; }
 	public int maxPlateauWidth() { return maxPlateauWidth; }
 	public boolean useRansacMatching() { return useRansacMatching; }
+	public Double cutoffDifference() { return cutoffDifference; }
 
 	@Override
 	public Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(

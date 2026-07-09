@@ -88,6 +88,15 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public boolean useRansacMatching = false;
 
+	@Parameter(
+			names = "--cutoffDifference",
+			description = "If set, cross-layer intensity matches between two coefficient tiles whose mean intensity " +
+					"shift exceeds this many 8-bit gray levels (0-255) get their weight set to 0 (i.e. are ignored " +
+					"by the solve). This suppresses bad matches at tissue-to-resin transitions in z. " +
+					"Default: null (no cutoff)."
+	)
+	public Double cutoffDifference = null;
+
 
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();
