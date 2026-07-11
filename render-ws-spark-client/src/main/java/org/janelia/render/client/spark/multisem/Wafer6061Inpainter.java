@@ -235,12 +235,36 @@ public class Wafer6061Inpainter {
 				throw new IllegalArgumentException("expected a 3D tissue volume but " + params.fullDataset() +
 												   " has " + numDimensions + " dimensions");
 			}
-			if (n5.getDatasetAttributes(params.mask) == null) {
+			final DatasetAttributes maskAttributes = n5.getDatasetAttributes(params.mask);
+			if (maskAttributes == null) {
 				throw new IllegalArgumentException("mask dataset " + params.mask + " does not exist");
+			}
+
+			// The inpainter reads and writes one chunk at a time (no whole-volume open, so no accumulating cell
+			// cache). That requires z to be a single chunk, so that every z-1 / z+1 section the z-average needs lives
+			// inside the block; and it reads the mask by the tissue block's grid position, so the two datasets must
+			// share the same block grid and origin.
+			if (s0Attributes.getBlockSize()[2] < s0Attributes.getDimensions()[2]) {
+				throw new IllegalArgumentException(
+						"block-local inpainting requires z to be a single chunk, but " + params.fullDataset() +
+						" has blockSize[2]=" + s0Attributes.getBlockSize()[2] +
+						" < dimensions[2]=" + s0Attributes.getDimensions()[2]);
+			}
+			if (! Arrays.equals(maskAttributes.getBlockSize(), s0Attributes.getBlockSize()) ||
+				! Arrays.equals(maskAttributes.getDimensions(), s0Attributes.getDimensions())) {
+				throw new IllegalArgumentException(
+						"mask grid " + Arrays.toString(maskAttributes.getDimensions()) + " @ " +
+						Arrays.toString(maskAttributes.getBlockSize()) + " must match tissue grid " +
+						Arrays.toString(s0Attributes.getDimensions()) + " @ " +
+						Arrays.toString(s0Attributes.getBlockSize()));
 			}
 
 			tissueTranslate = readTranslate(n5, params.fullDataset(), numDimensions);
 			maskTranslate = readTranslate(n5, params.mask, numDimensions);
+			if (! Arrays.equals(tissueTranslate, maskTranslate)) {
+				throw new IllegalArgumentException("tissue translate " + Arrays.toString(tissueTranslate) +
+												   " must match mask translate " + Arrays.toString(maskTranslate));
+			}
 
 			levels.add(params.fullDataset());
 			levelAttributes.put(params.fullDataset(), s0Attributes);
@@ -272,15 +296,12 @@ public class Wafer6061Inpainter {
 		final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
 		try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
 			LOG.info("run: appId is {}", sparkContext.getConf().getAppId());
-			runWithSparkContext(sparkContext, cloud, tissueTranslate, maskTranslate,
-								levels, levelAttributes, backupPath);
+			runWithSparkContext(sparkContext, cloud, levels, levelAttributes, backupPath);
 		}
 	}
 
 	private void runWithSparkContext(final JavaSparkContext sparkContext,
 									 final PointCloud cloud,
-									 final long[] tissueTranslate,
-									 final long[] maskTranslate,
 									 final List<String> levels,
 									 final Map<String, DatasetAttributes> levelAttributes,
 									 final String backupPath) {
@@ -298,8 +319,6 @@ public class Wafer6061Inpainter {
 				blockIterator -> inpaintPartition(blockIterator,
 												  cloudBroadcast.value(),
 												  paramsBroadcast.value(),
-												  tissueTranslate,
-												  maskTranslate,
 												  backup));
 
 		final List<long[]> modifiedS0 = modifiedRDD.collect();
@@ -552,8 +571,6 @@ public class Wafer6061Inpainter {
 	private static Iterator<long[]> inpaintPartition(final Iterator<Grid.Block> blocks,
 													 final PointCloud cloud,
 													 final Parameters params,
-													 final long[] tissueTranslate,
-													 final long[] maskTranslate,
 													 final String backupPath) {
 
 		LogUtilities.setupExecutorLog4j("inpaint");
@@ -568,14 +585,7 @@ public class Wafer6061Inpainter {
 					 new N5Factory().openWriter(N5Factory.StorageFormat.N5, backupPath)) {
 
 			final DatasetAttributes s0Attributes = reader.getDatasetAttributes(params.fullDataset());
-
-			final Img<UnsignedByteType> rawTissue = N5Utils.open(reader, params.fullDataset());
-			final Img<UnsignedByteType> rawMask = N5Utils.open(reader, params.mask);
-			final RandomAccessibleInterval<UnsignedByteType> tissue = Views.translate(rawTissue, tissueTranslate);
-			final RandomAccessibleInterval<UnsignedByteType> mask = Views.translate(rawMask, maskTranslate);
-
-			final long zMin = tissueTranslate[2];
-			final long zMax = tissueTranslate[2] + s0Attributes.getDimensions()[2] - 1;
+			final DatasetAttributes maskAttributes = reader.getDatasetAttributes(params.mask);
 
 			long considered = 0;
 			long nearRoi = 0;
@@ -595,22 +605,30 @@ public class Wafer6061Inpainter {
 				}
 				nearRoi++;
 
-				// (2) presence check: readBlock returns null for absent (empty) blocks.
-				final DataBlock<?> originalBlock = reader.readBlock(params.fullDataset(), s0Attributes, block.gridPosition);
-				if (originalBlock == null) {
+				// (2) presence check: readBlock returns null for absent (empty) blocks. The block it returns is also
+				// the raw tissue we inpaint from and back up, so no whole-volume open (and no accumulating cell cache)
+				// is needed: because z is a single chunk (guarded on the driver), every z-1 / z+1 section the
+				// z-average reads lives inside this same block.
+				final DataBlock<?> tissueBlock = reader.readBlock(params.fullDataset(), s0Attributes, block.gridPosition);
+				if (tissueBlock == null) {
 					continue;
 				}
 				present++;
 
-				// (3) inpaint: fill mask==0 pixels with the z-average of the sections above/below.
-				final InpaintResult result = inpaintBlock(tissue, mask, block, tissueTranslate, zMin, zMax);
+				// (3) inpaint: fill mask==0 pixels with the z-average of the sections above/below. The mask is read by
+				// the same grid position (the datasets share a grid, guarded on the driver); an absent mask block
+				// counts as all-background (all holes), matching a zero-filled whole-volume read of a missing chunk.
+				final DataBlock<?> maskBlock = reader.readBlock(params.mask, maskAttributes, block.gridPosition);
+				final InpaintResult result = inpaintBlock(asByteImg(tissueBlock, block.dimensions),
+														  asByteImg(maskBlock, block.dimensions),
+														  block.dimensions);
 				if (! result.changed) {
 					continue;
 				}
 
 				modified.add(block.gridPosition);
 				if (! params.dryRun) {
-					backupWriter.writeBlock(params.fullDataset(), s0Attributes, originalBlock);
+					backupWriter.writeBlock(params.fullDataset(), s0Attributes, tissueBlock);
 					N5Utils.saveBlock(result.inpainted, tissueWriter, params.fullDataset(), s0Attributes, block.gridPosition);
 				}
 				LOG.info("inpaintPartition: inpainted block {} (roiDistance={})",
@@ -624,39 +642,45 @@ public class Wafer6061Inpainter {
 	}
 
 	/**
-	 * Produces the inpainted version of a single block: every pixel where the mask is 0 is replaced with the average
-	 * of the tissue in the sections above and below (the single neighbor is copied at the volume's z-boundary). The
-	 * {@code tissue} and {@code mask} are expected to be world-translated (i.e. indexed in the same coordinate frame,
-	 * offset by their respective {@code translate}); {@code zMin}/{@code zMax} are the world z-bounds of the tissue.
+	 * Wraps a uint8 {@link DataBlock} as a block-local image. An absent (null) block becomes all-zeros, matching the
+	 * zero fill an {@code N5Utils.open} whole-volume read would give for a missing chunk.
 	 */
-	static InpaintResult inpaintBlock(final RandomAccessibleInterval<UnsignedByteType> tissue,
-									  final RandomAccessibleInterval<UnsignedByteType> mask,
-									  final Grid.Block block,
-									  final long[] tissueTranslate,
-									  final long zMin,
-									  final long zMax) {
+	private static Img<UnsignedByteType> asByteImg(final DataBlock<?> dataBlock, final long[] blockDimensions) {
+		if (dataBlock == null) {
+			return ArrayImgs.unsignedBytes(blockDimensions);
+		}
+		return ArrayImgs.unsignedBytes((byte[]) dataBlock.getData(), blockDimensions);
+	}
 
-		final RandomAccess<UnsignedByteType> tissueAccess = tissue.randomAccess();
-		final RandomAccess<UnsignedByteType> maskAccess = Views.extendZero(mask).randomAccess();
+	/**
+	 * Produces the inpainted version of a single block: every pixel where the mask is 0 is replaced with the average
+	 * of the tissue in the sections above and below (the single neighbor is copied at the block's z-boundary). Both
+	 * {@code tissueBlock} and {@code maskBlock} are block-local images with dimensions {@code blockDimensions}; because
+	 * the volume is a single z-chunk, the block's z-boundary is the volume's z-boundary, so no neighbouring block is
+	 * needed for the z-average.
+	 */
+	static InpaintResult inpaintBlock(final RandomAccessibleInterval<UnsignedByteType> tissueBlock,
+									  final RandomAccessibleInterval<UnsignedByteType> maskBlock,
+									  final long[] blockDimensions) {
 
-		final Img<UnsignedByteType> inpainted = ArrayImgs.unsignedBytes(block.dimensions);
+		final RandomAccess<UnsignedByteType> tissueAccess = tissueBlock.randomAccess();
+		final RandomAccess<UnsignedByteType> maskAccess = maskBlock.randomAccess();
+		final long zMax = blockDimensions[2] - 1;
+
+		final Img<UnsignedByteType> inpainted = ArrayImgs.unsignedBytes(blockDimensions);
 		final Cursor<UnsignedByteType> cursor = inpainted.localizingCursor();
 		final long[] local = new long[3];
-		final long[] world = new long[3];
 		boolean changed = false;
 		while (cursor.hasNext()) {
 			final UnsignedByteType target = cursor.next();
 			cursor.localize(local);
-			world[0] = block.offset[0] + tissueTranslate[0] + local[0];
-			world[1] = block.offset[1] + tissueTranslate[1] + local[1];
-			world[2] = block.offset[2] + tissueTranslate[2] + local[2];
 
-			final int original = tissueAccess.setPositionAndGet(world).get();
+			final int original = tissueAccess.setPositionAndGet(local).get();
 			final int value;
-			if (maskAccess.setPositionAndGet(world).get() > 0) {
+			if (maskAccess.setPositionAndGet(local).get() > 0) {
 				value = original;
 			} else {
-				value = zAverage(tissueAccess, world, zMin, zMax);
+				value = zAverage(tissueAccess, local, 0, zMax);
 				if (value != original) {
 					changed = true;
 				}
