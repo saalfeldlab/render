@@ -3,11 +3,8 @@ package org.janelia.render.client.spark.multisem;
 
 import com.beust.jcommander.Parameter;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Serializable;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -149,14 +146,6 @@ public class Wafer6061Inpainter {
 				names = "--dryRun",
 				description = "Only compute and log candidate / would-be-modified counts; do not write or back up anything.")
 		public boolean dryRun = false;
-
-		@Parameter(
-				names = "--diagnosticsPath",
-				description = "Optional CSV file for per-block decisions (outside_roi / inside_roi / inpainted, plus the " +
-							  "minimal inpainted z-layer). When set, decisions for ALL blocks are collected. Near-ROI blocks " +
-							  "with no tissue are omitted (the distance filter runs before any presence check, so block " +
-							  "emptiness is not observable outside the ROI and is not recorded as a category).")
-		public String diagnosticsPath;
 
 		public String fullDataset() {
 			return dataset + "/s0";
@@ -324,37 +313,25 @@ public class Wafer6061Inpainter {
 		final Broadcast<PointCloud> cloudBroadcast = sparkContext.broadcast(cloud);
 		final Broadcast<Parameters> paramsBroadcast = sparkContext.broadcast(params);
 
-		// 2. + 3. Filter (distance, then presence) and inpaint in one distributed pass. When a diagnostics file is
-		// requested, every block's decision is collected (not just the inpainted ones) so the full picture can be drawn.
+		// A single driver line carries the grid extent and z-depth the visualization needs; the per-block
+		// 'blockDecision ...' lines are logged on the executors (see inpaintPartition / logDecision).
+		final long[] dims = s0Attributes.getDimensions();
+		final int[] blockSize = s0Attributes.getBlockSize();
+		LOG.info("runWithSparkContext: diagnostics metadata serial={} maxRoiDistance={} gridX={} gridY={} zLayers={}",
+				 params.serial, params.maxRoiDistance,
+				 (dims[0] + blockSize[0] - 1) / blockSize[0], (dims[1] + blockSize[1] - 1) / blockSize[1], dims[2]);
+
+		// 2. + 3. Filter (distance, then presence) and inpaint in one distributed pass.
 		final String backup = params.dryRun ? null : backupPath;
-		final boolean emitAllDecisions = params.diagnosticsPath != null;
-		final JavaRDD<BlockDecision> decisionRDD = sparkContext.parallelize(s0Blocks).mapPartitions(
+		final JavaRDD<long[]> modifiedRDD = sparkContext.parallelize(s0Blocks).mapPartitions(
 				blockIterator -> inpaintPartition(blockIterator,
 												  cloudBroadcast.value(),
 												  paramsBroadcast.value(),
-												  backup,
-												  emitAllDecisions));
+												  backup));
 
-		final List<BlockDecision> decisions = decisionRDD.collect();
-
-		final List<long[]> modifiedS0 = new ArrayList<>();
-		long outsideCount = 0;
-		long insideCount = 0;
-		for (final BlockDecision d : decisions) {
-			switch (d.decision) {
-				case DECISION_OUTSIDE_ROI: outsideCount++; break;
-				case DECISION_INSIDE_ROI:  insideCount++; break;
-				case DECISION_INPAINTED:   modifiedS0.add(new long[] {d.gridX, d.gridY, 0}); break;
-				default: break;
-			}
-		}
+		final List<long[]> modifiedS0 = modifiedRDD.collect();
 		LOG.info("runWithSparkContext: {} s0 block(s) were {}",
 				 modifiedS0.size(), params.dryRun ? "identified for inpainting (dry run)" : "inpainted");
-		if (emitAllDecisions) {
-			LOG.info("runWithSparkContext: decision counts: outside_roi={}, inside_roi={}, inpainted={}",
-					 outsideCount, insideCount, modifiedS0.size());
-			writeDiagnostics(params.diagnosticsPath, decisions, s0Attributes);
-		}
 
 		if (params.dryRun || modifiedS0.isEmpty()) {
 			return;
@@ -362,32 +339,6 @@ public class Wafer6061Inpainter {
 
 		// 6. Selectively update the downsample pyramid, one level at a time.
 		updatePyramid(sparkContext, levels, levelAttributes, modifiedS0, backupPath);
-	}
-
-	/**
-	 * Writes one CSV row per recorded {@link BlockDecision} plus a small metadata header. Consumed as-is by the
-	 * visualization; the client is the single source of truth for the decisions (no logic is re-derived downstream).
-	 */
-	private void writeDiagnostics(final String diagnosticsPath,
-								  final List<BlockDecision> decisions,
-								  final DatasetAttributes s0Attributes) {
-		final long[] dims = s0Attributes.getDimensions();
-		final int[] blockSize = s0Attributes.getBlockSize();
-		final long gridX = (dims[0] + blockSize[0] - 1) / blockSize[0];
-		final long gridY = (dims[1] + blockSize[1] - 1) / blockSize[1];
-		try (final BufferedWriter writer = Files.newBufferedWriter(Paths.get(diagnosticsPath))) {
-			writer.write("# Wafer6061Inpainter diagnostics\n");
-			writer.write("# serial=" + params.serial + " maxRoiDistance=" + params.maxRoiDistance +
-						 " gridX=" + gridX + " gridY=" + gridY + " zLayers=" + dims[2] + "\n");
-			writer.write("gridX,gridY,roiDistance,decision,minLayer\n");
-			for (final BlockDecision d : decisions) {
-				writer.write(d.gridX + "," + d.gridY + "," + Double.toString(d.roiDistance) + "," +
-							 decisionLabel(d.decision) + "," + d.minLayer + "\n");
-			}
-		} catch (final IOException e) {
-			throw new RuntimeException("failed to write diagnostics to " + diagnosticsPath, e);
-		}
-		LOG.info("writeDiagnostics: wrote {} block decisions to {}", decisions.size(), diagnosticsPath);
 	}
 
 	// ------------------------------------------------------------------------------------------------
@@ -625,15 +576,14 @@ public class Wafer6061Inpainter {
 	// Steps 2 + 3: filter and inpaint one partition of s0 blocks.
 	// ------------------------------------------------------------------------------------------------
 
-	private static Iterator<BlockDecision> inpaintPartition(final Iterator<Grid.Block> blocks,
-															final PointCloud cloud,
-															final Parameters params,
-															final String backupPath,
-															final boolean emitAllDecisions) {
+	private static Iterator<long[]> inpaintPartition(final Iterator<Grid.Block> blocks,
+													 final PointCloud cloud,
+													 final Parameters params,
+													 final String backupPath) {
 
 		LogUtilities.setupExecutorLog4j("inpaint");
 
-		final List<BlockDecision> decisions = new ArrayList<>();
+		final List<long[]> modified = new ArrayList<>();
 		final KNearestNeighborSearchOnKDTree<DoubleType> search = cloud.buildSearch(params.k);
 
 		try (final N5Reader reader = new N5Factory().openReader(N5Factory.StorageFormat.N5, params.n5Path);
@@ -648,7 +598,6 @@ public class Wafer6061Inpainter {
 			long considered = 0;
 			long nearRoi = 0;
 			long present = 0;
-			long inpainted = 0;
 			while (blocks.hasNext()) {
 				final Grid.Block block = blocks.next();
 				considered++;
@@ -662,9 +611,7 @@ public class Wafer6061Inpainter {
 				final double centerY = block.offset[1] + block.dimensions[1] / 2.0;
 				final double roiDistance = cloud.interpolate(search, centerX, centerY, params.idwPower);
 				if (! (roiDistance < params.maxRoiDistance)) {
-					if (emitAllDecisions) {
-						decisions.add(new BlockDecision(gridX, gridY, roiDistance, DECISION_OUTSIDE_ROI, -1));
-					}
+					logDecision(gridX, gridY, "outside_roi", -1, roiDistance);
 					continue;
 				}
 				nearRoi++;
@@ -672,7 +619,8 @@ public class Wafer6061Inpainter {
 				// (2) presence check: readBlock returns null for absent (empty) blocks. The block it returns is also
 				// the raw tissue we inpaint from and back up, so no whole-volume open (and no accumulating cell cache)
 				// is needed: because z is a single chunk (guarded on the driver), every z-1 / z+1 section the
-				// z-average reads lives inside this same block. Near-ROI empty blocks are not recorded (see BlockDecision).
+				// z-average reads lives inside this same block. Near-ROI empty blocks are not logged: the distance
+				// filter runs before this presence check, so block emptiness is not observable outside the ROI.
 				final DataBlock<?> tissueBlock = reader.readBlock(params.fullDataset(), s0Attributes, block.gridPosition);
 				if (tissueBlock == null) {
 					continue;
@@ -687,26 +635,33 @@ public class Wafer6061Inpainter {
 														  asByteImg(maskBlock, block.dimensions),
 														  block.dimensions);
 				if (! result.changed) {
-					if (emitAllDecisions) {
-						decisions.add(new BlockDecision(gridX, gridY, roiDistance, DECISION_INSIDE_ROI, -1));
-					}
+					logDecision(gridX, gridY, "inside_roi", -1, roiDistance);
 					continue;
 				}
-				inpainted++;
 
-				decisions.add(new BlockDecision(gridX, gridY, roiDistance, DECISION_INPAINTED, result.minChangedLayer));
+				modified.add(block.gridPosition);
 				if (! params.dryRun) {
 					backupWriter.writeBlock(params.fullDataset(), s0Attributes, tissueBlock);
 					N5Utils.saveBlock(result.inpainted, tissueWriter, params.fullDataset(), s0Attributes, block.gridPosition);
 				}
-				LOG.info("inpaintPartition: inpainted block {} at min z-layer {} (roiDistance={})",
-						 Arrays.toString(block.gridPosition), result.minChangedLayer, roiDistance);
+				logDecision(gridX, gridY, "inpainted", result.minChangedLayer, roiDistance);
 			}
 			LOG.info("inpaintPartition: partition summary: considered={}, nearRoi(<{}um)={}, present={}, inpainted={}",
-					 considered, params.maxRoiDistance, nearRoi, present, inpainted);
+					 considered, params.maxRoiDistance, nearRoi, present, modified.size());
 		}
 
-		return decisions.iterator();
+		return modified.iterator();
+	}
+
+	/**
+	 * Logs one greppable per-block decision line consumed by the visualization (plot_inpainter_diagnostics.py). Keeping
+	 * a fixed {@code blockDecision key=value ...} shape means the log is the single source of truth — no file is written
+	 * and no decision logic is re-derived downstream.
+	 */
+	private static void logDecision(final long gridX, final long gridY, final String decision,
+									final int minLayer, final double roiDistance) {
+		LOG.info("blockDecision gridX={} gridY={} decision={} minLayer={} roiDistance={}",
+				 gridX, gridY, decision, minLayer, roiDistance);
 	}
 
 	/**
@@ -921,42 +876,6 @@ public class Wafer6061Inpainter {
 			this.inpainted = inpainted;
 			this.changed = changed;
 			this.minChangedLayer = minChangedLayer;
-		}
-	}
-
-	// Per-block decision categories recorded for diagnostics / visualization.
-	static final int DECISION_OUTSIDE_ROI = 0;
-	static final int DECISION_INSIDE_ROI = 1;
-	static final int DECISION_INPAINTED = 2;
-
-	static String decisionLabel(final int decision) {
-		switch (decision) {
-			case DECISION_OUTSIDE_ROI: return "outside_roi";
-			case DECISION_INSIDE_ROI:  return "inside_roi";
-			case DECISION_INPAINTED:   return "inpainted";
-			default:                   return "unknown";
-		}
-	}
-
-	/**
-	 * The recorded decision for a single s0 block (its z grid position is always 0 — z is a single chunk). Near-ROI
-	 * blocks with no tissue are intentionally NOT represented: the distance filter runs before any presence check, so
-	 * block emptiness is only observable inside the ROI and is not treated as a category.
-	 */
-	static class BlockDecision implements Serializable {
-		final long gridX;
-		final long gridY;
-		final double roiDistance;
-		final int decision;
-		final int minLayer; // minimal inpainted z-layer, or -1 when the block was not inpainted
-
-		BlockDecision(final long gridX, final long gridY, final double roiDistance,
-					  final int decision, final int minLayer) {
-			this.gridX = gridX;
-			this.gridY = gridY;
-			this.roiDistance = roiDistance;
-			this.decision = decision;
-			this.minLayer = minLayer;
 		}
 	}
 
