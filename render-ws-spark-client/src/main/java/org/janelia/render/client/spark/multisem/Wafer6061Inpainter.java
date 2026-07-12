@@ -214,7 +214,7 @@ public class Wafer6061Inpainter {
 		final List<String> levels = new ArrayList<>();
 		final Map<String, DatasetAttributes> levelAttributes = new LinkedHashMap<>();
 		int[] downsampleFactors = null;
-		try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, params.n5Path)) {
+		try (final N5Reader n5 = openN5Reader(params.n5Path)) {
 
 			final DatasetAttributes s0Attributes = n5.getDatasetAttributes(params.fullDataset());
 			if (s0Attributes == null) {
@@ -281,7 +281,7 @@ public class Wafer6061Inpainter {
 		// Create the backup container and mirror all datasets that might receive backups.
 		final String backupPath = params.getBackupPath();
 		if (! params.dryRun) {
-			try (final N5Writer backup = new N5Factory().openWriter(N5Factory.StorageFormat.N5, backupPath)) {
+			try (final N5Writer backup = openN5Writer(backupPath)) {
 				for (final String levelDataset : levels) {
 					if (! backup.datasetExists(levelDataset)) {
 						backup.createDataset(levelDataset, levelAttributes.get(levelDataset));
@@ -542,18 +542,7 @@ public class Wafer6061Inpainter {
 																final long slabCount,
 																final int slabPosition) {
 		final RandomAccessibleInterval<DoubleType> img = openDoubles(n5, dataset);
-		int slabAxis = -1;
-		for (int d = 0; d < img.numDimensions(); d++) {
-			if (img.dimension(d) == slabCount) {
-				slabAxis = d;
-				break;
-			}
-		}
-		if (slabAxis < 0) {
-			throw new IllegalArgumentException("could not find slab axis (size " + slabCount + ") in " + dataset +
-											   " with dimensions " + Arrays.toString(img.dimensionsAsLongArray()));
-		}
-		return Views.hyperSlice(img, slabAxis, slabPosition);
+		return Views.hyperSlice(img, axisOfSize(img, slabCount, dataset), slabPosition);
 	}
 
 	/**
@@ -581,11 +570,9 @@ public class Wafer6061Inpainter {
 		final List<long[]> modified = new ArrayList<>();
 		final KNearestNeighborSearchOnKDTree<DoubleType> search = cloud.buildSearch(IDW_K);
 
-		try (final N5Reader reader = new N5Factory().openReader(N5Factory.StorageFormat.N5, params.n5Path);
-			 final N5Writer tissueWriter = params.dryRun ? null :
-					 new N5Factory().openWriter(N5Factory.StorageFormat.N5, params.n5Path);
-			 final N5Writer backupWriter = params.dryRun ? null :
-					 new N5Factory().openWriter(N5Factory.StorageFormat.N5, backupPath)) {
+		try (final N5Reader reader = openN5Reader(params.n5Path);
+			 final N5Writer tissueWriter = params.dryRun ? null : openN5Writer(params.n5Path);
+			 final N5Writer backupWriter = params.dryRun ? null : openN5Writer(backupPath)) {
 
 			final DatasetAttributes s0Attributes = reader.getDatasetAttributes(params.fullDataset());
 			final DatasetAttributes maskAttributes = reader.getDatasetAttributes(params.mask);
@@ -719,28 +706,21 @@ public class Wafer6061Inpainter {
 								final long zMin,
 								final long zMax) {
 		final long z = world[2];
-		final boolean hasAbove = (z - 1) >= zMin;
-		final boolean hasBelow = (z + 1) <= zMax;
-		if (hasAbove && hasBelow) {
+		int sum = 0;
+		int count = 0;
+		if (z - 1 >= zMin) {
 			world[2] = z - 1;
-			final int above = tissueAccess.setPositionAndGet(world).get();
-			world[2] = z + 1;
-			final int below = tissueAccess.setPositionAndGet(world).get();
-			world[2] = z;
-			return (above + below) >>> 1;
-		} else if (hasAbove) {
-			world[2] = z - 1;
-			final int above = tissueAccess.setPositionAndGet(world).get();
-			world[2] = z;
-			return above;
-		} else if (hasBelow) {
-			world[2] = z + 1;
-			final int below = tissueAccess.setPositionAndGet(world).get();
-			world[2] = z;
-			return below;
-		} else {
-			return tissueAccess.setPositionAndGet(world).get();
+			sum += tissueAccess.setPositionAndGet(world).get();
+			count++;
 		}
+		if (z + 1 <= zMax) {
+			world[2] = z + 1;
+			sum += tissueAccess.setPositionAndGet(world).get();
+			count++;
+		}
+		world[2] = z;
+		// both neighbors -> mean (== the old (above+below)>>>1 for byte values); one -> that neighbor; none -> unchanged.
+		return count > 0 ? sum / count : tissueAccess.setPositionAndGet(world).get();
 	}
 
 	// ------------------------------------------------------------------------------------------------
@@ -810,9 +790,9 @@ public class Wafer6061Inpainter {
 			targetSize[d] = cellDimensions[d];
 		}
 
-		try (final N5Reader reader = new N5Factory().openReader(N5Factory.StorageFormat.N5, n5Path);
-			 final N5Writer writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, n5Path);
-			 final N5Writer backupWriter = new N5Factory().openWriter(N5Factory.StorageFormat.N5, backupPath)) {
+		try (final N5Reader reader = openN5Reader(n5Path);
+			 final N5Writer writer = openN5Writer(n5Path);
+			 final N5Writer backupWriter = openN5Writer(backupPath)) {
 
 			final RandomAccessibleInterval<UnsignedByteType> source = N5Utils.open(reader, fromDataset);
 			final RandomAccessibleInterval<UnsignedByteType> sourceBlock = Views.offsetInterval(source, sourceMin, sourceSize);
@@ -859,6 +839,16 @@ public class Wafer6061Inpainter {
 	private static long[] readTranslate(final N5Reader n5, final String dataset, final int numDimensions) {
 		final long[] translate = n5.getAttribute(dataset, "translate", long[].class);
 		return translate != null ? translate : new long[numDimensions];
+	}
+
+	/** Opens an N5 reader for a tissue/backup container (explicit N5 format; local path or gs://). */
+	private static N5Reader openN5Reader(final String path) {
+		return new N5Factory().openReader(N5Factory.StorageFormat.N5, path);
+	}
+
+	/** Opens an N5 writer for a tissue/backup container (explicit N5 format; local path or gs://). */
+	private static N5Writer openN5Writer(final String path) {
+		return new N5Factory().openWriter(N5Factory.StorageFormat.N5, path);
 	}
 
 	/**
