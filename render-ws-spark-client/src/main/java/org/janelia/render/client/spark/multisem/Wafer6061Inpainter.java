@@ -123,29 +123,6 @@ public class Wafer6061Inpainter {
 		public String xlogPath;
 
 		@Parameter(
-				names = "--baseDataUrl",
-				description = "Base render web service URL for data (e.g. http://host[:port]/render-ws/v1); the aligned " +
-							  "tile positions that define the ROI cloud are read from here.",
-				required = true)
-		public String baseDataUrl;
-
-		@Parameter(
-				names = "--owner",
-				description = "Render stack owner.")
-		public String owner = "hess_wafers_60_61";
-
-		@Parameter(
-				names = "--project",
-				description = "Render project holding the aligned stack. Defaults to the name of the directory that " +
-							  "contains the N5 container (e.g. .../w61_serial_100_to_109/w61_s109_r00.n5 -> w61_serial_100_to_109).")
-		public String project;
-
-		@Parameter(
-				names = "--stack",
-				description = "Render stack whose first layer's tile positions define the ROI cloud. Defaults to the dataset name.")
-		public String stack;
-
-		@Parameter(
 				names = "--serial",
 				description = "Serial label (id_serial) of the section stored in this N5, resolved to the reference " +
 							  "arrays' slab position. Defaults to the serial parsed from the dataset name " +
@@ -192,12 +169,6 @@ public class Wafer6061Inpainter {
 			if (serial < 0) {
 				serial = inferSerial(dataset);
 			}
-			if (project == null) {
-				project = inferProject(n5Path);
-			}
-			if (stack == null) {
-				stack = basename(dataset);
-			}
 		}
 
 		/** Parses the serial label from a dataset/container name like {@code .../w61_s109_r00} (basename {@code _s<serial>}). */
@@ -207,25 +178,6 @@ public class Wafer6061Inpainter {
 				return Long.parseLong(matcher.group(1));
 			}
 			throw new IllegalArgumentException("could not infer the serial from '" + path + "'; pass --serial explicitly");
-		}
-
-		/** Infers the render project from the name of the directory that contains the N5 container. */
-		static String inferProject(final String n5Path) {
-			String p = n5Path;
-			while (p.endsWith("/")) {
-				p = p.substring(0, p.length() - 1);
-			}
-			final int containerSlash = p.lastIndexOf('/');
-			if (containerSlash <= 0) {
-				throw new IllegalArgumentException("could not infer the render project from n5Path '" + n5Path +
-												   "' (no parent directory); pass --project explicitly");
-			}
-			final String project = basename(p.substring(0, containerSlash));
-			if (project.isEmpty()) {
-				throw new IllegalArgumentException("could not infer the render project from n5Path '" + n5Path +
-												   "'; pass --project explicitly");
-			}
-			return project;
 		}
 
 		/** Last path segment of a path, stripped of any leading group/parent path and trailing slashes. */
@@ -265,8 +217,9 @@ public class Wafer6061Inpainter {
 
 	public void run() throws IOException {
 
-		// Read the tissue s0 metadata, the world->voxel offset, and discover the existing pyramid levels.
+		// Read the tissue s0 metadata, the render target, the world->voxel offset, and discover the pyramid levels.
 		final double[] worldToVoxel;
+		final RenderTarget renderTarget;
 		final int numDimensions;
 		final List<String> levels = new ArrayList<>();
 		final Map<String, DatasetAttributes> levelAttributes = new LinkedHashMap<>();
@@ -306,6 +259,11 @@ public class Wafer6061Inpainter {
 						Arrays.toString(s0Attributes.getBlockSize()));
 			}
 
+			// Render service parameters (baseDataUrl / owner / project / stack) come straight from the group's
+			// "renderExport" metadata written by render's N5 export — the same attributes.json that holds the pyramid
+			// scales and translate — so they never have to be passed on the command line.
+			renderTarget = readRenderTarget(n5, params.dataset);
+
 			// World->voxel offset for placing render tile centers: the neuroglancer 'translate' (the stack
 			// bounding-box min in world pixels) is written on the multiscale GROUP, not on s0 (s0 only carries a
 			// sub-pixel centering transform). May be null here; loadPointCloud falls back to the render stack bounds.
@@ -322,11 +280,12 @@ public class Wafer6061Inpainter {
 				levelAttributes.put(levelDataset, n5.getDatasetAttributes(levelDataset));
 			}
 
-			// The relative per-level downsampling factor is read from the pyramid itself rather than passed in: s1's
-			// "downsamplingFactors" attribute is the factor relative to s0, and these pyramids are built with a
-			// constant factor at every step (see DownsampleHelper / N5DownsamplerSpark), so it applies to all levels.
+			// The relative per-level downsampling factor is read from the pyramid itself rather than passed in: the
+			// group's neuroglancer "scales" attribute lists the cumulative factor per level relative to s0, and these
+			// pyramids are built with a constant factor at every step (see DownsampleHelper / N5DownsamplerSpark), so
+			// scales[1] applies to all levels.
 			if (levels.size() > 1) {
-				downsampleFactors = readDownsamplingFactors(n5, levels.get(1), numDimensions);
+				downsampleFactors = readDownsamplingFactors(n5, params.dataset, numDimensions);
 			}
 		}
 		LOG.info("run: world->voxel translate={}, pyramid levels={}, downsampleFactors={}",
@@ -334,9 +293,12 @@ public class Wafer6061Inpainter {
 
 		// Load the (small) per-slab ROI point cloud on the driver: positions from the aligned render stack, distances
 		// from the xlog. A single render request keeps the server load light; the cloud is then broadcast to executors.
-		final PointCloud cloud = loadPointCloud(params, worldToVoxel);
-		LOG.info("run: loaded {} ROI reference points for serial {} (render {}/{}/{})",
-				 cloud.size(), params.serial, params.owner, params.project, params.stack);
+		final RenderDataClient renderClient =
+				new RenderDataClient(renderTarget.baseDataUrl, renderTarget.owner, renderTarget.project);
+		final PointCloud cloud = loadPointCloud(params, renderClient, renderTarget.stack, worldToVoxel);
+		LOG.info("run: loaded {} ROI reference points for serial {} (render {} {}/{}/{})",
+				 cloud.size(), params.serial, renderTarget.baseDataUrl, renderTarget.owner, renderTarget.project,
+				 renderTarget.stack);
 
 		// Create the backup container and mirror all datasets that might receive backups.
 		final String backupPath = params.getBackupPath();
@@ -427,6 +389,8 @@ public class Wafer6061Inpainter {
 	 * out-of-range mfov/sfov, are dropped.
 	 */
 	static PointCloud loadPointCloud(final Parameters params,
+									 final RenderDataClient renderClient,
+									 final String stack,
 									 final double[] worldToVoxel)
 			throws IOException {
 
@@ -469,14 +433,12 @@ public class Wafer6061Inpainter {
 		final int nMfov = nSfov > 0 ? distBySfovMfov[0].length : 0;
 
 		// (b) render: the first layer's aligned tile centers, fetched once on the driver.
-		final RenderDataClient renderClient = new RenderDataClient(params.baseDataUrl, params.owner, params.project);
-		final List<Double> zValues = renderClient.getStackZValues(params.stack);
+		final List<Double> zValues = renderClient.getStackZValues(stack);
 		if (zValues.isEmpty()) {
-			throw new IllegalArgumentException("render stack " + params.owner + "/" + params.project + "/" +
-											   params.stack + " has no z layers");
+			throw new IllegalArgumentException("render stack " + stack + " has no z layers");
 		}
 		final double firstZ = zValues.get(0);
-		final List<TileBounds> tiles = renderClient.getTileBounds(params.stack, firstZ);
+		final List<TileBounds> tiles = renderClient.getTileBounds(stack, firstZ);
 
 		final double offsetX;
 		final double offsetY;
@@ -484,10 +446,10 @@ public class Wafer6061Inpainter {
 			offsetX = worldToVoxel[0];
 			offsetY = worldToVoxel[1];
 		} else {
-			final Bounds stackBounds = renderClient.getStackMetaData(params.stack).getStackBounds();
+			final Bounds stackBounds = renderClient.getStackMetaData(stack).getStackBounds();
 			if (stackBounds == null || stackBounds.getMinX() == null || stackBounds.getMinY() == null) {
 				throw new IllegalArgumentException("N5 group " + params.dataset + " has no neuroglancer 'translate' and " +
-												   "render stack " + params.stack + " has no bounds; cannot map world coordinates to voxels");
+												   "render stack " + stack + " has no bounds; cannot map world coordinates to voxels");
 			}
 			offsetX = stackBounds.getMinX();
 			offsetY = stackBounds.getMinY();
@@ -505,8 +467,13 @@ public class Wafer6061Inpainter {
 			final String tileId = tile.getTileId();
 			final int mfov = Integer.parseInt(MultiSemUtilities.getSimpleMfovForTileId(tileId).substring(1)); // m0013 -> 13
 			final int spiralSfov = Integer.parseInt(MultiSemUtilities.getSFOVIndexForTileId(tileId));          // _s## spiral, 1-based
+			// guard the spiral number before the permutation lookup (91-element table) and the mfov before the grid.
+			if (mfov < 0 || mfov >= nMfov || spiralSfov < 1 || spiralSfov > MultiSemUtilities.NUMBER_OF_TILES_IN_MFOV) {
+				outOfRange++;
+				continue;
+			}
 			final int sfov = MultiSemUtilities.getRowMajorSFOVIndex(spiralSfov) - 1;                           // xlog row-major, 0-based
-			if (mfov < 0 || mfov >= nMfov || sfov < 0 || sfov >= nSfov) {
+			if (sfov < 0 || sfov >= nSfov) {
 				outOfRange++;
 				continue;
 			}
@@ -520,7 +487,7 @@ public class Wafer6061Inpainter {
 			ds.add(d);
 		}
 		if (xs.isEmpty()) {
-			throw new IllegalArgumentException("no render tiles in stack " + params.stack + " z " + firstZ +
+			throw new IllegalArgumentException("no render tiles in stack " + stack + " z " + firstZ +
 											   " could be matched to a finite xlog distance_roi (fetched " + tiles.size() +
 											   " tiles; " + noDistance + " had NaN distance, " + outOfRange + " had out-of-range mfov/sfov)");
 		}
@@ -908,20 +875,75 @@ public class Wafer6061Inpainter {
 	}
 
 	/**
-	 * Reads the {@code downsamplingFactors} attribute of a pyramid level (the factor relative to s0, as written by
-	 * {@code N5DownsamplerSpark} / render's export). Fails fast when it is absent so the pyramid factor is never guessed.
+	 * Reads the per-step pyramid downsampling factor from the multiscale group's neuroglancer {@code scales} attribute
+	 * (as written by render's N5 export). {@code scales} is the cumulative factor per level relative to s0, e.g.
+	 * {@code [[1,1,1],[2,2,1],[4,4,1],...]}, so {@code scales[1]} is the factor of s1 relative to s0 — and because these
+	 * pyramids use a constant step at every level, it is the per-step factor for all levels. Fails fast when it is
+	 * absent or has fewer than two levels, so the pyramid factor is never guessed.
 	 */
-	private static int[] readDownsamplingFactors(final N5Reader n5, final String dataset, final int numDimensions) {
-		final int[] factors = n5.getAttribute(dataset, "downsamplingFactors", int[].class);
-		if (factors == null) {
-			throw new IllegalArgumentException("dataset " + dataset + " has no 'downsamplingFactors' attribute to derive " +
-											   "the pyramid downsampling factor from");
+	private static int[] readDownsamplingFactors(final N5Reader n5, final String group, final int numDimensions) {
+		final int[][] scales = n5.getAttribute(group, "scales", int[][].class);
+		if (scales == null || scales.length < 2) {
+			throw new IllegalArgumentException("group " + group + " has no 'scales' attribute with at least two levels " +
+											   "to derive the pyramid downsampling factor from");
 		}
+		final int[] factors = scales[1]; // s1 relative to s0 == the per-step factor (constant-step pyramids)
 		if (factors.length != numDimensions) {
-			throw new IllegalArgumentException("dataset " + dataset + " has downsamplingFactors " +
-											   Arrays.toString(factors) + " but the volume is " + numDimensions + "-dimensional");
+			throw new IllegalArgumentException("group " + group + " has scales[1] " + Arrays.toString(factors) +
+											   " but the volume is " + numDimensions + "-dimensional");
 		}
 		return factors;
+	}
+
+	/**
+	 * Reads the render service coordinates (baseDataUrl / owner / project / stack) straight from the multiscale group's
+	 * {@code renderExport} metadata, written by render's N5 export (the same attributes.json that holds the pyramid
+	 * {@code scales} and {@code translate}). Fails fast when it is absent so the render target is never guessed.
+	 */
+	private static RenderTarget readRenderTarget(final N5Reader n5, final String group) {
+		final RenderExport export = n5.getAttribute(group, "renderExport", RenderExport.class);
+		if (export == null || export.runParameters == null || export.runParameters.renderWeb == null ||
+			export.runParameters.renderWeb.baseDataUrl == null || export.runParameters.stack == null) {
+			throw new IllegalArgumentException(
+					"N5 group " + group + " has no usable 'renderExport' metadata (need runParameters.renderWeb." +
+					"baseDataUrl/owner/project and runParameters.stack); this client reads the render service parameters from there");
+		}
+		final RenderExport.RenderWeb web = export.runParameters.renderWeb;
+		return new RenderTarget(web.baseDataUrl, web.owner, web.project, export.runParameters.stack);
+	}
+
+	/** Render service coordinates resolved from the group's {@code renderExport} metadata. */
+	static class RenderTarget {
+		final String baseDataUrl;
+		final String owner;
+		final String project;
+		final String stack;
+
+		RenderTarget(final String baseDataUrl, final String owner, final String project, final String stack) {
+			this.baseDataUrl = baseDataUrl;
+			this.owner = owner;
+			this.project = project;
+			this.stack = stack;
+		}
+	}
+
+	/**
+	 * Minimal GSON view of the group's {@code renderExport} attribute (only the render coordinates this client needs;
+	 * all other fields written by the export are ignored).
+	 */
+	private static class RenderExport {
+		RunParameters runParameters;
+
+		private static class RunParameters {
+			RenderWeb renderWeb;
+			String stack;
+		}
+
+		private static class RenderWeb {
+			String baseDataUrl;
+			String owner;
+			String project;
+		}
 	}
 
 	/** Result of inpainting one block: the (block-sized) inpainted image and whether any pixel changed. */
