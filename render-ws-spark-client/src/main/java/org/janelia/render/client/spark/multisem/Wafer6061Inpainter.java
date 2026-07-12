@@ -7,10 +7,12 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -323,8 +325,18 @@ public class Wafer6061Inpainter {
 									 final int[] downsampleFactors) {
 
 		final DatasetAttributes s0Attributes = levelAttributes.get(params.fullDataset());
-		final List<Grid.Block> s0Blocks = Grid.create(s0Attributes.getDimensions(), s0Attributes.getBlockSize());
-		LOG.info("runWithSparkContext: {} s0 grid blocks to consider", s0Blocks.size());
+		final List<Grid.Block> s0Blocks = new ArrayList<>(Grid.create(s0Attributes.getDimensions(),
+																	   s0Attributes.getBlockSize()));
+
+		// Grid.create returns blocks in raster order, and Spark's parallelize slices the list into contiguous
+		// partitions. The blocks that actually do work (present-check + inpaint) are the near-ROI ones, and the ROI is
+		// a small, spatially clustered region, so contiguous slicing piles all the expensive blocks into a few
+		// partitions while the rest only run the cheap no-I/O distance filter -> severe load skew. Shuffling first gives
+		// every partition a representative mix of near- and far-ROI blocks, so the pass is balanced. The seed (serial)
+		// keeps the partitioning reproducible, and the outputs (emitted grid positions, per-block decision logs) are
+		// order-independent, so this changes only the distribution of work, not the result.
+		Collections.shuffle(s0Blocks, new Random(params.serial));
+		LOG.info("runWithSparkContext: {} s0 grid blocks to consider (shuffled for load balance)", s0Blocks.size());
 
 		final Broadcast<PointCloud> cloudBroadcast = sparkContext.broadcast(cloud);
 		final Broadcast<Parameters> paramsBroadcast = sparkContext.broadcast(params);
@@ -750,35 +762,70 @@ public class Wafer6061Inpainter {
 				affected.putIfAbsent(Arrays.toString(g), g);
 			}
 			final List<long[]> affectedBlocks = new ArrayList<>(affected.values());
+			// Every affected block does real work, so there is no near/far skew here, but the per-block cost still varies
+			// with how much of its source region is actually present (dense in the ROI interior, sparse at its edge).
+			// The affected blocks inherit a spatial order, so contiguous partitioning would group same-density
+			// neighbours together and leave some partitions all-dense and others all-sparse. Shuffle (as for s0) mixes
+			// densities across partitions; the seed varies per level but stays reproducible.
+			Collections.shuffle(affectedBlocks, new Random(params.serial * 31L + scale));
 			LOG.info("updatePyramid: re-downsampling {} block(s) for {}", affectedBlocks.size(), toDataset);
 
 			final String n5Path = params.n5Path;
-			sparkContext.parallelize(affectedBlocks).foreach(
-					gridPosition -> downsampleBlock(gridPosition, n5Path, backupPath,
-													fromDataset, toDataset, toAttributes, factors));
+			sparkContext.parallelize(affectedBlocks).foreachPartition(
+					gridPositions -> downsamplePartition(gridPositions, n5Path, backupPath,
+														 fromDataset, toDataset, toAttributes, factors));
 
 			modifiedPrevious = affectedBlocks;
 		}
 	}
 
 	/**
-	 * Re-downsamples a single pyramid block from the (already updated) previous level, replicating the per-block
-	 * math of {@code N5DownsamplerSpark} so the result matches the rest of the pyramid. The original block is backed
-	 * up before being overwritten.
+	 * Re-downsamples one partition's worth of pyramid blocks, opening the N5 handles and the source level <b>once</b>
+	 * for the whole partition rather than per block (the source open is a lazy {@code N5Utils.open}, so each block
+	 * still reads only the source chunks it needs). Each block is rebuilt from the (already updated) previous level
+	 * with the same per-block math as {@code N5DownsamplerSpark} so the result matches the rest of the pyramid, backing
+	 * up the original block before overwriting it.
 	 */
-	static void downsampleBlock(final long[] gridPosition,
-										final String n5Path,
-										final String backupPath,
-										final String fromDataset,
+	static void downsamplePartition(final Iterator<long[]> gridPositions,
+									final String n5Path,
+									final String backupPath,
+									final String fromDataset,
+									final String toDataset,
+									final DatasetAttributes toAttributes,
+									final int[] factors) {
+
+		LogUtilities.setupExecutorLog4j("downsample");
+
+		final CellGrid cellGrid = new CellGrid(toAttributes.getDimensions(), toAttributes.getBlockSize());
+
+		try (final N5Reader reader = openN5Reader(n5Path);
+			 final N5Writer writer = openN5Writer(n5Path);
+			 final N5Writer backupWriter = openN5Writer(backupPath)) {
+
+			final RandomAccessibleInterval<UnsignedByteType> source = N5Utils.open(reader, fromDataset);
+
+			int count = 0;
+			while (gridPositions.hasNext()) {
+				downsampleBlock(source, reader, writer, backupWriter, cellGrid,
+								gridPositions.next(), toDataset, toAttributes, factors);
+				count++;
+			}
+			LOG.info("downsamplePartition: re-downsampled {} {} block(s)", count, toDataset);
+		}
+	}
+
+	/** Re-downsamples a single block using the handles and source level already opened for the partition. */
+	private static void downsampleBlock(final RandomAccessibleInterval<UnsignedByteType> source,
+										final N5Reader reader,
+										final N5Writer writer,
+										final N5Writer backupWriter,
+										final CellGrid cellGrid,
+										final long[] gridPosition,
 										final String toDataset,
 										final DatasetAttributes toAttributes,
 										final int[] factors) {
 
-		LogUtilities.setupExecutorLog4j("downsample");
-
 		final int n = toAttributes.getNumDimensions();
-		final CellGrid cellGrid = new CellGrid(toAttributes.getDimensions(), toAttributes.getBlockSize());
-
 		final long[] targetMin = new long[n];
 		final int[] cellDimensions = new int[n];
 		cellGrid.getCellDimensions(gridPosition, targetMin, cellDimensions);
@@ -792,27 +839,20 @@ public class Wafer6061Inpainter {
 			targetSize[d] = cellDimensions[d];
 		}
 
-		try (final N5Reader reader = openN5Reader(n5Path);
-			 final N5Writer writer = openN5Writer(n5Path);
-			 final N5Writer backupWriter = openN5Writer(backupPath)) {
+		final RandomAccessibleInterval<UnsignedByteType> sourceBlock = Views.offsetInterval(source, sourceMin, sourceSize);
+		final Img<UnsignedByteType> targetBlock = ArrayImgs.unsignedBytes(targetSize);
+		Downsample.downsample(sourceBlock, targetBlock, factors);
 
-			final RandomAccessibleInterval<UnsignedByteType> source = N5Utils.open(reader, fromDataset);
-			final RandomAccessibleInterval<UnsignedByteType> sourceBlock = Views.offsetInterval(source, sourceMin, sourceSize);
-
-			final Img<UnsignedByteType> targetBlock = ArrayImgs.unsignedBytes(targetSize);
-			Downsample.downsample(sourceBlock, targetBlock, factors);
-
-			// back up the original block (if present) before overwriting.
-			final DataBlock<?> originalBlock = reader.readBlock(toDataset, toAttributes, gridPosition);
-			if (originalBlock != null) {
-				backupWriter.writeBlock(toDataset, toAttributes, originalBlock);
-			}
-
-			// delete first so a block that became empty does not leave a stale remnant.
-			N5Utils.deleteBlock(targetBlock, writer, toDataset, gridPosition);
-			N5Utils.saveNonEmptyBlock(targetBlock, writer, toDataset, gridPosition, new UnsignedByteType());
-			LOG.info("downsampleBlock: updated {} block {}", toDataset, Arrays.toString(gridPosition));
+		// back up the original block (if present) before overwriting.
+		final DataBlock<?> originalBlock = reader.readBlock(toDataset, toAttributes, gridPosition);
+		if (originalBlock != null) {
+			backupWriter.writeBlock(toDataset, toAttributes, originalBlock);
 		}
+
+		// delete first so a block that became empty does not leave a stale remnant.
+		N5Utils.deleteBlock(targetBlock, writer, toDataset, gridPosition);
+		N5Utils.saveNonEmptyBlock(targetBlock, writer, toDataset, gridPosition, new UnsignedByteType());
+		LOG.info("downsampleBlock: updated {} block {}", toDataset, Arrays.toString(gridPosition));
 	}
 
 	// ------------------------------------------------------------------------------------------------
