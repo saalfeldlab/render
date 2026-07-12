@@ -37,8 +37,12 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.broadcast.Broadcast;
+import org.janelia.alignment.multisem.MultiSemUtilities;
+import org.janelia.alignment.spec.Bounds;
+import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.util.Grid;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.saalfeldlab.n5.DataBlock;
@@ -56,10 +60,13 @@ import org.slf4j.LoggerFactory;
  * <p>
  * Inputs are (a) an N5 tissue volume (only non-empty blocks stored), (b) an N5 mask marking where image data is
  * present ({@code mask > 0}) vs. missing ({@code mask == 0}), and (c) the acquisition xlog zarr. The ROI point cloud
- * is built in the tissue's s0 voxel frame directly from the xlog: each SFOV's acquisition position ({@code x},
- * {@code y}) is placed exactly as {@code msem_to_render.py} ingests it (rotate by {@code 180 + rotation_slab}, then
- * {@code stage - min + halfSFOV}), and carries that SFOV's {@code distance_roi}. No render service and no coordinate
- * fitting are needed (x/y/distance_roi share the same {@code (mfov, sfov)} indexing).
+ * is built in the tissue's s0 voxel frame from the ALIGNED render stack (so montage stitching is accounted for): the
+ * first layer's tile bounds are fetched from the render web service on the driver, and each tile center (render world
+ * pixels) is mapped to the voxel frame with {@code voxel = center - translate} (the neuroglancer group-level
+ * {@code translate}, i.e. the stack bounding-box min). Each tile carries the {@code distance_roi} of its SFOV, read
+ * from the xlog for the slab whose {@code id_serial} equals {@code serial}: the tile's mfov (0-based) indexes the xlog
+ * mfov axis directly, and its spiral sfov number (the {@code _s##} field) is mapped to the xlog's row-major sfov axis
+ * via {@link MultiSemUtilities#getRowMajorSFOVIndex}.
  * <p>
  * The client processes the full-resolution ({@code s0}) blocks of the tissue in parallel. For each block it first
  * applies the cheap ROI-distance filter (interpolating {@code distance_roi} at the block center via inverse-distance
@@ -72,33 +79,20 @@ import org.slf4j.LoggerFactory;
  */
 public class Wafer6061Inpainter {
 
-	// SFOV image size fallback (pixels), used only when the xlog lacks x_sfov / y_sfov; the xlog values are
-	// preferred at runtime (see loadPointCloud), so these are wafer 60/61 defaults, not a tuning knob.
-	private static final int DEFAULT_SFOV_WIDTH = 2000;
-	private static final int DEFAULT_SFOV_HEIGHT = 1748;
-
 	// Inverse-distance-weighting knobs for the ROI-distance interpolation; fixed for wafer 60/61.
 	private static final int IDW_K = 8;
 	private static final double IDW_POWER = 2.0;
 
-	// Tissue containers are named w<wafer>_s<serial>_r<revision> (e.g. w61_s109_r00); the serial is parsed from that.
+	// Tissue containers/datasets are named w<wafer>_s<serial>_r<revision> (e.g. w61_s109_r00); the serial is parsed from that.
 	private static final Pattern SERIAL_IN_NAME = Pattern.compile("_s(\\d+)");
 
 	// xlog field layout (consumed by loadPointCloud). The xlog is a zarr: its arrays are stored C-order, but the
 	// n5-zarr reader REVERSES the axis order, so the imglib2 axis indices below are the reverse of the C-order shape.
-	//   field          C-order shape              imglib2 axes (what this code sees)   meaning
-	//   id_serial       (slab,)                    [slab]                              serial label per slab position
-	//   x, y            (scan, slab, mfov, sfov)   [sfov, mfov, slab, scan]            SFOV centre, full-res px
-	//   rotation_slab   (scan, slab)               [slab, scan]                        per-slab rotation, degrees
-	//   distance_roi    (slab, mfov, sfov)         [sfov, mfov, slab]                  distance to ROI, um (scan-independent)
-	//   x_sfov, y_sfov  (width,), (height,)        [size]                              SFOV image size, px
-	// The slab/scan axis indices are HARDCODED (below) rather than discovered by matching sizes: the sizes are not
-	// guaranteed to be unique. x / y / distance_roi share (mfov, sfov) indexing, so after slicing the slab (and scan)
-	// axis they all reduce to the same 2-D (sfov, mfov) plane with matching indices.
-	private static final int XY_AXIS_SLAB = 2;
-	private static final int XY_AXIS_SCAN = 3;
-	private static final int ROT_AXIS_SLAB = 0;
-	private static final int ROT_AXIS_SCAN = 1;
+	//   field          C-order shape        imglib2 axes (what this code sees)   meaning
+	//   id_serial       (slab,)              [slab]                              serial label per slab position
+	//   distance_roi    (slab, mfov, sfov)   [sfov, mfov, slab]                  distance to ROI, um (scan-independent)
+	// The slab axis index is HARDCODED (below) rather than discovered by matching sizes (sizes are not guaranteed to
+	// be unique). After slicing the slab axis, distance_roi reduces to a 2-D (sfov, mfov) plane.
 	private static final int DIST_AXIS_SLAB = 2;
 
 	private static final Logger LOG = LoggerFactory.getLogger(Wafer6061Inpainter.class);
@@ -129,9 +123,32 @@ public class Wafer6061Inpainter {
 		public String xlogPath;
 
 		@Parameter(
+				names = "--baseDataUrl",
+				description = "Base render web service URL for data (e.g. http://host[:port]/render-ws/v1); the aligned " +
+							  "tile positions that define the ROI cloud are read from here.",
+				required = true)
+		public String baseDataUrl;
+
+		@Parameter(
+				names = "--owner",
+				description = "Render stack owner.")
+		public String owner = "hess_wafers_60_61";
+
+		@Parameter(
+				names = "--project",
+				description = "Render project holding the aligned stack. Defaults to the name of the directory that " +
+							  "contains the N5 container (e.g. .../w61_serial_100_to_109/w61_s109_r00.n5 -> w61_serial_100_to_109).")
+		public String project;
+
+		@Parameter(
+				names = "--stack",
+				description = "Render stack whose first layer's tile positions define the ROI cloud. Defaults to the dataset name.")
+		public String stack;
+
+		@Parameter(
 				names = "--serial",
 				description = "Serial label (id_serial) of the section stored in this N5, resolved to the reference " +
-							  "arrays' slab position. Defaults to the serial parsed from the container name " +
+							  "arrays' slab position. Defaults to the serial parsed from the dataset name " +
 							  "(w<wafer>_s<serial>_r<revision>, e.g. w61_s109_r00 -> 109).")
 		public long serial = -1;
 
@@ -173,26 +190,52 @@ public class Wafer6061Inpainter {
 				throw new IllegalArgumentException("--maxRoiDistance must be positive");
 			}
 			if (serial < 0) {
-				serial = inferSerial(n5Path);
+				serial = inferSerial(dataset);
+			}
+			if (project == null) {
+				project = inferProject(n5Path);
+			}
+			if (stack == null) {
+				stack = basename(dataset);
 			}
 		}
 
-		/** Parses the serial label from a container name like {@code .../w61_s109_r00} (basename {@code _s<serial>}). */
-		static long inferSerial(final String n5Path) {
-			String basename = n5Path;
-			while (basename.endsWith("/")) {
-				basename = basename.substring(0, basename.length() - 1);
-			}
-			final int slash = basename.lastIndexOf('/');
-			if (slash >= 0) {
-				basename = basename.substring(slash + 1);
-			}
-			final Matcher matcher = SERIAL_IN_NAME.matcher(basename);
+		/** Parses the serial label from a dataset/container name like {@code .../w61_s109_r00} (basename {@code _s<serial>}). */
+		static long inferSerial(final String path) {
+			final Matcher matcher = SERIAL_IN_NAME.matcher(basename(path));
 			if (matcher.find()) {
 				return Long.parseLong(matcher.group(1));
 			}
-			throw new IllegalArgumentException("could not infer the serial from n5Path '" + n5Path +
-											   "'; pass --serial explicitly");
+			throw new IllegalArgumentException("could not infer the serial from '" + path + "'; pass --serial explicitly");
+		}
+
+		/** Infers the render project from the name of the directory that contains the N5 container. */
+		static String inferProject(final String n5Path) {
+			String p = n5Path;
+			while (p.endsWith("/")) {
+				p = p.substring(0, p.length() - 1);
+			}
+			final int containerSlash = p.lastIndexOf('/');
+			if (containerSlash <= 0) {
+				throw new IllegalArgumentException("could not infer the render project from n5Path '" + n5Path +
+												   "' (no parent directory); pass --project explicitly");
+			}
+			final String project = basename(p.substring(0, containerSlash));
+			if (project.isEmpty()) {
+				throw new IllegalArgumentException("could not infer the render project from n5Path '" + n5Path +
+												   "'; pass --project explicitly");
+			}
+			return project;
+		}
+
+		/** Last path segment of a path, stripped of any leading group/parent path and trailing slashes. */
+		static String basename(final String path) {
+			String p = path;
+			while (p.endsWith("/")) {
+				p = p.substring(0, p.length() - 1);
+			}
+			final int slash = p.lastIndexOf('/');
+			return slash >= 0 ? p.substring(slash + 1) : p;
 		}
 	}
 
@@ -222,13 +265,8 @@ public class Wafer6061Inpainter {
 
 	public void run() throws IOException {
 
-		// 1. Load the (small) per-slab 2-D point cloud from the xlog on the driver, placed in the tissue voxel frame.
-		final PointCloud cloud = loadPointCloud(params.xlogPath, params.serial);
-		LOG.info("run: loaded {} ROI reference points for serial {}", cloud.size(), params.serial);
-
-		// Read the tissue s0 metadata and discover the existing pyramid levels.
-		final long[] tissueTranslate;
-		final long[] maskTranslate;
+		// Read the tissue s0 metadata, the world->voxel offset, and discover the existing pyramid levels.
+		final double[] worldToVoxel;
 		final int numDimensions;
 		final List<String> levels = new ArrayList<>();
 		final Map<String, DatasetAttributes> levelAttributes = new LinkedHashMap<>();
@@ -268,12 +306,10 @@ public class Wafer6061Inpainter {
 						Arrays.toString(s0Attributes.getBlockSize()));
 			}
 
-			tissueTranslate = readTranslate(n5, params.fullDataset(), numDimensions);
-			maskTranslate = readTranslate(n5, params.mask, numDimensions);
-			if (! Arrays.equals(tissueTranslate, maskTranslate)) {
-				throw new IllegalArgumentException("tissue translate " + Arrays.toString(tissueTranslate) +
-												   " must match mask translate " + Arrays.toString(maskTranslate));
-			}
+			// World->voxel offset for placing render tile centers: the neuroglancer 'translate' (the stack
+			// bounding-box min in world pixels) is written on the multiscale GROUP, not on s0 (s0 only carries a
+			// sub-pixel centering transform). May be null here; loadPointCloud falls back to the render stack bounds.
+			worldToVoxel = readGroupTranslate(n5, params.dataset);
 
 			levels.add(params.fullDataset());
 			levelAttributes.put(params.fullDataset(), s0Attributes);
@@ -293,9 +329,14 @@ public class Wafer6061Inpainter {
 				downsampleFactors = readDownsamplingFactors(n5, levels.get(1), numDimensions);
 			}
 		}
-		LOG.info("run: tissue translate={}, mask translate={}, pyramid levels={}, downsampleFactors={}",
-				 Arrays.toString(tissueTranslate), Arrays.toString(maskTranslate), levels,
-				 Arrays.toString(downsampleFactors));
+		LOG.info("run: world->voxel translate={}, pyramid levels={}, downsampleFactors={}",
+				 Arrays.toString(worldToVoxel), levels, Arrays.toString(downsampleFactors));
+
+		// Load the (small) per-slab ROI point cloud on the driver: positions from the aligned render stack, distances
+		// from the xlog. A single render request keeps the server load light; the cloud is then broadcast to executors.
+		final PointCloud cloud = loadPointCloud(params, worldToVoxel);
+		LOG.info("run: loaded {} ROI reference points for serial {} (render {}/{}/{})",
+				 cloud.size(), params.serial, params.owner, params.project, params.stack);
 
 		// Create the backup container and mirror all datasets that might receive backups.
 		final String backupPath = params.getBackupPath();
@@ -370,142 +411,122 @@ public class Wafer6061Inpainter {
 	}
 
 	// ------------------------------------------------------------------------------------------------
-	// Step 1: load the per-slab 2-D point cloud from the xlog zarr.
+	// Step 1: load the per-slab ROI point cloud (positions from the aligned render stack, distances from the xlog).
 	// ------------------------------------------------------------------------------------------------
 
 	/**
-	 * Builds the per-slab ROI point cloud in the tissue s0 <b>voxel</b> frame, entirely from the xlog. For the slab
-	 * whose {@code id_serial} equals {@code serial}, each SFOV's acquisition position ({@code x}, {@code y}, in
-	 * full-resolution pixels) is placed into the render/ingestion frame exactly as {@code msem_to_render.py} does:
-	 * <pre>
-	 *   center = EuclideanTransform(rotation = radians(180 + rotation_slab)) . (x, y)
-	 *   voxel  = center - min(center) + (sfovWidth/2, sfovHeight/2)
-	 * </pre>
-	 * i.e. the ingestion {@code stage - min + margin} placement (the constant {@code margin} and the export
-	 * {@code translate} cancel out into the voxel frame). Each voxel carries the scan-independent {@code distance_roi}
-	 * for that SFOV. Since {@code x}, {@code y} and {@code distance_roi} are all indexed by {@code (mfov, sfov)} in the
-	 * xlog, the correspondence is exact and no fitting is needed. Alignment (montage stitching) only perturbs these
-	 * positions slightly, well within {@code maxRoiDistance}, so the unaligned ingestion placement is used directly.
+	 * Builds the per-slab ROI point cloud in the tissue s0 <b>voxel</b> frame. Positions come from the ALIGNED render
+	 * stack (so montage stitching is accounted for): the first layer's tile bounds are fetched from the render web
+	 * service on the driver, and each tile center (render world pixels) is mapped to the voxel frame with
+	 * {@code voxel = center - worldToVoxel} ({@code worldToVoxel} is the neuroglancer group-level {@code translate},
+	 * i.e. the stack bounding-box min; if it is null we fall back to the render stack bounds). Each tile carries the
+	 * {@code distance_roi} of its SFOV, read from the xlog for the slab whose {@code id_serial} equals
+	 * {@code params.serial}: the tile's mfov (0-based, parsed from the tileId) indexes the xlog mfov axis directly, and
+	 * its spiral sfov number (the {@code _s##} field) is mapped to the xlog's row-major sfov axis via
+	 * {@link MultiSemUtilities#getRowMajorSFOVIndex}. Tiles whose SFOV has no (NaN) {@code distance_roi}, or an
+	 * out-of-range mfov/sfov, are dropped.
 	 */
-	static PointCloud loadPointCloud(final String xlogPath,
-									 final long serial) {
-		try (final N5Reader xlog = new N5Factory().openReader(xlogPath)) {
+	static PointCloud loadPointCloud(final Parameters params,
+									 final double[] worldToVoxel)
+			throws IOException {
+
+		// (a) xlog: the slab's 2-D distance_roi grid, materialized into a plain array so it outlives the xlog reader.
+		final double[][] distBySfovMfov; // [rowMajorSfov0Based][mfov0Based]
+		try (final N5Reader xlog = new N5Factory().openReader(params.xlogPath)) {
 
 			final double[] idSerial = read1d(xlog, "id_serial");
-			final int slabPosition = findSlabPosition(idSerial, serial);
+			final int slabPosition = findSlabPosition(idSerial, params.serial);
 			if (slabPosition < 0) {
 				final long[] available = new long[idSerial.length];
 				for (int i = 0; i < idSerial.length; i++) {
 					available[i] = Math.round(idSerial[i]);
 				}
-				throw new IllegalArgumentException("serial " + serial + " not found in id_serial; available serials are " +
+				throw new IllegalArgumentException("serial " + params.serial + " not found in id_serial; available serials are " +
 												   Arrays.toString(available));
 			}
-			final long slabCount = idSerial.length; // 413 for wafer 61
 
-			// SFOV image size defines the half-SFOV placement offset; prefer the xlog (x_sfov / y_sfov), fall back to constants.
-			final int sfW = sfovSize(xlog, "x_sfov", DEFAULT_SFOV_WIDTH);
-			final int sfH = sfovSize(xlog, "y_sfov", DEFAULT_SFOV_HEIGHT);
-
-			// Open the reference arrays (axis layout documented and hardcoded at the top of the class) and verify each
-			// one carries the slab count on its expected axis before we slice by it.
-			final RandomAccessibleInterval<DoubleType> xAll = openDoubles(xlog, "x");
-			final RandomAccessibleInterval<DoubleType> yAll = openDoubles(xlog, "y");
-			final RandomAccessibleInterval<DoubleType> rotAll = openDoubles(xlog, "rotation_slab");
 			final RandomAccessibleInterval<DoubleType> distAll = openDoubles(xlog, "distance_roi");
-			requireSlabAxis(xAll, XY_AXIS_SLAB, slabCount, "x");
-			requireSlabAxis(yAll, XY_AXIS_SLAB, slabCount, "y");
-			requireSlabAxis(rotAll, ROT_AXIS_SLAB, slabCount, "rotation_slab");
-			requireSlabAxis(distAll, DIST_AXIS_SLAB, slabCount, "distance_roi");
-			final long nScans = rotAll.dimension(ROT_AXIS_SCAN);
+			requireSlabAxis(distAll, DIST_AXIS_SLAB, idSerial.length, "distance_roi");
 
 			// distance_roi is scan-independent: slice the slab axis -> 2-D (sfov, mfov).
 			final RandomAccessibleInterval<DoubleType> distSlab = Views.hyperSlice(distAll, DIST_AXIS_SLAB, slabPosition);
-
-			// Choose the scan whose x/y define the cloud: the first with finite x and rotation_slab for this slab.
-			// The positions are nearly scan-independent, so no scan override is needed.
-			int scan = -1;
-			for (int s = 0; s < nScans; s++) {
-				if (! Double.isFinite(rotationAt(rotAll, slabPosition, s))) {
-					continue;
-				}
-				if (hasFinite(sliceScanAndSlab(xAll, s, slabPosition))) {
-					scan = s;
-					break;
-				}
-			}
-			if (scan < 0) {
-				throw new IllegalArgumentException("no scan with finite x and rotation_slab found for serial " +
-												   serial + " (slab position " + slabPosition + ")");
-			}
-
-			final double rotationSlab = rotationAt(rotAll, slabPosition, scan);
-			final double theta = Math.toRadians(180.0 + rotationSlab);
-			final double cos = Math.cos(theta);
-			final double sin = Math.sin(theta);
-
-			final RandomAccessibleInterval<DoubleType> xSlab = sliceScanAndSlab(xAll, scan, slabPosition);
-			final RandomAccessibleInterval<DoubleType> ySlab = sliceScanAndSlab(yAll, scan, slabPosition);
-
-			// Place each SFOV center (rotation only) and keep the finite ones with their distance_roi.
-			final List<Double> cxs = new ArrayList<>();
-			final List<Double> cys = new ArrayList<>();
-			final List<Double> dists = new ArrayList<>();
-			final RandomAccess<DoubleType> xra = xSlab.randomAccess();
-			final RandomAccess<DoubleType> yra = ySlab.randomAccess();
+			final int nSfov = (int) distSlab.dimension(0);
+			final int nMfov = (int) distSlab.dimension(1);
+			distBySfovMfov = new double[nSfov][nMfov];
 			final RandomAccess<DoubleType> dra = distSlab.randomAccess();
 			final long[] pos = new long[2];
-			double minX = Double.POSITIVE_INFINITY;
-			double minY = Double.POSITIVE_INFINITY;
-			for (long i0 = 0; i0 < xSlab.dimension(0); i0++) {
-				for (long i1 = 0; i1 < xSlab.dimension(1); i1++) {
-					pos[0] = i0;
-					pos[1] = i1;
-					final double x = xra.setPositionAndGet(pos).get();
-					final double y = yra.setPositionAndGet(pos).get();
-					final double d = dra.setPositionAndGet(pos).get();
-					if (Double.isFinite(x) && Double.isFinite(y) && Double.isFinite(d)) {
-						final double cx = cos * x - sin * y;
-						final double cy = sin * x + cos * y;
-						cxs.add(cx);
-						cys.add(cy);
-						dists.add(d);
-						minX = Math.min(minX, cx);
-						minY = Math.min(minY, cy);
-					}
+			for (int s = 0; s < nSfov; s++) {
+				for (int m = 0; m < nMfov; m++) {
+					pos[0] = s;
+					pos[1] = m;
+					distBySfovMfov[s][m] = dra.setPositionAndGet(pos).get();
 				}
 			}
-			if (cxs.isEmpty()) {
-				throw new IllegalArgumentException("no finite ROI points found for serial " + serial +
-												   " (slab position " + slabPosition + ", scan " + scan + ")");
-			}
-
-			// Shift into the voxel frame: min(center) -> half-SFOV (so the min tile's top-left is at the origin).
-			final double[] xs = new double[cxs.size()];
-			final double[] ys = new double[cys.size()];
-			final double[] ds = new double[dists.size()];
-			for (int i = 0; i < xs.length; i++) {
-				xs[i] = cxs.get(i) - minX + sfW / 2.0;
-				ys[i] = cys.get(i) - minY + sfH / 2.0;
-				ds[i] = dists.get(i);
-			}
-			LOG.info("loadPointCloud: serial {} -> slab position {}, scan {}, rotation_slab {} deg, sfov {}x{}, {} points",
-					 serial, slabPosition, scan, rotationSlab, sfW, sfH, xs.length);
-			return new PointCloud(xs, ys, ds);
+			LOG.info("loadPointCloud: serial {} -> slab position {}, distance_roi grid is {} sfov x {} mfov",
+					 params.serial, slabPosition, nSfov, nMfov);
 		}
-	}
+		final int nSfov = distBySfovMfov.length;
+		final int nMfov = nSfov > 0 ? distBySfovMfov[0].length : 0;
 
-	/** SFOV image size from the xlog {@code x_sfov}/{@code y_sfov} length, or {@code fallback} if that dataset is absent. */
-	private static int sfovSize(final N5Reader xlog, final String dataset, final int fallback) {
-		try {
-			final DatasetAttributes attributes = xlog.getDatasetAttributes(dataset);
-			if (attributes != null && attributes.getNumDimensions() >= 1) {
-				return (int) attributes.getDimensions()[0];
-			}
-		} catch (final Exception e) {
-			LOG.warn("sfovSize: could not read {} ({}), using fallback {}", dataset, e.getMessage(), fallback);
+		// (b) render: the first layer's aligned tile centers, fetched once on the driver.
+		final RenderDataClient renderClient = new RenderDataClient(params.baseDataUrl, params.owner, params.project);
+		final List<Double> zValues = renderClient.getStackZValues(params.stack);
+		if (zValues.isEmpty()) {
+			throw new IllegalArgumentException("render stack " + params.owner + "/" + params.project + "/" +
+											   params.stack + " has no z layers");
 		}
-		return fallback;
+		final double firstZ = zValues.get(0);
+		final List<TileBounds> tiles = renderClient.getTileBounds(params.stack, firstZ);
+
+		final double offsetX;
+		final double offsetY;
+		if (worldToVoxel != null) {
+			offsetX = worldToVoxel[0];
+			offsetY = worldToVoxel[1];
+		} else {
+			final Bounds stackBounds = renderClient.getStackMetaData(params.stack).getStackBounds();
+			if (stackBounds == null || stackBounds.getMinX() == null || stackBounds.getMinY() == null) {
+				throw new IllegalArgumentException("N5 group " + params.dataset + " has no neuroglancer 'translate' and " +
+												   "render stack " + params.stack + " has no bounds; cannot map world coordinates to voxels");
+			}
+			offsetX = stackBounds.getMinX();
+			offsetY = stackBounds.getMinY();
+			LOG.warn("loadPointCloud: N5 group {} has no 'translate'; using render stack bounds min ({}, {}) as the world->voxel offset",
+					 params.dataset, offsetX, offsetY);
+		}
+
+		// Attach each tile's distance_roi (by mfov + spiral->row-major sfov) and place its center in the voxel frame.
+		final List<Double> xs = new ArrayList<>();
+		final List<Double> ys = new ArrayList<>();
+		final List<Double> ds = new ArrayList<>();
+		int noDistance = 0;
+		int outOfRange = 0;
+		for (final TileBounds tile : tiles) {
+			final String tileId = tile.getTileId();
+			final int mfov = Integer.parseInt(MultiSemUtilities.getSimpleMfovForTileId(tileId).substring(1)); // m0013 -> 13
+			final int spiralSfov = Integer.parseInt(MultiSemUtilities.getSFOVIndexForTileId(tileId));          // _s## spiral, 1-based
+			final int sfov = MultiSemUtilities.getRowMajorSFOVIndex(spiralSfov) - 1;                           // xlog row-major, 0-based
+			if (mfov < 0 || mfov >= nMfov || sfov < 0 || sfov >= nSfov) {
+				outOfRange++;
+				continue;
+			}
+			final double d = distBySfovMfov[sfov][mfov];
+			if (! Double.isFinite(d)) {
+				noDistance++;
+				continue;
+			}
+			xs.add(tile.getCenterX() - offsetX);
+			ys.add(tile.getCenterY() - offsetY);
+			ds.add(d);
+		}
+		if (xs.isEmpty()) {
+			throw new IllegalArgumentException("no render tiles in stack " + params.stack + " z " + firstZ +
+											   " could be matched to a finite xlog distance_roi (fetched " + tiles.size() +
+											   " tiles; " + noDistance + " had NaN distance, " + outOfRange + " had out-of-range mfov/sfov)");
+		}
+		LOG.info("loadPointCloud: matched {} of {} render tiles (z {}) to distance_roi; dropped {} NaN-distance, {} out-of-range; world->voxel offset ({}, {})",
+				 xs.size(), tiles.size(), firstZ, noDistance, outOfRange, offsetX, offsetY);
+		return new PointCloud(toArray(xs), toArray(ys), toArray(ds));
 	}
 
 	/** Fails fast if a hardcoded slab axis does not carry the expected slab count (guards the layout at the top). */
@@ -519,32 +540,13 @@ public class Wafer6061Inpainter {
 		}
 	}
 
-	/** Value of the 2-D {@code rotation_slab} (axes {@code [slab, scan]}) at the given slab position and scan. */
-	private static double rotationAt(final RandomAccessibleInterval<DoubleType> rotAll,
-									 final long slabPosition,
-									 final long scan) {
-		final long[] p = new long[2];
-		p[ROT_AXIS_SLAB] = slabPosition;
-		p[ROT_AXIS_SCAN] = scan;
-		return rotAll.randomAccess().setPositionAndGet(p).get();
-	}
-
-	/** Slices the 4-D {@code x}/{@code y} array (axes {@code [sfov, mfov, slab, scan]}) to the 2-D (sfov, mfov) plane. */
-	private static RandomAccessibleInterval<DoubleType> sliceScanAndSlab(final RandomAccessibleInterval<DoubleType> xy,
-																		 final long scan,
-																		 final long slabPosition) {
-		// slice the higher axis (scan) first so the lower slab axis index stays valid.
-		return Views.hyperSlice(Views.hyperSlice(xy, XY_AXIS_SCAN, scan), XY_AXIS_SLAB, slabPosition);
-	}
-
-	/** True if the interval has at least one finite value. */
-	private static boolean hasFinite(final RandomAccessibleInterval<DoubleType> img) {
-		for (final DoubleType t : Views.iterable(img)) {
-			if (Double.isFinite(t.get())) {
-				return true;
-			}
+	/** Copies a list of doubles into a primitive array. */
+	private static double[] toArray(final List<Double> list) {
+		final double[] array = new double[list.size()];
+		for (int i = 0; i < array.length; i++) {
+			array[i] = list.get(i);
 		}
-		return false;
+		return array;
 	}
 
 	/** Reads a 1-D double dataset (blosc-safe: uses the block-not-found overload to avoid the getAttribute NPE). */
@@ -878,9 +880,21 @@ public class Wafer6061Inpainter {
 		return g;
 	}
 
-	private static long[] readTranslate(final N5Reader n5, final String dataset, final int numDimensions) {
-		final long[] translate = n5.getAttribute(dataset, "translate", long[].class);
-		return translate != null ? translate : new long[numDimensions];
+	/**
+	 * Reads the neuroglancer {@code translate} (the stack bounding-box min in world pixels) from the multiscale group,
+	 * or returns null if it is absent. The render N5 export writes it on the group ({@code <dataset>}), not on
+	 * {@code s0} (s0 only carries a sub-pixel centering {@code transform}); callers fall back to the render stack bounds.
+	 */
+	private static double[] readGroupTranslate(final N5Reader n5, final String group) {
+		try {
+			final double[] translate = n5.getAttribute(group, "translate", double[].class);
+			if (translate != null && translate.length >= 2) {
+				return translate;
+			}
+		} catch (final Exception e) {
+			LOG.warn("readGroupTranslate: could not read 'translate' from group {} ({})", group, e.getMessage());
+		}
+		return null;
 	}
 
 	/** Opens an N5 reader for a tissue/backup container (explicit N5 format; local path or gs://). */
