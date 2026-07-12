@@ -12,6 +12,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import bdv.export.Downsample;
 import net.imglib2.Cursor;
@@ -68,6 +70,18 @@ import org.slf4j.LoggerFactory;
  */
 public class Wafer6061Inpainter {
 
+	// SFOV image size fallback (pixels), used only when the xlog lacks x_sfov / y_sfov; the xlog values are
+	// preferred at runtime (see loadPointCloud), so these are wafer 60/61 defaults, not a tuning knob.
+	private static final int DEFAULT_SFOV_WIDTH = 2000;
+	private static final int DEFAULT_SFOV_HEIGHT = 1748;
+
+	// Inverse-distance-weighting knobs for the ROI-distance interpolation; fixed for wafer 60/61.
+	private static final int IDW_K = 8;
+	private static final double IDW_POWER = 2.0;
+
+	// Tissue containers are named w<wafer>_s<serial>_r<revision> (e.g. w61_s109_r00); the serial is parsed from that.
+	private static final Pattern SERIAL_IN_NAME = Pattern.compile("_s(\\d+)");
+
 	private static final Logger LOG = LoggerFactory.getLogger(Wafer6061Inpainter.class);
 
 	public static class Parameters extends CommandLineParameters {
@@ -97,45 +111,15 @@ public class Wafer6061Inpainter {
 
 		@Parameter(
 				names = "--serial",
-				description = "Serial label (id_serial) of the section stored in this N5; resolved to the reference arrays' slab position.",
-				required = true)
-		public long serial;
-
-		@Parameter(
-				names = "--sfovWidth",
-				description = "SFOV image width in pixels (xlog X_SFOV size); used for the ingestion half-SFOV placement offset.")
-		public int sfovWidth = 2000;
-
-		@Parameter(
-				names = "--sfovHeight",
-				description = "SFOV image height in pixels (xlog Y_SFOV size); used for the ingestion half-SFOV placement offset.")
-		public int sfovHeight = 1748;
-
-		@Parameter(
-				names = "--scan",
-				description = "xlog scan index whose x/y positions define the cloud. Default (-1) auto-picks the first scan " +
-							  "with finite x and rotation_slab for the slab (positions are nearly scan-independent).")
-		public int scan = -1;
+				description = "Serial label (id_serial) of the section stored in this N5, resolved to the reference " +
+							  "arrays' slab position. Defaults to the serial parsed from the container name " +
+							  "(w<wafer>_s<serial>_r<revision>, e.g. w61_s109_r00 -> 109).")
+		public long serial = -1;
 
 		@Parameter(
 				names = "--maxRoiDistance",
 				description = "Keep (inpaint) a block only if its interpolated distance_roi (microns) is less than this.")
 		public double maxRoiDistance = 10.0;
-
-		@Parameter(
-				names = "--k",
-				description = "Number of nearest neighbors used for inverse-distance weighting.")
-		public int k = 8;
-
-		@Parameter(
-				names = "--idwPower",
-				description = "Power p in the inverse-distance weights 1 / r^p.")
-		public double idwPower = 2.0;
-
-		@Parameter(
-				names = "--downsampleFactors",
-				description = "Relative per-level downsampling factors of the existing pyramid, e.g. 2,2,1.")
-		public String downsampleFactors = "2,2,1";
 
 		@Parameter(
 				names = "--backupPath",
@@ -149,15 +133,6 @@ public class Wafer6061Inpainter {
 
 		public String fullDataset() {
 			return dataset + "/s0";
-		}
-
-		public int[] getDownsampleFactors() {
-			final String[] parts = downsampleFactors.split(",");
-			final int[] factors = new int[parts.length];
-			for (int i = 0; i < parts.length; i++) {
-				factors[i] = Integer.parseInt(parts[i].trim());
-			}
-			return factors;
 		}
 
 		public String getBackupPath() {
@@ -175,15 +150,30 @@ public class Wafer6061Inpainter {
 		}
 
 		public void validate() {
-			if (sfovWidth <= 0 || sfovHeight <= 0) {
-				throw new IllegalArgumentException("--sfovWidth and --sfovHeight must be positive");
-			}
 			if (maxRoiDistance <= 0) {
 				throw new IllegalArgumentException("--maxRoiDistance must be positive");
 			}
-			if (k < 1) {
-				throw new IllegalArgumentException("--k must be at least 1");
+			if (serial < 0) {
+				serial = inferSerial(n5Path);
 			}
+		}
+
+		/** Parses the serial label from a container name like {@code .../w61_s109_r00} (basename {@code _s<serial>}). */
+		static long inferSerial(final String n5Path) {
+			String basename = n5Path;
+			while (basename.endsWith("/")) {
+				basename = basename.substring(0, basename.length() - 1);
+			}
+			final int slash = basename.lastIndexOf('/');
+			if (slash >= 0) {
+				basename = basename.substring(slash + 1);
+			}
+			final Matcher matcher = SERIAL_IN_NAME.matcher(basename);
+			if (matcher.find()) {
+				return Long.parseLong(matcher.group(1));
+			}
+			throw new IllegalArgumentException("could not infer the serial from n5Path '" + n5Path +
+											   "'; pass --serial explicitly");
 		}
 	}
 
@@ -214,8 +204,7 @@ public class Wafer6061Inpainter {
 	public void run() throws IOException {
 
 		// 1. Load the (small) per-slab 2-D point cloud from the xlog on the driver, placed in the tissue voxel frame.
-		final PointCloud cloud = loadPointCloud(params.xlogPath, params.serial,
-												params.scan, params.sfovWidth, params.sfovHeight);
+		final PointCloud cloud = loadPointCloud(params.xlogPath, params.serial);
 		LOG.info("run: loaded {} ROI reference points for serial {}", cloud.size(), params.serial);
 
 		// Read the tissue s0 metadata and discover the existing pyramid levels.
@@ -224,6 +213,7 @@ public class Wafer6061Inpainter {
 		final int numDimensions;
 		final List<String> levels = new ArrayList<>();
 		final Map<String, DatasetAttributes> levelAttributes = new LinkedHashMap<>();
+		int[] downsampleFactors = null;
 		try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, params.n5Path)) {
 
 			final DatasetAttributes s0Attributes = n5.getDatasetAttributes(params.fullDataset());
@@ -276,9 +266,17 @@ public class Wafer6061Inpainter {
 				levels.add(levelDataset);
 				levelAttributes.put(levelDataset, n5.getDatasetAttributes(levelDataset));
 			}
+
+			// The relative per-level downsampling factor is read from the pyramid itself rather than passed in: s1's
+			// "downsamplingFactors" attribute is the factor relative to s0, and these pyramids are built with a
+			// constant factor at every step (see DownsampleHelper / N5DownsamplerSpark), so it applies to all levels.
+			if (levels.size() > 1) {
+				downsampleFactors = readDownsamplingFactors(n5, levels.get(1), numDimensions);
+			}
 		}
-		LOG.info("run: tissue translate={}, mask translate={}, pyramid levels={}",
-				 Arrays.toString(tissueTranslate), Arrays.toString(maskTranslate), levels);
+		LOG.info("run: tissue translate={}, mask translate={}, pyramid levels={}, downsampleFactors={}",
+				 Arrays.toString(tissueTranslate), Arrays.toString(maskTranslate), levels,
+				 Arrays.toString(downsampleFactors));
 
 		// Create the backup container and mirror all datasets that might receive backups.
 		final String backupPath = params.getBackupPath();
@@ -296,7 +294,7 @@ public class Wafer6061Inpainter {
 		final SparkConf conf = new SparkConf().setAppName(getClass().getSimpleName());
 		try (final JavaSparkContext sparkContext = new JavaSparkContext(conf)) {
 			LOG.info("run: appId is {}", sparkContext.getConf().getAppId());
-			runWithSparkContext(sparkContext, cloud, levels, levelAttributes, backupPath);
+			runWithSparkContext(sparkContext, cloud, levels, levelAttributes, backupPath, downsampleFactors);
 		}
 	}
 
@@ -304,7 +302,8 @@ public class Wafer6061Inpainter {
 									 final PointCloud cloud,
 									 final List<String> levels,
 									 final Map<String, DatasetAttributes> levelAttributes,
-									 final String backupPath) {
+									 final String backupPath,
+									 final int[] downsampleFactors) {
 
 		final DatasetAttributes s0Attributes = levelAttributes.get(params.fullDataset());
 		final List<Grid.Block> s0Blocks = Grid.create(s0Attributes.getDimensions(), s0Attributes.getBlockSize());
@@ -338,7 +337,7 @@ public class Wafer6061Inpainter {
 		}
 
 		// 6. Selectively update the downsample pyramid, one level at a time.
-		updatePyramid(sparkContext, levels, levelAttributes, modifiedS0, backupPath);
+		updatePyramid(sparkContext, levels, levelAttributes, modifiedS0, backupPath, downsampleFactors);
 	}
 
 	// ------------------------------------------------------------------------------------------------
@@ -360,10 +359,7 @@ public class Wafer6061Inpainter {
 	 * positions slightly, well within {@code maxRoiDistance}, so the unaligned ingestion placement is used directly.
 	 */
 	static PointCloud loadPointCloud(final String xlogPath,
-									 final long serial,
-									 final int scanOverride,
-									 final int sfovWidth,
-									 final int sfovHeight) {
+									 final long serial) {
 		try (final N5Reader xlog = new N5Factory().openReader(xlogPath)) {
 
 			final double[] idSerial = read1d(xlog, "id_serial");
@@ -378,9 +374,9 @@ public class Wafer6061Inpainter {
 			}
 			final long slabCount = idSerial.length; // 413 for wafer 61
 
-			// SFOV image size defines the half-SFOV placement offset; prefer the xlog (x_sfov / y_sfov), fall back to args.
-			final int sfW = sfovSize(xlog, "x_sfov", sfovWidth);
-			final int sfH = sfovSize(xlog, "y_sfov", sfovHeight);
+			// SFOV image size defines the half-SFOV placement offset; prefer the xlog (x_sfov / y_sfov), fall back to constants.
+			final int sfW = sfovSize(xlog, "x_sfov", DEFAULT_SFOV_WIDTH);
+			final int sfH = sfovSize(xlog, "y_sfov", DEFAULT_SFOV_HEIGHT);
 
 			// distance_roi is scan-independent: [slab, mfov, sfov] -> 2-D (sfov, mfov) after slicing the slab axis.
 			final RandomAccessibleInterval<DoubleType> distSlab = readSlab(xlog, "distance_roi", slabCount, slabPosition);
@@ -395,22 +391,21 @@ public class Wafer6061Inpainter {
 			final int slabAxisX = axisOfSize(xAll, slabCount, "x");
 			final int scanAxisX = axisOfSize(xAll, nScans, "x");
 
-			// Choose the scan whose x/y define the cloud (positions are nearly scan-independent).
-			int scan = scanOverride;
+			// Choose the scan whose x/y define the cloud: the first with finite x and rotation_slab for this slab.
+			// The positions are nearly scan-independent, so no scan override is needed.
+			int scan = -1;
+			for (int s = 0; s < nScans; s++) {
+				if (! Double.isFinite(rotationAt(rotAll, rotSlabAxis, rotScanAxis, slabPosition, s))) {
+					continue;
+				}
+				if (hasFinite(sliceScanAndSlab(xAll, scanAxisX, s, slabAxisX, slabPosition))) {
+					scan = s;
+					break;
+				}
+			}
 			if (scan < 0) {
-				for (int s = 0; s < nScans; s++) {
-					if (! Double.isFinite(rotationAt(rotAll, rotSlabAxis, rotScanAxis, slabPosition, s))) {
-						continue;
-					}
-					if (hasFinite(sliceScanAndSlab(xAll, scanAxisX, s, slabAxisX, slabPosition))) {
-						scan = s;
-						break;
-					}
-				}
-				if (scan < 0) {
-					throw new IllegalArgumentException("no scan with finite x and rotation_slab found for serial " +
-													   serial + " (slab position " + slabPosition + ")");
-				}
+				throw new IllegalArgumentException("no scan with finite x and rotation_slab found for serial " +
+												   serial + " (slab position " + slabPosition + ")");
 			}
 
 			final double rotationSlab = rotationAt(rotAll, rotSlabAxis, rotScanAxis, slabPosition, scan);
@@ -584,7 +579,7 @@ public class Wafer6061Inpainter {
 		LogUtilities.setupExecutorLog4j("inpaint");
 
 		final List<long[]> modified = new ArrayList<>();
-		final KNearestNeighborSearchOnKDTree<DoubleType> search = cloud.buildSearch(params.k);
+		final KNearestNeighborSearchOnKDTree<DoubleType> search = cloud.buildSearch(IDW_K);
 
 		try (final N5Reader reader = new N5Factory().openReader(N5Factory.StorageFormat.N5, params.n5Path);
 			 final N5Writer tissueWriter = params.dryRun ? null :
@@ -609,7 +604,7 @@ public class Wafer6061Inpainter {
 				// weighting (the interpolated value is in microns regardless of the voxel-space query units).
 				final double centerX = block.offset[0] + block.dimensions[0] / 2.0;
 				final double centerY = block.offset[1] + block.dimensions[1] / 2.0;
-				final double roiDistance = cloud.interpolate(search, centerX, centerY, params.idwPower);
+				final double roiDistance = cloud.interpolate(search, centerX, centerY, IDW_POWER);
 				if (! (roiDistance < params.maxRoiDistance)) {
 					logDecision(gridX, gridY, "outside_roi", -1, roiDistance);
 					continue;
@@ -756,9 +751,9 @@ public class Wafer6061Inpainter {
 							   final List<String> levels,
 							   final Map<String, DatasetAttributes> levelAttributes,
 							   final List<long[]> modifiedS0,
-							   final String backupPath) {
+							   final String backupPath,
+							   final int[] factors) {
 
-		final int[] factors = params.getDownsampleFactors();
 		List<long[]> modifiedPrevious = modifiedS0;
 
 		for (int scale = 1; scale < levels.size(); scale++) {
@@ -864,6 +859,23 @@ public class Wafer6061Inpainter {
 	private static long[] readTranslate(final N5Reader n5, final String dataset, final int numDimensions) {
 		final long[] translate = n5.getAttribute(dataset, "translate", long[].class);
 		return translate != null ? translate : new long[numDimensions];
+	}
+
+	/**
+	 * Reads the {@code downsamplingFactors} attribute of a pyramid level (the factor relative to s0, as written by
+	 * {@code N5DownsamplerSpark} / render's export). Fails fast when it is absent so the pyramid factor is never guessed.
+	 */
+	private static int[] readDownsamplingFactors(final N5Reader n5, final String dataset, final int numDimensions) {
+		final int[] factors = n5.getAttribute(dataset, "downsamplingFactors", int[].class);
+		if (factors == null) {
+			throw new IllegalArgumentException("dataset " + dataset + " has no 'downsamplingFactors' attribute to derive " +
+											   "the pyramid downsampling factor from");
+		}
+		if (factors.length != numDimensions) {
+			throw new IllegalArgumentException("dataset " + dataset + " has downsamplingFactors " +
+											   Arrays.toString(factors) + " but the volume is " + numDimensions + "-dimensional");
+		}
+		return factors;
 	}
 
 	/** Result of inpainting one block: the (block-sized) inpainted image and whether any pixel changed. */
