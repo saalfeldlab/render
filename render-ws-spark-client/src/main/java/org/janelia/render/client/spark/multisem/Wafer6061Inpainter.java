@@ -82,6 +82,23 @@ public class Wafer6061Inpainter {
 	// Tissue containers are named w<wafer>_s<serial>_r<revision> (e.g. w61_s109_r00); the serial is parsed from that.
 	private static final Pattern SERIAL_IN_NAME = Pattern.compile("_s(\\d+)");
 
+	// xlog field layout (consumed by loadPointCloud). The xlog is a zarr: its arrays are stored C-order, but the
+	// n5-zarr reader REVERSES the axis order, so the imglib2 axis indices below are the reverse of the C-order shape.
+	//   field          C-order shape              imglib2 axes (what this code sees)   meaning
+	//   id_serial       (slab,)                    [slab]                              serial label per slab position
+	//   x, y            (scan, slab, mfov, sfov)   [sfov, mfov, slab, scan]            SFOV centre, full-res px
+	//   rotation_slab   (scan, slab)               [slab, scan]                        per-slab rotation, degrees
+	//   distance_roi    (slab, mfov, sfov)         [sfov, mfov, slab]                  distance to ROI, um (scan-independent)
+	//   x_sfov, y_sfov  (width,), (height,)        [size]                              SFOV image size, px
+	// The slab/scan axis indices are HARDCODED (below) rather than discovered by matching sizes: the sizes are not
+	// guaranteed to be unique. x / y / distance_roi share (mfov, sfov) indexing, so after slicing the slab (and scan)
+	// axis they all reduce to the same 2-D (sfov, mfov) plane with matching indices.
+	private static final int XY_AXIS_SLAB = 2;
+	private static final int XY_AXIS_SCAN = 3;
+	private static final int ROT_AXIS_SLAB = 0;
+	private static final int ROT_AXIS_SCAN = 1;
+	private static final int DIST_AXIS_SLAB = 2;
+
 	private static final Logger LOG = LoggerFactory.getLogger(Wafer6061Inpainter.class);
 
 	public static class Parameters extends CommandLineParameters {
@@ -378,27 +395,29 @@ public class Wafer6061Inpainter {
 			final int sfW = sfovSize(xlog, "x_sfov", DEFAULT_SFOV_WIDTH);
 			final int sfH = sfovSize(xlog, "y_sfov", DEFAULT_SFOV_HEIGHT);
 
-			// distance_roi is scan-independent: [slab, mfov, sfov] -> 2-D (sfov, mfov) after slicing the slab axis.
-			final RandomAccessibleInterval<DoubleType> distSlab = readSlab(xlog, "distance_roi", slabCount, slabPosition);
-
-			// x / y are [scan, slab, mfov, sfov]; rotation_slab is [scan, slab]. Identify axes by their (unique) sizes.
+			// Open the reference arrays (axis layout documented and hardcoded at the top of the class) and verify each
+			// one carries the slab count on its expected axis before we slice by it.
 			final RandomAccessibleInterval<DoubleType> xAll = openDoubles(xlog, "x");
 			final RandomAccessibleInterval<DoubleType> yAll = openDoubles(xlog, "y");
 			final RandomAccessibleInterval<DoubleType> rotAll = openDoubles(xlog, "rotation_slab");
-			final int rotSlabAxis = axisOfSize(rotAll, slabCount, "rotation_slab");
-			final int rotScanAxis = 1 - rotSlabAxis;
-			final long nScans = rotAll.dimension(rotScanAxis);
-			final int slabAxisX = axisOfSize(xAll, slabCount, "x");
-			final int scanAxisX = axisOfSize(xAll, nScans, "x");
+			final RandomAccessibleInterval<DoubleType> distAll = openDoubles(xlog, "distance_roi");
+			requireSlabAxis(xAll, XY_AXIS_SLAB, slabCount, "x");
+			requireSlabAxis(yAll, XY_AXIS_SLAB, slabCount, "y");
+			requireSlabAxis(rotAll, ROT_AXIS_SLAB, slabCount, "rotation_slab");
+			requireSlabAxis(distAll, DIST_AXIS_SLAB, slabCount, "distance_roi");
+			final long nScans = rotAll.dimension(ROT_AXIS_SCAN);
+
+			// distance_roi is scan-independent: slice the slab axis -> 2-D (sfov, mfov).
+			final RandomAccessibleInterval<DoubleType> distSlab = Views.hyperSlice(distAll, DIST_AXIS_SLAB, slabPosition);
 
 			// Choose the scan whose x/y define the cloud: the first with finite x and rotation_slab for this slab.
 			// The positions are nearly scan-independent, so no scan override is needed.
 			int scan = -1;
 			for (int s = 0; s < nScans; s++) {
-				if (! Double.isFinite(rotationAt(rotAll, rotSlabAxis, rotScanAxis, slabPosition, s))) {
+				if (! Double.isFinite(rotationAt(rotAll, slabPosition, s))) {
 					continue;
 				}
-				if (hasFinite(sliceScanAndSlab(xAll, scanAxisX, s, slabAxisX, slabPosition))) {
+				if (hasFinite(sliceScanAndSlab(xAll, s, slabPosition))) {
 					scan = s;
 					break;
 				}
@@ -408,13 +427,13 @@ public class Wafer6061Inpainter {
 												   serial + " (slab position " + slabPosition + ")");
 			}
 
-			final double rotationSlab = rotationAt(rotAll, rotSlabAxis, rotScanAxis, slabPosition, scan);
+			final double rotationSlab = rotationAt(rotAll, slabPosition, scan);
 			final double theta = Math.toRadians(180.0 + rotationSlab);
 			final double cos = Math.cos(theta);
 			final double sin = Math.sin(theta);
 
-			final RandomAccessibleInterval<DoubleType> xSlab = sliceScanAndSlab(xAll, scanAxisX, scan, slabAxisX, slabPosition);
-			final RandomAccessibleInterval<DoubleType> ySlab = sliceScanAndSlab(yAll, scanAxisX, scan, slabAxisX, slabPosition);
+			final RandomAccessibleInterval<DoubleType> xSlab = sliceScanAndSlab(xAll, scan, slabPosition);
+			final RandomAccessibleInterval<DoubleType> ySlab = sliceScanAndSlab(yAll, scan, slabPosition);
 
 			// Place each SFOV center (rotation only) and keep the finite ones with their distance_roi.
 			final List<Double> cxs = new ArrayList<>();
@@ -477,41 +496,33 @@ public class Wafer6061Inpainter {
 		return fallback;
 	}
 
-	/** Index of the (unique-sized) axis matching {@code size}. */
-	private static int axisOfSize(final RandomAccessibleInterval<?> img, final long size, final String name) {
-		for (int d = 0; d < img.numDimensions(); d++) {
-			if (img.dimension(d) == size) {
-				return d;
-			}
+	/** Fails fast if a hardcoded slab axis does not carry the expected slab count (guards the layout at the top). */
+	private static void requireSlabAxis(final RandomAccessibleInterval<?> img, final int axis, final long slabCount,
+										final String field) {
+		if (img.numDimensions() <= axis || img.dimension(axis) != slabCount) {
+			throw new IllegalArgumentException("xlog field '" + field + "' has dimensions " +
+											   Arrays.toString(img.dimensionsAsLongArray()) + " but the hardcoded layout " +
+											   "expects " + slabCount + " slabs on axis " + axis +
+											   " (see the xlog axis layout at the top of the class)");
 		}
-		throw new IllegalArgumentException("no axis of size " + size + " in " + name + " with dimensions " +
-										   Arrays.toString(img.dimensionsAsLongArray()));
 	}
 
-	/** Value of the 2-D {@code rotation_slab} at the given slab position and scan. */
+	/** Value of the 2-D {@code rotation_slab} (axes {@code [slab, scan]}) at the given slab position and scan. */
 	private static double rotationAt(final RandomAccessibleInterval<DoubleType> rotAll,
-									 final int slabAxis,
-									 final int scanAxis,
-									 final int slabPosition,
-									 final int scan) {
+									 final long slabPosition,
+									 final long scan) {
 		final long[] p = new long[2];
-		p[slabAxis] = slabPosition;
-		p[scanAxis] = scan;
+		p[ROT_AXIS_SLAB] = slabPosition;
+		p[ROT_AXIS_SCAN] = scan;
 		return rotAll.randomAccess().setPositionAndGet(p).get();
 	}
 
-	/** Slices the 4-D {@code x}/{@code y} array to the 2-D (sfov, mfov) plane for one scan and slab. */
-	private static RandomAccessibleInterval<DoubleType> sliceScanAndSlab(final RandomAccessibleInterval<DoubleType> img,
-																		 final int scanAxis,
+	/** Slices the 4-D {@code x}/{@code y} array (axes {@code [sfov, mfov, slab, scan]}) to the 2-D (sfov, mfov) plane. */
+	private static RandomAccessibleInterval<DoubleType> sliceScanAndSlab(final RandomAccessibleInterval<DoubleType> xy,
 																		 final long scan,
-																		 final int slabAxis,
 																		 final long slabPosition) {
-		// hyper-slice the higher-indexed axis first so the lower index stays valid afterwards
-		final int hi = Math.max(scanAxis, slabAxis);
-		final int lo = Math.min(scanAxis, slabAxis);
-		final long hiPos = (hi == scanAxis) ? scan : slabPosition;
-		final long loPos = (lo == scanAxis) ? scan : slabPosition;
-		return Views.hyperSlice(Views.hyperSlice(img, hi, hiPos), lo, loPos);
+		// slice the higher axis (scan) first so the lower slab axis index stays valid.
+		return Views.hyperSlice(Views.hyperSlice(xy, XY_AXIS_SCAN, scan), XY_AXIS_SLAB, slabPosition);
 	}
 
 	/** True if the interval has at least one finite value. */
@@ -534,15 +545,6 @@ public class Wafer6061Inpainter {
 			values[i] = ra.setPositionAndGet(new long[] {i}).get();
 		}
 		return values;
-	}
-
-	/** Opens a 3-D reference array and returns the 2-D slice for the given slab position. */
-	private static RandomAccessibleInterval<DoubleType> readSlab(final N5Reader n5,
-																final String dataset,
-																final long slabCount,
-																final int slabPosition) {
-		final RandomAccessibleInterval<DoubleType> img = openDoubles(n5, dataset);
-		return Views.hyperSlice(img, axisOfSize(img, slabCount, dataset), slabPosition);
 	}
 
 	/**
