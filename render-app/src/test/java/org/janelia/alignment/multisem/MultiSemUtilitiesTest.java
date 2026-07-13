@@ -33,15 +33,4 @@ public class MultiSemUtilitiesTest {
                             "16", MultiSemUtilities.getSFOVIndexForTileId(manyScanTileId));
     }
 
-    @Test
-    public void testGetRowMajorSFOVIndex() {
-        // spiral -> row-major permutation of the 91-beam hex layout (see TileReorderingClient's original table)
-        Assert.assertEquals("spiral 1 (center) should be row-major 46",
-                            46, MultiSemUtilities.getRowMajorSFOVIndex(1));
-        Assert.assertEquals("spiral 72 should be row-major 1 (top-left)",
-                            1, MultiSemUtilities.getRowMajorSFOVIndex(72));
-        Assert.assertEquals("spiral 91 should be row-major 61",
-                            61, MultiSemUtilities.getRowMajorSFOVIndex(91));
-    }
-
 }

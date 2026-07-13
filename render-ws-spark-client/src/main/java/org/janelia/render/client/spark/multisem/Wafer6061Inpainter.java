@@ -65,8 +65,8 @@ import org.slf4j.LoggerFactory;
  * pixels) is mapped to the voxel frame with {@code voxel = center - translate} (the neuroglancer group-level
  * {@code translate}, i.e. the stack bounding-box min). Each tile carries the {@code distance_roi} of its SFOV, read
  * from the xlog for the slab whose {@code id_serial} equals {@code serial}: the tile's mfov (0-based) indexes the xlog
- * mfov axis directly, and its spiral sfov number (the {@code _s##} field) is mapped to the xlog's row-major sfov axis
- * via {@link MultiSemUtilities#getRowMajorSFOVIndex}.
+ * mfov axis directly, and its sfov number (the 1-based {@code _s##} field) maps directly to the 0-based xlog sfov axis
+ * as {@code _s## - 1}.
  * <p>
  * The client processes the full-resolution ({@code s0}) blocks of the tissue in parallel. For each block it first
  * applies the cheap ROI-distance filter (interpolating {@code distance_roi} at the block center via inverse-distance
@@ -384,9 +384,8 @@ public class Wafer6061Inpainter {
 	 * i.e. the stack bounding-box min; if it is null we fall back to the render stack bounds). Each tile carries the
 	 * {@code distance_roi} of its SFOV, read from the xlog for the slab whose {@code id_serial} equals
 	 * {@code params.serial}: the tile's mfov (0-based, parsed from the tileId) indexes the xlog mfov axis directly, and
-	 * its spiral sfov number (the {@code _s##} field) is mapped to the xlog's row-major sfov axis via
-	 * {@link MultiSemUtilities#getRowMajorSFOVIndex}. Tiles whose SFOV has no (NaN) {@code distance_roi}, or an
-	 * out-of-range mfov/sfov, are dropped.
+	 * its sfov number (the 1-based {@code _s##} field) maps directly to the 0-based xlog sfov axis as {@code _s## - 1}.
+	 * Tiles whose SFOV has no (NaN) {@code distance_roi}, or an out-of-range mfov/sfov, are dropped.
 	 */
 	static PointCloud loadPointCloud(final Parameters params,
 									 final RenderDataClient renderClient,
@@ -457,7 +456,7 @@ public class Wafer6061Inpainter {
 					 params.dataset, offsetX, offsetY);
 		}
 
-		// Attach each tile's distance_roi (by mfov + spiral->row-major sfov) and place its center in the voxel frame.
+		// Attach each tile's distance_roi (by mfov + sfov) and place its center in the voxel frame.
 		final List<Double> xs = new ArrayList<>();
 		final List<Double> ys = new ArrayList<>();
 		final List<Double> ds = new ArrayList<>();
@@ -466,14 +465,8 @@ public class Wafer6061Inpainter {
 		for (final TileBounds tile : tiles) {
 			final String tileId = tile.getTileId();
 			final int mfov = Integer.parseInt(MultiSemUtilities.getSimpleMfovForTileId(tileId).substring(1)); // m0013 -> 13
-			final int spiralSfov = Integer.parseInt(MultiSemUtilities.getSFOVIndexForTileId(tileId));          // _s## spiral, 1-based
-			// guard the spiral number before the permutation lookup (91-element table) and the mfov before the grid.
-			if (mfov < 0 || mfov >= nMfov || spiralSfov < 1 || spiralSfov > MultiSemUtilities.NUMBER_OF_TILES_IN_MFOV) {
-				outOfRange++;
-				continue;
-			}
-			final int sfov = MultiSemUtilities.getRowMajorSFOVIndex(spiralSfov) - 1;                           // xlog row-major, 0-based
-			if (sfov < 0 || sfov >= nSfov) {
+			final int sfov = Integer.parseInt(MultiSemUtilities.getSFOVIndexForTileId(tileId)) - 1;
+			if (mfov < 0 || mfov >= nMfov || sfov < 0 || sfov >= nSfov) {
 				outOfRange++;
 				continue;
 			}

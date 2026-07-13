@@ -263,36 +263,6 @@ public class MultiSemUtilities {
     /** Each MFOV has 91 SFOVs or tiles */
     public static int NUMBER_OF_TILES_IN_MFOV = 91;
 
-    /**
-     * Maps an SFOV's original spiral acquisition number (the 1-based {@code _s##} value in a multi-SEM tileId,
-     * assigned by spiraling counterclockwise out from the center of the MFOV) to its 1-based row-major beam index
-     * (numbering the 91 beams of the MFOV from 1 in the top-left corner, going row by row). This "spiral -&gt;
-     * row-major" permutation of the 91-beam hexagonal layout is the single source of truth shared by
-     * {@code TileReorderingClient} (which uses it to order tiles) and the multi-SEM inpainter (which uses it to
-     * match render tiles to the acquisition xlog's row-major sfov axis).
-     *
-     * @param  spiralSFOVNumber  the 1-based spiral sfov number (1..91).
-     * @return the corresponding 1-based row-major beam index.
-     */
-    public static int getRowMajorSFOVIndex(final int spiralSFOVNumber) {
-        return SPIRAL_TO_ROW_MAJOR_SFOV[spiralSFOVNumber - 1];
-    }
-
-    // Number the 91 beams of an MFOV from 1 to 91 in row-major order (top-left corner, row by row), then record
-    // those numbers in the original spiral acquisition order (center-out, counterclockwise). Thus
-    // SPIRAL_TO_ROW_MAJOR_SFOV[spiralNumber - 1] is that beam's row-major index.
-    private static final int[] SPIRAL_TO_ROW_MAJOR_SFOV = {
-            46, 47, 36, 35, 45, 56, 57, 48, 37, 27,
-            26, 25, 34, 44, 55, 65, 66, 67, 58, 49,
-            38, 28, 19, 18, 17, 16, 24, 33, 43, 54,
-            64, 73, 74, 75, 76, 68, 59, 50, 39, 29,
-            20, 12, 11, 10,  9,  8, 15, 23, 32, 42,
-            53, 63, 72, 80, 81, 82, 83, 84, 77, 69,
-            60, 51, 40, 30, 21, 13,  6,  5,  4,  3,
-             2,  1,  7, 14, 22, 31, 41, 52, 62, 71,
-            79, 86, 87, 88, 89, 90, 91, 85, 78, 70, 61
-    };
-
     private static final Pattern SIMPLE_MFOV_NAME_PATTERN = Pattern.compile("^m(\\d{4})$");
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiSemUtilities.class);
