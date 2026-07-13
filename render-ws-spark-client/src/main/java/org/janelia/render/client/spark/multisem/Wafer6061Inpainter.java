@@ -64,9 +64,9 @@ import org.slf4j.LoggerFactory;
  * first layer's tile bounds are fetched from the render web service on the driver, and each tile center (render world
  * pixels) is mapped to the voxel frame with {@code voxel = center - translate} (the neuroglancer group-level
  * {@code translate}, i.e. the stack bounding-box min). Each tile carries the {@code distance_roi} of its SFOV, read
- * from the xlog for the slab whose {@code id_serial} equals {@code serial}: the tile's mfov (0-based) indexes the xlog
- * mfov axis directly, and its sfov number (the 1-based {@code _s##} field) maps directly to the 0-based xlog sfov axis
- * as {@code _s## - 1}.
+ * from the xlog for the slab whose {@code id_serial} equals {@code serial}: the tile's mfov (0-based) maps to the xlog
+ * mfov axis as {@code render_mfov + 5} (the axis reserves 5 leading always-NaN rows), and its sfov number (the 1-based
+ * {@code _s##} field) maps to the 0-based xlog sfov axis as {@code _s## - 1}.
  * <p>
  * The client processes the full-resolution ({@code s0}) blocks of the tissue in parallel. For each block it first
  * applies the cheap ROI-distance filter (interpolating {@code distance_roi} at the block center via inverse-distance
@@ -94,6 +94,11 @@ public class Wafer6061Inpainter {
 	// The slab axis index is HARDCODED (below) rather than discovered by matching sizes (sizes are not guaranteed to
 	// be unique). After slicing the slab axis, distance_roi reduces to a 2-D (sfov, mfov) plane.
 	private static final int DIST_AXIS_SLAB = 2;
+
+	// The distance_roi mfov axis reserves 5 leading (always-NaN) positions before the first real mfov: real mfov data
+	// starts at row 5 for every wafer-60/61 slab (verified constant + contiguous across all 399 finite slabs). Render
+	// numbers each section's mfovs from 0, so the render mfov maps to the xlog mfov axis position as render_mfov + 5.
+	private static final int MFOV_ROW_OFFSET = 5;
 
 	private static final Logger LOG = LoggerFactory.getLogger(Wafer6061Inpainter.class);
 
@@ -383,8 +388,9 @@ public class Wafer6061Inpainter {
 	 * {@code voxel = center - worldToVoxel} ({@code worldToVoxel} is the neuroglancer group-level {@code translate},
 	 * i.e. the stack bounding-box min; if it is null we fall back to the render stack bounds). Each tile carries the
 	 * {@code distance_roi} of its SFOV, read from the xlog for the slab whose {@code id_serial} equals
-	 * {@code params.serial}: the tile's mfov (0-based, parsed from the tileId) indexes the xlog mfov axis directly, and
-	 * its sfov number (the 1-based {@code _s##} field) maps directly to the 0-based xlog sfov axis as {@code _s## - 1}.
+	 * {@code params.serial}: the tile's mfov (0-based, parsed from the tileId) maps to the xlog mfov axis as
+	 * {@code render_mfov + 5} (the axis reserves 5 leading always-NaN rows; see {@link #MFOV_ROW_OFFSET}), and its sfov
+	 * number (the 1-based {@code _s##} field) maps to the 0-based xlog sfov axis as {@code _s## - 1}.
 	 * Tiles whose SFOV has no (NaN) {@code distance_roi}, or an out-of-range mfov/sfov, are dropped.
 	 */
 	static PointCloud loadPointCloud(final Parameters params,
@@ -464,7 +470,8 @@ public class Wafer6061Inpainter {
 		int outOfRange = 0;
 		for (final TileBounds tile : tiles) {
 			final String tileId = tile.getTileId();
-			final int mfov = Integer.parseInt(MultiSemUtilities.getSimpleMfovForTileId(tileId).substring(1)); // m0013 -> 13
+			// render mfov is 0-based per section; the xlog mfov axis reserves 5 leading NaN rows (see MFOV_ROW_OFFSET).
+			final int mfov = Integer.parseInt(MultiSemUtilities.getSimpleMfovForTileId(tileId).substring(1)) + MFOV_ROW_OFFSET; // m0013 -> 13 -> row 18
 			final int sfov = Integer.parseInt(MultiSemUtilities.getSFOVIndexForTileId(tileId)) - 1;
 			if (mfov < 0 || mfov >= nMfov || sfov < 0 || sfov >= nSfov) {
 				outOfRange++;
