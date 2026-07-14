@@ -666,7 +666,7 @@ public class Wafer6061Inpainter {
 
 			final int original = tissueAccess.setPositionAndGet(local).get();
 			final int value;
-			if (maskAccess.setPositionAndGet(local).get() > 0) {
+			if (maskAccess.setPositionAndGet(local).get() == 255) {
 				value = original;
 			} else {
 				value = zAverage(tissueAccess, local, 0, zMax);
