@@ -196,14 +196,14 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		final MatchFilter sameLayerFilter;
 		final MatchFilter crossLayerFilter;
 
-		final Double cutoffDifference = this.parameters.cutoffDifference();
-		if (cutoffDifference != null) {
+		final Double skipMatchesAboveDifference = this.parameters.skipMatchesAboveDifference();
+		if (skipMatchesAboveDifference != null) {
 			// a per-pixel cutoff requires pixel-by-pixel matching, so histogram matching cannot be used here;
 			// the cutoff only applies to cross-layer pairs (a large same-layer shift is what 2D correction fixes)
-			LOG.info("getIntensityMatcher: applying cross-layer cutoff of {} gray levels (forces pixel-by-pixel matching), renderStack={}, blockData={}",
-					 cutoffDifference, renderStack, blockData);
+			LOG.info("getIntensityMatcher: skipping cross-layer matches above {} gray levels (forces pixel-by-pixel matching), renderStack={}, blockData={}",
+					 skipMatchesAboveDifference, renderStack, blockData);
 			sameLayerFilter = new RansacMatchFilter();
-			crossLayerFilter = new CutoffRansacMatchFilter(cutoffDifference / 255.0);
+			crossLayerFilter = new CutoffRansacMatchFilter(skipMatchesAboveDifference / 255.0);
 		} else if (this.parameters.useRansacMatching()) {
 			sameLayerFilter = new RansacMatchFilter();
 			crossLayerFilter = sameLayerFilter;
