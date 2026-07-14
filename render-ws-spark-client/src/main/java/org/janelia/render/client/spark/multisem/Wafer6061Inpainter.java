@@ -403,7 +403,7 @@ public class Wafer6061Inpainter {
 		final double[][] distBySfovMfov; // [rowMajorSfov0Based][mfov0Based]
 		try (final N5Reader xlog = new N5Factory().openReader(params.xlogPath)) {
 
-			final double[] idSerial = read1d(xlog, "id_serial");
+			final double[] idSerial = read1d(xlog);
 			final int slabPosition = findSlabPosition(idSerial, params.serial);
 			if (slabPosition < 0) {
 				final long[] available = new long[idSerial.length];
@@ -415,7 +415,7 @@ public class Wafer6061Inpainter {
 			}
 
 			final RandomAccessibleInterval<DoubleType> distAll = openDoubles(xlog, "distance_roi");
-			requireSlabAxis(distAll, DIST_AXIS_SLAB, idSerial.length, "distance_roi");
+			requireSlabAxis(distAll, idSerial.length);
 
 			// distance_roi is scan-independent: slice the slab axis -> 2-D (sfov, mfov).
 			final RandomAccessibleInterval<DoubleType> distSlab = Views.hyperSlice(distAll, DIST_AXIS_SLAB, slabPosition);
@@ -497,12 +497,12 @@ public class Wafer6061Inpainter {
 	}
 
 	/** Fails fast if a hardcoded slab axis does not carry the expected slab count (guards the layout at the top). */
-	private static void requireSlabAxis(final RandomAccessibleInterval<?> img, final int axis, final long slabCount,
-										final String field) {
-		if (img.numDimensions() <= axis || img.dimension(axis) != slabCount) {
-			throw new IllegalArgumentException("xlog field '" + field + "' has dimensions " +
+	private static void requireSlabAxis(final RandomAccessibleInterval<?> img, final long slabCount) {
+		final int distAxis = Wafer6061Inpainter.DIST_AXIS_SLAB;
+		if (img.numDimensions() <= distAxis || img.dimension(distAxis) != slabCount) {
+			throw new IllegalArgumentException("xlog field '" + "distance_roi" + "' has dimensions " +
 											   Arrays.toString(img.dimensionsAsLongArray()) + " but the hardcoded layout " +
-											   "expects " + slabCount + " slabs on axis " + axis +
+											   "expects " + slabCount + " slabs on axis " + Wafer6061Inpainter.DIST_AXIS_SLAB +
 											   " (see the xlog axis layout at the top of the class)");
 		}
 	}
@@ -517,8 +517,8 @@ public class Wafer6061Inpainter {
 	}
 
 	/** Reads a 1-D double dataset (blosc-safe: uses the block-not-found overload to avoid the getAttribute NPE). */
-	private static double[] read1d(final N5Reader n5, final String dataset) {
-		final RandomAccessibleInterval<DoubleType> img = openDoubles(n5, dataset);
+	private static double[] read1d(final N5Reader n5) {
+		final RandomAccessibleInterval<DoubleType> img = openDoubles(n5, "id_serial");
 		final long length = img.dimension(0);
 		final double[] values = new double[(int) length];
 		final RandomAccess<DoubleType> ra = img.randomAccess();
@@ -551,7 +551,7 @@ public class Wafer6061Inpainter {
 		LogUtilities.setupExecutorLog4j("inpaint");
 
 		final List<long[]> modified = new ArrayList<>();
-		final KNearestNeighborSearchOnKDTree<DoubleType> search = cloud.buildSearch(IDW_K);
+		final KNearestNeighborSearchOnKDTree<DoubleType> search = cloud.buildSearch();
 
 		try (final N5Reader reader = openN5Reader(params.n5Path);
 			 final N5Writer tissueWriter = params.dryRun ? null : openN5Writer(params.n5Path);
@@ -574,7 +574,7 @@ public class Wafer6061Inpainter {
 				// weighting (the interpolated value is in microns regardless of the voxel-space query units).
 				final double centerX = block.offset[0] + block.dimensions[0] / 2.0;
 				final double centerY = block.offset[1] + block.dimensions[1] / 2.0;
-				final double roiDistance = cloud.interpolate(search, centerX, centerY, IDW_POWER);
+				final double roiDistance = cloud.interpolate(search, centerX, centerY);
 				if (! (roiDistance < params.maxRoiDistance)) {
 					logDecision(gridX, gridY, "outside_roi", -1, roiDistance);
 					continue;
@@ -975,7 +975,7 @@ public class Wafer6061Inpainter {
 			return xs.length;
 		}
 
-		KNearestNeighborSearchOnKDTree<DoubleType> buildSearch(final int k) {
+		KNearestNeighborSearchOnKDTree<DoubleType> buildSearch() {
 			final List<RealPoint> points = new ArrayList<>(xs.length);
 			final List<DoubleType> values = new ArrayList<>(xs.length);
 			for (int i = 0; i < xs.length; i++) {
@@ -983,14 +983,13 @@ public class Wafer6061Inpainter {
 				values.add(new DoubleType(dists[i]));
 			}
 			final KDTree<DoubleType> tree = new KDTree<>(values, points);
-			return new KNearestNeighborSearchOnKDTree<>(tree, Math.min(k, xs.length));
+			return new KNearestNeighborSearchOnKDTree<>(tree, Math.min(Wafer6061Inpainter.IDW_K, xs.length));
 		}
 
 		/** Inverse-distance-weighted interpolation of the distance value at (x, y). */
 		double interpolate(final KNearestNeighborSearchOnKDTree<DoubleType> search,
 						   final double x,
-						   final double y,
-						   final double power) {
+						   final double y) {
 			search.search(new RealPoint(x, y));
 			final int numNeighbors = search.getK();
 			double numerator = 0;
@@ -1001,7 +1000,7 @@ public class Wafer6061Inpainter {
 				if (r == 0.0) {
 					return v;
 				}
-				final double w = 1.0 / Math.pow(r, power);
+				final double w = 1.0 / Math.pow(r, Wafer6061Inpainter.IDW_POWER);
 				numerator += w * v;
 				denominator += w;
 			}
