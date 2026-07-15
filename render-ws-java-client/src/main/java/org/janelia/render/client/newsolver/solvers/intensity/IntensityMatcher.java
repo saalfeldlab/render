@@ -43,8 +43,16 @@ class IntensityMatcher {
 			final ImageProcessorCache imageProcessorCache) {
 		this.filter = filter;
 		this.numCoefficients = parameters.numCoefficients();
-		this.sameLayerRenderer = new TightBoxTileRenderer(numCoefficients, parameters.renderScale(), meshResolution, imageProcessorCache);
-		this.crossLayerRenderer = new TightBoxTileRenderer(numCoefficients, parameters.crossLayerRenderScale(), meshResolution, imageProcessorCache);
+		final double sameLayerScale = parameters.renderScale();
+		this.sameLayerRenderer = new TightBoxTileRenderer(numCoefficients, sameLayerScale, meshResolution, imageProcessorCache);
+
+		// Share rendering effort if scale is the same
+		final double crossLayerScale = parameters.crossLayerRenderScale();
+		if (sameLayerScale == crossLayerScale) {
+			this.crossLayerRenderer = sameLayerRenderer;
+		} else {
+			this.crossLayerRenderer = new TightBoxTileRenderer(numCoefficients, crossLayerScale, meshResolution, imageProcessorCache);
+		}
 	}
 
 	public void match(final String renderStack,
