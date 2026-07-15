@@ -91,36 +91,64 @@ class TightBoxTileRenderer implements TileRenderer {
 	 */
 	private DownsampledSource loadSource(final TileSpec patch) {
 
-		// get the entire image at full scale; the per-tile cache below already dedups loads across
+		// Get the entire image at full scale; the per-tile cache below already dedups loads across
 		// pairs, so the full-resolution image processor cache would add nothing but memory pressure
 		final ImageProcessorWithMasks impOriginal =
 				VisualizeTools.getUntransformedProcessorWithMasks(patch, ImageProcessorCache.DISABLED_CACHE);
 
-		// apply filters if there are any
+		// Apply filters if there are any
 		final FilterSpec filterSpec = patch.getFilterSpec();
 		if (filterSpec != null) {
 			filterSpec.buildInstance().process(impOriginal.ip, scale);
 		}
 
-		/*
-		 * Estimate the average scale to pick the mipmap level. The box offset added in renderBox is a
-		 * pure translation, which does not affect the scale of the fitted SimilarityModel2D, so the
-		 * mipmap level is the same for every box and is computed here once (with zero offset).
-		 */
-		final CoordinateTransformList<CoordinateTransform> ctl = patch.getTransformList();
-		final AffineModel2D affineScale = new AffineModel2D();
-		affineScale.set(scale, 0, 0, scale, 0, 0);
-		ctl.add(affineScale);
-		final int width = patch.getWidth(), height = patch.getHeight();
-		final double s = sampleAverageScale(ctl, width, height, (double) width / meshResolution);
-		final int mipmapLevel = bestMipmapLevel(s);
-
+		final int mipmapLevel = getMipmapLevel(patch);
 		final ImageProcessor ipMipmap = Downsampler.downsampleImageProcessor(impOriginal.ip, mipmapLevel);
 
 		final ByteProcessor bpMask = (ByteProcessor) impOriginal.mask;
 		final ByteProcessor bpMaskMipmap = (bpMask == null) ? null : Downsampler.downsampleByteProcessor(bpMask, mipmapLevel);
 
 		return new DownsampledSource(ipMipmap, bpMaskMipmap, mipmapLevel);
+	}
+
+	private int getMipmapLevel(final TileSpec patch) {
+		// Transform the mesh nodes with the tile spec's transforms
+		final CoordinateTransformList<CoordinateTransform> ctl = patch.getTransformList();
+		final AffineModel2D affineScale = new AffineModel2D();
+		affineScale.set(scale, 0, 0, scale, 0, 0);
+		ctl.add(affineScale);
+		final int width = patch.getWidth(), height = patch.getHeight();
+		final ArrayList<PointMatch> samples = new ArrayList<>();
+
+		for (double y = 0; y < height; y += (double) width / meshResolution) {
+			for (double x = 0; x < width; x += (double) width / meshResolution) {
+				final Point p = new Point(new double[]{x, y});
+				p.apply(ctl);
+				samples.add(new PointMatch(p, p));
+			}
+		}
+
+		// Fit a similarity model to the mesh nodes to get the average scale
+		double s;
+		final SimilarityModel2D model = new SimilarityModel2D();
+		try {
+			model.fit(samples);
+			final double[] data = new double[6];
+			model.toArray(data);
+			s = Math.sqrt(data[0] * data[0] + data[1] * data[1]);
+		} catch (final NotEnoughDataPointsException e) {
+			e.printStackTrace(System.err);
+			s = 1;
+		}
+
+		// Find the best mipmap scale
+		int invScale = (int) (1.0 / s);
+		int scaleLevel = 0;
+		while (invScale > 1) {
+			invScale >>= 1;
+			++scaleLevel;
+		}
+		return scaleLevel;
 	}
 
 	/**
@@ -142,17 +170,17 @@ class TightBoxTileRenderer implements TileRenderer {
 		affineScale.set(scale, 0, 0, scale, -x * scale, -y * scale);
 		ctl.add(affineScale);
 
-		final ImageProcessor ipMipmap = source.image;
+		final ImageProcessor image = source.image;
 
 		/* create a target */
-		final ImageProcessor tp = ipMipmap.createProcessor(targetImage.getWidth(), targetImage.getHeight());
+		final ImageProcessor tp = image.createProcessor(targetImage.getWidth(), targetImage.getHeight());
 
 		/* prepare target for the alpha mask if there is one */
 		final ByteProcessor bpMaskMipmap = source.mask;
 		final ByteProcessor bpMaskTarget = (bpMaskMipmap == null) ? null : new ByteProcessor(tp.getWidth(), tp.getHeight());
 
 		/* create coefficients map */
-		final ColorProcessor cp = new ColorProcessor(ipMipmap.getWidth(), ipMipmap.getHeight());
+		final ColorProcessor cp = new ColorProcessor(image.getWidth(), image.getHeight());
 		final int w = cp.getWidth();
 		final int h = cp.getHeight();
 		for (int yi = 0; yi < h; ++yi) {
@@ -169,10 +197,10 @@ class TightBoxTileRenderer implements TileRenderer {
 		ctlMipmap.add(ctl);
 
 		/* create mesh */
-		final CoordinateTransformMesh mesh = new CoordinateTransformMesh(ctlMipmap, meshResolution, ipMipmap.getWidth(), ipMipmap.getHeight());
+		final CoordinateTransformMesh mesh = new CoordinateTransformMesh(ctlMipmap, meshResolution, image.getWidth(), image.getHeight());
 
 		/* render */
-		final ImageProcessorWithMasks src = new ImageProcessorWithMasks(ipMipmap, bpMaskMipmap, null);
+		final ImageProcessorWithMasks src = new ImageProcessorWithMasks(image, bpMaskMipmap, null);
 		final ImageProcessorWithMasks target = new ImageProcessorWithMasks(tp, bpMaskTarget, null);
 		final TransformMeshMappingWithMasks<TransformMesh> mapping = new TransformMeshMappingWithMasks<>(mesh);
 		mapping.mapInterpolated(src, target, 1);
@@ -198,41 +226,6 @@ class TightBoxTileRenderer implements TileRenderer {
 
 		for (int i = 0; i < alphaPixels.length; ++i)
 			targetWeight.setf(i, (float) ((alphaPixels[i] & 0xff) * b));
-	}
-
-	/**
-	 * Sample the average scaling of a {@link CoordinateTransform} by transferring a set of point
-	 * samples using it and least-squares fitting a {@link SimilarityModel2D} to them.
-	 */
-	private static double sampleAverageScale(final CoordinateTransform ct, final int width, final int height, final double dx) {
-		final ArrayList<PointMatch> samples = new ArrayList<>();
-		for (double y = 0; y < height; y += dx) {
-			for (double x = 0; x < width; x += dx) {
-				final Point p = new Point(new double[]{x, y});
-				p.apply(ct);
-				samples.add(new PointMatch(p, p));
-			}
-		}
-		final SimilarityModel2D model = new SimilarityModel2D();
-		try {
-			model.fit(samples);
-		} catch (final NotEnoughDataPointsException e) {
-			e.printStackTrace(System.err);
-			return 1;
-		}
-		final double[] data = new double[6];
-		model.toArray(data);
-		return Math.sqrt(data[0] * data[0] + data[1] * data[1]);
-	}
-
-	private static int bestMipmapLevel(final double scale) {
-		int invScale = (int) (1.0 / scale);
-		int scaleLevel = 0;
-		while (invScale > 1) {
-			invScale >>= 1;
-			++scaleLevel;
-		}
-		return scaleLevel;
 	}
 
 	/**
