@@ -214,8 +214,7 @@ public class Render
 
 		/* estimate average scale and generate downsampled source */
 		final int width = patch.getWidth(), height = patch.getHeight();
-		// TODO: the last parameter is an integer division; should this be a float dvision instead?
-		final double s = sampleAverageScale( ctl, width, height, width / meshResolution );
+		final double s = sampleAverageScale(ctl, width, height, (double) width / meshResolution );
 		final int mipmapLevel = bestMipmapLevel( s );
 		final ImageProcessor ipMipmap = Downsampler.downsampleImageProcessor( impOriginal.ip, mipmapLevel );
 
