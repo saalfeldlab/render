@@ -13,7 +13,6 @@ import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.AdjustBlock;
 import org.janelia.render.client.newsolver.BlockData;
 import org.janelia.render.client.newsolver.assembly.ResultContainer;
@@ -109,12 +108,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		LOG.info("computeCoefficients: entry, renderStack={}, blockData={}", renderStack, blockData);
 
-		final long maxCachedPixels = parameters.maxPixelCacheGb() * 1024L * 1024L * 1024L;  // assume 8bit images
-		final ImageProcessorCache imageProcessorCache = (maxCachedPixels == 0)
-				? ImageProcessorCache.DISABLED_CACHE
-				: new ImageProcessorCache(maxCachedPixels, true, false);
+		// budget (in kilobytes) for the per-tile downsampled-source caches in the renderers
+		final long maximumCachedKilobytes = parameters.maxPixelCacheGb() * 1024L * 1024L * 1024L / 1000L;
 
-		final Map<String, IntensityTile> coefficientTiles = splitIntoCoefficientTiles(tiles, imageProcessorCache);
+		final Map<String, IntensityTile> coefficientTiles = splitIntoCoefficientTiles(tiles, maximumCachedKilobytes);
 
 		if (tiles.size() > 1) {
 			solveForGlobalCoefficients(coefficientTiles);
@@ -128,7 +125,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 	private HashMap<String, IntensityTile> splitIntoCoefficientTiles(
 			final List<TileSpec> tiles,
-			final ImageProcessorCache imageProcessorCache
+			final long maximumCachedKilobytes
 	) throws InterruptedException, ExecutionException {
 
 		if (tiles == null || tiles.isEmpty()) {
@@ -149,7 +146,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
                  renderStack, blockData, patchPairs.size(), numThreads);
 
 		// for all pairs of images that do overlap, extract matching intensity values (intensity values that should be the same)
-		final IntensityMatcher matcher = getIntensityMatcher(tiles, imageProcessorCache);
+		final IntensityMatcher matcher = getIntensityMatcher(tiles, maximumCachedKilobytes);
 		final ExecutorService exec = Executors.newFixedThreadPool(numThreads);
 		final List<Future<?>> matchTasks = new ArrayList<>();
 
@@ -183,15 +180,14 @@ public class AffineIntensityCorrectionBlockWorker<M>
 
 		exec.shutdown();
 
-		LOG.info("splitIntoCoefficientTiles: exit, renderStack={}, blockData={}, imageProcessorCache.getStats={}",
-                 renderStack, blockData, imageProcessorCache.getStats());
+		LOG.info("splitIntoCoefficientTiles: exit, renderStack={}, blockData={}", renderStack, blockData);
 
 		return coefficientTiles;
 	}
 
 	private IntensityMatcher getIntensityMatcher(
 			final List<TileSpec> tiles,
-			final ImageProcessorCache imageProcessorCache
+			final long maximumCachedKilobytes
 	) {
 		final MatchFilter filter;
 		if (this.parameters.useRansacMatching()) {
@@ -200,7 +196,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			filter = new HistogramMatchFilter();
 		}
 		final int meshResolution = (int) tiles.get(0).getMeshCellSize();
-		return new IntensityMatcher(filter, parameters, meshResolution, imageProcessorCache);
+		return new IntensityMatcher(filter, parameters, meshResolution, maximumCachedKilobytes);
 	}
 
 	private  HashMap<String, IntensityTile> generateCoefficientsTiles(final Collection<TileSpec> patches) {

@@ -15,7 +15,6 @@ import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
 
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +28,9 @@ import net.imglib2.util.StopWatch;
  * partially overlapping) can be downscaled differently from tiles in different
  * layers (i.e., almost completely overlapping).
  * Also, computation of averages for a tile is done here.
+ * <p>
+ * Caching is done for each scale (same-layer vs. cross-layer) independently, unless
+ * the scales are the same, in which case the same cache is shared for both.
  */
 class IntensityMatcher {
 	final private MatchFilter filter;
@@ -40,18 +42,18 @@ class IntensityMatcher {
 			final MatchFilter filter,
 			final FIBSEMIntensityCorrectionParameters<?> parameters,
 			final int meshResolution,
-			final ImageProcessorCache imageProcessorCache) {
+			final long maximumCachedKilobytes) {
 		this.filter = filter;
 		this.numCoefficients = parameters.numCoefficients();
 		final double sameLayerScale = parameters.renderScale();
-		this.sameLayerRenderer = new TightBoxTileRenderer(numCoefficients, sameLayerScale, meshResolution, imageProcessorCache);
+		this.sameLayerRenderer = new TightBoxTileRenderer(numCoefficients, sameLayerScale, meshResolution, maximumCachedKilobytes);
 
 		// Share rendering effort if scale is the same
 		final double crossLayerScale = parameters.crossLayerRenderScale();
 		if (sameLayerScale == crossLayerScale) {
 			this.crossLayerRenderer = sameLayerRenderer;
 		} else {
-			this.crossLayerRenderer = new TightBoxTileRenderer(numCoefficients, crossLayerScale, meshResolution, imageProcessorCache);
+			this.crossLayerRenderer = new TightBoxTileRenderer(numCoefficients, crossLayerScale, meshResolution, maximumCachedKilobytes);
 		}
 	}
 
