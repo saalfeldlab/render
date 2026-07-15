@@ -14,7 +14,6 @@ import mpicbg.models.Tile;
 
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.janelia.render.client.intensityadjust.intensity.Render;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,11 +30,9 @@ import net.imglib2.util.StopWatch;
  */
 class IntensityMatcher {
 	final private MatchFilter filter;
-	final private double sameLayerScale;
-	final private double crossLayerScale;
 	final private int numCoefficients;
-	final int meshResolution;
-	final ImageProcessorCache imageProcessorCache;
+	final private TileRenderer sameLayerRenderer;
+	final private TileRenderer crossLayerRenderer;
 
 	public IntensityMatcher(
 			final MatchFilter filter,
@@ -43,11 +40,9 @@ class IntensityMatcher {
 			final int meshResolution,
 			final ImageProcessorCache imageProcessorCache) {
 		this.filter = filter;
-		this.sameLayerScale = parameters.renderScale();
-		this.crossLayerScale = parameters.crossLayerRenderScale();
 		this.numCoefficients = parameters.numCoefficients();
-		this.meshResolution = meshResolution;
-		this.imageProcessorCache = imageProcessorCache;
+		this.sameLayerRenderer = new TightBoxTileRenderer(numCoefficients, parameters.renderScale(), meshResolution, imageProcessorCache);
+		this.crossLayerRenderer = new TightBoxTileRenderer(numCoefficients, parameters.crossLayerRenderScale(), meshResolution, imageProcessorCache);
 	}
 
 	public void match(final String renderStack,
@@ -57,25 +52,26 @@ class IntensityMatcher {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
 
-		final double scale = (p1.zDistanceFrom(p2) == 0) ? sameLayerScale : crossLayerScale;
+		final TileRenderer renderer = (p1.zDistanceFrom(p2) == 0) ? sameLayerRenderer : crossLayerRenderer;
 		final Rectangle box = computeIntersection(p1, p2);
-		final int w = numberOfPixels(box.width, scale);
-		final int h = numberOfPixels(box.height, scale);
-		final int n = w * h;
 
-		final FloatProcessor pixels1 = new FloatProcessor(w, h);
-		final FloatProcessor weights1 = new FloatProcessor(w, h);
-		final ColorProcessor subTiles1 = new ColorProcessor(w, h);
-		final FloatProcessor pixels2 = new FloatProcessor(w, h);
-		final FloatProcessor weights2 = new FloatProcessor(w, h);
-		final ColorProcessor subTiles2 = new ColorProcessor(w, h);
+		final RenderedTile r1 = renderer.render(p1, box);
+		final RenderedTile r2 = renderer.render(p2, box);
 
-		Render.render(p1, numCoefficients, numCoefficients, pixels1, weights1, subTiles1, box.x, box.y, scale, meshResolution, imageProcessorCache);
-		Render.render(p2, numCoefficients, numCoefficients, pixels2, weights2, subTiles2, box.x, box.y, scale, meshResolution, imageProcessorCache);
+		// The tight-box renderer returns both tiles in the same box, so the two rasters share extent
+		// and pixel k refers to the same world location in both.
+		final ColorProcessor subTiles1 = r1.coefficients;
+		final FloatProcessor weights1 = r1.weight;
+		final FloatProcessor pixels1 = r1.image;
+		final ColorProcessor subTiles2 = r2.coefficients;
+		final FloatProcessor weights2 = r2.weight;
+		final FloatProcessor pixels2 = r2.image;
+
+		final int n = r1.getWidth() * r1.getHeight();
 
 		// Generate a matrix of all coefficients in p1 to all coefficients in p2 to store matches
 		final int nCoefficientTiles = numCoefficients * numCoefficients;
-		final List<FlatIntensityMatches> pairwiseCoefficients = getPairwiseCoefficients(w * h, nCoefficientTiles);
+		final List<FlatIntensityMatches> pairwiseCoefficients = getPairwiseCoefficients(n, nCoefficientTiles);
 
 		// Iterate over all pixels and feed matches into the match matrix
 		int label1, label2 = 0;
@@ -156,24 +152,14 @@ class IntensityMatcher {
 		return coefficients;
 	}
 
-	private static int numberOfPixels(final int length, final double scale) {
-		return (int) Math.round(length * scale);
-	}
-
 	List<Double> computeAverages(final TileSpec tile) {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
-		final Rectangle box = boundingBox(tile);
 
-		final int w = numberOfPixels(box.width, sameLayerScale);
-		final int h = numberOfPixels(box.height, sameLayerScale);
-		final int n = w * h;
-
-		final FloatProcessor pixels = new FloatProcessor(w, h);
-		final FloatProcessor weights = new FloatProcessor(w, h);
-		final ColorProcessor subTiles = new ColorProcessor(w, h);
-
-		Render.render(tile, numCoefficients, numCoefficients, pixels, weights, subTiles, box.x, box.y, sameLayerScale, meshResolution, imageProcessorCache);
+		final RenderedTile rendered = sameLayerRenderer.render(tile, boundingBox(tile));
+		final ColorProcessor subTiles = rendered.coefficients;
+		final FloatProcessor pixels = rendered.image;
+		final int n = rendered.getWidth() * rendered.getHeight();
 
 		final float[] averages = new float[numCoefficients * numCoefficients];
 		final int[] counts = new int[numCoefficients * numCoefficients];
