@@ -1,14 +1,15 @@
 package org.janelia.render.client.newsolver.solvers.intensity;
 
-import ij.process.ColorProcessor;
-import ij.process.FloatProcessor;
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.type.numeric.integer.IntType;
+import net.imglib2.type.numeric.real.FloatType;
 
 /**
- * A tile rendered once (at a fixed scale) for intensity matching, together with its position on the
- * shared scale-space pixel grid.
+ * A rendered region of a tile for intensity matching, exposed as {@link RandomAccessibleInterval}s
+ * bounded to the compared region.
  * <p>
- * The three rasters are all produced by the same mesh mapping, so they are pixel-aligned with each
- * other:
+ * The three rasters are produced by the same mesh mapping and share dimensions, so they are
+ * pixel-aligned with each other:
  * <ul>
  *     <li>{@link #image} &ndash; intensities mapped to [0, 1];</li>
  *     <li>{@link #weight} &ndash; alpha/mask weight in [0, 1];</li>
@@ -17,41 +18,31 @@ import ij.process.FloatProcessor;
  *         pixel belongs to.</li>
  * </ul>
  * <p>
- * {@link #startX}/{@link #startY} are the position of the raster's top-left pixel on a single world
- * grid shared by all tiles rendered at the same scale: buffer pixel {@code (col, row)} corresponds
- * to world coordinate {@code ((startX + col) / scale, (startY + row) / scale)}. Because every tile
- * uses the same world-origin-phased grid, two rasters (rendered at the same scale) that overlap in
- * world space can be compared by a plain integer-offset crop, with no interpolation: for an absolute
- * grid column {@code C}, the local column in this raster is simply {@code C - startX}.
+ * When both tiles of a pair are rendered by the same {@link TileRenderer} for the same region, the
+ * two {@code RenderedTile}s have identical dimensions and their flat iteration orders line up, so a
+ * match is a lockstep walk over the two sets of rasters &ndash; no interpolation or re-indexing. The
+ * rasters may be zero-copy views (e.g. {@code Views.interval} crops of a cached full-tile render),
+ * so callers should treat them as read-only.
  */
 class RenderedTile {
 
-	public final FloatProcessor image;
-	public final FloatProcessor weight;
-	public final ColorProcessor coefficients;
+	public final RandomAccessibleInterval<FloatType> image;
+	public final RandomAccessibleInterval<FloatType> weight;
+	public final RandomAccessibleInterval<IntType> coefficients;
 
-	/** Column of the raster's top-left pixel on the shared scale-space grid (in downsampled pixels). */
-	public final int startX;
-	/** Row of the raster's top-left pixel on the shared scale-space grid (in downsampled pixels). */
-	public final int startY;
-
-	RenderedTile(final FloatProcessor image,
-				 final FloatProcessor weight,
-				 final ColorProcessor coefficients,
-				 final int startX,
-				 final int startY) {
+	RenderedTile(final RandomAccessibleInterval<FloatType> image,
+				 final RandomAccessibleInterval<FloatType> weight,
+				 final RandomAccessibleInterval<IntType> coefficients) {
 		this.image = image;
 		this.weight = weight;
 		this.coefficients = coefficients;
-		this.startX = startX;
-		this.startY = startY;
 	}
 
 	public int getWidth() {
-		return image.getWidth();
+		return (int) image.dimension(0);
 	}
 
 	public int getHeight() {
-		return image.getHeight();
+		return (int) image.dimension(1);
 	}
 }

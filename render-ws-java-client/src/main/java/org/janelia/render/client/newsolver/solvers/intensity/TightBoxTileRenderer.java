@@ -5,6 +5,11 @@ import ij.process.FloatProcessor;
 
 import java.awt.Rectangle;
 
+import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.type.numeric.integer.IntType;
+import net.imglib2.type.numeric.real.FloatType;
+
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.intensity.Render;
@@ -47,8 +52,11 @@ class TightBoxTileRenderer implements TileRenderer {
 		Render.render(patch, numCoefficients, numCoefficients, image, weight, coefficients,
 					  box.x, box.y, scale, meshResolution, imageProcessorCache);
 
-		final int startX = (int) Math.round(box.x * scale);
-		final int startY = (int) Math.round(box.y * scale);
-		return new RenderedTile(image, weight, coefficients, startX, startY);
+		// wrap the just-rendered pixel arrays as image views (zero-copy)
+		final RandomAccessibleInterval<FloatType> imageView = ArrayImgs.floats((float[]) image.getPixels(), w, h);
+		final RandomAccessibleInterval<FloatType> weightView = ArrayImgs.floats((float[]) weight.getPixels(), w, h);
+		final RandomAccessibleInterval<IntType> coefficientsView = ArrayImgs.ints((int[]) coefficients.getPixels(), w, h);
+
+		return new RenderedTile(imageView, weightView, coefficientsView);
 	}
 }

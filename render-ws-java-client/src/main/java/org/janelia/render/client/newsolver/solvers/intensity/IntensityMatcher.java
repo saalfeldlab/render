@@ -1,8 +1,5 @@
 package org.janelia.render.client.newsolver.solvers.intensity;
 
-import ij.process.ColorProcessor;
-import ij.process.FloatProcessor;
-
 import java.awt.Rectangle;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,6 +8,11 @@ import java.util.List;
 
 import mpicbg.models.PointMatch;
 import mpicbg.models.Tile;
+
+import net.imglib2.Cursor;
+import net.imglib2.type.numeric.integer.IntType;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.view.Views;
 
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -55,42 +57,35 @@ class IntensityMatcher {
 		final TileRenderer renderer = (p1.zDistanceFrom(p2) == 0) ? sameLayerRenderer : crossLayerRenderer;
 		final Rectangle box = computeIntersection(p1, p2);
 
+		// Both tiles are rendered for the same region by the same renderer, so the two sets of rasters
+		// share dimensions and their flat iteration orders refer to the same world locations.
 		final RenderedTile r1 = renderer.render(p1, box);
 		final RenderedTile r2 = renderer.render(p2, box);
-
-		// The tight-box renderer returns both tiles in the same box, so the two rasters share extent
-		// and pixel k refers to the same world location in both.
-		final ColorProcessor subTiles1 = r1.coefficients;
-		final FloatProcessor weights1 = r1.weight;
-		final FloatProcessor pixels1 = r1.image;
-		final ColorProcessor subTiles2 = r2.coefficients;
-		final FloatProcessor weights2 = r2.weight;
-		final FloatProcessor pixels2 = r2.image;
-
 		final int n = r1.getWidth() * r1.getHeight();
 
 		// Generate a matrix of all coefficients in p1 to all coefficients in p2 to store matches
 		final int nCoefficientTiles = numCoefficients * numCoefficients;
 		final List<FlatIntensityMatches> pairwiseCoefficients = getPairwiseCoefficients(n, nCoefficientTiles);
 
-		// Iterate over all pixels and feed matches into the match matrix
-		int label1, label2 = 0;
-		float weight1 = 0, weight2 = 0;
-		for (int k = 0; k < n; ++k) {
-			// Lazily check if it pays to create a match
-			final boolean matchCanContribute = (label1 = subTiles1.get(k)) > 0
-					&& (label2 = subTiles2.get(k)) > 0
-					&& (weight1 = weights1.getf(k)) > 0
-					&& (weight2 = weights2.getf(k)) > 0;
+		// Iterate over all pixels in lockstep and feed matches into the match matrix
+		final Cursor<IntType> label1Cursor = Views.flatIterable(r1.coefficients).cursor();
+		final Cursor<IntType> label2Cursor = Views.flatIterable(r2.coefficients).cursor();
+		final Cursor<FloatType> weight1Cursor = Views.flatIterable(r1.weight).cursor();
+		final Cursor<FloatType> weight2Cursor = Views.flatIterable(r2.weight).cursor();
+		final Cursor<FloatType> pixel1Cursor = Views.flatIterable(r1.image).cursor();
+		final Cursor<FloatType> pixel2Cursor = Views.flatIterable(r2.image).cursor();
 
-			if (matchCanContribute) {
-				final double p = pixels1.getf(k);
-				final double q = pixels2.getf(k);
+		while (label1Cursor.hasNext()) {
+			final int label1 = label1Cursor.next().get();
+			final int label2 = label2Cursor.next().get();
+			final float weight1 = weight1Cursor.next().get();
+			final float weight2 = weight2Cursor.next().get();
+			final float p = pixel1Cursor.next().get();
+			final float q = pixel2Cursor.next().get();
 
+			if (label1 > 0 && label2 > 0 && weight1 > 0 && weight2 > 0) {
 				// First sub-tile label is 1 -> adjust to 0-based indexing
-				final int i = label1 - 1;
-				final int j = label2 - 1;
-				final FlatIntensityMatches matches = pairwiseCoefficients.get(i * nCoefficientTiles + j);
+				final FlatIntensityMatches matches = pairwiseCoefficients.get((label1 - 1) * nCoefficientTiles + (label2 - 1));
 				matches.put(p, q, weight1 * weight2);
 			}
 		}
@@ -157,19 +152,18 @@ class IntensityMatcher {
 		final StopWatch stopWatch = StopWatch.createAndStart();
 
 		final RenderedTile rendered = sameLayerRenderer.render(tile, boundingBox(tile));
-		final ColorProcessor subTiles = rendered.coefficients;
-		final FloatProcessor pixels = rendered.image;
-		final int n = rendered.getWidth() * rendered.getHeight();
 
 		final float[] averages = new float[numCoefficients * numCoefficients];
 		final int[] counts = new int[numCoefficients * numCoefficients];
 
-		for (int i = 0; i < n; ++i) {
-			final int label = subTiles.get(i);
+		final Cursor<IntType> labelCursor = Views.flatIterable(rendered.coefficients).cursor();
+		final Cursor<FloatType> pixelCursor = Views.flatIterable(rendered.image).cursor();
+		while (labelCursor.hasNext()) {
+			final int label = labelCursor.next().get();
+			final float p = pixelCursor.next().get();
 
 			/* first label is 1 */
 			if (label > 0) {
-				final float p = pixels.getf(i);
 				averages[label - 1] += p;
 				counts[label - 1]++;
 			}
