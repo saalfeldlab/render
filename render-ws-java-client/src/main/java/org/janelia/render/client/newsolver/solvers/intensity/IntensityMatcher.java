@@ -46,14 +46,14 @@ class IntensityMatcher {
 		this.filter = filter;
 		this.numCoefficients = parameters.numCoefficients();
 		final double sameLayerScale = parameters.renderScale();
-		this.sameLayerRenderer = new TightBoxTileRenderer(numCoefficients, sameLayerScale, meshResolution, maximumCachedKilobytes);
+		this.sameLayerRenderer = new CachedTileRenderer(numCoefficients, sameLayerScale, meshResolution, maximumCachedKilobytes);
 
 		// Share rendering effort if scale is the same
 		final double crossLayerScale = parameters.crossLayerRenderScale();
 		if (sameLayerScale == crossLayerScale) {
 			this.crossLayerRenderer = sameLayerRenderer;
 		} else {
-			this.crossLayerRenderer = new TightBoxTileRenderer(numCoefficients, crossLayerScale, meshResolution, maximumCachedKilobytes);
+			this.crossLayerRenderer = new CachedTileRenderer(numCoefficients, crossLayerScale, meshResolution, maximumCachedKilobytes);
 		}
 	}
 
