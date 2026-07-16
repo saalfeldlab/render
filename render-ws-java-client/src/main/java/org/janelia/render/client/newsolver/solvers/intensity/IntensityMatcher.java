@@ -45,16 +45,32 @@ class IntensityMatcher {
 			final long maximumCachedKilobytes) {
 		this.filter = filter;
 		this.numCoefficients = parameters.numCoefficients();
+		final boolean cacheRenderedTiles = parameters.cacheRenderedTiles();
+
 		final double sameLayerScale = parameters.renderScale();
-		this.sameLayerRenderer = new CachedTileRenderer(numCoefficients, sameLayerScale, meshResolution, maximumCachedKilobytes);
+		this.sameLayerRenderer = createRenderer(sameLayerScale, meshResolution, maximumCachedKilobytes, cacheRenderedTiles);
 
 		// Share rendering effort if scale is the same
 		final double crossLayerScale = parameters.crossLayerRenderScale();
 		if (sameLayerScale == crossLayerScale) {
 			this.crossLayerRenderer = sameLayerRenderer;
 		} else {
-			this.crossLayerRenderer = new CachedTileRenderer(numCoefficients, crossLayerScale, meshResolution, maximumCachedKilobytes);
+			this.crossLayerRenderer = createRenderer(crossLayerScale, meshResolution, maximumCachedKilobytes, cacheRenderedTiles);
 		}
+	}
+
+	/**
+	 * Create the configured renderer for the given scale. {@link CachedTileRenderer} renders each tile's whole
+	 * footprint once and crops overlaps from it (less compute, more memory); {@link TightBoxTileRenderer} caches
+	 * only the downsampled source and re-renders each overlap box (more compute, less memory).
+	 */
+	private TileRenderer createRenderer(final double scale,
+										final int meshResolution,
+										final long maximumCachedKilobytes,
+										final boolean cacheRenderedTiles) {
+		return cacheRenderedTiles
+				? new CachedTileRenderer(numCoefficients, scale, meshResolution, maximumCachedKilobytes)
+				: new TightBoxTileRenderer(numCoefficients, scale, meshResolution, maximumCachedKilobytes);
 	}
 
 	public void match(final String renderStack,

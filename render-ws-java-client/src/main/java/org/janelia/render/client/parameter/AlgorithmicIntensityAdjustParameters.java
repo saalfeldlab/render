@@ -88,6 +88,14 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public boolean useRansacMatching = false;
 
+	@Parameter(
+			names = "--cacheRenderedTiles",
+			description = "Trade memory for compute: cache each tile's fully rendered footprint and crop overlaps " +
+					"from it (less compute, more memory) instead of caching only the downsampled source and " +
+					"re-rendering each overlap box (more compute, less memory)"
+	)
+	public boolean cacheRenderedTiles = false;
+
 
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();
