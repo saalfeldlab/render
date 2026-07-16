@@ -9,6 +9,7 @@ import org.janelia.render.client.spark.match.ClusterCountClient;
 import org.janelia.render.client.spark.match.CopyMatchClient;
 import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
 import org.janelia.render.client.spark.multisem.CreepCorrectionSparkClient;
+import org.janelia.render.client.spark.multisem.LayerAsTileClient;
 import org.janelia.render.client.spark.multisem.MFOVASTileClient;
 import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
 import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
@@ -37,7 +38,8 @@ public enum AlignmentPipelineStepId {
     HACK_MASK(MaskHackClient::new),
     RENDER_SCAPE_IMAGES(ScapeClient::new),
     RENDER_TILES(RenderTilesClient::new),
-    MFOV_AS_TILE(MFOVASTileClient::new);
+    MFOV_AS_TILE(MFOVASTileClient::new),
+    LAYER_AS_TILE(LayerAsTileClient::new);
 
     private final Supplier<AlignmentPipelineStep> stepClientSupplier;
 

@@ -215,13 +215,13 @@ public class TileRenderParameters
         return parameters;
     }
 
-    public static TileRenderParameters buildMfovAsTileVersion(final String mfovRootDirectory,
-                                                              final String runTimestamp,
-                                                              final String hackStack) {
+    public static TileRenderParameters buildXAsTileVersion(final String rootDirectory,
+                                                           final String runTimestamp,
+                                                           final String hackStack) {
 
         final TileRenderParameters trp = new TileRenderParameters();
 
-        trp.rootDirectory = mfovRootDirectory;
+        trp.rootDirectory = rootDirectory;
         trp.runTimestamp = runTimestamp;
         trp.scale = 1.0; // MFOV-as-tile specs have source URLs with scale=0.2, so they should be rendered full scale
         trp.format = Utils.PNG_FORMAT;
