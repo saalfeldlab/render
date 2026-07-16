@@ -6,15 +6,13 @@ import org.janelia.alignment.spec.TileSpec;
 
 /**
  * {@link TileRenderer} that renders exactly the requested box on every call, but caches the
- * pair-independent part of the render: the filtered, downsampled source (see {@link TileRasterizer}).
- * Filtering and downsampling therefore happen once per tile, while meshing and mapping are redone for
- * each overlap box.
+ * pair-independent part of the render: the filtered, downsampled source. Filtering and downsampling
+ * therefore happen once per tile, while meshing and mapping are redone for each overlap box.
  * <p>
  * Caching uses a {@link TileCache} bounded by (downsampled) source size, which is instance-scoped.
  */
-class TightBoxTileRenderer implements TileRenderer {
+class TightBoxTileRenderer extends TileRenderer {
 
-	private final TileRasterizer rasterizer;
 	private final TileCache<DownsampledSource> sourceCache;
 
 	/**
@@ -27,16 +25,16 @@ class TightBoxTileRenderer implements TileRenderer {
 						 final double scale,
 						 final int meshResolution,
 						 final long maximumCachedKilobytes) {
-		this.rasterizer = new TileRasterizer(numCoefficients, scale, meshResolution);
+		super(numCoefficients, scale, meshResolution);
 		this.sourceCache = new TileCache<>(
 				maximumCachedKilobytes,
 				source -> (int) Math.min(Integer.MAX_VALUE, source.kilobytes()),
-				rasterizer::loadSource);
+				this::loadSource);
 	}
 
 	@Override
-	public RenderedTile render(final TileSpec patch, final Rectangle box) {
+	RenderedTile render(final TileSpec patch, final Rectangle box) {
 		final DownsampledSource source = sourceCache.get(patch);
-		return rasterizer.renderBox(patch, source, box);
+		return renderBox(patch, source, box);
 	}
 }

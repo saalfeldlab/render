@@ -11,11 +11,11 @@ import org.janelia.alignment.spec.TileSpec;
  * every overlap pair from a zero-copy crop of that cached render.
  * <p>
  * On a cache miss the tile's entire bounding box is loaded, filtered, downsampled and meshed into the
- * intensity/weight/label rasters (via {@link TileRasterizer}), and the resulting {@link RenderedTile}
- * is cached keyed by tile id. Each subsequent {@link #render} for the tile (once per overlap pair)
- * returns a {@link Views#interval} crop of the cached rasters covering the requested box &ndash; no
- * meshing or interpolation. This removes all per-pair rendering, at the cost of materializing whole
- * tiles rather than just the overlap boxes.
+ * intensity/weight/label rasters ({@link #loadSource} + {@link #renderBox}), and the resulting
+ * {@link RenderedTile} is cached keyed by tile id. Each subsequent {@link #render} for the tile (once
+ * per overlap pair) returns a {@link Views#interval} crop of the cached rasters covering the requested
+ * box &ndash; no meshing or interpolation. This removes all per-pair rendering, at the cost of
+ * materializing whole tiles rather than just the overlap boxes.
  * <p>
  * Each tile is rendered on a pixel grid anchored at its own bounding-box origin, so the crops of two
  * partner tiles can be offset from one another by up to one (downsampled) pixel &ndash; unlike
@@ -24,12 +24,11 @@ import org.janelia.alignment.spec.TileSpec;
  * <p>
  * Caching uses a {@link TileCache} bounded by rendered pixel number, which is instance-scoped.
  */
-class CachedTileRenderer implements TileRenderer {
+class CachedTileRenderer extends TileRenderer {
 
 	// image (float) + weight (float) + labels (int) = 12 bytes per rendered pixel
 	private static final long BYTES_PER_PIXEL = 12L;
 
-	private final TileRasterizer rasterizer;
 	private final TileCache<RenderedTile> tileCache;
 
 	/**
@@ -42,7 +41,7 @@ class CachedTileRenderer implements TileRenderer {
 					   final double scale,
 					   final int meshResolution,
 					   final long maximumCachedKilobytes) {
-		this.rasterizer = new TileRasterizer(numCoefficients, scale, meshResolution);
+		super(numCoefficients, scale, meshResolution);
 		this.tileCache = new TileCache<>(
 				maximumCachedKilobytes,
 				tile -> (int) Math.min(Integer.MAX_VALUE, kilobytesOf(tile)),
@@ -50,25 +49,24 @@ class CachedTileRenderer implements TileRenderer {
 	}
 
 	@Override
-	public RenderedTile render(final TileSpec patch, final Rectangle box) {
+	RenderedTile render(final TileSpec patch, final Rectangle box) {
 		final RenderedTile fullTile = tileCache.get(patch);
 		return crop(fullTile, boundingBox(patch), box);
 	}
 
 	/** Cache loader: render the tile's entire footprint once. */
 	private RenderedTile renderFullTile(final TileSpec patch) {
-		final DownsampledSource source = rasterizer.loadSource(patch);
-		return rasterizer.renderBox(patch, source, boundingBox(patch));
+		final DownsampledSource source = loadSource(patch);
+		return renderBox(patch, source, boundingBox(patch));
 	}
 
 	/**
 	 * Return a zero-copy crop of the full-tile render covering the world-space {@code box}. The crop
 	 * is {@code round(box.width * scale) x round(box.height * scale)} pixels, matching what
-	 * {@link TileRasterizer#renderBox} would produce for {@code box} directly, so both partner tiles
-	 * of a pair yield identically sized, lockstep-iterable rasters.
+	 * {@link #renderBox} would produce for {@code box} directly, so both partner tiles of a pair yield
+	 * identically sized, lockstep-iterable rasters.
 	 */
 	private RenderedTile crop(final RenderedTile fullTile, final Rectangle tileBox, final Rectangle box) {
-		final double scale = rasterizer.scale();
 		final int w = (int) Math.round(box.width * scale);
 		final int h = (int) Math.round(box.height * scale);
 
