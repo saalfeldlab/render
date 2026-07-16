@@ -157,7 +157,7 @@ public class LayerAsTileParameters
 
         setup.blockOptimizer.lambdasRigid = List.of(1.0, 1.0, 0.9, 0.3, 0.01);
         // NOTE: lambda's translation means how much do you want to regularize with a translation model, thus 1.0 means 100% translation
-        setup.blockOptimizer.lambdasTranslation = MFOVAsTileParameters.SolveType.TRANSLATION.getLambdasTranslation();
+        setup.blockOptimizer.lambdasTranslation = MFOVAsTileParameters.SolveType.AFFINE.getLambdasTranslation();
         setup.blockOptimizer.lambdasRegularization = List.of(0.0, 0.0, 0.0, 0.0, 0.0);
 
         setup.blockOptimizer.iterations = List.of(1000, 1000, 500, 250, 250);
