@@ -12,6 +12,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import mpicbg.trakem2.transform.AffineModel2D;
+
 import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
@@ -21,6 +23,7 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
@@ -473,6 +476,8 @@ public class LayerAsTileClient
                                                                         final double layerAsTileRenderScale)
             throws IOException {
 
+        final String stackZContext = rawSfovStack + " z " + z;
+
         // example SFOV tile spec:
         // {
         //   "tileId": "w61_magc0145_scan004_m0009_r32_s49",
@@ -496,41 +501,46 @@ public class LayerAsTileClient
 
         // example layer-as-tile spec:
         // {
-        //   "tileId": "w61_s109_r00_gc_par_crc_align_stitch_only_z001",
+        //   "tileId": "w61_s109_r00_gc_par_crc_aso_z001",
         //   ...
         //   "transforms": {
         //     "type": "list",
         //     "specList": [
         //       {
-        //         "className": "mpicbg.trakem2.transform.TranslationModel2D",
-        //         "dataString": 0 8"
+        //         "className": "mpicbg.trakem2.transform.AffineModel2D",
+        //         "dataString": "0.9995111984001582 3.8059309390139125E-4 -2.3150605242131648E-4 1.0058163225403765 1.7289345344867812 13.165940488916831"
         //       }
         //     ]
         //   },
         //   ...
         // }
 
+        // TODO: remove renderedLayerTiles and renderedLayerTileSpec if they are not needed to build SFOV transform (these were needed for original offset approach)
         final ResolvedTileSpecCollection renderedLayerTiles = dataClient.getResolvedTiles(renderedLayerStack, z);
         final TileSpec renderedLayerTileSpec = getLayerTileSpec(renderedLayerStack, renderedLayerTiles);
 
         final ResolvedTileSpecCollection alignedLayerTiles = dataClient.getResolvedTiles(alignedLayerStack, z);
         final TileSpec alignedLayerTileSpec = getLayerTileSpec(alignedLayerStack, alignedLayerTiles);
+        final TransformSpec alignedLayerTransformSpec = alignedLayerTileSpec.getLastTransform();
+        final AffineModel2D alignedLayerModel =
+                ResolvedTileSpecCollection.getAffineModelForSpec(stackZContext,
+                                                                 alignedLayerTransformSpec);
 
-        final double[] offset = new double[] {
-                (alignedLayerTileSpec.getMinX() - renderedLayerTileSpec.getMinX()) / layerAsTileRenderScale,
-                (alignedLayerTileSpec.getMinY() - renderedLayerTileSpec.getMinY()) / layerAsTileRenderScale
-        };
+        // TODO: use affineModel2D and layerAsTileRenderScale to build LeafTransformSpec for SFOV tiles
 
-        LOG.info("buildAlign3DTileSpecsForZ: adding offset ({}, {}) to all tiles in z {} of {}",
-                 (int) offset[0], (int) offset[1], z, rawSfovStack);
+        final AffineModel2D sfovModel = new AffineModel2D();
+        final String sfovModelDataString = sfovModel.toDataString();
 
-        // to use addTransformSpecToTile method below, transform needs to be an affine
-        final String offsetAffineDataString = "1 0 0 1 " + offset[0] + " " + offset[1];
-        final LeafTransformSpec offsetTransformSpec = new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D",
-                                                                            offsetAffineDataString);
+        final LeafTransformSpec zLayerTransformSpec =
+                new LeafTransformSpec("mpicbg.trakem2.transform.AffineModel2D",
+                                      sfovModelDataString);
+
+        LOG.info("buildAlign3DTileSpecsForZ: adding AffineModel2D transform {} to all tiles in {}",
+                 sfovModelDataString, stackZContext);
+
         for (final TileSpec tileSpec : sfovTiles.getTileSpecs()) {
             sfovTiles.addTransformSpecToTile(tileSpec.getTileId(),
-                                             offsetTransformSpec,
+                                             zLayerTransformSpec,
                                              TransformApplicationMethod.PRE_CONCATENATE_LAST);
         }
 
