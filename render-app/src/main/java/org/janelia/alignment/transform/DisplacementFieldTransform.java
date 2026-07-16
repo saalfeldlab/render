@@ -4,23 +4,33 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 import mpicbg.trakem2.transform.CoordinateTransform;
-
+import net.imglib2.FinalInterval;
+import net.imglib2.Interval;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
+import net.imglib2.converter.Converters;
 import net.imglib2.interpolation.InterpolatorFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.realtransform.AffineGet;
+import net.imglib2.realtransform.AffineRandomAccessible;
 import net.imglib2.realtransform.RealViews;
+import net.imglib2.realtransform.Scale;
 import net.imglib2.realtransform.ScaleAndTranslation;
 import net.imglib2.type.numeric.real.DoubleType;
+import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Util;
 import net.imglib2.view.Views;
 import net.imglib2.view.composite.RealComposite;
 
 import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 
 /**
  * Transform that reads a dense displacement (translation vector) field from a file on disk and adds the
@@ -34,7 +44,10 @@ public class DisplacementFieldTransform
         implements CoordinateTransform {
 
     /** URI (as supplied to {@link #init}) identifying the field on disk and its world-coordinate mapping. */
-    private String fieldSourceUri;
+    private String sofimaField;
+
+    /** The scale index at which the deformed images were fed to SOFIMA, needed for vector size adjustment */
+    private int scaleIndexSOFIMAinput;
 
     /** World coordinate of field sample (0, 0); subtracted from a location before querying the field. */
     private double[] locationOffsets;
@@ -49,7 +62,8 @@ public class DisplacementFieldTransform
      * Reflection constructor; leaves the instance uninitialized until {@link #init(String)} is called.
      */
     public DisplacementFieldTransform() {
-        this.fieldSourceUri = null;
+        this.sofimaField = null;
+        this.scaleIndexSOFIMAinput = 0;
         this.locationOffsets = new double[] {0.0, 0.0};
         this.scale = new double[] {1.0, 1.0};
         this.fieldAccessor = null;
@@ -58,22 +72,114 @@ public class DisplacementFieldTransform
     /**
      * Constructs and immediately loads a transform for the field at the specified source.
      *
-     * @param  fieldSourceUri  URI locating the field on disk (see class Javadoc for format).
+     * @param  sofimaField  URI locating the field on disk (see class Javadoc for format).
+     * @param  scaleIndexSOFIMAinput  The scale index at which the deformed images were fed to SOFIMA, needed for vector size adjustment
      * @param  locationOffsets world coordinate of field sample (0, 0).
      * @param  scale           world pixels per field sample along each axis.
      *
      * @throws IllegalArgumentException
      *   if the field cannot be loaded.
      */
-    public DisplacementFieldTransform(final String fieldSourceUri,
+    public DisplacementFieldTransform(final String sofimaField,
+                                      final int scaleIndexSOFIMAinput,
+                                      final int sofimaZindex, // which slice?
+                                      final int[] fullResSize,
                                       final double[] locationOffsets,
                                       final double[] scale)
             throws IllegalArgumentException {
-        this.fieldSourceUri = fieldSourceUri;
+        this.sofimaField = sofimaField;
         this.locationOffsets = locationOffsets;
         this.scale = scale;
         this.fieldAccessor = loadFieldAccessor();
+
+        // has to go to init()
+        final N5Reader sofimaContainer = new N5Factory().openReader( StorageFormat.N5, sofimaField );
+
+		//
+		// load the SOFIMA relative deformation field and scale it
+		//
+
+		// XY axes are flipped compared to python (N5 solves that already)
+		// still, first slice are X vectors, 2nd slice are Y vectors
+		final RandomAccessibleInterval< DoubleType > sofimaRaw = N5Utils.open( sofimaContainer, "/" );
+
+		System.out.println( Util.printInterval( sofimaRaw ));
+		//System.exit( 0 );
+
+		// Note: the SOFIMA field can contain NaN's, could be in FloatType from the start
+		final RandomAccessibleInterval< DoubleType > sofima = Converters.convertRAI(
+					(RandomAccessibleInterval< FloatType >)(RandomAccessibleInterval)sofimaRaw, // michal's field is actually float
+					(i,o) -> o.set( Double.isNaN( i.getRealDouble() ) ? 0 : i.getRealDouble() ), // maybe interpolate/inpaint?
+					new DoubleType() );
+
+		// Michal's field is 4D, [2342, 2374, 2, 91]; the ZARR to N5 conversion mixed up Z and C, now [X,Y,C,Z]
+		System.out.println( "dimensions of SOFIMA deformation field: " + Arrays.toString( sofima.dimensionsAsLongArray() ) );
+
+		final Interval fullRes2dInterval = new FinalInterval( fullResSize[ 0 ], fullResSize[ 1 ] );
+		final Interval sofima2DInterval = new FinalInterval( sofima.dimension( 0 ), sofima.dimension( 1 ) );
+
+		// we have to now convert this transformation to full resolution
+		final double[] scalingFactorSofima = scalingFactor( fullRes2dInterval, sofima2DInterval );
+
+		System.out.println( "scalingFactorSofima: " + Arrays.toString( scalingFactorSofima ) );
+
+		// the vectors are scaled relative to the input image size, i.e. we need to know at which factor the images
+		// that were fed into SOFIMA were scaled
+		final double sofimaBaseScale = 1.0 / (1 << scaleIndexSOFIMAinput );
+
+		final AffineRandomAccessible<DoubleType, AffineGet> transformedSofimaX, transformedSofimaY;
+
+		// TODO: this is a rough approximation, need to handle this properly (right now x and y factor is slightly different)
+		transformedSofimaX = RealViews.affine(
+				Views.interpolate(
+						Views.extendMirrorDouble( Views.hyperSlice( Views.hyperSlice( sofima, 3, sofimaZindex), 2, 0 ) ),
+						new NLinearInterpolatorFactory<>()),
+				new Scale( scalingFactorSofima ) );
+
+		// TODO: this is a rough approximation, need to handle this properly (right now x and y factor is slightly different)
+		transformedSofimaY = RealViews.affine(
+				Views.interpolate(
+						Views.extendMirrorDouble( Views.hyperSlice( Views.hyperSlice( sofima, 3, sofimaZindex), 2, 1 ) ),
+						new NLinearInterpolatorFactory<>()),
+				new Scale( scalingFactorSofima ) );
+
+		// FROM HOT-KNIFE
+		//
+		// we need to adjust the sofima vectors for the original scale of the images and the scale of the hot-knife field
+		//
+		// The SOFIMA vectors have the same size, no matter with which stride they were computed,
+		// so they must be in the size of the input images fed to SOFIMA
+		//
+		// Saalfeld's absolute transformation fields store the vectors in the scale the transformation fields
+		// are stored in. E.g. at scale 0.03125 a value that is 2400, will be 4800 at scale 0.0625
+		//
+		// Next topic, values:
+		// SOFIMA imports e.g. 343, 516 X=1.3092;Y=7.3169 (positive means move up)
+		// SOFIMA x positive means move left
+
+		// needs to be returned/exposed
+		RandomAccessible<DoubleType> fullResX = Converters.convert(
+				(RandomAccessible<DoubleType>)transformedSofimaX,
+				(i,o) -> o.set( i.get() / sofimaBaseScale ), // maybe needs sign flip, maybe need to switch X and Y
+				new DoubleType() );
+
+		// needs to be returned/exposed
+		RandomAccessible<DoubleType> fullResY = Converters.convert(
+				(RandomAccessible<DoubleType>)transformedSofimaY,
+				(i,o) -> o.set( i.get() / sofimaBaseScale ), // maybe needs sign flip, maybe need to switch X and Y
+				new DoubleType() );
+
     }
+
+	public static double[] scalingFactor( final Interval a, Interval b )
+	{
+		final double[] s = new double[ a.numDimensions() ];
+
+		for ( int d = 0; d < a.numDimensions(); ++d )
+			s[ d ] = (double) a.dimension( d ) / (double) b.dimension( d );
+
+		return s;
+	}
 
     @Override
     public double[] apply(final double[] location) {
