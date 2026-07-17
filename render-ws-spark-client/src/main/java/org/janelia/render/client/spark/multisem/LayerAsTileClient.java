@@ -515,9 +515,17 @@ public class LayerAsTileClient
         //   ...
         // }
 
-        // TODO: remove renderedLayerTiles and renderedLayerTileSpec if they are not needed to build SFOV transform (these were needed for original offset approach)
         final ResolvedTileSpecCollection renderedLayerTiles = dataClient.getResolvedTiles(renderedLayerStack, z);
         final TileSpec renderedLayerTileSpec = getLayerTileSpec(renderedLayerStack, renderedLayerTiles);
+        final TransformSpec renderedLayerTransformSpec = renderedLayerTileSpec.getLastTransform();
+        final AffineModel2D renderedLayerModel =
+                ResolvedTileSpecCollection.getAffineModelForSpec(stackZContext,
+                                                                 renderedLayerTransformSpec);
+
+        // Invert renderedLayerModel to convert the scaled SFOV (layer world) coordinate
+        // into a local coordinate before the alignment is applied.
+        // This accounts for each rendered layer image having a different size and world origin.
+        final AffineModel2D layerToRenderedLocal = renderedLayerModel.createInverse();
 
         final ResolvedTileSpecCollection alignedLayerTiles = dataClient.getResolvedTiles(alignedLayerStack, z);
         final TileSpec alignedLayerTileSpec = getLayerTileSpec(alignedLayerStack, alignedLayerTiles);
@@ -526,9 +534,21 @@ public class LayerAsTileClient
                 ResolvedTileSpecCollection.getAffineModelForSpec(stackZContext,
                                                                  alignedLayerTransformSpec);
 
-        // TODO: use affineModel2D and layerAsTileRenderScale to build LeafTransformSpec for SFOV tiles
+        final AffineModel2D scaleSFOVToLayer = new AffineModel2D();
+        scaleSFOVToLayer.set(layerAsTileRenderScale, 0, 0,
+                             layerAsTileRenderScale, 0, 0);
+
+        final AffineModel2D scaleLayerToSFOV = new AffineModel2D();
+        final double inverseLayerAsTileRenderScale = 1.0 / layerAsTileRenderScale;
+        scaleLayerToSFOV.set(inverseLayerAsTileRenderScale, 0, 0,
+                             inverseLayerAsTileRenderScale, 0, 0);
 
         final AffineModel2D sfovModel = new AffineModel2D();
+        sfovModel.set(alignedLayerModel);
+        sfovModel.concatenate(layerToRenderedLocal); // alignedLayerModel * renderedLayerModel^-1
+        sfovModel.concatenate(scaleSFOVToLayer);     // alignedLayerModel * renderedLayerModel^-1 * scaleSFOVToLayer
+        sfovModel.preConcatenate(scaleLayerToSFOV);  // scaleLayerToSFOV * alignedLayerModel * renderedLayerModel^-1 * scaleSFOVToLayer
+
         final String sfovModelDataString = sfovModel.toDataString();
 
         final LeafTransformSpec zLayerTransformSpec =
