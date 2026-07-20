@@ -59,8 +59,8 @@ public class Layer {
 
         final int numberOfTilesInZLayer = renderParameters.numberOfTileSpecs();
 
-        final int scaledImageWidth = (int) Math.floor(renderParameters.width * renderScale);
-        final int scaledImageHeight = (int) Math.floor(renderParameters.height * renderScale);
+        final double scaledImageWidth = Math.floor(renderParameters.width * renderScale);
+        final double scaledImageHeight = Math.floor(renderParameters.height * renderScale);
         final double x = renderParameters.x * renderScale;
         final double y = renderParameters.y * renderScale;
 
@@ -68,8 +68,8 @@ public class Layer {
 
         tileSpec.setTileId(toLayerAsTileName(stackId.getStack(), z.intValue()));
         tileSpec.setZ(z);
-        tileSpec.setWidth((double) scaledImageWidth);
-        tileSpec.setHeight((double) scaledImageHeight);
+        tileSpec.setWidth(scaledImageWidth);
+        tileSpec.setHeight(scaledImageHeight);
 
         final LayoutData layoutData = new LayoutData(z.toString(), null, null,
                                                      0, 0, x, y, null);
