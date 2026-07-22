@@ -146,6 +146,14 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- HDF5SliceLoaderTest uses org.apache.commons.lang.exception.ExceptionUtils (commons-lang 2.x), which
+             used to arrive transitively; declare it directly (test scope, version managed by pom-scijava at 2.6). -->
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Overridden SciJava Dependencies -->
 
         <dependency>
