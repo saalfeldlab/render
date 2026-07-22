@@ -1,8 +1,9 @@
 package org.janelia.alignment.loader;
 
+import com.google.common.base.Throwables;
+
 import ij.process.ImageProcessor;
 
-import org.apache.commons.lang.exception.ExceptionUtils;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -21,7 +22,7 @@ public class HDF5SliceLoaderTest {
         try {
             ip = loader.load(urlString);
         } catch (final Throwable t) {
-            final String failureMessage = ExceptionUtils.getStackTrace(t);
+            final String failureMessage = Throwables.getStackTraceAsString(t);
             Assert.fail("failed load with following exception: " + failureMessage);
         }
         Assert.assertEquals("invalid width", 5000, ip.getWidth());
