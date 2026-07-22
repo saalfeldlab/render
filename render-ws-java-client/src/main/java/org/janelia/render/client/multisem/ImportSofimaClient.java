@@ -36,8 +36,8 @@ import org.slf4j.LoggerFactory;
  *   <li>saves the modified tile specs to the target stack.</li>
  * </ul>
  * If {@code --targetStack} is given, the modified tile specs are written there (the stack is derived from the source
- * if it does not yet exist); otherwise they are written back into the source stack. If {@code --completeStack} is set,
- * the target stack is completed once all layers have been saved.
+ * if it does not yet exist); otherwise they are written back into the source stack. If {@code --completeTargetStack}
+ * is set, the target stack is completed once all layers have been saved.
  *
  * @author Michael Innerberger
  */
@@ -61,8 +61,8 @@ public class ImportSofimaClient {
 		private int sofimaScaleIndex;
 		@Parameter(names = "--zOffset", description = "Offset added to the running (0-based) layer index to obtain the field's z-slice index (default: 0)")
 		private int zOffset = 0;
-		@Parameter(names = "--completeStack", description = "Complete the target stack after all layers have been saved")
-		private boolean completeStack = false;
+		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after all layers have been saved")
+		private boolean completeTargetStack = false;
 
 		public String getTargetStack() {
 			return (targetStack == null) ? stack : targetStack;
@@ -135,7 +135,7 @@ public class ImportSofimaClient {
 		}
 
 		// Complete the target stack
-		if (params.completeStack) {
+		if (params.completeTargetStack) {
 			LOG.info("addDisplacementField: completing stack {}", targetStack);
 			renderClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
 		}
