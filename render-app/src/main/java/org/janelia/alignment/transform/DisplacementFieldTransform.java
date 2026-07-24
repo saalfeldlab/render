@@ -17,6 +17,7 @@ import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
@@ -80,11 +81,29 @@ public class DisplacementFieldTransform
 		 * - Layout is [X,Y,C,Z]; C=0 is X vectors, C=1 is Y vectors
 		 * - XY axes are flipped compared to python due to N5 convention
 		 */
-		final N5Reader fieldReader = new N5Factory().openReader(StorageFormat.N5, fieldSourceUri);
-		final RandomAccessibleInterval<FloatType> fieldRaw = N5Utils.open(fieldReader, "/");
+		final RandomAccessibleInterval<FloatType> fieldRaw = openRawField(fieldSourceUri);
 
 		displacementX = extractAndTransform(fieldRaw, 0);
 		displacementY = extractAndTransform(fieldRaw, 1);
+	}
+
+	/**
+	 * Cache of raw (scale- and z-independent) displacement fields keyed by source URI. A single tile spec resolves
+	 * its transform once per {@code getTransformList()} call (with no per-spec instance caching), so importing or
+	 * rendering a layer would otherwise re-open the reader and re-read chunks once per tile. The cached value is the
+	 * lazy {@link N5Utils#open} {@code CachedCellImg}: reader open + chunk reads happen once per field and are then
+	 * shared across every tile and z-slice. Per-instance accessors are still built fresh in
+	 * {@link #extractAndTransform} (imglib2 accessors are not thread safe); only the underlying chunk cache is shared.
+	 */
+	// ponytail: unbounded static cache, one entry per distinct field URI. A run touches a handful of fields, so this
+	// is bounded in practice; add eviction only if that stops holding.
+	private static final Map<String, RandomAccessibleInterval<FloatType>> RAW_FIELD_CACHE = new ConcurrentHashMap<>();
+
+	private static RandomAccessibleInterval<FloatType> openRawField(final String fieldSourceUri) {
+		return RAW_FIELD_CACHE.computeIfAbsent(fieldSourceUri, uri -> {
+			final N5Reader fieldReader = new N5Factory().openReader(StorageFormat.N5, uri);
+			return N5Utils.open(fieldReader, "/");
+		});
 	}
 
 	/**
