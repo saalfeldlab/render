@@ -33,7 +33,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final int maxIterations;
 	private final int maxPlateauWidth;
 	private final boolean useRansacMatching;
-	private final Double skipMatchesAboveDifference;
+	private final boolean tetherCrossLayers;
 
 
 	public FIBSEMIntensityCorrectionParameters(
@@ -58,7 +58,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			 intensityAdjust.maxIterations,
 			 intensityAdjust.maxPlateauWidth,
 			 intensityAdjust.useRansacMatching,
-			 intensityAdjust.skipMatchesAboveDifference);
+			 intensityAdjust.tetherCrossLayers);
 	}
 
 	public FIBSEMIntensityCorrectionParameters(
@@ -79,7 +79,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final int maxIterations,
 			final int maxPlateauWidth,
 			final boolean useRansacMatching,
-			final Double skipMatchesAboveDifference) {
+			final boolean tetherCrossLayers) {
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
 
@@ -95,7 +95,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.maxIterations = maxIterations;
 		this.maxPlateauWidth = maxPlateauWidth;
 		this.useRansacMatching = useRansacMatching;
-		this.skipMatchesAboveDifference = skipMatchesAboveDifference;
+		this.tetherCrossLayers = tetherCrossLayers;
 	}
 
 	public long maxPixelCacheGb() { return maxPixelCacheGb; }
@@ -110,7 +110,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public int maxIterations() { return maxIterations; }
 	public int maxPlateauWidth() { return maxPlateauWidth; }
 	public boolean useRansacMatching() { return useRansacMatching; }
-	public Double skipMatchesAboveDifference() { return skipMatchesAboveDifference; }
+	public boolean tetherCrossLayers() { return tetherCrossLayers; }
 
 	@Override
 	public Worker<ArrayList<AffineModel1D>, FIBSEMIntensityCorrectionParameters<M>> createWorker(

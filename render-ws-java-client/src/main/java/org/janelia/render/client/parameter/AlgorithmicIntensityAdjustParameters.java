@@ -89,13 +89,13 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	public boolean useRansacMatching = false;
 
 	@Parameter(
-			names = "--skipMatchesAboveDifference",
-			description = "If set, cross-layer intensity matches between two coefficient tiles whose mean intensity " +
-					"shift exceeds this many 8-bit gray levels (0-255) get their weight set to 0 (i.e. are ignored " +
-					"by the solve). This suppresses bad matches at tissue-to-resin transitions in z. " +
-					"Default: null (no cutoff)."
+			names = "--tetherCrossLayers",
+			description = "If set, cross-layer coefficient tiles are only tethered at pixels whose intensities already " +
+					"coincide (matches with a non-zero shift are dropped). This smooths intensities across z without " +
+					"introducing correction on top of the tether, avoiding systematically wrong matches at " +
+					"tissue-to-resin transitions in z. Forces pixel-by-pixel matching. Default: false."
 	)
-	public Double skipMatchesAboveDifference = null;
+	public boolean tetherCrossLayers = false;
 
 
 	public void initDefaultValues() throws IllegalArgumentException {
