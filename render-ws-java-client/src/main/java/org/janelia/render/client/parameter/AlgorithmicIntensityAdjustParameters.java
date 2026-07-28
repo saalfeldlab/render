@@ -96,6 +96,15 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	)
 	public boolean cacheRenderedTiles = false;
 
+	@Parameter(
+			names = "--tetherCrossLayers",
+			description = "If set, cross-layer coefficient tiles are only tethered at pixels whose intensities already " +
+					"coincide (matches with a non-zero shift are dropped). This smooths intensities across z without " +
+					"introducing correction on top of the tether, avoiding systematically wrong matches at " +
+					"tissue-to-resin transitions in z. Forces pixel-by-pixel matching. Default: false."
+	)
+	public boolean tetherCrossLayers = false;
+
 
 	public void initDefaultValues() throws IllegalArgumentException {
 		this.zDistance.initDefaultValues();

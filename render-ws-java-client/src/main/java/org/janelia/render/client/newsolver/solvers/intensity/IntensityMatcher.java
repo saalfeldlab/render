@@ -33,17 +33,21 @@ import net.imglib2.util.StopWatch;
  * the scales are the same, in which case the same cache is shared for both.
  */
 class IntensityMatcher {
-	final private MatchFilter filter;
+	// separate filters per layer relationship: a per-pixel cutoff (when configured) only applies to cross-layer pairs
+	final private MatchFilter sameLayerFilter;
+	final private MatchFilter crossLayerFilter;
 	final private int numCoefficients;
 	final private TileRenderer sameLayerRenderer;
 	final private TileRenderer crossLayerRenderer;
 
 	public IntensityMatcher(
-			final MatchFilter filter,
+			final MatchFilter sameLayerFilter,
+			final MatchFilter crossLayerFilter,
 			final FIBSEMIntensityCorrectionParameters<?> parameters,
 			final int meshResolution,
 			final long maximumCachedKilobytes) {
-		this.filter = filter;
+		this.sameLayerFilter = sameLayerFilter;
+		this.crossLayerFilter = crossLayerFilter;
 		this.numCoefficients = parameters.numCoefficients();
 		final boolean cacheRenderedTiles = parameters.cacheRenderedTiles();
 
@@ -80,7 +84,9 @@ class IntensityMatcher {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
 
-		final TileRenderer renderer = (p1.zDistanceFrom(p2) == 0) ? sameLayerRenderer : crossLayerRenderer;
+		final boolean crossLayer = (p1.zDistanceFrom(p2) != 0);
+		final TileRenderer renderer = crossLayer ? crossLayerRenderer : sameLayerRenderer;
+		final MatchFilter filter = crossLayer ? crossLayerFilter : sameLayerFilter;
 		final Rectangle box = computeIntersection(p1, p2);
 
 		// Both tiles are rendered for the same region by the same renderer, so the two sets of rasters
