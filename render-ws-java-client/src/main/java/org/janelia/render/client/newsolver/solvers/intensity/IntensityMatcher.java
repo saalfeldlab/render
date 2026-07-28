@@ -30,7 +30,9 @@ import net.imglib2.util.StopWatch;
  * Also, computation of averages for a tile is done here.
  */
 class IntensityMatcher {
-	final private MatchFilter filter;
+	// separate filters per layer relationship: a per-pixel cutoff (when configured) only applies to cross-layer pairs
+	final private MatchFilter sameLayerFilter;
+	final private MatchFilter crossLayerFilter;
 	final private double sameLayerScale;
 	final private double crossLayerScale;
 	final private int numCoefficients;
@@ -38,11 +40,13 @@ class IntensityMatcher {
 	final ImageProcessorCache imageProcessorCache;
 
 	public IntensityMatcher(
-			final MatchFilter filter,
+			final MatchFilter sameLayerFilter,
+			final MatchFilter crossLayerFilter,
 			final FIBSEMIntensityCorrectionParameters<?> parameters,
 			final int meshResolution,
 			final ImageProcessorCache imageProcessorCache) {
-		this.filter = filter;
+		this.sameLayerFilter = sameLayerFilter;
+		this.crossLayerFilter = crossLayerFilter;
 		this.sameLayerScale = parameters.renderScale();
 		this.crossLayerScale = parameters.crossLayerRenderScale();
 		this.numCoefficients = parameters.numCoefficients();
@@ -57,7 +61,9 @@ class IntensityMatcher {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
 
-		final double scale = (p1.zDistanceFrom(p2) == 0) ? sameLayerScale : crossLayerScale;
+		final boolean crossLayer = (p1.zDistanceFrom(p2) != 0);
+		final double scale = crossLayer ? crossLayerScale : sameLayerScale;
+		final MatchFilter filter = crossLayer ? crossLayerFilter : sameLayerFilter;
 		final Rectangle box = computeIntersection(p1, p2);
 		final int w = numberOfPixels(box.width, scale);
 		final int h = numberOfPixels(box.height, scale);
