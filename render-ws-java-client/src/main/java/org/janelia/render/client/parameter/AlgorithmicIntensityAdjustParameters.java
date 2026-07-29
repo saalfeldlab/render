@@ -89,6 +89,14 @@ public class AlgorithmicIntensityAdjustParameters implements Serializable {
 	public boolean useRansacMatching = false;
 
 	@Parameter(
+			names = "--cacheRenderedTiles",
+			description = "Trade memory for compute: cache each tile's fully rendered footprint and crop overlaps " +
+					"from it (less compute, more memory) instead of caching only the downsampled source and " +
+					"re-rendering each overlap box (more compute, less memory)"
+	)
+	public boolean cacheRenderedTiles = false;
+
+	@Parameter(
 			names = "--tetherCrossLayers",
 			description = "If set, cross-layer coefficient tiles are only tethered at pixels whose intensities already " +
 					"coincide (matches with a non-zero shift are dropped). This smooths intensities across z without " +

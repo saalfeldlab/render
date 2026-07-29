@@ -4,7 +4,6 @@ import java.util.HashMap;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.TileSpec;
-import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMIntensityCorrectionParameters;
 import org.janelia.render.client.parameter.AlgorithmicIntensityAdjustParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
@@ -55,7 +54,7 @@ public class IntensityMatcherTest {
                                                               matchFilter,
                                                               intensityParameters,
                                                               meshResolution,
-                                                              ImageProcessorCache.DISABLED_CACHE);
+                                                              0);
 
 
         matcher.match(renderStack, p1, p2, coefficientTiles);

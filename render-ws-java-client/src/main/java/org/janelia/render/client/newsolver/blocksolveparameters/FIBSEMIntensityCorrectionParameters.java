@@ -33,6 +33,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	private final int maxIterations;
 	private final int maxPlateauWidth;
 	private final boolean useRansacMatching;
+	private final boolean cacheRenderedTiles;
 	private final boolean tetherCrossLayers;
 
 
@@ -58,6 +59,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			 intensityAdjust.maxIterations,
 			 intensityAdjust.maxPlateauWidth,
 			 intensityAdjust.useRansacMatching,
+			 intensityAdjust.cacheRenderedTiles,
 			 intensityAdjust.tetherCrossLayers);
 	}
 
@@ -79,6 +81,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 			final int maxIterations,
 			final int maxPlateauWidth,
 			final boolean useRansacMatching,
+			final boolean cacheRenderedTiles,
 			final boolean tetherCrossLayers) {
 		// TODO: properly copy blockSolveModel
 		super(baseDataUrl, owner, project, stack, blockSolveModel);
@@ -95,6 +98,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 		this.maxIterations = maxIterations;
 		this.maxPlateauWidth = maxPlateauWidth;
 		this.useRansacMatching = useRansacMatching;
+		this.cacheRenderedTiles = cacheRenderedTiles;
 		this.tetherCrossLayers = tetherCrossLayers;
 	}
 
@@ -110,6 +114,7 @@ public class FIBSEMIntensityCorrectionParameters<M>
 	public int maxIterations() { return maxIterations; }
 	public int maxPlateauWidth() { return maxPlateauWidth; }
 	public boolean useRansacMatching() { return useRansacMatching; }
+	public boolean cacheRenderedTiles() { return cacheRenderedTiles; }
 	public boolean tetherCrossLayers() { return tetherCrossLayers; }
 
 	@Override
