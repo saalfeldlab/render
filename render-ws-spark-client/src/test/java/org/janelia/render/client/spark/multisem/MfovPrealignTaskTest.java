@@ -70,10 +70,11 @@ public class MfovPrealignTaskTest {
                                                                          "_render",
                                                                          "_align",
                                                                          "_rough");
-        MFOVAsTileStackClient.buildOneMFOVAsTileStack(prealignedStackWithAllZ,
-                                                      dataClient,
-                                                      mfovAsTile.getMfovRenderScale(),
-                                                      mfovAsTile.getDynamicMfovStackSuffix());
+        MFOVAsTileStackClient.buildOneXAsTileStack(prealignedStackWithAllZ,
+                                                   dataClient,
+                                                   mfovAsTile.getMfovRenderScale(),
+                                                   mfovAsTile.getDynamicMfovStackSuffix(),
+                                                   true);
 
         final StackId dynamicMfovStackId = prealignedStackId.withStackSuffix(mfovAsTile.getDynamicMfovStackSuffix());
         final StackId renderedMfovStackId = dynamicMfovStackId.withStackSuffix(mfovAsTile.getRenderedMfovStackSuffix());
