@@ -12,8 +12,8 @@ import java.util.function.ToIntFunction;
 import org.janelia.alignment.spec.TileSpec;
 
 /**
- * A small weight-bounded, least-recently-used cache of per-tile values, keyed by tile id and backed
- * by Guava. Adapted (and simplified) from {@link org.janelia.alignment.util.ImageProcessorCache}:
+ * A small weight-bounded, LRU cache of per-tile values, keyed by tile id and backed by Guava.
+ * Adapted (and simplified) from {@link org.janelia.alignment.util.ImageProcessorCache}:
  * entries are weighed in kilobytes and, once their total exceeds the configured budget,
  * least-recently-used entries are evicted (and reloaded on their next request).
  * <p>

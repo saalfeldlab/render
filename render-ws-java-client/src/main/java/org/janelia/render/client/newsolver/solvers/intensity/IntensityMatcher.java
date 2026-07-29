@@ -91,8 +91,8 @@ class IntensityMatcher {
 
 		// Both tiles are rendered for the same region by the same renderer, so the two sets of rasters
 		// share dimensions and their flat iteration orders refer to the same world locations.
-		final RenderedTile r1 = renderer.render(p1, box);
-		final RenderedTile r2 = renderer.render(p2, box);
+		final RenderedRegion r1 = renderer.render(p1, box);
+		final RenderedRegion r2 = renderer.render(p2, box);
 		final int n = r1.getWidth() * r1.getHeight();
 
 		// Generate a matrix of all coefficients in p1 to all coefficients in p2 to store matches
@@ -183,7 +183,7 @@ class IntensityMatcher {
 
 		final StopWatch stopWatch = StopWatch.createAndStart();
 
-		final RenderedTile rendered = sameLayerRenderer.render(tile, boundingBox(tile));
+		final RenderedRegion rendered = sameLayerRenderer.render(tile, boundingBox(tile));
 
 		final float[] averages = new float[numCoefficients * numCoefficients];
 		final int[] counts = new int[numCoefficients * numCoefficients];

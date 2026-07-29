@@ -19,20 +19,20 @@ import net.imglib2.type.numeric.real.FloatType;
  * </ul>
  * <p>
  * When both tiles of a pair are rendered by the same {@link TileRenderer} for the same region, the
- * two {@code RenderedTile}s have identical dimensions and their flat iteration orders line up, so a
+ * two {@code RenderedRegion}s have identical dimensions and their flat iteration orders line up, so a
  * match is a lockstep walk over the two sets of rasters &ndash; no interpolation or re-indexing. The
  * rasters may be zero-copy views (e.g. {@code Views.interval} crops of a cached full-tile render),
  * so callers should treat them as read-only.
  */
-class RenderedTile {
+class RenderedRegion {
 
 	public final RandomAccessibleInterval<FloatType> image;
 	public final RandomAccessibleInterval<FloatType> weight;
 	public final RandomAccessibleInterval<IntType> coefficients;
 
-	RenderedTile(final RandomAccessibleInterval<FloatType> image,
-				 final RandomAccessibleInterval<FloatType> weight,
-				 final RandomAccessibleInterval<IntType> coefficients) {
+	RenderedRegion(final RandomAccessibleInterval<FloatType> image,
+	               final RandomAccessibleInterval<FloatType> weight,
+	               final RandomAccessibleInterval<IntType> coefficients) {
 		this.image = image;
 		this.weight = weight;
 		this.coefficients = coefficients;

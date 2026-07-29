@@ -34,7 +34,7 @@ import org.janelia.render.client.solver.visualize.VisualizeTools;
 
 /**
  * Renders a tile into the intensity, weight and sub-tile-label rasters used for intensity matching
- * (see {@link RenderedTile}).
+ * (see {@link RenderedRegion}).
  * <p>
  * This base class provides the shared rendering pipeline, split into its two natural halves:
  * <ul>
@@ -71,7 +71,7 @@ abstract class TileRenderer {
 	 *              an implementation may render exactly this region or the tile's full footprint
 	 * @return the rendered rasters together with their position on the shared scale-space grid
 	 */
-	abstract RenderedTile render(TileSpec patch, Rectangle box);
+	abstract RenderedRegion render(TileSpec patch, Rectangle box);
 
 	/**
 	 * Pair-independent part of the render: load the full-resolution source, apply the tile's filter
@@ -151,7 +151,7 @@ abstract class TileRenderer {
 	 * {@code round(box.width * scale) x round(box.height * scale)}, wrapping the rendered pixel arrays
 	 * zero-copy.
 	 */
-	RenderedTile renderBox(final TileSpec patch, final DownsampledSource source, final Rectangle box) {
+	RenderedRegion renderBox(final TileSpec patch, final DownsampledSource source, final Rectangle box) {
 
 		final int w = (int) Math.round(box.width * scale);
 		final int h = (int) Math.round(box.height * scale);
@@ -166,7 +166,7 @@ abstract class TileRenderer {
 		final RandomAccessibleInterval<FloatType> weightView = ArrayImgs.floats((float[]) targetWeight.getPixels(), w, h);
 		final RandomAccessibleInterval<IntType> coefficientsView = ArrayImgs.ints((int[]) targetCoefficients.getPixels(), w, h);
 
-		return new RenderedTile(imageView, weightView, coefficientsView);
+		return new RenderedRegion(imageView, weightView, coefficientsView);
 	}
 
 	/**
