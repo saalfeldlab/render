@@ -70,9 +70,13 @@ import mpicbg.trakem2.util.Downsampler;
 
 /**
  * Render a patch.
+ * <p>
+ * This is deprecated in favor of the methods in org.janelia.render.client.newsolver.solvers.intensity.
+ * Please use the TileRenderer class instead.
  *
  * @author Stephan Saalfeld saalfelds@janelia.hhmi.org
  */
+@Deprecated(since = "2026-07-29", forRemoval = true)
 public class Render
 {
 	private Render() {}

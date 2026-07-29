@@ -39,6 +39,13 @@ import net.imglib2.util.Intervals;
 import net.imglib2.util.StopWatch;
 import net.imglib2.util.ValuePair;
 
+/**
+ * Match intensities.
+ * <p>
+ * This is deprecated in favor of the methods in org.janelia.render.client.newsolver.solvers.intensity.
+ * Please use the IntensityMatcher class there instead.
+ */
+@Deprecated(since = "2026-07-29", forRemoval = true)
 public class IntensityMatcher
 {
 
