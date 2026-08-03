@@ -44,6 +44,9 @@ Select the run drop-down menu and click Edit Configurations...
 
 Then make the following changes to the run configuration (and save the changes):
 - A: Add `SPARK_LOCAL_IP=127.0.0.1` to the environment variables so that runs will work when you are connected via VPN. 
+     Also make sure the configuration's JDK is 21: spark 4 supports java 17 and 21 only, and on java 24+ every
+     spark client dies in `new JavaSparkContext(...)` with `UnsupportedOperationException: getSubject is not supported`
+     (hadoop's `UserGroupInformation` uses the security manager API that JEP 486 removed). 
 - B: Select the `Modify options` drop-down menu.
 - C: Select `Modify classpath`. 
 - D: Select `Add dependencies with "provided" scope to classpath` and close the drop-down menu.
