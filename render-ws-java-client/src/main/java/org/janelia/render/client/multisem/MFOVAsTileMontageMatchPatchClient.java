@@ -153,6 +153,7 @@ public class MFOVAsTileMontageMatchPatchClient {
                                                                                     false,
                                                                                     false,
                                                                                     false,
+                                                                                    false,
                                                                                     false);
 
         // add all tile pairs to unconnected set to start

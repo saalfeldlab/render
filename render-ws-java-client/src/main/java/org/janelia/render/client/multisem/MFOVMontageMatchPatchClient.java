@@ -258,6 +258,7 @@ public class MFOVMontageMatchPatchClient {
                                                                                     false,
                                                                                     false,
                                                                                     false,
+                                                                                    false,
                                                                                     false);
 
         // add all MFOV tile pairs to unconnected set to start

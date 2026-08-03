@@ -219,7 +219,8 @@ public class TileBoundsRTree {
                                                        final boolean excludeCornerNeighbors,
                                                        final boolean excludeSameLayerNeighbors,
                                                        final boolean excludeSameSectionNeighbors,
-                                                       final boolean excludeSameMfovNeighbors) {
+                                                       final boolean excludeSameMfovNeighbors,
+                                                       final boolean excludeDifferentMfovNeighbors) {
 
         String firstTileId = null;
         if (! sourceTileBoundsList.isEmpty()) {
@@ -258,7 +259,8 @@ public class TileBoundsRTree {
 
                 neighborTileIdPairs.addAll(
                         getDistinctPairs(tileBounds, searchResults,
-                                         excludeCornerNeighbors, excludeSameSectionNeighbors, excludeSameMfovNeighbors,
+                                         excludeCornerNeighbors, excludeSameSectionNeighbors,
+                                         excludeSameMfovNeighbors, excludeDifferentMfovNeighbors,
                                          true));
             }
 
@@ -266,7 +268,8 @@ public class TileBoundsRTree {
                 searchResults = neighborTree.findTilesInCircle(circle);
                 neighborTileIdPairs.addAll(
                         getDistinctPairs(tileBounds, searchResults,
-                                         excludeCornerNeighbors, excludeSameSectionNeighbors, excludeSameMfovNeighbors,
+                                         excludeCornerNeighbors, excludeSameSectionNeighbors,
+                                         excludeSameMfovNeighbors,  excludeDifferentMfovNeighbors,
                                          false));
             }
         }
@@ -310,10 +313,11 @@ public class TileBoundsRTree {
                                                             final boolean excludeCornerNeighbors,
                                                             final boolean excludeSameSectionNeighbors,
                                                             final boolean excludeSameMfovNeighbors,
+                                                            final boolean excludeDifferentMfovNeighbors,
                                                             final boolean includeRelativePosition) {
         final Set<OrderedCanvasIdPair> pairs = new HashSet<>(toTiles.size() * 2);
         final String pTileId = fromTile.getTileId();
-        final String pMfov = excludeSameMfovNeighbors ? MultiSemUtilities.getMagcMfovForTileId(pTileId) : null;
+        final String pMfov = (excludeSameMfovNeighbors || excludeDifferentMfovNeighbors) ? MultiSemUtilities.getMagcMfovForTileId(pTileId) : null;
 
         final double fromMinX = fromTile.getMinX();
         final double fromMaxX = fromTile.getMaxX();
@@ -333,6 +337,8 @@ public class TileBoundsRTree {
                         isNeighborCenterInRange(fromMinY, fromMaxY, toTile.getMinY(), toTile.getMaxY())) {
 
                         if (excludeSameMfovNeighbors && (pMfov.equals(MultiSemUtilities.getMagcMfovForTileId(qTileId)))) {
+                            continue;
+                        } else if (excludeDifferentMfovNeighbors && (! pMfov.equals(MultiSemUtilities.getMagcMfovForTileId(qTileId)))) {
                             continue;
                         }
 
