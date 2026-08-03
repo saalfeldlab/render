@@ -182,7 +182,6 @@
         <dependency>
             <groupId>sc.fiji</groupId>
             <artifactId>Descriptor_based_registration</artifactId>
-            <version>2.1.3</version>
             <exclusions>
                 <!-- filter out slf4j jar so that it does not conflict with jetty version -->
                 <exclusion>
