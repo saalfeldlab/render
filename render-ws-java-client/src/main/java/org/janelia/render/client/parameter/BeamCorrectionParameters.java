@@ -91,4 +91,21 @@ public class BeamCorrectionParameters
         }
 
     }
+
+    @Override
+    public String toString() {
+        return "{zarrPath='" + zarrPath + '\'' +
+               ", homogenizationDataset='" + homogenizationDataset + '\'' +
+               ", scanDataset='" + scanDataset + '\'' +
+               ", slabDataset='" + slabDataset + '\'' +
+               ", sfovDataset='" + sfovDataset + '\'' +
+               ", serialDataset='" + serialDataset + '\'' +
+               ", gainIndex=" + gainIndex +
+               ", deg0Index=" + deg0Index +
+               ", referenceLevel=" + referenceLevel +
+               ", inverted=" + inverted +
+               ", sfovLabelOffset=" + sfovLabelOffset +
+               ", targetStackSuffix='" + targetStackSuffix + '\'' +
+               '}';
+    }
 }
