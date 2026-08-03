@@ -183,38 +183,22 @@
         <dependency>
             <groupId>org.janelia.saalfeldlab</groupId>
             <artifactId>n5-spark</artifactId>
-            <version>3.7.3</version>
+            <!-- 4.1.0 is built against n5 4.x. -->
+            <version>4.1.0</version>
             <exclusions>
-                <!-- filter out dependencies that cause duplicate class failures -->
+                <!-- n5-spark uses kryo 5.x, whose classes duplicate the kryo-shaded 4.x that spark provides -->
                 <exclusion>
                     <groupId>com.esotericsoftware</groupId>
                     <artifactId>kryo</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>javax.validation</groupId>
-                    <artifactId>validation-api</artifactId>
-                </exclusion>
-                <!-- filter out unneeded google-http-client jar which causes overlap issue in shaded jar -->
-                <exclusion>
-                    <groupId>com.google.http-client</groupId>
-                    <artifactId>google-http-client-xml</artifactId>
-                </exclusion>
-                <!--
-                     filter out mbknor-jackson-jsonschema_2.12 jar which causes missing scala.Tuple2 errors
-                     because it uses older 2.12.8 scala-library (all other scala dependencies are 2.13.*)
-                -->
-                <exclusion>
-                    <groupId>com.kjetland</groupId>
-                    <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
-                </exclusion>
             </exclusions>
         </dependency>
 
-        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <!-- Version comes from the jackson.version property in the root pom, which keeps jackson-databind
+             in sync with jackson-core, jackson-annotations and the jaxrs provider. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson-version}</version>
         </dependency>
 
         <!-- Dependencies not defined in SciJava -->
