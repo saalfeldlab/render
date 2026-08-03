@@ -163,9 +163,9 @@
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
 
-        <!-- Override JDK 8 settings in pom-scijava-base now that Jetty 10 has forced us to JDK 11  -->
-        <scijava.jvm.version>11</scijava.jvm.version>
-        <scijava.jvm.build.version>[11,]</scijava.jvm.build.version>
+        <!-- render targets JDK 21; try to not lag behind scijava too much -->
+        <scijava.jvm.version>21</scijava.jvm.version>
+        <scijava.jvm.build.version>[21,]</scijava.jvm.build.version>
 
         <!-- only print test summaries for failures and avoid warnings for skipped tests -->
         <surefire.printSummary>false</surefire.printSummary>
@@ -179,7 +179,7 @@
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <configuration>
-                        <release>11</release>
+                        <release>21</release>
                     </configuration>
                 </plugin>
                 <plugin>
