@@ -7,8 +7,8 @@ import mpicbg.imglib.algorithm.scalespace.DifferenceOfGaussianPeak;
 import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.Model;
 import mpicbg.models.PointMatch;
-import mpicbg.pointdescriptor.matcher.Matcher;
-import mpicbg.pointdescriptor.matcher.SubsetMatcher;
+import net.preibisch.mvrecon.process.pointcloud.pointdescriptor.matcher.Matcher;
+import net.preibisch.mvrecon.process.pointcloud.pointdescriptor.matcher.SubsetMatcher;
 import mpicbg.util.Timer;
 
 import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;

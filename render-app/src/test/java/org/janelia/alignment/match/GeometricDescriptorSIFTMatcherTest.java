@@ -15,7 +15,7 @@ import mpicbg.imglib.type.numeric.real.FloatType;
 import mpicbg.models.AffineModel2D;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
-import mpicbg.spim.io.IOFunctions;
+import net.preibisch.legacy.io.IOFunctions;
 import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWithMasks;
 
 import org.janelia.alignment.RenderParameters;

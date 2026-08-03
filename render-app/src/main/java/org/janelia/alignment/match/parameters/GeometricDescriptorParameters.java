@@ -5,7 +5,7 @@ import com.beust.jcommander.Parameter;
 import java.io.Serializable;
 import java.util.Objects;
 
-import mpicbg.spim.segmentation.InteractiveDoG;
+import net.preibisch.mvrecon.fiji.plugin.interestpointdetection.interactive.HelperFunctions;
 
 import plugin.DescriptorParameters;
 
@@ -149,7 +149,7 @@ public class GeometricDescriptorParameters
         dp.redundancy = redundancy;
         dp.significance = significance;
         dp.sigma1 = sigma;
-        dp.sigma2 = InteractiveDoG.computeSigma2(sigma.floatValue(), InteractiveDoG.standardSensitivity );
+        dp.sigma2 = HelperFunctions.computeSigma2(sigma, 4); // 4 = former InteractiveDoG.standardSensitivity
         dp.threshold = threshold;
         dp.localization = localization.code;
         dp.lookForMinima = lookForMinima;

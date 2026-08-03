@@ -78,7 +78,7 @@
                                     </excludes>
                                 </filter>
                                 <filter>
-                                    <artifact>sc.fiji:SPIM_Registration</artifact>
+                                    <artifact>net.preibisch:multiview-reconstruction</artifact>
                                     <excludes>
                                         <exclude>META-INF/json/**</exclude>
                                     </excludes>
