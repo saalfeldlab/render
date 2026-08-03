@@ -4,7 +4,6 @@ import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -21,6 +20,7 @@ import net.imglib2.IterableInterval;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.basictypeaccess.AccessFlags;
+import net.imglib2.type.NativeType;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 
@@ -34,13 +34,9 @@ import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
-import org.janelia.saalfeldlab.n5.DataBlock;
-import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
-import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -417,115 +413,29 @@ public class ThomasCalibrationIntensityCorrectionClient {
 	}
 
 	/**
-	 * Reads all values of a 1D coordinate array as doubles, or returns null if the array's metadata is not present.
+	 * Reads all values of a 1D coordinate array as doubles, or returns null if the dataset is not present.
 	 * <p>
-	 * n5-zarr 1.3.5 fails to parse a {@code .zarray} whose {@code fill_value} is JSON {@code null} (which is how
-	 * xarray writes coordinate arrays), so {@link N5Utils#open} cannot be used here. Instead the {@code .zarray}
-	 * JSON is read directly, its {@code fill_value} is patched to a parseable value (it is irrelevant for chunks
-	 * that are physically present), the resulting {@link ZarrDatasetAttributes} is built via the reader, and the
-	 * chunks are read with {@link N5Reader#readBlock} (which honors the zarr little-endian byte order).
+	 * Uses the same {@link N5Utils#open} overload as {@link #openHomogenizationArray} (see there for why).
+	 * The imglib2 type handles unsigned promotion, so uint8/uint16 labels come out as their unsigned values.
 	 */
-	private double[] readCoordinateValues(final N5Reader reader, final String dataset) {
-		final JsonObject zArray = readZArrayJson(dataset);
-		if (zArray == null) {
+	private <T extends RealType<T> & NativeType<T>> double[] readCoordinateValues(final N5Reader reader,
+																				  final String dataset) {
+		if (!reader.datasetExists(dataset)) {
 			return null;
 		}
-		if (!zArray.has("fill_value") || zArray.get("fill_value").isJsonNull()) {
-			zArray.add("fill_value", new JsonPrimitive("0"));
-		}
-		if (!(reader instanceof ZarrKeyValueReader)) {
-			throw new IllegalArgumentException("expected a zarr reader but got " + reader.getClass().getName());
-		}
-		final ZarrDatasetAttributes attributes = ((ZarrKeyValueReader) reader).createDatasetAttributes(zArray);
-		if (attributes == null) {
-			throw new IllegalArgumentException("could not parse .zarray for coordinate dataset " + dataset);
-		}
-		if (attributes.getNumDimensions() != 1) {
+		final Consumer<IterableInterval<T>> noMissingBlockHandler = blocks -> { };
+		final RandomAccessibleInterval<T> rai = N5Utils.open(reader, dataset, noMissingBlockHandler, AccessFlags.setOf());
+		if (rai.numDimensions() != 1) {
 			throw new IllegalArgumentException("coordinate array " + dataset + " is expected to be 1-dimensional but has "
-					+ attributes.getNumDimensions() + " dimensions");
+					+ rai.numDimensions() + " dimensions");
 		}
 
-		final int length = (int) attributes.getDimensions()[0];
-		final int chunkSize = attributes.getBlockSize()[0];
-		final DataType dataType = attributes.getDataType();
-		final double[] values = new double[length];
-		final int numChunks = (int) Math.ceil((double) length / chunkSize);
-		for (int chunk = 0; chunk < numChunks; chunk++) {
-			final DataBlock<?> block = reader.readBlock(dataset, attributes, (long) chunk);
-			if (block == null) {
-				throw new IllegalArgumentException("missing chunk " + chunk + " of coordinate array " + dataset);
-			}
-			copyBlockValues(block.getData(), dataType, values, chunk * chunkSize);
+		final double[] values = new double[(int) rai.dimension(0)];
+		final RandomAccess<T> access = rai.randomAccess();
+		for (int i = 0; i < values.length; i++) {
+			values[i] = access.setPositionAndGet(i).getRealDouble();
 		}
 		return values;
-	}
-
-	/** Reads the raw .zarray JSON for a dataset from the per-array file, falling back to consolidated .zmetadata. */
-	private JsonObject readZArrayJson(final String dataset) {
-		final Path perArray = Paths.get(params.zarrPath, dataset, ".zarray");
-		try {
-			if (Files.isRegularFile(perArray)) {
-				return JsonParser.parseString(Files.readString(perArray)).getAsJsonObject();
-			}
-		} catch (final Exception e) {
-			LOG.warn("readZArrayJson: failed to read {} ({})", perArray, e.getMessage());
-		}
-		try {
-			final Path zMetadata = Paths.get(params.zarrPath, ".zmetadata");
-			if (Files.isRegularFile(zMetadata)) {
-				final JsonObject root = JsonParser.parseString(Files.readString(zMetadata)).getAsJsonObject();
-				final JsonObject metadata = root.getAsJsonObject("metadata");
-				if (metadata != null) {
-					final JsonObject zArray = metadata.getAsJsonObject(dataset + "/.zarray");
-					if (zArray != null) {
-						return zArray.deepCopy();
-					}
-				}
-			}
-		} catch (final Exception e) {
-			LOG.warn("readZArrayJson: failed to read .zmetadata for {} ({})", dataset, e.getMessage());
-		}
-		return null;
-	}
-
-	/** Copies a decoded data block into dst[offset...], applying unsigned promotion based on the data type. */
-	private static void copyBlockValues(final Object data, final DataType dataType, final double[] dst, final int offset) {
-		if (data instanceof byte[]) {
-			final byte[] a = (byte[]) data;
-			final boolean unsigned = dataType == DataType.UINT8;
-			for (int i = 0; i < a.length && offset + i < dst.length; i++) {
-				dst[offset + i] = unsigned ? (a[i] & 0xFF) : a[i];
-			}
-		} else if (data instanceof short[]) {
-			final short[] a = (short[]) data;
-			final boolean unsigned = dataType == DataType.UINT16;
-			for (int i = 0; i < a.length && offset + i < dst.length; i++) {
-				dst[offset + i] = unsigned ? (a[i] & 0xFFFF) : a[i];
-			}
-		} else if (data instanceof int[]) {
-			final int[] a = (int[]) data;
-			final boolean unsigned = dataType == DataType.UINT32;
-			for (int i = 0; i < a.length && offset + i < dst.length; i++) {
-				dst[offset + i] = unsigned ? (a[i] & 0xFFFFFFFFL) : a[i];
-			}
-		} else if (data instanceof long[]) {
-			final long[] a = (long[]) data;
-			for (int i = 0; i < a.length && offset + i < dst.length; i++) {
-				dst[offset + i] = a[i];
-			}
-		} else if (data instanceof float[]) {
-			final float[] a = (float[]) data;
-			for (int i = 0; i < a.length && offset + i < dst.length; i++) {
-				dst[offset + i] = a[i];
-			}
-		} else if (data instanceof double[]) {
-			final double[] a = (double[]) data;
-			for (int i = 0; i < a.length && offset + i < dst.length; i++) {
-				dst[offset + i] = a[i];
-			}
-		} else {
-			throw new IllegalArgumentException("unsupported coordinate block data type " + data.getClass());
-		}
 	}
 
 	/**
