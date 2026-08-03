@@ -12,7 +12,7 @@ import org.janelia.alignment.spec.TileSpec;
  * <p>
  * On a cache miss the tile's entire bounding box is loaded, filtered, downsampled and meshed into the
  * intensity/weight/label rasters ({@link #loadSource} + {@link #renderBox}), and the resulting
- * {@link RenderedTile} is cached keyed by tile id. Each subsequent {@link #render} for the tile (once
+ * {@link RenderedRegion} is cached keyed by tile id. Each subsequent {@link #render} for the tile (once
  * per overlap pair) returns a {@link Views#interval} crop of the cached rasters covering the requested
  * box &ndash; no meshing or interpolation. This removes all per-pair rendering, at the cost of
  * materializing whole tiles rather than just the overlap boxes.
@@ -29,7 +29,7 @@ class CachedTileRenderer extends TileRenderer {
 	// image (float) + weight (float) + labels (int) = 12 bytes per rendered pixel
 	private static final long BYTES_PER_PIXEL = 12L;
 
-	private final TileCache<RenderedTile> tileCache;
+	private final TileCache<RenderedRegion> tileCache;
 
 	/**
 	 * @param numCoefficients number of coefficients in the intensity model
@@ -49,13 +49,13 @@ class CachedTileRenderer extends TileRenderer {
 	}
 
 	@Override
-	RenderedTile render(final TileSpec patch, final Rectangle box) {
-		final RenderedTile fullTile = tileCache.get(patch);
+	RenderedRegion render(final TileSpec patch, final Rectangle box) {
+		final RenderedRegion fullTile = tileCache.get(patch);
 		return crop(fullTile, boundingBox(patch), box);
 	}
 
 	/** Cache loader: render the tile's entire footprint once. */
-	private RenderedTile renderFullTile(final TileSpec patch) {
+	private RenderedRegion renderFullTile(final TileSpec patch) {
 		final DownsampledSource source = loadSource(patch);
 		return renderBox(patch, source, boundingBox(patch));
 	}
@@ -66,7 +66,7 @@ class CachedTileRenderer extends TileRenderer {
 	 * {@link #renderBox} would produce for {@code box} directly, so both partner tiles of a pair yield
 	 * identically sized, lockstep-iterable rasters.
 	 */
-	private RenderedTile crop(final RenderedTile fullTile, final Rectangle tileBox, final Rectangle box) {
+	private RenderedRegion crop(final RenderedRegion fullTile, final Rectangle tileBox, final Rectangle box) {
 		final int w = (int) Math.round(box.width * scale);
 		final int h = (int) Math.round(box.height * scale);
 
@@ -82,7 +82,7 @@ class CachedTileRenderer extends TileRenderer {
 
 		final long[] min = {x, y};
 		final long[] max = {x + w - 1L, y + h - 1L};
-		return new RenderedTile(
+		return new RenderedRegion(
 				Views.zeroMin(Views.interval(fullTile.image, min, max)),
 				Views.zeroMin(Views.interval(fullTile.weight, min, max)),
 				Views.zeroMin(Views.interval(fullTile.coefficients, min, max)));
@@ -92,7 +92,7 @@ class CachedTileRenderer extends TileRenderer {
 		return patch.toTileBounds().toRectangle();
 	}
 
-	private static long kilobytesOf(final RenderedTile tile) {
+	private static long kilobytesOf(final RenderedRegion tile) {
 		return (long) tile.getWidth() * tile.getHeight() * BYTES_PER_PIXEL / 1000L;
 	}
 }

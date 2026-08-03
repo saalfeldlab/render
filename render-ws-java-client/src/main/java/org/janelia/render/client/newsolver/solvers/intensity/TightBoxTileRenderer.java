@@ -33,7 +33,7 @@ class TightBoxTileRenderer extends TileRenderer {
 	}
 
 	@Override
-	RenderedTile render(final TileSpec patch, final Rectangle box) {
+	RenderedRegion render(final TileSpec patch, final Rectangle box) {
 		final DownsampledSource source = sourceCache.get(patch);
 		return renderBox(patch, source, box);
 	}
