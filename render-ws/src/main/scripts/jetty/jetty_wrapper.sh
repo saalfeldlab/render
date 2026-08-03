@@ -21,7 +21,7 @@ export JETTY_STATE="${JETTY_RUN}/jetty.state"
 # JETTY_USER
 # JETTY_SHELL
  
-export JAVA_HOME="/misc/sc/jdks/zulu11"
+export JAVA_HOME="/misc/sc/jdks/zulu21"
 export PATH="${JAVA_HOME}/bin:${PATH}"
 export JAVA="${JAVA_HOME}/bin/java"
 export JAVA_OPTIONS="-Xms${JETTY_MIN_AND_MAX_MEMORY} -Xmx${JETTY_MIN_AND_MAX_MEMORY} -server -Djava.awt.headless=true"
