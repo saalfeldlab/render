@@ -22,7 +22,7 @@ import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import spim.Threads;
+import net.preibisch.mvrecon.Threads;
 
 import javax.swing.SwingUtilities;
 import java.awt.KeyboardFocusManager;

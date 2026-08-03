@@ -140,12 +140,6 @@
         -->
         <n5-version>4.0.1</n5-version>
 
-        <!-- pom-scijava 45 bumps Descriptor_based_registration to 3.0.1, whose SPIM_Registration replacement
-             (net.preibisch:multiview-reconstruction) drops the point-descriptor / DoG API render's geometric
-             descriptor matcher is built on (mpicbg.pointdescriptor.matcher.*, mpicbg.spim.segmentation.*). Porting
-             that matcher is a separate effort, so keep the 2.x line reactor-wide (render-app also pins 2.1.3). -->
-        <Descriptor_based_registration.version>2.1.3</Descriptor_based_registration.version>
-
         <!--
           Keep this in sync with the jackson version bundled with the spark version in
           render-ws-spark-client/pom.xml: spark refuses to start when its jackson-module-scala does not
