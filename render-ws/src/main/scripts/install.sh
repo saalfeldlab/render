@@ -91,7 +91,7 @@ JETTY_WRAPPER_SCRIPT="${JETTY_BASE}/jetty_wrapper.sh"
 sed "
   s~/opt/local/jetty_home~${JETTY_HOME}~
   s~/opt/local/jetty_base~${JETTY_BASE}~
-  s~/misc/sc/jdks/zulu11~${JAVA_HOME}~
+  s~/misc/sc/jdks/zulu21~${JAVA_HOME}~
 " "${SCRIPTS_DIR}"/jetty/jetty_wrapper.sh > "${JETTY_WRAPPER_SCRIPT}"
 
 chmod 755 "${JETTY_WRAPPER_SCRIPT}"
