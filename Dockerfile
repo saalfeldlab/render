@@ -32,7 +32,7 @@
 # Install library dependencies before actually building source.
 # This caches libraries into an image layer that can be reused when only source code has changed.
 
-FROM azul/zulu-openjdk-debian:11 as build_environment
+FROM azul/zulu-openjdk-debian:21 as build_environment
 LABEL maintainer="Forrest Collman <forrestc@alleninstitute.org>, Eric Trautman <trautmane@janelia.hhmi.org>"
 
 RUN apt-get update && apt-get install -y maven
@@ -85,7 +85,7 @@ RUN mkdir -p /root/render-lib && \
 # Once web service application is built, set up jetty server and deploy application to it.
 
 # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/render-ws/src/main/scripts/install.sh
-FROM jetty:10.0.13-jre11 as render-ws
+FROM jetty:10.0.26-jre21 as render-ws
 
 # add packages not included in base image:
 #   curl and coreutils are always needed for gnu readlink, tzdata is needed to set timezone

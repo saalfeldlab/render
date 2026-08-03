@@ -146,12 +146,13 @@
              that matcher is a separate effort, so keep the 2.x line reactor-wide (render-app also pins 2.1.3). -->
         <Descriptor_based_registration.version>2.1.3</Descriptor_based_registration.version>
 
-        <!-- pom-scijava 45 bumps Stitching_ to 3.1.10, which is compiled for JDK 21 and trips the
-             EnforceBytecodeVersion enforcer rule (render targets JDK 11). Keep 3.1.9 (pom-scijava 39's version,
-             JDK 8 bytecode); render only uses stable mpicbg.stitching.* / stitching.* APIs. -->
-        <Stitching.version>3.1.9</Stitching.version>
-
-        <jackson-version>2.14.3</jackson-version> <!-- NOTE: 2.15.3 causes NullPointerException in maven enforcer plugin -->
+        <!--
+          Keep this in sync with the jackson version bundled with the spark version in
+          render-ws-spark-client/pom.xml: spark refuses to start when its jackson-module-scala does not
+          match the jackson-databind on the classpath.  Overriding pom-scijava's jackson.version keeps
+          jackson-databind, jackson-core, jackson-annotations and jackson-jaxrs-json-provider aligned with each other.
+        -->
+        <jackson.version>2.18.6</jackson.version>
 
         <swagger-version>1.6.2</swagger-version>
 
@@ -163,9 +164,9 @@
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>
 
-        <!-- Override JDK 8 settings in pom-scijava-base now that Jetty 10 has forced us to JDK 11  -->
-        <scijava.jvm.version>11</scijava.jvm.version>
-        <scijava.jvm.build.version>[11,]</scijava.jvm.build.version>
+        <!-- render targets JDK 21; try to not lag behind scijava too much -->
+        <scijava.jvm.version>21</scijava.jvm.version>
+        <scijava.jvm.build.version>[21,]</scijava.jvm.build.version>
 
         <!-- only print test summaries for failures and avoid warnings for skipped tests -->
         <surefire.printSummary>false</surefire.printSummary>
@@ -179,7 +180,7 @@
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <configuration>
-                        <release>11</release>
+                        <release>21</release>
                     </configuration>
                 </plugin>
                 <plugin>
