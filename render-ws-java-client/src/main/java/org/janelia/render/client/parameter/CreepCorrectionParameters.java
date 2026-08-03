@@ -60,6 +60,16 @@ public class CreepCorrectionParameters
         }
     }
 
+    @Override
+    public String toString() {
+        return "{targetStackSuffix='" + targetStackSuffix + '\'' +
+               ", minZ=" + minZ +
+               ", maxZ=" + maxZ +
+               ", skipMatchCorrection=" + skipMatchCorrection +
+               ", parameterCsvDir='" + parameterCsvDir + '\'' +
+               '}';
+    }
+
     public String getTargetStack(final String sourceStack) {
         return sourceStack + targetStackSuffix;
     }
