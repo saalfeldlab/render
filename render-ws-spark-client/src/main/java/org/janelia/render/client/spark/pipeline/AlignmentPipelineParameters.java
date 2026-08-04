@@ -16,6 +16,7 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.UrlResourceUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
+import org.janelia.render.client.parameter.BeamCorrectionParameters;
 import org.janelia.render.client.parameter.CreepCorrectionParameters;
 import org.janelia.render.client.parameter.LayerAsTileParameters;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
@@ -50,6 +51,7 @@ public class AlignmentPipelineParameters
     private final UnconnectedCrossMFOVParameters unconnectedCrossMfov;
     private final TileClusterParameters tileCluster;
     private final MatchCopyParameters matchCopy;
+    private final BeamCorrectionParameters beamCorrection;
     private final CreepCorrectionParameters creepCorrection;
     private final AffineBlockSolverSetup affineBlockSolverSetup;
     private final IntensityCorrectionSetup intensityCorrectionSetup;
@@ -79,6 +81,7 @@ public class AlignmentPipelineParameters
              null,
              null,
              null,
+             null,
              null);
     }
 
@@ -91,6 +94,7 @@ public class AlignmentPipelineParameters
                                        final UnconnectedCrossMFOVParameters unconnectedCrossMfov,
                                        final TileClusterParameters tileCluster,
                                        final MatchCopyParameters matchCopy,
+                                       final BeamCorrectionParameters beamCorrection,
                                        final CreepCorrectionParameters creepCorrection,
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
                                        final IntensityCorrectionSetup intensityCorrectionSetup,
@@ -109,6 +113,7 @@ public class AlignmentPipelineParameters
         this.unconnectedCrossMfov = unconnectedCrossMfov;
         this.tileCluster = tileCluster;
         this.matchCopy = matchCopy;
+        this.beamCorrection = beamCorrection;
         this.creepCorrection = creepCorrection;
         this.affineBlockSolverSetup = affineBlockSolverSetup;
         this.intensityCorrectionSetup = intensityCorrectionSetup;
@@ -164,6 +169,10 @@ public class AlignmentPipelineParameters
 
     public MatchCopyParameters getMatchCopy() {
         return matchCopy;
+    }
+
+    public BeamCorrectionParameters getBeamCorrection() {
+        return beamCorrection;
     }
 
     public CreepCorrectionParameters getCreepCorrection() {
