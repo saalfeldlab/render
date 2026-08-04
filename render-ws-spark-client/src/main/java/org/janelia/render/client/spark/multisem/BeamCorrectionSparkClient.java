@@ -12,7 +12,7 @@ import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
-import org.janelia.render.client.multisem.ThomasCalibrationIntensityCorrectionClient;
+import org.janelia.render.client.multisem.BeamCorrectionClient;
 import org.janelia.render.client.parameter.BeamCorrectionParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Spark client for applying the pre-computed degree-0 beam-homogenization correction to multi-SEM stacks.
  *
- * @see ThomasCalibrationIntensityCorrectionClient
+ * @see BeamCorrectionClient
  */
 public class BeamCorrectionSparkClient
         implements Serializable, AlignmentPipelineStep {
@@ -131,10 +131,10 @@ public class BeamCorrectionSparkClient
                                                                              stackId.getOwner(),
                                                                              stackId.getProject());
 
-            new ThomasCalibrationIntensityCorrectionClient().correctStack(executorDataClient,
-                                                                          stackId.getStack(),
-                                                                          beamCorrection,
-                                                                          true);
+            new BeamCorrectionClient().correctStack(executorDataClient,
+                                                    stackId.getStack(),
+                                                    beamCorrection,
+                                                    true);
         });
 
         LOG.info("correctBeamIntensity: exit, corrected {} stacks", stackIdList.size());

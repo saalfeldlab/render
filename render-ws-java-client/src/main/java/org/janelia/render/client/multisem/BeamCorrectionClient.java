@@ -76,7 +76,7 @@ import net.imglib2.type.numeric.real.FloatType;
  *
  * @author Michael Innerberger
  */
-public class ThomasCalibrationIntensityCorrectionClient {
+public class BeamCorrectionClient {
 
 	public static class Parameters extends CommandLineParameters {
 
@@ -100,7 +100,7 @@ public class ThomasCalibrationIntensityCorrectionClient {
 
 				parameters.beam.validate();
 
-				final ThomasCalibrationIntensityCorrectionClient client = new ThomasCalibrationIntensityCorrectionClient();
+				final BeamCorrectionClient client = new BeamCorrectionClient();
 				final RenderDataClient dataClient = parameters.renderWeb.getDataClient();
 				client.correctStack(dataClient,
 									parameters.stack,
@@ -120,7 +120,7 @@ public class ThomasCalibrationIntensityCorrectionClient {
 	private static final String B_REF_KEY = "b_ref";
 	private static final String ZMETADATA_FILE = ".zmetadata";
 
-	public ThomasCalibrationIntensityCorrectionClient() {
+	public BeamCorrectionClient() {
 	}
 
 	public void correctStack(final RenderDataClient dataClient,
@@ -522,5 +522,5 @@ public class ThomasCalibrationIntensityCorrectionClient {
 		throw new IllegalArgumentException("could not identify the parameter axis of the correction array");
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(ThomasCalibrationIntensityCorrectionClient.class);
+	private static final Logger LOG = LoggerFactory.getLogger(BeamCorrectionClient.class);
 }
