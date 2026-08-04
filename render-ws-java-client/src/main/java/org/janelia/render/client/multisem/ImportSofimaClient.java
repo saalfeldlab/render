@@ -53,7 +53,7 @@ public class ImportSofimaClient {
 		private final ZRangeParameters zRangeParams = new ZRangeParameters();
 		@Parameter(names = "--stack", description = "Source stack to which the displacement field is added", required = true)
 		private String stack;
-		@Parameter(names = "--targetStack", description = "Stack to save modified tile specs to (defaults to the source stack)")
+		@Parameter(names = "--targetStack", description = "Stack to save modified tile specs to", required = true)
 		private String targetStack;
 		@Parameter(names = "--sofimaFieldUri", description = "URI of the SOFIMA displacement field N5 container", required = true)
 		private String sofimaFieldUri;
@@ -63,10 +63,6 @@ public class ImportSofimaClient {
 		private int zOffset = 0;
 		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after all layers have been saved")
 		private boolean completeTargetStack = false;
-
-		public String getTargetStack() {
-			return (targetStack == null) ? stack : targetStack;
-		}
 	}
 
 	public static void main(final String[] args) {
@@ -116,7 +112,7 @@ public class ImportSofimaClient {
 		}
 
 		// Set up the target stack
-		final String targetStack = params.getTargetStack();
+		final String targetStack = params.targetStack;
 		if (! targetStack.equals(params.stack)) {
 			renderClient.setupDerivedStack(sourceStackMetaData, targetStack);
 		} else {
