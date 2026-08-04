@@ -14,9 +14,11 @@ public class BeamCorrectionParameters
 
     @Parameter(
             names = "--zarrPath",
-            description = "Path to the multi-SEM acquisition zarr (xlog) container " +
+            description = "Path or URI for the multi-SEM acquisition zarr (xlog) container " +
                           "holding the intensity correction parameters and the scan/slab/sfov coordinate arrays " +
-                          "(e.g. /path/to/xlog_wafer_61.zarr)", required = true)
+                          "(e.g. /groups/hess/hesslab/ibeammsem/system_02/wafers/wafer_61/xlog/xlog_wafer_61.zarr or " +
+                          "gs://janelia-spark-test/library/xlog_wafer_61.zarr)",
+            required = true)
     public String zarrPath;
 
     @Parameter(

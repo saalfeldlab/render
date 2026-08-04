@@ -2,14 +2,11 @@ package org.janelia.render.client.multisem;
 
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParametersDelegate;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +27,10 @@ import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.saalfeldlab.n5.DataBlock;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
 import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 import org.slf4j.Logger;
@@ -49,7 +48,9 @@ import net.imglib2.type.numeric.real.FloatType;
  * for a Multi-SEM stack.
  * <p>
  * The correction parameters are read from a multi-SEM acquisition zarr container (the "xlog",
- * e.g. xlog_wafer_61.zarr). The {@code beam_homogenization} array has dimensions
+ * e.g. xlog_wafer_61.zarr) that is opened with {@link N5Factory} and can therefore be either a local
+ * file system path or a cloud URI (e.g. gs://janelia-spark-test/xlog_data/wafer_61.zarr).
+ * The {@code beam_homogenization} array has dimensions
  * {@code [scan, slab, sfov, homogenization_parameter]}; the parameter dimension (length 26) is laid out
  * (per the data author's code, JaneliaSciComp/EM_recon_pipeline PR #186) as:
  * <ul>
@@ -117,6 +118,7 @@ public class ThomasCalibrationIntensityCorrectionClient {
 
 	private static final double IMAGE_MAX = 255.0;
 	private static final String B_REF_KEY = "b_ref";
+	private static final String ZMETADATA_FILE = ".zmetadata";
 
 	public ThomasCalibrationIntensityCorrectionClient() {
 	}
@@ -129,16 +131,18 @@ public class ThomasCalibrationIntensityCorrectionClient {
 
 		final String targetStack = stack + beam.targetStackSuffix;
 
-		try (final N5Reader reader = new N5Factory().openReader(beam.zarrPath)) {
+		try (final N5Reader reader = new N5Factory().openReader(StorageFormat.ZARR, beam.zarrPath)) {
 			LOG.info("correctStack: opened {} using {}", beam.zarrPath, reader.getClass().getSimpleName());
 
-			final double referenceLevel = resolveReferenceLevel(beam);
+			final ZarrKeyValueReader zarrReader = asZarrReader(reader, beam.zarrPath);
+
+			final double referenceLevel = resolveReferenceLevel(zarrReader, beam);
 
 			// coordinate-value (label) -> array-position lookups
-			final Map<Integer, Integer> scanLabelToPosition = readCoordinateIndex(reader, beam.scanDataset, beam);
-			final Map<Integer, Integer> slabLabelToPosition = readCoordinateIndex(reader, beam.slabDataset, beam);
-			final Map<Integer, Integer> sfovLabelToPosition = readCoordinateIndex(reader, beam.sfovDataset, beam);
-			final int[] serialBySlabPosition = readOptionalIntArray(reader, beam.serialDataset, beam);
+			final Map<Integer, Integer> scanLabelToPosition = readCoordinateIndex(zarrReader, beam.scanDataset);
+			final Map<Integer, Integer> slabLabelToPosition = readCoordinateIndex(zarrReader, beam.slabDataset);
+			final Map<Integer, Integer> sfovLabelToPosition = readCoordinateIndex(zarrReader, beam.sfovDataset);
+			final int[] serialBySlabPosition = readOptionalIntArray(zarrReader, beam.serialDataset);
 
 			LOG.info("correctStack: reference level (b_ref) is {}, source data inverted is {}; coordinate arrays loaded - {} scans, {} slabs, {} sfovs",
 					 referenceLevel, beam.inverted, scanLabelToPosition.size(), slabLabelToPosition.size(), sfovLabelToPosition.size());
@@ -267,16 +271,18 @@ public class ThomasCalibrationIntensityCorrectionClient {
 		return FilterSpec.forFilter(filter);
 	}
 
-	private double resolveReferenceLevel(final BeamCorrectionParameters beam) {
+	private double resolveReferenceLevel(final ZarrKeyValueReader reader,
+										 final BeamCorrectionParameters beam) {
 		if (beam.referenceLevel != null) {
 			return beam.referenceLevel;
 		}
 		// NOTE: n5-zarr's reader.getAttribute(...) throws an NPE on blosc-compressed arrays because it
-		// serializes the compressor, so read the b_ref value directly from the on-disk JSON metadata.
-		Double bRef = readDoubleFromJsonFile(Paths.get(beam.zarrPath, beam.homogenizationDataset, ".zattrs"),
-											 B_REF_KEY);
+		// serializes the compressor, so read the b_ref value directly from the JSON metadata.
+		Double bRef = readDouble(readJsonResource(reader, beam.homogenizationDataset, ZarrKeyValueReader.ZATTRS_FILE),
+								 B_REF_KEY);
 		if (bRef == null) {
-			bRef = readBRefFromConsolidatedMetadata(beam);
+			bRef = readDouble(readConsolidatedJson(reader, beam.homogenizationDataset, ZarrKeyValueReader.ZATTRS_FILE),
+							  B_REF_KEY);
 		}
 		if (bRef == null) {
 			throw new IllegalArgumentException("could not read '" + B_REF_KEY + "' from the " +
@@ -287,34 +293,60 @@ public class ThomasCalibrationIntensityCorrectionClient {
 		return bRef;
 	}
 
-	private Double readBRefFromConsolidatedMetadata(final BeamCorrectionParameters beam) {
+	/**
+	 * Reads a JSON metadata resource (e.g. {@code .zarray} or {@code .zattrs}) for a dataset,
+	 * falling back to the consolidated {@code .zmetadata} at the container root.
+	 * <p>
+	 * The resource is read with the container's {@code KeyValueAccess} instead of {@link java.nio.file.Files}
+	 * so that metadata can be read from a local file system path or from a cloud URI
+	 * (e.g. {@code gs://bucket/xlog_wafer_61.zarr}).
+	 *
+	 * @return the parsed resource or null if it is not present in the container.
+	 */
+	private static JsonObject readDatasetJson(final ZarrKeyValueReader reader,
+											  final String dataset,
+											  final String resourceName) {
+
+		final JsonObject json = readJsonResource(reader, dataset, resourceName);
+		return json == null ? readConsolidatedJson(reader, dataset, resourceName) : json;
+	}
+
+	/** Reads a dataset's JSON metadata resource from the consolidated {@code .zmetadata} at the container root. */
+	private static JsonObject readConsolidatedJson(final ZarrKeyValueReader reader,
+												   final String dataset,
+												   final String resourceName) {
+		final JsonObject consolidated = readJsonResource(reader, "", ZMETADATA_FILE);
+		final JsonObject metadata = consolidated == null ? null : consolidated.getAsJsonObject("metadata");
+		final JsonObject datasetJson = metadata == null ? null : metadata.getAsJsonObject(dataset + "/" + resourceName);
+		return datasetJson == null ? null : datasetJson.deepCopy();
+	}
+
+	private static Double readDouble(final JsonObject json,
+									 final String key) {
+		return ((json != null) && json.has(key)) ? json.get(key).getAsDouble() : null;
+	}
+
+	/** Reads one JSON resource from the container, or returns null if it is missing or cannot be parsed. */
+	private static JsonObject readJsonResource(final ZarrKeyValueReader reader,
+											   final String parentPath,
+											   final String resourceName) {
 		try {
-			final Path zMetadata = Paths.get(beam.zarrPath, ".zmetadata");
-			if (!Files.isRegularFile(zMetadata)) {
-				return null;
-			}
-			final JsonObject root = JsonParser.parseString(Files.readString(zMetadata)).getAsJsonObject();
-			final JsonObject metadata = root.getAsJsonObject("metadata");
-			if (metadata == null) {
-				return null;
-			}
-			final JsonObject attrs = metadata.getAsJsonObject(beam.homogenizationDataset + "/.zattrs");
-			return (attrs != null && attrs.has(B_REF_KEY)) ? attrs.get(B_REF_KEY).getAsDouble() : null;
+			final JsonElement element = reader.getAttributesFromContainer(N5URI.normalizeGroupPath(parentPath),
+																		  resourceName);
+			return ((element != null) && element.isJsonObject()) ? element.getAsJsonObject() : null;
 		} catch (final Exception e) {
+			LOG.warn("readJsonResource: failed to read {} for '{}' ({})", resourceName, parentPath, e.getMessage());
 			return null;
 		}
 	}
 
-	private static Double readDoubleFromJsonFile(final Path path, final String key) {
-		try {
-			if (!Files.isRegularFile(path)) {
-				return null;
-			}
-			final JsonObject obj = JsonParser.parseString(Files.readString(path)).getAsJsonObject();
-			return obj.has(key) ? obj.get(key).getAsDouble() : null;
-		} catch (final Exception e) {
-			return null;
+	private static ZarrKeyValueReader asZarrReader(final N5Reader reader,
+												   final String zarrPath) {
+		if (!(reader instanceof ZarrKeyValueReader)) {
+			throw new IllegalArgumentException("expected a zarr reader for " + zarrPath +
+											   " but got " + reader.getClass().getName());
 		}
+		return (ZarrKeyValueReader) reader;
 	}
 
 	private static int parseValue(final Pattern pattern, final String tileId, final String label) {
@@ -326,10 +358,9 @@ public class ThomasCalibrationIntensityCorrectionClient {
 	}
 
 	/** Reads a 1D coordinate array and returns a map from each stored label value to its array position. */
-	private static Map<Integer, Integer> readCoordinateIndex(final N5Reader reader,
-															 final String dataset,
-															 final BeamCorrectionParameters beam) {
-		final double[] values = readCoordinateValues(reader, dataset, beam);
+	private static Map<Integer, Integer> readCoordinateIndex(final ZarrKeyValueReader reader,
+															 final String dataset) {
+		final double[] values = readCoordinateValues(reader, dataset);
 		if (values == null) {
 			throw new IllegalArgumentException("coordinate array '" + dataset + "' not found in the zarr container; " +
 					"point --zarrPath at a container that physically contains the scan/slab/sfov coordinate arrays");
@@ -342,12 +373,11 @@ public class ThomasCalibrationIntensityCorrectionClient {
 	}
 
 	/** Reads a 1D array into an int array indexed by position, or returns null if the dataset is absent. */
-	private static int[] readOptionalIntArray(final N5Reader reader,
-											  final String dataset,
-											  final BeamCorrectionParameters beam) {
+	private static int[] readOptionalIntArray(final ZarrKeyValueReader reader,
+											  final String dataset) {
 		final double[] values;
 		try {
-			values = readCoordinateValues(reader, dataset, beam);
+			values = readCoordinateValues(reader, dataset);
 		} catch (final Exception e) {
 			LOG.warn("readOptionalIntArray: could not read {} ({}), slab cross-check will be unavailable", dataset, e.getMessage());
 			return null;
@@ -372,20 +402,16 @@ public class ThomasCalibrationIntensityCorrectionClient {
 	 * that are physically present), the resulting {@link ZarrDatasetAttributes} is built via the reader, and the
 	 * chunks are read with {@link N5Reader#readBlock} (which honors the zarr little-endian byte order).
 	 */
-	private static double[] readCoordinateValues(final N5Reader reader,
-												 final String dataset,
-												 final BeamCorrectionParameters beam) {
-		final JsonObject zArray = readZArrayJson(dataset, beam);
+	private static double[] readCoordinateValues(final ZarrKeyValueReader reader,
+												 final String dataset) {
+		final JsonObject zArray = readDatasetJson(reader, dataset, ZarrKeyValueReader.ZARRAY_FILE);
 		if (zArray == null) {
 			return null;
 		}
 		if (!zArray.has("fill_value") || zArray.get("fill_value").isJsonNull()) {
 			zArray.add("fill_value", new JsonPrimitive("0"));
 		}
-		if (!(reader instanceof ZarrKeyValueReader)) {
-			throw new IllegalArgumentException("expected a zarr reader but got " + reader.getClass().getName());
-		}
-		final ZarrDatasetAttributes attributes = ((ZarrKeyValueReader) reader).createDatasetAttributes(zArray);
+		final ZarrDatasetAttributes attributes = reader.createDatasetAttributes(zArray);
 		if (attributes == null) {
 			throw new IllegalArgumentException("could not parse .zarray for coordinate dataset " + dataset);
 		}
@@ -407,35 +433,6 @@ public class ThomasCalibrationIntensityCorrectionClient {
 			copyBlockValues(block.getData(), dataType, values, chunk * chunkSize);
 		}
 		return values;
-	}
-
-	/** Reads the raw .zarray JSON for a dataset from the per-array file, falling back to consolidated .zmetadata. */
-	private static JsonObject readZArrayJson(final String dataset,
-											 final BeamCorrectionParameters beam) {
-		final Path perArray = Paths.get(beam.zarrPath, dataset, ".zarray");
-		try {
-			if (Files.isRegularFile(perArray)) {
-				return JsonParser.parseString(Files.readString(perArray)).getAsJsonObject();
-			}
-		} catch (final Exception e) {
-			LOG.warn("readZArrayJson: failed to read {} ({})", perArray, e.getMessage());
-		}
-		try {
-			final Path zMetadata = Paths.get(beam.zarrPath, ".zmetadata");
-			if (Files.isRegularFile(zMetadata)) {
-				final JsonObject root = JsonParser.parseString(Files.readString(zMetadata)).getAsJsonObject();
-				final JsonObject metadata = root.getAsJsonObject("metadata");
-				if (metadata != null) {
-					final JsonObject zArray = metadata.getAsJsonObject(dataset + "/.zarray");
-					if (zArray != null) {
-						return zArray.deepCopy();
-					}
-				}
-			}
-		} catch (final Exception e) {
-			LOG.warn("readZArrayJson: failed to read .zmetadata for {} ({})", dataset, e.getMessage());
-		}
-		return null;
 	}
 
 	/** Copies a decoded data block into dst[offset...], applying unsigned promotion based on the data type. */
