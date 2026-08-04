@@ -170,6 +170,24 @@
             <artifactId>n5-universe</artifactId>
         </dependency>
 
+        <!-- Neuroglancer-precomputed backend used by DisplacementFieldTransform to read SOFIMA warp fields.
+             Not in any remote repo; build/install from ../n5-precomputed (branch n5-3.3.5, which is pinned to the
+             n5 3.x ecosystem this reactor uses) with `mvn -Dmaven.test.skip=true install`. -->
+        <dependency>
+            <groupId>org.janelia.saalfeldlab</groupId>
+            <artifactId>n5-ng-precomputed</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
+        </dependency>
+
+        <!-- PrecomputedTestVolumes writes tiny precomputed volumes; reused by DisplacementFieldTransformTest. -->
+        <dependency>
+            <groupId>org.janelia.saalfeldlab</groupId>
+            <artifactId>n5-ng-precomputed</artifactId>
+            <version>0.1.0-SNAPSHOT</version>
+            <classifier>tests</classifier>
+            <scope>test</scope>
+        </dependency>
+
         <!-- Version comes from the jackson.version property in the root pom, which keeps jackson-databind
              in sync with jackson-core, jackson-annotations and the jaxrs provider. -->
         <dependency>

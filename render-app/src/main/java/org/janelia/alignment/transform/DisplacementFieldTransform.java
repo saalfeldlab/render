@@ -10,11 +10,18 @@ import net.imglib2.realtransform.RealViews;
 import net.imglib2.realtransform.Scale;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
+import org.janelia.saalfeldlab.n5.KeyValueAccess;
 import org.janelia.saalfeldlab.n5.N5Reader;
+import org.janelia.saalfeldlab.n5.googlecloud.GoogleCloudStorageKeyValueAccess;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
-import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
+import org.janelia.saalfeldlab.n5.precomputed.N5PrecomputedReader;
+import org.janelia.saalfeldlab.n5.precomputed.PrecomputedKeyValueReader;
 
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+import com.google.gson.GsonBuilder;
+
+import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,9 +84,11 @@ public class DisplacementFieldTransform
 		this.fieldScaleIndex = fieldScaleIndex;
 		this.fieldZIndex = fieldZIndex;
 
-		/* Load displacement field. Currently, this is tailored to output from SOFIMA for multi-sem acquisitions.
-		 * - Layout is [X,Y,C,Z]; C=0 is X vectors, C=1 is Y vectors
-		 * - XY axes are flipped compared to python due to N5 convention
+		/* Load displacement field. Currently, this is tailored to output from SOFIMA for multi-sem acquisitions,
+		 * stored as a Neuroglancer precomputed volume and read through the n5-ng-precomputed backend.
+		 * - Layout is [x,y,z,channel]; channel=0 is X vectors, channel=1 is Y vectors
+		 * - Precomputed raw is column-major [x,y,z,channel], matching N5/ImgLib2, so (unlike the Zarr
+		 *   backend) no XY axis reversal is performed: dim 0 is X, dim 1 is Y
 		 */
 		final RandomAccessibleInterval<FloatType> fieldRaw = openRawField(fieldSourceUri);
 
@@ -101,9 +110,44 @@ public class DisplacementFieldTransform
 
 	private static RandomAccessibleInterval<FloatType> openRawField(final String fieldSourceUri) {
 		return RAW_FIELD_CACHE.computeIfAbsent(fieldSourceUri, uri -> {
-			final N5Reader fieldReader = new N5Factory().openReader(StorageFormat.N5, uri);
-			return N5Utils.open(fieldReader, "/");
+			final N5Reader fieldReader = openPrecomputedReader(uri);
+			final String scaleKey = fieldReader.list("/")[0];
+			return N5Utils.open(fieldReader, scaleKey);
 		});
+	}
+
+	/**
+	 * Opens a Neuroglancer precomputed field through the N5 API. The URI may be prefixed with
+	 * {@code precomputed://}. {@code gs://} buckets are read anonymously (matching the public warp-field
+	 * bucket); any other scheme (e.g. {@code file://}) is routed through {@link N5Factory}'s key-value access.
+	 *
+	 * <p>This wires the reader up by hand because {@code n5-universe}'s {@code N5Factory} does not yet know
+	 * the precomputed format. Mirrors the {@code n5-ng-precomputed} examples.
+	 *
+	 * <p>Exposed so that clients preparing a field (e.g. {@code ImportSofimaClient}) open it through exactly
+	 * this same path rather than reimplementing the wiring. The field dataset itself lives under the first
+	 * scale key, i.e. {@code reader.list("/")[0]}.
+	 *
+	 * @param  fieldSourceUri  the (optionally {@code precomputed://}-prefixed) container URI.
+	 * @return an {@link N5Reader} over the precomputed container.
+	 */
+	public static N5Reader openPrecomputedReader(final String fieldSourceUri) {
+		String uri = fieldSourceUri;
+		if (uri.startsWith("precomputed://")) {
+			uri = uri.substring("precomputed://".length());
+		}
+
+		if (uri.startsWith("gs://")) {
+			// gs:// buckets are read anonymously (the public warp-field bucket needs no credentials).
+			final Storage storage = StorageOptions.getUnauthenticatedInstance().getService();
+			final KeyValueAccess keyValueAccess = new GoogleCloudStorageKeyValueAccess(storage, uri, false);
+			return new PrecomputedKeyValueReader(keyValueAccess, uri, new GsonBuilder(), true);
+		}
+
+		// Local filesystem (optionally file://-prefixed): N5PrecomputedReader wires up FileSystemKeyValueAccess
+		// over the default filesystem. (n5-universe 1.6.0's N5Factory.getKeyValueAccess is package-private.)
+		final String path = uri.startsWith("file://") ? URI.create(uri).getPath() : uri;
+		return new N5PrecomputedReader(path, new GsonBuilder(), true);
 	}
 
 	/**
@@ -123,9 +167,10 @@ public class DisplacementFieldTransform
 				(i, o) -> o.set(Float.isNaN(i.getRealFloat()) ? 0 : i.getRealFloat()),
 				new FloatType());
 
-		// Slice the dataset: choose right z-slice (dim=3) and then choose between x or y (dim=2)
+		// Slice the [x,y,z,channel] dataset: choose the vector component (channel, dim=3) and then the
+		// z-slice (dim=2). Slicing the higher dimension (channel) first keeps the z index valid at dim=2.
 		final RandomAccessibleInterval<FloatType> slice = Views.hyperSlice(
-				Views.hyperSlice(cleaned, 3, this.fieldZIndex), 2, xory);
+				Views.hyperSlice(cleaned, 3, xory), 2, this.fieldZIndex);
 
 		// Scale and interpolate the slice to full resolution
 		final RealRandomAccessible<FloatType> scaledAndInterpolated = RealViews.affine(

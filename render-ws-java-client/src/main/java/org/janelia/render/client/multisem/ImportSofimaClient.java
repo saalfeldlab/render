@@ -19,8 +19,6 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.render.client.parameter.ZRangeParameters;
 import org.janelia.saalfeldlab.n5.N5Reader;
-import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,7 +26,9 @@ import org.slf4j.LoggerFactory;
  * Adds a {@link DisplacementFieldTransform} to every tile spec of a stack, layer by layer.
  * <p>
  * The (dense) displacement field is currently expected to be SOFIMA output for multi-SEM acquisitions, stored as a
- * 4D {@code [X,Y,C,Z]} N5 dataset with one z-slice per stack layer. For each layer, this client
+ * Neuroglancer precomputed volume with a 4D {@code [x,y,z,channel]} layout and one z-slice per stack layer (opened
+ * through the same {@link DisplacementFieldTransform#openPrecomputedReader} path the transform itself uses). For
+ * each layer, this client
  * <ul>
  *   <li>computes {@code fieldZIndex} from the {@code --zOffset} parameter and the running (0-based) layer index,</li>
  *   <li>computes the field-to-full-resolution {@code xyScale} from the stack bounds and the field's XY dimensions,</li>
@@ -97,10 +97,13 @@ public class ImportSofimaClient {
 
 		// Get full-resolution stack size and the field's XY size to scale the field to full resolution
 		final double[] xyScale;
-		try (final N5Reader fieldReader = new N5Factory().openReader(StorageFormat.N5, params.sofimaFieldUri)) {
+		try (final N5Reader fieldReader = DisplacementFieldTransform.openPrecomputedReader(params.sofimaFieldUri)) {
 
 			final Bounds stackBounds = sourceStackMetaData.getStats().getStackBounds();
-			final long[] fieldDimensions = fieldReader.getDatasetAttributes("/").getDimensions();
+			// The precomputed dataset lives under the first scale key (see DisplacementFieldTransform); the
+			// layout is [x,y,z,channel], so dim 0 is X and dim 1 is Y.
+			final String scaleKey = fieldReader.list("/")[0];
+			final long[] fieldDimensions = fieldReader.getDatasetAttributes(scaleKey).getDimensions();
 
 			xyScale = new double[]{
 					stackBounds.getDeltaX() / fieldDimensions[0],
