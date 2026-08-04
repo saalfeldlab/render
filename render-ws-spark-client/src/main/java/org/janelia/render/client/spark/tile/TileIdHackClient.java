@@ -88,13 +88,13 @@ public class TileIdHackClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final StackIdNamingGroup otherNamingGroup = pipelineParameters.getOtherNamingGroup();
-        if (otherNamingGroup == null) {
+        final StackIdNamingGroup rawNamingGroup = pipelineParameters.getOtherNamingGroup();
+        if (rawNamingGroup == null) {
             throw new IllegalArgumentException(
                     "The " + AlignmentPipelineStepId.HACK_TILE_ID + " pipeline step requires that " +
-                    "an 'other' pipelineStackGroup is defined in the pipeline parameters.");
+                    "a 'raw' pipelineStackGroup is defined in the pipeline parameters.");
         }
-        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(otherNamingGroup);
+        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(rawNamingGroup);
         final Parameters clientParameters = new Parameters(multiProject);
         copyStackAndFixTileIds(sparkContext, clientParameters);
     }

@@ -93,14 +93,14 @@ public class BeamCorrectionSparkClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final StackIdNamingGroup otherNamingGroup = pipelineParameters.getOtherNamingGroup();
-        if (otherNamingGroup == null) {
+        final StackIdNamingGroup rawNamingGroup = pipelineParameters.getRawNamingGroup();
+        if (rawNamingGroup == null) {
             throw new IllegalArgumentException(
                     "The " + AlignmentPipelineStepId.CORRECT_BEAM_INTENSITY + " pipeline step requires that " +
-                    "an 'other' pipelineStackGroup is defined in the pipeline parameters.");
+                    "a 'raw' pipelineStackGroup is defined in the pipeline parameters.");
         }
 
-        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(otherNamingGroup);
+        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(rawNamingGroup);
 
         correctBeamIntensity(sparkContext,
                              multiProject,
