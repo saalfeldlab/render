@@ -66,11 +66,12 @@ public class DisplacementFieldTransformTest {
                                               new long[] {0, 0, 0},
                                               (x, y, z, c) -> x + y + 10 * z + 100 * c);
 
-        // unscaled: full-resolution (1,1) reads field (1,1) of z-slice 1, vectors are used as stored
-        assertDisplacement(fieldDir, 0, 1, 1.0, new double[] {1.0, 1.0}, 12.0, 112.0);
+        // unscaled: full-resolution (1,1) reads field (1,1) of z-slice 1; vectors are negated (pull map) but
+        // otherwise used as stored
+        assertDisplacement(fieldDir, 0, 1, 1.0, new double[] {1.0, 1.0}, -12.0, -112.0);
 
         // xyScale 2 halves the query position (so (2,2) reads field (1,1)) and scaleIndex 2 quadruples the vectors
-        assertDisplacement(fieldDir, 2, 1, 2.0, new double[] {2.0, 2.0}, 12.0 * 4, 112.0 * 4);
+        assertDisplacement(fieldDir, 2, 1, 2.0, new double[] {2.0, 2.0}, -12.0 * 4, -112.0 * 4);
     }
 
     private static void assertDisplacement(final Path fieldDir,

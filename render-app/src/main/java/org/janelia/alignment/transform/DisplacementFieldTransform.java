@@ -20,6 +20,7 @@ import org.janelia.saalfeldlab.n5.precomputed.PrecomputedKeyValueReader;
 import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.gson.GsonBuilder;
+import org.janelia.saalfeldlab.n5.universe.N5Factory;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -104,8 +105,6 @@ public class DisplacementFieldTransform
 	 * shared across every tile and z-slice. Per-instance accessors are still built fresh in
 	 * {@link #extractAndTransform} (imglib2 accessors are not thread safe); only the underlying chunk cache is shared.
 	 */
-	// ponytail: unbounded static cache, one entry per distinct field URI. A run touches a handful of fields, so this
-	// is bounded in practice; add eviction only if that stops holding.
 	private static final Map<String, RandomAccessibleInterval<FloatType>> RAW_FIELD_CACHE = new ConcurrentHashMap<>();
 
 	private static RandomAccessibleInterval<FloatType> openRawField(final String fieldSourceUri) {
@@ -151,12 +150,15 @@ public class DisplacementFieldTransform
 	}
 
 	/**
-	 * Currently, this is tailored to output from SOFIMA for multi-sem acquisitions. The following code and comments
-	 * are from hot-knife.
-	 * - We need to adjust the sofima vectors for the original scale of the images and the scale of the hot-knife field
-	 * - The SOFIMA vectors have the same size, no matter with which stride they were computed, so they must be in the size of the input images fed to SOFIMA
-	 * - Saalfeld's absolute transformation fields store the vectors in the scale the transformation fields are stored in. E.g. at scale 0.03125 a value that is 2400, will be 4800 at scale 0.0625
-	 * - Positive y means move up, positive x means move left
+	 * Currently, this is tailored to output from SOFIMA for multi-sem acquisitions.
+	 * <ul>
+	 *   <li>The field is a <b>pull</b> map: the vector stored at a target position points at the source position
+	 *       the data is pulled from, i.e. {@code source = target + vector}. Render's transform lists run
+	 *       source to target, so the vectors are negated here.</li>
+	 *   <li>Vector units are the pixels of the images that were fed to SOFIMA, so they are scaled up by
+	 *       {@code 1 << fieldScaleIndex} to reach full resolution. Use {@code scaleIndex=0} for fields whose
+	 *       vectors are already expressed in full-resolution units (SOFIMA does this by default).</li>
+	 * </ul>
 	 */
 	private RealRandomAccess<FloatType> extractAndTransform(final RandomAccessibleInterval<FloatType> rawField,
 	                                                        final int xory) {
@@ -177,12 +179,15 @@ public class DisplacementFieldTransform
 				Views.interpolate(Views.extendMirrorDouble(slice), new NLinearInterpolatorFactory<>()),
 				new Scale(this.xyScale));
 
-		// Scale the deformation vectors to account for the scale of the images that they were computed on
-		// Do this last to reduce the number of scaling operations
-		final float vectorScale = 1.0f / (1 << this.fieldScaleIndex);
+		// Invert the pull map and scale the vectors up from the resolution of the images SOFIMA saw, folded into a
+		// single factor applied last (after interpolation) to keep the number of passes down.
+		// ponytail: negating is a first-order inverse, p - d(p) instead of solving t = p - d(t). Exact enough for
+		// the fields seen so far (Jacobian ~2e-4, so it is off by well under 0.01 px); switch to a fixed-point
+		// iteration if a field with steep gradients ever shows up.
+		final float vectorScale = -(1 << this.fieldScaleIndex);
 		return Converters.convert(
 				scaledAndInterpolated,
-				(i, o) -> o.set(i.getRealFloat() / vectorScale),
+				(i, o) -> o.set(i.getRealFloat() * vectorScale),
 				new FloatType()).realRandomAccess();
 	}
 
