@@ -183,38 +183,22 @@
         <dependency>
             <groupId>org.janelia.saalfeldlab</groupId>
             <artifactId>n5-spark</artifactId>
-            <version>3.7.3</version>
+            <!-- 4.1.0 is built against n5 4.x. -->
+            <version>4.1.0</version>
             <exclusions>
-                <!-- filter out dependencies that cause duplicate class failures -->
+                <!-- n5-spark uses kryo 5.x, whose classes duplicate the kryo-shaded 4.x that spark provides -->
                 <exclusion>
                     <groupId>com.esotericsoftware</groupId>
                     <artifactId>kryo</artifactId>
                 </exclusion>
-                <exclusion>
-                    <groupId>javax.validation</groupId>
-                    <artifactId>validation-api</artifactId>
-                </exclusion>
-                <!-- filter out unneeded google-http-client jar which causes overlap issue in shaded jar -->
-                <exclusion>
-                    <groupId>com.google.http-client</groupId>
-                    <artifactId>google-http-client-xml</artifactId>
-                </exclusion>
-                <!--
-                     filter out mbknor-jackson-jsonschema_2.12 jar which causes missing scala.Tuple2 errors
-                     because it uses older 2.12.8 scala-library (all other scala dependencies are 2.13.*)
-                -->
-                <exclusion>
-                    <groupId>com.kjetland</groupId>
-                    <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
-                </exclusion>
             </exclusions>
         </dependency>
 
-        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <!-- Version comes from the jackson.version property in the root pom, which keeps jackson-databind
+             in sync with jackson-core, jackson-annotations and the jaxrs provider. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson-version}</version>
         </dependency>
 
         <!-- Dependencies not defined in SciJava -->
@@ -222,7 +206,12 @@
         <dependency>
             <groupId>org.apache.spark</groupId>
             <artifactId>spark-core_2.13</artifactId>
-            <version>3.4.1</version> <!-- released on June 23, 2023, see https://spark.apache.org/releases/spark-release-3-4-1.html -->
+            <!--
+              Spark 4 is required because render targets JDK 21: Spark 3.x supports Java 8/11/17 only
+              (see https://spark.apache.org/docs/3.5.7/). This is a 'provided' dependency, so it should
+              be kept in sync with the Spark version installed on the cluster this is deployed to.
+            -->
+            <version>4.0.4</version> <!-- published on July 12, 2026, see https://spark.apache.org/releases/spark-release-4-0-4.html -->
             <scope>provided</scope>
             <exclusions>
 
@@ -249,9 +238,9 @@
 
                   Comment out the hadoop-client-runtime exclusion below and run mvn compile to pull it into your local .m2/repository.
                   The compile will fail because of the enforcer no-duplicate-classes rule but the jar will get pulled.
-                  Once $HOME/.m2/repository/org/apache/hadoop/hadoop-client-runtime/3.3.4/hadoop-client-runtime-3.3.4.jar exists,
+                  Once $HOME/.m2/repository/org/apache/hadoop/hadoop-client-runtime/3.4.1/hadoop-client-runtime-3.4.1.jar exists,
                   uncomment the exclusion and run mvn clean package.
-                  Finally, add the hadoop-client-runtime-3.3.4.jar to IntelliJ run configurations to run local Spark jobs from IDE.
+                  Finally, add the hadoop-client-runtime-3.4.1.jar to IntelliJ run configurations to run local Spark jobs from IDE.
 
                   Note that the hadoop version will change with Spark version changes.
                   Hopefully, whoever updates Spark will also update this comment with the new corresponding hadoop version and .m2 path.

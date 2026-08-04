@@ -271,10 +271,11 @@ public class MFOVASTileClient
                                                                          prealignedStackId.getOwner(),
                                                                          prealignedStackId.getProject());
 
-                builtStackId = MFOVAsTileStackClient.buildOneMFOVAsTileStack(stackWithAllZ,
-                                                                             dataClient,
-                                                                             mfovRenderScale,
-                                                                             dynamicMfovStackSuffix);
+                builtStackId = MFOVAsTileStackClient.buildOneXAsTileStack(stackWithAllZ,
+                                                                          dataClient,
+                                                                          mfovRenderScale,
+                                                                          dynamicMfovStackSuffix,
+                                                                          true);
             }
 
             LOG.info("buildMfovStackFunction: exit, prealignedStackId={}, dynamicMfovAsTileStackId={}",
@@ -804,9 +805,9 @@ public class MFOVASTileClient
             this.stackId = stackId;
             this.layerMFOV = layerMFOV;
             final String hackStack = stackId.getStack() + mfovAsTile.getRenderedMfovStackSuffix();
-            this.tileRender = TileRenderParameters.buildMfovAsTileVersion(mfovAsTile.getMfovRootDirectory(),
-                                                                          runTimestamp,
-                                                                          hackStack);
+            this.tileRender = TileRenderParameters.buildXAsTileVersion(mfovAsTile.getMfovRootDirectory(),
+                                                                       runTimestamp,
+                                                                       hackStack);
         }
 
         public org.janelia.render.client.tile.RenderTilesClient buildJavaRenderTilesClient(final String tileIdPattern) {
@@ -836,7 +837,7 @@ public class MFOVASTileClient
         }
     }
 
-    private static final int MAX_PARTITIONS_FOR_ONE_WEB_SERVER = 100000;
+    public static final int MAX_PARTITIONS_FOR_ONE_WEB_SERVER = 100000;
 
     private static final Logger LOG = LoggerFactory.getLogger(MFOVASTileClient.class);
 }

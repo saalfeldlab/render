@@ -164,18 +164,17 @@
             <artifactId>n5-hdf5</artifactId>
         </dependency>
 
-        <!-- n5-universe aggregates the n5 backends (filesystem, zarr, aws-s3, google-cloud, hdf5, blosc).
-             Version (1.6.0) is managed by pom-scijava and is aligned with the overridden n5 ${n5-version}. -->
+        <!-- n5-universe aggregates the n5 backends (filesystem, zarr, aws-s3, google-cloud, hdf5, blosc).  Managed by pom-scijava. -->
         <dependency>
             <groupId>org.janelia.saalfeldlab</groupId>
             <artifactId>n5-universe</artifactId>
         </dependency>
 
-        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <!-- Version comes from the jackson.version property in the root pom, which keeps jackson-databind
+             in sync with jackson-core, jackson-annotations and the jaxrs provider. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson-version}</version>
         </dependency>
 
         <!-- Dependencies not defined in SciJava -->

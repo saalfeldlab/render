@@ -172,6 +172,15 @@
         <dependency>
             <groupId>sc.fiji</groupId>
             <artifactId>bigdataviewer-vistools</artifactId>
+            <!-- pom-scijava 45 no longer manages this artifact; pin the version pom-scijava 39 provided. -->
+            <version>1.0.0-beta-36</version>
+        </dependency>
+
+        <!-- RestartSolverClient uses org.apache.commons.lang.math.DoubleRange (commons-lang 2.x). This used to
+             arrive transitively; declare it directly (version managed by pom-scijava at 2.6). -->
+        <dependency>
+            <groupId>commons-lang</groupId>
+            <artifactId>commons-lang</artifactId>
         </dependency>
 
         <dependency>
@@ -221,11 +230,11 @@
             <version>${n5-version}</version>
         </dependency>
 
-        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <!-- Version comes from the jackson.version property in the root pom, which keeps jackson-databind
+             in sync with jackson-core, jackson-annotations and the jaxrs provider. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson-version}</version>
         </dependency>
 
         <!-- Dependencies not defined in SciJava -->

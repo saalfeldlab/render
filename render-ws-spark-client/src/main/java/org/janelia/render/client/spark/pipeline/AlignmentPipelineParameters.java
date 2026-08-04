@@ -17,6 +17,7 @@ import org.janelia.alignment.util.UrlResourceUtil;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.newsolver.setup.IntensityCorrectionSetup;
 import org.janelia.render.client.parameter.CreepCorrectionParameters;
+import org.janelia.render.client.parameter.LayerAsTileParameters;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MaskHackParameters;
@@ -57,10 +58,12 @@ public class AlignmentPipelineParameters
     private final ScapeParameters scape;
     private final TileRenderParameters tileRender;
     private final MFOVAsTileParameters mfovAsTile;
+    private final LayerAsTileParameters layerAsTile;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
         this(null,
+             null,
              null,
              null,
              null,
@@ -95,7 +98,8 @@ public class AlignmentPipelineParameters
                                        final MaskHackParameters maskHack,
                                        final ScapeParameters scape,
                                        final TileRenderParameters tileRender,
-                                       final MFOVAsTileParameters mfovAsTile) {
+                                       final MFOVAsTileParameters mfovAsTile,
+                                       final LayerAsTileParameters layerAsTile) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -113,6 +117,7 @@ public class AlignmentPipelineParameters
         this.scape = scape;
         this.tileRender = tileRender;
         this.mfovAsTile = mfovAsTile;
+        this.layerAsTile = layerAsTile;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -195,6 +200,10 @@ public class AlignmentPipelineParameters
 
     public MFOVAsTileParameters getMfovAsTile() {
         return mfovAsTile;
+    }
+
+    public LayerAsTileParameters getLayerAsTile() {
+        return layerAsTile;
     }
 
     /**

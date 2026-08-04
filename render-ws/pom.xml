@@ -102,11 +102,11 @@
             <version>${n5-version}</version>
         </dependency>
 
-        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <!-- Version comes from the jackson.version property in the root pom, which keeps jackson-databind
+             in sync with jackson-core, jackson-annotations and the jaxrs provider. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson-version}</version>
         </dependency>
 
         <!-- Dependencies not defined in SciJava -->
@@ -123,6 +123,12 @@
                 <exclusion>
                     <groupId>jakarta.validation</groupId>
                     <artifactId>jakarta.validation-api</artifactId>
+                </exclusion>
+                <!-- javax.annotation classes covered by javax.annotation:javax.annotation-api;
+                     the newer resteasy BOM (pom-scijava 45) adds this spec jar, causing duplicate classes -->
+                <exclusion>
+                    <groupId>org.jboss.spec.javax.annotation</groupId>
+                    <artifactId>jboss-annotations-api_1.3_spec</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -141,6 +147,12 @@
                     <groupId>jakarta.validation</groupId>
                     <artifactId>jakarta.validation-api</artifactId>
                 </exclusion>
+                <!-- javax.annotation classes covered by javax.annotation:javax.annotation-api;
+                     the newer resteasy BOM (pom-scijava 45) adds this spec jar, causing duplicate classes -->
+                <exclusion>
+                    <groupId>org.jboss.spec.javax.annotation</groupId>
+                    <artifactId>jboss-annotations-api_1.3_spec</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -149,15 +161,22 @@
             <artifactId>resteasy-servlet-initializer</artifactId>
         </dependency>
 
+        <!-- pom-scijava does not manage this artifact, so use its jackson version to stay in sync with databind. -->
         <dependency>
             <groupId>com.fasterxml.jackson.jaxrs</groupId>
             <artifactId>jackson-jaxrs-json-provider</artifactId>
-            <version>${jackson-version}</version>
+            <version>${jackson.version}</version>
             <exclusions>
                 <!-- covered by javax.activation in swagger, spark, and mock-server -->
                 <exclusion>
                     <groupId>jakarta.activation</groupId>
                     <artifactId>jakarta.activation-api</artifactId>
+                </exclusion>
+                <!-- jackson-module-jaxb-annotations pulls in the legacy javax.xml.bind:jaxb-api, whose classes
+                     duplicate the jakarta.xml.bind:jakarta.xml.bind-api ones that arrive via render-app -->
+                <exclusion>
+                    <groupId>javax.xml.bind</groupId>
+                    <artifactId>jaxb-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -235,7 +254,7 @@
 
     <properties>
         <resteasy.version>4.7.9.Final</resteasy.version>
-        <jetty.version>10.0.13</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
+        <jetty.version>10.0.26</jetty.version> <!-- NOTE: jetty version should be kept in sync with values in render/Dockerfile and render/render-ws/src/main/scripts/install.sh -->
         <mongodb.driver.version>4.4.1</mongodb.driver.version>
         <license.licenseName>gpl_v2</license.licenseName>
         <license.copyrightOwners>Howard Hughes Medical Institute</license.copyrightOwners>

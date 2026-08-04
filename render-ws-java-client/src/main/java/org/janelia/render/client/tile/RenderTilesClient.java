@@ -63,6 +63,7 @@ import org.janelia.saalfeldlab.googlecloud.GoogleCloudStorageURI;
 import org.janelia.saalfeldlab.googlecloud.GoogleCloudUtils;
 import org.janelia.saalfeldlab.n5.KeyValueAccess;
 import org.janelia.saalfeldlab.n5.LockedChannel;
+import org.janelia.saalfeldlab.n5.N5Exception;
 import org.janelia.saalfeldlab.n5.googlecloud.GoogleCloudStorageKeyValueAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -659,7 +660,7 @@ public class RenderTilesClient {
             if (!keyValueAccess.exists(uri.getPath())) {
                 try {
                     keyValueAccess.createDirectories(uri.getPath());
-                } catch (final IOException e) {
+                } catch (final N5Exception e) {
                     throw new RuntimeException("Could not create directory " + uri, e);
                 }
             }
