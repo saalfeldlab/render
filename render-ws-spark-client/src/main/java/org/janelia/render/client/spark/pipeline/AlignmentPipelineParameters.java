@@ -143,6 +143,10 @@ public class AlignmentPipelineParameters
         return pipelineStackGroups == null ? null : pipelineStackGroups.getIntensityCorrected();
     }
 
+    public StackIdNamingGroup getOtherNamingGroup() {
+        return pipelineStackGroups == null ? null : pipelineStackGroups.getOther();
+    }
+
     public List<AlignmentPipelineStepId> getPipelineSteps() {
         return pipelineSteps;
     }

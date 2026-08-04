@@ -10,6 +10,7 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.multisem.BeamCorrectionClient;
@@ -92,8 +93,14 @@ public class BeamCorrectionSparkClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final MultiProjectParameters multiProject =
-                pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
+        final StackIdNamingGroup otherNamingGroup = pipelineParameters.getOtherNamingGroup();
+        if (otherNamingGroup == null) {
+            throw new IllegalArgumentException(
+                    "The " + AlignmentPipelineStepId.CORRECT_BEAM_INTENSITY + " pipeline step requires that " +
+                    "an 'other' pipelineStackGroup is defined in the pipeline parameters.");
+        }
+
+        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(otherNamingGroup);
 
         correctBeamIntensity(sparkContext,
                              multiProject,

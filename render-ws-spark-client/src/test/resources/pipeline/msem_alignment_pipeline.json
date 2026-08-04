@@ -17,6 +17,9 @@
     },
     "intensityCorrected": {
       "stackPattern": "^c.*_ic$"
+    },
+    "other": {
+      "stackPattern": "^w61_s..._r.._gc$"
     }
   },
   "pipelineSteps": [
