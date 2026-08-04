@@ -82,6 +82,13 @@ public class BeamCorrectionParameters
             description = "Target stack name is the the source stack name with this suffix appended")
     public String targetStackSuffix = "_bc";
 
+    @Parameter(
+            names = "--overwriteSourceStack",
+            description = "Indicates that beam corrected tile specs should be written back to the source stack.  " +
+                          "When specified, this parameter will override the targetStackSuffix parameter.",
+            arity = 0)
+    public boolean overwriteSourceStack = false;
+
     public BeamCorrectionParameters() {
     }
 
@@ -108,6 +115,11 @@ public class BeamCorrectionParameters
                ", inverted=" + inverted +
                ", sfovLabelOffset=" + sfovLabelOffset +
                ", targetStackSuffix='" + targetStackSuffix + '\'' +
+               ", overwriteSourceStack=" + overwriteSourceStack +
                '}';
+    }
+
+    public String getTargetStack(final String sourceStack) {
+        return overwriteSourceStack ? sourceStack : sourceStack + targetStackSuffix;
     }
 }

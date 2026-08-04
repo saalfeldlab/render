@@ -128,8 +128,7 @@ public class BeamCorrectionClient {
 							 final BeamCorrectionParameters beam,
 							 final boolean completeStack) throws IOException {
 
-
-		final String targetStack = stack + beam.targetStackSuffix;
+		final String targetStack = beam.getTargetStack(stack);
 
 		try (final N5Reader reader = new N5Factory().openReader(StorageFormat.ZARR, beam.zarrPath)) {
 			LOG.info("correctStack: opened {} using {}", beam.zarrPath, reader.getClass().getSimpleName());
