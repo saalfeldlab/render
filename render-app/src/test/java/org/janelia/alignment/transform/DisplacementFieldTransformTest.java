@@ -17,7 +17,8 @@ import mpicbg.trakem2.transform.CoordinateTransform;
 public class DisplacementFieldTransformTest {
 
     private static final String SAMPLE_URI =
-            "file:///tmp/does-not-exist.n5?scaleIndex=3&zIndex=5&scaleX=8.0&scaleY=8.0";
+            "file:///tmp/does-not-exist.n5?zIndex=5&scaleX=8.0&scaleY=8.0&offsetX=100.0&offsetY=-50.0" +
+            "&vectorScale=2.0";
 
     @Test
     public void testDataStringRoundTrip() {
@@ -66,24 +67,40 @@ public class DisplacementFieldTransformTest {
                                               new long[] {0, 0, 0},
                                               (x, y, z, c) -> x + y + 10 * z + 100 * c);
 
-        // unscaled: full-resolution (1,1) reads field (1,1) of z-slice 1; vectors are negated (pull map) but
-        // otherwise used as stored
-        assertDisplacement(fieldDir, 0, 1, 1.0, new double[] {1.0, 1.0}, -12.0, -112.0);
+        // defaults only: scale 1 and offset 0 mean (1,1) reads field (1,1) of z-slice 1, and vector scale 1 means
+        // the stored vectors are used as-is apart from the pull-to-push negation
+        assertDisplacement(fieldDir, "zIndex=1", new double[] {1.0, 1.0}, -12.0, -112.0);
 
-        // xyScale 2 halves the query position (so (2,2) reads field (1,1)) and scaleIndex 2 quadruples the vectors
-        assertDisplacement(fieldDir, 2, 1, 2.0, new double[] {2.0, 2.0}, -12.0 * 4, -112.0 * 4);
+        // scale 2 halves the query position (so (2,2) reads field (1,1)) and vectorScale 4 quadruples the vectors
+        assertDisplacement(fieldDir, "zIndex=1&scaleX=2.0&scaleY=2.0&vectorScale=4.0",
+                           new double[] {2.0, 2.0}, -12.0 * 4, -112.0 * 4);
+
+        // offset shifts the query position, so (2,2) again reads field (1,1)
+        assertDisplacement(fieldDir, "zIndex=1&offsetX=1.0&offsetY=1.0",
+                           new double[] {2.0, 2.0}, -12.0, -112.0);
+
+        // x and y beyond the field are answered from the mirrored extension rather than failing; just past the last
+        // sample (the field is 4 wide, so x=3) the double-mirrored extension repeats that boundary value
+        assertDisplacement(fieldDir, "zIndex=1", new double[] {4.0, 1.0}, -14.0, -114.0);
+
+        // z is guarded instead, since an out-of-range slice would read outside the cached image
+        final DisplacementFieldTransform transform = new DisplacementFieldTransform();
+        try {
+            transform.init(fieldDir + "?zIndex=2");
+            Assert.fail("expected init to reject a z index outside the field");
+        } catch (final IllegalArgumentException e) {
+            Assert.assertTrue("exception should mention the z range, but was: " + e.getMessage(),
+                              e.getMessage().contains("z range"));
+        }
     }
 
     private static void assertDisplacement(final Path fieldDir,
-                                           final int scaleIndex,
-                                           final int zIndex,
-                                           final double xyScale,
+                                           final String queryString,
                                            final double[] location,
                                            final double expectedDx,
                                            final double expectedDy) {
 
-        final String data = fieldDir + "?scaleIndex=" + scaleIndex + "&zIndex=" + zIndex +
-                            "&scaleX=" + xyScale + "&scaleY=" + xyScale;
+        final String data = fieldDir + "?" + queryString;
         final DisplacementFieldTransform transform = new DisplacementFieldTransform();
         transform.init(data);
 
@@ -92,6 +109,19 @@ public class DisplacementFieldTransformTest {
                             location[0] + expectedDx, displaced[0], 0.0001);
         Assert.assertEquals("wrong y displacement for " + data,
                             location[1] + expectedDy, displaced[1], 0.0001);
+    }
+
+    @Test
+    public void testMisspelledParameterFails() {
+        // since everything but zIndex is optional, a typo would otherwise silently apply the default
+        final DisplacementFieldTransform transform = new DisplacementFieldTransform();
+        try {
+            transform.init("file:///tmp/does-not-exist.n5?zIndex=0&scalex=40.0");
+            Assert.fail("expected init to reject the misspelled parameter");
+        } catch (final IllegalArgumentException e) {
+            Assert.assertTrue("exception should name the offending parameter",
+                              e.getMessage().contains("scalex"));
+        }
     }
 
     @Test
