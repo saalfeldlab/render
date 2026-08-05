@@ -88,7 +88,7 @@ public class TileIdHackClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
-        final StackIdNamingGroup rawNamingGroup = pipelineParameters.getOtherNamingGroup();
+        final StackIdNamingGroup rawNamingGroup = pipelineParameters.getRawNamingGroup();
         if (rawNamingGroup == null) {
             throw new IllegalArgumentException(
                     "The " + AlignmentPipelineStepId.HACK_TILE_ID + " pipeline step requires that " +
