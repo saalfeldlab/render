@@ -6,11 +6,12 @@ import com.beust.jcommander.ParametersDelegate;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinTask;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
-import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.transform.DisplacementFieldTransform;
 import org.janelia.render.client.ClientRunner;
@@ -38,6 +39,8 @@ import org.slf4j.LoggerFactory;
  * command line or, if that is omitted, the stack bounds divided by the field dimensions and rounded to a whole
  * number. The transform's remaining parameters (offset and vector scale) are left at their defaults, which suit
  * SOFIMA output placed at the world origin with vectors already in full-resolution units.
+ * Layers are processed in order, but the tiles within a layer are processed by {@code --numThreads} threads, which is
+ * what parallelizes the field chunk reads that deriving the bounding boxes triggers.
  * If {@code --targetStack} is given, the modified tile specs are written there (the stack is derived from the source
  * if it does not yet exist); otherwise they are written back into the source stack. If {@code --completeTargetStack}
  * is set, the target stack is completed once all layers have been saved.
@@ -66,6 +69,8 @@ public class ImportSofimaClient {
 		private int zOffset = 0;
 		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after all layers have been saved")
 		private boolean completeTargetStack = false;
+		@Parameter(names = "--numThreads", description = "Number of tiles within a layer to process concurrently (default: 1)")
+		private int numThreads = 1;
 	}
 
 	public static void main(final String[] args) {
@@ -128,14 +133,14 @@ public class ImportSofimaClient {
 		final List<Double> zValues = renderClient.getStackZValues(params.stack,
 																  params.zRangeParams.minZ,
 																  params.zRangeParams.maxZ);
-		LOG.info("addDisplacementField: processing {} layers", zValues.size());
+		LOG.info("addDisplacementField: processing {} layers with {} threads", zValues.size(), params.numThreads);
 
-		for (int layerIndex = 0; layerIndex < zValues.size(); layerIndex++) {
-			final Double z = zValues.get(layerIndex);
-			final int fieldZIndex = params.zOffset + layerIndex;
-			final String dataString = buildDataString(fieldZIndex, xyScale);
-
-			addFieldToLayer(z, dataString, targetStack);
+		// One pool, reused for the tiles of each layer in turn (see addFieldToLayer for why tiles and not layers)
+		try (final ForkJoinPool pool = new ForkJoinPool(params.numThreads)) {
+			for (int layerIndex = 0; layerIndex < zValues.size(); layerIndex++) {
+				final String dataString = buildDataString(params.zOffset + layerIndex, xyScale);
+				addFieldToLayer(zValues.get(layerIndex), dataString, targetStack, pool);
+			}
 		}
 
 		// Complete the target stack
@@ -147,21 +152,29 @@ public class ImportSofimaClient {
 		LOG.info("addDisplacementField: exit");
 	}
 
+	/**
+	 * Adds the transform to every tile spec of one layer and saves them. Deriving a bounding box evaluates the
+	 * transform over the tile's footprint, so this is where the (blocking) field chunk reads happen. Tiles are the
+	 * natural axis to parallelize: they cover disjoint parts of the field, so concurrent tiles load disjoint chunks
+	 * and the round-trip latency of those reads overlaps.
+	 */
 	private void addFieldToLayer(final Double z,
 								 final String dataString,
-								 final String targetStack)
+								 final String targetStack,
+								 final ForkJoinPool pool)
 			throws IOException {
 
 		final ResolvedTileSpecCollection tileSpecs = renderClient.getResolvedTiles(params.stack, z);
 
-		for (final TileSpec tileSpec : tileSpecs.getTileSpecs()) {
-			final LeafTransformSpec transformSpec =
-					new LeafTransformSpec(DisplacementFieldTransform.class.getName(), dataString);
+		// Run the parallel stream inside the given pool. Balances the load internally
+		pool.invoke(ForkJoinTask.adapt(() -> tileSpecs.getTileSpecs().parallelStream().forEach(tileSpec -> {
+			final LeafTransformSpec transformSpec = new LeafTransformSpec(DisplacementFieldTransform.class.getName(), dataString);
 			tileSpec.addTransformSpecs(List.of(transformSpec));
 			tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
-		}
+		})));
 
 		renderClient.saveResolvedTiles(tileSpecs, targetStack, z);
+		LOG.info("addFieldToLayer: saved {} tile specs for z {}", tileSpecs.getTileCount(), z);
 	}
 
 	/**
