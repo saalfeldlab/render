@@ -21,6 +21,8 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.gson.GsonBuilder;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.util.HashMap;
@@ -30,8 +32,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 
 /**
- * Transform that reads a dense displacement (translation vector) field from a file on disk and adds the
- * interpolated vector at each queried location to that location.
+ * Transform that reads a dense displacement (translation vector) field from a file on disk and moves each queried
+ * location by the interpolated vector. Since the field is a pull map (see {@link #extractAndTransform}), the vector
+ * belongs to the target location, so applying the transform means inverting the field, which {@link #applyInPlace}
+ * does by fixed-point iteration.
  */
 public class DisplacementFieldTransform
         implements CoordinateTransform {
@@ -49,6 +53,9 @@ public class DisplacementFieldTransform
     // ImgLib2 accessor for the displacement field; null until a field source has been loaded.
     private RealRandomAccess<FloatType> displacementX;
 	private RealRandomAccess<FloatType> displacementY;
+
+	/** Whether this instance has already logged a non-converging inversion (see {@link #applyInPlace}). */
+	private boolean divergenceLogged = false;
 
     /**
      * Reflection constructor; leaves the instance uninitialized until {@link #init(String)} is called.
@@ -201,11 +208,9 @@ public class DisplacementFieldTransform
 				Views.interpolate(Views.extendMirrorDouble(slice), new NLinearInterpolatorFactory<>()),
 				fieldToWorld);
 
-		// Invert the pull map and scale the vectors to full resolution, folded into a single factor applied last
-		// (after interpolation) to keep the number of passes down.
-		// ponytail: negating is a first-order inverse, p - d(p) instead of solving t = p - d(t). Exact enough for
-		// the fields seen so far (Jacobian ~2e-4, so it is off by well under 0.01 px); switch to a fixed-point
-		// iteration if a field with steep gradients ever shows up.
+		// Negate the pull map and scale the vectors to full resolution, folded into a single factor applied last
+		// (after interpolation) to keep the number of passes down. Negating alone only flips the vectors; the
+		// actual inversion (evaluating them at the target rather than the source) happens in applyInPlace.
 		final double pullToPushScale = -this.vectorScale;
 		return Converters.convert(
 				scaledAndInterpolated,
@@ -228,11 +233,45 @@ public class DisplacementFieldTransform
                     "displacement field has not been loaded; call init(String) before applying this transform");
         }
 
-        // Query both components at the original (undisplaced) location before mutating it.
-        final double dx = displacementX.setPositionAndGet(location).getRealDouble();
-        final double dy = displacementY.setPositionAndGet(location).getRealDouble();
-        location[0] += dx;
-        location[1] += dy;
+        // The (negated) field vector belongs to the target location, not to the queried source location, so the
+        // target solves t = source + d(t). Iterate t <- source + d(t) from t = source; this converges (linearly,
+        // at the rate of the field's Jacobian norm) for any field whose Jacobian norm stays below one, which is
+        // the same condition under which the field is invertible at all.
+        final double[] target = { location[0], location[1] };
+        final double[] vector = new double[2];
+        double step = Double.POSITIVE_INFINITY;
+        for (int i = 0; (i < MAX_INVERSION_ITERATIONS) && (step > INVERSION_TOLERANCE); i++) {
+            lookUpVector(target, vector);
+            final double x = location[0] + vector[0];
+            final double y = location[1] + vector[1];
+            step = Math.max(Math.abs(x - target[0]), Math.abs(y - target[1]));
+            target[0] = x;
+            target[1] = y;
+        }
+
+        // A non-invertible (or very steep) field may still be off by more than the tolerance after the iteration
+        // cap. The last estimate is used rather than failing a whole render, but it is logged once per instance
+        // (instances are per tile spec, so logging every occurrence would flood the log with a line per pixel).
+        if ((step > INVERSION_TOLERANCE) && (! divergenceLogged)) {
+            divergenceLogged = true;
+            LOG.warn("applyInPlace: inversion did not converge within {} iterations at ({}, {}) for field {}; " +
+                     "residual step is {} px and the last estimate is used. Further occurrences for this " +
+                     "transform instance are not logged.",
+                     MAX_INVERSION_ITERATIONS, location[0], location[1], toDataString(), step);
+        }
+
+        location[0] = target[0];
+        location[1] = target[1];
+    }
+
+    /**
+     * Looks up the interpolated field vector (already negated and scaled to full resolution) at a world location.
+     * Package private so that tests can check the field placement on its own, separately from the inversion.
+     */
+    void lookUpVector(final double[] location,
+                      final double[] vector) {
+        vector[0] = displacementX.setPositionAndGet(location).getRealDouble();
+        vector[1] = displacementY.setPositionAndGet(location).getRealDouble();
     }
 
     /**
@@ -308,9 +347,15 @@ public class DisplacementFieldTransform
                ", \"vectorScale\": " + vectorScale + " }";
     }
 
+    private static final Logger LOG = LoggerFactory.getLogger(DisplacementFieldTransform.class);
+
     private static final double DEFAULT_SCALE = 1.0;
     private static final double DEFAULT_OFFSET = 0.0;
     private static final double DEFAULT_VECTOR_SCALE = 1.0;
+
+    /** Full-resolution pixels of movement below which the inversion in {@link #applyInPlace} is considered done. */
+    private static final double INVERSION_TOLERANCE = 1e-4;
+    private static final int MAX_INVERSION_ITERATIONS = 20;
 
     private static final Set<String> VALID_PARAMETERS =
             Set.of("zIndex", "scaleX", "scaleY", "offsetX", "offsetY", "vectorScale");

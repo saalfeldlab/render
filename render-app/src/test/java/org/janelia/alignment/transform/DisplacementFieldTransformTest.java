@@ -1,6 +1,7 @@
 package org.janelia.alignment.transform;
 
 import java.nio.file.Path;
+import java.util.Arrays;
 
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.precomputed.PrecomputedTestVolumes;
@@ -104,11 +105,53 @@ public class DisplacementFieldTransformTest {
         final DisplacementFieldTransform transform = new DisplacementFieldTransform();
         transform.init(data);
 
-        final double[] displaced = transform.apply(location);
-        Assert.assertEquals("wrong x displacement for " + data,
-                            location[0] + expectedDx, displaced[0], 0.0001);
-        Assert.assertEquals("wrong y displacement for " + data,
-                            location[1] + expectedDy, displaced[1], 0.0001);
+        // the raw lookup, not apply(): apply() inverts the field, which would move the query off the position
+        // whose placement is under test here (and this steep test field is not invertible anyway)
+        final double[] vector = new double[2];
+        transform.lookUpVector(location, vector);
+        Assert.assertEquals("wrong x displacement for " + data, expectedDx, vector[0], 0.0001);
+        Assert.assertEquals("wrong y displacement for " + data, expectedDy, vector[1], 0.0001);
+    }
+
+    /**
+     * The field is a pull map, so applying it means solving {@code t = p + d(t)} rather than evaluating {@code d}
+     * at {@code p}. Uses a field with displacement {@code -0.2*(x,y)}, whose exact fixed point is {@code p/1.2} —
+     * clearly apart from the first-order answer {@code 0.8*p}.
+     */
+    @Test
+    public void testInvertsFieldByIteration() throws Exception {
+
+        final Path fieldDir = tempFolder.newFolder("rampField").toPath();
+        PrecomputedTestVolumes.writeRawVolume(fieldDir,
+                                              DataType.FLOAT32,
+                                              2,
+                                              new long[] {64, 48, 1},
+                                              new int[] {64, 48, 1},
+                                              new long[] {0, 0, 0},
+                                              (x, y, z, c) -> (c == 0) ? x : y);
+
+        // vectorScale carries the 0.2 because the test volume can only hold whole numbers
+        final DisplacementFieldTransform transform = new DisplacementFieldTransform();
+        transform.init(fieldDir + "?zIndex=0&vectorScale=0.2");
+
+        final double[] target = transform.apply(new double[] {24.0, 12.0});
+        Assert.assertEquals("x should solve t = 24 - 0.2 * t", 20.0, target[0], 0.001);
+        Assert.assertEquals("y should solve t = 12 - 0.2 * t", 10.0, target[1], 0.001);
+
+        // the defining property, independent of the analytic solution above
+        final double[] vector = new double[2];
+        transform.lookUpVector(target, vector);
+        Assert.assertEquals("x residual", 0.0, 24.0 + vector[0] - target[0], 0.001);
+        Assert.assertEquals("y residual", 0.0, 12.0 + vector[1] - target[1], 0.001);
+
+        // the same field at vectorScale 2 is not invertible (Jacobian norm 2), so the iteration hits its cap:
+        // that must warn and return the last estimate rather than throw or hand back a non-number
+        final DisplacementFieldTransform steep = new DisplacementFieldTransform();
+        steep.init(fieldDir + "?zIndex=0&vectorScale=2.0");
+        final double[] estimate = steep.apply(new double[] {24.0, 12.0});
+        Assert.assertTrue("a non-converging inversion should still return numbers, but was " +
+                          Arrays.toString(estimate),
+                          Double.isFinite(estimate[0]) && Double.isFinite(estimate[1]));
     }
 
     @Test
