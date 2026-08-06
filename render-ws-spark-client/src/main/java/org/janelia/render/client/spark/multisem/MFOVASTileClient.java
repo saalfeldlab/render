@@ -592,8 +592,6 @@ public class MFOVASTileClient
         final MFOVAsTileParameters mfovAsTile = mfovAsTileStackLists.getMfovAsTile();
         final AffineBlockSolverSetup translationSetup =
                 mfovAsTile.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.TRANSLATION);
-        final AffineBlockSolverSetup affineSetup =
-                mfovAsTile.buildMfovAffineBlockSolverSetup(MFOVAsTileParameters.SolveType.AFFINE);
 
         final boolean deriveMatchCollectionNamesFromProject = false; // use standard stack-based match collection names
         final String matchSuffix = "";                               // without any suffix
@@ -613,10 +611,6 @@ public class MFOVASTileClient
                                                                   renderedMfovStackWithAllZ,
                                                                   deriveMatchCollectionNamesFromProject,
                                                                   matchSuffix));
-                setupList.add(affineSetup.buildPipelineClone(baseDataUrl,
-                                                             renderedMfovStackWithAllZ,
-                                                             deriveMatchCollectionNamesFromProject,
-                                                             matchSuffix));
             }
         }
 
