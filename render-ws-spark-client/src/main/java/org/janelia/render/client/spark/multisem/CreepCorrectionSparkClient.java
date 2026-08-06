@@ -19,6 +19,7 @@ import org.apache.spark.broadcast.Broadcast;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
@@ -119,9 +120,15 @@ public class CreepCorrectionSparkClient
     public void runPipelineStep(final JavaSparkContext sparkContext,
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
-        
-        final MultiProjectParameters multiProject =
-                pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
+
+        final StackIdNamingGroup rawNamingGroup = pipelineParameters.getRawNamingGroup();
+        if (rawNamingGroup == null) {
+            throw new IllegalArgumentException(
+                    "The " + AlignmentPipelineStepId.CORRECT_CREEP + " pipeline step requires that " +
+                    "a 'raw' pipelineStackGroup is defined in the pipeline parameters.");
+        }
+
+        final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(rawNamingGroup);
 
         for (final StackWithZValues stackWithAllZ : multiProject.buildListOfStackWithAllZ()) {
             correctCreep(sparkContext,
