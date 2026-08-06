@@ -126,7 +126,7 @@ public class MFOVASTileClient
         if (otherNamingGroup == null) {
             throw new IllegalArgumentException(
                     "The " + AlignmentPipelineStepId.MFOV_AS_TILE + " pipeline step requires that " +
-                    "a 'raw' pipelineStackGroup is defined in the pipeline parameters.");
+                    "an 'other' pipelineStackGroup is defined in the pipeline parameters.");
         }
 
         clientParameters.multiProject = pipelineParameters.getMultiProject(otherNamingGroup);
