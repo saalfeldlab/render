@@ -151,8 +151,6 @@ public class CreepCorrectionSparkClient
 
         final String sourceStack = sourceStackId.getStack();
         final String targetStack = creepCorrection.getTargetStack(sourceStack);
-        final MatchCollectionId targetMatchCollectionId = new MatchCollectionId(matchCollectionId.getOwner(),
-                                                                                targetStack + "_match");
 
         final RenderDataClient sourceDataClient = new RenderDataClient(baseDataUrl,
                                                                        sourceStackId.getOwner(),
@@ -214,8 +212,16 @@ public class CreepCorrectionSparkClient
         sourceDataClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
 
         // Phase 2: transform matches
-        if (! creepCorrection.skipMatchCorrection) {
+        if (creepCorrection.overwriteMatchData()) {
+
+            transformMatches(sparkContext, baseDataUrl, matchCollectionId, matchCollectionId, allResults);
+
+        } else if (creepCorrection.writeMatchDataToTargetCollection()) {
+
+            final MatchCollectionId targetMatchCollectionId = new MatchCollectionId(matchCollectionId.getOwner(),
+                                                                                    targetStack + "_match");
             transformMatches(sparkContext, baseDataUrl, matchCollectionId, targetMatchCollectionId, allResults);
+
         } else {
             LOG.info("correctCreep: skipping match correction");
         }

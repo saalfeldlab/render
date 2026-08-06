@@ -15,6 +15,12 @@ import java.util.List;
 public class CreepCorrectionParameters
         implements Serializable {
 
+    public enum MatchCorrectionType {
+        OVERWRITE_SOURCE,
+        WRITE_TO_TARGET,
+        SKIP
+    }
+
     @Parameter(
             names = "--creepTargetStackSuffix",
             description = "Target stack name is the the source stack name with this suffix appended")
@@ -31,9 +37,9 @@ public class CreepCorrectionParameters
     public Double maxZ;
 
     @Parameter(
-            names = "--skipMatchCorrection",
-            description = "Skip transforming match coordinates (default is to transform them)")
-    public boolean skipMatchCorrection = false;
+            names = "--matchCorrectionType",
+            description = "Type of match correction")
+    public MatchCorrectionType matchCorrectionType = MatchCorrectionType.WRITE_TO_TARGET;
 
     @Parameter(
             names = "--parameterCsvDir",
@@ -43,6 +49,14 @@ public class CreepCorrectionParameters
     public String parameterCsvDir;
 
     public CreepCorrectionParameters() {
+    }
+
+    public boolean overwriteMatchData() {
+        return matchCorrectionType == MatchCorrectionType.OVERWRITE_SOURCE;
+    }
+
+    public boolean writeMatchDataToTargetCollection() {
+        return matchCorrectionType == MatchCorrectionType.WRITE_TO_TARGET;
     }
 
     public void validate()
@@ -65,7 +79,7 @@ public class CreepCorrectionParameters
         return "{targetStackSuffix='" + targetStackSuffix + '\'' +
                ", minZ=" + minZ +
                ", maxZ=" + maxZ +
-               ", skipMatchCorrection=" + skipMatchCorrection +
+               ", matchCorrectionType=" + matchCorrectionType +
                ", parameterCsvDir='" + parameterCsvDir + '\'' +
                '}';
     }
