@@ -154,7 +154,7 @@ public class LayerAsTileClient
 
         final List<StackWithZValues> align2DSfovStacksWithAllZ = layerAsTileStackLists.getAlign2DSfovStacksWithAllZ();
 
-        final int parallelism = Math.min(MFOVASTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER, align2DSfovStacksWithAllZ.size());
+        final int parallelism = Math.min(MFOVAsTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER, align2DSfovStacksWithAllZ.size());
 
         LOG.info("buildDynamicLayerAsTileStacks: entry, distributing build of {} stack(s) with parallelism {} (defaultParallelism={})",
                  align2DSfovStacksWithAllZ.size(), parallelism, sparkContext.defaultParallelism());
@@ -252,7 +252,7 @@ public class LayerAsTileClient
 
         if (! layerClientInfoList.isEmpty()) {
 
-            final int parallelism = Math.min(MFOVASTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER, layerClientInfoList.size());
+            final int parallelism = Math.min(MFOVAsTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER, layerClientInfoList.size());
 
             LOG.info("buildRenderedLayerAsTileStacks: distributing rendering for {} layers with parallelism {} (defaultParallelism={})",
                      layerClientInfoList.size(), parallelism, sparkContext.defaultParallelism());
@@ -409,7 +409,7 @@ public class LayerAsTileClient
 
         if (! rawSfovStacksNeedingAlign3DStack.isEmpty()) {
 
-            final int parallelism = Math.min(MFOVASTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER, rawSfovStacksNeedingAlign3DStack.size());
+            final int parallelism = Math.min(MFOVAsTileClient.MAX_PARTITIONS_FOR_ONE_WEB_SERVER, rawSfovStacksNeedingAlign3DStack.size());
 
             LOG.info("buildAlign3DSfovStacks: distributing build of {} stack(s) with parallelism {} (defaultParallelism={})",
                      rawSfovStacksNeedingAlign3DStack.size(), parallelism, sparkContext.defaultParallelism());

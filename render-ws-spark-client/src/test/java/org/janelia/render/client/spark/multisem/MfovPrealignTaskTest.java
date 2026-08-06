@@ -80,8 +80,8 @@ public class MfovPrealignTaskTest {
         final StackId renderedMfovStackId = dynamicMfovStackId.withStackSuffix(mfovAsTile.getRenderedMfovStackSuffix());
         final String runTimestamp = new TileRenderParameters().getRunTimestamp();
 
-        final MFOVASTileClient.JavaRenderTilesClientInfoForLayerMfov z17Info =
-                new MFOVASTileClient.JavaRenderTilesClientInfoForLayerMfov(baseDataUrl,
+        final MFOVAsTileClient.JavaRenderTilesClientInfoForLayerMfov z17Info =
+                new MFOVAsTileClient.JavaRenderTilesClientInfoForLayerMfov(baseDataUrl,
                                                                            dynamicMfovStackId,
                                                                            z17LayerMfov,
                                                                            mfovAsTile,
@@ -89,8 +89,8 @@ public class MfovPrealignTaskTest {
         z17Info.setupHackStackAndStorage();
         z17Info.renderTiles();
 
-        final MFOVASTileClient.JavaRenderTilesClientInfoForLayerMfov z18Info =
-                new MFOVASTileClient.JavaRenderTilesClientInfoForLayerMfov(baseDataUrl,
+        final MFOVAsTileClient.JavaRenderTilesClientInfoForLayerMfov z18Info =
+                new MFOVAsTileClient.JavaRenderTilesClientInfoForLayerMfov(baseDataUrl,
                                                                            dynamicMfovStackId,
                                                                            z18LayerMfov,
                                                                            mfovAsTile,

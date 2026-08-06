@@ -61,7 +61,7 @@ import jakarta.annotation.Nonnull;
 /**
  * Spark client for ...
  */
-public class MFOVASTileClient
+public class MFOVAsTileClient
         implements Serializable, AlignmentPipelineStep {
 
     public static class Parameters extends CommandLineParameters {
@@ -88,7 +88,7 @@ public class MFOVASTileClient
             public void runClient(final String[] args) throws Exception {
                 final Parameters parameters = new Parameters();
                 parameters.parse(args);
-                final MFOVASTileClient client = new MFOVASTileClient();
+                final MFOVAsTileClient client = new MFOVAsTileClient();
                 client.createContextAndRun(parameters);
             }
         };
@@ -96,7 +96,7 @@ public class MFOVASTileClient
     }
 
     /** Empty constructor required for alignment pipeline steps. */
-    public MFOVASTileClient() {
+    public MFOVAsTileClient() {
     }
 
     /** Create a spark context and run the client with the specified parameters. */
@@ -842,5 +842,5 @@ public class MFOVASTileClient
 
     public static final int MAX_PARTITIONS_FOR_ONE_WEB_SERVER = 100000;
 
-    private static final Logger LOG = LoggerFactory.getLogger(MFOVASTileClient.class);
+    private static final Logger LOG = LoggerFactory.getLogger(MFOVAsTileClient.class);
 }
