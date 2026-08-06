@@ -29,6 +29,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
@@ -120,7 +121,15 @@ public class MFOVASTileClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
         final Parameters clientParameters = new Parameters();
-        clientParameters.multiProject = pipelineParameters.getMultiProject(pipelineParameters.getRawNamingGroup());
+
+        final StackIdNamingGroup otherNamingGroup = pipelineParameters.getOtherNamingGroup();
+        if (otherNamingGroup == null) {
+            throw new IllegalArgumentException(
+                    "The " + AlignmentPipelineStepId.MFOV_AS_TILE + " pipeline step requires that " +
+                    "a 'raw' pipelineStackGroup is defined in the pipeline parameters.");
+        }
+
+        clientParameters.multiProject = pipelineParameters.getMultiProject(otherNamingGroup);
         clientParameters.mfovAsTile = pipelineParameters.getMfovAsTile();
         run(sparkContext, clientParameters);
     }
