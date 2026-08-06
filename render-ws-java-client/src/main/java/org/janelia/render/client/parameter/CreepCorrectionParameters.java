@@ -17,6 +17,7 @@ public class CreepCorrectionParameters
 
     public enum MatchCorrectionType {
         OVERWRITE_SOURCE,
+        OVERWRITE_SOURCE_AND_RENAME_AS_TARGET,
         WRITE_TO_TARGET,
         SKIP
     }
@@ -51,8 +52,16 @@ public class CreepCorrectionParameters
     public CreepCorrectionParameters() {
     }
 
+    public boolean correctMatches() {
+        return matchCorrectionType != MatchCorrectionType.SKIP;
+    }
+
     public boolean overwriteMatchData() {
         return matchCorrectionType == MatchCorrectionType.OVERWRITE_SOURCE;
+    }
+
+    public boolean overwriteMatchDataAndRenameAsTarget() {
+        return matchCorrectionType == MatchCorrectionType.OVERWRITE_SOURCE_AND_RENAME_AS_TARGET;
     }
 
     public boolean writeMatchDataToTargetCollection() {

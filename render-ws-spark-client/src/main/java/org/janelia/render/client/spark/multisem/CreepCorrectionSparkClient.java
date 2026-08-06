@@ -212,15 +212,44 @@ public class CreepCorrectionSparkClient
         sourceDataClient.setStackState(targetStack, StackMetaData.StackState.COMPLETE);
 
         // Phase 2: transform matches
-        if (creepCorrection.overwriteMatchData()) {
+        if (creepCorrection.correctMatches()) {
 
-            transformMatches(sparkContext, baseDataUrl, matchCollectionId, matchCollectionId, allResults);
-
-        } else if (creepCorrection.writeMatchDataToTargetCollection()) {
+            final RenderDataClient driverMatchClient = new RenderDataClient(baseDataUrl,
+                                                                            matchCollectionId.getOwner(),
+                                                                            matchCollectionId.getName());
 
             final MatchCollectionId targetMatchCollectionId = new MatchCollectionId(matchCollectionId.getOwner(),
                                                                                     targetStack + "_match");
-            transformMatches(sparkContext, baseDataUrl, matchCollectionId, targetMatchCollectionId, allResults);
+
+            if (creepCorrection.overwriteMatchData()) {
+
+                transformMatches(sparkContext,
+                                 driverMatchClient,
+                                 baseDataUrl,
+                                 matchCollectionId,
+                                 matchCollectionId,
+                                 allResults);
+
+            } else if (creepCorrection.overwriteMatchDataAndRenameAsTarget()) {
+
+                transformMatches(sparkContext,
+                                 driverMatchClient,
+                                 baseDataUrl,
+                                 matchCollectionId,
+                                 matchCollectionId,
+                                 allResults);
+
+                driverMatchClient.renameMatchCollection(targetMatchCollectionId);
+
+            } else if (creepCorrection.writeMatchDataToTargetCollection()) {
+
+                transformMatches(sparkContext,
+                                 driverMatchClient,
+                                 baseDataUrl,
+                                 matchCollectionId,
+                                 targetMatchCollectionId,
+                                 allResults);
+            }
 
         } else {
             LOG.info("correctCreep: skipping match correction");
@@ -230,15 +259,12 @@ public class CreepCorrectionSparkClient
     }
 
     private void transformMatches(final JavaSparkContext sparkContext,
+                                  final RenderDataClient driverMatchClient,
                                   final String baseDataUrl,
                                   final MatchCollectionId matchCollectionId,
                                   final MatchCollectionId targetMatchCollectionId,
                                   final Map<String, List<MfovResult>> allResults)
             throws IOException {
-
-        final RenderDataClient driverMatchClient = new RenderDataClient(baseDataUrl,
-                                                                        matchCollectionId.getOwner(),
-                                                                        matchCollectionId.getName());
 
         final List<String> pGroupIds = driverMatchClient.getMatchPGroupIds();
 
