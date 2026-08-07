@@ -191,8 +191,8 @@ public class MfovPrealignTask implements Serializable {
                 final Rectangle2D rectJ = new Rectangle2D.Double(tj.getMinX(), tj.getMinY(), tj.getWidth(), tj.getHeight());
 
                 if (rectI.intersects(rectJ)) {
-                    final CanvasId canvasIdI = new CanvasId(ti.getGroupId(), ti.getTileId());
-                    final CanvasId canvasIdJ = new CanvasId(tj.getGroupId(), tj.getTileId());
+                    final CanvasId canvasIdI = new CanvasId(ti.getZ().toString(), ti.getTileId());
+                    final CanvasId canvasIdJ = new CanvasId(tj.getZ().toString(), tj.getTileId());
                     pairs.add(new OrderedCanvasIdPair(canvasIdI, canvasIdJ, 0.0));
                 }
             }
