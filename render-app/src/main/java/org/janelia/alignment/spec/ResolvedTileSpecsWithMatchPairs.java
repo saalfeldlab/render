@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.multisem.MultiSemUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -157,6 +158,29 @@ public class ResolvedTileSpecsWithMatchPairs
                  maxZDistance, matchPairs.size(), countMsg, normalizedMatchPairs.size());
 
         this.matchPairs = normalizedMatchPairs;
+    }
+
+    /**
+     * Remove any match pairs where the pTile is in a different MFOV from the qTile.
+     */
+    public void removeMatchPairsWithDifferentMFOVs() {
+
+        final Set<CanvasMatches> sameMFOVMatchPairs = new HashSet<>(matchPairs.size());
+
+        for (final CanvasMatches pair : matchPairs) {
+            final TileSpec pTileSpec = resolvedTileSpecs.getTileSpec(pair.getpId());
+            final TileSpec qTileSpec = resolvedTileSpecs.getTileSpec(pair.getqId());
+            if ((pTileSpec != null) && (qTileSpec != null)) {
+                final String pMFOV = MultiSemUtilities.getSimpleMfovForTileId(pTileSpec.getTileId());
+                final String qMFOV = MultiSemUtilities.getSimpleMfovForTileId(qTileSpec.getTileId());
+                if (pMFOV.equals(qMFOV)) {
+                    sameMFOVMatchPairs.add(pair);
+                }
+            }
+        }
+
+        // pairs from web service are not sorted, so sort here to make usage loops more intuitive
+        this.matchPairs = sameMFOVMatchPairs.stream().sorted().collect(Collectors.toList());
     }
 
     public static ResolvedTileSpecsWithMatchPairs fromJson(final Reader json) {
