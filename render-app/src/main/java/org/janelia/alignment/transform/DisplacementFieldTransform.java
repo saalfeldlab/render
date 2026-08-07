@@ -43,8 +43,8 @@ public class DisplacementFieldTransform
     /** URI (as supplied to {@link #init}) identifying the field on disk and its world-coordinate mapping. */
     private String fieldSourceUri;
 	private int fieldZIndex;
-	/** Full-resolution pixels per field pixel in x and y. */
-	private double[] xyScale;
+	/** Full-resolution pixels per field pixel; the same in x and y. */
+	private double scale;
 	/** World coordinate that field index 0 maps to, in x and y. */
 	private double[] offset;
 	/** Full-resolution pixels per unit of stored vector. */
@@ -63,7 +63,7 @@ public class DisplacementFieldTransform
     public DisplacementFieldTransform() {
         this.fieldSourceUri = null;
 		this.fieldZIndex = -1;
-		this.xyScale = new double[] { DEFAULT_SCALE, DEFAULT_SCALE };
+		this.scale = DEFAULT_SCALE;
 		this.offset = new double[] { DEFAULT_OFFSET, DEFAULT_OFFSET };
 		this.vectorScale = DEFAULT_VECTOR_SCALE;
 
@@ -76,7 +76,7 @@ public class DisplacementFieldTransform
      *
      * @param  fieldSourceUri  URI locating the field on disk (see class Javadoc for format).
 	 * @param  fieldZIndex  The z-slice index of the field to use (the field may be 3D, but this transform is 2D)
-	 * @param  xyScale  Full-resolution pixels per field pixel in x and y (1 leaves the field at full resolution)
+	 * @param  scale  Full-resolution pixels per field pixel, in x and y alike (1 leaves the field at full resolution)
 	 * @param  offset  World coordinate that field index 0 maps to, in x and y (0 puts the field at the world origin)
 	 * @param  vectorScale  Full-resolution pixels per unit of stored vector (1 for vectors already in
 	 *                      full-resolution units, which is what SOFIMA emits)
@@ -86,20 +86,20 @@ public class DisplacementFieldTransform
      */
     public DisplacementFieldTransform(final String fieldSourceUri,
                                       final int fieldZIndex,
-                                      final double[] xyScale,
+                                      final double scale,
                                       final double[] offset,
                                       final double vectorScale) {
-		this.init(fieldSourceUri, fieldZIndex, xyScale, offset, vectorScale);
+		this.init(fieldSourceUri, fieldZIndex, scale, offset, vectorScale);
     }
 
 	private void init(final String fieldSourceUri,
 					  final int fieldZIndex,
-	                  final double[] xyScale,
+	                  final double scale,
 	                  final double[] offset,
 					  final double vectorScale) {
 		this.fieldSourceUri = fieldSourceUri;
 		this.fieldZIndex = fieldZIndex;
-		this.xyScale = xyScale;
+		this.scale = scale;
 		this.offset = offset;
 		this.vectorScale = vectorScale;
 
@@ -115,7 +115,7 @@ public class DisplacementFieldTransform
 		// z would read outside the cached image, which is undefined rather than merely inaccurate.
 		if ((fieldZIndex < 0) || (fieldZIndex >= fieldRaw.dimension(2))) {
 			throw new IllegalArgumentException(
-					"zIndex " + fieldZIndex + " is outside the z range [0, " + fieldRaw.dimension(2) +
+					"z " + fieldZIndex + " is outside the z range [0, " + fieldRaw.dimension(2) +
 					") of the field at " + fieldSourceUri);
 		}
 
@@ -199,11 +199,11 @@ public class DisplacementFieldTransform
 		final RandomAccessibleInterval<FloatType> slice = Views.hyperSlice(
 				Views.hyperSlice(cleaned, 3, xory), 2, this.fieldZIndex);
 
-		// Place the slice in world coordinates: field index 0 lands on offset, one field pixel spans xyScale
-		// full-resolution pixels, so a query at p reads the field at (p - offset) / xyScale.
+		// Place the slice in world coordinates: field index 0 lands on offset, one field pixel spans scale
+		// full-resolution pixels, so a query at p reads the field at (p - offset) / scale.
 		final AffineTransform2D fieldToWorld = new AffineTransform2D();
-		fieldToWorld.set(this.xyScale[0], 0, this.offset[0],
-						 0, this.xyScale[1], this.offset[1]);
+		fieldToWorld.set(this.scale, 0, this.offset[0],
+						 0, this.scale, this.offset[1]);
 		final RealRandomAccessible<FloatType> scaledAndInterpolated = RealViews.affine(
 				Views.interpolate(Views.extendMirrorDouble(slice), new NLinearInterpolatorFactory<>()),
 				fieldToWorld);
@@ -278,10 +278,10 @@ public class DisplacementFieldTransform
      * Initializes this transform by parsing the data string and loading the field into an imglib2 image.
      * <p>
      * The data string is the field source URI followed by {@code ?key=value} query parameters, e.g.
-     * {@code file:///path/to/field.n5?zIndex=5&scaleX=40.0&scaleY=40.0}. The portion before the {@code ?}
+     * {@code file:///path/to/field.n5?z=5&scale=40.0&offset=-5318.0,-783.0}. The portion before the {@code ?}
      * becomes the {@link #fieldSourceUri} (the actual path); the query parameters supply the remaining fields.
-     * Only {@code zIndex} is required; everything else defaults to the identity placement
-     * ({@code scaleX=scaleY=vectorScale=1}, {@code offsetX=offsetY=0}). Unknown parameters are rejected so
+     * Only {@code z} is required; everything else defaults to the identity placement
+     * ({@code scale=vectorScale=1}, {@code offset=0,0}). Unknown parameters are rejected so
      * that a misspelled one cannot silently fall back to its default.
      *
      * @param  data  field source URI with query parameters (see above).
@@ -296,8 +296,8 @@ public class DisplacementFieldTransform
         final int queryStart = trimmed.indexOf('?');
         if (queryStart < 0) {
             throw new IllegalArgumentException(
-                    "transform data must be a field source URI followed by '?zIndex=<int>' and optionally " +
-                    "'&scaleX=<double>&scaleY=<double>&offsetX=<double>&offsetY=<double>&vectorScale=<double>', " +
+                    "transform data must be a field source URI followed by '?z=<int>' and optionally " +
+                    "'&scale=<double>&offset=<double>,<double>&vectorScale=<double>', " +
                     "but was '" + data + "'");
         }
 
@@ -305,11 +305,9 @@ public class DisplacementFieldTransform
         final Map<String, String> params = parseQueryParameters(trimmed.substring(queryStart + 1), data);
 
         init(parsedSourceUri,
-             parseIntParameter(params, "zIndex", data),
-             new double[] { parseDoubleParameter(params, "scaleX", DEFAULT_SCALE, data),
-                            parseDoubleParameter(params, "scaleY", DEFAULT_SCALE, data) },
-             new double[] { parseDoubleParameter(params, "offsetX", DEFAULT_OFFSET, data),
-                            parseDoubleParameter(params, "offsetY", DEFAULT_OFFSET, data) },
+             parseIntParameter(params, "z", data),
+             parseDoubleParameter(params, "scale", DEFAULT_SCALE, data),
+             parseDoublePairParameter(params, "offset", DEFAULT_OFFSET, data),
              parseDoubleParameter(params, "vectorScale", DEFAULT_VECTOR_SCALE, data));
     }
 
@@ -324,25 +322,23 @@ public class DisplacementFieldTransform
         // Writes every parameter, including any left at its default, so a persisted string keeps its meaning
         // even if a default ever changes.  Callers building a string by hand may omit the defaulted ones.
         return fieldSourceUri +
-               "?zIndex=" + fieldZIndex +
-               "&scaleX=" + xyScale[0] +
-               "&scaleY=" + xyScale[1] +
-               "&offsetX=" + offset[0] +
-               "&offsetY=" + offset[1] +
+               "?z=" + fieldZIndex +
+               "&scale=" + scale +
+               "&offset=" + offset[0] + "," + offset[1] +
                "&vectorScale=" + vectorScale;
     }
 
     @Override
     public CoordinateTransform copy() {
         // Re-loads the field so the copy has independent accessors (imglib2 accessors are not thread-safe).
-        return new DisplacementFieldTransform(fieldSourceUri, fieldZIndex, xyScale.clone(), offset.clone(), vectorScale);
+        return new DisplacementFieldTransform(fieldSourceUri, fieldZIndex, scale, offset.clone(), vectorScale);
     }
 
     @Override
     public String toString() {
         return "{ \"fieldSourceUri\": \"" + fieldSourceUri +
                "\", \"fieldZIndex\": " + fieldZIndex +
-               ", \"xyScale\": [" + xyScale[0] + ", " + xyScale[1] + "]" +
+               ", \"scale\": " + scale +
                ", \"offset\": [" + offset[0] + ", " + offset[1] + "]" +
                ", \"vectorScale\": " + vectorScale + " }";
     }
@@ -357,8 +353,7 @@ public class DisplacementFieldTransform
     private static final double INVERSION_TOLERANCE = 1e-4;
     private static final int MAX_INVERSION_ITERATIONS = 20;
 
-    private static final Set<String> VALID_PARAMETERS =
-            Set.of("zIndex", "scaleX", "scaleY", "offsetX", "offsetY", "vectorScale");
+    private static final Set<String> VALID_PARAMETERS = Set.of("z", "scale", "offset", "vectorScale");
 
     private static Map<String, String> parseQueryParameters(final String query, final String data) {
         final Map<String, String> params = new HashMap<>();
@@ -373,7 +368,7 @@ public class DisplacementFieldTransform
             }
             final String key = pair.substring(0, eq);
             if (! VALID_PARAMETERS.contains(key)) {
-                // Everything but zIndex is optional, so a typo would otherwise silently use the default.
+                // Everything but z is optional, so a typo would otherwise silently use the default.
                 throw new IllegalArgumentException(
                         "unknown query parameter '" + key + "' in transform data '" + data +
                         "'; supported parameters are " + VALID_PARAMETERS);
@@ -407,6 +402,30 @@ public class DisplacementFieldTransform
         } catch (final NumberFormatException e) {
             throw new IllegalArgumentException(
                     "invalid double value '" + value + "' for parameter '" + key +
+                    "' in transform data '" + data + "'", e);
+        }
+    }
+
+    /** Parses a {@code key=<x>,<y>} pair; both components fall back to {@code defaultValue} if the key is absent. */
+    private static double[] parseDoublePairParameter(final Map<String, String> params,
+                                                     final String key,
+                                                     final double defaultValue,
+                                                     final String data) {
+        final String value = params.get(key);
+        if (value == null) {
+            return new double[] { defaultValue, defaultValue };
+        }
+        final String[] components = value.split(",");
+        if (components.length != 2) {
+            throw new IllegalArgumentException(
+                    "parameter '" + key + "' must be two comma separated numbers, but was '" + value +
+                    "' in transform data '" + data + "'");
+        }
+        try {
+            return new double[] { Double.parseDouble(components[0]), Double.parseDouble(components[1]) };
+        } catch (final NumberFormatException e) {
+            throw new IllegalArgumentException(
+                    "invalid double value in parameter '" + key + "=" + value +
                     "' in transform data '" + data + "'", e);
         }
     }

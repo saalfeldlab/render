@@ -31,15 +31,16 @@ import org.slf4j.LoggerFactory;
  * through the same {@link DisplacementFieldTransform#openPrecomputedReader} path the transform itself uses). For
  * each layer, this client
  * <ul>
- *   <li>computes {@code fieldZIndex} from the {@code --zOffset} parameter and the running (0-based) layer index,</li>
+ *   <li>computes {@code fieldZIndex} from the layer z and the stack's {@code minZ},</li>
  *   <li>appends a {@link DisplacementFieldTransform} with the resulting data string to each tile spec, and</li>
  *   <li>saves the modified tile specs to the target stack.</li>
  * </ul>
- * The data string carries {@code zIndex}, the xy scale, and the xy offset. The scale is either the {@code --scale}
- * given on the command line or, if that is omitted, the stack bounds divided by the field dimensions and rounded to a
- * whole number. The offset is the minimum corner of the source stack bounds, since the field is computed on an export
- * of that stack and an export re-origins the data at (0,0). Only the vector scale is left at its default, which suits
- * SOFIMA output with vectors already in full-resolution units.
+ * Field index {@code (0,0,0)} is taken to sit on the minimum corner {@code (minX,minY,minZ)} of the source stack
+ * bounds, since the field is computed on an export of that stack and an export re-origins the data at {@code (0,0,0)}.
+ * The x and y parts of that corner go into the data string as the transform's offset; the z part turns the layer z
+ * into the field's z-slice index. The data string's scale is either the {@code --scale} given on the command line or,
+ * if that is omitted, the stack bounds divided by the field dimensions and rounded to a whole number. Only the vector
+ * scale is left at its default, which suits SOFIMA output with vectors already in full-resolution units.
  * Layers are processed in order, but the tiles within a layer are processed by {@code --numThreads} threads, which is
  * what parallelizes the field chunk reads that deriving the bounding boxes triggers.
  * If {@code --targetStack} is given, the modified tile specs are written there (the stack is derived from the source
@@ -66,8 +67,6 @@ public class ImportSofimaClient {
 		private String sofimaFieldUri;
 		@Parameter(names = "--scale", description = "Full-resolution pixels per field pixel, i.e. the factor by which the field is downsampled in x and y (e.g. 40); derived from the stack bounds and the field dimensions if omitted")
 		private Double scale;
-		@Parameter(names = "--zOffset", description = "Offset added to the running (0-based) layer index to obtain the field's z-slice index (default: 0)")
-		private int zOffset = 0;
 		@Parameter(names = "--completeTargetStack", description = "Complete the target stack after all layers have been saved")
 		private boolean completeTargetStack = false;
 		@Parameter(names = "--numThreads", description = "Number of tiles within a layer to process concurrently (default: 1)")
@@ -101,13 +100,13 @@ public class ImportSofimaClient {
 		final StackMetaData sourceStackMetaData = renderClient.getStackMetaData(params.stack);
 		final Bounds stackBounds = sourceStackMetaData.getStats().getStackBounds();
 
-		// The field is computed on an export of this stack, and an export puts its own origin at (0,0) and merely
-		// notes the world offset in its metadata - which the field producer does not read. So field index 0 sits on
-		// the corner of the stack bounding box, not on the world origin.
-		final double[] offset = { stackBounds.getMinX(), stackBounds.getMinY() };
+		// The field is computed on an export of this stack, and an export puts its own origin at (0,0,0) and merely
+		// notes the world offset in its metadata - which the field producer does not read. So field index (0,0,0)
+		// sits on the minimum corner of the stack bounding box, in z just as much as in x and y.
+		final double[] offset = { stackBounds.getMinX(), stackBounds.getMinY(), stackBounds.getMinZ() };
 
 		// Open the field up front so that a bad URI fails before any stack is touched, and work out the scale
-		final double[] xyScale;
+		final double scale;
 		try (final N5Reader fieldReader = DisplacementFieldTransform.openPrecomputedReader(params.sofimaFieldUri)) {
 			// The precomputed dataset lives under the first scale key (see DisplacementFieldTransform); the
 			// layout is [x,y,z,channel], so dim 0 is X and dim 1 is Y.
@@ -116,14 +115,17 @@ public class ImportSofimaClient {
 
 			// The field does not cover the stack bounds exactly, rounding recovers the intended
 			// factor; the leftover strip is handled by the transform's mirrored extension.
-			xyScale = (params.scale != null)
-					? new double[] { params.scale, params.scale }
-					: new double[] { Math.round(stackBounds.getDeltaX() / fieldDimensions[0]),
-									 Math.round(stackBounds.getDeltaY() / fieldDimensions[1]) };
+			final double xScale = Math.round(stackBounds.getDeltaX() / fieldDimensions[0]);
+			final double yScale = Math.round(stackBounds.getDeltaY() / fieldDimensions[1]);
+			if ((params.scale == null) && (xScale != yScale)) {
+				// The transform downsamples x and y by the same factor, so a field that does not is not supported.
+				throw new IllegalArgumentException(
+						"derived x and y scales differ (" + xScale + " vs " + yScale + "); pass --scale explicitly");
+			}
+			scale = (params.scale != null) ? params.scale : xScale;
 
-			LOG.info("addDisplacementField: stack bounds are {}, field {} has dimensions {}, xy scale is {}, offset is {}",
-					 stackBounds, scaleKey, Arrays.toString(fieldDimensions), Arrays.toString(xyScale),
-					 Arrays.toString(offset));
+			LOG.info("addDisplacementField: stack bounds are {}, field {} has dimensions {}, scale is {}, offset is {}",
+					 stackBounds, scaleKey, Arrays.toString(fieldDimensions), scale, Arrays.toString(offset));
 		} catch (final Exception e) {
 			throw new IllegalArgumentException("Failed to process SOFIMA field at " + params.sofimaFieldUri, e);
 		}
@@ -144,9 +146,11 @@ public class ImportSofimaClient {
 
 		// One pool, reused for the tiles of each layer in turn (see addFieldToLayer for why tiles and not layers)
 		try (final ForkJoinPool pool = new ForkJoinPool(params.numThreads)) {
-			for (int layerIndex = 0; layerIndex < zValues.size(); layerIndex++) {
-				final String dataString = buildDataString(params.zOffset + layerIndex, xyScale, offset);
-				addFieldToLayer(zValues.get(layerIndex), dataString, targetStack, pool);
+			for (final Double z : zValues) {
+				// Derive the slice from z itself rather than from the running layer index, so that a gap in the
+				// stack's z values does not shift every later layer onto the wrong slice.
+				final long fieldZIndex = Math.round(z - offset[2]);
+				addFieldToLayer(z, buildDataString(fieldZIndex, scale, offset), targetStack, pool);
 			}
 		}
 
@@ -189,15 +193,13 @@ public class ImportSofimaClient {
 	 * {@link DisplacementFieldTransform#init(String)} parses. Only the vector scale is omitted, so that the
 	 * transform's default of 1 applies (SOFIMA vectors are already in full-resolution pixels).
 	 */
-	private String buildDataString(final int fieldZIndex,
-								   final double[] xyScale,
+	private String buildDataString(final long fieldZIndex,
+								   final double scale,
 								   final double[] offset) {
 		return params.sofimaFieldUri +
-			   "?zIndex=" + fieldZIndex +
-			   "&scaleX=" + xyScale[0] +
-			   "&scaleY=" + xyScale[1] +
-			   "&offsetX=" + offset[0] +
-			   "&offsetY=" + offset[1];
+			   "?z=" + fieldZIndex +
+			   "&scale=" + scale +
+			   "&offset=" + offset[0] + "," + offset[1];
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(ImportSofimaClient.class);

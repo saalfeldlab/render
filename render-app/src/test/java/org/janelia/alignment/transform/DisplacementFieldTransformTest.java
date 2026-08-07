@@ -18,8 +18,7 @@ import mpicbg.trakem2.transform.CoordinateTransform;
 public class DisplacementFieldTransformTest {
 
     private static final String SAMPLE_URI =
-            "file:///tmp/does-not-exist.n5?zIndex=5&scaleX=8.0&scaleY=8.0&offsetX=100.0&offsetY=-50.0" +
-            "&vectorScale=2.0";
+            "file:///tmp/does-not-exist.n5?z=5&scale=8.0&offset=100.0,-50.0&vectorScale=2.0";
 
     @Test
     public void testDataStringRoundTrip() {
@@ -70,24 +69,34 @@ public class DisplacementFieldTransformTest {
 
         // defaults only: scale 1 and offset 0 mean (1,1) reads field (1,1) of z-slice 1, and vector scale 1 means
         // the stored vectors are used as-is apart from the pull-to-push negation
-        assertDisplacement(fieldDir, "zIndex=1", new double[] {1.0, 1.0}, -12.0, -112.0);
+        assertDisplacement(fieldDir, "z=1", new double[] {1.0, 1.0}, -12.0, -112.0);
 
         // scale 2 halves the query position (so (2,2) reads field (1,1)) and vectorScale 4 quadruples the vectors
-        assertDisplacement(fieldDir, "zIndex=1&scaleX=2.0&scaleY=2.0&vectorScale=4.0",
+        assertDisplacement(fieldDir, "z=1&scale=2.0&vectorScale=4.0",
                            new double[] {2.0, 2.0}, -12.0 * 4, -112.0 * 4);
 
         // offset shifts the query position, so (2,2) again reads field (1,1)
-        assertDisplacement(fieldDir, "zIndex=1&offsetX=1.0&offsetY=1.0",
+        assertDisplacement(fieldDir, "z=1&offset=1.0,1.0",
                            new double[] {2.0, 2.0}, -12.0, -112.0);
+
+        // a malformed offset is rejected rather than silently read as one number
+        final DisplacementFieldTransform malformed = new DisplacementFieldTransform();
+        try {
+            malformed.init(fieldDir + "?z=1&offset=1.0");
+            Assert.fail("expected init to reject a one-component offset");
+        } catch (final IllegalArgumentException e) {
+            Assert.assertTrue("exception should mention the offset, but was: " + e.getMessage(),
+                              e.getMessage().contains("offset"));
+        }
 
         // x and y beyond the field are answered from the mirrored extension rather than failing; just past the last
         // sample (the field is 4 wide, so x=3) the double-mirrored extension repeats that boundary value
-        assertDisplacement(fieldDir, "zIndex=1", new double[] {4.0, 1.0}, -14.0, -114.0);
+        assertDisplacement(fieldDir, "z=1", new double[] {4.0, 1.0}, -14.0, -114.0);
 
         // z is guarded instead, since an out-of-range slice would read outside the cached image
         final DisplacementFieldTransform transform = new DisplacementFieldTransform();
         try {
-            transform.init(fieldDir + "?zIndex=2");
+            transform.init(fieldDir + "?z=2");
             Assert.fail("expected init to reject a z index outside the field");
         } catch (final IllegalArgumentException e) {
             Assert.assertTrue("exception should mention the z range, but was: " + e.getMessage(),
@@ -132,7 +141,7 @@ public class DisplacementFieldTransformTest {
 
         // vectorScale carries the 0.2 because the test volume can only hold whole numbers
         final DisplacementFieldTransform transform = new DisplacementFieldTransform();
-        transform.init(fieldDir + "?zIndex=0&vectorScale=0.2");
+        transform.init(fieldDir + "?z=0&vectorScale=0.2");
 
         final double[] target = transform.apply(new double[] {24.0, 12.0});
         Assert.assertEquals("x should solve t = 24 - 0.2 * t", 20.0, target[0], 0.001);
@@ -147,7 +156,7 @@ public class DisplacementFieldTransformTest {
         // the same field at vectorScale 2 is not invertible (Jacobian norm 2), so the iteration hits its cap:
         // that must warn and return the last estimate rather than throw or hand back a non-number
         final DisplacementFieldTransform steep = new DisplacementFieldTransform();
-        steep.init(fieldDir + "?zIndex=0&vectorScale=2.0");
+        steep.init(fieldDir + "?z=0&vectorScale=2.0");
         final double[] estimate = steep.apply(new double[] {24.0, 12.0});
         Assert.assertTrue("a non-converging inversion should still return numbers, but was " +
                           Arrays.toString(estimate),
@@ -156,10 +165,10 @@ public class DisplacementFieldTransformTest {
 
     @Test
     public void testMisspelledParameterFails() {
-        // since everything but zIndex is optional, a typo would otherwise silently apply the default
+        // since everything but z is optional, a typo would otherwise silently apply the default
         final DisplacementFieldTransform transform = new DisplacementFieldTransform();
         try {
-            transform.init("file:///tmp/does-not-exist.n5?zIndex=0&scalex=40.0");
+            transform.init("file:///tmp/does-not-exist.n5?z=0&scalex=40.0");
             Assert.fail("expected init to reject the misspelled parameter");
         } catch (final IllegalArgumentException e) {
             Assert.assertTrue("exception should name the offending parameter",
