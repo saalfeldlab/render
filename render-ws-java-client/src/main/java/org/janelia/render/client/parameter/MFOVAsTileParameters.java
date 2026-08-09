@@ -36,6 +36,7 @@ public class MFOVAsTileParameters
     private final String alignedMfovStackSuffix;
     private final String roughSfovStackSuffix;
     private final Double minCrossMatchPixelDistance;
+    private final boolean deriveSfovMatchData;
 
     public MFOVAsTileParameters() {
         this(null,
@@ -62,7 +63,8 @@ public class MFOVAsTileParameters
              null,
              alignedMfovStackSuffix,
              roughSfovStackSuffix,
-             null);
+             null,
+             true);
     }
 
     public MFOVAsTileParameters(final Double mfovRenderScale,
@@ -73,7 +75,8 @@ public class MFOVAsTileParameters
                                 final String renderedMfovRunTimestamp,
                                 final String alignedMfovStackSuffix,
                                 final String roughSfovStackSuffix,
-                                final Double minCrossMatchPixelDistance) {
+                                final Double minCrossMatchPixelDistance,
+                                final boolean deriveSfovMatchData) {
         this.mfovRenderScale = mfovRenderScale;
         this.mfovRootDirectory = mfovRootDirectory;
         this.prealignedSfovStackSuffix = prealignedSfovStackSuffix;
@@ -83,6 +86,7 @@ public class MFOVAsTileParameters
         this.alignedMfovStackSuffix = alignedMfovStackSuffix;
         this.roughSfovStackSuffix = roughSfovStackSuffix;
         this.minCrossMatchPixelDistance = minCrossMatchPixelDistance;
+        this.deriveSfovMatchData = deriveSfovMatchData;
     }
 
     public Double getMfovRenderScale() {
@@ -115,6 +119,10 @@ public class MFOVAsTileParameters
 
     public Double getMinCrossMatchPixelDistance() {
         return minCrossMatchPixelDistance;
+    }
+
+    public boolean isDeriveSfovMatchData() {
+        return deriveSfovMatchData;
     }
 
     public String getDynamicMfovStackSuffixForRawSfovStack() {
