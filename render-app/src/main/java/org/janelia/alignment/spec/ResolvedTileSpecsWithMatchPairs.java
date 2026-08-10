@@ -12,7 +12,6 @@ import java.util.stream.Collectors;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.match.CanvasMatches;
-import org.janelia.alignment.multisem.MultiSemUtilities;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -161,26 +160,60 @@ public class ResolvedTileSpecsWithMatchPairs
     }
 
     /**
-     * Remove any match pairs where the pTile is in a different MFOV from the qTile.
+     * Remove any match pairs where the pTile and/or the qTile do not exist in this collection's resolvedTileSpecs.
      */
-    public void removeMatchPairsWithDifferentMFOVs() {
+    public void removeMatchPairsThatReferenceTilesOutsideThisCollection() {
 
-        final Set<CanvasMatches> sameMFOVMatchPairs = new HashSet<>(matchPairs.size());
+        final Set<CanvasMatches> updatedMatchPairs = new HashSet<>(matchPairs.size());
 
         for (final CanvasMatches pair : matchPairs) {
-            final TileSpec pTileSpec = resolvedTileSpecs.getTileSpec(pair.getpId());
-            final TileSpec qTileSpec = resolvedTileSpecs.getTileSpec(pair.getqId());
-            if ((pTileSpec != null) && (qTileSpec != null)) {
-                final String pMFOV = MultiSemUtilities.getSimpleMfovForTileId(pTileSpec.getTileId());
-                final String qMFOV = MultiSemUtilities.getSimpleMfovForTileId(qTileSpec.getTileId());
-                if (pMFOV.equals(qMFOV)) {
-                    sameMFOVMatchPairs.add(pair);
-                }
+            if (resolvedTileSpecs.hasTileSpec(pair.getpId()) &&
+                resolvedTileSpecs.hasTileSpec(pair.getqId())) {
+                updatedMatchPairs.add(pair);
             }
         }
 
         // pairs from web service are not sorted, so sort here to make usage loops more intuitive
-        this.matchPairs = sameMFOVMatchPairs.stream().sorted().collect(Collectors.toList());
+        this.matchPairs = updatedMatchPairs.stream().sorted().collect(Collectors.toList());
+    }
+
+    /**
+     * Change all match points to world coordinates using tile min x and y as offset.
+     *
+     * @throws IllegalStateException
+     *   if any match pair identifies a tile spec that is missing from this collection.
+     */
+    public void changeMatchesToWorldCoordinates()
+            throws IllegalStateException {
+
+        for (final CanvasMatches pair : matchPairs) {
+
+            final TileSpec pTileSpec = resolvedTileSpecs.getTileSpec(pair.getpId());
+            final TileSpec qTileSpec = resolvedTileSpecs.getTileSpec(pair.getqId());
+
+            if ((pTileSpec != null) && (qTileSpec != null)) {
+
+                pair.getMatches().applyOffsets(pTileSpec.getMinX(),
+                                               pTileSpec.getMinY(),
+                                               qTileSpec.getMinX(),
+                                               qTileSpec.getMinY());
+
+            } else {
+
+                final StringBuilder sb = new StringBuilder();
+                if (pTileSpec == null) {
+                    if (qTileSpec == null) {
+                        sb.append("s ").append(pair.getpId()).append(" and ").append(pair.getqId());
+                    }
+                    sb.append(" ").append(pair.getpId());
+                } else {
+                    sb.append(" ").append(pair.getqId());
+                }
+                throw new IllegalStateException("missing tile" + sb + " for match pair " + pair.toKeyString());
+
+            }
+        }
+
     }
 
     public static ResolvedTileSpecsWithMatchPairs fromJson(final Reader json) {
