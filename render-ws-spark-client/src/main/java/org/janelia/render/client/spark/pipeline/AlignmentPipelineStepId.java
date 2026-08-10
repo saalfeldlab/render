@@ -13,6 +13,7 @@ import org.janelia.render.client.spark.multisem.CreepCorrectionSparkClient;
 import org.janelia.render.client.spark.multisem.LayerAsTileClient;
 import org.janelia.render.client.spark.multisem.MFOVAsTileClient;
 import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
+import org.janelia.render.client.spark.multisem.MatchCollectionRenameClient;
 import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
 import org.janelia.render.client.spark.newsolver.DistributedAffineBlockSolverClient;
 import org.janelia.render.client.spark.newsolver.DistributedIntensityCorrectionBlockSolverClient;
@@ -41,6 +42,7 @@ public enum AlignmentPipelineStepId {
     RENDER_SCAPE_IMAGES(ScapeClient::new),
     RENDER_TILES(RenderTilesClient::new),
     MFOV_AS_TILE(MFOVAsTileClient::new),
+    RENAME_MATCH_COLLECTIONS(MatchCollectionRenameClient::new),
     LAYER_AS_TILE(LayerAsTileClient::new);
 
     private final Supplier<AlignmentPipelineStep> stepClientSupplier;

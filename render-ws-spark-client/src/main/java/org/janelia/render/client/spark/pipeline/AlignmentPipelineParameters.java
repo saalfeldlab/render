@@ -22,6 +22,7 @@ import org.janelia.render.client.parameter.LayerAsTileParameters;
 import org.janelia.render.client.parameter.MFOVAsTileParameters;
 import org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters;
 import org.janelia.render.client.parameter.MaskHackParameters;
+import org.janelia.render.client.parameter.MatchCollectionRenameParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
@@ -51,6 +52,7 @@ public class AlignmentPipelineParameters
     private final UnconnectedCrossMFOVParameters unconnectedCrossMfov;
     private final TileClusterParameters tileCluster;
     private final MatchCopyParameters matchCopy;
+    private final MatchCollectionRenameParameters matchCollectionRename;
     private final BeamCorrectionParameters beamCorrection;
     private final CreepCorrectionParameters creepCorrection;
     private final AffineBlockSolverSetup affineBlockSolverSetup;
@@ -82,6 +84,7 @@ public class AlignmentPipelineParameters
              null,
              null,
              null,
+             null,
              null);
     }
 
@@ -94,6 +97,7 @@ public class AlignmentPipelineParameters
                                        final UnconnectedCrossMFOVParameters unconnectedCrossMfov,
                                        final TileClusterParameters tileCluster,
                                        final MatchCopyParameters matchCopy,
+                                       final MatchCollectionRenameParameters matchCollectionRename,
                                        final BeamCorrectionParameters beamCorrection,
                                        final CreepCorrectionParameters creepCorrection,
                                        final AffineBlockSolverSetup affineBlockSolverSetup,
@@ -113,6 +117,7 @@ public class AlignmentPipelineParameters
         this.unconnectedCrossMfov = unconnectedCrossMfov;
         this.tileCluster = tileCluster;
         this.matchCopy = matchCopy;
+        this.matchCollectionRename = matchCollectionRename;
         this.beamCorrection = beamCorrection;
         this.creepCorrection = creepCorrection;
         this.affineBlockSolverSetup = affineBlockSolverSetup;
@@ -173,6 +178,10 @@ public class AlignmentPipelineParameters
 
     public MatchCopyParameters getMatchCopy() {
         return matchCopy;
+    }
+
+    public MatchCollectionRenameParameters getMatchCollectionRename() {
+        return matchCollectionRename;
     }
 
     public BeamCorrectionParameters getBeamCorrection() {
