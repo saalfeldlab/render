@@ -195,7 +195,7 @@ public class MFOVMontageMatchPatchClient
                                      false,
                                      renderDataClient,
                                      patchParameters.addIsolatedEdgeLabel,
-                                     patchParameters.resinMfovStartPositionMatchWeight);
+                                     patchParameters.getResinMfovStartPositionMatchWeight());
             return null;
         };
 

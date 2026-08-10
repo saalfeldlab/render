@@ -213,8 +213,18 @@ public class MFOVMontageMatchPatchParameters
         return trimMfovsWithNoConnectedTiles ? sourceStackName + "_trim" : null;
     }
 
+    /**
+     * @return the weight for matches derived from SFOV start positions
+     *         or null if start position derivation should be skipped
+     *         (non-positive weights are used to exclude cross MFOV pairs from patching).
+     */
+    public Double getResinMfovStartPositionMatchWeight() {
+        return ((resinMfovStartPositionMatchWeight != null) && (resinMfovStartPositionMatchWeight > 0.0)) ?
+               resinMfovStartPositionMatchWeight : null;
+    }
+
     public boolean isIsolatedMfovPatchingNeeded() {
-        return addIsolatedEdgeLabel || resinMfovStartPositionMatchWeight != null;
+        return addIsolatedEdgeLabel || (getResinMfovStartPositionMatchWeight() != null);
     }
 
     public static MFOVMontageMatchPatchParameters fromJson(final Reader json) {
