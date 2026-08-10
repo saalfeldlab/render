@@ -17,7 +17,7 @@ public class MatchCollectionRenameParameters
     @Parameter(
             names = "--matchCollectionOwner",
             description = "Owner of the match collections to rename")
-    public String owner;
+    public String matchCollectionOwner;
 
     @Parameter(
             names = "--sourceNamePattern",
@@ -38,7 +38,7 @@ public class MatchCollectionRenameParameters
     public void validate()
             throws IllegalArgumentException {
 
-        if ((owner == null) || (owner.trim().isEmpty())) {
+        if ((matchCollectionOwner == null) || (matchCollectionOwner.trim().isEmpty())) {
             throw new IllegalArgumentException("--matchCollectionOwner must be defined");
         }
 
@@ -64,7 +64,7 @@ public class MatchCollectionRenameParameters
 
     @Override
     public String toString() {
-        return "{owner='" + owner + '\'' +
+        return "{owner='" + matchCollectionOwner + '\'' +
                ", sourceNamePattern='" + sourceNamePattern + '\'' +
                ", targetNamePattern='" + targetNamePattern + '\'' +
                '}';

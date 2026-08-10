@@ -98,7 +98,7 @@ public class MatchCollectionRenameClient
 
         LOG.info("renameMatchCollections: entry, matchCollectionRename={}", matchCollectionRename);
 
-        final String owner = matchCollectionRename.owner;
+        final String owner = matchCollectionRename.matchCollectionOwner;
         final RenderDataClient ownerDataClient = new RenderDataClient(baseDataUrl, owner, "not_used");
 
         final List<String> existingNames = ownerDataClient.getOwnerMatchCollections().stream()
