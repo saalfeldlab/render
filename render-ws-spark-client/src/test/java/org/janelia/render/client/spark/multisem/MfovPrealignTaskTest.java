@@ -6,6 +6,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.multisem.LayerMFOV;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
@@ -22,6 +23,37 @@ public class MfovPrealignTaskTest {
     // Consequently, they aren't included in the unit test suite.
 
     public static void main(final String[] args) throws Exception {
+
+        final String baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
+        final String owner = "hess_wafers_60_61";
+        final String project = "w61_serial_140_to_149";
+        final StackId rawSfovStackId = new StackId(owner, project,"w61_s140_r00_gc_icc_test_two_tiles");
+        final LayerMFOV z1LayerMfov = new LayerMFOV(1.0, "0023_m0014");
+
+        // final MatchCollectionId matchCollectionId = null; // set collection to null to derive matches during run
+        final MatchCollectionId matchCollectionId = new MatchCollectionId(owner, "w61_s140_r00_gc_test_z_1_and_2_match");
+
+        final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd_HHmmss");
+        final String prealignedStackSuffix  = "_pa_" + sdf.format(new Date());
+        final StackId prealignedStackId = rawSfovStackId.withStackSuffix(prealignedStackSuffix);
+
+        final RenderDataClient dataClient = new RenderDataClient(baseDataUrl, owner, project);
+        final StackMetaData rawStackMetaData = dataClient.getStackMetaData(rawSfovStackId.getStack());
+        dataClient.setupDerivedStack(rawStackMetaData, prealignedStackId.getStack());
+
+        final MfovPrealignTask z1Task =
+                new MfovPrealignTask(baseDataUrl,
+                                     rawSfovStackId,
+                                     prealignedStackId,
+                                     z1LayerMfov,
+                                     matchCollectionId);
+        z1Task.run();
+
+        dataClient.setStackState(prealignedStackId.getStack(), StackMetaData.StackState.COMPLETE);
+    }
+
+    @SuppressWarnings("unused")
+    public static void main_2025(final String[] args) throws Exception {
 
         final String mfovRootDirectory = "/nrs/hess/data/hess_wafers_60_61/tiles_mfov";
         if (! Files.exists(Paths.get(mfovRootDirectory))) {
@@ -49,7 +81,8 @@ public class MfovPrealignTaskTest {
                 new MfovPrealignTask(baseDataUrl,
                                      rawSfovStackId,
                                      prealignedStackId,
-                                     z17LayerMfov);
+                                     z17LayerMfov,
+                                     null);
         z17Task.run();
 
         final LayerMFOV z18LayerMfov = new LayerMFOV(18.0, "0399_m0035");
@@ -57,7 +90,8 @@ public class MfovPrealignTaskTest {
                 new MfovPrealignTask(baseDataUrl,
                                      rawSfovStackId,
                                      prealignedStackId,
-                                     z18LayerMfov);
+                                     z18LayerMfov,
+                                     null);
         z18Task.run();
 
         dataClient.setStackState(prealignedStackId.getStack(), StackMetaData.StackState.COMPLETE);
@@ -100,6 +134,5 @@ public class MfovPrealignTaskTest {
 
         dataClient.setStackState(renderedMfovStackId.getStack(), StackMetaData.StackState.COMPLETE);
     }
-
 
 }

@@ -151,7 +151,9 @@ public class MFOVAsTileClient
                                                                                    clientParameters.multiProject,
                                                                                    clientParameters.mfovAsTile);
         if (clientParameters.mfovAsTile.doPrealign()) {
-            alignAndIntensityCorrectMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
+            alignAndIntensityCorrectMfovAsTileStacks(sparkContext,
+                                                     mfovAsTileStackLists,
+                                                     clientParameters.mfovAsTile.isDeriveSfovMatchData());
         }
 
         buildDynamicMfovAsTileStacks(sparkContext, mfovAsTileStackLists);
@@ -172,8 +174,10 @@ public class MFOVAsTileClient
     }
 
     private static void alignAndIntensityCorrectMfovAsTileStacks(final JavaSparkContext sparkContext,
-                                                                 final MFOVAsTileStackLists mfovAsTileStackLists)
+                                                                 final MFOVAsTileStackLists mfovAsTileStackLists,
+                                                                 final boolean deriveSfovMatchData)
             throws IOException {
+
         LOG.info("alignAndIntensityCorrectMfovAsTileStacks: entry");
 
         final String baseDataUrl = mfovAsTileStackLists.getBaseDataUrl();
@@ -186,7 +190,10 @@ public class MFOVAsTileClient
 
         for (final StackWithZValues rawSfovStackWithZ : rawSfovStacksWithAllZ) {
             final StackId rawSfovStackId = rawSfovStackWithZ.getStackId();
+            final String rawSfovStack = rawSfovStackId.getStack();
             final StackId prealignedStackId = rawSfovStackId.withStackSuffix(prealignedSfovStackSuffix);
+            final MatchCollectionId rawSfovMatchCollectionId = deriveSfovMatchData ? null : new MatchCollectionId(rawSfovStackId.getOwner(),
+                                                                                                                  rawSfovStack + "_match");
 
             if (mfovAsTileStackLists.isExistingStack(prealignedStackId)) {
                 LOG.info("alignAndIntensityCorrectMfovAsTileStacks: skipping build of {} because it already exists",
@@ -195,23 +202,24 @@ public class MFOVAsTileClient
             }
 
             // Create prealigned stack
-            final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
-                                                                     rawSfovStackId.getOwner(),
-                                                                     rawSfovStackId.getProject());
-            final StackMetaData rawStackMetaData = dataClient.getStackMetaData(rawSfovStackId.getStack());
-            dataClient.setupDerivedStack(rawStackMetaData, prealignedStackId.getStack());
+            final RenderDataClient stackDataClient = new RenderDataClient(baseDataUrl,
+                                                                          rawSfovStackId.getOwner(),
+                                                                          rawSfovStackId.getProject());
+            final StackMetaData rawStackMetaData = stackDataClient.getStackMetaData(rawSfovStackId.getStack());
+            stackDataClient.setupDerivedStack(rawStackMetaData, prealignedStackId.getStack());
             prealignedStackIds.add(prealignedStackId);
 
             // Collect MFOV tasks for each layer
             for (final Double z : rawSfovStackWithZ.getzValues()) {
-                final List<String> mfovNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(dataClient,
-                                                                                                    rawSfovStackId.getStack(),
+                final List<String> mfovNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(stackDataClient,
+                                                                                                    rawSfovStack,
                                                                                                     z);
                 for (final String mfovName : mfovNames) {
                     mfovTasks.add(new MfovPrealignTask(baseDataUrl,
-                                                        rawSfovStackId,
-                                                        prealignedStackId,
-                                                        new LayerMFOV(z, mfovName))
+                                                       rawSfovStackId,
+                                                       prealignedStackId,
+                                                       new LayerMFOV(z, mfovName),
+                                                       rawSfovMatchCollectionId)
                     );
                 }
             }
