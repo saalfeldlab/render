@@ -104,6 +104,7 @@ public class MFOVMontageMatchPatchClient
             if (patchParameters.checkLayerConnectedClusters) {
                 checkLayerConnectedClusters(sparkContext,
                                             clientParameters.multiProject,
+                                            patchParameters,
                                             tileClusterParameters);
             }
 
@@ -135,7 +136,10 @@ public class MFOVMontageMatchPatchClient
         patchMFOVs(sparkContext, multiProjectParameters, patchParameters);
 
         if (patchParameters.checkLayerConnectedClusters) {
-            checkLayerConnectedClusters(sparkContext, multiProjectParameters, pipelineParameters.getTileCluster());
+            checkLayerConnectedClusters(sparkContext,
+                                        multiProjectParameters,
+                                        patchParameters,
+                                        pipelineParameters.getTileCluster());
         }
     }
 
@@ -319,6 +323,7 @@ public class MFOVMontageMatchPatchClient
 
     private void checkLayerConnectedClusters(final JavaSparkContext sparkContext,
                                              final MultiProjectParameters multiProjectParameters,
+                                             final MFOVMontageMatchPatchParameters patchParameters,
                                              final TileClusterParameters tileClusterParameters)
             throws IOException {
 
@@ -331,7 +336,6 @@ public class MFOVMontageMatchPatchClient
         final List<ConnectedTileClusterSummaryForStack> connectedTileClusterSummaryForStacks =
                 clusterCountClient.findConnectedClusters(sparkContext, clientParameters);
 
-
         final List<String> stackErrors = new ArrayList<>();
 
         for (final ConnectedTileClusterSummaryForStack summary : connectedTileClusterSummaryForStacks) {
@@ -339,7 +343,25 @@ public class MFOVMontageMatchPatchClient
             final RenderDataClient renderDataClient =
                     multiProjectParameters.getDataClient().buildClient(stackId.getOwner(), stackId.getProject());
             final List<Double> zValues = renderDataClient.getStackZValues(stackId.getStack());
-            final String countErrorString = summary.buildCountErrorString(zValues.size(),
+
+            int expectedTileClusterCount = zValues.size();
+            if (! patchParameters.isIsolatedMfovPatchingNeeded()) {
+                // resin MFOV patching derives the only cross MFOV matches (isolated edge labelling derives none),
+                // so without it the expected cluster count is the total number of layer MFOVs
+                expectedTileClusterCount = 0;
+                for (final Double z : zValues) {
+                    final List<String> sortedMFOVNames =
+                            MultiProjectParameters.getSortedMFOVNamesForOneLayer(renderDataClient,
+                                                                                 stackId.getStack(),
+                                                                                 z);
+                    expectedTileClusterCount += sortedMFOVNames.size();
+                }
+            }
+
+            LOG.info("checkLayerConnectedClusters: expectedTileClusterCount is {} for {}",
+                     expectedTileClusterCount, stackId.toDevString());
+
+            final String countErrorString = summary.buildCountErrorString(expectedTileClusterCount,
                                                                           0,
                                                                           0);
             if (! countErrorString.isEmpty()) {
