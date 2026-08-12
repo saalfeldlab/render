@@ -304,33 +304,33 @@ public class RenderTilesClient {
     public void setupStorageDirectories()
             throws IOException {
 
-        for (final double z : renderDataClient.getStackZValues(stack)) {
+        LOG.info("setupStorageDirectories: entry");
 
-            final List<String> relativePathSegments = getImageParentPathSegments(z);
-            final URI parentUri = storageBackend.resolvePath(relativePathSegments);
+        if (storageBackend instanceof CloudStorage) {
 
-            LOG.info("setupStorageDirectories: ensuring writable directory (or bucket 'prefix') for z {} at {}",
-                     z, parentUri);
-            try {
-                storageBackend.ensureWritableDirectory(parentUri);
+            LOG.info("setupStorageDirectories: skipping since there is no need to set anything up for CloudStorage");
 
-                final String scheme = storageBackend.root.getScheme();
-                if ((scheme != null) && scheme.startsWith("gs:")) {
-                    // Supposedly, ~1000 object mutations per second per bucket per project are allowed by Google.
-                    // We have seen "exceeded the rate limit for object mutation operations" exceptions even after
-                    // limiting the rate to 20 per second.
-                    // Limiting the rate to 10 per second to try to avoid this.
-                    Thread.sleep(100);
-                }
+        } else {
 
-            } catch (final Throwable t) {
-                LOG.warn("setupStorageDirectories: caught exception and will retry setup in 5 seconds", t);
+            for (final double z : renderDataClient.getStackZValues(stack)) {
+
+                final List<String> relativePathSegments = getImageParentPathSegments(z);
+                final URI parentUri = storageBackend.resolvePath(relativePathSegments);
+
+                LOG.info("setupStorageDirectories: ensuring writable directory for z {} at {}", z, parentUri);
+
                 try {
-                    Thread.sleep(5000);
-                } catch (final InterruptedException ie) {
-                    LOG.warn("setupStorageDirectories: caught exception while sleeping and will retry setup now", ie);
+                    storageBackend.ensureWritableDirectory(parentUri);
+                } catch (final Throwable t) {
+                    LOG.warn("setupStorageDirectories: caught exception and will retry setup in 5 seconds", t);
+                    try {
+                        Thread.sleep(5000);
+                    } catch (final InterruptedException ie) {
+                        LOG.warn("setupStorageDirectories: caught exception while sleeping and will retry setup now", ie);
+                    }
+                    storageBackend.ensureWritableDirectory(parentUri);
                 }
-                storageBackend.ensureWritableDirectory(parentUri);
+
             }
 
         }
@@ -656,13 +656,7 @@ public class RenderTilesClient {
 
         @Override
         void ensureWritableDirectory(final URI uri) {
-            if (!keyValueAccess.exists(uri.getPath())) {
-                try {
-                    keyValueAccess.createDirectories(uri.getPath());
-                } catch (final IOException e) {
-                    throw new RuntimeException("Could not create directory " + uri, e);
-                }
-            }
+            // no-op for cloud storage
         }
 
         @Override
