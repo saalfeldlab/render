@@ -201,13 +201,13 @@ public class ResolvedTileSpecsWithMatchPairs
             } else {
 
                 final StringBuilder sb = new StringBuilder();
-                if (pTileSpec == null) {
-                    if (qTileSpec == null) {
-                        sb.append("s ").append(pair.getpId()).append(" and ").append(pair.getqId());
+                if (qTileSpec == null) {
+                    if (pTileSpec == null) {
+                        sb.append("s ").append(pair.getpId()).append(" and ");
                     }
-                    sb.append(" ").append(pair.getpId());
-                } else {
                     sb.append(" ").append(pair.getqId());
+                } else {
+                    sb.append(" ").append(pair.getpId());
                 }
                 throw new IllegalStateException("missing tile" + sb + " for match pair " + pair.toKeyString());
 
