@@ -333,6 +333,7 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
                                                   true,
                                                   false,
                                                   false,
+                                                  false,
                                                   false);
             sameLayerPairs.addAll(pairs);
         });
@@ -372,6 +373,7 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
                                                          toBoundsList,
                                                          false,
                                                          true,
+                                                         false,
                                                          false,
                                                          false));
             }

@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import mpicbg.imagefeatures.Feature;
 import mpicbg.models.ErrorStatistic;
@@ -28,14 +29,18 @@ import org.janelia.alignment.match.CanvasFeatureExtractor;
 import org.janelia.alignment.match.CanvasFeatureMatcher;
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatchResult;
+import org.janelia.alignment.match.CanvasMatches;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.MatchFilter;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.parameters.FeatureExtractionParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.multisem.LayerMFOV;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
+import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.util.ImageProcessorCache;
@@ -58,6 +63,7 @@ public class MfovPrealignTask implements Serializable {
     private final StackId rawSfovStackId;
     private final StackId prealignedStackId;
     private final LayerMFOV layerMfov;
+    private final MatchCollectionId matchCollectionId;
 
     private static final int CLIP_SIZE = 150;
 
@@ -65,12 +71,14 @@ public class MfovPrealignTask implements Serializable {
             final String baseDataUrl,
             final StackId rawSfovStackId,
             final StackId prealignedStackId,
-            final LayerMFOV layerMfov
+            final LayerMFOV layerMfov,
+            final MatchCollectionId matchCollectionId
     ) {
         this.baseDataUrl = baseDataUrl;
         this.rawSfovStackId = rawSfovStackId;
         this.prealignedStackId = prealignedStackId;
         this.layerMfov = layerMfov;
+        this.matchCollectionId = matchCollectionId;
     }
 
     public String toString() {
@@ -94,31 +102,22 @@ public class MfovPrealignTask implements Serializable {
                                                                  rawSfovStackId.getOwner(),
                                                                  rawSfovStackId.getProject());
 
-        // 1. Fetch tile specs for all SFOVs in this MFOV
-        final ResolvedTileSpecCollection mfovTiles = fetchMfovTileSpecs(dataClient);
-
-        if (mfovTiles.getTileCount() == 0) {
-            throw new IOException("no tile specs found for " + this);
-        }
-
-        // 2. Generate tile pairs for matching
-        final List<OrderedCanvasIdPair> tilePairs = generateTilePairs(mfovTiles);
-
-        if (tilePairs.isEmpty()) {
-            LOG.info("run: exit, {}, no tile pairs generated", this);
-            return;
-        }
-
         // Initialize the image processor cache with ~1Gb size to hold all tiles in memory
-        final ImageProcessorCache cache = new ImageProcessorCache(1_000_000_000L, false, false);
+        final ImageProcessorCache cache = new ImageProcessorCache(1_000_000_000L,
+                                                                  false,
+                                                                  false);
 
-        // 3. Align tiles within this MFOV
-        final ResolvedTileSpecCollection alignedTiles = alignTiles(mfovTiles, tilePairs, cache);
+        final ResolvedTileSpecsWithMatchPairs sfovTilesAndMatchesForMfov = fetchSfovTileSpecsWithMatchPairs(dataClient,
+                                                                                                            cache);
+        final ResolvedTileSpecCollection alignedTiles = alignTiles(sfovTilesAndMatchesForMfov);
 
-        // 4. Perform intensity correction
-        final ResolvedTileSpecCollection alignedIcTiles = intensityCorrectTiles(alignedTiles, tilePairs, cache);
+        final List<OrderedCanvasIdPair> tilePairs = sfovTilesAndMatchesForMfov.getMatchPairs().stream()
+                .map(CanvasMatches::toOrderedPair)
+                .collect(Collectors.toList());
+        final ResolvedTileSpecCollection alignedIcTiles = intensityCorrectTiles(alignedTiles,
+                                                                                tilePairs,
+                                                                                cache);
 
-        // 5. Push the aligned tile specs to the prealigned stack
         dataClient.saveResolvedTiles(alignedIcTiles, prealignedStackId.getStack(), layerMfov.getZ());
 
         final long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
@@ -165,13 +164,73 @@ public class MfovPrealignTask implements Serializable {
     }
 
     /**
-     * Fetch tile specs for all SFOVs belonging to this MFOV at the specified z layer.
+     * Fetch tile specs for all SFOVs belonging to this MFOV at the specified z layer
+     * and fetch (or build) the corresponding matches.
      */
-    private ResolvedTileSpecCollection fetchMfovTileSpecs(final RenderDataClient dataClient) throws IOException {
+    private ResolvedTileSpecsWithMatchPairs fetchSfovTileSpecsWithMatchPairs(final RenderDataClient dataClient,
+                                                                             final ImageProcessorCache cache)
+            throws IOException {
+
+        LOG.info("fetchSfovTileSpecsWithMatchPairs: entry, {}", this);
+
         final String matchPattern = "_" + layerMfov.getSimpleMfovName() + "_"; // limit to tiles in this MFOV
-        return dataClient.getResolvedTiles(rawSfovStackId.getStack(),
-                                           layerMfov.getZ(),
-                                           matchPattern);
+
+        final ResolvedTileSpecsWithMatchPairs resolvedTileSpecsWithMatchPairs;
+        if (matchCollectionId == null) {
+
+            final ResolvedTileSpecCollection tiles = dataClient.getResolvedTiles(rawSfovStackId.getStack(),
+                                                                                 layerMfov.getZ(),
+                                                                                 matchPattern);
+            if (tiles.getTileCount() == 0) {
+                throw new IOException("no tile specs found for " + this);
+            }
+
+            final List<OrderedCanvasIdPair> tilePairs = generateTilePairs(tiles);
+            if (tilePairs.isEmpty()) {
+                throw new IOException("no tile pairs generated for " + this);
+            }
+
+            resolvedTileSpecsWithMatchPairs = generateAndAddMatches(tiles,
+                                                                    tilePairs,
+                                                                    cache);
+        } else {
+
+            final Double z = layerMfov.getZ();
+            final Bounds layerBounds = new Bounds(-Double.MAX_VALUE, -Double.MAX_VALUE, z,
+                                                  Double.MAX_VALUE, Double.MAX_VALUE, z);
+
+            resolvedTileSpecsWithMatchPairs = dataClient.getResolvedTilesWithMatchPairs(rawSfovStackId.getStack(),
+                                                                                        layerBounds,
+                                                                                        matchCollectionId.getName(),
+                                                                                        null,
+                                                                                        matchPattern,
+                                                                                        false);
+            if (resolvedTileSpecsWithMatchPairs.getResolvedTileSpecs().getTileCount() == 0) {
+                throw new IOException("no tile specs found for " + this);
+            }
+
+            final int originalMatchPairCount = resolvedTileSpecsWithMatchPairs.getMatchPairCount();
+            resolvedTileSpecsWithMatchPairs.removeMatchPairsThatReferenceTilesOutsideThisCollection();
+            final int normalizedMatchPairCount = resolvedTileSpecsWithMatchPairs.getMatchPairCount();
+            if (normalizedMatchPairCount < originalMatchPairCount) {
+                LOG.info("fetchSfovTileSpecsWithMatchPairs: removed {} pairs and kept {} pairs for {}",
+                         (originalMatchPairCount - normalizedMatchPairCount), normalizedMatchPairCount, this);
+            }
+
+            // change matches to world coordinates to be consistent with original manual derivation approach
+            resolvedTileSpecsWithMatchPairs.changeMatchesToWorldCoordinates();
+        }
+
+        if (resolvedTileSpecsWithMatchPairs.getMatchPairCount() == 0) {
+            throw new IOException("no matches were found or built for " + this);
+        }
+
+        LOG.info("fetchSfovTileSpecsWithMatchPairs: {} returning {} tiles and {} match pairs",
+                 this,
+                 resolvedTileSpecsWithMatchPairs.getResolvedTileSpecs().getTileCount(),
+                 resolvedTileSpecsWithMatchPairs.getMatchPairCount());
+
+        return resolvedTileSpecsWithMatchPairs;
     }
 
     /**
@@ -191,8 +250,8 @@ public class MfovPrealignTask implements Serializable {
                 final Rectangle2D rectJ = new Rectangle2D.Double(tj.getMinX(), tj.getMinY(), tj.getWidth(), tj.getHeight());
 
                 if (rectI.intersects(rectJ)) {
-                    final CanvasId canvasIdI = new CanvasId(ti.getGroupId(), ti.getTileId());
-                    final CanvasId canvasIdJ = new CanvasId(tj.getGroupId(), tj.getTileId());
+                    final CanvasId canvasIdI = new CanvasId(ti.getZ().toString(), ti.getTileId());
+                    final CanvasId canvasIdJ = new CanvasId(tj.getZ().toString(), tj.getTileId());
                     pairs.add(new OrderedCanvasIdPair(canvasIdI, canvasIdJ, 0.0));
                 }
             }
@@ -204,56 +263,104 @@ public class MfovPrealignTask implements Serializable {
     /**
      * Perform SIFT feature matching on the tile pairs.
      */
-    private ResolvedTileSpecCollection alignTiles(
-            final ResolvedTileSpecCollection tiles,
-            final List<OrderedCanvasIdPair> tilePairs,
-            final ImageProcessorCache cache
-    ) {
+    private ResolvedTileSpecsWithMatchPairs generateAndAddMatches(final ResolvedTileSpecCollection tiles,
+                                                                  final List<OrderedCanvasIdPair> tilePairs,
+                                                                  final ImageProcessorCache cache) {
 
         final long startTime = System.currentTimeMillis();
-        LOG.info("alignTiles: entry, {}", this);
+
+        LOG.info("generateAndAddMatches: entry, {}", this);
+
+        final List<CanvasMatches> matchPairs = new ArrayList<>();
 
         // Extract features from all mfov tiles
         final CanvasFeatureExtractor featureExtractor = CanvasFeatureExtractor.build(FEATURE_EXTRACTION_PARAMETERS);
         final Map<String, List<Feature>> mfovFeatures = new HashMap<>(tiles.getTileCount());
-        final Map<String, Tile<TranslationModel2D>> modelTiles = new HashMap<>();
 
         for (final TileSpec tileSpec : tiles.getTileSpecs()) {
             final List<Feature> tileFeatures = extractBoundaryFeatures(cache, tileSpec, featureExtractor);
-
             mfovFeatures.put(tileSpec.getTileId(), tileFeatures);
-            modelTiles.put(tileSpec.getTileId(), new Tile<>(new TranslationModel2D()));
         }
 
         // Match features between tile pairs
-        final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(MATCH_DERIVATION_PARAMETERS, 1.0);
+        final double renderScale = 1.0;
+        final CanvasFeatureMatcher featureMatcher = new CanvasFeatureMatcher(MATCH_DERIVATION_PARAMETERS,
+                                                                             renderScale);
 
+        CanvasMatchResult matchResult;
         for (final OrderedCanvasIdPair pair : tilePairs) {
-            final String tileIdI = pair.getP().getId();
-            final String tileIdJ = pair.getQ().getId();
 
-            final CanvasMatchResult matchResult = featureMatcher.deriveMatchResult(
-                    mfovFeatures.get(tileIdI),
-                    mfovFeatures.get(tileIdJ)
-            );
+            final CanvasId p = pair.getP();
+            final CanvasId q = pair.getQ();
 
-            // Connect tiles for optimization...
-            final Tile<TranslationModel2D> modelTileI = modelTiles.get(tileIdI);
-            final Tile<TranslationModel2D> modelTileJ = modelTiles.get(tileIdJ);
+            final String pTileId = p.getId();
+            final String qTileId = q.getId();
+
+            matchResult = featureMatcher.deriveMatchResult(mfovFeatures.get(pTileId),
+                                                           mfovFeatures.get(qTileId));
+
+            // create fake connection if no inliers found
             if (matchResult == null || matchResult.getTotalNumberOfInliers() == 0) {
-                // ... with fake matches if no inliers found
-                final PointMatch fakeMatch = new PointMatch(
-                        new Point(new double[] {0.0, 0.0}), new Point(new double[] {0.0, 0.0}), 1e-4
-                );
-                modelTileI.connect(modelTileJ, Collections.singletonList(fakeMatch));
-            } else {
-                // ... with real matches if inliers found
-                final List<PointMatch> pointMatches = matchResult.getInlierPointMatchList();
-                modelTileI.connect(modelTileJ, pointMatches);
+                final PointMatch fakeMatch = new PointMatch(new Point(new double[]{0.0, 0.0}),
+                                                            new Point(new double[]{0.0, 0.0}),
+                                                            1e-4);
+                final List<PointMatch> fakeList = new ArrayList<>();
+                fakeList.add(fakeMatch);
+                final List<List<PointMatch>> fakeInliers = new ArrayList<>();
+                fakeInliers.add(fakeList);
+                matchResult = new CanvasMatchResult(null, fakeInliers, 1);
             }
+
+            final List<CanvasMatches> canvasMatchesList = matchResult.getInlierMatchesList(p.getGroupId(),
+                                                                                           p.getId(),
+                                                                                           q.getGroupId(),
+                                                                                           q.getId(),
+                                                                                           renderScale,
+                                                                                           CanvasId.ZERO_OFFSETS,
+                                                                                           CanvasId.ZERO_OFFSETS);
+            matchPairs.add(canvasMatchesList.get(0));
         }
 
-        LOG.info("alignTiles: start optimization, {}", this);
+        final long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
+
+        LOG.info("generateAndAddMatches: exit, {}, elapsedSeconds={}", this, elapsedSeconds);
+
+        return new ResolvedTileSpecsWithMatchPairs(tiles, matchPairs);
+    }
+
+    /**
+     * Align tile pairs.
+     */
+    private ResolvedTileSpecCollection alignTiles(final ResolvedTileSpecsWithMatchPairs sfovTilesAndMatchesForMfov) {
+
+        final long startTime = System.currentTimeMillis();
+        LOG.info("alignTiles: entry, {}", this);
+
+        final ResolvedTileSpecCollection tiles = sfovTilesAndMatchesForMfov.getResolvedTileSpecs();
+
+        final Map<String, Tile<TranslationModel2D>> modelTiles = new HashMap<>();
+
+        for (final TileSpec tileSpec : sfovTilesAndMatchesForMfov.getResolvedTileSpecs().getTileSpecs()) {
+            modelTiles.put(tileSpec.getTileId(), new Tile<>(new TranslationModel2D()));
+        }
+
+        int connectedPairCount = 0;
+        for (final CanvasMatches canvasMatches : sfovTilesAndMatchesForMfov.getMatchPairs()) {
+            // Connect tiles for optimization...
+            final Tile<TranslationModel2D> pModelTile = modelTiles.get(canvasMatches.getpId());
+            final Tile<TranslationModel2D> qModelTile = modelTiles.get(canvasMatches.getqId());
+
+            if (pModelTile == null || qModelTile == null) {
+                LOG.info("alignTiles: skipping pair {} in {}", canvasMatches.toKeyString(), this);
+                continue;
+            }
+            final List<PointMatch> pointMatches = CanvasMatchResult.convertMatchesToPointMatchList(canvasMatches.getMatches());
+            pModelTile.connect(qModelTile, pointMatches);
+            connectedPairCount++;
+        }
+
+        LOG.info("alignTiles: start optimization after connecting {} pairs, {}",
+                 connectedPairCount, this);
 
         // Optimize the tiles
         final TileConfiguration tc = new TileConfiguration();
@@ -382,6 +489,11 @@ public class MfovPrealignTask implements Serializable {
             final ImageProcessorCache cache
     ) {
 
+        LOG.info("intensityCorrectTiles: entry with {} tiles and {} match pairs for {}",
+                 tiles.getTileCount(),
+                 tilePairs.size(),
+                 this);
+
         final Map<String, Tile<TranslationModel1D>> modelTiles = new HashMap<>();
 
         // Initialize models for each tile spec
@@ -424,8 +536,8 @@ public class MfovPrealignTask implements Serializable {
                 modelTileI.connect(modelTileJ, Collections.singletonList(pointMatch));
 
             } else {
-                LOG.warn("intensityCorrectTiles: tiles {} and {} do not overlap after alignment",
-                         tileIdI, tileIdJ);
+                LOG.warn("intensityCorrectTiles: tiles {} and {} do not overlap after alignment of {}",
+                         tileSpecI.toTileBounds(), tileSpecJ.toTileBounds(), this);
             }
         }
 
@@ -438,7 +550,7 @@ public class MfovPrealignTask implements Serializable {
             final ErrorStatistic errorStatistic = new ErrorStatistic(1001);
             tc.optimizeSilently(errorStatistic, 0.5, 1000, 100);
         } catch (final NotEnoughDataPointsException | IllDefinedDataPointsException e) {
-            throw new RuntimeException("Failed to optimize intensity correction", e);
+            throw new RuntimeException("Failed to optimize intensity correction for " + this, e);
         }
 
         // Apply the intensity shift to the tiles

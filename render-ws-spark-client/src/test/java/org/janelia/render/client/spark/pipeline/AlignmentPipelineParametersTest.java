@@ -47,6 +47,16 @@ public class AlignmentPipelineParametersTest {
     }
 
     @Test
+    public void testNamingGroupSetup()
+            throws IOException {
+        final AlignmentPipelineParameters pipelineParameters = loadTestParameters();
+        Assert.assertNotNull("rawNamingGroup is null", pipelineParameters.getRawNamingGroup());
+        Assert.assertNotNull("alignedNamingGroup is null", pipelineParameters.getAlignedNamingGroup());
+        Assert.assertNotNull("intensityCorrectedNamingGroup is null", pipelineParameters.getIntensityCorrectedNamingGroup());
+        Assert.assertNotNull("otherNamingGroup is null", pipelineParameters.getOtherNamingGroup());
+    }
+
+    @Test
     public void testLoadParametersFromUrl()
             throws IOException {
         final String commitJsonUrlString =

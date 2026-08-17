@@ -209,6 +209,7 @@ public class ExampleMatchVisualizationClient {
                                                                true,
                                                                false,
                                                                false,
+                                                              false,
                                                               false)
                             .stream()
                             .map(pair -> {
@@ -246,6 +247,7 @@ public class ExampleMatchVisualizationClient {
                                                                    true,
                                                                    true,
                                                                    false,
+                                                                  false,
                                                                   false)
                                 .stream().sorted().collect(Collectors.toList());
 

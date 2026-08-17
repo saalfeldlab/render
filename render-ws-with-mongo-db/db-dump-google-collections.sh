@@ -132,7 +132,7 @@ else
   echo "
 Select project:"
   PROJECTS=()
-  for i in $(seq 0 10 150); do
+  for i in $(seq 0 10 400); do
     PROJECTS+=("$(printf "w61_serial_%03d_to_%03d" "$i" "$((i+9))")")
   done
   select PROJECT in "${PROJECTS[@]}"; do

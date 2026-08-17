@@ -57,10 +57,19 @@ public class UnconnectedMontageMFOVClient {
         @Parameter(
                 names = "--startPositionMatchWeight",
                 description = "Weight (e.g. 0.001) for matches derived from SFOV start positions.  " +
-                              "Specify to patch all unconnected pairs with positions based upon SFOV stage locations.  " +
-                              "Omit to skip start position derivation.")
+                              "Specify a positive value to patch all unconnected pairs with positions based upon " +
+                              "SFOV stage locations.  " +
+                              "Omit (or specify a non-positive value) to skip start position derivation.")
         public Double startPositionMatchWeight;
 
+        /**
+         * @return the start position match weight or null if derivation should be skipped
+         *         (non-positive weights are used to exclude cross MFOV pairs from patching).
+         */
+        public Double getStartPositionMatchWeight() {
+            return ((startPositionMatchWeight != null) && (startPositionMatchWeight > 0.0)) ?
+                   startPositionMatchWeight : null;
+        }
     }
 
     /** Label for tiles in MFOVs with isolated edges. */
@@ -105,7 +114,7 @@ public class UnconnectedMontageMFOVClient {
                                      parameters.multiProject.deriveMatchCollectionNamesFromProject,
                                      renderDataClient,
                                      parameters.addIsolatedEdgeLabel,
-                                     parameters.startPositionMatchWeight);
+                                     parameters.getStartPositionMatchWeight());
         }
     }
 

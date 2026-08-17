@@ -263,6 +263,36 @@ public class MultiSemUtilities {
     /** Each MFOV has 91 SFOVs or tiles */
     public static int NUMBER_OF_TILES_IN_MFOV = 91;
 
+    /**
+     * @return the specified tileId with its render order updated
+     *         (e.g.'w60_magc0399_scan005_m0013_r42_s09' for 'w60_magc0399_scan005_m0013_r37_s09')
+     */
+    public static String convertTileIdToUseWafers6061RenderOrder(final String tileId) {
+        final String sfovString = getSFOVIndexForTileId(tileId);               // "09" for "w60_magc0399_scan005_m0013_r37_s09"
+        final int i = Integer.parseInt(sfovString.trim()) - 1;                 // 8 for "09"
+        final String renderOrderString = WAFERS_60_61_RENDER_ORDER_STRINGS[i]; // "r42_" for 8
+        return tileId.substring(0, 27) + renderOrderString + sfovString;
+    }
+
+    /**
+     * Thomas' optimal SFOV render order for wafers 60 and 61 that was copied from
+     * <a href="https://github.com/JaneliaSciComp/EM_recon_pipeline/blob/multisem/src/python/janelia_emrp/msem/render_sfov_order.py#L24-L35">
+     *     render_sfov_order.py
+     * </a>.
+     */
+    private static final String[] WAFERS_60_61_RENDER_ORDER_STRINGS = {
+            "r57_s", "r50_s", "r46_s", "r51_s", "r60_s", "r65_s", "r59_s", "r47_s", "r42_s", "r36_s",
+            "r43_s", "r48_s", "r54_s", "r56_s", "r69_s", "r76_s", "r72_s", "r68_s", "r55_s", "r44_s",
+            "r37_s", "r31_s", "r24_s", "r32_s", "r38_s", "r18_s", "r25_s", "r33_s", "r39_s", "r64_s",
+            "r71_s", "r83_s", "r79_s", "r75_s", "r70_s", "r63_s", "r52_s", "r34_s", "r26_s", "r19_s",
+            "r12_s", "r07_s", "r20_s", "r27_s", "r13_s", "r08_s", "r14_s", "r21_s", "r28_s", "r35_s",
+            "r45_s", "r67_s", "r78_s", "r86_s", "r88_s", "r85_s", "r82_s", "r77_s", "r66_s", "r58_s",
+            "r49_s", "r29_s", "r22_s", "r15_s", "r09_s", "r03_s", "r01_s", "r04_s", "r16_s", "r10_s",
+            "r05_s", "r02_s", "r06_s", "r11_s", "r17_s", "r23_s", "r30_s", "r40_s", "r62_s", "r74_s",
+            "r81_s", "r90_s", "r91_s", "r89_s", "r87_s", "r84_s", "r80_s", "r73_s", "r61_s", "r53_s",
+            "r41_s"
+    };
+
     private static final Pattern SIMPLE_MFOV_NAME_PATTERN = Pattern.compile("^m(\\d{4})$");
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiSemUtilities.class);
