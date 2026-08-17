@@ -336,6 +336,7 @@ public class TileBoundsRTree {
                         isNeighborCenterInRange(fromMinX, fromMaxX, toTile.getMinX(), toTile.getMaxX()) ||
                         isNeighborCenterInRange(fromMinY, fromMaxY, toTile.getMinY(), toTile.getMaxY())) {
 
+                        // note: only execute multi-SEM string extraction and comparison code if flag indicates it is needed
                         if (excludeSameMfovNeighbors && (pMfov.equals(MultiSemUtilities.getMagcMfovForTileId(qTileId)))) {
                             continue;
                         } else if (excludeDifferentMfovNeighbors && (! pMfov.equals(MultiSemUtilities.getMagcMfovForTileId(qTileId)))) {
