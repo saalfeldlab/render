@@ -41,8 +41,8 @@ public class ClusterCountClientTest {
 //                "--maxSmallClusterSizeToSave", "100"
         };
 
-        ClusterCountClient.main(effectiveArgs);
-//        findWafer61Clusters();
+//        ClusterCountClient.main(effectiveArgs);
+        findWafer61Clusters();
 
 
     }
@@ -53,9 +53,9 @@ public class ClusterCountClientTest {
         final String baseDataUrl = "http://em-services-1:8080/render-ws/v1";
 
         final String owner = "hess_wafers_60_61";
-        final String project = "w61_serial_100_to_109";
-        final String stack = "w61_s108_r00_gc_par";
-        final int lastZ = 96;
+        final String project = "w61_serial_170_to_179";
+        final String stack = "w61_s171_r01_gc_icc_pa_mat_render";
+        final int lastZ = 82;
         final String mcName = stack + "_match";
 
         final StackId stackId = new StackId(owner, project, stack);
@@ -71,10 +71,9 @@ public class ClusterCountClientTest {
         jcccp.multiProject = MultiProjectParameters.singleStackInstance(baseDataUrl, stackId);
         jcccp.tileCluster = new TileClusterParameters();
 
-        final int zCount = 96;
         jcccp.tileCluster.maxSmallClusterSize = 0;
         jcccp.tileCluster.includeMatchesOutsideGroup = true;
-        jcccp.tileCluster.maxLayersPerBatch = zCount + 1;
+        jcccp.tileCluster.maxLayersPerBatch = lastZ + 1;
         jcccp.tileCluster.maxOverlapLayers = 6;
 
         final RenderDataClient dataClient = new RenderDataClient(baseDataUrl, owner, project);
