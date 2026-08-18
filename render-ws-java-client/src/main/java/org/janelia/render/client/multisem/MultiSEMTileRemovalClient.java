@@ -11,7 +11,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.multisem.MultiSemUtilities;
-import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -220,7 +219,7 @@ public class MultiSEMTileRemovalClient {
 
             } else {
 
-                final Set<String> layerMfovNames = getTileIdsForZ(dataClient, stack, z).stream()
+                final Set<String> layerMfovNames = dataClient.getTileIdsForZ(stack, z).stream()
                         .map(MultiSemUtilities::getSimpleMfovForTileId)
                         .collect(Collectors.toSet());
 
@@ -269,7 +268,7 @@ public class MultiSEMTileRemovalClient {
                                     final Set<String> mfovNames)
             throws IOException {
 
-        final List<String> tileIdsToRemove = getTileIdsForZ(dataClient, stack, z).stream()
+        final List<String> tileIdsToRemove = dataClient.getTileIdsForZ(stack, z).stream()
                 .filter(tileId -> MultiSEMTileRemovalParameters.isTileInMfovs(tileId, mfovNames))
                 .sorted()
                 .collect(Collectors.toList());
@@ -311,7 +310,7 @@ public class MultiSEMTileRemovalClient {
 
             if (! collapsedZ.equals(z)) {
 
-                final List<String> tileIds = getTileIdsForZ(dataClient, stack, z);
+                final List<String> tileIds = dataClient.getTileIdsForZ(stack, z);
 
                 LOG.info("collapseStack: moving {} tiles in {} from z {} to z {}",
                          tileIds.size(), stack, z, collapsedZ);
@@ -324,18 +323,6 @@ public class MultiSEMTileRemovalClient {
         }
 
         LOG.info("collapseStack: moved {} layers in {}", movedLayerCount, stack);
-    }
-
-    private List<String> getTileIdsForZ(final RenderDataClient dataClient,
-                                        final String stack,
-                                        final Double z)
-            throws IOException {
-        final List<TileBounds> tileBoundsList = dataClient.getTileBounds(stack, z);
-        final List<String> tileIds = new ArrayList<>(tileBoundsList.size());
-        for (final TileBounds tileBounds : tileBoundsList) {
-            tileIds.add(tileBounds.getTileId());
-        }
-        return tileIds;
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiSEMTileRemovalClient.class);

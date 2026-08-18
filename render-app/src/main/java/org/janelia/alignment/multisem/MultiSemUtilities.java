@@ -35,6 +35,18 @@ import org.slf4j.LoggerFactory;
 public class MultiSemUtilities {
 
     /**
+     * @return scan005 for w60_magc0399_scan005_m0013_r46_s01
+     */
+    public static String getScanStringForTileId(final String tileId)
+            throws IllegalArgumentException {
+        final int magcIndex = tileId.indexOf("magc");
+        if ((magcIndex < 0) || (tileId.length() < (magcIndex + 16))) {
+            throw new IllegalArgumentException("scan string cannot be derived from tileId " + tileId);
+        }
+        return tileId.substring((magcIndex + 9), (magcIndex + 16)); // scan005;
+    }
+
+    /**
      * @return m0013 for w60_magc0399_scan005_m0013_r46_s01
      */
     public static String getSimpleMfovForTileId(final String tileId) throws IllegalArgumentException {
