@@ -18,24 +18,27 @@ import org.janelia.alignment.multisem.MultiSemUtilities;
 
 /**
  * Parameters for removing tiles from one multi-SEM stack.
+ * <p>
+ * Scans are identified by name instead of by z value so that removal is idempotent
+ * (scan names stay the same when layers are removed and renumbered).
  */
 @Parameters
 public class MultiSEMTileRemovalParameters
         implements Serializable {
 
     @Parameter(
-            names = "--z",
-            description = "z value(s) for layer(s) that should be completely removed " +
-                          "(omit if no layers need to be removed)",
+            names = "--scan",
+            description = "scan name(s) for layer(s) that should be completely removed (e.g. scan004).  " +
+                          "Omit if no layers need to be removed.",
             variableArity = true)
-    public List<Double> zValues = new ArrayList<>();
+    public List<String> scanNames = new ArrayList<>();
 
     @Parameter(
-            names = "--zmfov",
-            description = "z value and simple MFOV name for each MFOV that should be removed from one layer " +
-                          "(e.g. z1_m0015).  Omit if no MFOVs need to be removed.",
+            names = "--scanMfov",
+            description = "scan name and simple MFOV name for each MFOV that should be removed from one layer " +
+                          "(e.g. scan004_m0015).  Omit if no MFOVs need to be removed.",
             variableArity = true)
-    public List<String> zMfovNames = new ArrayList<>();
+    public List<String> scanMfovNames = new ArrayList<>();
 
     @Parameter(
             names = "--collapseStack",
@@ -47,65 +50,83 @@ public class MultiSEMTileRemovalParameters
     public MultiSEMTileRemovalParameters() {
     }
 
-    public boolean hasZValues() {
-        return (zValues != null) && (! zValues.isEmpty());
+    public boolean hasScanNames() {
+        return (scanNames != null) && (! scanNames.isEmpty());
     }
 
-    public boolean hasZMfovNames() {
-        return (zMfovNames != null) && (! zMfovNames.isEmpty());
+    public boolean hasScanMfovNames() {
+        return (scanMfovNames != null) && (! scanMfovNames.isEmpty());
     }
 
     public void validate()
             throws IllegalArgumentException {
 
-        if ((! hasZValues()) && (! hasZMfovNames())) {
-            throw new IllegalArgumentException("at least one --z or --zmfov value must be specified");
+        if ((! hasScanNames()) && (! hasScanMfovNames())) {
+            throw new IllegalArgumentException("at least one --scan or --scanMfov value must be specified");
         }
 
-        if (collapseStack && (! hasZValues())) {
-            throw new IllegalArgumentException("--collapseStack requires at least one --z value");
+        if (collapseStack && (! hasScanNames())) {
+            throw new IllegalArgumentException("--collapseStack requires at least one --scan value");
         }
 
-        // build the map to validate the format of all --zmfov values
-        getZToMfovNamesMap();
+        if (hasScanNames()) {
+            for (final String scanName : scanNames) {
+                if (! SCAN_NAME_PATTERN.matcher(scanName).matches()) {
+                    throw new IllegalArgumentException(
+                            "invalid --scan value '" + scanName + "', values must be scan names (e.g. scan004)");
+                }
+            }
+        }
+
+        // build the map to validate the format of all --scanMfov values
+        getScanToMfovNamesMap();
     }
 
     /**
-     * @return distinct sorted z values for the layers that should be removed.
+     * @return distinct sorted scan names for the layers that should be removed.
      */
-    public List<Double> getSortedZValues() {
-        return hasZValues() ?
-               zValues.stream().distinct().sorted().collect(Collectors.toList()) :
+    public List<String> getSortedScanNames() {
+        return hasScanNames() ?
+               scanNames.stream().distinct().sorted().collect(Collectors.toList()) :
                new ArrayList<>();
     }
 
     /**
-     * @return map of z values to the simple names of the MFOVs that should be removed from each of those layers.
+     * @return map of scan names to the simple names of the MFOVs
+     *         that should be removed from each of those layers.
      *
      * @throws IllegalArgumentException
-     *   if any --zmfov value is invalid.
+     *   if any --scanMfov value is invalid.
      */
-    public Map<Double, Set<String>> getZToMfovNamesMap()
+    public Map<String, Set<String>> getScanToMfovNamesMap()
             throws IllegalArgumentException {
 
-        final Map<Double, Set<String>> zToMfovNamesMap = new TreeMap<>();
+        final Map<String, Set<String>> scanToMfovNamesMap = new TreeMap<>();
 
-        if (hasZMfovNames()) {
-            for (final String zMfovName : zMfovNames) {
+        if (hasScanMfovNames()) {
+            for (final String scanMfovName : scanMfovNames) {
 
-                final Matcher matcher = Z_MFOV_NAME_PATTERN.matcher(zMfovName);
+                final Matcher matcher = SCAN_MFOV_NAME_PATTERN.matcher(scanMfovName);
                 if (! matcher.matches()) {
                     throw new IllegalArgumentException(
-                            "invalid --zmfov value '" + zMfovName + "', values must specify a z value and a " +
-                            "simple MFOV name (e.g. z1_m0015)");
+                            "invalid --scanMfov value '" + scanMfovName + "', values must specify a scan name " +
+                            "and a simple MFOV name (e.g. scan004_m0015)");
                 }
 
-                final Double z = Double.parseDouble(matcher.group(1));
-                zToMfovNamesMap.computeIfAbsent(z, k -> new TreeSet<>()).add(matcher.group(2));
+                scanToMfovNamesMap.computeIfAbsent(matcher.group(1), k -> new TreeSet<>()).add(matcher.group(2));
             }
         }
 
-        return zToMfovNamesMap;
+        return scanToMfovNamesMap;
+    }
+
+    /**
+     * @return all distinct scan names referenced by the --scan and --scanMfov values.
+     */
+    public Set<String> buildScanNamesSet() {
+        final Set<String> allScanNames = new TreeSet<>(getSortedScanNames());
+        allScanNames.addAll(getScanToMfovNamesMap().keySet());
+        return allScanNames;
     }
 
     /**
@@ -117,30 +138,17 @@ public class MultiSEMTileRemovalParameters
         return mfovNames.contains(MultiSemUtilities.getSimpleMfovForTileId(tileId));
     }
 
-    /**
-     * @return the collapsed z value for the specified z
-     *         (the specified z decreased by one for each removed layer before it).
-     */
-    public Double getCollapsedZ(final Double z) {
-        int removedLayerCount = 0;
-        if (hasZValues()) {
-            for (final Double removedZ : zValues) {
-                if (removedZ < z) {
-                    removedLayerCount++;
-                }
-            }
-        }
-        return z - removedLayerCount;
-    }
-
     @Override
     public String toString() {
-        return "{zValues=" + zValues +
-               ", zMfovNames=" + zMfovNames +
+        return "{scanNames=" + scanNames +
+               ", scanMfovNames=" + scanMfovNames +
                ", collapseStack=" + collapseStack +
                '}';
     }
 
-    /** Matches --zmfov values like z1_m0015 (and z1.0_m0015). */
-    private static final Pattern Z_MFOV_NAME_PATTERN = Pattern.compile("^z(\\d+(?:\\.\\d+)?)_(m\\d{4})$");
+    /** Matches --scan values like scan004 (and sc01234). */
+    private static final Pattern SCAN_NAME_PATTERN = Pattern.compile("^sc[^_]+$");
+
+    /** Matches --scanMfov values like scan004_m0015 (and sc01234_m0015). */
+    private static final Pattern SCAN_MFOV_NAME_PATTERN = Pattern.compile("^(sc[^_]+)_(m\\d{4})$");
 }
