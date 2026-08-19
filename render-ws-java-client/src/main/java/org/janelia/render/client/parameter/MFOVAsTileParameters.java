@@ -295,7 +295,7 @@ public class MFOVAsTileParameters
     //     renderScale 1.0: 2915 seconds (49 minutes) for 25210 matches - at this scale, matching would take 8 days
 
     private static MatchRunParameters buildCrossMatchRunParameters() {
-        // 2 passes, render scales 0.2 and 0.3, minInliers 150
+        // 3 passes, render scales 0.2, 0.3, and 0.5 with minInliers 150
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(new MatchStageParameters("crossMfovAsTilePass1",
                                                  buildFeatureRenderParameters(0.2,
@@ -310,6 +310,17 @@ public class MFOVAsTileParameters
                                                  null),
                         new MatchStageParameters("crossMfovAsTilePass2",
                                                  buildFeatureRenderParameters(0.3,
+                                                                              true),
+                                                 new FeatureRenderClipParameters(),
+                                                 buildFeatureExtractionParameters(),
+                                                 buildFeatureMatchDerivation(MatchFilter.FilterType.SINGLE_SET,
+                                                                             150,
+                                                                             ModelType.TRANSLATION),
+                                                 buildDisabledGeometricDescriptorAndMatch(),
+                                                 null,
+                                                 null),
+                        new MatchStageParameters("crossMfovAsTilePass3",
+                                                 buildFeatureRenderParameters(0.5,
                                                                               true),
                                                  new FeatureRenderClipParameters(),
                                                  buildFeatureExtractionParameters(),
