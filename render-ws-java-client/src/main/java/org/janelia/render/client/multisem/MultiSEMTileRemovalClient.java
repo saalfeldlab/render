@@ -102,7 +102,7 @@ public class MultiSEMTileRemovalClient {
 
         // work out (and check) what should be removed before changing anything
         final List<Double> zValuesToRemove = getZValuesToRemove(stack, tileRemoval, stackZValues, scanNameToZMap);
-        final List<Double> remainingZValues = stackZValues.stream()
+        final List<Double> sortedRemainingZValues = stackZValues.stream()
                 .filter(z -> ! zValuesToRemove.contains(z))
                 .sorted()
                 .collect(Collectors.toList());
@@ -119,14 +119,14 @@ public class MultiSEMTileRemovalClient {
 
         dataClient.setStackState(stack, StackMetaData.StackState.LOADING);
 
-        removeLayers(dataClient, stack, zValuesToRemove, remainingZValues.size());
+        removeLayers(dataClient, stack, zValuesToRemove, sortedRemainingZValues.size());
 
         if (! zToMfovNamesMap.isEmpty()) {
 
             int removedTileCount = 0;
             for (final Double z : zToMfovNamesMap.keySet()) {
                 final Set<String> mfovNames = zToMfovNamesMap.get(z);
-                if (remainingZValues.contains(z)) {
+                if (sortedRemainingZValues.contains(z)) {
                     removedTileCount += removeMfovTilesForZ(dataClient, stack, z, mfovNames);
                 } else {
                     LOG.warn("removeTiles: skipping MFOVs {} because z {} is not in {}", mfovNames, z, stack);
@@ -138,7 +138,7 @@ public class MultiSEMTileRemovalClient {
         }
 
         if (tileRemoval.collapseStack) {
-            collapseStack(dataClient, stack, zValuesToRemove, remainingZValues);
+            collapseStack(dataClient, stack, zValuesToRemove, sortedRemainingZValues);
         }
 
         dataClient.setStackState(stack, StackMetaData.StackState.COMPLETE);
@@ -379,12 +379,12 @@ public class MultiSEMTileRemovalClient {
     private void collapseStack(final RenderDataClient dataClient,
                                final String stack,
                                final List<Double> zValuesToRemove,
-                               final List<Double> remainingZValues)
+                               final List<Double> sortedRemainingZValues)
             throws IOException {
 
         int movedLayerCount = 0;
 
-        for (final Double z : remainingZValues.stream().sorted().collect(Collectors.toList())) {
+        for (final Double z : sortedRemainingZValues) {
 
             final Double collapsedZ = getCollapsedZ(z, zValuesToRemove);
 
