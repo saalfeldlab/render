@@ -37,6 +37,7 @@ public class MFOVAsTileParameters
     private final String roughSfovStackSuffix;
     private final Double minCrossMatchPixelDistance;
     private final boolean deriveSfovMatchData;
+    private final Integer crossMatchPassCount;
 
     public MFOVAsTileParameters() {
         this(null,
@@ -64,7 +65,8 @@ public class MFOVAsTileParameters
              alignedMfovStackSuffix,
              roughSfovStackSuffix,
              null,
-             true);
+             true,
+             null);
     }
 
     public MFOVAsTileParameters(final Double mfovRenderScale,
@@ -76,7 +78,8 @@ public class MFOVAsTileParameters
                                 final String alignedMfovStackSuffix,
                                 final String roughSfovStackSuffix,
                                 final Double minCrossMatchPixelDistance,
-                                final boolean deriveSfovMatchData) {
+                                final boolean deriveSfovMatchData,
+                                final Integer crossMatchPassCount) {
         this.mfovRenderScale = mfovRenderScale;
         this.mfovRootDirectory = mfovRootDirectory;
         this.prealignedSfovStackSuffix = prealignedSfovStackSuffix;
@@ -87,6 +90,7 @@ public class MFOVAsTileParameters
         this.roughSfovStackSuffix = roughSfovStackSuffix;
         this.minCrossMatchPixelDistance = minCrossMatchPixelDistance;
         this.deriveSfovMatchData = deriveSfovMatchData;
+        this.crossMatchPassCount = crossMatchPassCount;
     }
 
     public Double getMfovRenderScale() {
@@ -123,6 +127,24 @@ public class MFOVAsTileParameters
 
     public boolean isDeriveSfovMatchData() {
         return deriveSfovMatchData;
+    }
+
+    /**
+     * @return number of cross MFOV-as-tile match passes to run
+     *         (the third pass renders at a larger scale and is only needed for special cases).
+     *
+     * @throws IllegalArgumentException
+     *   if the configured count is not between 1 and the number of defined passes.
+     */
+    public int getCrossMatchPassCount()
+            throws IllegalArgumentException {
+        final int passCount = crossMatchPassCount == null ?
+                              DEFAULT_CROSS_MATCH_PASS_COUNT : crossMatchPassCount;
+        if ((passCount < 1) || (passCount > MAX_CROSS_MATCH_PASS_COUNT)) {
+            throw new IllegalArgumentException("crossMatchPassCount must be between 1 and " +
+                                               MAX_CROSS_MATCH_PASS_COUNT + " but is " + passCount);
+        }
+        return passCount;
     }
 
     public String getDynamicMfovStackSuffixForRawSfovStack() {
@@ -168,7 +190,7 @@ public class MFOVAsTileParameters
     public List<MatchRunParameters> buildMfovMatchRunList() {
         final List<MatchRunParameters> mfovMatchRunList = new ArrayList<>();
         mfovMatchRunList.add(buildMontageMatchRunParameters());
-        mfovMatchRunList.add(buildCrossMatchRunParameters());
+        mfovMatchRunList.add(buildCrossMatchRunParameters(getCrossMatchPassCount()));
         return mfovMatchRunList;
     }
 
@@ -294,9 +316,10 @@ public class MFOVAsTileParameters
     //     renderScale 0.6:  372 seconds ( 6 minutes) for  8319 matches
     //     renderScale 1.0: 2915 seconds (49 minutes) for 25210 matches - at this scale, matching would take 8 days
 
-    private static MatchRunParameters buildCrossMatchRunParameters() {
-        // 2 passes, render scales 0.2 and 0.3, minInliers 150
-        final List<MatchStageParameters> matchStageParametersList =
+    private static MatchRunParameters buildCrossMatchRunParameters(final int passCount) {
+        // up to 3 passes, render scales 0.2, 0.3, and 0.5 with minInliers 150
+        // (the 0.5 scale third pass is only needed for special cases like small region 01 stacks)
+        final List<MatchStageParameters> allStageParametersList =
                 List.of(new MatchStageParameters("crossMfovAsTilePass1",
                                                  buildFeatureRenderParameters(0.2,
                                                                               true),
@@ -318,12 +341,23 @@ public class MFOVAsTileParameters
                                                                              ModelType.TRANSLATION),
                                                  buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
+                                                 null),
+                        new MatchStageParameters("crossMfovAsTilePass3",
+                                                 buildFeatureRenderParameters(0.5,
+                                                                              true),
+                                                 new FeatureRenderClipParameters(),
+                                                 buildFeatureExtractionParameters(),
+                                                 buildFeatureMatchDerivation(MatchFilter.FilterType.SINGLE_SET,
+                                                                             150,
+                                                                             ModelType.TRANSLATION),
+                                                 buildDisabledGeometricDescriptorAndMatch(),
+                                                 null,
                                                  null));
 
         return new MatchRunParameters("crossMfovAsTileRun",
                                       buildMatchCommonParameters(10),
                                       buildTilePairDerivationParameters(0.1, 1, true),
-                                      matchStageParametersList);
+                                      allStageParametersList.subList(0, passCount));
     }
 
     public static MatchCommonParameters buildMatchCommonParameters(final int maxPairsPerStackBatch) {
@@ -390,4 +424,10 @@ public class MFOVAsTileParameters
         gdParams.gdEnabled = false;
         return gdParams;
     }
+
+    /** Number of cross MFOV-as-tile match passes to run when the count is not explicitly specified. */
+    private static final int DEFAULT_CROSS_MATCH_PASS_COUNT = 2;
+
+    /** Number of cross MFOV-as-tile match passes that are defined. */
+    private static final int MAX_CROSS_MATCH_PASS_COUNT = 3;
 }

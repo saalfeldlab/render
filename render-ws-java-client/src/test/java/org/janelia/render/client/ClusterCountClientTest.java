@@ -54,7 +54,7 @@ public class ClusterCountClientTest {
 
         final String owner = "hess_wafers_60_61";
         final String project = "w61_serial_170_to_179";
-        final String stack = "w61_s171_r01_gc_icc_pa_mat_render";
+        final String stack = "w61_s178_r00_gc_icc_pa_mat_render";
         final int lastZ = 82;
         final String mcName = stack + "_match";
 
