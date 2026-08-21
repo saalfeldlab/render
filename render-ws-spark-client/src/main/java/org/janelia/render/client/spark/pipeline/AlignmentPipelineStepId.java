@@ -14,6 +14,7 @@ import org.janelia.render.client.spark.multisem.LayerAsTileClient;
 import org.janelia.render.client.spark.multisem.MFOVAsTileClient;
 import org.janelia.render.client.spark.multisem.MFOVMontageMatchPatchClient;
 import org.janelia.render.client.spark.multisem.MatchCollectionRenameClient;
+import org.janelia.render.client.spark.multisem.MultiSEMTileRemovalClient;
 import org.janelia.render.client.spark.multisem.UnconnectedCrossMFOVClient;
 import org.janelia.render.client.spark.newsolver.DistributedAffineBlockSolverClient;
 import org.janelia.render.client.spark.newsolver.DistributedIntensityCorrectionBlockSolverClient;
@@ -39,6 +40,7 @@ public enum AlignmentPipelineStepId {
     CORRECT_INTENSITY(DistributedIntensityCorrectionBlockSolverClient::new),
     HACK_MASK(MaskHackClient::new),
     HACK_TILE_ID(TileIdHackClient::new),
+    REMOVE_TILES(MultiSEMTileRemovalClient::new),
     RENDER_SCAPE_IMAGES(ScapeClient::new),
     RENDER_TILES(RenderTilesClient::new),
     MFOV_AS_TILE(MFOVAsTileClient::new),
