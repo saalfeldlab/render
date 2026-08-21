@@ -26,7 +26,7 @@ import org.janelia.render.client.parameter.MatchCollectionRenameParameters;
 import org.janelia.render.client.parameter.MatchCopyParameters;
 import org.janelia.render.client.parameter.MipmapParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
-import org.janelia.render.client.parameter.StackWithRemovalParameters;
+import org.janelia.render.client.parameter.TileRemovalSetup;
 import org.janelia.render.client.parameter.ScapeParameters;
 import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.TileRenderParameters;
@@ -64,7 +64,7 @@ public class AlignmentPipelineParameters
     private final TileRenderParameters tileRender;
     private final MFOVAsTileParameters mfovAsTile;
     private final LayerAsTileParameters layerAsTile;
-    private final List<StackWithRemovalParameters> tileRemovalList;
+    private final TileRemovalSetup tileRemoval;
 
     @SuppressWarnings("unused")
     public AlignmentPipelineParameters() {
@@ -111,7 +111,7 @@ public class AlignmentPipelineParameters
                                        final TileRenderParameters tileRender,
                                        final MFOVAsTileParameters mfovAsTile,
                                        final LayerAsTileParameters layerAsTile,
-                                       final List<StackWithRemovalParameters> tileRemovalList) {
+                                       final TileRemovalSetup tileRemoval) {
         this.multiProject = multiProject;
         this.pipelineStackGroups = pipelineStackGroups;
         this.pipelineSteps = pipelineSteps;
@@ -132,7 +132,7 @@ public class AlignmentPipelineParameters
         this.tileRender = tileRender;
         this.mfovAsTile = mfovAsTile;
         this.layerAsTile = layerAsTile;
-        this.tileRemovalList = tileRemovalList;
+        this.tileRemoval = tileRemoval;
     }
 
     public MultiProjectParameters getMultiProject(final StackIdNamingGroup withNamingGroup) {
@@ -233,8 +233,8 @@ public class AlignmentPipelineParameters
         return layerAsTile;
     }
 
-    public List<StackWithRemovalParameters> getTileRemovalList() {
-        return tileRemovalList;
+    public TileRemovalSetup getTileRemoval() {
+        return tileRemoval;
     }
 
     /**

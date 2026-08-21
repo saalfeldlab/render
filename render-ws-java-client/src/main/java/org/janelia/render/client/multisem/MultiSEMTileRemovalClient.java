@@ -11,6 +11,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.multisem.MultiSemUtilities;
@@ -97,8 +99,9 @@ public class MultiSEMTileRemovalClient {
 
         final List<Double> stackZValues = getStackZValues(dataClient, stack);
 
-        // map the requested scan names to this stack's z values so that removal is idempotent
-        final Map<String, Double> scanNameToZMap = buildScanNameToZMap(dataClient, stack, stackZValues, tileRemoval);
+        // map this stack's scan names to its z values so that removal is idempotent
+        final Map<String, Double> scanNameToZMap = buildScanNameToZMap(dataClient, stack, stackZValues);
+        logMissingScanNames(stack, tileRemoval, scanNameToZMap);
 
         // work out (and check) what should be removed before changing anything
         final List<Double> zValuesToRemove = getZValuesToRemove(stack, tileRemoval, stackZValues, scanNameToZMap);
@@ -147,6 +150,82 @@ public class MultiSEMTileRemovalClient {
     }
 
     /**
+     * Removes all layers in the specified stack for scans after the specified peak scan
+     * and then completes the stack.  Nothing is changed if the stack has no post-peak layers,
+     * so this can safely be re-run.
+     *
+     * @param  dataClient      client for the stack's owner and project.
+     * @param  stack           stack from which post-peak layers should be removed.
+     * @param  peakScanNumber  number of the last scan that should be kept (e.g. 82 for scan082).
+     *
+     * @throws IOException
+     *   if any request fails.
+     *
+     * @throws IllegalStateException
+     *   if removing the post-peak layers would leave the stack empty.
+     */
+    public void removeScansAfterPeak(final RenderDataClient dataClient,
+                                     final String stack,
+                                     final int peakScanNumber)
+            throws IOException, IllegalStateException {
+
+        LOG.info("removeScansAfterPeak: entry, stack={}, peakScanNumber={}", stack, peakScanNumber);
+
+        final List<Double> stackZValues = getStackZValues(dataClient, stack);
+        final Map<String, Double> scanNameToZMap = buildScanNameToZMap(dataClient, stack, stackZValues);
+
+        final Map<String, Double> postPeakScanNameToZMap = new TreeMap<>();
+        for (final Map.Entry<String, Double> entry : scanNameToZMap.entrySet()) {
+            if (getScanNumber(entry.getKey()) > peakScanNumber) {
+                postPeakScanNameToZMap.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        if (postPeakScanNameToZMap.isEmpty()) {
+
+            LOG.info("removeScansAfterPeak: exit, {} has no layers after scan {}", stack, peakScanNumber);
+
+        } else {
+
+            final List<Double> zValuesToRemove = postPeakScanNameToZMap.values().stream()
+                    .sorted()
+                    .collect(Collectors.toList());
+
+            if (zValuesToRemove.size() == stackZValues.size()) {
+                throw new IllegalStateException("all " + stackZValues.size() + " layers in " + stack +
+                                                " are after scan " + peakScanNumber +
+                                                ", delete the stack instead if that is what you want");
+            }
+
+            LOG.info("removeScansAfterPeak: removing scan(s) {} from {}",
+                     postPeakScanNameToZMap.keySet(), stack);
+
+            dataClient.setStackState(stack, StackMetaData.StackState.LOADING);
+
+            removeLayers(dataClient, stack, zValuesToRemove, (stackZValues.size() - zValuesToRemove.size()));
+
+            dataClient.setStackState(stack, StackMetaData.StackState.COMPLETE);
+
+            LOG.info("removeScansAfterPeak: exit, stack={}", stack);
+        }
+    }
+
+    /**
+     * @return the number within the specified scan name (e.g. 82 for scan082).
+     *
+     * @throws IllegalArgumentException
+     *   if the specified scan name does not contain a number.
+     */
+    private int getScanNumber(final String scanName)
+            throws IllegalArgumentException {
+        final Matcher matcher = SCAN_NUMBER_PATTERN.matcher(scanName);
+        if (! matcher.find()) {
+            throw new IllegalArgumentException("scan number cannot be derived from scan name " + scanName);
+        }
+        return Integer.parseInt(matcher.group(1));
+    }
+
+    /**
      * @return the sorted z values that exist in the stack before removal.
      *
      * @throws IOException
@@ -187,24 +266,20 @@ public class MultiSEMTileRemovalClient {
     }
 
     /**
-     * Maps each scan name requested for removal to the z value of the layer that contains it.
+     * Maps the scan name for each layer in the stack to that layer's z value.
      * The scan name for a layer is derived from the first tile in that layer,
      * so all tiles in a layer are assumed to come from the same scan.
-     * Requested scans that are no longer in the stack are simply logged
-     * (they have already been removed, so there is nothing left to do for them).
      *
-     * @return map of scan names to z values for the layers that were checked.
+     * @return map of scan names to z values for all layers in the stack.
      *
      * @throws IOException
      *   if a scan exists in more than one layer or if any request fails.
      */
     private Map<String, Double> buildScanNameToZMap(final RenderDataClient dataClient,
                                                     final String stack,
-                                                    final List<Double> stackZValues,
-                                                    final MultiSEMTileRemovalParameters tileRemoval)
+                                                    final List<Double> stackZValues)
             throws IOException {
 
-        final Set<String> requestedScanNames = tileRemoval.buildScanNamesSet();
         final Map<String, Double> scanNameToZMap = new HashMap<>();
 
         for (final Double z : stackZValues) {
@@ -225,25 +300,30 @@ public class MultiSEMTileRemovalClient {
                                           " of " + stack);
                 }
 
-                if (scanNameToZMap.keySet().containsAll(requestedScanNames)) {
-                    break; // all requested scans have been found, so stop looking
-                }
             }
         }
 
-        final List<String> missingScanNames = requestedScanNames.stream()
+        LOG.info("buildScanNameToZMap: mapped {} scan(s) to z values in {}", scanNameToZMap.size(), stack);
+
+        return scanNameToZMap;
+    }
+
+    /**
+     * Logs any scan requested for removal that no longer exists in the stack
+     * (it has already been removed, so there is nothing left to do for it).
+     */
+    private void logMissingScanNames(final String stack,
+                                     final MultiSEMTileRemovalParameters tileRemoval,
+                                     final Map<String, Double> scanNameToZMap) {
+
+        final List<String> missingScanNames = tileRemoval.buildScanNamesSet().stream()
                 .filter(scanName -> ! scanNameToZMap.containsKey(scanName))
                 .collect(Collectors.toList());
 
         if (! missingScanNames.isEmpty()) {
-            LOG.info("buildScanNameToZMap: nothing to remove for scan(s) {} because they no longer exist in {}",
+            LOG.info("logMissingScanNames: nothing to remove for scan(s) {} because they no longer exist in {}",
                      missingScanNames, stack);
         }
-
-        LOG.info("buildScanNameToZMap: mapped {} of {} requested scan(s) to z values in {}",
-                 (requestedScanNames.size() - missingScanNames.size()), requestedScanNames.size(), stack);
-
-        return scanNameToZMap;
     }
 
     /**
@@ -419,6 +499,9 @@ public class MultiSEMTileRemovalClient {
         }
         return z - removedLayerCount;
     }
+
+    /** Matches the number within a scan name (e.g. 082 for scan082). */
+    private static final Pattern SCAN_NUMBER_PATTERN = Pattern.compile("(\\d+)");
 
     private static final Logger LOG = LoggerFactory.getLogger(MultiSEMTileRemovalClient.class);
 }
