@@ -168,9 +168,17 @@ public class PeakScanData
                     new GoogleCloudStorageKeyValueAccess(GoogleCloudUtils.createGoogleCloudStorage(null),
                                                          new GoogleCloudStorageURI(uri),
                                                          false);
-            try (final LockedChannel lockedChannel = keyValueAccess.lockForReading(uri.getPath())) {
-                reader = lockedChannel.newReader();
-            }
+            final LockedChannel lockedChannel = keyValueAccess.lockForReading(uri.getPath());
+            reader = new java.io.FilterReader(lockedChannel.newReader()) {
+                @Override
+                public void close() throws IOException {
+                    try {
+                        super.close();
+                    } finally {
+                        lockedChannel.close();
+                    }
+                }
+            };
 
         } else {
 
