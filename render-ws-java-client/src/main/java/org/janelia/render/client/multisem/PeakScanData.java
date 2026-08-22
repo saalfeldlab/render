@@ -135,10 +135,8 @@ public class PeakScanData
 
         LOG.info("fromJson: entry, location={}", location);
 
-        final PeakScanData peakScanData;
-        try (final Reader reader = openReader(location)) {
-            peakScanData = JSON_HELPER.fromJson(reader);
-        }
+        final PeakScanData peakScanData = location.startsWith(GOOGLE_STORAGE_SCHEME) ?
+                                          fromGoogleStorageJson(location) : fromFileSystemJson(location);
 
         if (peakScanData == null) {
             throw new IOException("failed to parse peak scan data from " + location);
@@ -156,37 +154,27 @@ public class PeakScanData
         return peakScanData;
     }
 
-    private static Reader openReader(final String location)
+    private static PeakScanData fromGoogleStorageJson(final String location)
             throws IOException {
 
-        final Reader reader;
+        final URI uri = URI.create(location);
+        final KeyValueAccess keyValueAccess =
+                new GoogleCloudStorageKeyValueAccess(GoogleCloudUtils.createGoogleCloudStorage(null),
+                                                     new GoogleCloudStorageURI(uri),
+                                                     false);
 
-        if (location.startsWith(GOOGLE_STORAGE_SCHEME)) {
-
-            final URI uri = URI.create(location);
-            final KeyValueAccess keyValueAccess =
-                    new GoogleCloudStorageKeyValueAccess(GoogleCloudUtils.createGoogleCloudStorage(null),
-                                                         new GoogleCloudStorageURI(uri),
-                                                         false);
-            final LockedChannel lockedChannel = keyValueAccess.lockForReading(uri.getPath());
-            reader = new java.io.FilterReader(lockedChannel.newReader()) {
-                @Override
-                public void close() throws IOException {
-                    try {
-                        super.close();
-                    } finally {
-                        lockedChannel.close();
-                    }
-                }
-            };
-
-        } else {
-
-            reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(location);
-
+        // NOTE: the channel must be closed along with the reader to release everything it tracks
+        try (final LockedChannel lockedChannel = keyValueAccess.lockForReading(uri.getPath());
+             final Reader reader = lockedChannel.newReader()) {
+            return JSON_HELPER.fromJson(reader);
         }
+    }
 
-        return reader;
+    private static PeakScanData fromFileSystemJson(final String location)
+            throws IOException {
+        try (final Reader reader = FileUtil.DEFAULT_INSTANCE.getExtensionBasedReader(location)) {
+            return JSON_HELPER.fromJson(reader);
+        }
     }
 
     private static final String GOOGLE_STORAGE_SCHEME = "gs://";
