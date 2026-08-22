@@ -88,6 +88,9 @@ public class MultiSEMTileRemovalClient
 
                 }
 
+                // fail fast for an empty peakScanJson value or for parameters that match no stacks
+                tileRemovalSetup.validate();
+
                 // NOTE: no spark context is needed here because all removal is run on the driver
                 final MultiSEMTileRemovalClient client = new MultiSEMTileRemovalClient();
                 client.removeTiles(multiProject.getBaseDataUrl(), tileRemovalSetup);
