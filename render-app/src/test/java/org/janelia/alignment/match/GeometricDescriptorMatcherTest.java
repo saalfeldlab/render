@@ -22,13 +22,10 @@ import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.imglib2.util.Util;
-
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Runs peak extraction for two tiles.
@@ -46,10 +43,6 @@ public class GeometricDescriptorMatcherTest {
             { "Z1217_33m_BR", "Sec09", "v1_acquire", "19-08-30_172535_0-0-1.10500.0", "19-08-30_172535_0-0-2.10500.0" }           // 6. BR  Sec09, montage, mostly tissue overlap
     };
 
-    @Test
-    public void testNothing() {
-        assertTrue(true);
-    }
 
     public static void main(final String[] args) {
 
