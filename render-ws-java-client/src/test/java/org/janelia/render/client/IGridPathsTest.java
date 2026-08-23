@@ -3,15 +3,13 @@ package org.janelia.render.client;
 import java.io.File;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Date;
 import java.util.List;
 
 import org.janelia.alignment.spec.Bounds;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -22,21 +20,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public class IGridPathsTest {
 
-    private File file;
-
-    @BeforeEach
-    public void setup() throws Exception {
-        file = null;
-    }
-
-    @AfterEach
-    public void tearDown() throws Exception {
-        if (file != null) {
-            if (! file.delete()) {
-                LOG.warn("failed to delete " + file.getAbsolutePath());
-            }
-        }
-    }
+    @TempDir
+    Path tempDir;
 
     @Test
     public void testSaveToFile() throws Exception {
@@ -87,10 +72,9 @@ public class IGridPathsTest {
                               final int numberOfRows,
                               final int numberOfColumns) throws Exception {
 
-        final File parentDirectory = new File(".").getAbsoluteFile();
         final Double z = (double) new Date().getTime();
         final File emptyFile = new File("empty.txt");
-        file = iGridPaths.saveToFile(parentDirectory, z, emptyFile);
+        final File file = iGridPaths.saveToFile(tempDir.toFile(), z, emptyFile);
 
         final List<String> iGridLines = Files.readAllLines(file.toPath(),
                                                            Charset.defaultCharset());
@@ -98,7 +82,5 @@ public class IGridPathsTest {
         final int expectedLineCount = numberOfRows * numberOfColumns + 2;
         assertEquals(expectedLineCount, iGridLines.size(), "invalid number of lines");
     }
-
-    private static final Logger LOG = LoggerFactory.getLogger(IGridPathsTest.class);
 
 }

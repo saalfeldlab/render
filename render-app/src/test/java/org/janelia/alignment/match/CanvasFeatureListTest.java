@@ -17,19 +17,15 @@
 package org.janelia.alignment.match;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 
 import mpicbg.imagefeatures.Feature;
 
-import org.janelia.alignment.util.FileUtil;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -40,23 +36,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public class CanvasFeatureListTest {
 
+    @TempDir
+    Path tempDir;
+
     private File rootFeatureListDirectory;
 
     @BeforeEach
-    public void setUp() throws Exception {
-        final File testDirectory = new File("src/test").getCanonicalFile();
-        final SimpleDateFormat sdf = new SimpleDateFormat("'test_'yyyyMMddhhmmssSSS");
-        rootFeatureListDirectory = new File(testDirectory, sdf.format(new Date()));
-        if (rootFeatureListDirectory.mkdirs()) {
-            LOG.info("created directory " + rootFeatureListDirectory.getAbsolutePath());
-        } else {
-            throw new IllegalStateException("failed to create " + rootFeatureListDirectory.getAbsolutePath());
-        }
-    }
-
-    @AfterEach
-    public void tearDown() throws Exception {
-        FileUtil.deleteRecursive(rootFeatureListDirectory);
+    public void setUp() {
+        rootFeatureListDirectory = tempDir.toFile();
     }
 
     @Test
@@ -84,6 +71,4 @@ public class CanvasFeatureListTest {
         assertEquals(featureList.size(), storedCanvasFeatureList.getFeatureList().size(),
                      "invalid number of stored features");
     }
-
-    private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureListTest.class);
 }

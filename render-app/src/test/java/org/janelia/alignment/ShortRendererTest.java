@@ -1,12 +1,11 @@
 package org.janelia.alignment;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.nio.file.Path;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -18,20 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class ShortRendererTest {
 
-    private String modulePath;
+    @TempDir
+    Path tempDir;
+
     private File outputFile;
 
     @BeforeEach
-    public void setup() throws Exception {
-        final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
-        final String timestamp = TIMESTAMP.format(new Date());
-        outputFile = new File("test-render-" + timestamp +".png").getCanonicalFile();
-        modulePath = outputFile.getParentFile().getCanonicalPath();
-    }
-
-    @AfterEach
-    public void tearDown() throws Exception {
-        ArgbRendererTest.deleteTestFile(outputFile);
+    public void setup() {
+        outputFile = tempDir.resolve("test-render.png").toFile();
     }
 
     @Test
@@ -49,7 +42,7 @@ public class ShortRendererTest {
 
         assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
-        final File expectedFile = new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_16_bit.png");
+        final File expectedFile = new File("src/test/resources/stitch-test/expected_stitched_16_bit.png");
 //        org.janelia.alignment.ArgbRendererTest.updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         final String expectedDigestString = ArgbRendererTest.getDigestString(expectedFile);

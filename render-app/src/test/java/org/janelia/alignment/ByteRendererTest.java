@@ -4,12 +4,11 @@ import ij.ImagePlus;
 import ij.process.ImageProcessor;
 
 import java.io.File;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.nio.file.Path;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -19,18 +18,14 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class ByteRendererTest {
 
+    @TempDir
+    Path tempDir;
+
     private File outputFile;
 
     @BeforeEach
-    public void setup() throws Exception {
-        final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
-        final String timestamp = TIMESTAMP.format(new Date());
-        outputFile = new File("test-render-" + timestamp +".jpg").getCanonicalFile();
-    }
-
-    @AfterEach
-    public void tearDown() {
-        ArgbRendererTest.deleteTestFile(outputFile);
+    public void setup() {
+        outputFile = tempDir.resolve("test-render.jpg").toFile();
     }
 
     @Test

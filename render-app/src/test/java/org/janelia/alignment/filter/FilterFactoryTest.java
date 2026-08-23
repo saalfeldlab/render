@@ -6,16 +6,14 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
-import java.text.SimpleDateFormat;
+import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.janelia.alignment.ArgbRendererTest;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -27,18 +25,14 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class FilterFactoryTest {
 
+    @TempDir
+    Path tempDir;
+
     private File factoryFile;
 
     @BeforeEach
-    public void setup() throws Exception {
-        final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
-        final String timestamp = TIMESTAMP.format(new Date());
-        factoryFile = new File("test_filter_lists_" + timestamp + ".json").getCanonicalFile();
-    }
-
-    @AfterEach
-    public void tearDown() {
-        ArgbRendererTest.deleteTestFile(factoryFile);
+    public void setup() {
+        factoryFile = tempDir.resolve("test_filter_lists.json").toFile();
     }
 
     @Test
