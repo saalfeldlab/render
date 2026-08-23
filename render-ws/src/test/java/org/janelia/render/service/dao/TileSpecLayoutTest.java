@@ -30,6 +30,7 @@ import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
@@ -59,14 +60,16 @@ public class TileSpecLayoutTest {
 
         final LayoutData parsedLayoutData = parsedSpec.getLayout();
         assertNotNull(parsedLayoutData, "json parse returned null layout data");
-        assertEquals(layoutData.getSectionId(), parsedLayoutData.getSectionId(), "bad sectionId value");
-        assertEquals(layoutData.getTemca(), parsedLayoutData.getTemca(), "bad array value");
-        assertEquals(layoutData.getCamera(), parsedLayoutData.getCamera(), "bad camera value");
-        assertEquals(layoutData.getImageRow(), parsedLayoutData.getImageRow(), "bad row value");
-        assertEquals(layoutData.getImageCol(), parsedLayoutData.getImageCol(), "bad col value");
-        assertEquals(layoutData.getStageX(), parsedLayoutData.getStageX(), "bad stageX value");
-        assertEquals(layoutData.getStageY(), parsedLayoutData.getStageY(), "bad stageY value");
-        assertEquals(layoutData.getRotation(), parsedLayoutData.getRotation(), "bad rotation value");
+
+        assertAll("bad parsed layout data",
+                  () -> assertEquals(layoutData.getSectionId(), parsedLayoutData.getSectionId(), "bad sectionId value"),
+                  () -> assertEquals(layoutData.getTemca(), parsedLayoutData.getTemca(), "bad array value"),
+                  () -> assertEquals(layoutData.getCamera(), parsedLayoutData.getCamera(), "bad camera value"),
+                  () -> assertEquals(layoutData.getImageRow(), parsedLayoutData.getImageRow(), "bad row value"),
+                  () -> assertEquals(layoutData.getImageCol(), parsedLayoutData.getImageCol(), "bad col value"),
+                  () -> assertEquals(layoutData.getStageX(), parsedLayoutData.getStageX(), "bad stageX value"),
+                  () -> assertEquals(layoutData.getStageY(), parsedLayoutData.getStageY(), "bad stageY value"),
+                  () -> assertEquals(layoutData.getRotation(), parsedLayoutData.getRotation(), "bad rotation value"));
 
         parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22), parsedSpec.getMeshCellSize());
         final ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);

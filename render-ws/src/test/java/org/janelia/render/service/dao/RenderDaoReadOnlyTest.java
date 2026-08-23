@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -244,12 +245,14 @@ public class RenderDaoReadOnlyTest {
         final Bounds bounds = dao.getLayerBounds(stackId, z);
 
         assertNotNull(bounds, "null layer bounds retrieved");
-        assertEquals(expectedMinX, bounds.getMinX(), BOUNDS_DELTA, "invalid layer minX");
-        assertEquals(expectedMinY, bounds.getMinY(), BOUNDS_DELTA, "invalid layer minY");
-        assertEquals(z, bounds.getMinZ(), BOUNDS_DELTA, "invalid layer minZ");
-        assertEquals(expectedMaxX, bounds.getMaxX(), BOUNDS_DELTA, "invalid layer maxX");
-        assertEquals(expectedMaxY, bounds.getMaxY(), BOUNDS_DELTA, "invalid layer maxY");
-        assertEquals(z, bounds.getMaxZ(), BOUNDS_DELTA, "invalid layer maxZ");
+
+        assertAll("invalid layer bounds",
+                  () -> assertEquals(expectedMinX, bounds.getMinX(), BOUNDS_DELTA, "invalid layer minX"),
+                  () -> assertEquals(expectedMinY, bounds.getMinY(), BOUNDS_DELTA, "invalid layer minY"),
+                  () -> assertEquals(z, bounds.getMinZ(), BOUNDS_DELTA, "invalid layer minZ"),
+                  () -> assertEquals(expectedMaxX, bounds.getMaxX(), BOUNDS_DELTA, "invalid layer maxX"),
+                  () -> assertEquals(expectedMaxY, bounds.getMaxY(), BOUNDS_DELTA, "invalid layer maxY"),
+                  () -> assertEquals(z, bounds.getMaxZ(), BOUNDS_DELTA, "invalid layer maxZ"));
     }
 
     @Test

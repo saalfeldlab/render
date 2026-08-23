@@ -3,6 +3,7 @@ package org.janelia.render.client;
 import org.janelia.alignment.spec.Bounds;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -180,16 +181,15 @@ public class SectionBoxBoundsTest {
     private void validateBoxBounds(final String context,
                                    final SectionBoxBounds boxBounds) {
 
-        assertEquals(z.intValue(), boxBounds.getZ(), context + "invalid z");
-
-        assertEquals(expectedFirstColumn, boxBounds.getFirstColumn(), context + "invalid first column");
-        assertEquals(expectedLastColumn, boxBounds.getLastColumn(), context + "invalid last column");
-        assertEquals(expectedFirstRow, boxBounds.getFirstRow(), context + "invalid first row");
-        assertEquals(expectedLastRow, boxBounds.getLastRow(), context + "invalid last row");
-
-        assertEquals(expectedFirstX, boxBounds.getFirstX(), context + "invalid first x");
-        assertEquals(expectedLastX, boxBounds.getLastX(), context + "invalid last x");
-        assertEquals(expectedFirstY, boxBounds.getFirstY(), context + "invalid first y");
-        assertEquals(expectedLastY, boxBounds.getLastY(), context + "invalid last y");
+        assertAll(context + "invalid box bounds",
+                  () -> assertEquals(z.intValue(), boxBounds.getZ(), context + "invalid z"),
+                  () -> assertEquals(expectedFirstColumn, boxBounds.getFirstColumn(), context + "invalid first column"),
+                  () -> assertEquals(expectedLastColumn, boxBounds.getLastColumn(), context + "invalid last column"),
+                  () -> assertEquals(expectedFirstRow, boxBounds.getFirstRow(), context + "invalid first row"),
+                  () -> assertEquals(expectedLastRow, boxBounds.getLastRow(), context + "invalid last row"),
+                  () -> assertEquals(expectedFirstX, boxBounds.getFirstX(), context + "invalid first x"),
+                  () -> assertEquals(expectedLastX, boxBounds.getLastX(), context + "invalid last x"),
+                  () -> assertEquals(expectedFirstY, boxBounds.getFirstY(), context + "invalid first y"),
+                  () -> assertEquals(expectedLastY, boxBounds.getLastY(), context + "invalid last y"));
     }
 }
