@@ -53,8 +53,8 @@ public class ClusterCountClientTest {
         final String baseDataUrl = "http://em-services-1:8080/render-ws/v1";
 
         final String owner = "hess_wafers_60_61";
-        final String project = "w61_serial_170_to_179";
-        final String stack = "w61_s178_r00_gc_icc_pa_mat_render";
+        final String project = "w61_serial_120_to_129";
+        final String stack = "w61_s129_r00_gc_icc_par";
         final int lastZ = 82;
         final String mcName = stack + "_match";
 
