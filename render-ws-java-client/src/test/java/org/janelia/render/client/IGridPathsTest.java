@@ -7,12 +7,13 @@ import java.util.Date;
 import java.util.List;
 
 import org.janelia.alignment.spec.Bounds;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link IGridPaths} class.
@@ -23,12 +24,12 @@ public class IGridPathsTest {
 
     private File file;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         file = null;
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         if (file != null) {
             if (! file.delete()) {
@@ -95,7 +96,7 @@ public class IGridPathsTest {
                                                            Charset.defaultCharset());
 
         final int expectedLineCount = numberOfRows * numberOfColumns + 2;
-        Assert.assertEquals("invalid number of lines", expectedLineCount, iGridLines.size());
+        assertEquals(expectedLineCount, iGridLines.size(), "invalid number of lines");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(IGridPathsTest.class);

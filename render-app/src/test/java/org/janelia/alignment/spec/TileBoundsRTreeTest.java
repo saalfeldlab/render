@@ -9,9 +9,12 @@ import java.util.TreeSet;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link TileBoundsRTree} class.
@@ -24,7 +27,7 @@ public class TileBoundsRTreeTest {
     private List<TileBounds> tileBoundsList;
     private TileBoundsRTree tree;
 
-    @Before
+    @BeforeEach
     public void setup() {
         z = 1.0;
         tileBoundsList = buildListForZ(z);
@@ -91,8 +94,8 @@ public class TileBoundsRTreeTest {
 
         for (int i = 0; i < expectedOrderedTileIds.length; i++) {
             final TileBounds neighbor = neighbors.get(i);
-            Assert.assertEquals("incorrect tileId for neighbor " + i,
-                                expectedOrderedTileIds[i], neighbor.getTileId());
+            assertEquals(expectedOrderedTileIds[i], neighbor.getTileId(),
+                         "incorrect tileId for neighbor " + i);
         }
 
     }
@@ -199,8 +202,8 @@ public class TileBoundsRTreeTest {
                                                  false,
                                                  false);
         int expectedNumberOfCombinations = tileBoundsList.size() - 1; // all tiles except the center
-        Assert.assertEquals("incorrect number of combinations (with corner neighbors) in " + pairs,
-                            expectedNumberOfCombinations, pairs.size());
+        assertEquals(expectedNumberOfCombinations, pairs.size(),
+                     "incorrect number of combinations (with corner neighbors) in " + pairs);
 
         expectedNumberOfCombinations = expectedNumberOfCombinations - 4; // remove the 4 corner tiles
         pairs = TileBoundsRTree.getDistinctPairs(centerTile,
@@ -209,8 +212,8 @@ public class TileBoundsRTreeTest {
                                                  false,
                                                  false,
                                                  true);
-        Assert.assertEquals("incorrect number of combinations (without corner neighbors) in " + pairs,
-                            expectedNumberOfCombinations, pairs.size());
+        assertEquals(expectedNumberOfCombinations, pairs.size(),
+                     "incorrect number of combinations (without corner neighbors) in " + pairs);
     }
 
     @Test
@@ -237,53 +240,53 @@ public class TileBoundsRTreeTest {
                                                  false,
                                                  true,
                                                  false);
-        Assert.assertEquals("incorrect number of combinations in " + pairs,
-                            2, pairs.size());
+        assertEquals(2, pairs.size(),
+                     "incorrect number of combinations in " + pairs);
     }
 
     @Test
     public void testFindCompletelyObscuredTiles() {
 
         List<TileBounds> completelyObscuredTiles = tree.findCompletelyObscuredTiles();
-        Assert.assertEquals("incorrect number of obscured tiles found in default tree",
-                            0, completelyObscuredTiles.size());
+        assertEquals(0, completelyObscuredTiles.size(),
+                     "incorrect number of obscured tiles found in default tree");
 
         tree.addTile(new TileBounds("zzz-1", "1", 1.0,   5.0,  5.0, 25.0, 25.0));
         tree.addTile(new TileBounds("zzz-2", "1", 1.0,   0.0,  0.0, 15.0, 15.0));
         tree.addTile(new TileBounds("aaa-3", "1", 1.0, -10.0, 12.0, 15.0, 25.0));
 
         completelyObscuredTiles = tree.findCompletelyObscuredTiles();
-        Assert.assertEquals("incorrect number of obscured tiles found in modified tree",
-                            2, completelyObscuredTiles.size());
+        assertEquals(2, completelyObscuredTiles.size(),
+                     "incorrect number of obscured tiles found in modified tree");
     }
 
     @Test
     public void testFindVisibleTiles() {
 
         List<TileBounds> visibleTiles = tree.findVisibleTiles();
-        Assert.assertEquals("incorrect number of visible tiles found in default tree",
-                            tileBoundsList.size(), visibleTiles.size());
+        assertEquals(tileBoundsList.size(), visibleTiles.size(),
+                     "incorrect number of visible tiles found in default tree");
 
         final TileBounds reacquiredTile = new TileBounds("zzz-1", "1", 1.0, 5.0, 5.0, 25.0, 25.0);
         tileBoundsList.add(reacquiredTile);
         tree.addTile(reacquiredTile);
 
         visibleTiles = tree.findVisibleTiles();
-        Assert.assertEquals("incorrect number of visible tiles found in modified tree",
-                            (tileBoundsList.size() - 1), visibleTiles.size());
+        assertEquals((tileBoundsList.size() - 1), visibleTiles.size(),
+                     "incorrect number of visible tiles found in modified tree");
     }
 
     private void validateSearchResults(final String context,
                                        final List<TileBounds> searchResults,
                                        final Set<String> expectedTileIds) {
 
-        Assert.assertEquals("invalid number of tiles returned for " + context,
-                            expectedTileIds.size(), searchResults.size());
+        assertEquals(expectedTileIds.size(), searchResults.size(),
+                     "invalid number of tiles returned for " + context);
 
         final String tileContext = " missing from " + context + " results: " + searchResults;
         for (final TileBounds tileBounds : searchResults) {
-            Assert.assertTrue("tileId " + tileBounds.getTileId() + tileContext,
-                              expectedTileIds.contains(tileBounds.getTileId()));
+            assertTrue(expectedTileIds.contains(tileBounds.getTileId()),
+                       "tileId " + tileBounds.getTileId() + tileContext);
         }
 
     }
@@ -357,7 +360,7 @@ public class TileBoundsRTreeTest {
             final Set<OrderedCanvasIdPair> commonPairs = new TreeSet<>(actualPairs);
             commonPairs.retainAll(expectedPairs);
 
-            Assert.fail("for " + context + ", missing " + expectedMissingFromActual.size() +
+            fail("for " + context + ", missing " + expectedMissingFromActual.size() +
                         " pairs " + expectedMissingFromActual +
                         " and found " + actualMissingFromExpected.size() +
                         " unexpected pairs " + actualMissingFromExpected +

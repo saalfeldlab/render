@@ -12,18 +12,18 @@ import mpicbg.models.RigidModel2D;
 import mpicbg.models.TranslationModel2D;
 import org.janelia.render.client.newsolver.solvers.affine.AlignmentModel;
 import org.janelia.render.client.solver.StabilizingAffineModel2D;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.janelia.render.client.newsolver.solvers.affine.AlignmentModel.AlignmentModelBuilder;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class AlignmentModelTest {
 
@@ -38,7 +38,7 @@ public class AlignmentModelTest {
 	private static final double lStab = 0.3;
 	private static final double delta = 1e-12;
 
-	@BeforeClass
+	@BeforeAll
 	public static void setDefaultModels() {
 		affine.set(1.0, 2.0, 3.0, 4.0, 5.0, 6.0);
 		rigid.set(1.0, 1.0, 2.0);

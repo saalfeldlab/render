@@ -26,8 +26,9 @@ import org.janelia.alignment.mipmap.RenderedCanvasMipmapSource;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link Utils} class.
@@ -67,13 +68,13 @@ public class UtilsTest {
 
             mipmapLevel = deriveMipmapLevel(standardTileSpec, scale, width, height);
 
-            Assert.assertEquals("incorrect mipmap level derived for standard transform with scale " + scale,
-                                expectedMipmapLevel, mipmapLevel, 0.0);
+            assertEquals(expectedMipmapLevel, mipmapLevel, 0.0,
+                         "incorrect mipmap level derived for standard transform with scale " + scale);
 
             mipmapLevel = deriveMipmapLevel(flippedTileSpec, scale, width, height);
 
-            Assert.assertEquals("incorrect mipmap level derived for flipped transform with scale " + scale,
-                                expectedMipmapLevel, mipmapLevel, 0.0);
+            assertEquals(expectedMipmapLevel, mipmapLevel, 0.0,
+                         "incorrect mipmap level derived for flipped transform with scale " + scale);
         }
 
     }

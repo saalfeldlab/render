@@ -6,10 +6,12 @@ import java.util.List;
 
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
 import org.janelia.render.client.parameter.MultiProjectParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId.DERIVE_TILE_MATCHES;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link AlignmentPipelineParameters} class.
@@ -23,13 +25,13 @@ public class AlignmentPipelineParametersTest {
             throws IOException {
         final AlignmentPipelineParameters pipelineParameters = loadTestParameters();
         final AffineBlockSolverSetup affineBlockSolverSetup = pipelineParameters.getAffineBlockSolverSetup();
-        Assert.assertNotNull("affineBlockSolverSetup is null", affineBlockSolverSetup);
+        assertNotNull(affineBlockSolverSetup, "affineBlockSolverSetup is null");
 
-        Assert.assertEquals("incorrect affineBlockSolverSetup.targetStack.stackSuffix value parsed",
-                            "_align", affineBlockSolverSetup.targetStack.stackSuffix);
+        assertEquals("_align", affineBlockSolverSetup.targetStack.stackSuffix,
+                     "incorrect affineBlockSolverSetup.targetStack.stackSuffix value parsed");
 
-        Assert.assertTrue("incorrect affineBlockSolverSetup.targetStack.completeTargetStack value parsed",
-                          affineBlockSolverSetup.targetStack.completeStack);
+        assertTrue(affineBlockSolverSetup.targetStack.completeStack,
+                   "incorrect affineBlockSolverSetup.targetStack.completeTargetStack value parsed");
     }
 
     @Test
@@ -38,12 +40,12 @@ public class AlignmentPipelineParametersTest {
         final AlignmentPipelineParameters pipelineParameters = loadTestParameters();
         final List<AlignmentPipelineStep> stepClients = pipelineParameters.buildStepClients();
         
-        Assert.assertNotNull("stepClients is null", stepClients);
-        Assert.assertEquals("incorrect number of stepClients", 7, stepClients.size());
+        assertNotNull(stepClients, "stepClients is null");
+        assertEquals(7, stepClients.size(), "incorrect number of stepClients");
 
         final AlignmentPipelineStep stepClient = stepClients.get(0);
-        Assert.assertEquals("first stepClient has incorrect defaultStepId",
-                            AlignmentPipelineStepId.GENERATE_MIPMAPS, stepClient.getDefaultStepId());
+        assertEquals(AlignmentPipelineStepId.GENERATE_MIPMAPS, stepClient.getDefaultStepId(),
+                     "first stepClient has incorrect defaultStepId");
     }
 
     @Test
@@ -59,24 +61,24 @@ public class AlignmentPipelineParametersTest {
         final AlignmentPipelineParameters pipelineParameters =
                 AlignmentPipelineParameters.fromJsonUrl(jsonUrl,
                                                         baseDataUrl);
-        Assert.assertNotNull("deserialized parameters are null", pipelineParameters);
+        assertNotNull(pipelineParameters, "deserialized parameters are null");
 
         final MultiProjectParameters multiProject = pipelineParameters.getMultiProject(null);
-        Assert.assertEquals("", baseDataUrl, multiProject.getBaseDataUrl());
+        assertEquals(baseDataUrl, multiProject.getBaseDataUrl(), "");
 
         final List<AlignmentPipelineStepId> pipelineSteps = pipelineParameters.getPipelineSteps();
-        Assert.assertNotNull("pipelineSteps are null", pipelineSteps);
-        Assert.assertEquals("incorrect number of pipelineSteps",
-                            1, pipelineSteps.size());
-        Assert.assertEquals("incorrect first pipelineStep",
-                            DERIVE_TILE_MATCHES.toString(), pipelineSteps.get(0).toString());
+        assertNotNull(pipelineSteps, "pipelineSteps are null");
+        assertEquals(1, pipelineSteps.size(),
+                     "incorrect number of pipelineSteps");
+        assertEquals(DERIVE_TILE_MATCHES.toString(), pipelineSteps.get(0).toString(),
+                     "incorrect first pipelineStep");
     }
 
     private AlignmentPipelineParameters loadTestParameters() throws IOException {
         final AlignmentPipelineParameters pipelineParameters =
                 AlignmentPipelineParameters.fromJsonFile("src/test/resources/pipeline/msem_alignment_pipeline.json",
                                                          null);
-        Assert.assertNotNull("deserialized parameters are null", pipelineParameters);
+        assertNotNull(pipelineParameters, "deserialized parameters are null");
         return pipelineParameters;
     }
 }

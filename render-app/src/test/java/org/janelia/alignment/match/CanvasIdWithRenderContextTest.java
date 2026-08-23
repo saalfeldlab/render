@@ -1,8 +1,9 @@
 package org.janelia.alignment.match;
 
 import org.janelia.alignment.RenderParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link RenderParameters} class.
@@ -44,14 +45,14 @@ public class CanvasIdWithRenderContextTest {
                                                            clipHeight,
                                                            clippedParameters);
 
-            Assert.assertEquals("invalid clipped width for " + canvasId,
-                                data[1], clippedParameters.getWidth());
-            Assert.assertEquals("invalid clipped height for " + canvasId,
-                                data[2], clippedParameters.getHeight());
-            Assert.assertEquals("invalid x for " + canvasId,
-                                (Double) data[3], clippedParameters.getX(), 0.001);
-            Assert.assertEquals("invalid y for " + canvasId,
-                                (Double) data[4], clippedParameters.getY(), 0.001);
+            assertEquals(data[1], clippedParameters.getWidth(),
+                         "invalid clipped width for " + canvasId);
+            assertEquals(data[2], clippedParameters.getHeight(),
+                         "invalid clipped height for " + canvasId);
+            assertEquals((Double) data[3], clippedParameters.getX(), 0.001,
+                         "invalid x for " + canvasId);
+            assertEquals((Double) data[4], clippedParameters.getY(), 0.001,
+                         "invalid y for " + canvasId);
         }
     }
 

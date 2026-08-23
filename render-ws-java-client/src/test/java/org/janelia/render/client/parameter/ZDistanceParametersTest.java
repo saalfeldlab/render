@@ -5,8 +5,11 @@ import java.util.List;
 
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.render.client.parameter.ZDistanceParameters.DistanceListForRegion;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link ZDistanceParameters} class.
@@ -22,16 +25,16 @@ public class ZDistanceParametersTest {
         final ZDistanceParameters parameters = new ZDistanceParameters(listOfDistanceLists);
         final List<DistanceListForRegion> normalizedDistances = parameters.getNormalizedDistances();
 
-        Assert.assertEquals("invalid number of normalized distance lists",
-                            2, normalizedDistances.size());
+        assertEquals(2, normalizedDistances.size(),
+                     "invalid number of normalized distance lists");
 
         final DistanceListForRegion defaultList = normalizedDistances.get(0);
-        Assert.assertEquals("invalid maxDistance for default list " + defaultList,
-                            1, defaultList.getMaxDistance());
+        assertEquals(1, defaultList.getMaxDistance(),
+                     "invalid maxDistance for default list " + defaultList);
 
         final List<Integer> defaultDistances = defaultList.getDistanceList();
-        Assert.assertEquals("invalid number of distances for default list " + defaultList,
-                            2, defaultDistances.size());
+        assertEquals(2, defaultDistances.size(),
+                     "invalid number of distances for default list " + defaultList);
     }
 
     @Test
@@ -52,8 +55,8 @@ public class ZDistanceParametersTest {
 
         for (final TileBounds[] testPair : includedTilePairs) {
             final String pairId = "pair " + testPair[0].getTileId() + " - " + testPair[1].getTileId();
-            Assert.assertTrue(pairId + " should be included",
-                              parameters.includePair(testPair[0], testPair[1]));
+            assertTrue(parameters.includePair(testPair[0], testPair[1]),
+                       pairId + " should be included");
         }
 
         final TileBounds[][] excludedTilePairs = {
@@ -69,8 +72,8 @@ public class ZDistanceParametersTest {
 
         for (final TileBounds[] testPair : excludedTilePairs) {
             final String pairId = "pair " + testPair[0].getTileId() + " - " + testPair[1].getTileId();
-            Assert.assertFalse(pairId + " should NOT be included",
-                               parameters.includePair(testPair[0], testPair[1]));
+            assertFalse(parameters.includePair(testPair[0], testPair[1]),
+                        pairId + " should NOT be included");
         }
     }
 

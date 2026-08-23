@@ -11,8 +11,9 @@ import org.janelia.alignment.loader.ImageJDefaultLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests rendering of a raw tile without transformations.
@@ -53,16 +54,16 @@ public class RenderRawTileTest {
                             renderedImage,
                             ImageProcessorCache.DISABLED_CACHE);
 
-        Assert.assertEquals("bad rendered image width",
-                            rawImage.getWidth(), renderedImage.getWidth());
+        assertEquals(rawImage.getWidth(), renderedImage.getWidth(),
+                     "bad rendered image width");
 
-        Assert.assertEquals("bad rendered image height",
-                            rawImage.getHeight(), renderedImage.getHeight());
+        assertEquals(rawImage.getHeight(), renderedImage.getHeight(),
+                     "bad rendered image height");
 
         for (int x = 0; x < rawImage.getWidth(); x++) {
             for (int y = 0; y < rawImage.getHeight(); y++) {
-                Assert.assertEquals("bad rendered pixel at (" + x + ", " + y + ")",
-                                    rawImage.getRGB(x, y), renderedImage.getRGB(x, y));
+                assertEquals(rawImage.getRGB(x, y), renderedImage.getRGB(x, y),
+                             "bad rendered pixel at (" + x + ", " + y + ")");
             }
         }
     }

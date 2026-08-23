@@ -22,7 +22,7 @@ import org.janelia.render.client.zspacing.loader.MaskedResinLayerLoader;
 import org.janelia.render.client.zspacing.loader.RenderLayerLoader;
 import org.janelia.render.client.zspacing.loader.ResinMaskParameters;
 import org.janelia.thickness.inference.Options;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import ij.ImageJ;
 import ij.ImagePlus;

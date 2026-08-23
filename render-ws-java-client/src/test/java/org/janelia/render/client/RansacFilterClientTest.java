@@ -9,9 +9,11 @@ import java.util.List;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link RansacFilterClient} class.
@@ -26,7 +28,7 @@ public class RansacFilterClientTest {
 
     private File testDirectory;
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         if ((testDirectory != null) && testDirectory.exists()) {
             FileUtil.deleteRecursive(testDirectory);
@@ -93,16 +95,16 @@ public class RansacFilterClientTest {
             throws FileNotFoundException {
 
         final File filteredFile = new File(testDirectory, "candidate_matches_filtered.json");
-        Assert.assertTrue(filteredFile.getAbsolutePath() + " not created", filteredFile.exists());
+        assertTrue(filteredFile.exists(), filteredFile.getAbsolutePath() + " not created");
 
         final List<CanvasMatches> filteredMatches = CanvasMatches.fromJsonArray(new FileReader(filteredFile));
 
         if (VALIDATE_MATCH_COUNTS) {
-            Assert.assertEquals("incorrect number of pairs in " + filteredFile,
-                                expectedMatchCounts.length, filteredMatches.size());
+            assertEquals(expectedMatchCounts.length, filteredMatches.size(),
+                         "incorrect number of pairs in " + filteredFile);
             for (int i = 0; i < expectedMatchCounts.length; i++) {
-                Assert.assertEquals("incorrect number of filtered matches for pair " + i + " in " + filteredFile,
-                                    expectedMatchCounts[i], filteredMatches.get(i).size());
+                assertEquals(expectedMatchCounts[i], filteredMatches.get(i).size(),
+                             "incorrect number of filtered matches for pair " + i + " in " + filteredFile);
             }
         }
     }

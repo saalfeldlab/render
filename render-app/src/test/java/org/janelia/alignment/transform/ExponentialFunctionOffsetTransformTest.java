@@ -4,9 +4,9 @@ import java.util.Collections;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link ExponentialFunctionOffsetTransform} class.
@@ -25,7 +25,7 @@ public class ExponentialFunctionOffsetTransformTest {
 
         loadedTransform.init(dataString);
 
-        Assert.assertEquals("data strings do not match", dataString, loadedTransform.toDataString());
+        assertEquals(dataString, loadedTransform.toDataString(), "data strings do not match");
 
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setWidth(100.0);
@@ -49,10 +49,10 @@ public class ExponentialFunctionOffsetTransformTest {
 
         for (int i = 0; i < testLocations.length; i++) {
             final double[] result = transform.apply(testLocations[i]);
-            Assert.assertEquals("bad x result for test " + i,
-                                expectedResults[i][0], result[0], 0.1);
-            Assert.assertEquals("bad y result for test " + i,
-                                expectedResults[i][1], result[1], 0.0001);
+            assertEquals(expectedResults[i][0], result[0], 0.1,
+                         "bad x result for test " + i);
+            assertEquals(expectedResults[i][1], result[1], 0.0001,
+                         "bad y result for test " + i);
         }
     }
 

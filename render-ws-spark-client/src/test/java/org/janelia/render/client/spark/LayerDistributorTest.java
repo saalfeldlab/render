@@ -6,8 +6,9 @@ import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
 import org.janelia.alignment.spec.SectionData;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link LayerDistributor} class.
@@ -34,10 +35,10 @@ public class LayerDistributorTest {
         final LayerDistributor layerDistributor = new LayerDistributor(numberOfBuckets);
         final List<List<Double>> list = layerDistributor.distribute(sectionDataList);
 
-        Assert.assertEquals("invalid number of buckets", numberOfBuckets, list.size());
+        assertEquals(numberOfBuckets, list.size(), "invalid number of buckets");
 
-        Assert.assertEquals("invalid min tile count", 29, layerDistributor.getMinBucketTileCount());
-        Assert.assertEquals("invalid max tile count", 35, layerDistributor.getMaxBucketTileCount());
+        assertEquals(29, layerDistributor.getMinBucketTileCount(), "invalid min tile count");
+        assertEquals(35, layerDistributor.getMaxBucketTileCount(), "invalid max tile count");
     }
 
 }

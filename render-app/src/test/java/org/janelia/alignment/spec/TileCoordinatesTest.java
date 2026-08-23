@@ -5,8 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link TileCoordinates} class.
@@ -33,15 +35,15 @@ public class TileCoordinatesTest {
         final List<List<TileCoordinates>> parsedListOfLists =
                 TileCoordinates.fromJsonArrayOfArrays(new StringReader(json));
 
-        Assert.assertEquals("invalid number of lists parsed", listOfLists.size(), parsedListOfLists.size());
+        assertEquals(listOfLists.size(), parsedListOfLists.size(), "invalid number of lists parsed");
 
         for (int i = 0; i < parsedListOfLists.size(); i++) {
             final List<TileCoordinates> parsedList = parsedListOfLists.get(i);
-            Assert.assertTrue("parsed list " + i + " is empty", parsedList.size() > 0);
+            assertTrue(parsedList.size() > 0, "parsed list " + i + " is empty");
             final Object parsedObject = parsedList.get(0);
             //noinspection ConstantConditions
-            Assert.assertTrue("parsed list " + i + " has item with type " + parsedObject.getClass(),
-                              parsedObject instanceof TileCoordinates);
+            assertTrue(parsedObject instanceof TileCoordinates,
+                       "parsed list " + i + " has item with type " + parsedObject.getClass());
 
         }
 
@@ -50,13 +52,13 @@ public class TileCoordinatesTest {
         json = JsonUtils.MAPPER.writeValueAsString(list);
 
         final List<TileCoordinates> parsedList = TileCoordinates.fromJsonArray(new StringReader(json));
-        Assert.assertEquals("invalid number of coordinates parsed", list.size(), parsedList.size());
+        assertEquals(list.size(), parsedList.size(), "invalid number of coordinates parsed");
 
         for (int i = 0; i < parsedList.size(); i++) {
             final Object parsedObject = parsedList.get(0);
             //noinspection ConstantConditions
-            Assert.assertTrue("parsed list " + i + " has item with type " + parsedObject.getClass(),
-                              parsedObject instanceof TileCoordinates);
+            assertTrue(parsedObject instanceof TileCoordinates,
+                       "parsed list " + i + " has item with type " + parsedObject.getClass());
 
         }
 

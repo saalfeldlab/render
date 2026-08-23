@@ -20,12 +20,13 @@ import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link TilePairClient} class.
@@ -36,7 +37,7 @@ public class TilePairClientTest {
 
     private String baseFileName;
 
-    @Before
+    @BeforeEach
     public void setup() {
         final SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmssSSS");
         this.baseFileName = "test_tile_pairs_" + sdf.format(new Date());
@@ -51,7 +52,7 @@ public class TilePairClientTest {
         }
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         findPairFiles().forEach(path -> {
             try {
@@ -119,13 +120,13 @@ public class TilePairClientTest {
             });
         }
 
-        Assert.assertEquals("invalid number of pairs files created", 1, pairFilePaths.size());
+        assertEquals(1, pairFilePaths.size(), "invalid number of pairs files created");
 
         final File resultFile = pairFilePaths.get(0).toFile();
         final FileReader resultReader = new FileReader(resultFile);
         final RenderableCanvasIdPairs renderableCanvasIdPairs = RenderableCanvasIdPairs.fromJson(resultReader);
 
-        Assert.assertEquals("invalid number of pairs written", expectedNumberOfPairs, renderableCanvasIdPairs.size());
+        assertEquals(expectedNumberOfPairs, renderableCanvasIdPairs.size(), "invalid number of pairs written");
     }
 
     @Test
@@ -143,8 +144,8 @@ public class TilePairClientTest {
             final int expectedNumberOfLists = (int) testData[i][2];
             final List<List<Double>> crossPairZValuesLists = TilePairClient.buildCrossPairZValueLists(zValues,
                                                                                                       zNeighborDistance);
-            Assert.assertEquals("test " + i + ", incorrect number of lists for " + zValues,
-                                expectedNumberOfLists, crossPairZValuesLists.size());
+            assertEquals(expectedNumberOfLists, crossPairZValuesLists.size(),
+                         "test " + i + ", incorrect number of lists for " + zValues);
         }
     }
 
@@ -158,7 +159,7 @@ public class TilePairClientTest {
         client.deriveAndSaveSortedNeighborPairs();
 
         final List<Path> pairFilePaths = findPairFiles();
-        Assert.assertEquals("invalid number of pairs files created", expectedNumberOfFiles, pairFilePaths.size());
+        assertEquals(expectedNumberOfFiles, pairFilePaths.size(), "invalid number of pairs files created");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(TilePairClientTest.class);

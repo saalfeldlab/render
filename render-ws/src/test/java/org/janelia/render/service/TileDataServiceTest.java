@@ -6,8 +6,9 @@ import java.util.List;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link TileDataService} class.
@@ -54,8 +55,8 @@ public class TileDataServiceTest {
                                                             null, null, null,
                                                             tileSpec);
 
-        Assert.assertEquals("invalid width for tile", 1024, renderParameters.getWidth());
-        Assert.assertEquals("invalid height for tile", 1024, renderParameters.getHeight());
+        assertEquals(1024, renderParameters.getWidth(), "invalid width for tile");
+        assertEquals(1024, renderParameters.getHeight(), "invalid height for tile");
 
         // ---------------------------------------------------
         tileSpec = TileSpec.fromJson(json);
@@ -67,11 +68,11 @@ public class TileDataServiceTest {
                                                             tileSpec);
 
         List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
-        Assert.assertEquals("invalid number of tile specs returned after normalization", 1, tileSpecs.size());
+        assertEquals(1, tileSpecs.size(), "invalid number of tile specs returned after normalization");
 
         TileSpec flattenedTileSpec = tileSpecs.get(0);
         ListTransformSpec transforms = flattenedTileSpec.getTransforms();
-        Assert.assertEquals("invalid number of transforms after normalization", 1, transforms.size());
+        assertEquals(1, transforms.size(), "invalid number of transforms after normalization");
 
         // ---------------------------------------------------
         tileSpec = TileSpec.fromJson(json);
@@ -83,11 +84,11 @@ public class TileDataServiceTest {
                                                             tileSpec);
 
         tileSpecs = renderParameters.getTileSpecs();
-        Assert.assertEquals("invalid number of tile specs returned with empty sets", 1, tileSpecs.size());
+        assertEquals(1, tileSpecs.size(), "invalid number of tile specs returned with empty sets");
 
         flattenedTileSpec = tileSpecs.get(0);
         transforms = flattenedTileSpec.getTransforms();
-        Assert.assertEquals("invalid number of transforms with empty sets", 1, transforms.size());
+        assertEquals(1, transforms.size(), "invalid number of transforms with empty sets");
 
     }
 

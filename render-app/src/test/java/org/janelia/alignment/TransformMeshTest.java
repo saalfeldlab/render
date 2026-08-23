@@ -15,19 +15,20 @@ import mpicbg.trakem2.transform.TransformMeshMappingWithMasks.ImageProcessorWith
 import org.janelia.alignment.loader.ImageJDefaultLoader;
 import org.janelia.alignment.mapper.SingleChannelWithAlphaMapper;
 import org.janelia.alignment.spec.TileSpec;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * A test of mesh operations to ensure that performance enhancements do not regress results.
  *
  * @author Eric Trautman
  */
-@Ignore
+@Disabled
 public class TransformMeshTest {
 
     // increase this to 10 (or more) to see average times
@@ -40,7 +41,7 @@ public class TransformMeshTest {
     private ImageProcessor maskTargetProcessor;
     private ImageProcessor tp;
 
-    @Before
+    @BeforeEach
     public void setup() {
 
         tileSpec = TileSpec.fromJson(TILE_SPEC_JSON);
@@ -88,7 +89,8 @@ public class TransformMeshTest {
             LOG.info("RenderTransformMeshMapping times: mesh:{}, map:{}", meshCreationStop - start, mapInterpolatedStop - meshCreationStop);
 
             final int expectedPixelCount = 5989000;
-            Assert.assertEquals("target image has invalid number of pixels", expectedPixelCount, target.ip.getPixelCount());
+            assertEquals(expectedPixelCount, target.ip.getPixelCount(),
+                         "target image has invalid number of pixels");
 
             final int[] expectedPixelValues = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 135, 107, 118, 126, 171, 103, 189, 129, 178, 130, 0, 0, 100, 151, 122,
                     122, 105, 169, 155, 179, 126, 131, 0, 0, 149, 100, 107, 185, 130, 163, 138, 189, 187, 194, 0, 0, 179, 153, 168, 171, 181, 128, 119, 132,
@@ -100,8 +102,8 @@ public class TransformMeshTest {
             int index = 0;
             for (int x = 0; x < target.getWidth(); x += 200) {
                 for (int y = 0; y < target.getHeight(); y += 200) {
-                    Assert.assertEquals("target pixel (" + x + ", " + y + ") has invalid value", expectedPixelValues[index],
-                                        target.ip.getPixel(x, y));
+                    assertEquals(expectedPixelValues[index], target.ip.getPixel(x, y),
+                                 "target pixel (" + x + ", " + y + ") has invalid value");
                     index++;
                 }
             }
@@ -137,7 +139,8 @@ public class TransformMeshTest {
             final ImageProcessor targetImageProcessor = target.ip;
 
             final int expectedPixelCount = 5989000;
-            Assert.assertEquals("target image has invalid number of pixels", expectedPixelCount, targetImageProcessor.getPixelCount());
+            assertEquals(expectedPixelCount, targetImageProcessor.getPixelCount(),
+                         "target image has invalid number of pixels");
 
             final int[] expectedPixelValues = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 135, 107, 118, 126, 171, 103, 189, 129, 178, 130, 0, 0, 100, 151, 122,
                     122, 105, 169, 155, 179, 126, 131, 0, 0, 149, 100, 107, 185, 130, 163, 138, 189, 187, 194, 0, 0, 179, 153, 168, 171, 181, 128, 119, 132,
@@ -149,8 +152,8 @@ public class TransformMeshTest {
             int index = 0;
             for (int x = 0; x < targetImageProcessor.getWidth(); x += 200) {
                 for (int y = 0; y < targetImageProcessor.getHeight(); y += 200) {
-                    Assert.assertEquals("target pixel (" + x + ", " + y + ") has invalid value", expectedPixelValues[index],
-                            targetImageProcessor.getPixel(x, y));
+                    assertEquals(expectedPixelValues[index], targetImageProcessor.getPixel(x, y),
+                                 "target pixel (" + x + ", " + y + ") has invalid value");
                     index++;
                 }
             }

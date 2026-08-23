@@ -20,14 +20,17 @@ import org.janelia.render.service.model.IllegalServiceArgumentException;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
 import org.jboss.resteasy.specimpl.ResteasyUriInfo;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.COMPLETE;
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link StackMetaDataService} class.
@@ -43,7 +46,7 @@ public class StackMetaDataServiceTest {
     private static StackMetaDataService service;
     private static RenderDao renderDao;
 
-    @BeforeClass
+    @BeforeAll
     public static void before() throws Exception {
         loadingStackId = new StackId("flyTEM", "test_project", "test_stack");
         completeStackId = new StackId("flyTEM", "test", "elastic");
@@ -53,7 +56,7 @@ public class StackMetaDataServiceTest {
         service = new StackMetaDataService(renderDao);
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         embeddedMongoDb.importCollection(RenderDao.STACK_META_DATA_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/admin__stack_meta_data.json"),
@@ -74,7 +77,7 @@ public class StackMetaDataServiceTest {
                                          true);
     }
 
-    @AfterClass
+    @AfterAll
     public static void after() throws Exception {
         embeddedMongoDb.stop();
     }
@@ -86,9 +89,9 @@ public class StackMetaDataServiceTest {
             service.getStackMetaData(loadingStackId.getOwner(),
                                      loadingStackId.getProject(),
                                      loadingStackId.getStack());
-            Assert.fail("meta data should not exist for " + loadingStackId);
+            fail("meta data should not exist for " + loadingStackId);
         } catch (final ObjectNotFoundException e) {
-            Assert.assertTrue(true); // test passed
+            assertTrue(true); // test passed
         }
 
         final StackVersion stackVersion0 = new StackVersion(new Date(),
@@ -139,9 +142,9 @@ public class StackMetaDataServiceTest {
             service.getStackBounds(loadingStackId.getOwner(),
                                    loadingStackId.getProject(),
                                    loadingStackId.getStack());
-            Assert.fail("stack without stats should fail bounds request");
+            fail("stack without stats should fail bounds request");
         } catch (final IllegalServiceArgumentException e) {
-            Assert.assertTrue(true); // test passed
+            assertTrue(true); // test passed
         }
 
         service.deleteStack(loadingStackId.getOwner(),
@@ -152,9 +155,9 @@ public class StackMetaDataServiceTest {
             service.getStackMetaData(loadingStackId.getOwner(),
                                      loadingStackId.getProject(),
                                      loadingStackId.getStack());
-            Assert.fail("after delete, meta data should not exist for " + loadingStackId);
+            fail("after delete, meta data should not exist for " + loadingStackId);
         } catch (final ObjectNotFoundException e) {
-            Assert.assertTrue(true); // test passed
+            assertTrue(true); // test passed
         }
     }
 
@@ -169,9 +172,9 @@ public class StackMetaDataServiceTest {
             service.getStackBounds(completeStackId.getOwner(),
                                    completeStackId.getProject(),
                                    completeStackId.getStack());
-            Assert.fail("stack without bounds should fail bounds request");
+            fail("stack without bounds should fail bounds request");
         } catch (final IllegalServiceArgumentException e) {
-            Assert.assertTrue(true); // test passed
+            assertTrue(true); // test passed
         }
 
 
@@ -192,28 +195,28 @@ public class StackMetaDataServiceTest {
                                             stackMetaData2);
 
         final StackStats stats = stackMetaData2.getStats();
-        Assert.assertNotNull("stats not derived after setting state to complete", stats);
+        assertNotNull(stats, "stats not derived after setting state to complete");
 
         final Bounds stackBounds = stats.getStackBounds();
-        Assert.assertNotNull("stack bounds not derived", stackBounds);
+        assertNotNull(stackBounds, "stack bounds not derived");
 
-        Assert.assertEquals("invalid stackBounds.minZ", 3903.0, stackBounds.getMinZ(), 0.01);
+        assertEquals(3903.0, stackBounds.getMinZ(), 0.01, "invalid stackBounds.minZ");
 
-        Assert.assertEquals("invalid sectionCount", new Long(2), stats.getSectionCount());
-        Assert.assertEquals("invalid nonIntegralSectionCount", new Long(1), stats.getNonIntegralSectionCount());
-        Assert.assertEquals("invalid tileCount", new Long(14), stats.getTileCount());
-        Assert.assertEquals("invalid transformCount", new Long(3), stats.getTransformCount());
-        Assert.assertEquals("invalid minTileWidth", new Integer(2631), stats.getMinTileWidth());
-        Assert.assertEquals("invalid maxTileWidth", new Integer(2772), stats.getMaxTileWidth());
-        Assert.assertEquals("invalid minTileHeight", new Integer(2257), stats.getMinTileHeight());
-        Assert.assertEquals("invalid maxTileHeight", new Integer(2414), stats.getMaxTileHeight());
+        assertEquals(new Long(2), stats.getSectionCount(), "invalid sectionCount");
+        assertEquals(new Long(1), stats.getNonIntegralSectionCount(), "invalid nonIntegralSectionCount");
+        assertEquals(new Long(14), stats.getTileCount(), "invalid tileCount");
+        assertEquals(new Long(3), stats.getTransformCount(), "invalid transformCount");
+        assertEquals(new Integer(2631), stats.getMinTileWidth(), "invalid minTileWidth");
+        assertEquals(new Integer(2772), stats.getMaxTileWidth(), "invalid maxTileWidth");
+        assertEquals(new Integer(2257), stats.getMinTileHeight(), "invalid minTileHeight");
+        assertEquals(new Integer(2414), stats.getMaxTileHeight(), "invalid maxTileHeight");
 
         final Bounds stackBounds2 = service.getStackBounds(completeStackId.getOwner(),
                                                            completeStackId.getProject(),
                                                            completeStackId.getStack());
-        Assert.assertNotNull("stack bounds not returned after storing stats", stackBounds2);
-        Assert.assertEquals("invalid min Y returned after storing stats",
-                            stackBounds.getMinY(), stackBounds2.getMinY(), 0.01);
+        assertNotNull(stackBounds2, "stack bounds not returned after storing stats");
+        assertEquals(stackBounds.getMinY(), stackBounds2.getMinY(), 0.01,
+                     "invalid min Y returned after storing stats");
 
         service.deleteStack(completeStackId.getOwner(),
                             completeStackId.getProject(),
@@ -223,9 +226,9 @@ public class StackMetaDataServiceTest {
             service.getStackMetaData(completeStackId.getOwner(),
                                      completeStackId.getProject(),
                                      completeStackId.getStack());
-            Assert.fail("after delete, meta data should not exist for " + completeStackId);
+            fail("after delete, meta data should not exist for " + completeStackId);
         } catch (final ObjectNotFoundException e) {
-            Assert.assertTrue(true); // test passed
+            assertTrue(true); // test passed
         }
 
     }
@@ -240,9 +243,9 @@ public class StackMetaDataServiceTest {
             service.getStackMetaData(clonedStackId.getOwner(),
                                      clonedStackId.getProject(),
                                      clonedStackId.getStack());
-            Assert.fail("before clone, meta data should not exist for " + clonedStackId);
+            fail("before clone, meta data should not exist for " + clonedStackId);
         } catch (final ObjectNotFoundException e) {
-            Assert.assertTrue(true); // test passed
+            assertTrue(true); // test passed
         }
 
         final StackVersion clonedStackVersion = new StackVersion(new Date(),
@@ -282,9 +285,9 @@ public class StackMetaDataServiceTest {
                                           completeStackId.getProject(),
                                           completeStackId.getStack(),
                                           z);
-            Assert.fail("tiles should not be deleted for stack in COMPLETE state");
+            fail("tiles should not be deleted for stack in COMPLETE state");
         } catch (final IllegalServiceArgumentException e) {
-            Assert.assertTrue(true); // test passed
+            assertTrue(true); // test passed
         }
 
         final StackId clonedStackId = new StackId(completeStackId.getOwner(),
@@ -312,8 +315,8 @@ public class StackMetaDataServiceTest {
                                   clonedStackVersion);
 
         List<TileSpec> specList = renderDao.getTileSpecs(clonedStackId, z);
-        Assert.assertTrue("before removal, no tile specs exist for z " + z,
-                          specList.size() > 0);
+        assertTrue(specList.size() > 0,
+                   "before removal, no tile specs exist for z " + z);
 
 
         service.deleteStackTilesWithZ(clonedStackId.getOwner(),
@@ -323,10 +326,10 @@ public class StackMetaDataServiceTest {
 
         try {
             specList = renderDao.getTileSpecs(clonedStackId, z);
-            Assert.assertEquals("after removal, invalid number of tile specs exist for z " + z,
-                                0, specList.size());
+            assertEquals(0, specList.size(),
+                         "after removal, invalid number of tile specs exist for z " + z);
         } catch (final IllegalArgumentException e) {
-            Assert.assertTrue(true); // test passed - no tile specs exist
+            assertTrue(true); // test passed - no tile specs exist
         }
 
     }

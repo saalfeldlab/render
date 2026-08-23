@@ -13,10 +13,16 @@ import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.match.MatchTrial;
 import org.janelia.alignment.match.Matches;
 import org.janelia.render.service.model.ObjectNotFoundException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests {@link MatchDao} methods that change persisted data.
@@ -30,7 +36,7 @@ public class MatchDaoTest {
     private MatchCollectionId collectionId;
     private String groupId;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
 
         MatchDaoReadOnlyTest.before();
@@ -40,7 +46,7 @@ public class MatchDaoTest {
         this.groupId = MatchDaoReadOnlyTest.getGroupId();
     }
 
-    @After
+    @AfterEach
     public void after() {
         MatchDaoReadOnlyTest.after();
     }
@@ -59,8 +65,8 @@ public class MatchDaoTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned",
-                            0, canvasMatchesList.size());
+        assertEquals(0, canvasMatchesList.size(),
+                     "invalid number of matches returned");
     }
 
     @Test
@@ -74,8 +80,8 @@ public class MatchDaoTest {
 
         List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("after removal, invalid number of matches outside layer returned",
-                            0, canvasMatchesList.size());
+        assertEquals(0, canvasMatchesList.size(),
+                     "after removal, invalid number of matches outside layer returned");
 
         outputStream.reset();
 
@@ -83,8 +89,8 @@ public class MatchDaoTest {
 
         canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("after removal, invalid number of matches within layer returned",
-                            2, canvasMatchesList.size());
+        assertEquals(2, canvasMatchesList.size(),
+                     "after removal, invalid number of matches within layer returned");
     }
 
     @Test
@@ -98,8 +104,8 @@ public class MatchDaoTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("after removal, invalid number of matches with pGroup returned",
-                            0, canvasMatchesList.size());
+        assertEquals(0, canvasMatchesList.size(),
+                     "after removal, invalid number of matches with pGroup returned");
 
         outputStream.reset();
     }
@@ -128,8 +134,8 @@ public class MatchDaoTest {
 
         canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned, matches=" + canvasMatchesList,
-                            5, canvasMatchesList.size());
+        assertEquals(5, canvasMatchesList.size(),
+                     "invalid number of matches returned, matches=" + canvasMatchesList);
 
         CanvasMatches lastSavedMatchPair = null;
         int savePCount = 0;
@@ -140,12 +146,12 @@ public class MatchDaoTest {
             }
         }
 
-        Assert.assertEquals("invalid number of matches saved", 3, savePCount);
+        assertEquals(3, savePCount, "invalid number of matches saved");
 
         if (lastSavedMatchPair != null) {
             final Integer wLength = lastSavedMatchPair.getMatches().getWs().length;
-            Assert.assertEquals("invalid match count for last pair",
-                                wLength, lastSavedMatchPair.getMatchCount());
+            assertEquals(wLength, lastSavedMatchPair.getMatchCount(),
+                         "invalid match count for last pair");
         }
     }
 
@@ -184,13 +190,13 @@ public class MatchDaoTest {
 
         final List<CanvasMatches> retrievedList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned, matches=" + retrievedList,
-                            1, retrievedList.size());
+        assertEquals(1, retrievedList.size(),
+                     "invalid number of matches returned, matches=" + retrievedList);
 
         for (final CanvasMatches canvasMatches : retrievedList) {
             final Matches matches = canvasMatches.getMatches();
             final double[] ws = matches.getWs();
-            Assert.assertEquals("weight not updated", 8.0, ws[0], 0.01);
+            assertEquals(8.0, ws[0], 0.01, "weight not updated");
         }
     }
 
@@ -222,29 +228,29 @@ public class MatchDaoTest {
         dao.saveMatches(deletionCollectionId, insertList);
 
         MatchCollectionMetaData collectionMetaData = getCollectionMetaData(deletionCollectionId);
-        Assert.assertEquals("invalid pair count before deletions",
-                            new Long(12), collectionMetaData.getPairCount());
+        assertEquals(new Long(12), collectionMetaData.getPairCount(),
+                     "invalid pair count before deletions");
 
         dao.removeMatchesBetweenTiles(deletionCollectionId, "0", tileA, "0", tileB);
 
         collectionMetaData = getCollectionMetaData(deletionCollectionId);
-        Assert.assertEquals("invalid pair count after removing one tile pair",
-                            new Long(11), collectionMetaData.getPairCount());
+        assertEquals(new Long(11), collectionMetaData.getPairCount(),
+                     "invalid pair count after removing one tile pair");
 
         dao.removeMatchesBetweenGroups(deletionCollectionId, "0", "7");
         collectionMetaData = getCollectionMetaData(deletionCollectionId);
-        Assert.assertEquals("invalid pair count after removing pairs between groups 0 and 7",
-                            new Long(10), collectionMetaData.getPairCount());
+        assertEquals(new Long(10), collectionMetaData.getPairCount(),
+                     "invalid pair count after removing pairs between groups 0 and 7");
 
         dao.removeMatchesOutsideGroup(deletionCollectionId, "0");
         collectionMetaData = getCollectionMetaData(deletionCollectionId);
-        Assert.assertEquals("invalid pair count after removing pairs outside group 0",
-                            new Long(8), collectionMetaData.getPairCount());
+        assertEquals(new Long(8), collectionMetaData.getPairCount(),
+                     "invalid pair count after removing pairs outside group 0");
 
         dao.removeAllMatches(deletionCollectionId);
         collectionMetaData = getCollectionMetaData(deletionCollectionId);
-        Assert.assertNull(deletionCollectionId + " not removed",
-                          collectionMetaData);
+        assertNull(collectionMetaData,
+                   deletionCollectionId + " not removed");
     }
 
     @Test
@@ -261,8 +267,8 @@ public class MatchDaoTest {
             foundToCollection = (! foundToCollection) && toMatchCollectionId.equals(metaData.getCollectionId());
         }
 
-        Assert.assertTrue("renamed collection " + toMatchCollectionId + " NOT found", foundToCollection);
-        Assert.assertFalse("original collection " + collectionId + " still exists", foundFromCollection);
+        assertTrue(foundToCollection, "renamed collection " + toMatchCollectionId + " NOT found");
+        assertFalse(foundFromCollection, "original collection " + collectionId + " still exists");
     }
 
     @Test
@@ -308,28 +314,30 @@ public class MatchDaoTest {
         final MatchTrial insertedTrial = dao.insertMatchTrial(matchTrial);
 
         final String trialId = insertedTrial.getId();
-        Assert.assertNotNull("trialId not set", trialId);
+        assertNotNull(trialId, "trialId not set");
 
-        Assert.assertEquals("invalid pRenderParametersUrl inserted",
-                            matchTrial.getParameters().getpRenderParametersUrl(), insertedTrial.getParameters().getpRenderParametersUrl());
+        assertEquals(matchTrial.getParameters().getpRenderParametersUrl(),
+                     insertedTrial.getParameters().getpRenderParametersUrl(),
+                     "invalid pRenderParametersUrl inserted");
 
         final MatchTrial retrievedTrial = dao.getMatchTrial(trialId);
-        Assert.assertNotNull("trial not saved", retrievedTrial);
+        assertNotNull(retrievedTrial, "trial not saved");
 
-        Assert.assertEquals("invalid qRenderParametersUrl inserted",
-                            matchTrial.getParameters().getqRenderParametersUrl(), retrievedTrial.getParameters().getqRenderParametersUrl());
+        assertEquals(matchTrial.getParameters().getqRenderParametersUrl(),
+                     retrievedTrial.getParameters().getqRenderParametersUrl(),
+                     "invalid qRenderParametersUrl inserted");
 
         dao.removeMatchTrial(trialId);
         try {
             final MatchTrial removedTrial = dao.getMatchTrial(trialId);
-            Assert.fail("trial that should have been removed was found: " + removedTrial);
+            fail("trial that should have been removed was found: " + removedTrial);
         } catch (final ObjectNotFoundException e) {
-            Assert.assertTrue("trial id missing from exception message: " + e.getMessage(),
-                              e.getMessage().contains(trialId));
+            assertTrue(e.getMessage().contains(trialId),
+                       "trial id missing from exception message: " + e.getMessage());
         }
 
         dao.removeMatchTrial(trialId);
-        Assert.assertTrue("removal of non-existent trial is ok", true);
+        assertTrue(true, "removal of non-existent trial is ok");
     }
 
     @Test
@@ -343,14 +351,14 @@ public class MatchDaoTest {
         final Document query = new Document("pGroupId", pGroupId);
         final List<CanvasMatches> updatedMatchList = dao.getMatches(matchCollection, query, false);
 
-        Assert.assertEquals("invalid number of matches returned, matches=" + updatedMatchList,
-                            3, updatedMatchList.size());
+        assertEquals(3, updatedMatchList.size(),
+                     "invalid number of matches returned, matches=" + updatedMatchList);
 
         for (final CanvasMatches canvasMatches : updatedMatchList) {
             final Matches matches = canvasMatches.getMatches();
             final Integer expectedMatchCount = matches.getWs().length;
-            Assert.assertEquals("match counts not updated",
-                                expectedMatchCount, canvasMatches.getMatchCount());
+            assertEquals(expectedMatchCount, canvasMatches.getMatchCount(),
+                         "match counts not updated");
         }
 
     }

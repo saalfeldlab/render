@@ -2,8 +2,10 @@ package org.janelia.alignment.match;
 
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.FeatureRenderParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link CanvasRenderParametersUrlTemplate} class.
@@ -20,9 +22,9 @@ public class CanvasRenderParametersUrlTemplateTest {
         final RenderableCanvasIdPairs renderableCanvasIdPairs =
                 RenderableCanvasIdPairs.load("src/test/resources/match-test/tile_pairs_v12_acquire_merged_1_5.json");
 
-        Assert.assertNotNull("pairs not loaded", renderableCanvasIdPairs);
+        assertNotNull(renderableCanvasIdPairs, "pairs not loaded");
 
-        Assert.assertEquals("incorrect number of pairs loaded", 4722, renderableCanvasIdPairs.size());
+        assertEquals(4722, renderableCanvasIdPairs.size(), "incorrect number of pairs loaded");
 
         final String baseDataUrl = "http://render/render-ws/v1";
         final FeatureRenderParameters featureRenderParameters = new FeatureRenderParameters();
@@ -34,10 +36,10 @@ public class CanvasRenderParametersUrlTemplateTest {
                         renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
                         featureRenderParameters,
                         clipParameters);
-        Assert.assertEquals("invalid template derived for basic run",
-                            baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?" +
-                            "scale=1.0&normalizeForMatching=true",
-                            templateForRun.getTemplateString());
+        assertEquals(baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?" +
+                     "scale=1.0&normalizeForMatching=true",
+                     templateForRun.getTemplateString(),
+                     "invalid template derived for basic run");
 
         featureRenderParameters.renderFullScaleWidth = 2760;
         featureRenderParameters.renderFullScaleHeight = 2330;
@@ -51,10 +53,10 @@ public class CanvasRenderParametersUrlTemplateTest {
                         renderableCanvasIdPairs.getRenderParametersUrlTemplate(baseDataUrl),
                         featureRenderParameters,
                         clipParameters);
-        Assert.assertEquals("invalid template derived for scaled run",
-                            baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?" +
-                            "width=2760&height=2330&scale=0.8&filter=true&filterListName=fav&excludeMask=true&normalizeForMatching=true",
-                            templateForRun.getTemplateString());
+        assertEquals(baseDataUrl + "/owner/flyTEM/project/FAFB00/stack/v12_acquire_merged/tile/{id}/render-parameters?" +
+                     "width=2760&height=2330&scale=0.8&filter=true&filterListName=fav&excludeMask=true&normalizeForMatching=true",
+                     templateForRun.getTemplateString(),
+                     "invalid template derived for scaled run");
     }
 
     @Test
@@ -83,9 +85,9 @@ public class CanvasRenderParametersUrlTemplateTest {
                                                       new FeatureRenderParameters(),
                                                       new FeatureRenderClipParameters());
         final CanvasId canvasId = new CanvasId("99.0", tileId);
-        Assert.assertEquals("failed to parse template " + template,
-                            expectedResult,
-                            template.getRenderParametersUrl(canvasId));
+        assertEquals(expectedResult,
+                     template.getRenderParametersUrl(canvasId),
+                     "failed to parse template " + template);
     }
 
 }

@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.janelia.alignment.spec.TileBounds;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 /**
  * Tests the {@link TilePairDerivationParameters} class.
@@ -33,15 +35,15 @@ public class TilePairDerivationParametersTest {
         final List<TileBounds> resultListA = parameters.shiftTileBoundsAsNeeded(testProject,
                                                                                 testStack,
                                                                                 tileBoundsList);
-        Assert.assertSame("original list not returned when layerShiftList is null",
-                          tileBoundsList, resultListA);
+        assertSame(tileBoundsList, resultListA,
+                   "original list not returned when layerShiftList is null");
 
         parameters.layerShiftList = new ArrayList<>();
         final List<TileBounds> resultListB = parameters.shiftTileBoundsAsNeeded(testProject,
                                                                                 testStack,
                                                                                 tileBoundsList);
-        Assert.assertSame("original list not returned when layerShiftList is empty",
-                          tileBoundsList, resultListB);
+        assertSame(tileBoundsList, resultListB,
+                   "original list not returned when layerShiftList is empty");
 
         final double shiftX = 5.0;
         final double shiftY = 15.0;
@@ -50,26 +52,26 @@ public class TilePairDerivationParametersTest {
         final List<TileBounds> resultListC = parameters.shiftTileBoundsAsNeeded(testProject,
                                                                                 testStack,
                                                                                 tileBoundsList);
-        Assert.assertEquals("result list differs in size", tileBoundsList.size(), resultListC.size());
-        Assert.assertSame("first tile bounds should be the same",
-                          tileBoundsList.get(0), resultListC.get(0));
-        Assert.assertSame("second tile bounds should be the same",
-                          tileBoundsList.get(1), resultListC.get(1));
+        assertEquals(tileBoundsList.size(), resultListC.size(), "result list differs in size");
+        assertSame(tileBoundsList.get(0), resultListC.get(0),
+                   "first tile bounds should be the same");
+        assertSame(tileBoundsList.get(1), resultListC.get(1),
+                   "second tile bounds should be the same");
 
         final TileBounds thirdTileBounds = tileBoundsList.get(2);
         final TileBounds resultThirdTileBounds = resultListC.get(2);
-        Assert.assertEquals("tileId for third tile bounds should be the same",
-                            thirdTileBounds.getTileId(), resultThirdTileBounds.getTileId());
-        Assert.assertEquals("z for third tile bounds should be the same",
-                            thirdTileBounds.getZ(), resultThirdTileBounds.getZ(), 0.1);
-        Assert.assertEquals("incorrect shift for minX of third tile bounds",
-                            thirdTileBounds.getMinX() + shiftX, resultThirdTileBounds.getMinX(), 0.1);
-        Assert.assertEquals("incorrect shift for maxX of third tile bounds",
-                            thirdTileBounds.getMaxX() + shiftX, resultThirdTileBounds.getMaxX(), 0.1);
-        Assert.assertEquals("incorrect shift for minY of third tile bounds",
-                            thirdTileBounds.getMinY() + shiftY, resultThirdTileBounds.getMinY(), 0.1);
-        Assert.assertEquals("incorrect shift for maxY of third tile bounds",
-                            thirdTileBounds.getMaxY() + shiftY, resultThirdTileBounds.getMaxY(), 0.1);
+        assertEquals(thirdTileBounds.getTileId(), resultThirdTileBounds.getTileId(),
+                     "tileId for third tile bounds should be the same");
+        assertEquals(thirdTileBounds.getZ(), resultThirdTileBounds.getZ(), 0.1,
+                     "z for third tile bounds should be the same");
+        assertEquals(thirdTileBounds.getMinX() + shiftX, resultThirdTileBounds.getMinX(), 0.1,
+                     "incorrect shift for minX of third tile bounds");
+        assertEquals(thirdTileBounds.getMaxX() + shiftX, resultThirdTileBounds.getMaxX(), 0.1,
+                     "incorrect shift for maxX of third tile bounds");
+        assertEquals(thirdTileBounds.getMinY() + shiftY, resultThirdTileBounds.getMinY(), 0.1,
+                     "incorrect shift for minY of third tile bounds");
+        assertEquals(thirdTileBounds.getMaxY() + shiftY, resultThirdTileBounds.getMaxY(), 0.1,
+                     "incorrect shift for maxY of third tile bounds");
     }
 
 }

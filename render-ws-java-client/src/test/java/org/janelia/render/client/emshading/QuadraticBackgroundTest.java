@@ -5,11 +5,13 @@ import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 import org.janelia.alignment.filter.emshading.QuadraticShading;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class QuadraticBackgroundTest {
 
@@ -20,23 +22,23 @@ public class QuadraticBackgroundTest {
 
 		final double[] location1 = new double[]{0, 0};
 		background.applyInPlace(location1);
-		Assert.assertEquals(1, location1[0], 1e-12);
+		assertEquals(1, location1[0], 1e-12);
 
 		final double[] location2 = new double[]{1, 1};
 		background.applyInPlace(location2);
-		Assert.assertEquals(2, location2[0], 1e-12);
+		assertEquals(2, location2[0], 1e-12);
 
 		final double[] location3 = new double[]{-1, 1};
 		background.applyInPlace(location3);
-		Assert.assertEquals(2, location3[0], 1e-12);
+		assertEquals(2, location3[0], 1e-12);
 
 		final double[] location4 = new double[]{1, 0};
 		background.applyInPlace(location4);
-		Assert.assertEquals(1.5, location4[0], 1e-12);
+		assertEquals(1.5, location4[0], 1e-12);
 
 		final double[] location5 = new double[]{0, 1};
 		background.applyInPlace(location5);
-		Assert.assertEquals(1.5, location5[0], 1e-12);
+		assertEquals(1.5, location5[0], 1e-12);
 	}
 
 	@Test
@@ -55,7 +57,7 @@ public class QuadraticBackgroundTest {
 		background.fit(matches);
 
 		// order of coefficients: {1, y, x, y^2, x*y, x^2}
-		Assert.assertArrayEquals(new double[]{0, 0, 0, 0.5, 0, 0.5}, background.getCoefficients(), 1e-12);
+		assertArrayEquals(new double[]{0, 0, 0, 0.5, 0, 0.5}, background.getCoefficients(), 1e-12);
 	}
 
 	@Test
@@ -74,6 +76,6 @@ public class QuadraticBackgroundTest {
 		final QuadraticShading recovered = new QuadraticShading();
 		recovered.fit(matches);
 
-		Assert.assertArrayEquals(background.getCoefficients(), recovered.getCoefficients(), 1e-12);
+		assertArrayEquals(background.getCoefficients(), recovered.getCoefficients(), 1e-12);
 	}
 }

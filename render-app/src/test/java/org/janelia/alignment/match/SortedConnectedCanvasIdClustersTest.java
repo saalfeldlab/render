@@ -2,8 +2,9 @@ package org.janelia.alignment.match;
 
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link SortedConnectedCanvasIdClusters} class.
@@ -43,8 +44,8 @@ public class SortedConnectedCanvasIdClustersTest {
         final SortedConnectedCanvasIdClusters canvasIdClusters =
                 new SortedConnectedCanvasIdClusters(canvasMatchesList);
 
-        Assert.assertEquals("incorrect number of connected clusters found",
-                            2, canvasIdClusters.size());
+        assertEquals(2, canvasIdClusters.size(),
+                     "incorrect number of connected clusters found");
     }
 
     @Test
@@ -78,18 +79,18 @@ public class SortedConnectedCanvasIdClustersTest {
         final List<CanvasMatches> matchesBatch1 = CanvasMatches.fromJsonArray(jsonArray1);
         final SortedConnectedCanvasIdClusters clustersBatch1 = new SortedConnectedCanvasIdClusters(matchesBatch1);
 
-        Assert.assertEquals("incorrect number of connected clusters found for batch 1",
-                            2, clustersBatch1.size());
+        assertEquals(2, clustersBatch1.size(),
+                     "incorrect number of connected clusters found for batch 1");
 
         final List<CanvasMatches> matchesBatch2 = CanvasMatches.fromJsonArray(jsonArray2);
         final SortedConnectedCanvasIdClusters clustersBatch2 = new SortedConnectedCanvasIdClusters(matchesBatch2);
 
-        Assert.assertEquals("incorrect number of connected clusters found for batch 2",
-                            1, clustersBatch2.size());
+        assertEquals(1, clustersBatch2.size(),
+                     "incorrect number of connected clusters found for batch 2");
 
         clustersBatch1.mergeOverlappingClusters(clustersBatch2);
 
-        Assert.assertEquals("incorrect number of connected clusters found for merged batches",
-                            1, clustersBatch1.size());
+        assertEquals(1, clustersBatch1.size(),
+                     "incorrect number of connected clusters found for merged batches");
     }
 }

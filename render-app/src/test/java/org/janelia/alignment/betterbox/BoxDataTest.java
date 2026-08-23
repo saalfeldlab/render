@@ -2,9 +2,10 @@ package org.janelia.alignment.betterbox;
 
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import junit.framework.Assert;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link BoxData} class.
@@ -18,38 +19,38 @@ public class BoxDataTest {
 
         BoxData boxData = BoxData.fromString("1,2.3,4,5,2,0123");
 
-        Assert.assertEquals("invalid level parsed", 1, boxData.getLevel());
-        Assert.assertEquals("invalid z parsed", 2.3, boxData.getZ(), 0.001);
-        Assert.assertEquals("invalid row parsed", 4, boxData.getRow());
-        Assert.assertEquals("invalid column parsed", 5, boxData.getColumn());
-        Assert.assertEquals("invalid number of siblings parsed", 2, boxData.getNumberOfSiblings());
-        Assert.assertEquals("invalid number of children parsed", 4, boxData.getChildCount());
+        assertEquals(1, boxData.getLevel(), "invalid level parsed");
+        assertEquals(2.3, boxData.getZ(), 0.001, "invalid z parsed");
+        assertEquals(4, boxData.getRow(), "invalid row parsed");
+        assertEquals(5, boxData.getColumn(), "invalid column parsed");
+        assertEquals(2, boxData.getNumberOfSiblings(), "invalid number of siblings parsed");
+        assertEquals(4, boxData.getChildCount(), "invalid number of children parsed");
 
         List<BoxData> children = boxData.getChildren();
         for (int i = 0; i < children.size(); i++) {
             final BoxData child = children.get(i);
-            Assert.assertNotNull("child " + i + " is null", child);
-            Assert.assertEquals("invalid parent level for child " + i,
-                                boxData.getLevel(), child.getParentLevel());
-            Assert.assertEquals("invalid parent row for child " + i,
-                                boxData.getRow(), child.getParentRow());
-            Assert.assertEquals("invalid parent column for child " + i,
-                                boxData.getColumn(), child.getParentColumn());
+            assertNotNull(child, "child " + i + " is null");
+            assertEquals(boxData.getLevel(), child.getParentLevel(),
+                         "invalid parent level for child " + i);
+            assertEquals(boxData.getRow(), child.getParentRow(),
+                         "invalid parent row for child " + i);
+            assertEquals(boxData.getColumn(), child.getParentColumn(),
+                         "invalid parent column for child " + i);
         }
 
         boxData = BoxData.fromString("0,99,10,20,1,");
 
-        Assert.assertEquals("invalid level parsed", 0, boxData.getLevel());
-        Assert.assertEquals("invalid number of children parsed", 0, boxData.getChildCount());
+        assertEquals(0, boxData.getLevel(), "invalid level parsed");
+        assertEquals(0, boxData.getChildCount(), "invalid number of children parsed");
 
         boxData = BoxData.fromString("2,99,40,41,1,13");
 
-        Assert.assertEquals("invalid level parsed", 2, boxData.getLevel());
-        Assert.assertEquals("invalid number of children parsed", 2, boxData.getChildCount());
+        assertEquals(2, boxData.getLevel(), "invalid level parsed");
+        assertEquals(2, boxData.getChildCount(), "invalid number of children parsed");
 
         children = boxData.getChildren();
-        Assert.assertEquals("invalid parent index for first child", 1, children.get(0).getParentIndex());
-        Assert.assertEquals("invalid parent index for second child", 3, children.get(1).getParentIndex());
+        assertEquals(1, children.get(0).getParentIndex(), "invalid parent index for first child");
+        assertEquals(3, children.get(1).getParentIndex(), "invalid parent index for second child");
 
     }
 

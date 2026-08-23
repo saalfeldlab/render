@@ -1,7 +1,7 @@
 package org.janelia.render.client.newsolver;
 
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 

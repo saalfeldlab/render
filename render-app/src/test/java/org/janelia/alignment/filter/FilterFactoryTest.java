@@ -13,10 +13,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import org.janelia.alignment.ArgbRendererTest;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link FilterFactory} class.
@@ -27,14 +29,14 @@ public class FilterFactoryTest {
 
     private File factoryFile;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
         final String timestamp = TIMESTAMP.format(new Date());
         factoryFile = new File("test_filter_lists_" + timestamp + ".json").getCanonicalFile();
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         ArgbRendererTest.deleteTestFile(factoryFile);
     }
@@ -62,8 +64,8 @@ public class FilterFactoryTest {
         final FilterFactory parsedFactory = FilterFactory.fromJson(new FileReader(factoryFile));
 
         final List<FilterSpec> loadedList = parsedFactory.getFilterList("favorites");
-        Assert.assertEquals("invalid number of favorites loaded",
-                            favoritesSpecList.size(), loadedList.size());
+        assertEquals(favoritesSpecList.size(), loadedList.size(),
+                     "invalid number of favorites loaded");
 
     }
 
@@ -84,7 +86,7 @@ public class FilterFactoryTest {
                     final StringWriter sw = new StringWriter();
                     final PrintWriter pw = new PrintWriter(sw);
                     t.printStackTrace(pw);
-                    Assert.fail("failed to build filter " + i + " of the " + listName +
+                    fail("failed to build filter " + i + " of the " + listName +
                                 " list because of the following exception:\n" + sw);
                 }
             }

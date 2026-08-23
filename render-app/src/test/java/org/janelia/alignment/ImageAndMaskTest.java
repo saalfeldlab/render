@@ -16,7 +16,9 @@
  */
 package org.janelia.alignment;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests the {@link ImageAndMask} class.
@@ -25,28 +27,28 @@ import org.junit.Test;
  */
 public class ImageAndMaskTest {
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testValidateWithNullImage() throws Exception {
         ImageAndMask imageAndMask = new ImageAndMask();
-        imageAndMask.validate();
+        assertThrows(IllegalArgumentException.class, () -> imageAndMask.validate());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testValidateWithInvalidImageUrl() throws Exception {
         ImageAndMask imageAndMask = new ImageAndMask("scheme-with-invalid-@-char://test", null);
-        imageAndMask.validate();
+        assertThrows(IllegalArgumentException.class, () -> imageAndMask.validate());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testValidateWithMissingImageFileWithScheme() throws Exception {
         ImageAndMask imageAndMask = new ImageAndMask("file:///missing-file", null);
-        imageAndMask.validate();
+        assertThrows(IllegalArgumentException.class, () -> imageAndMask.validate());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testValidateWithMissingImageFileWithoutScheme() throws Exception {
         ImageAndMask imageAndMask = new ImageAndMask("/missing-file", null);
-        imageAndMask.validate();
+        assertThrows(IllegalArgumentException.class, () -> imageAndMask.validate());
     }
 
 }

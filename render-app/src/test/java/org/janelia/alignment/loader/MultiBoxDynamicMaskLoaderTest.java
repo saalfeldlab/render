@@ -2,8 +2,9 @@ package org.janelia.alignment.loader;
 
 import ij.process.ImageProcessor;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link MultiBoxDynamicMaskLoader} class.
@@ -28,48 +29,48 @@ public class MultiBoxDynamicMaskLoaderTest {
 
         ImageProcessor maskProcessor = MultiBoxDynamicMaskLoader.INSTANCE.load(maskUrl);
 
-        Assert.assertEquals("invalid mask width for level 0",
-                            width, maskProcessor.getWidth());
-        Assert.assertEquals("invalid mask height for level 0",
-                            height, maskProcessor.getHeight());
+        assertEquals(width, maskProcessor.getWidth(),
+                     "invalid mask width for level 0");
+        assertEquals(height, maskProcessor.getHeight(),
+                     "invalid mask height for level 0");
 
         final int expectedOutsideValue = 0;
         final int expectedInsideValue = 255;
 
         // outside both
-        Assert.assertEquals("invalid pixel value for position 0,0",
-                            expectedOutsideValue, maskProcessor.get(0, 0));
-        Assert.assertEquals("invalid pixel value for position 4,20",
-                            expectedOutsideValue, maskProcessor.get(4, 20));
-        Assert.assertEquals("invalid pixel value for position 4,20",
-                            expectedOutsideValue, maskProcessor.get(76, 20));
+        assertEquals(expectedOutsideValue, maskProcessor.get(0, 0),
+                     "invalid pixel value for position 0,0");
+        assertEquals(expectedOutsideValue, maskProcessor.get(4, 20),
+                     "invalid pixel value for position 4,20");
+        assertEquals(expectedOutsideValue, maskProcessor.get(76, 20),
+                     "invalid pixel value for position 4,20");
 
         // inside box A
 //        Assert.assertEquals("invalid pixel value for position 5,20",
 //                            expectedInsideValue, maskProcessor.get(5, 20));
         // TODO: restore original test after fixing/understanding 1 pixel offset in MultiBoxDynamicMaskLoader.load()
-        Assert.assertEquals("invalid pixel value for position 6,21",
-                            expectedInsideValue, maskProcessor.get(6, 21));
-        Assert.assertEquals("invalid pixel value for position 10,20",
-                            expectedInsideValue, maskProcessor.get(10, 20));
+        assertEquals(expectedInsideValue, maskProcessor.get(6, 21),
+                     "invalid pixel value for position 6,21");
+        assertEquals(expectedInsideValue, maskProcessor.get(10, 20),
+                     "invalid pixel value for position 10,20");
 
         // inside box B
-        Assert.assertEquals("invalid pixel value for position 55,60",
-                            expectedInsideValue, maskProcessor.get(55, 60));
+        assertEquals(expectedInsideValue, maskProcessor.get(55, 60),
+                     "invalid pixel value for position 55,60");
 
         // inside both
-        Assert.assertEquals("invalid pixel value for position 40,40",
-                            expectedInsideValue, maskProcessor.get(40, 40));
+        assertEquals(expectedInsideValue, maskProcessor.get(40, 40),
+                     "invalid pixel value for position 40,40");
 
         width = width / 2;
         height = height / 2;
         maskUrl = maskUrl + "&level=1";
         maskProcessor = MultiBoxDynamicMaskLoader.INSTANCE.load(maskUrl);
 
-        Assert.assertEquals("invalid mask width for level 1",
-                            width, maskProcessor.getWidth());
-        Assert.assertEquals("invalid mask height for level 1",
-                            height, maskProcessor.getHeight());
+        assertEquals(width, maskProcessor.getWidth(),
+                     "invalid mask width for level 1");
+        assertEquals(height, maskProcessor.getHeight(),
+                     "invalid mask height for level 1");
     }
 
 }

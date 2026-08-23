@@ -2,8 +2,8 @@ package org.janelia.render.client.spark.betterbox;
 
 import org.apache.spark.SparkConf;
 import org.janelia.alignment.util.ProcessTimer;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-@Ignore
+@Disabled
 public class BoxClientTest {
 
     @Test

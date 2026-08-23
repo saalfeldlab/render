@@ -19,12 +19,17 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.render.service.model.ObjectNotFoundException;
 import org.janelia.test.EmbeddedMongoDb;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests {@link RenderDao} methods or error cases that won't change stored data.
@@ -39,7 +44,7 @@ public class RenderDaoReadOnlyTest {
     private static EmbeddedMongoDb embeddedMongoDb;
     private static RenderDao dao;
 
-    @BeforeClass
+    @BeforeAll
     public static void before() throws Exception {
         stackId = new StackId("flyTEM", "test", "elastic");
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
@@ -64,7 +69,7 @@ public class RenderDaoReadOnlyTest {
                                          true);
     }
 
-    @AfterClass
+    @AfterAll
     public static void after() {
         embeddedMongoDb.stop();
     }
@@ -73,29 +78,29 @@ public class RenderDaoReadOnlyTest {
     public void testGetOwners() {
         final List<String> list = dao.getOwners();
 
-        Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of owners found", 1, list.size());
+        assertNotNull(list, "null list retrieved");
+        assertEquals(1, list.size(), "invalid number of owners found");
     }
 
     @Test
     public void testGetProjects() {
         final List<String> list = dao.getProjects(stackId.getOwner());
 
-        Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of projects found", 2, list.size());
+        assertNotNull(list, "null list retrieved");
+        assertEquals(2, list.size(), "invalid number of projects found");
     }
 
     @Test
     public void testGetStackMetaDataList() {
         List<StackMetaData> list = dao.getStackMetaDataList(stackId.getOwner(), null);
 
-        Assert.assertNotNull("null list retrieved for owner", list);
-        Assert.assertEquals("invalid number of stacks found for owner", 3, list.size());
+        assertNotNull(list, "null list retrieved for owner");
+        assertEquals(3, list.size(), "invalid number of stacks found for owner");
 
         list = dao.getStackMetaDataList(stackId.getOwner(), stackId.getProject());
 
-        Assert.assertNotNull("null list retrieved for project", list);
-        Assert.assertEquals("invalid number of stacks found for project", 1, list.size());
+        assertNotNull(list, "null list retrieved for project");
+        assertEquals(1, list.size(), "invalid number of stacks found for project");
     }
 
     @Test
@@ -106,9 +111,9 @@ public class RenderDaoReadOnlyTest {
 
         final StackMetaData stackMetaData = dao.getStackMetaData(stackId);
 
-        Assert.assertNotNull("null stack meta data retrieved", stackMetaData);
-        Assert.assertEquals("invalid layout width", expectedLayoutWidth, stackMetaData.getLayoutWidth());
-        Assert.assertEquals("invalid layout height", expectedLayoutHeight, stackMetaData.getLayoutHeight());
+        assertNotNull(stackMetaData, "null stack meta data retrieved");
+        assertEquals(expectedLayoutWidth, stackMetaData.getLayoutWidth(), "invalid layout width");
+        assertEquals(expectedLayoutHeight, stackMetaData.getLayoutHeight(), "invalid layout height");
     }
 
     @Test
@@ -123,40 +128,40 @@ public class RenderDaoReadOnlyTest {
 
         RenderParameters parameters = dao.getParameters(stackId, null, x, y, z, width, height, scale);
 
-        Assert.assertNotNull("null parameters retrieved", parameters);
-        Assert.assertEquals("invalid width parsed", width.intValue(), parameters.getWidth());
+        assertNotNull(parameters, "null parameters retrieved");
+        assertEquals(width.intValue(), parameters.getWidth(), "invalid width parsed");
 
         // validate that dao parameters can be re-serialized
         try {
             final String json = parameters.toJson();
-            Assert.assertNotNull("null json string produced for parameters", json);
+            assertNotNull(json, "null json string produced for parameters");
         } catch (final Exception e) {
             LOG.error("failed to serialize json for " + parameters, e);
-            Assert.fail("retrieved parameters cannot be re-serialized to json");
+            fail("retrieved parameters cannot be re-serialized to json");
         }
 
         parameters.initializeDerivedValues();
         List<TileSpec> tileSpecs = parameters.getTileSpecs();
-        Assert.assertNotNull("null tile specs value after init", tileSpecs);
-        Assert.assertEquals("invalid number of tiles after init", 6, tileSpecs.size());
+        assertNotNull(tileSpecs, "null tile specs value after init");
+        assertEquals(6, tileSpecs.size(), "invalid number of tiles after init");
 
         ListTransformSpec transforms;
         for (final TileSpec tileSpec : tileSpecs) {
             transforms = tileSpec.getTransforms();
-            Assert.assertTrue("tileSpec " + tileSpec.getTileId() + " is not fully resolved",
-                              transforms.isFullyResolved());
+            assertTrue(transforms.isFullyResolved(),
+                       "tileSpec " + tileSpec.getTileId() + " is not fully resolved");
         }
 
         parameters = dao.getParameters(stackId, groupId, x, y, z, width, height, scale);
 
-        Assert.assertNotNull("null parameters retrieved for group", parameters);
+        assertNotNull(parameters, "null parameters retrieved for group");
         tileSpecs = parameters.getTileSpecs();
-        Assert.assertNotNull("null tile specs returned for group", tileSpecs);
-        Assert.assertEquals("invalid number of tiles for group", 2, tileSpecs.size());
+        assertNotNull(tileSpecs, "null tile specs returned for group");
+        assertEquals(2, tileSpecs.size(), "invalid number of tiles for group");
 
         for (final TileSpec tileSpec : tileSpecs) {
-            Assert.assertEquals("tileSpec " + tileSpec.getTileId() + " has invalid groupId",
-                                groupId, tileSpec.getGroupId());
+            assertEquals(groupId, tileSpec.getGroupId(),
+                         "tileSpec " + tileSpec.getTileId() + " has invalid groupId");
         }
 
     }
@@ -165,23 +170,23 @@ public class RenderDaoReadOnlyTest {
     public void testGetTileSpec() {
         final String existingTileId = "134";
         final TileSpec tileSpec = dao.getTileSpec(stackId, existingTileId, false);
-        Assert.assertNotNull("null tileSpec retrieved", tileSpec);
-        Assert.assertEquals("invalid tileId retrieved", existingTileId, tileSpec.getTileId());
+        assertNotNull(tileSpec, "null tileSpec retrieved");
+        assertEquals(existingTileId, tileSpec.getTileId(), "invalid tileId retrieved");
     }
 
     @Test
     public void testGetTileSpecs() {
         final List<TileSpec> list = dao.getTileSpecs(stackId, 3903.0);
-        Assert.assertNotNull("null tile spec list retrieved", list);
-        Assert.assertEquals("invalid number of tile specs retrieved", 12, list.size());
+        assertNotNull(list, "null tile spec list retrieved");
+        assertEquals(12, list.size(), "invalid number of tile specs retrieved");
     }
 
-    @Test(expected = ObjectNotFoundException.class)
+    @Test
     public void testGetTileSpecWithBadId() {
-        dao.getTileSpec(stackId, "missingId", false);
+        assertThrows(ObjectNotFoundException.class, () -> dao.getTileSpec(stackId, "missingId", false));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testSaveTileSpecWithBadTransformReference() {
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setZ(12.3);
@@ -189,28 +194,26 @@ public class RenderDaoReadOnlyTest {
         final List<TransformSpec> list = new ArrayList<>();
         list.add(new ReferenceTransformSpec("missing-id"));
         tileSpec.addTransformSpecs(list);
-
-        dao.saveTileSpec(stackId, tileSpec);
+        assertThrows(IllegalArgumentException.class, () -> dao.saveTileSpec(stackId, tileSpec));
     }
 
     @Test
     public void testGetTransformSpec() {
         final TransformSpec transformSpec = dao.getTransformSpec(stackId, "2");
-        Assert.assertNotNull("null transformSpec retrieved", transformSpec);
-        Assert.assertTrue("invalid type retrieved", transformSpec instanceof ListTransformSpec);
+        assertNotNull(transformSpec, "null transformSpec retrieved");
+        assertTrue(transformSpec instanceof ListTransformSpec, "invalid type retrieved");
     }
 
-    @Test(expected = ObjectNotFoundException.class)
+    @Test
     public void testGetTransformSpecWithBadId() {
-        dao.getTransformSpec(stackId, "missingId");
+        assertThrows(ObjectNotFoundException.class, () -> dao.getTransformSpec(stackId, "missingId"));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testSaveTransformSpecWithBadTransformReference() {
         final ListTransformSpec listSpec = new ListTransformSpec("bad-ref-transform", null);
         listSpec.addSpec(new ReferenceTransformSpec("missing-id"));
-
-        dao.saveTransformSpec(stackId, listSpec);
+        assertThrows(IllegalArgumentException.class, () -> dao.saveTransformSpec(stackId, listSpec));
     }
 
     @Test
@@ -225,8 +228,8 @@ public class RenderDaoReadOnlyTest {
     private void validateZValues(final String context,
                                  final List<Double> list,
                                  final int expectedCount) {
-        Assert.assertNotNull("null list retrieved for search " + context, list);
-        Assert.assertEquals("invalid number of sections found " + context, expectedCount, list.size());
+        assertNotNull(list, "null list retrieved for search " + context);
+        assertEquals(expectedCount, list.size(), "invalid number of sections found " + context);
     }
 
     @Test
@@ -240,13 +243,13 @@ public class RenderDaoReadOnlyTest {
 
         final Bounds bounds = dao.getLayerBounds(stackId, z);
 
-        Assert.assertNotNull("null layer bounds retrieved", bounds);
-        Assert.assertEquals("invalid layer minX", expectedMinX, bounds.getMinX(), BOUNDS_DELTA);
-        Assert.assertEquals("invalid layer minY", expectedMinY, bounds.getMinY(), BOUNDS_DELTA);
-        Assert.assertEquals("invalid layer minZ", z, bounds.getMinZ(), BOUNDS_DELTA);
-        Assert.assertEquals("invalid layer maxX", expectedMaxX, bounds.getMaxX(), BOUNDS_DELTA);
-        Assert.assertEquals("invalid layer maxY", expectedMaxY, bounds.getMaxY(), BOUNDS_DELTA);
-        Assert.assertEquals("invalid layer maxZ", z, bounds.getMaxZ(), BOUNDS_DELTA);
+        assertNotNull(bounds, "null layer bounds retrieved");
+        assertEquals(expectedMinX, bounds.getMinX(), BOUNDS_DELTA, "invalid layer minX");
+        assertEquals(expectedMinY, bounds.getMinY(), BOUNDS_DELTA, "invalid layer minY");
+        assertEquals(z, bounds.getMinZ(), BOUNDS_DELTA, "invalid layer minZ");
+        assertEquals(expectedMaxX, bounds.getMaxX(), BOUNDS_DELTA, "invalid layer maxX");
+        assertEquals(expectedMaxY, bounds.getMaxY(), BOUNDS_DELTA, "invalid layer maxY");
+        assertEquals(z, bounds.getMaxZ(), BOUNDS_DELTA, "invalid layer maxZ");
     }
 
     @Test
@@ -254,8 +257,8 @@ public class RenderDaoReadOnlyTest {
         final Double z = 3903.0;
         final List<TileBounds> list = dao.getTileBoundsForZ(stackId, z, null);
 
-        Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of tiles found", 12, list.size());
+        assertNotNull(list, "null list retrieved");
+        assertEquals(12, list.size(), "invalid number of tiles found");
 
         TileBounds tileBounds = null;
         for (final TileBounds tb : list) {
@@ -264,8 +267,8 @@ public class RenderDaoReadOnlyTest {
             }
         }
 
-        Assert.assertNotNull("tile 134 missing from tileBounds list", tileBounds);
-        Assert.assertTrue("bound box not defined tile 134", tileBounds.isBoundingBoxDefined());
+        assertNotNull(tileBounds, "tile 134 missing from tileBounds list");
+        assertTrue(tileBounds.isBoundingBoxDefined(), "bound box not defined tile 134");
     }
 
     @Test
@@ -273,8 +276,8 @@ public class RenderDaoReadOnlyTest {
         final String sectionId = "3903.0";
         final List<TileBounds> list = dao.getTileBoundsForSection(stackId, sectionId, null);
 
-        Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of tiles found", 2, list.size());
+        assertNotNull(list, "null list retrieved");
+        assertEquals(2, list.size(), "invalid number of tiles found");
     }
 
     @Test
@@ -282,13 +285,13 @@ public class RenderDaoReadOnlyTest {
         final Double z = 3903.0;
         final List<SectionData> list = dao.getSectionDataForZ(stackId, z);
 
-        Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of sections found, actual values were " + list,
-                            2, list.size());
-        Assert.assertEquals("invalid first section id",
-                            "3903.0", list.get(0).getSectionId());
-        Assert.assertEquals("invalid second section id",
-                            "mis-ordered-section", list.get(1).getSectionId());
+        assertNotNull(list, "null list retrieved");
+        assertEquals(2, list.size(),
+                     "invalid number of sections found, actual values were " + list);
+        assertEquals("3903.0", list.get(0).getSectionId(),
+                     "invalid first section id");
+        assertEquals("mis-ordered-section", list.get(1).getSectionId(),
+                     "invalid second section id");
     }
 
     @Test
@@ -306,35 +309,35 @@ public class RenderDaoReadOnlyTest {
         final String json = outputStream.toString();
         final List<List<TileCoordinates>> worldCoordinatesWithTileIds = TileCoordinates.fromJsonArrayOfArrays(json);
 
-        Assert.assertEquals("invalid number of lists returned",
-                            worldCoordinates.size(), worldCoordinatesWithTileIds.size());
+        assertEquals(worldCoordinates.size(), worldCoordinatesWithTileIds.size(),
+                     "invalid number of lists returned");
 
         // first coordinate
         List<TileCoordinates> tileCoordinatesList = worldCoordinatesWithTileIds.get(0);
 
-        Assert.assertEquals("invalid number of tiles found for first coordinate",
-                            1, tileCoordinatesList.size());
+        assertEquals(1, tileCoordinatesList.size(),
+                     "invalid number of tiles found for first coordinate");
 
         TileCoordinates tileCoordinates = tileCoordinatesList.get(0);
 
-        Assert.assertEquals("invalid tileId for first coordinate",
-                            "134", tileCoordinates.getTileId());
+        assertEquals("134", tileCoordinates.getTileId(),
+                     "invalid tileId for first coordinate");
 
         // second coordinate
         tileCoordinatesList = worldCoordinatesWithTileIds.get(1);
 
-        Assert.assertEquals("invalid number of tiles found for second coordinate",
-                            2, tileCoordinatesList.size());
+        assertEquals(2, tileCoordinatesList.size(),
+                     "invalid number of tiles found for second coordinate");
 
         tileCoordinates = tileCoordinatesList.get(0);
 
-        Assert.assertEquals("invalid tileId for second coordinate, first tile",
-                            "134", tileCoordinates.getTileId());
+        assertEquals("134", tileCoordinates.getTileId(),
+                     "invalid tileId for second coordinate, first tile");
 
         tileCoordinates = tileCoordinatesList.get(1);
 
-        Assert.assertEquals("invalid tileId for second coordinate, second tile",
-                            "171", tileCoordinates.getTileId());
+        assertEquals("171", tileCoordinates.getTileId(),
+                     "invalid tileId for second coordinate, second tile");
     }
 
     @Test
@@ -342,29 +345,30 @@ public class RenderDaoReadOnlyTest {
         final Double z = 3903.0;
 
         ResolvedTileSpecCollection resolvedTiles = dao.getResolvedTiles(stackId, z, null);
-        Assert.assertNotNull("null collection retrieved for z query", resolvedTiles);
-        Assert.assertEquals("invalid number of tiles found for z query", 12, resolvedTiles.getTileCount());
+        assertNotNull(resolvedTiles, "null collection retrieved for z query");
+        assertEquals(12, resolvedTiles.getTileCount(), "invalid number of tiles found for z query");
 
         resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, null, null, null, null, null);
-        Assert.assertNotNull("null collection retrieved for groupId query", resolvedTiles);
-        Assert.assertEquals("invalid number of tiles found for groupId query", 3, resolvedTiles.getTileCount());
+        assertNotNull(resolvedTiles, "null collection retrieved for groupId query");
+        assertEquals(3, resolvedTiles.getTileCount(), "invalid number of tiles found for groupId query");
 
 
         resolvedTiles = dao.getResolvedTiles(stackId, null, null, groupId, 3950.0, null, null, null, null);
-        Assert.assertNotNull("null collection retrieved for groupId with minX query", resolvedTiles);
-        Assert.assertEquals("invalid number of tiles found for groupId with minX query", 1, resolvedTiles.getTileCount());
+        assertNotNull(resolvedTiles, "null collection retrieved for groupId with minX query");
+        assertEquals(1, resolvedTiles.getTileCount(),
+                     "invalid number of tiles found for groupId with minX query");
 
         resolvedTiles = dao.getResolvedTiles(stackId, 3903.0, null, null, null, null, null, null, null);
-        Assert.assertNotNull("null collection retrieved for min z query", resolvedTiles);
-        Assert.assertEquals("invalid number of tiles found for min z query", 14, resolvedTiles.getTileCount());
+        assertNotNull(resolvedTiles, "null collection retrieved for min z query");
+        assertEquals(14, resolvedTiles.getTileCount(), "invalid number of tiles found for min z query");
 
         resolvedTiles = dao.getResolvedTiles(stackId, null, 3903.0, null, null, null, null, null, null);
-        Assert.assertNotNull("null collection retrieved for max z query", resolvedTiles);
-        Assert.assertEquals("invalid number of tiles found for max z query", 12, resolvedTiles.getTileCount());
+        assertNotNull(resolvedTiles, "null collection retrieved for max z query");
+        assertEquals(12, resolvedTiles.getTileCount(), "invalid number of tiles found for max z query");
 
         resolvedTiles = dao.getResolvedTiles(stackId, 3903.1, 3905.0, null, null, null, null, null, null);
-        Assert.assertNotNull("null collection retrieved for min/max z query", resolvedTiles);
-        Assert.assertEquals("invalid number of tiles found for min/max z query", 2, resolvedTiles.getTileCount());
+        assertNotNull(resolvedTiles, "null collection retrieved for min/max z query");
+        assertEquals(2, resolvedTiles.getTileCount(), "invalid number of tiles found for min/max z query");
 
     }
 
@@ -378,8 +382,8 @@ public class RenderDaoReadOnlyTest {
             final ByteArrayOutputStream outputStream = new ByteArrayOutputStream(1024);
             dao.writeTileIds(stackId, null, null, matchPatterns[test], outputStream);
             final String[] tileIds = outputStream.toString().split(",");
-            Assert.assertEquals("invalid number of tileIds written for query test " + test,
-                                expectedMatchingTileCounts[test], tileIds.length);
+            assertEquals(expectedMatchingTileCounts[test], tileIds.length,
+                         "invalid number of tileIds written for query test " + test);
         }
     }
 

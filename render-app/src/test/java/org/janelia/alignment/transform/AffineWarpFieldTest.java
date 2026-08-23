@@ -16,9 +16,9 @@
  */
 package org.janelia.alignment.transform;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import junit.framework.Assert;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link AffineWarpField} class.
@@ -45,8 +45,8 @@ public class AffineWarpFieldTest {
         final double[] originalValues = warpField.getValues();
         int expectedNumberOfValues = rowCount * columnCount * 6;
 
-        Assert.assertEquals("invalid number of original values",
-                            expectedNumberOfValues, originalValues.length);
+        assertEquals(expectedNumberOfValues, originalValues.length,
+                     "invalid number of original values");
 
         final int divideRowsBy = 3;
         final int divideColumnsBy = 3;
@@ -55,8 +55,8 @@ public class AffineWarpFieldTest {
         final double[] hiResValues = hiResWarpField.getValues();
         expectedNumberOfValues = rowCount * divideRowsBy * columnCount * divideColumnsBy * 6;
 
-        Assert.assertEquals("invalid number of high resolution values",
-                            expectedNumberOfValues, hiResValues.length);
+        assertEquals(expectedNumberOfValues, hiResValues.length,
+                     "invalid number of high resolution values");
 
         final int originalRow = 1;
         final int originalColumn = 2;
@@ -67,8 +67,8 @@ public class AffineWarpFieldTest {
         final double[] hiResCellValues = hiResWarpField.get(hiResRow, hiResColumn);
 
         for (int i = 0; i < originalCellValues.length; i++) {
-            Assert.assertEquals("invalid high resolution value for index " + i,
-                                originalCellValues[i], hiResCellValues[i], 0.0001);
+            assertEquals(originalCellValues[i], hiResCellValues[i], 0.0001,
+                         "invalid high resolution value for index " + i);
         }
 
     }

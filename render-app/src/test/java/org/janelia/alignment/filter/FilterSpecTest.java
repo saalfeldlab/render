@@ -1,8 +1,10 @@
 package org.janelia.alignment.filter;
 
 import org.janelia.alignment.filter.emshading.QuadraticShading;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link FilterSpec} class.
@@ -25,11 +27,11 @@ public class FilterSpecTest {
 
         if (parsedInstance instanceof CLAHE) {
             final CLAHE clahe = (CLAHE) parsedInstance;
-            Assert.assertEquals("invalid block radius parsed",
-                                originalFilter.getBlockRadius(), clahe.getBlockRadius());
+            assertEquals(originalFilter.getBlockRadius(), clahe.getBlockRadius(),
+                         "invalid block radius parsed");
         } else {
-            Assert.assertEquals("invalid instance created",
-                                CLAHE.class, parsedInstance.getClass());
+            assertEquals(CLAHE.class, parsedInstance.getClass(),
+                         "invalid instance created");
         }
 
         // --------------------------------
@@ -53,25 +55,25 @@ public class FilterSpecTest {
         if (parsedInstance instanceof LinearIntensityMap8BitFilter) {
             final LinearIntensityMap8BitFilter mapFilter = (LinearIntensityMap8BitFilter) parsedInstance;
             final double[][] parsedCoefficients = mapFilter.getCoefficients();
-            Assert.assertEquals("invalid number of regions parsed",
-                                numberOfRegionRows, mapFilter.getNumberOfRegionRows());
-            Assert.assertEquals("invalid number of coefficients parsed",
-                                numberOfRegionRows * numberOfRegionColumns, parsedCoefficients.length);
+            assertEquals(numberOfRegionRows, mapFilter.getNumberOfRegionRows(),
+                         "invalid number of regions parsed");
+            assertEquals(numberOfRegionRows * numberOfRegionColumns, parsedCoefficients.length,
+                         "invalid number of coefficients parsed");
         } else {
-            Assert.assertEquals("invalid instance created",
-                                LinearIntensityMap8BitFilter.class, parsedInstance.getClass());
+            assertEquals(LinearIntensityMap8BitFilter.class, parsedInstance.getClass(),
+                         "invalid instance created");
         }
 
     }
 
     private static Filter parseAndBuildFilter(final FilterSpec filterSpec) {
         final String json = filterSpec.toJson();
-        Assert.assertNotNull("json generation returned null string for " + filterSpec.getClassName(),
-                             json);
+        assertNotNull(json,
+                      "json generation returned null string for " + filterSpec.getClassName());
 
         final FilterSpec parsedSpec = FilterSpec.fromJson(json);
-        Assert.assertNotNull("null spec returned from json parse of " + filterSpec.getClassName(),
-                             parsedSpec);
+        assertNotNull(parsedSpec,
+                      "null spec returned from json parse of " + filterSpec.getClassName());
 
         return parsedSpec.buildInstance();
     }
@@ -95,7 +97,7 @@ public class FilterSpecTest {
 
         // check if it can be built and has the correct number of parameters
         final Filter recoveredFilter = accumulate.buildInstance();
-        Assert.assertEquals(8, recoveredFilter.toParametersMap().size());
+        assertEquals(8, recoveredFilter.toParametersMap().size());
     }
 
     private static FilterSpec getTestFilterSpec(final int i) {

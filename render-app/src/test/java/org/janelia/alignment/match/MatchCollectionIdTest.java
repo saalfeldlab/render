@@ -16,8 +16,10 @@
  */
 package org.janelia.alignment.match;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link MatchCollectionId} class.
@@ -49,7 +51,7 @@ public class MatchCollectionIdTest {
             try {
                 new MatchCollectionId(owner, name);
             } catch (final IllegalArgumentException e) {
-                Assert.fail("valid name failed check " + e);
+                fail("valid name failed check " + e);
             }
         }
 
@@ -70,9 +72,9 @@ public class MatchCollectionIdTest {
             name = testData[1];
             try {
                 matchCollectionId = new MatchCollectionId(owner, name);
-                Assert.fail("invalid id " + matchCollectionId + " did not cause exception");
+                fail("invalid id " + matchCollectionId + " did not cause exception");
             } catch (final IllegalArgumentException e) {
-                Assert.assertTrue(true); // test passed
+                assertTrue(true); // test passed
             }
         }
 

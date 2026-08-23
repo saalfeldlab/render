@@ -6,8 +6,9 @@ import java.util.List;
 import mpicbg.models.Point;
 import mpicbg.models.PointMatch;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link CanvasMatchResult} class.
@@ -27,11 +28,11 @@ public class CanvasMatchResultTest {
 
         final Matches matches = CanvasMatchResult.convertPointMatchListToMatches(originalList, 1.0);
 
-        Assert.assertEquals("incorrect number of matches weights", originalList.size(), matches.getWs().length);
+        assertEquals(originalList.size(), matches.getWs().length, "incorrect number of matches weights");
 
         final List<PointMatch> convertedList = CanvasMatchResult.convertMatchesToPointMatchList(matches);
 
-        Assert.assertEquals("incorrect number of point matches", originalList.size(), convertedList.size());
+        assertEquals(originalList.size(), convertedList.size(), "incorrect number of point matches");
 
         for (int i = 0; i < originalList.size(); i++) {
             verifyEquality("match " + i, originalList.get(i), convertedList.get(i));
@@ -55,11 +56,11 @@ public class CanvasMatchResultTest {
         final double[] expectedLocal = expected.getL();
         final double[] actualLocal = actual.getL();
 
-        Assert.assertEquals("incorrect dimension size for " + context, expectedLocal.length, actualLocal.length);
+        assertEquals(expectedLocal.length, actualLocal.length, "incorrect dimension size for " + context);
 
         for (int i = 0; i < expectedLocal.length; i++) {
-            Assert.assertEquals("incorrect value at index " + i + " of " + context,
-                                expectedLocal[i], actualLocal[i], 0.0001);
+            assertEquals(expectedLocal[i], actualLocal[i], 0.0001,
+                         "incorrect value at index " + i + " of " + context);
         }
 
     }

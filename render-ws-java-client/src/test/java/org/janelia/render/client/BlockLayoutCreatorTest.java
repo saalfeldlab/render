@@ -2,14 +2,17 @@ package org.janelia.render.client;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 import static org.janelia.render.client.newsolver.blockfactories.BlockLayoutCreator.In;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 public class BlockLayoutCreatorTest {
 
@@ -144,10 +147,10 @@ public class BlockLayoutCreatorTest {
 
 		final Bounds regularBoundsWithMaxZ =
 				regularBlocks.stream().max(Comparator.comparing(Bounds::getMaxZ)).orElse(null);
-		assertNotNull("regularBoundsWithMaxZ is null",
-					  regularBoundsWithMaxZ);
-		assertEquals("regularBoundsWithMaxZ has invalid maxZ",
-					 STACK_BOUNDS.getMaxZ(), regularBoundsWithMaxZ.getMaxZ(), 1e-1);
+		assertNotNull(regularBoundsWithMaxZ,
+                "regularBoundsWithMaxZ is null");
+		assertEquals(STACK_BOUNDS.getMaxZ(), regularBoundsWithMaxZ.getMaxZ(), 1e-1,
+               "regularBoundsWithMaxZ has invalid maxZ");
 	}
 
 	@Test
@@ -160,10 +163,10 @@ public class BlockLayoutCreatorTest {
 
 		final Bounds shiftedBoundsWithMaxZ =
 				shiftedBlocks.stream().max(Comparator.comparing(Bounds::getMaxZ)).orElse(null);
-		assertNotNull("shiftedBoundsWithMaxZ is null",
-					  shiftedBoundsWithMaxZ);
-		assertEquals("shiftedBoundsWithMaxZ has invalid maxZ",
-					 STACK_BOUNDS.getMaxZ(), shiftedBoundsWithMaxZ.getMaxZ(), 1e-1);
+		assertNotNull(shiftedBoundsWithMaxZ,
+                "shiftedBoundsWithMaxZ is null");
+		assertEquals(STACK_BOUNDS.getMaxZ(), shiftedBoundsWithMaxZ.getMaxZ(), 1e-1,
+               "shiftedBoundsWithMaxZ has invalid maxZ");
 	}
 
 	// wafer 53 block and stack size that demonstrated shifted grid problem

@@ -23,13 +23,19 @@ import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackStats;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.test.EmbeddedMongoDb;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import static org.janelia.alignment.spec.stack.StackMetaData.StackState.LOADING;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests {@link RenderDao} methods that change persisted data.
@@ -43,14 +49,14 @@ public class RenderDaoTest {
     private static EmbeddedMongoDb embeddedMongoDb;
     private static RenderDao dao;
 
-    @BeforeClass
+    @BeforeAll
     public static void before() throws Exception {
         stackId = new StackId("flyTEM", "test", "elastic");
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
         dao = new RenderDao(embeddedMongoDb.getMongoClient());
     }
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         embeddedMongoDb.importCollection(RenderDao.STACK_META_DATA_COLLECTION_NAME,
                                          new File("src/test/resources/mongodb/admin__stack_meta_data.json"),
@@ -71,7 +77,7 @@ public class RenderDaoTest {
                                          true);
     }
 
-    @AfterClass
+    @AfterAll
     public static void after() {
         embeddedMongoDb.stop();
     }
@@ -88,18 +94,18 @@ public class RenderDaoTest {
         StackId toStackId = new StackId(fromStackId.getOwner(), fromStackId.getProject(), "renamedStackA");
 
         StackMetaData toStackMetaData = dao.getStackMetaData(toStackId);
-        Assert.assertNull("toStack should not exist before rename", toStackMetaData);
+        assertNull(toStackMetaData, "toStack should not exist before rename");
 
         dao.renameStack(fromStackId, toStackId);
 
         toStackMetaData = dao.getStackMetaData(toStackId);
-        Assert.assertNotNull("toStack should exist after rename", toStackMetaData);
+        assertNotNull(toStackMetaData, "toStack should exist after rename");
 
         StackMetaData fromStackMetaData = dao.getStackMetaData(fromStackId);
-        Assert.assertNull("fromStack should not exist after rename", fromStackMetaData);
+        assertNull(fromStackMetaData, "fromStack should not exist after rename");
 
         List<Double> toZValues = dao.getZValues(toStackId);
-        Assert.assertArrayEquals("z values do not match after rename", fromZValues.toArray(), toZValues.toArray());
+        assertArrayEquals(fromZValues.toArray(), toZValues.toArray(), "z values do not match after rename");
 
         // -------------------------------------------------------------------------
         // test renaming stack with stats ...
@@ -112,22 +118,22 @@ public class RenderDaoTest {
         toStackId = new StackId(fromStackId.getOwner(), fromStackId.getProject(), "renamedStackB");
 
         toStackMetaData = dao.getStackMetaData(toStackId);
-        Assert.assertNull("toStack should not exist before rename", toStackMetaData);
+        assertNull(toStackMetaData, "toStack should not exist before rename");
 
         dao.renameStack(fromStackId, toStackId);
 
         toStackMetaData = dao.getStackMetaData(toStackId);
-        Assert.assertNotNull("toStack should exist after rename", toStackMetaData);
+        assertNotNull(toStackMetaData, "toStack should exist after rename");
 
         fromStackMetaData = dao.getStackMetaData(fromStackId);
-        Assert.assertNull("fromStack should not exist after rename", fromStackMetaData);
+        assertNull(fromStackMetaData, "fromStack should not exist after rename");
 
         toZValues = dao.getZValues(toStackId);
-        Assert.assertArrayEquals("z values do not match after rename", fromZValues.toArray(), toZValues.toArray());
+        assertArrayEquals(fromZValues.toArray(), toZValues.toArray(), "z values do not match after rename");
 
         final StackStats toStats = toStackMetaData.getStats();
 
-        Assert.assertEquals("incorrect stats after rename", fromStats.toJson(), toStats.toJson());
+        assertEquals(fromStats.toJson(), toStats.toJson(), "incorrect stats after rename");
     }
 
     @Test
@@ -136,10 +142,10 @@ public class RenderDaoTest {
         final StackId toStackId = new StackId(stackId.getOwner(), stackId.getProject(), "clonedStack");
 
         StackMetaData toStackMetaData = dao.getStackMetaData(toStackId);
-        Assert.assertNull("stack should not exist before clone", toStackMetaData);
+        assertNull(toStackMetaData, "stack should not exist before clone");
 
         List<Double> zValues = dao.getZValues(toStackId);
-        Assert.assertEquals("no z values should exist before clone", 0, zValues.size());
+        assertEquals(0, zValues.size(), "no z values should exist before clone");
 
         StackMetaData fromStackMetaData = dao.getStackMetaData(stackId);
         fromStackMetaData = dao.ensureIndexesAndDeriveStats(fromStackMetaData);
@@ -147,21 +153,21 @@ public class RenderDaoTest {
         dao.cloneStack(stackId, toStackId, null, null);
 
         zValues = dao.getZValues(toStackId);
-        Assert.assertEquals("invalid number of z values after clone", 2, zValues.size());
+        assertEquals(2, zValues.size(), "invalid number of z values after clone");
 
         toStackMetaData = new StackMetaData(toStackId, fromStackMetaData.getCurrentVersion());
         toStackMetaData = dao.ensureIndexesAndDeriveStats(toStackMetaData);
 
         final StackStats fromStats = fromStackMetaData.getStats();
-        Assert.assertNotNull("null fromStats", fromStats);
+        assertNotNull(fromStats, "null fromStats");
 
         final StackStats toStats = toStackMetaData.getStats();
-        Assert.assertNotNull("null toStats", toStats);
+        assertNotNull(toStats, "null toStats");
 
-        Assert.assertEquals("cloned tile count does not match",
-                            fromStats.getTileCount(), toStats.getTileCount());
-        Assert.assertEquals("cloned transform count does not match",
-                            fromStats.getTransformCount(), toStats.getTransformCount());
+        assertEquals(fromStats.getTileCount(), toStats.getTileCount(),
+                     "cloned tile count does not match");
+        assertEquals(fromStats.getTransformCount(), toStats.getTransformCount(),
+                     "cloned transform count does not match");
 
         final Double newZValue = 999.0;
         final TileSpec newTileSpec = new TileSpec();
@@ -176,8 +182,8 @@ public class RenderDaoTest {
         dao.cloneStack(stackId, filteredStackId, filteredZValues, null);
 
         zValues = dao.getZValues(filteredStackId);
-        Assert.assertEquals("invalid number of z values after clone filter", 1, zValues.size());
-        Assert.assertEquals("invalid z value after clone filter", newZValue, zValues.get(0));
+        assertEquals(1, zValues.size(), "invalid number of z values after clone filter");
+        assertEquals(newZValue, zValues.get(0), "invalid z value after clone filter");
     }
 
     @Test
@@ -205,51 +211,51 @@ public class RenderDaoTest {
         final StackMetaData stackMetaDataAfterStats = dao.getStackMetaData(stackId);
 
         final StackStats stats = stackMetaDataAfterStats.getStats();
-        Assert.assertNotNull("null stats returned after derivation", stats);
+        assertNotNull(stats, "null stats returned after derivation");
 
         final Bounds expectedBounds = new Bounds(1094.0, 1769.0, 3903.0, 9917.0, 8301.0, 3903.1);
 
-        Assert.assertEquals("invalid bounds", expectedBounds.toJson(), stats.getStackBounds().toJson());
-        Assert.assertEquals("invalid tile count", new Long(14), stats.getTileCount());
+        assertEquals(expectedBounds.toJson(), stats.getStackBounds().toJson(), "invalid bounds");
+        assertEquals(new Long(14), stats.getTileCount(), "invalid tile count");
 
         // test getSectionData after section collection was created by call to ensureIndexesAndDeriveStats
         final List<SectionData> list = dao.getSectionData(stackId, null, null);
 
-        Assert.assertNotNull("null list retrieved", list);
-        Assert.assertEquals("invalid number of sections found", 3, list.size());
+        assertNotNull(list, "null list retrieved");
+        assertEquals(3, list.size(), "invalid number of sections found");
         final SectionData sectionData = list.get(0);
-        Assert.assertEquals("invalid sectionId for first section", "3903.0", sectionData.getSectionId());
-        Assert.assertEquals("invalid z for section 3903.0", 3903, sectionData.getZ(), 0.01);
-        Assert.assertEquals("invalid tileCount for section 3903.0", new Long(2), sectionData.getTileCount());
+        assertEquals("3903.0", sectionData.getSectionId(), "invalid sectionId for first section");
+        assertEquals(3903, sectionData.getZ(), 0.01, "invalid z for section 3903.0");
+        assertEquals(new Long(2), sectionData.getTileCount(), "invalid tileCount for section 3903.0");
 
         final List<SectionData> filteredList = dao.getSectionData(stackId, 3902.0, 3903.0);
 
-        Assert.assertNotNull("null filtered list retrieved", filteredList);
-        Assert.assertEquals("invalid number of sections found for filtered list", 2, filteredList.size());
+        assertNotNull(filteredList, "null filtered list retrieved");
+        assertEquals(2, filteredList.size(), "invalid number of sections found for filtered list");
     }
 
     @Test
     public void testRemoveStack() {
 
         final StackMetaData stackMetaBeforeRemove = dao.getStackMetaData(stackId);
-        Assert.assertNotNull("meta data for " + stackId + " missing before removal", stackMetaBeforeRemove);
+        assertNotNull(stackMetaBeforeRemove, "meta data for " + stackId + " missing before removal");
 
         final List<Double> zValuesBeforeRemove = dao.getZValues(stackId);
-        Assert.assertNotNull("zValues null for " + stackId + " before removal",
-                             zValuesBeforeRemove);
-        Assert.assertTrue("zValues missing for " + stackId + " before removal",
-                          zValuesBeforeRemove.size() > 0);
+        assertNotNull(zValuesBeforeRemove,
+                      "zValues null for " + stackId + " before removal");
+        assertTrue(zValuesBeforeRemove.size() > 0,
+                   "zValues missing for " + stackId + " before removal");
 
         dao.removeStack(stackId, true);
         final StackMetaData stackMetaAfterRemove = dao.getStackMetaData(stackId);
 
-        Assert.assertNull("meta data for " + stackId + " returned after removal", stackMetaAfterRemove);
+        assertNull(stackMetaAfterRemove, "meta data for " + stackId + " returned after removal");
 
         final List<Double> zValuesAfterRemove = dao.getZValues(stackId);
-        Assert.assertNotNull("zValues null for " + stackId + " after removal",
-                             zValuesAfterRemove);
-        Assert.assertEquals("zValues exist for " + stackId + " after removal",
-                            0, zValuesAfterRemove.size());
+        assertNotNull(zValuesAfterRemove,
+                      "zValues null for " + stackId + " after removal");
+        assertEquals(0, zValuesAfterRemove.size(),
+                     "zValues exist for " + stackId + " after removal");
     }
 
     @Test
@@ -258,17 +264,17 @@ public class RenderDaoTest {
         final Double z = 3903.0;
         final List<TileBounds> tileBoundsBeforeRemove = dao.getTileBoundsForZ(stackId, z, null);
 
-        Assert.assertNotNull("tileBoundsBeforeRemove null for " + stackId + " before removal",
-                             tileBoundsBeforeRemove);
+        assertNotNull(tileBoundsBeforeRemove,
+                      "tileBoundsBeforeRemove null for " + stackId + " before removal");
 
         dao.removeTilesWithSectionId(stackId, "mis-ordered-section");
 
         final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z, null);
 
-        Assert.assertNotNull("tileBoundsAfterRemove null for " + stackId + " after removal",
-                             tileBoundsAfterRemove);
-        Assert.assertEquals("invalid tile count after section removal (only one tile should be removed)",
-                            (tileBoundsBeforeRemove.size() - 1), tileBoundsAfterRemove.size());
+        assertNotNull(tileBoundsAfterRemove,
+                      "tileBoundsAfterRemove null for " + stackId + " after removal");
+        assertEquals((tileBoundsBeforeRemove.size() - 1), tileBoundsAfterRemove.size(),
+                     "invalid tile count after section removal (only one tile should be removed)");
     }
 
     @Test
@@ -281,8 +287,8 @@ public class RenderDaoTest {
 
         final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z, null);
 
-        Assert.assertEquals("invalid tile count after tile list removal",
-                            (tileBoundsBeforeRemove.size() - 3), tileBoundsAfterRemove.size());
+        assertEquals((tileBoundsBeforeRemove.size() - 3), tileBoundsAfterRemove.size(),
+                     "invalid tile count after tile list removal");
     }
 
     @Test
@@ -295,8 +301,8 @@ public class RenderDaoTest {
 
         final List<TileBounds> tileBoundsAfterRemove = dao.getTileBoundsForZ(stackId, z, null);
 
-        Assert.assertEquals("invalid tile count after tile removal",
-                            (tileBoundsBeforeRemove.size() - 1), tileBoundsAfterRemove.size());
+        assertEquals((tileBoundsBeforeRemove.size() - 1), tileBoundsAfterRemove.size(),
+                     "invalid tile count after tile removal");
     }
 
     @Test
@@ -309,18 +315,18 @@ public class RenderDaoTest {
         dao.saveTileSpec(stackId, tileSpec);
 
         final List<Double> zValuesBeforeRemove = dao.getZValues(stackId);
-        Assert.assertNotNull("zValues null for " + stackId + " before removal",
-                             zValuesBeforeRemove);
-        Assert.assertEquals("incorrect number of zValues for " + stackId + " before removal",
-                            3, zValuesBeforeRemove.size());
+        assertNotNull(zValuesBeforeRemove,
+                      "zValues null for " + stackId + " before removal");
+        assertEquals(3, zValuesBeforeRemove.size(),
+                     "incorrect number of zValues for " + stackId + " before removal");
 
         dao.removeTilesWithZ(stackId, tileSpec.getZ());
 
         final List<Double> zValuesAfterRemove = dao.getZValues(stackId);
-        Assert.assertNotNull("zValues null for " + stackId + " after removal",
-                             zValuesAfterRemove);
-        Assert.assertEquals("zValues exist for " + stackId + " after removal",
-                            2, zValuesAfterRemove.size());
+        assertNotNull(zValuesAfterRemove,
+                      "zValues null for " + stackId + " after removal");
+        assertEquals(2, zValuesAfterRemove.size(),
+                     "zValues exist for " + stackId + " after removal");
     }
 
     @Test
@@ -337,11 +343,11 @@ public class RenderDaoTest {
 
         final TileSpec insertedTileSpec = dao.getTileSpec(stackId, tileId, false);
 
-        Assert.assertNotNull("null tileSpec retrieved after insert", insertedTileSpec);
+        assertNotNull(insertedTileSpec, "null tileSpec retrieved after insert");
         final LayoutData insertedLayoutData = insertedTileSpec.getLayout();
-        Assert.assertNotNull("null layout retrieved after insert", insertedLayoutData);
-        Assert.assertEquals("invalid temca retrieved after insert", temca, insertedLayoutData.getTemca());
-        Assert.assertFalse("tileSpec is has transforms after insert", tileSpec.hasTransforms());
+        assertNotNull(insertedLayoutData, "null layout retrieved after insert");
+        assertEquals(temca, insertedLayoutData.getTemca(), "invalid temca retrieved after insert");
+        assertFalse(tileSpec.hasTransforms(), "tileSpec is has transforms after insert");
 
         final String changedTemca = "1";
         final LayoutData changedLayoutData = new LayoutData("s123", changedTemca, null, null, null, null, null, null);
@@ -354,11 +360,11 @@ public class RenderDaoTest {
 
         final TileSpec updatedTileSpec = dao.getTileSpec(stackId, tileId, false);
 
-        Assert.assertNotNull("null tileSpec retrieved after update", updatedTileSpec);
+        assertNotNull(updatedTileSpec, "null tileSpec retrieved after update");
         final LayoutData updatedLayoutData = updatedTileSpec.getLayout();
-        Assert.assertNotNull("null layout retrieved after update", updatedLayoutData);
-        Assert.assertEquals("invalid temca retrieved after update", changedTemca, updatedLayoutData.getTemca());
-        Assert.assertTrue("tileSpec is missing transforms after update", tileSpec.hasTransforms());
+        assertNotNull(updatedLayoutData, "null layout retrieved after update");
+        assertEquals(changedTemca, updatedLayoutData.getTemca(), "invalid temca retrieved after update");
+        assertTrue(tileSpec.hasTransforms(), "tileSpec is missing transforms after update");
     }
 
     @Test
@@ -377,11 +383,11 @@ public class RenderDaoTest {
 
         final TransformSpec insertedSpec = dao.getTransformSpec(stackId, transformId);
 
-        Assert.assertNotNull("null transformSpec retrieved after insert", insertedSpec);
-        Assert.assertTrue("label missing after insert", insertedSpec.hasLabel(testGroupLabel));
+        assertNotNull(insertedSpec, "null transformSpec retrieved after insert");
+        assertTrue(insertedSpec.hasLabel(testGroupLabel), "label missing after insert");
 
         insertedSpec.removeLabel(testGroupLabel);
-        Assert.assertFalse("label exists after removal", insertedSpec.hasLabel(testGroupLabel));
+        assertFalse(insertedSpec.hasLabel(testGroupLabel), "label exists after removal");
 
         final ListTransformSpec listSpec = new ListTransformSpec(transformId, null);
         listSpec.addSpec(new ReferenceTransformSpec("1"));
@@ -390,8 +396,8 @@ public class RenderDaoTest {
 
         final TransformSpec updatedSpec = dao.getTransformSpec(stackId, transformId);
 
-        Assert.assertNotNull("null transformSpec retrieved after update", updatedSpec);
-        Assert.assertFalse("transformSpec should not be resolved after update", updatedSpec.isFullyResolved());
+        assertNotNull(updatedSpec, "null transformSpec retrieved after update");
+        assertFalse(updatedSpec.isFullyResolved(), "transformSpec should not be resolved after update");
     }
 
     @Test
@@ -400,14 +406,14 @@ public class RenderDaoTest {
         final String sectionId = "mis-ordered-section";
         final Double zBeforeUpdate = dao.getZForSection(stackId, sectionId);
 
-        Assert.assertEquals("incorrect z before update", 3903.0, zBeforeUpdate, 0.1);
+        assertEquals(3903.0, zBeforeUpdate, 0.1, "incorrect z before update");
 
         final double updatedZ = 999.0;
         dao.updateZForSection(stackId, "mis-ordered-section", updatedZ);
 
         final Double zAfterUpdate = dao.getZForSection(stackId, sectionId);
 
-        Assert.assertEquals("incorrect z before update", updatedZ, zAfterUpdate, 0.1);
+        assertEquals(updatedZ, zAfterUpdate, 0.1, "incorrect z before update");
     }
 
     @Test
@@ -422,18 +428,18 @@ public class RenderDaoTest {
 
         final Double updatedZ = 999.0;
 
-        Assert.assertNotSame("z for tile '" + tileIdA + "' should differ from update value",
-                             updatedZ, zBeforeUpdateA);
-        Assert.assertNotSame("z for tile '" + tileIdB + "' should differ from update value",
-                             updatedZ, zBeforeUpdateB);
+        assertNotSame(updatedZ, zBeforeUpdateA,
+                      "z for tile '" + tileIdA + "' should differ from update value");
+        assertNotSame(updatedZ, zBeforeUpdateB,
+                      "z for tile '" + tileIdB + "' should differ from update value");
 
         dao.updateZForTiles(stackId, updatedZ, tileIds);
 
         final Double zAfterUpdateA = dao.getTileSpec(stackId, tileIdA, false).getZ();
         final Double zAfterUpdateB = dao.getTileSpec(stackId, tileIdB, false).getZ();
 
-        Assert.assertEquals("z not updated for tile '" + tileIdA + "'", updatedZ, zAfterUpdateA);
-        Assert.assertEquals("z not updated for tile '" + tileIdB + "'", updatedZ, zAfterUpdateB);
+        assertEquals(updatedZ, zAfterUpdateA, "z not updated for tile '" + tileIdA + "'");
+        assertEquals(updatedZ, zAfterUpdateB, "z not updated for tile '" + tileIdB + "'");
     }
 
     public static void validateStackMetaData(final String context,
@@ -442,32 +448,32 @@ public class RenderDaoTest {
                                              final StackVersion expectedVersion,
                                              final StackMetaData actualMetaData) {
 
-        Assert.assertNotNull("null meta data retrieved" + context, actualMetaData);
-        Assert.assertEquals("invalid state" + context,
-                            expectedState, actualMetaData.getState());
-        Assert.assertNotNull("null modified date" + context,
-                             actualMetaData.getLastModifiedTimestamp());
-        Assert.assertEquals("invalid version number" + context,
-                            expectedVersionNumber, actualMetaData.getCurrentVersionNumber());
+        assertNotNull(actualMetaData, "null meta data retrieved" + context);
+        assertEquals(expectedState, actualMetaData.getState(),
+                     "invalid state" + context);
+        assertNotNull(actualMetaData.getLastModifiedTimestamp(),
+                      "null modified date" + context);
+        assertEquals(expectedVersionNumber, actualMetaData.getCurrentVersionNumber(),
+                     "invalid version number" + context);
 
         final StackVersion actualVersion = actualMetaData.getCurrentVersion();
-        Assert.assertNotNull("null version for " + context, actualVersion);
-        Assert.assertEquals("invalid createTimestamp" + context,
-                            expectedVersion.getCreateTimestamp(), actualVersion.getCreateTimestamp());
-        Assert.assertEquals("invalid versionNotes" + context,
-                            expectedVersion.getVersionNotes(), actualVersion.getVersionNotes());
-        Assert.assertEquals("invalid cycleNumber" + context,
-                            expectedVersion.getCycleNumber(), actualVersion.getCycleNumber());
-        Assert.assertEquals("invalid cycleStepNumber" + context,
-                            expectedVersion.getCycleStepNumber(), actualVersion.getCycleStepNumber());
-        Assert.assertEquals("invalid stackResolutionX" + context,
-                            expectedVersion.getStackResolutionX(), actualVersion.getStackResolutionX());
-        Assert.assertEquals("invalid stackResolutionY" + context,
-                            expectedVersion.getStackResolutionY(), actualVersion.getStackResolutionY());
-        Assert.assertEquals("invalid stackResolutionZ" + context,
-                            expectedVersion.getStackResolutionZ(), actualVersion.getStackResolutionZ());
-        Assert.assertEquals("invalid mipmapPathBuilder" + context,
-                            expectedVersion.getMipmapPathBuilder(), actualVersion.getMipmapPathBuilder());
+        assertNotNull(actualVersion, "null version for " + context);
+        assertEquals(expectedVersion.getCreateTimestamp(), actualVersion.getCreateTimestamp(),
+                     "invalid createTimestamp" + context);
+        assertEquals(expectedVersion.getVersionNotes(), actualVersion.getVersionNotes(),
+                     "invalid versionNotes" + context);
+        assertEquals(expectedVersion.getCycleNumber(), actualVersion.getCycleNumber(),
+                     "invalid cycleNumber" + context);
+        assertEquals(expectedVersion.getCycleStepNumber(), actualVersion.getCycleStepNumber(),
+                     "invalid cycleStepNumber" + context);
+        assertEquals(expectedVersion.getStackResolutionX(), actualVersion.getStackResolutionX(),
+                     "invalid stackResolutionX" + context);
+        assertEquals(expectedVersion.getStackResolutionY(), actualVersion.getStackResolutionY(),
+                     "invalid stackResolutionY" + context);
+        assertEquals(expectedVersion.getStackResolutionZ(), actualVersion.getStackResolutionZ(),
+                     "invalid stackResolutionZ" + context);
+        assertEquals(expectedVersion.getMipmapPathBuilder(), actualVersion.getMipmapPathBuilder(),
+                     "invalid mipmapPathBuilder" + context);
     }
 
 }

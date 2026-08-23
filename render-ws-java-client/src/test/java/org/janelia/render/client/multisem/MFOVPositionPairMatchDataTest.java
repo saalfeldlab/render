@@ -11,8 +11,9 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.spec.TileSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link MFOVPositionPairMatchData} class.
@@ -35,10 +36,10 @@ public class MFOVPositionPairMatchDataTest {
                                         0.0);
 
         final MFOVPositionPair positionPair = new MFOVPositionPair(tilePair);
-        Assert.assertEquals("invalid P canvasId for position pair",
-                            expectedPositionCanvasPair.getP(), positionPair.getP());
-        Assert.assertEquals("invalid Q canvasId for position pair",
-                            expectedPositionCanvasPair.getQ(), positionPair.getQ());
+        assertEquals(expectedPositionCanvasPair.getP(), positionPair.getP(),
+                     "invalid P canvasId for position pair");
+        assertEquals(expectedPositionCanvasPair.getQ(), positionPair.getQ(),
+                     "invalid Q canvasId for position pair");
 
         final TileSpec pTileSpec = TileSpec.fromJson(
                 "{\n" +
@@ -101,13 +102,13 @@ public class MFOVPositionPairMatchDataTest {
             throw new RuntimeException(e);
         }
 
-        Assert.assertEquals("invalid number of derived matches", 1, derivedMatchesList.size());
+        assertEquals(1, derivedMatchesList.size(), "invalid number of derived matches");
 
         final CanvasMatches derivedMatches = derivedMatchesList.get(0);
         final Matches matches = derivedMatches.getMatches();
         final double[] ws = matches.getWs();
-        Assert.assertEquals("invalid number of weights", 4, ws.length);
-        Assert.assertEquals("invalid weight for first point", derivedMatchWeight, ws[0], 0.0000005);
+        assertEquals(4, ws.length, "invalid number of weights");
+        assertEquals(derivedMatchWeight, ws[0], 0.0000005, "invalid weight for first point");
 
         final double[][] ps = matches.getPs();
         final double[][] qs = matches.getQs();
@@ -122,10 +123,10 @@ public class MFOVPositionPairMatchDataTest {
                     qTileSpec.getMinY() + qs[1][i]
             };
 
-            Assert.assertEquals("p and q world x for match point [" + i + "] differ",
-                                pWorld[0], qWorld[0], 0.01);
-            Assert.assertEquals("p and q world y for match point [" + i + "] differ",
-                                pWorld[1], qWorld[1], 0.01);
+            assertEquals(pWorld[0], qWorld[0], 0.01,
+                         "p and q world x for match point [" + i + "] differ");
+            assertEquals(pWorld[1], qWorld[1], 0.01,
+                         "p and q world y for match point [" + i + "] differ");
         }
     }
 

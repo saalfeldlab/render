@@ -2,8 +2,10 @@ package org.janelia.alignment.spec.transfer;
 
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link VolumeTransferInfo} class.
@@ -16,35 +18,35 @@ public class VolumeTransferInfoTest {
     public void testJsonProcessing() {
 
         final VolumeTransferInfo volumeTransferInfo = VolumeTransferInfo.fromJson(TRANSFER_INFO_JSON);
-        Assert.assertNotNull("json parse returned null spec", volumeTransferInfo);
+        assertNotNull(volumeTransferInfo, "json parse returned null spec");
 
         final ScopeDataSet scopeDataSet = volumeTransferInfo.getScopeDataSet();
-        Assert.assertNotNull("scopeDataSet is null", scopeDataSet);
-        Assert.assertEquals("invalid first_dat_name parsed", FIRST_DAT_NAME, scopeDataSet.getFirstDatName());
+        assertNotNull(scopeDataSet, "scopeDataSet is null");
+        assertEquals(FIRST_DAT_NAME, scopeDataSet.getFirstDatName(), "invalid first_dat_name parsed");
 
         final ClusterRootPaths clusterRootPaths = volumeTransferInfo.getClusterRootPaths();
-        Assert.assertNotNull("clusterRootPaths is null", clusterRootPaths);
-        Assert.assertEquals("invalid align_h5 parsed", ALIGN_H5, clusterRootPaths.getAlignH5());
+        assertNotNull(clusterRootPaths, "clusterRootPaths is null");
+        assertEquals(ALIGN_H5, clusterRootPaths.getAlignH5(), "invalid align_h5 parsed");
 
         final Integer maxMipmapLevel = volumeTransferInfo.getMaxMipmapLevel();
-        Assert.assertNotNull("maxMipmapLevel is null", maxMipmapLevel);
-        Assert.assertEquals("invalid maxMipmapLevel parsed", MAX_MIPMAP_LEVEL, maxMipmapLevel.intValue());
+        assertNotNull(maxMipmapLevel, "maxMipmapLevel is null");
+        assertEquals(MAX_MIPMAP_LEVEL, maxMipmapLevel.intValue(), "invalid maxMipmapLevel parsed");
 
         final RenderDataSet renderDataSet = volumeTransferInfo.getRenderDataSet();
-        Assert.assertNotNull("renderDataSet is null", renderDataSet);
-        Assert.assertEquals("invalid stack parsed", STACK, renderDataSet.getStack());
+        assertNotNull(renderDataSet, "renderDataSet is null");
+        assertEquals(STACK, renderDataSet.getStack(), "invalid stack parsed");
 
         final Integer maskWidth = renderDataSet.getMaskWidth();
-        Assert.assertNotNull("maskWidth is null", maskWidth);
-        Assert.assertEquals("invalid mask_width parsed", MASK_WIDTH, maskWidth.intValue());
+        assertNotNull(maskWidth, "maskWidth is null");
+        assertEquals(MASK_WIDTH, maskWidth.intValue(), "invalid mask_width parsed");
 
         final Connect connect = renderDataSet.getConnect();
-        Assert.assertNotNull("connect is null", connect);
-        Assert.assertEquals("invalid host parsed", HOST, connect.getHost());
+        assertNotNull(connect, "connect is null");
+        assertEquals(HOST, connect.getHost(), "invalid host parsed");
 
         final List<TransferTask> transferTasks = volumeTransferInfo.getTransferTasks();
-        Assert.assertNotNull("transfer_tasks is null", transferTasks);
-        Assert.assertEquals("invalid number of transfer tasks parsed", 7, transferTasks.size());
+        assertNotNull(transferTasks, "transfer_tasks is null");
+        assertEquals(7, transferTasks.size(), "invalid number of transfer tasks parsed");
     }
 
     private static final String FIRST_DAT_NAME = "Merlin-6049_24-05-09_000312_0-0-0.dat";

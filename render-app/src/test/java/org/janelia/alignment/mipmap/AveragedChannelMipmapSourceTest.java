@@ -25,9 +25,10 @@ import org.janelia.alignment.ChannelMap;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.ChannelNamesAndWeights;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import junit.framework.Assert;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
 /**
  * Tests the {@link AveragedChannelMipmapSource} class.
@@ -67,12 +68,12 @@ public class AveragedChannelMipmapSourceTest {
                 getAveragedChannel("averaged_75_25", renderedCanvasMipmapSource, 0.75, 0.25);
 
         final int pixelIndex = 100000;
-        Assert.assertNotSame("channel intensity should not match",
-                             onlySecondChannel.ip.getf(pixelIndex), averagedChannel.ip.getf(pixelIndex));
+        assertNotSame(onlySecondChannel.ip.getf(pixelIndex), averagedChannel.ip.getf(pixelIndex),
+                      "channel intensity should not match");
 
         final BufferedImage image = ArgbRenderer.targetToARGBImage(averagedChannel, false);
 
-        Assert.assertNotNull("averaged image not rendered", image);
+        assertNotNull(image, "averaged image not rendered");
     }
 
     private ImageProcessorWithMasks getAveragedChannel(final String convertedChannelName,

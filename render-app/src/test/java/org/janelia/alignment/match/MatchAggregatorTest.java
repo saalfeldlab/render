@@ -3,9 +3,11 @@ package org.janelia.alignment.match;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link MatchAggregator} class.
@@ -15,7 +17,7 @@ import org.junit.Test;
 public class MatchAggregatorTest {
 
     @Test
-    @Ignore
+    @Disabled
     public void testAggregateWithinRadius() {
 
         // 10x10 w/step 100
@@ -57,12 +59,12 @@ public class MatchAggregatorTest {
                                               maxMatchesPerPair,
                                               101);
 
-        Assert.assertTrue("too many matches (" + a.getMatchCount() + ") for " + a,
-                          a.getMatchCount() <= maxMatchesPerPair);
-        Assert.assertEquals("match count for " + b + " should not have changed",
-                            originalMatchCountB, b.getMatchCount());
-        Assert.assertEquals("all matches for " + c + " should have been aggregated into one match",
-                            Integer.valueOf(1), c.getMatchCount());
+        assertTrue(a.getMatchCount() <= maxMatchesPerPair,
+                   "too many matches (" + a.getMatchCount() + ") for " + a);
+        assertEquals(originalMatchCountB, b.getMatchCount(),
+                     "match count for " + b + " should not have changed");
+        assertEquals(Integer.valueOf(1), c.getMatchCount(),
+                     "all matches for " + c + " should have been aggregated into one match");
     }
 
     private Matches buildMatches(final int xStart,

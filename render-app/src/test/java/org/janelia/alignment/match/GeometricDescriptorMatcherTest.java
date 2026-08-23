@@ -22,12 +22,13 @@ import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.imglib2.util.Util;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Runs peak extraction for two tiles.
@@ -47,7 +48,7 @@ public class GeometricDescriptorMatcherTest {
 
     @Test
     public void testNothing() {
-        Assert.assertTrue(true);
+        assertTrue(true);
     }
 
     public static void main(final String[] args) {

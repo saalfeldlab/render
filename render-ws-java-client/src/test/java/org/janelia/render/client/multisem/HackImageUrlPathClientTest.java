@@ -3,7 +3,7 @@ package org.janelia.render.client.multisem;
 import java.util.function.UnaryOperator;
 
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link HackImageUrlPathClient} class.

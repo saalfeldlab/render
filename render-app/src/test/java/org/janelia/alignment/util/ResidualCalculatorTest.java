@@ -10,8 +10,9 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link ResidualCalculator} class.
@@ -39,7 +40,7 @@ public class ResidualCalculatorTest {
         final JsonUtils.Helper<ResidualCalculator.InputData> helper =
                 new JsonUtils.Helper<>(ResidualCalculator.InputData.class);
         final ResidualCalculator.InputData inputData = helper.fromJson(json);
-        Assert.assertNotNull("deserialized inputData is null", inputData);
+        assertNotNull(inputData, "deserialized inputData is null");
     }
     
     @Test

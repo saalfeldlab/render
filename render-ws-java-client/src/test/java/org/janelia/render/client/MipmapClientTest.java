@@ -14,10 +14,11 @@ import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link MipmapClient} class.
@@ -28,12 +29,12 @@ public class MipmapClientTest {
 
     private File mipmapRootDirectory;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         mipmapRootDirectory = createTestDirectory("test_mipmap_client");
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         FileUtil.deleteRecursive(mipmapRootDirectory);
     }
@@ -81,22 +82,22 @@ public class MipmapClientTest {
             url = imageAndMask.getImageUrl();
 
             imageProcessor = ImageJDefaultLoader.INSTANCE.load(url);
-            Assert.assertEquals("invalid width for level " + level + " image " + url,
-                                expectedWidth, imageProcessor.getWidth());
-            Assert.assertEquals("invalid height for level " + level + " image " + url,
-                                expectedHeight, imageProcessor.getHeight());
+            assertEquals(expectedWidth, imageProcessor.getWidth(),
+                         "invalid width for level " + level + " image " + url);
+            assertEquals(expectedHeight, imageProcessor.getHeight(),
+                         "invalid height for level " + level + " image " + url);
 
             url = imageAndMask.getMaskUrl();
             imageProcessor = ImageJDefaultLoader.INSTANCE.load(url);
-            Assert.assertEquals("invalid width for level " + level + " mask " + url,
-                                expectedWidth, imageProcessor.getWidth());
-            Assert.assertEquals("invalid height for level " + level + " mask " + url,
-                                expectedHeight, imageProcessor.getHeight());
+            assertEquals(expectedWidth, imageProcessor.getWidth(),
+                         "invalid width for level " + level + " mask " + url);
+            assertEquals(expectedHeight, imageProcessor.getHeight(),
+                         "invalid height for level " + level + " mask " + url);
         }
 
         final Map.Entry<Integer, ImageAndMask> floor3Entry = channelSpec.getFloorMipmapEntry(level);
-        Assert.assertEquals("invalid level returned for floor of non-existent level",
-                            mipmapEntry.getKey(), floor3Entry.getKey());
+        assertEquals(mipmapEntry.getKey(), floor3Entry.getKey(),
+                     "invalid level returned for floor of non-existent level");
 
         // --------------------------------------------------------------------
         // add another level and confirm that originally generated files remain
@@ -119,21 +120,21 @@ public class MipmapClientTest {
         url = imageAndMask.getImageUrl();
 
         imageProcessor = ImageJDefaultLoader.INSTANCE.load(url);
-        Assert.assertEquals("invalid width for level " + level + " image " + url,
-                            expectedWidth, imageProcessor.getWidth());
-        Assert.assertEquals("invalid height for level " + level + " image " + url,
-                            expectedHeight, imageProcessor.getHeight());
+        assertEquals(expectedWidth, imageProcessor.getWidth(),
+                     "invalid width for level " + level + " image " + url);
+        assertEquals(expectedHeight, imageProcessor.getHeight(),
+                     "invalid height for level " + level + " image " + url);
 
         url = imageAndMask.getMaskUrl();
         imageProcessor = ImageJDefaultLoader.INSTANCE.load(url);
-        Assert.assertEquals("invalid width for level " + level + " mask " + url,
-                            expectedWidth, imageProcessor.getWidth());
-        Assert.assertEquals("invalid height for level " + level + " mask " + url,
-                            expectedHeight, imageProcessor.getHeight());
+        assertEquals(expectedWidth, imageProcessor.getWidth(),
+                     "invalid width for level " + level + " mask " + url);
+        assertEquals(expectedHeight, imageProcessor.getHeight(),
+                     "invalid height for level " + level + " mask " + url);
 
-        Assert.assertEquals("image file " + previouslyGeneratedImageFile.getAbsolutePath() +
-                            " should NOT have been regenerated",
-                            expectedLastModified, previouslyGeneratedImageFile.lastModified());
+        assertEquals(expectedLastModified, previouslyGeneratedImageFile.lastModified(),
+                     "image file " + previouslyGeneratedImageFile.getAbsolutePath() +
+                     " should NOT have been regenerated");
 
     }
 

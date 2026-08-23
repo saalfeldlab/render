@@ -5,8 +5,10 @@ import java.io.StringReader;
 import org.janelia.alignment.match.parameters.MatchTrialParameters;
 import org.janelia.alignment.match.stage.StageMatchingStats;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 /**
  * Tests the {@link MatchTrial} class.
@@ -18,10 +20,10 @@ public class MatchTrialTest {
     @Test
     public void testConstructors() {
         final MatchTrial matchTrial = new MatchTrial();
-        Assert.assertNull(matchTrial.getStats());
+        assertNull(matchTrial.getStats());
 
         final StageMatchingStats stats = new StageMatchingStats();
-        Assert.assertNotNull(stats);
+        assertNotNull(stats);
     }
 
     public static void main(final String[] args) {

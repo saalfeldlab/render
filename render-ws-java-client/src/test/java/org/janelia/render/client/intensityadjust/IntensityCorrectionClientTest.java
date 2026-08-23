@@ -6,7 +6,7 @@ import java.util.Date;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.IntensityAdjustParameters;
 import org.janelia.render.client.parameter.IntensityAdjustParameters.StrategyName;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link IntensityCorrectionClient} class.

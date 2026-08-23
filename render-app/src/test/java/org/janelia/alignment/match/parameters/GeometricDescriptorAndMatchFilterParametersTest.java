@@ -1,6 +1,6 @@
 package org.janelia.alignment.match.parameters;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link GeometricDescriptorAndMatchFilterParameters} class.

@@ -9,7 +9,7 @@ import org.janelia.alignment.match.MontageRelativePosition;
 import org.janelia.alignment.match.OrderedCanvasIdPair;
 import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link CrossCorrelationPointMatchClient} class.

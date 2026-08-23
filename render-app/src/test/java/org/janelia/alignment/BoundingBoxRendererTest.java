@@ -7,9 +7,9 @@ import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link BoundingBoxRenderer} class.
@@ -33,8 +33,8 @@ public class BoundingBoxRendererTest {
         };
 
         for (final int[] point : boxPoints) {
-            Assert.assertEquals("invalid color for box point " + Arrays.toString(point),
-                                boxColor.getRGB(), bufferedImage.getRGB(point[0], point[1]));
+            assertEquals(boxColor.getRGB(), bufferedImage.getRGB(point[0], point[1]),
+                         "invalid color for box point " + Arrays.toString(point));
         }
 
         final int[][] spacePoints = {
@@ -42,8 +42,8 @@ public class BoundingBoxRendererTest {
         };
 
         for (final int[] point : spacePoints) {
-            Assert.assertEquals("invalid color for space point " + Arrays.toString(point),
-                                0, bufferedImage.getRGB(point[0], point[1]));
+            assertEquals(0, bufferedImage.getRGB(point[0], point[1]),
+                         "invalid color for space point " + Arrays.toString(point));
         }
 
     }

@@ -4,8 +4,10 @@ import com.google.common.base.Throwables;
 
 import ij.process.ImageProcessor;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link HDF5SliceLoader} class.
@@ -23,9 +25,9 @@ public class HDF5SliceLoaderTest {
             ip = loader.load(urlString);
         } catch (final Throwable t) {
             final String failureMessage = Throwables.getStackTraceAsString(t);
-            Assert.fail("failed load with following exception: " + failureMessage);
+            fail("failed load with following exception: " + failureMessage);
         }
-        Assert.assertEquals("invalid width", 5000, ip.getWidth());
+        assertEquals(5000, ip.getWidth(), "invalid width");
     }
 
     public static void main(final String[] args) {

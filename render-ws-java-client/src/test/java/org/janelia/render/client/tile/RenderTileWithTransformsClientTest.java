@@ -39,7 +39,7 @@ import org.janelia.alignment.transform.SEMDistortionTransformA;
 import org.janelia.alignment.util.LogbackTestTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

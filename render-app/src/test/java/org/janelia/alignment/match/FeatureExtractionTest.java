@@ -10,10 +10,10 @@ import mpicbg.imagefeatures.FloatArray2DSIFT;
 
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Eric Trautman
  */
-@Ignore
+@Disabled
 public class FeatureExtractionTest {
 
     private String testResourcePath;
@@ -36,7 +36,7 @@ public class FeatureExtractionTest {
     private boolean saveTileImage;
     private boolean printFeatureList;
 
-    @Before
+    @BeforeEach
     public void setup() {
 
         testResourcePath = "src/test/resources/match-test";
@@ -59,7 +59,7 @@ public class FeatureExtractionTest {
         featureList = null;
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
 
         if ((featureList != null) && (featureList.size() > 0)) {

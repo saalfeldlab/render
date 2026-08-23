@@ -7,10 +7,15 @@ import java.util.TreeMap;
 
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.filter.FilterSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link org.janelia.alignment.spec.TileSpec} class.
@@ -24,32 +29,32 @@ public class TileSpecTest {
 
         final TileSpec tileSpec = TileSpec.fromJson(JSON_WITH_UNSORTED_MIPMAP_LEVELS);
 
-        Assert.assertNotNull("json parse returned null spec", tileSpec);
-        Assert.assertEquals("invalid tileId parsed", EXPECTED_TILE_ID, tileSpec.getTileId());
-        Assert.assertEquals("invalid width parsed", EXPECTED_WIDTH, tileSpec.getWidth());
+        assertNotNull(tileSpec, "json parse returned null spec");
+        assertEquals(EXPECTED_TILE_ID, tileSpec.getTileId(), "invalid tileId parsed");
+        assertEquals(EXPECTED_WIDTH, tileSpec.getWidth(), "invalid width parsed");
 
-        Assert.assertTrue("missing label " + EXPECTED_LABEL_A, tileSpec.hasLabel(EXPECTED_LABEL_A));
-        Assert.assertTrue("missing label " + EXPECTED_LABEL_B, tileSpec.hasLabel(EXPECTED_LABEL_B));
+        assertTrue(tileSpec.hasLabel(EXPECTED_LABEL_A), "missing label " + EXPECTED_LABEL_A);
+        assertTrue(tileSpec.hasLabel(EXPECTED_LABEL_B), "missing label " + EXPECTED_LABEL_B);
 
         final Map.Entry<Integer, ImageAndMask> firstMipMap = tileSpec.getFirstMipmapEntry();
-        Assert.assertNotNull("first mipmap entry is null", firstMipMap);
-        Assert.assertEquals("mipmap sorting failed, unexpected first entry returned",
-                            new Integer(0), firstMipMap.getKey());
+        assertNotNull(firstMipMap, "first mipmap entry is null");
+        assertEquals(new Integer(0), firstMipMap.getKey(),
+                     "mipmap sorting failed, unexpected first entry returned");
 
         final ChannelSpec channelSpec = tileSpec.getAllChannels().get(0);
 
         Map.Entry<Integer, ImageAndMask> floorMipMap = channelSpec.getFloorMipmapEntry(3);
-        Assert.assertNotNull("floor 3 mipmap entry is null", floorMipMap);
-        Assert.assertEquals("invalid key for floor 3 mipmap entry",
-                            new Integer(3), floorMipMap.getKey());
+        assertNotNull(floorMipMap, "floor 3 mipmap entry is null");
+        assertEquals(new Integer(3), floorMipMap.getKey(),
+                     "invalid key for floor 3 mipmap entry");
 
         floorMipMap = channelSpec.getFloorMipmapEntry(4);
-        Assert.assertNotNull("floor 4 mipmap entry is null", floorMipMap);
-        Assert.assertEquals("invalid key for floor 3 mipmap entry",
-                            new Integer(3), floorMipMap.getKey());
+        assertNotNull(floorMipMap, "floor 4 mipmap entry is null");
+        assertEquals(new Integer(3), floorMipMap.getKey(),
+                     "invalid key for floor 3 mipmap entry");
 
         final FilterSpec filterSpec = channelSpec.getFilterSpec();
-        Assert.assertNotNull("filterSpec is null", filterSpec);
+        assertNotNull(filterSpec, "filterSpec is null");
     }
 
     @Test
@@ -63,21 +68,21 @@ public class TileSpecTest {
         final double localY = 40;
         final double[] worldCoordinates = tileSpec.getWorldCoordinates(localX, localY);
 
-        Assert.assertNotNull("worldCoordinates are null", worldCoordinates);
-        Assert.assertEquals("incorrect length for worldCoordinates", 3, worldCoordinates.length);
-        Assert.assertEquals("incorrect z for worldCoordinates", expectedZ, worldCoordinates[2], MAX_DOUBLE_DELTA);
+        assertNotNull(worldCoordinates, "worldCoordinates are null");
+        assertEquals(3, worldCoordinates.length, "incorrect length for worldCoordinates");
+        assertEquals(expectedZ, worldCoordinates[2], MAX_DOUBLE_DELTA, "incorrect z for worldCoordinates");
 
         final double[] localCoordinates = tileSpec.getLocalCoordinates(
                 worldCoordinates[0],
                 worldCoordinates[1],
                 tileSpec.getMeshCellSize());
 
-        Assert.assertNotNull("localCoordinates are null", localCoordinates);
-        Assert.assertEquals("incorrect length for localCoordinates", 3, localCoordinates.length);
-        Assert.assertEquals("incorrect z for localCoordinates", expectedZ, localCoordinates[2], MAX_DOUBLE_DELTA);
+        assertNotNull(localCoordinates, "localCoordinates are null");
+        assertEquals(3, localCoordinates.length, "incorrect length for localCoordinates");
+        assertEquals(expectedZ, localCoordinates[2], MAX_DOUBLE_DELTA, "incorrect z for localCoordinates");
 
-        Assert.assertEquals("incorrect x for localCoordinates", localX, localCoordinates[0], MAX_DOUBLE_DELTA);
-        Assert.assertEquals("incorrect y for localCoordinates", localY, localCoordinates[1], MAX_DOUBLE_DELTA);
+        assertEquals(localX, localCoordinates[0], MAX_DOUBLE_DELTA, "incorrect x for localCoordinates");
+        assertEquals(localY, localCoordinates[1], MAX_DOUBLE_DELTA, "incorrect y for localCoordinates");
     }
 
     @Test
@@ -91,47 +96,46 @@ public class TileSpecTest {
         final double localY = 40;
         final double[] worldCoordinates = tileSpec.getWorldCoordinates(localX, localY);
 
-        Assert.assertNotNull("worldCoordinates are null", worldCoordinates);
-        Assert.assertEquals("incorrect length for worldCoordinates", 3, worldCoordinates.length);
-        Assert.assertEquals("incorrect z for worldCoordinates", expectedZ, worldCoordinates[2], MAX_DOUBLE_DELTA);
+        assertNotNull(worldCoordinates, "worldCoordinates are null");
+        assertEquals(3, worldCoordinates.length, "incorrect length for worldCoordinates");
+        assertEquals(expectedZ, worldCoordinates[2], MAX_DOUBLE_DELTA, "incorrect z for worldCoordinates");
 
         final double[] localCoordinates = tileSpec.getLocalCoordinates(
                 worldCoordinates[0],
                 worldCoordinates[1],
                 tileSpec.getMeshCellSize());
 
-        Assert.assertNotNull("localCoordinates are null", localCoordinates);
-        Assert.assertEquals("incorrect length for localCoordinates", 3, localCoordinates.length);
-        Assert.assertEquals("incorrect z for localCoordinates", expectedZ, localCoordinates[2], MAX_DOUBLE_DELTA);
+        assertNotNull(localCoordinates, "localCoordinates are null");
+        assertEquals(3, localCoordinates.length, "incorrect length for localCoordinates");
+        assertEquals(expectedZ, localCoordinates[2], MAX_DOUBLE_DELTA, "incorrect z for localCoordinates");
 
-        Assert.assertEquals("incorrect x for localCoordinates", localX, localCoordinates[0], MAX_DOUBLE_DELTA);
-        Assert.assertEquals("incorrect y for localCoordinates", localY, localCoordinates[1], MAX_DOUBLE_DELTA);
+        assertEquals(localX, localCoordinates[0], MAX_DOUBLE_DELTA, "incorrect x for localCoordinates");
+        assertEquals(localY, localCoordinates[1], MAX_DOUBLE_DELTA, "incorrect y for localCoordinates");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testValidateWithMissingMipmaps() {
 
         final TileSpec tileSpec = TileSpec.fromJson(JSON_WITH_MISSING_MIPMAP_LEVELS);
 
-        Assert.assertNotNull("json parse returned null spec", tileSpec);
-        Assert.assertEquals("invalid width parsed", EXPECTED_WIDTH, tileSpec.getWidth());
-
-        tileSpec.validate();
+        assertNotNull(tileSpec, "json parse returned null spec");
+        assertEquals(EXPECTED_WIDTH, tileSpec.getWidth(), "invalid width parsed");
+        assertThrows(IllegalArgumentException.class, () -> tileSpec.validate());
     }
 
     @Test
     public void testGetFirstChannel() {
 
         final TileSpec tileSpec = TileSpec.fromJson(JSON_WITH_UNSORTED_MIPMAP_LEVELS);
-        Assert.assertNull("incorrect first channel name with no channels", tileSpec.getFirstChannelName());
+        assertNull(tileSpec.getFirstChannelName(), "incorrect first channel name with no channels");
 
         final String firstName = "DAPI";
         tileSpec.convertLegacyToChannel(firstName);
-        Assert.assertEquals("incorrect first channel name with 1 channel", firstName, tileSpec.getFirstChannelName());
+        assertEquals(firstName, tileSpec.getFirstChannelName(), "incorrect first channel name with 1 channel");
 
         tileSpec.addChannel(new ChannelSpec("TdTomato", 0.0, 0.0, new TreeMap<>(), null, null));
         tileSpec.addChannel(new ChannelSpec("ACQTdtomato", 0.0, 0.0, new TreeMap<>(), null, null));
-        Assert.assertEquals("incorrect first channel name with 3 channels", firstName, tileSpec.getFirstChannelName());
+        assertEquals(firstName, tileSpec.getFirstChannelName(), "incorrect first channel name with 3 channels");
     }
 
     @Test
@@ -148,24 +152,24 @@ public class TileSpecTest {
         // mesh
         tileSpec.deriveBoundingBox(64, true, false);
 
-        Assert.assertEquals("incorrect minX", minX, tileSpec.getMinX(), MAX_DOUBLE_DELTA);
-        Assert.assertEquals("incorrect minY", minY, tileSpec.getMinY(), MAX_DOUBLE_DELTA);
+        assertEquals(minX, tileSpec.getMinX(), MAX_DOUBLE_DELTA, "incorrect minX");
+        assertEquals(minY, tileSpec.getMinY(), MAX_DOUBLE_DELTA, "incorrect minY");
         final double hackedDeltaUntilMPICBGLibIsFixed = 1.0;
-        Assert.assertEquals("incorrect maxX", maxX, tileSpec.getMaxX(), hackedDeltaUntilMPICBGLibIsFixed);
-        Assert.assertEquals("incorrect maxY", maxY, tileSpec.getMaxY(), hackedDeltaUntilMPICBGLibIsFixed);
+        assertEquals(maxX, tileSpec.getMaxX(), hackedDeltaUntilMPICBGLibIsFixed, "incorrect maxX");
+        assertEquals(maxY, tileSpec.getMaxY(), hackedDeltaUntilMPICBGLibIsFixed, "incorrect maxY");
 
         // sloppy
         tileSpec.deriveBoundingBox(64, true, true);
 
-        Assert.assertEquals("incorrect minX", minX, tileSpec.getMinX(), MAX_DOUBLE_DELTA);
-        Assert.assertEquals("incorrect minY", minY, tileSpec.getMinY(), MAX_DOUBLE_DELTA);
-        Assert.assertEquals("incorrect maxX", maxX, tileSpec.getMaxX(), MAX_DOUBLE_DELTA);
-        Assert.assertEquals("incorrect maxY", maxY, tileSpec.getMaxY(), MAX_DOUBLE_DELTA);
+        assertEquals(minX, tileSpec.getMinX(), MAX_DOUBLE_DELTA, "incorrect minX");
+        assertEquals(minY, tileSpec.getMinY(), MAX_DOUBLE_DELTA, "incorrect minY");
+        assertEquals(maxX, tileSpec.getMaxX(), MAX_DOUBLE_DELTA, "incorrect maxX");
+        assertEquals(maxY, tileSpec.getMaxY(), MAX_DOUBLE_DELTA, "incorrect maxY");
 
         final int iterations = 100;
         final long sloppyTime = getDerivationTime(tileSpec, true, iterations);
         final long meshTime = getDerivationTime(tileSpec, false, iterations);
-        Assert.assertTrue("sloppy derivation is not faster than mesh derivation", (sloppyTime < meshTime));
+        assertTrue((sloppyTime < meshTime), "sloppy derivation is not faster than mesh derivation");
 
         LOG.info("testDeriveBoundingBox: {} iterations, sloppy time: {}ms, mesh time: {}ms",
                  iterations, sloppyTime, meshTime);

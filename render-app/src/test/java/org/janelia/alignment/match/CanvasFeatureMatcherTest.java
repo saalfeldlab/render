@@ -8,8 +8,9 @@ import mpicbg.models.NotEnoughDataPointsException;
 import mpicbg.models.PointMatch;
 
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CanvasFeatureMatcherTest {
 
@@ -69,8 +70,8 @@ public class CanvasFeatureMatcherTest {
                            minNumInliers,
                            maxTrust);
 
-        Assert.assertEquals("invalid number of inliers found with min " + minNumInliers,
-                            expectedInliersSizeAfterFilter, inliers.size());
+        assertEquals(expectedInliersSizeAfterFilter, inliers.size(),
+                     "invalid number of inliers found with min " + minNumInliers);
     }
 
     private static CanvasMatches getFoldTestMatches() {
@@ -106,8 +107,8 @@ public class CanvasFeatureMatcherTest {
         final List<List<PointMatch>> consensusSets = matcher.getMatchFilter().filterConsensusMatches(candidates);
 
         if (expectedNumberOfConsensusSets != null) {
-            Assert.assertEquals("filter found invalid number of consensus sets for " + context,
-                                expectedNumberOfConsensusSets.intValue(), consensusSets.size());
+            assertEquals(expectedNumberOfConsensusSets.intValue(), consensusSets.size(),
+                         "filter found invalid number of consensus sets for " + context);
         }
 
         return consensusSets;

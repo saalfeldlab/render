@@ -20,10 +20,12 @@ import org.janelia.render.service.dao.RenderDao;
 import org.janelia.render.service.model.RenderQueryParameters;
 import org.janelia.test.EmbeddedMongoDb;
 import org.jboss.resteasy.specimpl.ResteasyUriInfo;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link RenderDataService} class.
@@ -36,7 +38,7 @@ public class RenderDataServiceTest {
     private static EmbeddedMongoDb embeddedMongoDb;
     private static RenderDataService service;
 
-    @BeforeClass
+    @BeforeAll
     public static void before() throws Exception {
         alignStackId = new StackId("flyTEM", "fly863", "align");
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
@@ -63,7 +65,7 @@ public class RenderDataServiceTest {
 
     }
 
-    @AfterClass
+    @AfterAll
     public static void after() {
         embeddedMongoDb.stop();
     }
@@ -84,7 +86,7 @@ public class RenderDataServiceTest {
                                                     1.0,
                                                     renderQueryParameters);
 
-        Assert.assertNotNull("null parameters returned", renderParameters);
+        assertNotNull(renderParameters, "null parameters returned");
     }
 
     @Test
@@ -171,32 +173,32 @@ public class RenderDataServiceTest {
                                                   2337.0,
                                                   null);
 
-        Assert.assertNotNull("null list returned", lastTileTransformList);
-        Assert.assertEquals("invalid number of tiles", 1, lastTileTransformList.size());
+        assertNotNull(lastTileTransformList, "null list returned");
+        assertEquals(1, lastTileTransformList.size(), "invalid number of tiles");
         final LastTileTransform firstEntry = lastTileTransformList.get(0);
-        Assert.assertEquals("invalid tileId for first entry", "140331142443008104", firstEntry.getTileId());
-        Assert.assertEquals("invalid last transform class",
-                            LeafTransformSpec.class, firstEntry.getLastTransform().getClass());
+        assertEquals("140331142443008104", firstEntry.getTileId(), "invalid tileId for first entry");
+        assertEquals(LeafTransformSpec.class, firstEntry.getLastTransform().getClass(),
+                     "invalid last transform class");
     }
 
     private void validateResolvedTiles(final String context,
                                        final ResolvedTileSpecCollection resolvedTiles,
                                        final int expectedNumberOfTileSpecs,
                                        final int expectedNumberOfTransformSpecs) {
-        Assert.assertNotNull(context + ", null resolved tiles returned",
-                             resolvedTiles);
+        assertNotNull(resolvedTiles,
+                      context + ", null resolved tiles returned");
 
         final Collection<TileSpec> tileSpecs = resolvedTiles.getTileSpecs();
-        Assert.assertNotNull(context + ", tile specs are null",
-                             tileSpecs);
-        Assert.assertEquals(context + ", invalid number of tile specs",
-                            expectedNumberOfTileSpecs, tileSpecs.size());
+        assertNotNull(tileSpecs,
+                      context + ", tile specs are null");
+        assertEquals(expectedNumberOfTileSpecs, tileSpecs.size(),
+                     context + ", invalid number of tile specs");
 
         final Collection<TransformSpec> transformSpecs = resolvedTiles.getTransformSpecs();
-        Assert.assertNotNull(context + ", transform specs are null",
-                             transformSpecs);
-        Assert.assertEquals(context + ", invalid number of transform specs",
-                            expectedNumberOfTransformSpecs, transformSpecs.size());
+        assertNotNull(transformSpecs,
+                      context + ", transform specs are null");
+        assertEquals(expectedNumberOfTransformSpecs, transformSpecs.size(),
+                     context + ", invalid number of transform specs");
     }
 
     private static final Double Z = 2337.0;

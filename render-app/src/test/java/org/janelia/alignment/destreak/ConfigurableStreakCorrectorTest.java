@@ -6,8 +6,7 @@ import ij.ImagePlus;
 import java.util.Map;
 
 import org.janelia.alignment.filter.FilterSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
@@ -15,6 +14,8 @@ import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.integer.UnsignedByteType;
 import net.imglib2.type.numeric.real.FloatType;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link ConfigurableMaskStreakCorrector} class.
@@ -119,7 +120,7 @@ public class ConfigurableStreakCorrectorTest {
 
         final String expectedDataString = Z0422_17_VNC_1_CORRECTOR.toDataString();
         final String actualDataString = deserializedCorrector.toDataString();
-        Assert.assertEquals("data strings should match", expectedDataString, actualDataString);
+        assertEquals(expectedDataString, actualDataString, "data strings should match");
 
         final FilterSpec filterSpec = new FilterSpec(ConfigurableMaskStreakCorrector.class.getName(),
                                                      parametersMap);

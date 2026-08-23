@@ -27,8 +27,9 @@ import mpicbg.trakem2.transform.AffineModel2D;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.spec.validator.TemTileSpecValidator;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link ResolvedTileSpecCollection} class.
@@ -64,18 +65,18 @@ public class ResolvedTileSpecCollectionTest {
 
         final ResolvedTileSpecCollection collection = new ResolvedTileSpecCollection(transformSpecs, tileSpecs);
 
-        Assert.assertEquals("invalid number of tile specs before filter",
-                            expectedTileCountBeforeFilter, collection.getTileCount());
-        Assert.assertEquals("invalid number of transform specs before filter",
-                            expectedTransformCountBeforeFilter, collection.getTransformCount());
+        assertEquals(expectedTileCountBeforeFilter, collection.getTileCount(),
+                     "invalid number of tile specs before filter");
+        assertEquals(expectedTransformCountBeforeFilter, collection.getTransformCount(),
+                     "invalid number of transform specs before filter");
 
         collection.setTileSpecValidator(validator);
         collection.removeInvalidTileSpecs();
 
-        Assert.assertEquals("invalid number of tile specs after filter",
-                            expectedTileCountAfterFilter, collection.getTileCount());
-        Assert.assertEquals("invalid number of transform specs after filter",
-                            expectedTransformCountAfterFilter, collection.getTransformCount());
+        assertEquals(expectedTileCountAfterFilter, collection.getTileCount(),
+                     "invalid number of tile specs after filter");
+        assertEquals(expectedTransformCountAfterFilter, collection.getTransformCount(),
+                     "invalid number of transform specs after filter");
     }
 
     private TransformSpec getTransformSpec(final String transformId) {

@@ -2,8 +2,9 @@ package org.janelia.render.client.stack;
 
 import org.janelia.render.client.CopyStackClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link Create16BitH5StackClient} class.
@@ -38,7 +39,7 @@ public class Create16BitH5StackClientTest {
             final String sourceUrl = testDatum[0];
             final String expected = testDatum[1];
             final String actual = client.buildRawSourceUrlForH5("testTile", sourceUrl, rawChannel);
-            Assert.assertEquals("returned invalid raw URL", expected, actual);
+            assertEquals(expected, actual, "returned invalid raw URL");
         }
     }
 
@@ -63,7 +64,7 @@ public class Create16BitH5StackClientTest {
             final String sourceUrl = testDatum[0];
             final String expected = testDatum[1];
             final String actual = client.buildRawSourceUrlForInLens("testTile", sourceUrl, rawChannel);
-            Assert.assertEquals("returned invalid raw URL", expected, actual);
+            assertEquals(expected, actual, "returned invalid raw URL");
         }
     }
 

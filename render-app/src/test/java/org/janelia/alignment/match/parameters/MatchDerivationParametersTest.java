@@ -1,7 +1,10 @@
 package org.janelia.alignment.match.parameters;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests the {@link MatchDerivationParameters} class.
@@ -14,18 +17,18 @@ public class MatchDerivationParametersTest {
     public void getGetMatchMaxEpsilonForRenderScale() {
         final MatchDerivationParameters parameters = new MatchDerivationParameters();
         final Float maxEpsilon = parameters.getMatchMaxEpsilonForRenderScale(1.0);
-        Assert.assertNull("maxEpsilon should be null when neither matchMaxEpsilon nor matchMaxEpsilonFullScale are specified",
-                          maxEpsilon);
+        assertNull(maxEpsilon,
+                   "maxEpsilon should be null when neither matchMaxEpsilon nor matchMaxEpsilonFullScale are specified");
     }
 
     @Test
     public void testValidateAndSetDefaults() {
         final MatchDerivationParameters parameters = new MatchDerivationParameters();
         final IllegalArgumentException expectedException =
-                Assert.assertThrows(IllegalArgumentException.class,
+                assertThrows(IllegalArgumentException.class,
                                     () -> parameters.validateAndSetDefaults("test"));
-        Assert.assertEquals("invalid exception message",
-                            "test matchMaxEpsilonFullScale must be defined", expectedException.getMessage());
+        assertEquals("test matchMaxEpsilonFullScale must be defined", expectedException.getMessage(),
+                     "invalid exception message");
     }
 
 }

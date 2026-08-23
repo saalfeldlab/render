@@ -5,8 +5,9 @@ import java.io.ObjectOutputStream;
 
 import org.janelia.render.client.solver.DistributedSolveParameters;
 import org.janelia.render.client.solver.SolveSetFactory;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link CustomSolveSetBuilder} class.
@@ -43,13 +44,13 @@ public class CustomSolveSetBuilderTest {
                                                                             parameters.blockMaxAllowedError,
                                                                             parameters.dynamicLambdaFactor);
 
-        Assert.assertTrue("built wrong instance " + solveSetFactory.getClass().getName(),
-                          solveSetFactory instanceof SolveSetFactoryBRSec36);
+        assertTrue(solveSetFactory instanceof SolveSetFactoryBRSec36,
+                   "built wrong instance " + solveSetFactory.getClass().getName());
 
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final ObjectOutputStream oos = new ObjectOutputStream(baos);
         oos.writeObject(solveSetFactory);
-        Assert.assertTrue("serialization worked", true);
+        assertTrue(true, "serialization worked");
 
     }
 
