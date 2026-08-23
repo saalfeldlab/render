@@ -16,7 +16,9 @@
  */
 package org.janelia.alignment;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -27,27 +29,15 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  */
 public class ImageAndMaskTest {
 
-    @Test
-    public void testValidateWithNullImage() throws Exception {
-        ImageAndMask imageAndMask = new ImageAndMask();
-        assertThrows(IllegalArgumentException.class, () -> imageAndMask.validate());
-    }
-
-    @Test
-    public void testValidateWithInvalidImageUrl() throws Exception {
-        ImageAndMask imageAndMask = new ImageAndMask("scheme-with-invalid-@-char://test", null);
-        assertThrows(IllegalArgumentException.class, () -> imageAndMask.validate());
-    }
-
-    @Test
-    public void testValidateWithMissingImageFileWithScheme() throws Exception {
-        ImageAndMask imageAndMask = new ImageAndMask("file:///missing-file", null);
-        assertThrows(IllegalArgumentException.class, () -> imageAndMask.validate());
-    }
-
-    @Test
-    public void testValidateWithMissingImageFileWithoutScheme() throws Exception {
-        ImageAndMask imageAndMask = new ImageAndMask("/missing-file", null);
+    @ParameterizedTest(name = "imageUrl={0}")
+    @NullSource                                    // null image url
+    @ValueSource(strings = {
+            "scheme-with-invalid-@-char://test",   // invalid image url
+            "file:///missing-file",                // missing image file with scheme
+            "/missing-file"                        // missing image file without scheme
+    })
+    public void testValidateWithInvalidImage(final String imageUrl) {
+        final ImageAndMask imageAndMask = new ImageAndMask(imageUrl, null);
         assertThrows(IllegalArgumentException.class, () -> imageAndMask.validate());
     }
 
