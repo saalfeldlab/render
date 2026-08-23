@@ -7,18 +7,17 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.security.DigestInputStream;
 import java.security.MessageDigest;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,20 +32,14 @@ import static org.junit.jupiter.api.Assertions.fail;
  */
 public class ArgbRendererTest {
 
-    private String modulePath;
+    @TempDir
+    Path tempDir;
+
     private File outputFile;
 
     @BeforeEach
-    public void setup() throws Exception {
-        final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
-        final String timestamp = TIMESTAMP.format(new Date());
-        outputFile = new File("test-render-" + timestamp +".jpg").getCanonicalFile();
-        modulePath = outputFile.getParentFile().getCanonicalPath();
-    }
-
-    @AfterEach
-    public void tearDown() {
-        deleteTestFile(outputFile);
+    public void setup() {
+        outputFile = tempDir.resolve("test-render.jpg").toFile();
     }
 
     @Test
@@ -74,7 +67,7 @@ public class ArgbRendererTest {
 
         assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
-        final File expectedFile = new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
+        final File expectedFile = new File("src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         final String expectedDigestString = getDigestString(expectedFile);
@@ -124,7 +117,7 @@ public class ArgbRendererTest {
 
         assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
-        final File expectedFile = new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles_with_mixed_masks.jpg");
+        final File expectedFile = new File("src/test/resources/stitch-test/expected_stitched_4_tiles_with_mixed_masks.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         final String expectedDigestString = getDigestString(expectedFile);
@@ -152,7 +145,7 @@ public class ArgbRendererTest {
 
         assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
-        File expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_1_0.jpg");
+        File expectedFile = new File("src/test/resources/multichannel-test/expected_dapi_1_0.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         String expectedDigestString = getDigestString(expectedFile);
@@ -176,7 +169,7 @@ public class ArgbRendererTest {
 
         assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
-        expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_0_9_td_0_1.jpg");
+        expectedFile = new File("src/test/resources/multichannel-test/expected_dapi_0_9_td_0_1.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         expectedDigestString = getDigestString(expectedFile);
@@ -191,7 +184,7 @@ public class ArgbRendererTest {
     public void testStitchingWithLevel1Masks() throws Exception {
 
         final File expectedFile =
-                new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
+                new File("src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
 
         final String[] args = {
                 "--tile_spec_url", "src/test/resources/stitch-test/test_4_tiles_level_1.json",
@@ -227,7 +220,7 @@ public class ArgbRendererTest {
 
         assertTrue(outputFile.exists(), "composite file " + outputFile.getAbsolutePath() + " not created");
 
-        final File expectedFile = new File(modulePath + "/src/test/resources/composite-test/expected_composite.jpg");
+        final File expectedFile = new File("src/test/resources/composite-test/expected_composite.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         final String expectedDigestString = getDigestString(expectedFile);
@@ -255,7 +248,7 @@ public class ArgbRendererTest {
         assertTrue(outputFile.exists(),
                    "rendered file " + outputFile.getAbsolutePath() + " not created");
 
-        final File expectedFile = new File(modulePath + "/src/test/resources/mipmap-test/mask_mipmap_expected_result.jpg");
+        final File expectedFile = new File("src/test/resources/mipmap-test/mask_mipmap_expected_result.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
 
         final String expectedDigestString = getDigestString(expectedFile);
@@ -292,7 +285,7 @@ public class ArgbRendererTest {
     public void testCaching() throws Exception {
 
         final File expectedFile =
-                new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
+                new File("src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
         final String expectedDigestString = getDigestString(expectedFile);
 
         final String[] args = {
@@ -318,7 +311,7 @@ public class ArgbRendererTest {
     public void testCachingWithTiffStack() throws Exception {
 
         final File expectedFile =
-                new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
+                new File("src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
         final String expectedDigestString = getDigestString(expectedFile);
 
         final String[] args = {
@@ -541,16 +534,6 @@ public class ArgbRendererTest {
         }
 
         return sb.toString();
-    }
-
-    public static void deleteTestFile(final File file) {
-        if ((file != null) && file.exists()) {
-            if (file.delete()) {
-                LOG.info("deleteTestFile: deleted " + file.getAbsolutePath());
-            } else {
-                LOG.info("deleteTestFile: failed to delete " + file.getAbsolutePath());
-            }
-        }
     }
 
     /**
