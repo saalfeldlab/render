@@ -30,19 +30,15 @@ public class ConfiguredJsonProvider extends JacksonJaxbJsonProvider {
     }
 
     @Override
-    protected ObjectMapper _locateMapperViaProvider(final Class<?> type,
-                                                    final MediaType mediaType) {
-
-        final ObjectMapper mapper;
-
-        // for collections and lists, use fast mapper which skips pretty printing
-        if ((type == ResolvedTileSpecCollection.class) || (type == ArrayList.class)) {
-            mapper = JsonUtils.FAST_MAPPER;
-        } else {
-            mapper = JsonUtils.MAPPER;
-        }
-
-        return mapper;
+    protected ObjectMapper _locateMapperViaProvider(final Class<?> type, final MediaType mediaType) {
+        return getMapperForType(type);
     }
 
+    static ObjectMapper getMapperForType(final Class<?> type) {
+        // for collections and lists, use fast mapper which skips pretty printing
+        if ((type == ResolvedTileSpecCollection.class) || (type == ArrayList.class)) {
+            return JsonUtils.FAST_MAPPER;
+        }
+        return JsonUtils.MAPPER;
+    }
 }
