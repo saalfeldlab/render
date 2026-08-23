@@ -25,6 +25,7 @@ public class IntensityCorrectionClient
 
                 final IntensityAdjustParameters parameters = new IntensityAdjustParameters();
                 parameters.parse(args);
+                parameters.algorithmic.initDefaultValues();
 
                 LOG.info("runClient: entry, parameters={}", parameters);
 
