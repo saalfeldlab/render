@@ -13,7 +13,7 @@ import org.janelia.alignment.match.RenderableCanvasIdPairs;
 import org.janelia.alignment.match.parameters.FeatureAndMatchParameters;
 import org.janelia.alignment.match.parameters.MatchTrialParameters;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the {@link SIFTPointMatchClient} class.

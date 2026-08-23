@@ -2,8 +2,9 @@ package org.janelia.alignment.loader;
 
 import ij.process.ImageProcessor;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link DynamicMaskLoader} class.
@@ -21,20 +22,20 @@ public class DynamicMaskLoaderTest {
 
         ImageProcessor maskProcessor = DynamicMaskLoader.INSTANCE.load(maskUrl);
 
-        Assert.assertEquals("invalid mask width for level 0",
-                            width, maskProcessor.getWidth());
-        Assert.assertEquals("invalid mask height for level 0",
-                            height, maskProcessor.getHeight());
+        assertEquals(width, maskProcessor.getWidth(),
+                     "invalid mask width for level 0");
+        assertEquals(height, maskProcessor.getHeight(),
+                     "invalid mask height for level 0");
 
         width = width / 2;
         height = height / 2;
         maskUrl = maskUrl + "&level=1";
         maskProcessor = DynamicMaskLoader.INSTANCE.load(maskUrl);
 
-        Assert.assertEquals("invalid mask width for level 1",
-                            width, maskProcessor.getWidth());
-        Assert.assertEquals("invalid mask height for level 1",
-                            height, maskProcessor.getHeight());
+        assertEquals(width, maskProcessor.getWidth(),
+                     "invalid mask width for level 1");
+        assertEquals(height, maskProcessor.getHeight(),
+                     "invalid mask height for level 1");
     }
 
 }

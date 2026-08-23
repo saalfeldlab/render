@@ -22,9 +22,9 @@ import java.util.Collections;
 import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import junit.framework.Assert;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link AffineWarpFieldTransform} class.
@@ -53,7 +53,7 @@ public class AffineWarpFieldTransformTest {
 
         loadedTransform.init(dataString);
 
-        Assert.assertEquals("data strings do not match", dataString, loadedTransform.toDataString());
+        assertEquals(dataString, loadedTransform.toDataString(), "data strings do not match");
 
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setWidth(100.0);
@@ -77,14 +77,14 @@ public class AffineWarpFieldTransformTest {
         double[] world = { 50075, 60075 };
 
         double[] result = affineWarpFieldTransform.apply(world);
-        Assert.assertEquals("invalid x result for row 1 column 1", world[0], result[0], 0.001);
-        Assert.assertEquals("invalid y result for row 1 column 1", world[1], result[1], 0.001);
+        assertEquals(world[0], result[0], 0.001, "invalid x result for row 1 column 1");
+        assertEquals(world[1], result[1], 0.001, "invalid y result for row 1 column 1");
 
         world = new double[] { 5500, 6600 };
 
         result = affineWarpFieldTransform.apply(world);
-        Assert.assertEquals("invalid x result for row 0 column 0", world[0] + 11, result[0], 0.001);
-        Assert.assertEquals("invalid y result for row 0 column 0", world[1] + 22, result[1], 0.001);
+        assertEquals(world[0] + 11, result[0], 0.001, "invalid x result for row 0 column 0");
+        assertEquals(world[1] + 22, result[1], 0.001, "invalid y result for row 0 column 0");
     }
 
     @Test
@@ -106,8 +106,8 @@ public class AffineWarpFieldTransformTest {
         final double[] warp2213 = warpTransform2213.apply(rough2213);
         final double[] warp2214 = warpTransform2214.apply(rough2214);
 
-        Assert.assertEquals("warped X values are not aligned", warp2213[0], warp2214[0], 0.5);
-        Assert.assertEquals("warped Y values are not aligned", warp2213[1], warp2214[1], 0.5);
+        assertEquals(warp2213[0], warp2214[0], 0.5, "warped X values are not aligned");
+        assertEquals(warp2213[1], warp2214[1], 0.5, "warped Y values are not aligned");
 
     }
 

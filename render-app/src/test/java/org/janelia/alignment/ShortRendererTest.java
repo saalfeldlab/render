@@ -4,10 +4,12 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link ShortRenderer} class.
@@ -19,7 +21,7 @@ public class ShortRendererTest {
     private String modulePath;
     private File outputFile;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
         final String timestamp = TIMESTAMP.format(new Date());
@@ -27,7 +29,7 @@ public class ShortRendererTest {
         modulePath = outputFile.getParentFile().getCanonicalPath();
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         ArgbRendererTest.deleteTestFile(outputFile);
     }
@@ -45,7 +47,7 @@ public class ShortRendererTest {
 
         ShortRenderer.renderUsingCommandLineArguments(args);
 
-        Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+        assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
         final File expectedFile = new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_16_bit.png");
 //        org.janelia.alignment.ArgbRendererTest.updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
@@ -53,7 +55,7 @@ public class ShortRendererTest {
         final String expectedDigestString = ArgbRendererTest.getDigestString(expectedFile);
         final String actualDigestString = ArgbRendererTest.getDigestString(outputFile);
 
-        Assert.assertEquals("stitched file MD5 hash differs from expected result",
-                            expectedDigestString, actualDigestString);
+        assertEquals(expectedDigestString, actualDigestString,
+                     "stitched file MD5 hash differs from expected result");
     }
 }

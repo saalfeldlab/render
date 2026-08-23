@@ -8,10 +8,13 @@ import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link RenderDataClient} class.
@@ -20,14 +23,14 @@ import org.junit.Test;
  *
  * @author Eric Trautman
  */
-@Ignore
+@Disabled
 public class RenderDataClientTest {
 
     private RenderDataClient renderDataClient;
     private String stack;
     private Double z;
 
-    @Before
+    @BeforeEach
     public void setup() {
         renderDataClient = new RenderDataClient("http://renderer-dev:8080/render-ws/v1",
                                                 "hess_wafer_53",
@@ -41,7 +44,7 @@ public class RenderDataClientTest {
             throws Exception {
 
         final String likelyUniqueId = renderDataClient.getLikelyUniqueId();
-        Assert.assertNotNull("null id", likelyUniqueId);
+        assertNotNull(likelyUniqueId, "null id");
     }
 
     @Test
@@ -49,12 +52,12 @@ public class RenderDataClientTest {
             throws Exception {
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stack);
-        Assert.assertNotNull("null meta data", stackMetaData);
+        assertNotNull(stackMetaData, "null meta data");
 
         final StackId stackId = stackMetaData.getStackId();
-        Assert.assertNotNull("null stackId ", stackId);
+        assertNotNull(stackId, "null stackId ");
 
-        Assert.assertEquals("invalid stack", stack, stackId.getStack());
+        assertEquals(stack, stackId.getStack(), "invalid stack");
     }
 
     @Test
@@ -62,9 +65,9 @@ public class RenderDataClientTest {
             throws Exception {
 
         final List<Double> zValues = renderDataClient.getStackZValues(stack);
-        Assert.assertNotNull("null zValues", zValues);
+        assertNotNull(zValues, "null zValues");
 
-        Assert.assertTrue("not enough zValues", zValues.size() > 10);
+        assertTrue(zValues.size() > 10, "not enough zValues");
     }
 
     @Test
@@ -72,9 +75,9 @@ public class RenderDataClientTest {
             throws Exception {
 
         final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stack, z);
-        Assert.assertNotNull("null tileBoundsList", tileBoundsList);
+        assertNotNull(tileBoundsList, "null tileBoundsList");
 
-        Assert.assertTrue("not enough tileBounds", tileBoundsList.size() > 100);
+        assertTrue(tileBoundsList.size() > 100, "not enough tileBounds");
     }
 
     @Test
@@ -82,9 +85,9 @@ public class RenderDataClientTest {
             throws Exception {
 
         final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stack, z);
-        Assert.assertNotNull("null resolvedTiles", resolvedTiles);
+        assertNotNull(resolvedTiles, "null resolvedTiles");
 
-        Assert.assertTrue("not enough tiles", resolvedTiles.getTileCount() > 100);
+        assertTrue(resolvedTiles.getTileCount() > 100, "not enough tiles");
     }
 
     @Test
@@ -103,7 +106,7 @@ public class RenderDataClientTest {
                                                                 null,
                                                                 false);
 
-        Assert.assertNotNull("null result", tileSpecsWithMatchPairs);
+        assertNotNull(tileSpecsWithMatchPairs, "null result");
     }
 
 }

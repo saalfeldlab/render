@@ -17,12 +17,16 @@ import org.janelia.alignment.match.MatchCollectionMetaData;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecsWithMatchPairs;
 import org.janelia.test.EmbeddedMongoDb;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import static org.janelia.render.service.dao.MatchDaoWithoutEmbeddedMongoTest.buildTileSpec;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests {@link MatchDao} methods or error cases that won't change stored data.
@@ -42,7 +46,7 @@ public class MatchDaoReadOnlyTest {
 
     private static MatchDao dao;
 
-    @BeforeClass
+    @BeforeAll
     public static void before() throws Exception {
         final MatchCollectionId collectionIdB = new MatchCollectionId("testOwner", "testCollectionB");
         final MatchCollectionId collectionIdC = new MatchCollectionId("testOwner", "testCollectionC");
@@ -78,7 +82,7 @@ public class MatchDaoReadOnlyTest {
 
     }
 
-    @AfterClass
+    @AfterAll
     public static void after() {
         embeddedMongoDb.stop();
     }
@@ -99,21 +103,21 @@ public class MatchDaoReadOnlyTest {
     public void testGetMatchCollectionMetaData() {
 
         final List<MatchCollectionMetaData> metaDataList = dao.getMatchCollectionMetaData();
-        Assert.assertEquals("invalid number of match collections returned",
-                            3, metaDataList.size());
+        assertEquals(3, metaDataList.size(),
+                     "invalid number of match collections returned");
 
         boolean foundFirstCollection = false;
         MatchCollectionId retrievedCollectionId;
         for (final MatchCollectionMetaData metaData : metaDataList) {
             retrievedCollectionId = metaData.getCollectionId();
-            Assert.assertNotNull("null collection id", retrievedCollectionId);
-            Assert.assertEquals("invalid owner", collectionId.getOwner(), retrievedCollectionId.getOwner());
+            assertNotNull(retrievedCollectionId, "null collection id");
+            assertEquals(collectionId.getOwner(), retrievedCollectionId.getOwner(), "invalid owner");
             if (collectionId.getName().equals(retrievedCollectionId.getName())) {
                 foundFirstCollection = true;
-                Assert.assertEquals("invalid number of pairs", Long.valueOf(11), metaData.getPairCount());
+                assertEquals(Long.valueOf(11), metaData.getPairCount(), "invalid number of pairs");
             }
         }
-        Assert.assertTrue("missing first collection", foundFirstCollection);
+        assertTrue(foundFirstCollection, "missing first collection");
     }
 
     @Test
@@ -121,15 +125,15 @@ public class MatchDaoReadOnlyTest {
 
         final List<String> pGroupList = dao.getMultiConsensusPGroupIds(collectionId);
 
-        Assert.assertEquals("invalid number of p group ids returned",
-                            2, pGroupList.size());
+        assertEquals(2, pGroupList.size(),
+                     "invalid number of p group ids returned");
 
         if (! pGroupList.contains("section10")) {
-            Assert.fail("list missing section10, values are: " + pGroupList);
+            fail("list missing section10, values are: " + pGroupList);
         }
 
         if (! pGroupList.contains("section13")) {
-            Assert.fail("list missing section13, values are: " + pGroupList);
+            fail("list missing section13, values are: " + pGroupList);
         }
     }
 
@@ -138,13 +142,13 @@ public class MatchDaoReadOnlyTest {
 
         final Set<String> groupList = dao.getMultiConsensusGroupIds(collectionId);
 
-        Assert.assertEquals("invalid number of p group ids returned",
-                            5, groupList.size());
+        assertEquals(5, groupList.size(),
+                     "invalid number of p group ids returned");
 
         for (int i = 0; i < 5; i++) {
             final String groupId = "section1" + i;
             if (! groupList.contains(groupId)) {
-                Assert.fail("list missing " + groupId + ", values are: " + groupList);
+                fail("list missing " + groupId + ", values are: " + groupList);
             }
         }
     }
@@ -158,12 +162,12 @@ public class MatchDaoReadOnlyTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned",
-                            3, canvasMatchesList.size());
+        assertEquals(3, canvasMatchesList.size(),
+                     "invalid number of matches returned");
 
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
 //            System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertEquals("invalid source groupId: " + canvasMatches, groupId, canvasMatches.getpGroupId());
+            assertEquals(groupId, canvasMatches.getpGroupId(), "invalid source groupId: " + canvasMatches);
         }
     }
 
@@ -176,13 +180,13 @@ public class MatchDaoReadOnlyTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned",
-                            2, canvasMatchesList.size());
+        assertEquals(2, canvasMatchesList.size(),
+                     "invalid number of matches returned");
 
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
 //            System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertEquals("invalid source groupId: " + canvasMatches, groupId, canvasMatches.getpGroupId());
-            Assert.assertEquals("invalid target groupId: " + canvasMatches, groupId, canvasMatches.getqGroupId());
+            assertEquals(groupId, canvasMatches.getpGroupId(), "invalid source groupId: " + canvasMatches);
+            assertEquals(groupId, canvasMatches.getqGroupId(), "invalid target groupId: " + canvasMatches);
         }
     }
 
@@ -216,13 +220,13 @@ public class MatchDaoReadOnlyTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned",
-                            2, canvasMatchesList.size());
+        assertEquals(2, canvasMatchesList.size(),
+                     "invalid number of matches returned");
 
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
 //            System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertNotSame("source and target matches have same groupId: " + canvasMatches,
-                                 canvasMatches.getpGroupId(), canvasMatches.getqGroupId());
+            assertNotSame(canvasMatches.getpGroupId(), canvasMatches.getqGroupId(),
+                          "source and target matches have same groupId: " + canvasMatches);
         }
     }
 
@@ -236,15 +240,15 @@ public class MatchDaoReadOnlyTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned",
-                            1, canvasMatchesList.size());
+        assertEquals(1, canvasMatchesList.size(),
+                     "invalid number of matches returned");
 
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
 //            System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertEquals("matches have invalid pGroupId: " + canvasMatches,
-                                 groupId, canvasMatches.getpGroupId());
-            Assert.assertEquals("matches have invalid qGroupId: " + canvasMatches,
-                                targetGroupId, canvasMatches.getqGroupId());
+            assertEquals(groupId, canvasMatches.getpGroupId(),
+                         "matches have invalid pGroupId: " + canvasMatches);
+            assertEquals(targetGroupId, canvasMatches.getqGroupId(),
+                         "matches have invalid qGroupId: " + canvasMatches);
         }
     }
 
@@ -262,19 +266,19 @@ public class MatchDaoReadOnlyTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned",
-                            1, canvasMatchesList.size());
+        assertEquals(1, canvasMatchesList.size(),
+                     "invalid number of matches returned");
 
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
 //            System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertEquals("matches have invalid pGroupId (should be normalized): " + canvasMatches,
-                                targetGroupId, canvasMatches.getpGroupId());
-            Assert.assertEquals("matches have invalid pId (should be normalized): " + canvasMatches,
-                                targetId, canvasMatches.getpId());
-            Assert.assertEquals("matches have invalid qGroupId (should be normalized): " + canvasMatches,
-                                groupId, canvasMatches.getqGroupId());
-            Assert.assertEquals("matches have invalid qId (should be normalized): " + canvasMatches,
-                                sourceId, canvasMatches.getqId());
+            assertEquals(targetGroupId, canvasMatches.getpGroupId(),
+                         "matches have invalid pGroupId (should be normalized): " + canvasMatches);
+            assertEquals(targetId, canvasMatches.getpId(),
+                         "matches have invalid pId (should be normalized): " + canvasMatches);
+            assertEquals(groupId, canvasMatches.getqGroupId(),
+                         "matches have invalid qGroupId (should be normalized): " + canvasMatches);
+            assertEquals(sourceId, canvasMatches.getqId(),
+                         "matches have invalid qId (should be normalized): " + canvasMatches);
         }
     }
 
@@ -290,17 +294,17 @@ public class MatchDaoReadOnlyTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned",
-                            3, canvasMatchesList.size());
+        assertEquals(3, canvasMatchesList.size(),
+                     "invalid number of matches returned");
 
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
 //            System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertTrue("groupId '" + groupId + "' not found in " + canvasMatches,
-                              groupId.equals(canvasMatches.getpGroupId()) ||
-                              groupId.equals(canvasMatches.getqGroupId()) );
-            Assert.assertTrue("id '" + sourceId + "' not found in " + canvasMatches,
-                              sourceId.equals(canvasMatches.getpId()) ||
-                              sourceId.equals(canvasMatches.getqId()) );
+            assertTrue(groupId.equals(canvasMatches.getpGroupId()) ||
+                       groupId.equals(canvasMatches.getqGroupId()),
+                       "groupId '" + groupId + "' not found in " + canvasMatches);
+            assertTrue(sourceId.equals(canvasMatches.getpId()) ||
+                       sourceId.equals(canvasMatches.getqId()),
+                       "id '" + sourceId + "' not found in " + canvasMatches);
         }
     }
 
@@ -317,20 +321,20 @@ public class MatchDaoReadOnlyTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals("invalid number of matches returned",
-                            1, canvasMatchesList.size());
+        assertEquals(1, canvasMatchesList.size(),
+                     "invalid number of matches returned");
 
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
 //            System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertTrue("groupId '" + groupId + "' not found in " + canvasMatches,
-                              groupId.equals(canvasMatches.getpGroupId()) ||
-                              groupId.equals(canvasMatches.getqGroupId()) );
-            Assert.assertTrue("id '" + sourceId + "' not found in " + canvasMatches,
-                              sourceId.equals(canvasMatches.getpId()) ||
-                              sourceId.equals(canvasMatches.getqId()) );
-            Assert.assertTrue("qGroupId '" + qGroupId + "' not found in " + canvasMatches,
-                              qGroupId.equals(canvasMatches.getpGroupId()) ||
-                              qGroupId.equals(canvasMatches.getqGroupId()) );
+            assertTrue(groupId.equals(canvasMatches.getpGroupId()) ||
+                       groupId.equals(canvasMatches.getqGroupId()),
+                       "groupId '" + groupId + "' not found in " + canvasMatches);
+            assertTrue(sourceId.equals(canvasMatches.getpId()) ||
+                       sourceId.equals(canvasMatches.getqId()),
+                       "id '" + sourceId + "' not found in " + canvasMatches);
+            assertTrue(qGroupId.equals(canvasMatches.getpGroupId()) ||
+                       qGroupId.equals(canvasMatches.getqGroupId()),
+                       "qGroupId '" + qGroupId + "' not found in " + canvasMatches);
         }
     }
 
@@ -372,12 +376,12 @@ public class MatchDaoReadOnlyTest {
                 ResolvedTileSpecsWithMatchPairs.fromJson(new StringReader(json));
 
         final ResolvedTileSpecCollection resultTiles = tilesWithPairs.getResolvedTileSpecs();
-        Assert.assertEquals(context + " tile counts do not match",
-                            tileSpecs.getTileCount(), resultTiles.getTileCount());
+        assertEquals(tileSpecs.getTileCount(), resultTiles.getTileCount(),
+                     context + " tile counts do not match");
 
         final List<CanvasMatches> resultPairs = tilesWithPairs.getMatchPairs();
-        Assert.assertEquals(context + " pair counts do not match",
-                            expectedResultPairCount, resultPairs.size());
+        assertEquals(expectedResultPairCount, resultPairs.size(),
+                     context + " pair counts do not match");
     }
 
     private List<CanvasMatches> getListFromStream(final ByteArrayOutputStream outputStream) {
@@ -397,30 +401,30 @@ public class MatchDaoReadOnlyTest {
 
         final List<CanvasMatches> canvasMatchesList = getListFromStream(outputStream);
 
-        Assert.assertEquals(context + " invalid number of matches returned",
-                            expectedMatchCount, canvasMatchesList.size());
+        assertEquals(expectedMatchCount, canvasMatchesList.size(),
+                     context + " invalid number of matches returned");
 
         int mergedTileCount = 0;
         for (final CanvasMatches canvasMatches : canvasMatchesList) {
             // System.out.println(canvasMatches.toTabSeparatedFormat());
-            Assert.assertEquals(context + " invalid source groupId: " + canvasMatches,
-                                groupId, canvasMatches.getpGroupId());
-            Assert.assertEquals(context + " invalid target groupId: " + canvasMatches,
-                                groupId, canvasMatches.getqGroupId());
+            assertEquals(groupId, canvasMatches.getpGroupId(),
+                         context + " invalid source groupId: " + canvasMatches);
+            assertEquals(groupId, canvasMatches.getqGroupId(),
+                         context + " invalid target groupId: " + canvasMatches);
 
             if (mergedFirstTileIdsToMatchCountMap.containsKey(canvasMatches.getpId())) {
                 mergedTileCount++;
-                Assert.assertEquals(context + " invalid number of matches for " + canvasMatches,
-                                    mergedFirstTileIdsToMatchCountMap.get(canvasMatches.getpId()),
-                                    Integer.valueOf(canvasMatches.size()));
+                assertEquals(mergedFirstTileIdsToMatchCountMap.get(canvasMatches.getpId()),
+                             Integer.valueOf(canvasMatches.size()),
+                             context + " invalid number of matches for " + canvasMatches);
             } else {
-                Assert.assertEquals(context + " invalid number of matches for " + canvasMatches,
-                                    3, canvasMatches.size());
+                assertEquals(3, canvasMatches.size(),
+                             context + " invalid number of matches for " + canvasMatches);
             }
         }
 
-        Assert.assertEquals(context + " invalid number of merged tile pairs",
-                            mergedFirstTileIdsToMatchCountMap.size(), mergedTileCount);
+        assertEquals(mergedFirstTileIdsToMatchCountMap.size(), mergedTileCount,
+                     context + " invalid number of merged tile pairs");
     }
 
 }

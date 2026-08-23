@@ -16,8 +16,13 @@ import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link RenderParameters} class.
@@ -74,20 +79,20 @@ public class RenderParametersTest {
 
         final String json = parameters.toJson();
 
-        Assert.assertNotNull("json not generated", json);
+        assertNotNull(json, "json not generated");
 
         final RenderParameters parsedParameters = RenderParameters.parseJson(json);
 
-        Assert.assertNotNull("json parse returned null parameters", parsedParameters);
-        Assert.assertEquals("invalid width parsed", width, parsedParameters.getWidth());
+        assertNotNull(parsedParameters, "json parse returned null parameters");
+        assertEquals(width, parsedParameters.getWidth(), "invalid width parsed");
 
         final List<TileSpec> parsedTileSpecs = parsedParameters.getTileSpecs();
-        Assert.assertNotNull("json parse returned null tileSpecs", parsedTileSpecs);
-        Assert.assertEquals("invalid number of tileSpecs parsed", 2, parsedTileSpecs.size());
+        assertNotNull(parsedTileSpecs, "json parse returned null tileSpecs");
+        assertEquals(2, parsedTileSpecs.size(), "invalid number of tileSpecs parsed");
 
-        Assert.assertFalse("mipmapPathBuilder should NOT be defined", parsedParameters.hasMipmapPathBuilder());
+        assertFalse(parsedParameters.hasMipmapPathBuilder(), "mipmapPathBuilder should NOT be defined");
 
-        Assert.assertTrue("filter spec is missing", parsedParameters.hasFilters());
+        assertTrue(parsedParameters.hasFilters(), "filter spec is missing");
     }
 
     @Test
@@ -102,18 +107,18 @@ public class RenderParametersTest {
         };
         final RenderParameters parameters = RenderParameters.parseCommandLineArgs(args);
 
-        Assert.assertEquals("invalid out parameter",
-                            overrideOut, parameters.getOut());
-        Assert.assertEquals("invalid scale parameter",
-                            overrideScale, String.valueOf(parameters.getScale()));
-        Assert.assertEquals("x parameter not loaded from parameters_url file",
-                            "1.0", String.valueOf(parameters.getX()));
+        assertEquals(overrideOut, parameters.getOut(),
+                     "invalid out parameter");
+        assertEquals(overrideScale, String.valueOf(parameters.getScale()),
+                     "invalid scale parameter");
+        assertEquals("1.0", String.valueOf(parameters.getX()),
+                     "x parameter not loaded from parameters_url file");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testExtraneousComma() {
         final File jsonFile = new File("src/test/resources/render-parameters-test/extraneous-comma-render.json");
-        RenderParameters.parseJson(jsonFile);
+        assertThrows(IllegalArgumentException.class, () -> RenderParameters.parseJson(jsonFile));
     }
 
     @Test
@@ -131,8 +136,8 @@ public class RenderParametersTest {
         final BufferedImage targetImage = renderParameters.openTargetImage();
 //        ArgbRenderer.render(renderParameters, targetImage, ImageProcessorCache.DISABLED_CACHE);
 
-        Assert.assertEquals("invalid target image width", 513, targetImage.getWidth());
-        Assert.assertEquals("invalid target image height", 353, targetImage.getHeight());
+        assertEquals(513, targetImage.getWidth(), "invalid target image width");
+        assertEquals(353, targetImage.getHeight(), "invalid target image height");
 
         // scaled rendered result is 513x353
         //
@@ -149,8 +154,8 @@ public class RenderParametersTest {
         for (int i = 0; i < insideX.length; i++) {
             final int x = insideX[i];
             final int y = insideY[i];
-            Assert.assertTrue("(" + x + ", " + y + ") should be inside tiles",
-                              renderParameters.isRenderedCoordinateInsideTiles(x, y));
+            assertTrue(renderParameters.isRenderedCoordinateInsideTiles(x, y),
+                       "(" + x + ", " + y + ") should be inside tiles");
         }
 
         final int[] outsideX = {0, 170, 250, 330, 513,  0, 250, 510,   0, 510,   0, 250, 510,   0, 170, 250, 330, 510};
@@ -159,8 +164,8 @@ public class RenderParametersTest {
         for (int i = 0; i < outsideX.length; i++) {
             final int x = outsideX[i];
             final int y = outsideY[i];
-            Assert.assertFalse("(" + x + ", " + y + ") should be outside tiles",
-                               renderParameters.isRenderedCoordinateInsideTiles(x, y));
+            assertFalse(renderParameters.isRenderedCoordinateInsideTiles(x, y),
+                        "(" + x + ", " + y + ") should be outside tiles");
         }
 
         final Timer timer = new Timer();
@@ -174,8 +179,8 @@ public class RenderParametersTest {
 
 //        System.out.println("checking 513x353 pixels took " + elapsedMilliseconds + " ms");
 
-        Assert.assertTrue("checking 513x353 pixels took too long (" + elapsedMilliseconds + " ms) to run",
-                          (elapsedMilliseconds < 20000));
+        assertTrue((elapsedMilliseconds < 20000),
+                   "checking 513x353 pixels took too long (" + elapsedMilliseconds + " ms) to run");
     }
 
 }

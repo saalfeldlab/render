@@ -12,8 +12,8 @@ import org.janelia.alignment.ArgbRenderer;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.Utils;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests the render times for different image formats, thread counts, and mipmap levels.
@@ -82,7 +82,7 @@ public class RenderPerformanceTest {
         }
     }
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         enableTests = false; // set this to true to enable tests - normally, there is no need to run them
         numberOfTimesToRepeatEachTest = 3;

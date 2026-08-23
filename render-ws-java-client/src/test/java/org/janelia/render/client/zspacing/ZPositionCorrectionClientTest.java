@@ -6,8 +6,10 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link ZPositionCorrectionClient} class.
@@ -41,8 +43,8 @@ public class ZPositionCorrectionClientTest {
         final double[] normalizedTransforms = ZPositionCorrectionClient.normalizeTransforms(transforms,
                                                                                             normalizedEdgeLayerCount);
 
-        Assert.assertArrayEquals("bad scaled normalized transform ",
-                                 expectedTransforms, normalizedTransforms, 0.01);
+        assertArrayEquals(expectedTransforms, normalizedTransforms, 0.01,
+                          "bad scaled normalized transform ");
     }
 
     @Test
@@ -80,8 +82,8 @@ public class ZPositionCorrectionClientTest {
                                final List<Double> zList,
                                final int expectedLayerCount,
                                final Double expectedFirstZ) {
-        Assert.assertEquals("invalid number of layers " + context, expectedLayerCount, zList.size());
-        Assert.assertEquals("invalid first z " + context, expectedFirstZ, zList.get(0));
+        assertEquals(expectedLayerCount, zList.size(), "invalid number of layers " + context);
+        assertEquals(expectedFirstZ, zList.get(0), "invalid first z " + context);
     }
 
     public static void main(final String[] args) {

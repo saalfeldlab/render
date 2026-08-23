@@ -5,9 +5,12 @@ import java.util.List;
 
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.TileBounds;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import junit.framework.Assert;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link BoxDataPyramidForLayer} class.
@@ -67,7 +70,7 @@ public class BoxDataPyramidForLayerTest {
             }
         }
 
-        Assert.assertEquals("12x12 tile grid should have been created", 144, tileBoundsList.size());
+        assertEquals(144, tileBoundsList.size(), "12x12 tile grid should have been created");
 
         final int boxSize = 10;
         final BoxDataPyramidForLayer
@@ -75,8 +78,8 @@ public class BoxDataPyramidForLayerTest {
                                                         false, null, null);
 
         final List<BoxData> pyramidList = boxPyramid.getPyramidList();
-        Assert.assertNotNull("missing pyramid", pyramidList);
-        Assert.assertEquals("invalid number of boxes in pyramid", EXPECTED_LIST.length, pyramidList.size());
+        assertNotNull(pyramidList, "missing pyramid");
+        assertEquals(EXPECTED_LIST.length, pyramidList.size(), "invalid number of boxes in pyramid");
 
         String expectedLevelPath;
         String expectedServicePath;
@@ -85,17 +88,17 @@ public class BoxDataPyramidForLayerTest {
             expectedLevelPath = EXPECTED_LIST[i][0];
             expectedServicePath = EXPECTED_LIST[i][1];
             final BoxData boxData = pyramidList.get(i);
-            Assert.assertEquals("invalid level path for box " + i,
-                                expectedLevelPath, boxData.getLevelPath());
-            Assert.assertEquals("invalid service path for box " + i,
-                                expectedServicePath, boxData.getServicePath(boxSize, boxSize));
+            assertEquals(expectedLevelPath, boxData.getLevelPath(),
+                         "invalid level path for box " + i);
+            assertEquals(expectedServicePath, boxData.getServicePath(boxSize, boxSize),
+                         "invalid service path for box " + i);
 
             if (boxData.getLevel() == 0) {
-                Assert.assertFalse("level zero box " + i + " should not have children",
-                                   boxData.hasChildren());
+                assertFalse(boxData.hasChildren(),
+                            "level zero box " + i + " should not have children");
             } else {
-                Assert.assertTrue("level N box " + i + " should have children",
-                                   boxData.hasChildren());
+                assertTrue(boxData.hasChildren(),
+                           "level N box " + i + " should have children");
             }
         }
     }

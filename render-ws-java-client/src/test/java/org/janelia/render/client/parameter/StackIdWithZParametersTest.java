@@ -8,8 +8,9 @@ import java.util.stream.Collectors;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackIdNamingGroup;
 import org.janelia.render.client.RenderDataClient;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link StackIdWithZParameters} class.
@@ -46,32 +47,32 @@ public class StackIdWithZParametersTest {
 
         params.projectPattern = ".*ProjectA$";
         List<StackId> stackIdList = params.getStackIdList(mockDataClient);
-        Assert.assertEquals("incorrect number of stacks returned for default project pattern",
-                            6, stackIdList.size());
+        assertEquals(6, stackIdList.size(),
+                     "incorrect number of stacks returned for default project pattern");
 
         params.projectPattern = null;
         params.stackPattern = "stack1.*";
         stackIdList = params.getStackIdList(mockDataClient);
-        Assert.assertEquals("incorrect number of stacks returned default stack pattern",
-                            3, stackIdList.size());
+        assertEquals(3, stackIdList.size(),
+                     "incorrect number of stacks returned default stack pattern");
 
         params.projectPattern = ".*ProjectA$";
         params.stackPattern = null;
         params.setNamingGroup(new StackIdNamingGroup(".*ProjectB$", null));
         stackIdList = params.getStackIdList(mockDataClient);
-        Assert.assertEquals("incorrect number of stacks returned for naming group project pattern",
-                            6, stackIdList.size());
+        assertEquals(6, stackIdList.size(),
+                     "incorrect number of stacks returned for naming group project pattern");
 
         final int projectBStackCount = (int) stackIdList.stream()
                 .filter(stackId -> stackId.getProject().equals(projectB)).count();
-        Assert.assertEquals("all stacks should be from project B (naming group should override default)",
-                            6, projectBStackCount);
+        assertEquals(6, projectBStackCount,
+                     "all stacks should be from project B (naming group should override default)");
 
         params = new StackIdWithZParameters();
         params.stackNames = List.of("stack2");
         stackIdList = params.getStackIdList(mockDataClient);
-        Assert.assertEquals("incorrect number of stacks returned for explicit stack name",
-                            1, stackIdList.size());
+        assertEquals(1, stackIdList.size(),
+                     "incorrect number of stacks returned for explicit stack name");
     }
 
     private static class MockRenderDataClient extends RenderDataClient {

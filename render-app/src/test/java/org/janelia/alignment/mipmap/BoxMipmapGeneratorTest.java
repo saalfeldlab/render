@@ -16,12 +16,15 @@ import org.janelia.alignment.Utils;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.alignment.util.LabelImageProcessorCache;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link org.janelia.alignment.mipmap.BoxMipmapGenerator} class.
@@ -40,7 +43,7 @@ public class BoxMipmapGeneratorTest {
     private int maxOverviewWidthAndHeight;
     private Bounds stackBounds;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
 
         final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
@@ -68,7 +71,7 @@ public class BoxMipmapGeneratorTest {
         this.stackBounds = new Bounds(0.0, 0.0, layerMaxX, layerMaxY);
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
 
         FileUtil.deleteRecursive(testDirectory);
@@ -124,15 +127,15 @@ public class BoxMipmapGeneratorTest {
                                                                                 stackBounds,
                                                                                 overviewFile);
 
-        Assert.assertTrue("overview generated flag should be true", isOverviewGenerated);
+        assertTrue(isOverviewGenerated, "overview generated flag should be true");
 
-        Assert.assertNotNull("overview " + overviewFile +
-                             " should have been generated for level " + boxMipmapGenerator.getSourceLevel(),
-                             overviewFile);
+        assertNotNull(overviewFile,
+                      "overview " + overviewFile +
+                      " should have been generated for level " + boxMipmapGenerator.getSourceLevel());
 
-        Assert.assertTrue("overview " + overviewFile +
-                          " generated for level " + boxMipmapGenerator.getSourceLevel() + " but does not exist",
-                          overviewFile.exists());
+        assertTrue(overviewFile.exists(),
+                   "overview " + overviewFile +
+                   " generated for level " + boxMipmapGenerator.getSourceLevel() + " but does not exist");
 
     }
 
@@ -171,7 +174,7 @@ public class BoxMipmapGeneratorTest {
                                      Utils.PNG_FORMAT,
                                      false);
 
-        Assert.assertTrue("missing label image " + outputFile.getAbsolutePath(), outputFile.exists());
+        assertTrue(outputFile.exists(), "missing label image " + outputFile.getAbsolutePath());
 
     }
 
@@ -190,8 +193,8 @@ public class BoxMipmapGeneratorTest {
             }
         }
 
-        Assert.assertTrue("The following files were not generated for level " + level + ": " + missingFiles,
-                          missingFiles.isEmpty());
+        assertTrue(missingFiles.isEmpty(),
+                   "The following files were not generated for level " + level + ": " + missingFiles);
 
         final Path overviewDirPath = Paths.get(boxDirectory.getAbsolutePath(), "small");
         final File overviewFile = new File(overviewDirPath.toFile(), z + ".png").getAbsoluteFile();
@@ -199,9 +202,9 @@ public class BoxMipmapGeneratorTest {
                                                                                 stackBounds,
                                                                                 overviewFile);
 
-        Assert.assertFalse("overview generated flag should be false for level " + level, isOverviewGenerated);
-        Assert.assertFalse("overview " + overviewFile + " should NOT have been generated for level " + level,
-                           overviewFile.exists());
+        assertFalse(isOverviewGenerated, "overview generated flag should be false for level " + level);
+        assertFalse(overviewFile.exists(),
+                    "overview " + overviewFile + " should NOT have been generated for level " + level);
 
         return nextLevelGenerator;
     }

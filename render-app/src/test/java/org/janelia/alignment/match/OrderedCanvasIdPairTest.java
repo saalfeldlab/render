@@ -1,8 +1,9 @@
 package org.janelia.alignment.match;
 
 import org.janelia.alignment.spec.TileBounds;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link OrderedCanvasIdPair} class.
@@ -15,12 +16,12 @@ public class OrderedCanvasIdPairTest {
     public void testNormalization() {
 
         OrderedCanvasIdPair pair = new OrderedCanvasIdPair(getCanvasId(1), getCanvasId(2), null);
-        Assert.assertEquals("invalid canvasId for p in pair " + pair, pair.getP(), getCanvasId(1));
-        Assert.assertEquals("invalid canvasId for q in pair " + pair, pair.getQ(), getCanvasId(2));
+        assertEquals(pair.getP(), getCanvasId(1), "invalid canvasId for p in pair " + pair);
+        assertEquals(pair.getQ(), getCanvasId(2), "invalid canvasId for q in pair " + pair);
 
         pair = new OrderedCanvasIdPair(getCanvasId(9), getCanvasId(5), null);
-        Assert.assertEquals("invalid canvasId for p in pair " + pair, pair.getP(), getCanvasId(5));
-        Assert.assertEquals("invalid canvasId for q in pair " + pair, pair.getQ(), getCanvasId(9));
+        assertEquals(pair.getP(), getCanvasId(5), "invalid canvasId for p in pair " + pair);
+        assertEquals(pair.getQ(), getCanvasId(9), "invalid canvasId for q in pair " + pair);
     }
 
     @Test
@@ -49,8 +50,8 @@ public class OrderedCanvasIdPairTest {
 
         final OrderedCanvasIdPair reversedSameBoundsPair = OrderedCanvasIdPair.withRelativeMontagePositions(sameBounds,
                                                                                                            boundsA);
-        Assert.assertEquals("same bounds pairs should be the same",
-                            orderedSameBoundsPair, reversedSameBoundsPair);
+        assertEquals(orderedSameBoundsPair, reversedSameBoundsPair,
+                     "same bounds pairs should be the same");
     }
 
     private CanvasId getCanvasId(final int tileIndex) {
@@ -63,10 +64,10 @@ public class OrderedCanvasIdPairTest {
                               final String expectedPTileId,
                               final MontageRelativePosition expectedPPosition) {
         final CanvasId p = pair.getP();
-        Assert.assertEquals(context + ", invalid p.id for pair " + pair,
-                            expectedPTileId, p.getId());
-        Assert.assertEquals(context + ", invalid p.relativePosition for " + pair,
-                            expectedPPosition, p.getRelativePosition());
+        assertEquals(expectedPTileId, p.getId(),
+                     context + ", invalid p.id for pair " + pair);
+        assertEquals(expectedPPosition, p.getRelativePosition(),
+                     context + ", invalid p.relativePosition for " + pair);
     }
 
 }

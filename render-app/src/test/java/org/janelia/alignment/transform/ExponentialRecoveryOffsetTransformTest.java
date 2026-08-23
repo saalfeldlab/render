@@ -5,9 +5,9 @@ import java.util.Collections;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link ExponentialRecoveryOffsetTransform} class.
@@ -26,7 +26,7 @@ public class ExponentialRecoveryOffsetTransformTest {
 
         loadedTransform.init(dataString);
 
-        Assert.assertEquals("data strings do not match", dataString, loadedTransform.toDataString());
+        assertEquals(dataString, loadedTransform.toDataString(), "data strings do not match");
 
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setWidth(100.0);
@@ -50,10 +50,10 @@ public class ExponentialRecoveryOffsetTransformTest {
 
         for (int i = 0; i < testLocations.length; i++) {
             final double[] result = transform.apply(testLocations[i]);
-            Assert.assertEquals("bad x result for test " + i,
-                                expectedResults[i][0], result[0], 0.1);
-            Assert.assertEquals("bad y result for test " + i,
-                                expectedResults[i][1], result[1], 0.0001);
+            assertEquals(expectedResults[i][0], result[0], 0.1,
+                         "bad x result for test " + i);
+            assertEquals(expectedResults[i][1], result[1], 0.0001,
+                         "bad y result for test " + i);
         }
     }
 
@@ -70,12 +70,12 @@ public class ExponentialRecoveryOffsetTransformTest {
         tileSpec.deriveBoundingBox(tileSpec.getMeshCellSize(), true);
         final TileBounds bounds = tileSpec.toTileBounds();
 
-        Assert.assertEquals("invalid bounds width after transform",
-                            tileSpec.getWidth(), bounds.getWidth(), 0.1);
+        assertEquals(tileSpec.getWidth(), bounds.getWidth(), 0.1,
+                     "invalid bounds width after transform");
 
         final double expectedHeight = tileSpec.getHeight() - 49;
-        Assert.assertEquals("invalid bounds height after transform",
-                            expectedHeight, bounds.getHeight(), 0.1);
+        assertEquals(expectedHeight, bounds.getHeight(), 0.1,
+                     "invalid bounds height after transform");
     }
 
 }

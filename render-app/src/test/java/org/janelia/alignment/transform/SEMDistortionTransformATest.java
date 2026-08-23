@@ -4,9 +4,9 @@ import java.util.Collections;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link ExponentialRecoveryOffsetTransform} class.
@@ -25,7 +25,7 @@ public class SEMDistortionTransformATest {
 
         loadedTransform.init(dataString);
 
-        Assert.assertEquals("data strings do not match", dataString, loadedTransform.toDataString());
+        assertEquals(dataString, loadedTransform.toDataString(), "data strings do not match");
 
         final TileSpec tileSpec = new TileSpec();
         tileSpec.setWidth(100.0);

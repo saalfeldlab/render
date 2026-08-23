@@ -3,8 +3,10 @@ package org.janelia.render.client.zspacing;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests the {@link ThicknessCorrectionData} class.
@@ -73,24 +75,24 @@ public class ThicknessCorrectionDataTest {
         validateInterpolator(context, data, 4120, 4113, 0.45, 4114);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testGetInterpolatorTooSmall() {
         final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
-        data.getInterpolator(4052);
+        assertThrows(IllegalArgumentException.class, () -> data.getInterpolator(4052));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testGetInterpolatorTooBig() {
         final ThicknessCorrectionData data = buildData(smallCorrectionZCoords);
-        data.getInterpolator(4059);
+        assertThrows(IllegalArgumentException.class, () -> data.getInterpolator(4059));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testUnorderedData() {
         final String unorderedZCoords = "4055 4054.926248674371\n" +
                                         "4056 4055.890848802147\n" +
                                         "4053 4053.8086632669383";
-        buildData(unorderedZCoords);
+        assertThrows(IllegalArgumentException.class, () -> buildData(unorderedZCoords));
     }
 
     private ThicknessCorrectionData buildData(final String zCoordsText) {
@@ -107,11 +109,11 @@ public class ThicknessCorrectionDataTest {
 
         final ThicknessCorrectionData.LayerInterpolator interpolator = data.getInterpolator(renderZ);
 
-        Assert.assertEquals(context + ": incorrect priorStackZ for renderZ " + renderZ,
-                            expectedPriorZ, interpolator.getPriorStackZ());
-        Assert.assertEquals(context + ": incorrect priorWeight for renderZ " + renderZ,
-                            expectedPriorWeight, interpolator.getPriorWeight(), 0.01);
-        Assert.assertEquals(context + ": incorrect nextStackZ for renderZ " + renderZ,
-                            expectedNextZ, interpolator.getNextStackZ());
+        assertEquals(expectedPriorZ, interpolator.getPriorStackZ(),
+                     context + ": incorrect priorStackZ for renderZ " + renderZ);
+        assertEquals(expectedPriorWeight, interpolator.getPriorWeight(), 0.01,
+                     context + ": incorrect priorWeight for renderZ " + renderZ);
+        assertEquals(expectedNextZ, interpolator.getNextStackZ(),
+                     context + ": incorrect nextStackZ for renderZ " + renderZ);
     }
 }

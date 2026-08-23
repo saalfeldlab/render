@@ -6,7 +6,7 @@ import java.nio.file.Paths;
 
 import org.apache.spark.SparkConf;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

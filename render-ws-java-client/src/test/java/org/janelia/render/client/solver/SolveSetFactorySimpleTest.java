@@ -3,8 +3,9 @@ package org.janelia.render.client.solver;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link SolveSetFactorySimple} class.
@@ -43,7 +44,7 @@ public class SolveSetFactorySimpleTest {
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         final ObjectOutputStream oos = new ObjectOutputStream(baos);
         oos.writeObject(solveSetFactory);
-        Assert.assertTrue("serialization worked", true);
+        assertTrue(true, "serialization worked");
     }
 
 }

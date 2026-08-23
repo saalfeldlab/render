@@ -5,10 +5,13 @@ import java.util.List;
 import org.janelia.alignment.match.parameters.FeatureStorageParameters;
 import org.janelia.alignment.match.parameters.MatchStageParameters;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link StageMatchingResources} class.
@@ -25,8 +28,8 @@ public class StageMatchingResourcesTest {
 
         final List<MatchStageParameters> stageParametersList = MatchStageParameters.fromJsonArrayFile(dataFile);
 
-        Assert.assertEquals("invalid number of stage parameters loaded",
-                            5, stageParametersList.size());
+        assertEquals(5, stageParametersList.size(),
+                     "invalid number of stage parameters loaded");
 
         for (final MatchStageParameters stageParameters : stageParametersList) {
            LOG.debug("testBuildList: loaded {}", stageParameters.toSlug());
@@ -38,15 +41,15 @@ public class StageMatchingResourcesTest {
                                                  ImageProcessorCache.DISABLED_CACHE,
                                                  stageParametersList);
 
-        Assert.assertEquals("invalid size", 5, stageResourcesList.size());
+        assertEquals(5, stageResourcesList.size(), "invalid size");
 
         final StageMatchingResources stage3 = stageResourcesList.get(3);
-        Assert.assertTrue("stage 3 feature template should match stage 2",
-                          stage3.isSiftUrlTemplateMatchesPriorStageTemplate());
+        assertTrue(stage3.isSiftUrlTemplateMatchesPriorStageTemplate(),
+                   "stage 3 feature template should match stage 2");
 
         final StageMatchingResources stage4 = stageResourcesList.get(4);
-        Assert.assertFalse("stage 4 feature template should NOT match stage 3",
-                           stage4.isSiftUrlTemplateMatchesPriorStageTemplate());
+        assertFalse(stage4.isSiftUrlTemplateMatchesPriorStageTemplate(),
+                    "stage 4 feature template should NOT match stage 3");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(StageMatchingResourcesTest.class);

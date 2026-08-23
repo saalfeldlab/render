@@ -29,10 +29,14 @@ import org.janelia.saalfeldlab.n5.N5FSReader;
 import org.janelia.saalfeldlab.n5.N5FSWriter;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link N5Client} class.
@@ -45,7 +49,7 @@ public class N5ClientTest {
     private StackMetaData stackMetaData;
     private File n5PathDirectory;
 
-    @Before
+    @BeforeEach
     public void setup() {
         final StackVersion stackVersion = new StackVersion(new Date(),
                                                            null,
@@ -64,7 +68,7 @@ public class N5ClientTest {
         n5PathDirectory = new File(n5Path);
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         if (n5PathDirectory.exists()) {
             FileUtil.deleteRecursive(n5PathDirectory);
@@ -78,9 +82,9 @@ public class N5ClientTest {
 
         p.downsampleFactorsString = "2,2,2";
         final int[] downSampleFactors = p.getDownsampleFactors();
-        Assert.assertNotNull("null downSampleFactors returned", downSampleFactors);
-        Assert.assertEquals("wrong number of downSampleFactors returned",
-                            3, downSampleFactors.length);
+        assertNotNull(downSampleFactors, "null downSampleFactors returned");
+        assertEquals(3, downSampleFactors.length,
+                     "wrong number of downSampleFactors returned");
     }
 
     @Test
@@ -88,7 +92,7 @@ public class N5ClientTest {
         final N5Client.Parameters p = new N5Client.Parameters();
         final Bounds stackBounds = new Bounds(222.0,333.0,1.0,444.0,555.0,6.0);
         Bounds boundsForRun = p.getBoundsForRun(stackBounds, null);
-        Assert.assertEquals("null parameters should simply return stack bounds", stackBounds, boundsForRun);
+        assertEquals(stackBounds, boundsForRun, "null parameters should simply return stack bounds");
 
         final ThicknessCorrectionData thicknessCorrectionData = new ThicknessCorrectionData(Arrays.asList(
                 "1 1.00001", "2 2.45", "3 3", "4 4", "5 4.85", "6 6.00004"
@@ -101,8 +105,8 @@ public class N5ClientTest {
                                                           stackBounds.getMaxX(),
                                                           stackBounds.getMaxY(),
                                                           6.0);
-        Assert.assertEquals("incorrect thickness data bounds for normal data",
-                            expectedThicknessBounds, boundsForRun);
+        assertEquals(expectedThicknessBounds, boundsForRun,
+                     "incorrect thickness data bounds for normal data");
     }
 
     @Test
@@ -134,13 +138,13 @@ public class N5ClientTest {
         N5Client.setupFullScaleExportN5(p, datasetName, stackMetaData, dimensions, blockSize, DataType.UINT8);
 
         try (final N5Reader n5Reader = new N5FSReader(n5Path.toString())) {
-            Assert.assertTrue("dataset " + datasetName + " is missing", n5Reader.datasetExists(datasetName));
+            assertTrue(n5Reader.datasetExists(datasetName), "dataset " + datasetName + " is missing");
 
             final String exportAttributesDatasetName = datasetName.substring(0, datasetName.length() - 3);
             final Object renderExport = n5Reader.getAttribute(exportAttributesDatasetName,
                                                               "renderExport",
                                                               Map.class);
-            Assert.assertNotNull("renderExport missing from " + exportAttributesDatasetName, renderExport);
+            assertNotNull(renderExport, "renderExport missing from " + exportAttributesDatasetName);
 
             final String formattedAttributes = JsonUtils.MAPPER.writeValueAsString(renderExport);
             System.out.println(formattedAttributes);
@@ -165,16 +169,16 @@ public class N5ClientTest {
             n5Writer.createDataset(datasetName, datasetAttributes);
 
             final N5Reader n5Reader = new N5FSReader(n5Path);
-            Assert.assertTrue("dataset " + datasetName + " is missing", n5Reader.datasetExists(datasetName));
+            assertTrue(n5Reader.datasetExists(datasetName), "dataset " + datasetName + " is missing");
 
             final Map<String, Object> originalDatasetAttributes = datasetAttributes.asMap();
             final Map<String, Object> writtenDatasetAttributes = n5Reader.getDatasetAttributes(datasetName).asMap();
-            Assert.assertEquals("incorrect number of dataset attributes were written",
-                                originalDatasetAttributes.size(), writtenDatasetAttributes.size());
+            assertEquals(originalDatasetAttributes.size(), writtenDatasetAttributes.size(),
+                         "incorrect number of dataset attributes were written");
 
             for (final String key : originalDatasetAttributes.keySet()) {
-                Assert.assertTrue(key + " attribute not written",
-                                  writtenDatasetAttributes.containsKey(key));
+                assertTrue(writtenDatasetAttributes.containsKey(key),
+                           key + " attribute not written");
             }
 
             // need to create downsample scale level data set directories and attributes.json files
@@ -206,9 +210,9 @@ public class N5ClientTest {
                                                                                            "axes",
                                                                                            List.class);
 
-            Assert.assertNotNull("axes attributes not written to dataset " + testStackDatasetName, axes);
-            Assert.assertArrayEquals("invalid axes attributes written",
-                                     NeuroglancerAttributes.RENDER_AXES.toArray(), axes.toArray());
+            assertNotNull(axes, "axes attributes not written to dataset " + testStackDatasetName);
+            assertArrayEquals(NeuroglancerAttributes.RENDER_AXES.toArray(), axes.toArray(),
+                              "invalid axes attributes written");
 
             final String renderDatasetName = fullScaleDatasetPath.getParent().getParent().toString();
 
@@ -216,9 +220,9 @@ public class N5ClientTest {
                                                        NeuroglancerAttributes.SUPPORTED_KEY,
                                                        Boolean.class);
 
-            Assert.assertEquals(NeuroglancerAttributes.SUPPORTED_KEY +
-                                " attributes not written to dataset " + renderDatasetName,
-                                Boolean.TRUE, flag);
+            assertEquals(Boolean.TRUE, flag,
+                         NeuroglancerAttributes.SUPPORTED_KEY +
+                         " attributes not written to dataset " + renderDatasetName);
 
             validateTransformElement("level 0",
                                      n5Reader,
@@ -246,21 +250,21 @@ public class N5ClientTest {
         final Map<String, Object> transformLevel0 = n5Reader.getAttribute(levelDatasetName,
                                                                           "transform",
                                                                           Map.class);
-        Assert.assertNotNull(context + " transform element not found ", transformLevel0);
+        assertNotNull(transformLevel0, context + " transform element not found ");
 
-        Assert.assertTrue(context + " transform is missing axes element",
-                          transformLevel0.containsKey("axes"));
+        assertTrue(transformLevel0.containsKey("axes"),
+                   context + " transform is missing axes element");
 
         final List<String> levelAxes = (List<String>) transformLevel0.get("axes");
-        Assert.assertEquals(context + " axes element differs from parent",
-                            parentAxes, levelAxes);
+        assertEquals(parentAxes, levelAxes,
+                     context + " axes element differs from parent");
 
-        Assert.assertTrue(context + " transform is missing scale element",
-                          transformLevel0.containsKey("scale"));
+        assertTrue(transformLevel0.containsKey("scale"),
+                   context + " transform is missing scale element");
 
         final List<Double> scaleList = (List<Double>) transformLevel0.get("scale");
-        Assert.assertEquals(context + " scale element differs from parent",
-                            expectedScaleList, scaleList);
+        assertEquals(expectedScaleList, scaleList,
+                     context + " scale element differs from parent");
     }
 
     public static void main(final String[] args) {

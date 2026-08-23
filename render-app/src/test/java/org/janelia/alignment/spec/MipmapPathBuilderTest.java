@@ -5,8 +5,10 @@ import java.util.Map;
 import org.janelia.alignment.ImageAndMask;
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.stack.MipmapPathBuilder;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link MipmapPathBuilder} class.
@@ -25,10 +27,10 @@ public class MipmapPathBuilderTest {
                                       null);
         final String json = mipmapPathBuilder.toJson();
 
-        Assert.assertNotNull("json generation returned null string", json);
+        assertNotNull(json, "json generation returned null string");
 
         final MipmapPathBuilder parsedBuilder = MipmapPathBuilder.fromJson(json);
-        Assert.assertNotNull("null builder returned from json parse", parsedBuilder);
+        assertNotNull(parsedBuilder, "null builder returned from json parse");
     }
 
     @Test
@@ -51,12 +53,12 @@ public class MipmapPathBuilderTest {
 
         String expectedImageUrl = "file:/mipmaps/" + mipmapLevel +
                                   "/data/Merlin-6257_21-05-20_125416_0-0-0_InLens.png.tif";
-        Assert.assertEquals("invalid derived imageUrl for " + sourceEntry.getValue(),
-                            expectedImageUrl, derivedImageAndMask.getImageUrl());
+        assertEquals(expectedImageUrl, derivedImageAndMask.getImageUrl(),
+                     "invalid derived imageUrl for " + sourceEntry.getValue());
 
         String expectedMaskUrl = "file:/mipmaps/" + mipmapLevel + "/masks/test-mask.png.tif";
-        Assert.assertEquals("invalid derived maskUrl for " + sourceEntry.getValue(),
-                            expectedMaskUrl, derivedImageAndMask.getMaskUrl());
+        assertEquals(expectedMaskUrl, derivedImageAndMask.getMaskUrl(),
+                     "invalid derived maskUrl for " + sourceEntry.getValue());
 
 
         mipmapPathBuilder = new MipmapPathBuilder("/mipmaps",
@@ -73,15 +75,15 @@ public class MipmapPathBuilderTest {
         derivedImageAndMask = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, sourceEntry, false).getValue();
 
         expectedImageUrl = "file:///Merlin-6257_21-05-20_125416.uint8.h5?dataSet=0-0-0.mipmap." + mipmapLevel + "&z=0";
-        Assert.assertEquals("invalid derived imageUrl for " + sourceEntry.getValue(),
-                            expectedImageUrl, derivedImageAndMask.getImageUrl());
+        assertEquals(expectedImageUrl, derivedImageAndMask.getImageUrl(),
+                     "invalid derived imageUrl for " + sourceEntry.getValue());
 
-        Assert.assertEquals("invalid derived imageLoaderType for " + sourceEntry.getValue(),
-                            ImageLoader.LoaderType.H5_SLICE, derivedImageAndMask.getImageLoaderType());
+        assertEquals(ImageLoader.LoaderType.H5_SLICE, derivedImageAndMask.getImageLoaderType(),
+                     "invalid derived imageLoaderType for " + sourceEntry.getValue());
 
         expectedMaskUrl = "file:/mipmaps/" + mipmapLevel + "/masks/test-another-mask.png.tif";
-        Assert.assertEquals("invalid derived maskUrl for " + sourceEntry.getValue(),
-                            expectedMaskUrl, derivedImageAndMask.getMaskUrl());
+        assertEquals(expectedMaskUrl, derivedImageAndMask.getMaskUrl(),
+                     "invalid derived maskUrl for " + sourceEntry.getValue());
 
         final String baseMaskUrl = "mask://outside-box?minX=10&minY=0&maxX=56&maxY=23&width=56&height=23";
         sourceEntry = buildMipmapEntry(
@@ -93,8 +95,8 @@ public class MipmapPathBuilderTest {
         derivedImageAndMask = mipmapPathBuilder.deriveImageAndMask(mipmapLevel, sourceEntry, false).getValue();
 
         expectedMaskUrl = baseMaskUrl + "&level=" + mipmapLevel;
-        Assert.assertEquals("invalid derived maskUrl for " + sourceEntry.getValue(),
-                            expectedMaskUrl, derivedImageAndMask.getMaskUrl());
+        assertEquals(expectedMaskUrl, derivedImageAndMask.getMaskUrl(),
+                     "invalid derived maskUrl for " + sourceEntry.getValue());
     }
 
     private Map.Entry<Integer, ImageAndMask> buildMipmapEntry(final String imageUrl,

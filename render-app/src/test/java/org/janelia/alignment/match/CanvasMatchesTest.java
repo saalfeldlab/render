@@ -1,7 +1,9 @@
 package org.janelia.alignment.match;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link CanvasMatches} class.
@@ -35,7 +37,7 @@ public class CanvasMatchesTest {
         CanvasMatches canvasMatches = CanvasMatches.fromJson(smallOffsetMatchesJson);
         boolean isOffset = canvasMatches.isPOffsetFromQ(minDistanceForOffset);
 
-        Assert.assertFalse("returned false for matches with small offset", isOffset);
+        assertFalse(isOffset, "returned false for matches with small offset");
 
         final String normalOffsetMatchesJson =
                 "{\n" +
@@ -58,7 +60,7 @@ public class CanvasMatchesTest {
         canvasMatches = CanvasMatches.fromJson(normalOffsetMatchesJson);
         isOffset = canvasMatches.isPOffsetFromQ(minDistanceForOffset);
 
-        Assert.assertTrue("returned true for matches with normal offset", isOffset);
+        assertTrue(isOffset, "returned true for matches with normal offset");
 
         final String averageOffset1p5MatchesJson =
                 "{\n" +
@@ -82,7 +84,8 @@ public class CanvasMatchesTest {
         canvasMatches = CanvasMatches.fromJson(averageOffset1p5MatchesJson);
         isOffset = canvasMatches.isPOffsetFromQ(1.0);
 
-        Assert.assertTrue("returned false for matches with average offset of 1.5 when minDistanceForOffset is 1.0", isOffset);
+        assertTrue(isOffset,
+                   "returned false for matches with average offset of 1.5 when minDistanceForOffset is 1.0");
     }
 
 }

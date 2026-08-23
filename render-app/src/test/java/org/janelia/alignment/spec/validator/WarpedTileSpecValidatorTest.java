@@ -1,10 +1,12 @@
 package org.janelia.alignment.spec.validator;
 
 import org.janelia.alignment.spec.TileSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link WarpedTileSpecValidator} class.
@@ -39,7 +41,7 @@ public class WarpedTileSpecValidatorTest {
                 "    \"meshCellSize\" : 64.0\n" +
                 "  }";
 
-        Assert.assertTrue("good tile spec should not have failed validation", isTileSpecValid(goodTileJson));
+        assertTrue(isTileSpecValid(goodTileJson), "good tile spec should not have failed validation");
 
         final String badTileJson =
                 "{\n" +
@@ -64,7 +66,7 @@ public class WarpedTileSpecValidatorTest {
                 "    \"meshCellSize\" : 64.0\n" +
                 "  }";
 
-        Assert.assertFalse("bad tile spec should have failed validation", isTileSpecValid(badTileJson));
+        assertFalse(isTileSpecValid(badTileJson), "bad tile spec should have failed validation");
     }
 
     private boolean isTileSpecValid(final String tileSpecJson) {

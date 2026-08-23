@@ -28,8 +28,10 @@ import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link TileSpecLayout} class.
@@ -48,23 +50,23 @@ public class TileSpecLayoutTest {
 
         final String json = tileSpec.toJson();
 
-        Assert.assertNotNull("json generation returned null string", json);
+        assertNotNull(json, "json generation returned null string");
 
         final TileSpec parsedSpec = TileSpec.fromJson(json);
 
-        Assert.assertNotNull("json parse returned null spec", parsedSpec);
-        Assert.assertEquals("invalid tileId parsed", EXPECTED_TILE_ID, parsedSpec.getTileId());
+        assertNotNull(parsedSpec, "json parse returned null spec");
+        assertEquals(EXPECTED_TILE_ID, parsedSpec.getTileId(), "invalid tileId parsed");
 
         final LayoutData parsedLayoutData = parsedSpec.getLayout();
-        Assert.assertNotNull("json parse returned null layout data", parsedLayoutData);
-        Assert.assertEquals("bad sectionId value", layoutData.getSectionId(), parsedLayoutData.getSectionId());
-        Assert.assertEquals("bad array value", layoutData.getTemca(), parsedLayoutData.getTemca());
-        Assert.assertEquals("bad camera value", layoutData.getCamera(), parsedLayoutData.getCamera());
-        Assert.assertEquals("bad row value", layoutData.getImageRow(), parsedLayoutData.getImageRow());
-        Assert.assertEquals("bad col value", layoutData.getImageCol(), parsedLayoutData.getImageCol());
-        Assert.assertEquals("bad stageX value", layoutData.getStageX(), parsedLayoutData.getStageX());
-        Assert.assertEquals("bad stageY value", layoutData.getStageY(), parsedLayoutData.getStageY());
-        Assert.assertEquals("bad rotation value", layoutData.getRotation(), parsedLayoutData.getRotation());
+        assertNotNull(parsedLayoutData, "json parse returned null layout data");
+        assertEquals(layoutData.getSectionId(), parsedLayoutData.getSectionId(), "bad sectionId value");
+        assertEquals(layoutData.getTemca(), parsedLayoutData.getTemca(), "bad array value");
+        assertEquals(layoutData.getCamera(), parsedLayoutData.getCamera(), "bad camera value");
+        assertEquals(layoutData.getImageRow(), parsedLayoutData.getImageRow(), "bad row value");
+        assertEquals(layoutData.getImageCol(), parsedLayoutData.getImageCol(), "bad col value");
+        assertEquals(layoutData.getStageX(), parsedLayoutData.getStageX(), "bad stageX value");
+        assertEquals(layoutData.getStageY(), parsedLayoutData.getStageY(), "bad stageY value");
+        assertEquals(layoutData.getRotation(), parsedLayoutData.getRotation(), "bad rotation value");
 
         parsedSpec.setBoundingBox(new Rectangle(11, 12, 21, 22), parsedSpec.getMeshCellSize());
         final ImageAndMask imageAndMask = new ImageAndMask("src/test/resources/stitch-test/coll0075_row0021_cam1.png", null);
@@ -82,7 +84,7 @@ public class TileSpecLayoutTest {
                 layoutData.getImageCol() + '\t' + layoutData.getImageRow() + '\t' + layoutData.getCamera() +
                 "\timage.png\t" + layoutData.getTemca() + '\t' + layoutData.getRotation() + '\t' + tileSpec.getZ() +
                 "\thttp://foo/tile/" + tileSpec.getTileId() + "/render-parameters\n";
-        Assert.assertEquals("bad layout file format generated", expectedLayoutFormat, hackedFileFormat);
+        assertEquals(expectedLayoutFormat, hackedFileFormat, "bad layout file format generated");
 
         // test tile spec with affine data
         final List<TransformSpec> list = new ArrayList<>();
@@ -98,7 +100,7 @@ public class TileSpecLayoutTest {
                 "\timage.png\t" + layoutData.getTemca() + '\t' + layoutData.getRotation() + '\t' + tileSpec.getZ() +
                 "\thttp://foo/tile/" + tileSpec.getTileId() + "/render-parameters\n";
 
-        Assert.assertEquals("bad layout file format generated for affine", expectedLayoutFormat, hackedFileFormat);
+        assertEquals(expectedLayoutFormat, hackedFileFormat, "bad layout file format generated for affine");
 
         layoutFileFormat = TileSpecLayout.Format.SCHEFFER.formatTileSpec(parsedSpec, stackRequestUri);
         hackedFileFormat = layoutFileFormat.replaceFirst("'[^']+coll0075_row0021_cam1.png",
@@ -107,8 +109,8 @@ public class TileSpecLayoutTest {
                 "TRANSFORM 'image.png' 1.0 2.0 3.0 4.0 5.0 6.0 " +
                 tileSpec.getWidth() + ' ' + tileSpec.getHeight() + '\n';
 
-        Assert.assertEquals("bad SCHEFFER layout file format generated for affine",
-                            expectedLayoutFormat, hackedFileFormat);
+        assertEquals(expectedLayoutFormat, hackedFileFormat,
+                     "bad SCHEFFER layout file format generated for affine");
     }
 
     private static final String EXPECTED_TILE_ID = "test-tile-id";

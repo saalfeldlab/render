@@ -6,10 +6,11 @@ import org.bson.Document;
 import org.janelia.alignment.spec.LayoutData;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests {@link MatchDao} methods that don't make database calls and therefore don't need an embedded mongodb instance.
@@ -35,7 +36,7 @@ public class MatchDaoWithoutEmbeddedMongoTest {
 
         final List<Document> queryList = MatchDao.buildMatchQueryListForTiles(tileSpecs,
                                                                               4);
-        Assert.assertEquals("invalid number of queries", 4, queryList.size());
+        assertEquals(4, queryList.size(), "invalid number of queries");
 
         LOG.info("testBuildMatchQueryListForTiles: queryList is {}", queryList);
     }

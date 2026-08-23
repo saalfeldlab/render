@@ -25,12 +25,13 @@ import java.util.List;
 import mpicbg.imagefeatures.Feature;
 
 import org.janelia.alignment.util.FileUtil;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link CanvasFeatureList} class.
@@ -41,7 +42,7 @@ public class CanvasFeatureListTest {
 
     private File rootFeatureListDirectory;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         final File testDirectory = new File("src/test").getCanonicalFile();
         final SimpleDateFormat sdf = new SimpleDateFormat("'test_'yyyyMMddhhmmssSSS");
@@ -53,7 +54,7 @@ public class CanvasFeatureListTest {
         }
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         FileUtil.deleteRecursive(rootFeatureListDirectory);
     }
@@ -78,10 +79,10 @@ public class CanvasFeatureListTest {
         final CanvasFeatureList storedCanvasFeatureList =
                 CanvasFeatureList.readFromStorage(rootFeatureListDirectory, canvasId);
 
-        Assert.assertEquals("invalid stored canvasId",
-                            canvasId, storedCanvasFeatureList.getCanvasId());
-        Assert.assertEquals("invalid number of stored features",
-                            featureList.size(), storedCanvasFeatureList.getFeatureList().size());
+        assertEquals(canvasId, storedCanvasFeatureList.getCanvasId(),
+                     "invalid stored canvasId");
+        assertEquals(featureList.size(), storedCanvasFeatureList.getFeatureList().size(),
+                     "invalid number of stored features");
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CanvasFeatureListTest.class);

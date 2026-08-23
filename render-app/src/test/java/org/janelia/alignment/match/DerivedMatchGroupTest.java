@@ -19,9 +19,9 @@ package org.janelia.alignment.match;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import junit.framework.Assert;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link DerivedMatchGroup} class.
@@ -48,8 +48,8 @@ public class DerivedMatchGroupTest {
 
         final List<CanvasMatches> derivedPairs = derivedMatchGroup.getDerivedPairs();
 
-        Assert.assertEquals("invalid number of derived match pairs",
-                            10, derivedPairs.size());
+        assertEquals(10, derivedPairs.size(),
+                     "invalid number of derived match pairs");
 
     }
 

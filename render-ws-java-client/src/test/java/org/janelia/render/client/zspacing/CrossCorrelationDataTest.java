@@ -7,14 +7,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import bdv.util.BdvFunctions;
 import bdv.util.BdvStackSource;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.converter.Converters;
 import net.imglib2.type.numeric.real.DoubleType;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link CrossCorrelationData} class.
@@ -73,12 +74,12 @@ public class CrossCorrelationDataTest {
 
         final CrossCorrelationData mergedDataSet = CrossCorrelationData.merge(unsortedBatches);
 
-        Assert.assertEquals("bad merged comparison range",
-                            comparisonRange, mergedDataSet.getComparisonRange());
-        Assert.assertEquals("bad merged first layer offset",
-                            layerCount, mergedDataSet.getFirstLayerOffset());
-        Assert.assertEquals("bad merged layer count",
-                            (layerCount * batchCount), mergedDataSet.getLayerCount());
+        assertEquals(comparisonRange, mergedDataSet.getComparisonRange(),
+                     "bad merged comparison range");
+        assertEquals(layerCount, mergedDataSet.getFirstLayerOffset(),
+                     "bad merged first layer offset");
+        assertEquals((layerCount * batchCount), mergedDataSet.getLayerCount(),
+                     "bad merged layer count");
         
         final RandomAccessibleInterval<DoubleType> mergedMatrix = mergedDataSet.toMatrix();
 
@@ -97,8 +98,8 @@ public class CrossCorrelationDataTest {
                                 final int y,
                                 final RandomAccessibleInterval<DoubleType> matrix,
                                 final double expectedCorrelationValue) {
-        Assert.assertEquals("invalid correlation value for (" + x + "," + y + ")",
-                            expectedCorrelationValue, matrix.getAt(x, y).get(), 0.01);
+        assertEquals(expectedCorrelationValue, matrix.getAt(x, y).get(), 0.01,
+                     "invalid correlation value for (" + x + "," + y + ")");
     }
 
     @SuppressWarnings("unused")

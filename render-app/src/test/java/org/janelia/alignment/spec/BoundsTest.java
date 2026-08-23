@@ -1,7 +1,9 @@
 package org.janelia.alignment.spec;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link Bounds} class.
@@ -21,7 +23,7 @@ public class BoundsTest {
                 new Bounds(null, null, 2.0, null, null, 3.0),
         };
         for (final Bounds b : contained) {
-            Assert.assertTrue(a + " should contain " + b, a.containsInt(b));
+            assertTrue(a.containsInt(b), a + " should contain " + b);
         }
 
         final Bounds[] outside = {
@@ -30,7 +32,7 @@ public class BoundsTest {
                 new Bounds(null, null, -2.0, null, null, 3.0),
         };
         for (final Bounds b : outside) {
-            Assert.assertFalse(a + " should NOT contain " + b, a.containsInt(b));
+            assertFalse(a.containsInt(b), a + " should NOT contain " + b);
         }
     }
 

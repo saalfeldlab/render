@@ -16,12 +16,15 @@ import java.util.Date;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link ArgbRenderer} class.
@@ -33,7 +36,7 @@ public class ArgbRendererTest {
     private String modulePath;
     private File outputFile;
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         final SimpleDateFormat TIMESTAMP = new SimpleDateFormat("yyyyMMddHHmmssSSS");
         final String timestamp = TIMESTAMP.format(new Date());
@@ -41,7 +44,7 @@ public class ArgbRendererTest {
         modulePath = outputFile.getParentFile().getCanonicalPath();
     }
 
-    @After
+    @AfterEach
     public void tearDown() {
         deleteTestFile(outputFile);
     }
@@ -69,7 +72,7 @@ public class ArgbRendererTest {
 
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
-        Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+        assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
         final File expectedFile = new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
@@ -77,8 +80,8 @@ public class ArgbRendererTest {
         final String expectedDigestString = getDigestString(expectedFile);
         final String actualDigestString = getDigestString(outputFile);
 
-        Assert.assertEquals("stitched file MD5 hash differs from expected result",
-                            expectedDigestString, actualDigestString);
+        assertEquals(expectedDigestString, actualDigestString,
+                     "stitched file MD5 hash differs from expected result");
     }
 
 //    @Test
@@ -119,7 +122,7 @@ public class ArgbRendererTest {
 
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
-        Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+        assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
         final File expectedFile = new File(modulePath + "/src/test/resources/stitch-test/expected_stitched_4_tiles_with_mixed_masks.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
@@ -127,8 +130,8 @@ public class ArgbRendererTest {
         final String expectedDigestString = getDigestString(expectedFile);
         final String actualDigestString = getDigestString(outputFile);
 
-        Assert.assertEquals("stitched file MD5 hash differs from expected result",
-                            expectedDigestString, actualDigestString);
+        assertEquals(expectedDigestString, actualDigestString,
+                     "stitched file MD5 hash differs from expected result");
     }
 
     @Test
@@ -147,7 +150,7 @@ public class ArgbRendererTest {
 
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
-        Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+        assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
         File expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_1_0.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
@@ -155,8 +158,8 @@ public class ArgbRendererTest {
         String expectedDigestString = getDigestString(expectedFile);
         String actualDigestString = getDigestString(outputFile);
 
-        Assert.assertEquals("for DAPI, stitched file MD5 hash differs from expected result",
-                            expectedDigestString, actualDigestString);
+        assertEquals(expectedDigestString, actualDigestString,
+                     "for DAPI, stitched file MD5 hash differs from expected result");
 
         args = new String[] {
                 "--tile_spec_url", "src/test/resources/multichannel-test/test_2_channels.json",
@@ -171,7 +174,7 @@ public class ArgbRendererTest {
 
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
-        Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+        assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
         expectedFile = new File(modulePath + "/src/test/resources/multichannel-test/expected_dapi_0_9_td_0_1.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
@@ -179,8 +182,8 @@ public class ArgbRendererTest {
         expectedDigestString = getDigestString(expectedFile);
         actualDigestString = getDigestString(outputFile);
 
-        Assert.assertEquals("for DAPI__0.9__TdTomato_0.1, stitched file MD5 hash differs from expected result",
-                            expectedDigestString, actualDigestString);
+        assertEquals(expectedDigestString, actualDigestString,
+                     "for DAPI__0.9__TdTomato_0.1, stitched file MD5 hash differs from expected result");
 
     }
 
@@ -200,13 +203,13 @@ public class ArgbRendererTest {
 
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
-        Assert.assertTrue("stitched file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+        assertTrue(outputFile.exists(), "stitched file " + outputFile.getAbsolutePath() + " not created");
 
         final String expectedDigestString = getDigestString(expectedFile);
         final String actualDigestString = getDigestString(outputFile);
 
-        Assert.assertEquals("stitched file MD5 hash differs from expected result",
-                            expectedDigestString, actualDigestString);
+        assertEquals(expectedDigestString, actualDigestString,
+                     "stitched file MD5 hash differs from expected result");
     }
 
     @Test
@@ -222,7 +225,7 @@ public class ArgbRendererTest {
 
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
-        Assert.assertTrue("composite file " + outputFile.getAbsolutePath() + " not created", outputFile.exists());
+        assertTrue(outputFile.exists(), "composite file " + outputFile.getAbsolutePath() + " not created");
 
         final File expectedFile = new File(modulePath + "/src/test/resources/composite-test/expected_composite.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
@@ -230,8 +233,8 @@ public class ArgbRendererTest {
         final String expectedDigestString = getDigestString(expectedFile);
         final String actualDigestString = getDigestString(outputFile);
 
-        Assert.assertEquals("stitched file MD5 hash differs from expected result",
-                            expectedDigestString, actualDigestString);
+        assertEquals(expectedDigestString, actualDigestString,
+                     "stitched file MD5 hash differs from expected result");
     }
 
     @Test
@@ -249,8 +252,8 @@ public class ArgbRendererTest {
 
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
-        Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
-                          outputFile.exists());
+        assertTrue(outputFile.exists(),
+                   "rendered file " + outputFile.getAbsolutePath() + " not created");
 
         final File expectedFile = new File(modulePath + "/src/test/resources/mipmap-test/mask_mipmap_expected_result.jpg");
 //        updateExpectedFileSinceYouAreSureRecentChangeIsCorrect(expectedFile, outputFile);
@@ -258,8 +261,8 @@ public class ArgbRendererTest {
         final String expectedDigestString = getDigestString(expectedFile);
         final String actualDigestString = getDigestString(outputFile);
 
-        Assert.assertEquals("rendered file MD5 hash differs from expected result",
-                            expectedDigestString, actualDigestString);
+        assertEquals(expectedDigestString, actualDigestString,
+                     "rendered file MD5 hash differs from expected result");
     }
 
     @Test
@@ -277,10 +280,10 @@ public class ArgbRendererTest {
 
         try {
             ArgbRenderer.renderUsingCommandLineArguments(args);
-            Assert.fail("attempt to render upscale image should throw exception");
+            fail("attempt to render upscale image should throw exception");
         } catch (final IllegalArgumentException iae) {
-            Assert.assertTrue("invalid exception message",
-                              iae.getMessage().startsWith("The highest resolution mipmap"));
+            assertTrue(iae.getMessage().startsWith("The highest resolution mipmap"),
+                       "invalid exception message");
         }
 
     }
@@ -413,8 +416,8 @@ public class ArgbRendererTest {
 
         ArgbRenderer.renderUsingCommandLineArguments(args);
 
-        Assert.assertTrue("rendered file " + outputFile.getAbsolutePath() + " not created",
-                          outputFile.exists());
+        assertTrue(outputFile.exists(),
+                   "rendered file " + outputFile.getAbsolutePath() + " not created");
 
     }
 
@@ -440,8 +443,8 @@ public class ArgbRendererTest {
 
         final int width = expectedRenderedImage.getWidth();
         final int height = expectedRenderedImage.getHeight();
-        Assert.assertEquals("widths do not match", width, actualRenderedImage.getWidth());
-        Assert.assertEquals("height do not match", height, actualRenderedImage.getHeight());
+        assertEquals(width, actualRenderedImage.getWidth(), "widths do not match");
+        assertEquals(height, actualRenderedImage.getHeight(), "height do not match");
 
         boolean hasAtLeastOneNonZeroPixel = false;
         for (int x = 0; x < width; x++) {
@@ -449,7 +452,7 @@ public class ArgbRendererTest {
                 final int expectedPixel = expectedRenderedImage.getRGB(x, y);
                 final int actualPixel = actualRenderedImage.getRGB(x, y);
                 if (expectedPixel != actualPixel) {
-                    Assert.assertEquals("pixel at (" + x + ", " + y + ") does not match", expectedPixel, actualPixel);
+                    assertEquals(expectedPixel, actualPixel, "pixel at (" + x + ", " + y + ") does not match");
                 }
                 if (actualPixel != 0) {
                     hasAtLeastOneNonZeroPixel = true;
@@ -457,7 +460,7 @@ public class ArgbRendererTest {
             }
         }
 
-        Assert.assertTrue("image is empty", hasAtLeastOneNonZeroPixel);
+        assertTrue(hasAtLeastOneNonZeroPixel, "image is empty");
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -499,13 +502,13 @@ public class ArgbRendererTest {
 
         ArgbRenderer.render(params, targetImage, imageProcessorCache);
 
-        Assert.assertEquals(context + ": invalid number of items in cache",
-                            expectedCacheSize, imageProcessorCache.size());
+        assertEquals(expectedCacheSize, imageProcessorCache.size(),
+                     context + ": invalid number of items in cache");
 
         final CacheStats stats = imageProcessorCache.getStats();
 
-        Assert.assertEquals(context + ": invalid number of cache hits",
-                            expectedHitCount, stats.hitCount());
+        assertEquals(expectedHitCount, stats.hitCount(),
+                     context + ": invalid number of cache hits");
 
         if (expectedDigestString != null) {
             Utils.saveImage(targetImage,
@@ -516,8 +519,8 @@ public class ArgbRendererTest {
 
             final String actualDigestString = getDigestString(outputFile);
 
-            Assert.assertEquals(context + ": stitched file MD5 hash differs from expected result",
-                                expectedDigestString, actualDigestString);
+            assertEquals(expectedDigestString, actualDigestString,
+                         context + ": stitched file MD5 hash differs from expected result");
         }
     }
 

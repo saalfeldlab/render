@@ -2,8 +2,9 @@ package org.janelia.alignment.spec;
 
 import java.util.List;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link BoundsBatch} class.
@@ -47,18 +48,18 @@ public class BoundsBatchTest {
         final List<BoundsBatch> batchList =
                 BoundsBatch.batchByAdjacentZThenXY(stackBounds, rowCount, columnCount, requestedBatchCount);
 
-        Assert.assertEquals(testContext + ": invalid number of batches", expectedBatchCount, batchList.size());
+        assertEquals(expectedBatchCount, batchList.size(), testContext + ": invalid number of batches");
 
-        Assert.assertEquals(testContext + ": batches with all cells should have same total area",
-                            batchList.get(0).getTotalArea(),
-                            batchList.get(numberOfBatchesWithAllCells-1).getTotalArea(),
-                            0.1);
+        assertEquals(batchList.get(0).getTotalArea(),
+                     batchList.get(numberOfBatchesWithAllCells-1).getTotalArea(),
+                     0.1,
+                     testContext + ": batches with all cells should have same total area");
 
         if (numberOfBatchesWithAllCells < batchList.size()) {
-            Assert.assertEquals(testContext + ": batches with reduced cells should have same total area",
-                                batchList.get(numberOfBatchesWithAllCells).getTotalArea(),
-                                batchList.get(batchList.size() - 1).getTotalArea(),
-                                0.1);
+            assertEquals(batchList.get(numberOfBatchesWithAllCells).getTotalArea(),
+                         batchList.get(batchList.size() - 1).getTotalArea(),
+                         0.1,
+                         testContext + ": batches with reduced cells should have same total area");
         }
 
         if (printDebugInfo) {

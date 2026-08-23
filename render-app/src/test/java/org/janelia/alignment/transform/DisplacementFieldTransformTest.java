@@ -5,12 +5,15 @@ import java.util.Arrays;
 
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.n5.precomputed.PrecomputedTestVolumes;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import mpicbg.trakem2.transform.CoordinateTransform;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link DisplacementFieldTransform} class.
@@ -27,10 +30,9 @@ public class DisplacementFieldTransformTest {
         final DisplacementFieldTransform transform = new DisplacementFieldTransform();
         try {
             transform.init(SAMPLE_URI);
-            Assert.fail("expected init to fail loading a nonexistent field");
+            fail("expected init to fail loading a nonexistent field");
         } catch (final RuntimeException e) {
-            Assert.assertEquals("data string should round-trip even when loading fails",
-                                SAMPLE_URI, transform.toDataString());
+            assertEquals(SAMPLE_URI, transform.toDataString(), "data string should round-trip even when loading fails");
         }
     }
 
@@ -39,15 +41,14 @@ public class DisplacementFieldTransformTest {
         final DisplacementFieldTransform transform = new DisplacementFieldTransform();
         try {
             transform.applyInPlace(new double[] {0.0, 0.0});
-            Assert.fail("expected applyInPlace to fail before the field is loaded");
+            fail("expected applyInPlace to fail before the field is loaded");
         } catch (final IllegalStateException e) {
-            Assert.assertTrue("exception should mention initialization",
-                              e.getMessage().contains("init"));
+            assertTrue(e.getMessage().contains("init"), "exception should mention initialization");
         }
     }
 
-    @Rule
-    public TemporaryFolder tempFolder = new TemporaryFolder();
+    @TempDir
+    Path tempFolder;
 
     /**
      * End-to-end read of a real Neuroglancer-precomputed field through n5-ng-precomputed: guards the
@@ -58,7 +59,7 @@ public class DisplacementFieldTransformTest {
     public void testAppliesPrecomputedField() throws Exception {
 
         // value at (x,y,z) is x+y+10*z for the X component (channel 0) and 100 more for Y (channel 1)
-        final Path fieldDir = tempFolder.newFolder("field").toPath();
+        final Path fieldDir = tempFolder.resolve("field");
         PrecomputedTestVolumes.writeRawVolume(fieldDir,
                                               DataType.FLOAT32,
                                               2,
@@ -83,10 +84,9 @@ public class DisplacementFieldTransformTest {
         final DisplacementFieldTransform malformed = new DisplacementFieldTransform();
         try {
             malformed.init(fieldDir + "?z=1&offset=1.0");
-            Assert.fail("expected init to reject a one-component offset");
+            fail("expected init to reject a one-component offset");
         } catch (final IllegalArgumentException e) {
-            Assert.assertTrue("exception should mention the offset, but was: " + e.getMessage(),
-                              e.getMessage().contains("offset"));
+            assertTrue(e.getMessage().contains("offset"), "exception should mention the offset, but was: " + e.getMessage());
         }
 
         // x and y beyond the field are answered from the mirrored extension rather than failing; just past the last
@@ -97,10 +97,9 @@ public class DisplacementFieldTransformTest {
         final DisplacementFieldTransform transform = new DisplacementFieldTransform();
         try {
             transform.init(fieldDir + "?z=2");
-            Assert.fail("expected init to reject a z index outside the field");
+            fail("expected init to reject a z index outside the field");
         } catch (final IllegalArgumentException e) {
-            Assert.assertTrue("exception should mention the z range, but was: " + e.getMessage(),
-                              e.getMessage().contains("z range"));
+            assertTrue(e.getMessage().contains("z range"), "exception should mention the z range, but was: " + e.getMessage());
         }
     }
 
@@ -118,8 +117,8 @@ public class DisplacementFieldTransformTest {
         // whose placement is under test here (and this steep test field is not invertible anyway)
         final double[] vector = new double[2];
         transform.lookUpVector(location, vector);
-        Assert.assertEquals("wrong x displacement for " + data, expectedDx, vector[0], 0.0001);
-        Assert.assertEquals("wrong y displacement for " + data, expectedDy, vector[1], 0.0001);
+        assertEquals(expectedDx, vector[0], 0.0001, "wrong x displacement for " + data);
+        assertEquals(expectedDy, vector[1], 0.0001, "wrong y displacement for " + data);
     }
 
     /**
@@ -130,7 +129,7 @@ public class DisplacementFieldTransformTest {
     @Test
     public void testInvertsFieldByIteration() throws Exception {
 
-        final Path fieldDir = tempFolder.newFolder("rampField").toPath();
+        final Path fieldDir = tempFolder.resolve("rampField");
         PrecomputedTestVolumes.writeRawVolume(fieldDir,
                                               DataType.FLOAT32,
                                               2,
@@ -144,23 +143,22 @@ public class DisplacementFieldTransformTest {
         transform.init(fieldDir + "?z=0&vectorScale=0.2");
 
         final double[] target = transform.apply(new double[] {24.0, 12.0});
-        Assert.assertEquals("x should solve t = 24 - 0.2 * t", 20.0, target[0], 0.001);
-        Assert.assertEquals("y should solve t = 12 - 0.2 * t", 10.0, target[1], 0.001);
+        assertEquals(20.0, target[0], 0.001, "x should solve t = 24 - 0.2 * t");
+        assertEquals(10.0, target[1], 0.001, "y should solve t = 12 - 0.2 * t");
 
         // the defining property, independent of the analytic solution above
         final double[] vector = new double[2];
         transform.lookUpVector(target, vector);
-        Assert.assertEquals("x residual", 0.0, 24.0 + vector[0] - target[0], 0.001);
-        Assert.assertEquals("y residual", 0.0, 12.0 + vector[1] - target[1], 0.001);
+        assertEquals(0.0, 24.0 + vector[0] - target[0], 0.001, "x residual");
+        assertEquals(0.0, 12.0 + vector[1] - target[1], 0.001, "y residual");
 
         // the same field at vectorScale 2 is not invertible (Jacobian norm 2), so the iteration hits its cap:
         // that must warn and return the last estimate rather than throw or hand back a non-number
         final DisplacementFieldTransform steep = new DisplacementFieldTransform();
         steep.init(fieldDir + "?z=0&vectorScale=2.0");
         final double[] estimate = steep.apply(new double[] {24.0, 12.0});
-        Assert.assertTrue("a non-converging inversion should still return numbers, but was " +
-                          Arrays.toString(estimate),
-                          Double.isFinite(estimate[0]) && Double.isFinite(estimate[1]));
+        assertTrue(Double.isFinite(estimate[0]) && Double.isFinite(estimate[1]),
+                   "a non-converging inversion should still return numbers, but was " + Arrays.toString(estimate));
     }
 
     @Test
@@ -169,10 +167,9 @@ public class DisplacementFieldTransformTest {
         final DisplacementFieldTransform transform = new DisplacementFieldTransform();
         try {
             transform.init("file:///tmp/does-not-exist.n5?z=0&scalex=40.0");
-            Assert.fail("expected init to reject the misspelled parameter");
+            fail("expected init to reject the misspelled parameter");
         } catch (final IllegalArgumentException e) {
-            Assert.assertTrue("exception should name the offending parameter",
-                              e.getMessage().contains("scalex"));
+            assertTrue(e.getMessage().contains("scalex"), "exception should name the offending parameter");
         }
     }
 
@@ -180,6 +177,6 @@ public class DisplacementFieldTransformTest {
     public void testImplementsCoordinateTransform() {
         // guards the reflective LeafTransformSpec.newInstance() contract (no-arg constructor + interface)
         final CoordinateTransform transform = new DisplacementFieldTransform();
-        Assert.assertNotNull("no-arg constructed instance should exist", transform);
+        assertNotNull(transform, "no-arg constructed instance should exist");
     }
 }

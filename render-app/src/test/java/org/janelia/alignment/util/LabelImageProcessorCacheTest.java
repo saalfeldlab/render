@@ -10,8 +10,10 @@ import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.spec.ChannelSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache.CacheKey;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link LabelImageProcessorCache} class.
@@ -34,7 +36,7 @@ public class LabelImageProcessorCacheTest {
             c = colorList.get(tileIndex);
             s = (short) c.getRGB();
             if (shortToColorMap.containsKey(s)) {
-                Assert.fail(s + " maps to " + shortToColorMap.get(s) + " and " + c);
+                fail(s + " maps to " + shortToColorMap.get(s) + " and " + c);
             } else {
                 shortToColorMap.put(s, c);
             }
@@ -80,8 +82,8 @@ public class LabelImageProcessorCacheTest {
             tileSpec = tileSpecsA.get(getTileId(i));
             final ImageAndMask imageAndMask = tileSpec.getFirstMipmapEntry().getValue();
             final CacheKey key = LabelImageProcessorCache.buildKey(imageAndMask);
-            Assert.assertEquals("different label color mapped for second cache instance of " + getTileId(i),
-                                cache1.getColor(key), cache2.getColor(key));
+            assertEquals(cache1.getColor(key), cache2.getColor(key),
+                         "different label color mapped for second cache instance of " + getTileId(i));
         }
 
     }

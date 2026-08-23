@@ -10,9 +10,11 @@ import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CellId;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.ExcludedCellParameters;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link CopyStackClient} class.
@@ -25,7 +27,7 @@ public class CopyStackClientTest {
             "test_copy_" + new SimpleDateFormat("yyyyMMddHHmmssSSS").format(new Date()) + ".json";
     private final File testJsonFile = new File(jsonFileName);
 
-    @After
+    @AfterEach
     public void tearDown() {
         if (testJsonFile.exists()) {
             FileUtil.deleteRecursive(testJsonFile);
@@ -64,12 +66,12 @@ public class CopyStackClientTest {
 
         final CellId cellId = new CellId(0, 1);
         double z = 1000.0;
-        Assert.assertTrue("cell " + cellId + ", z " + z + " should be excluded",
-                          list.isExcludedCell(cellId, z));
+        assertTrue(list.isExcludedCell(cellId, z),
+                   "cell " + cellId + ", z " + z + " should be excluded");
 
         z = 1001.0;
-        Assert.assertFalse("cell " + cellId + ", z " + z + " should NOT be excluded",
-                           list.isExcludedCell(cellId, z));
+        assertFalse(list.isExcludedCell(cellId, z),
+                    "cell " + cellId + ", z " + z + " should NOT be excluded");
     }
 
     public static void main(final String[] args) {

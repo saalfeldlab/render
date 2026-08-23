@@ -7,9 +7,15 @@ import java.util.Set;
 
 import mpicbg.trakem2.transform.AffineModel2D;
 
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link TransformSpec} class.
@@ -27,7 +33,7 @@ public class TransformSpecTest {
     private ListTransformSpec list4;
     private ListTransformSpec list6;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         final TransformSpecMetaData lcMetaData = new TransformSpecMetaData();
         lcMetaData.addLabel(lensLabel);
@@ -71,20 +77,20 @@ public class TransformSpecTest {
     public void testJsonProcessing() throws Exception {
 
         final String json = list6.toJson();
-        Assert.assertNotNull("json generation returned null string", json);
+        assertNotNull(json, "json generation returned null string");
 
         final TransformSpec parsedSpec = TransformSpec.fromJson(json);
-        Assert.assertNotNull("null spec returned from json parse", parsedSpec);
+        assertNotNull(parsedSpec, "null spec returned from json parse");
 
         ListTransformSpec parsedListSpec = null;
         if (parsedSpec instanceof ListTransformSpec) {
             parsedListSpec = (ListTransformSpec) parsedSpec;
         } else {
-            Assert.fail("returned " + parsedSpec.getClass() + " instance instead of " +
+            fail("returned " + parsedSpec.getClass() + " instance instead of " +
                         ListTransformSpec.class.getName() + " instance");
         }
 
-        Assert.assertEquals("top level list has incorrect size", list6.size(), parsedListSpec.size());
+        assertEquals(list6.size(), parsedListSpec.size(), "top level list has incorrect size");
 
         final TransformSpec parsedListSpecItem0 = parsedListSpec.getSpec(0);
 
@@ -92,12 +98,12 @@ public class TransformSpecTest {
         if (parsedListSpecItem0 instanceof LeafTransformSpec) {
             parsedLeafSpec = (LeafTransformSpec) parsedListSpecItem0;
         } else {
-            Assert.fail("returned " + parsedListSpecItem0.getClass() + " instance instead of " +
+            fail("returned " + parsedListSpecItem0.getClass() + " instance instead of " +
                         LeafTransformSpec.class.getName() + " instance");
         }
 
-        Assert.assertTrue("parsed leaf 3 spec missing label", parsedLeafSpec.hasLabel(lensLabel));
-        Assert.assertFalse("parsed leaf 3 spec should not be fully resolved", parsedSpec.isFullyResolved());
+        assertTrue(parsedLeafSpec.hasLabel(lensLabel), "parsed leaf 3 spec missing label");
+        assertFalse(parsedSpec.isFullyResolved(), "parsed leaf 3 spec should not be fully resolved");
 
         validateUnresolvedSize("after parse", parsedSpec, 2);
     }
@@ -121,9 +127,9 @@ public class TransformSpecTest {
 
         validateUnresolvedSize("after second resolution", list6, 0);
 
-        Assert.assertTrue("parent list is missing lens label", list6.hasLabel(lensLabel));
-        Assert.assertTrue("leaf 3 is missing lens label", leaf3.hasLabel(lensLabel));
-        Assert.assertFalse("list 4 should NOT have lens label", list4.hasLabel(lensLabel));
+        assertTrue(list6.hasLabel(lensLabel), "parent list is missing lens label");
+        assertTrue(leaf3.hasLabel(lensLabel), "leaf 3 is missing lens label");
+        assertFalse(list4.hasLabel(lensLabel), "list 4 should NOT have lens label");
 
         // Flattened structure should look like this:
         //
@@ -140,33 +146,33 @@ public class TransformSpecTest {
         ListTransformSpec flattenedList = new ListTransformSpec();
         list6.flatten(flattenedList);
 
-        Assert.assertEquals("incorrect size for flattened list", 4, flattenedList.size());
+        assertEquals(4, flattenedList.size(), "incorrect size for flattened list");
         final String[] expectedIds = {"3", "5", "1", "2"};
         TransformSpec spec;
         for (int i = 0; i < expectedIds.length; i++) {
             spec = flattenedList.getSpec(i);
-            Assert.assertEquals("invalid spec id for flattened list item " + i, expectedIds[i],spec.getId());
+            assertEquals(expectedIds[i],spec.getId(), "invalid spec id for flattened list item " + i);
         }
 
         flattenedList = list6.flattenAndFilter(Collections.singleton(lensLabel), null);
-        Assert.assertEquals("too many transforms left after including first transform",
-                            1, flattenedList.size());
+        assertEquals(1, flattenedList.size(),
+                     "too many transforms left after including first transform");
 
         flattenedList = list6.flattenAndFilter(null, Collections.singleton(lensLabel));
-        Assert.assertEquals("no transforms should be left after excluding first transform",
-                            0, flattenedList.size());
+        assertEquals(0, flattenedList.size(),
+                     "no transforms should be left after excluding first transform");
 
         final String roughLabel = "rough";
         leaf1.addLabel(roughLabel);
 
         flattenedList = list6.flattenAndFilter(Collections.singleton(roughLabel), null);
-        Assert.assertEquals("incorrect size after including first transform",
-                            3, flattenedList.size());
+        assertEquals(3, flattenedList.size(),
+                     "incorrect size after including first transform");
 
         list4.addLabel(roughLabel);
         flattenedList = list6.flattenAndFilter(Collections.singleton(roughLabel), null);
-        Assert.assertEquals("incorrect size after including transform list 4",
-                            4, flattenedList.size());
+        assertEquals(4, flattenedList.size(),
+                     "incorrect size after including transform list 4");
 
     }
 
@@ -178,30 +184,30 @@ public class TransformSpecTest {
         final mpicbg.models.CoordinateTransform coordinateTransform1 = leaf1.getNewInstance();
         final mpicbg.models.CoordinateTransform coordinateTransform2 = leaf1.getNewInstance();
 
-        Assert.assertNotNull("transform 1 not created", coordinateTransform1);
-        Assert.assertNotNull("transform 2 not created", coordinateTransform2);
+        assertNotNull(coordinateTransform1, "transform 1 not created");
+        assertNotNull(coordinateTransform2, "transform 2 not created");
         //noinspection ConstantConditions
-        Assert.assertFalse("transform instances should be different",
-                           (coordinateTransform1 == coordinateTransform2));
+        assertFalse((coordinateTransform1 == coordinateTransform2),
+                    "transform instances should be different");
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testValidateWithUnknownClass() throws Exception {
         final LeafTransformSpec spec = new LeafTransformSpec("bad-class", "1 0 0 1 0 0");
-        spec.validate();
+        assertThrows(IllegalArgumentException.class, () -> spec.validate());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testValidateWithNonTransformClass() throws Exception {
         final LeafTransformSpec spec = new LeafTransformSpec(this.getClass().getName(), "1 0 0 1 0 0");
-        spec.validate();
+        assertThrows(IllegalArgumentException.class, () -> spec.validate());
     }
 
     private void validateUnresolvedSize(final String context,
                                         final TransformSpec spec,
                                         final int expectedSize) {
         final Set<String> unresolvedIds = spec.getUnresolvedIds();
-        Assert.assertEquals("invalid number of unresolved references " + context, expectedSize, unresolvedIds.size());
+        assertEquals(expectedSize, unresolvedIds.size(), "invalid number of unresolved references " + context);
     }
 
     private static final String AFFINE_2D = AffineModel2D.class.getName();

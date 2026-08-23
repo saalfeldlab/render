@@ -5,10 +5,11 @@ import java.util.List;
 
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import mpicbg.models.CoordinateTransform;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link ThinPlateSplineClient} class.
@@ -54,8 +55,8 @@ public class ThinPlateSplineClientTest {
         final double testDelta = 0.0001;
         for (int i = 0; i < sourceXs.length; i++) {
             final double[] testResult = transform.apply(new double[] { sourceXs[i], sourceYs[i] });
-            Assert.assertEquals("invalid x for landmark " + i, targetXs[i], testResult[0], testDelta);
-            Assert.assertEquals("invalid y for landmark " + i, targetYs[i], testResult[1], testDelta);
+            assertEquals(targetXs[i], testResult[0], testDelta, "invalid x for landmark " + i);
+            assertEquals(targetYs[i], testResult[1], testDelta, "invalid y for landmark " + i);
         }
 
 //        ThinPlateSplineClient.main(

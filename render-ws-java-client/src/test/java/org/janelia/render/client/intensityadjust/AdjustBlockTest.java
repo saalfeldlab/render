@@ -22,13 +22,12 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.intensityadjust.virtual.OnTheFlyIntensity;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.deriveTileSpecWithFilter;
 import static org.janelia.render.client.intensityadjust.OcellarCrossZIntensityCorrection.showTileSpec;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests the {@link AdjustBlock} class.
@@ -144,7 +143,7 @@ public class AdjustBlockTest {
         for (int i = 0; i < pixels.length; i++) {
             // exclude boundary because ImageProcessor doesn't interpolate correctly due to floating point comparison
             if (!((i+1) % tileSpec.getWidth() == 0 || (i / tileSpec.getWidth() + 1) >= tileSpec.getHeight()))
-                assertEquals("Pixel at location " + i + " differs", bytePi, pixels[i]);
+                assertEquals(bytePi, pixels[i], "Pixel at location " + i + " differs");
         }
     }
 
@@ -225,20 +224,20 @@ public class AdjustBlockTest {
             final double[][] expectedCoefficients = tileIdToExpectedCoefficients.get(tileId);
             final double[][] actualCoefficients = correctedTile.getCoefficients();
 
-            Assert.assertEquals("coefficient array lengths differ for " + context,
-                                expectedCoefficients.length, actualCoefficients.length);
+            assertEquals(expectedCoefficients.length, actualCoefficients.length,
+                         "coefficient array lengths differ for " + context);
 
             for (int i = 0; i < expectedCoefficients.length; i++) {
 
                 final double[] expectedRow = expectedCoefficients[i];
                 final double[] actualRow = actualCoefficients[i];
 
-                Assert.assertEquals("coefficient[" + i + "] lengths differ for " + context,
-                                    expectedRow.length, actualRow.length);
+                assertEquals(expectedRow.length, actualRow.length,
+                             "coefficient[" + i + "] lengths differ for " + context);
 
                 for (int j = 0; j < expectedRow.length; j++) {
-                    Assert.assertEquals("coefficient [" + i + "][" + j + "] values differ for " + context,
-                                        expectedRow[j], actualRow[j], allowedDelta);
+                    assertEquals(expectedRow[j], actualRow[j], allowedDelta,
+                                 "coefficient [" + i + "][" + j + "] values differ for " + context);
 
                 }
 

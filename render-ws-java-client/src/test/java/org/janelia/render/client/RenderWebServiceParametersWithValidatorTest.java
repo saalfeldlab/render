@@ -3,8 +3,10 @@ package org.janelia.render.client;
 import org.janelia.alignment.spec.validator.TemTileSpecValidator;
 import org.janelia.alignment.spec.validator.TileSpecValidator;
 import org.janelia.render.client.parameter.TileSpecValidatorParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link TileSpecValidatorParameters} class.
@@ -29,13 +31,14 @@ public class RenderWebServiceParametersWithValidatorTest {
 
             final double delta = 0.001;
 
-            Assert.assertEquals("invalid min coordinate parsed", 0, temTileSpecValidator.getMinCoordinate(), delta);
-            Assert.assertEquals("invalid max coordinate parsed", 100000, temTileSpecValidator.getMaxCoordinate(), delta);
-            Assert.assertEquals("invalid min coordinate parsed", 100, temTileSpecValidator.getMinSize(), delta);
-            Assert.assertEquals("invalid min coordinate parsed", 20000, temTileSpecValidator.getMaxSize(), delta);
+            assertEquals(0, temTileSpecValidator.getMinCoordinate(), delta, "invalid min coordinate parsed");
+            assertEquals(100000, temTileSpecValidator.getMaxCoordinate(), delta,
+                         "invalid max coordinate parsed");
+            assertEquals(100, temTileSpecValidator.getMinSize(), delta, "invalid min coordinate parsed");
+            assertEquals(20000, temTileSpecValidator.getMaxSize(), delta, "invalid min coordinate parsed");
 
         } else {
-            Assert.fail("wrong instance created: " + tileSpecValidator.getClass());
+            fail("wrong instance created: " + tileSpecValidator.getClass());
         }
     }
 

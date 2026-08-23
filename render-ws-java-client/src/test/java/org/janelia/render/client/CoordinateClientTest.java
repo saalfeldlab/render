@@ -14,12 +14,17 @@ import org.janelia.alignment.spec.TransformSpec;
 import org.janelia.alignment.spec.stack.StackVersion;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import com.google.common.io.Files;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link CoordinateClient} class.
@@ -30,7 +35,7 @@ public class CoordinateClientTest {
 
     private File targetSwcDirectory;
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         if (targetSwcDirectory != null) {
             FileUtil.deleteRecursive(targetSwcDirectory);
@@ -71,8 +76,8 @@ public class CoordinateClientTest {
         final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection();
         final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
 
-        Assert.assertEquals("invalid number of local lists returned",
-                            worldListOfLists.size(), localListOfLists.size());
+        assertEquals(worldListOfLists.size(), localListOfLists.size(),
+                     "invalid number of local lists returned");
 
         List<TileCoordinates> localList;
         TileCoordinates localCoordinates;
@@ -80,20 +85,20 @@ public class CoordinateClientTest {
         for (int i = 0; i < 2; i++) {
 
             localList = localListOfLists.get(i);
-            Assert.assertEquals("invalid number of coordinates in local list " + i,
-                                1, localList.size());
+            assertEquals(1, localList.size(),
+                         "invalid number of coordinates in local list " + i);
 
             localCoordinates = localList.get(0);
-            Assert.assertNull("tileId for coordinates in local list " + i + " should be null",
-                              localCoordinates.getTileId());
-            Assert.assertNull("local coordinates in local list " + i + " should be null",
-                              localCoordinates.getLocal());
+            assertNull(localCoordinates.getTileId(),
+                       "tileId for coordinates in local list " + i + " should be null");
+            assertNull(localCoordinates.getLocal(),
+                       "local coordinates in local list " + i + " should be null");
 
             errorMessage = localCoordinates.getError();
-            Assert.assertNotNull("local coordinates in local list " + i + " should have error",
-                                 errorMessage);
-            Assert.assertTrue("local coordinates in local list " + i + " has invalid error message '" + errorMessage + "'",
-                              errorMessage.matches("no tile.*" + i + ".0,.*"));
+            assertNotNull(errorMessage,
+                          "local coordinates in local list " + i + " should have error");
+            assertTrue(errorMessage.matches("no tile.*" + i + ".0,.*"),
+                       "local coordinates in local list " + i + " has invalid error message '" + errorMessage + "'");
         }
 
     }
@@ -107,7 +112,7 @@ public class CoordinateClientTest {
      *   if any unexpected failures occur.
      */
     @Test
-    @Ignore
+    @Disabled
     public void testRealClient()
             throws Exception {
 
@@ -125,19 +130,19 @@ public class CoordinateClientTest {
 
         final List<List<TileCoordinates>> worldListOfLists = client.getWorldCoordinatesWithTileIds(worldList);
 
-        Assert.assertEquals("invalid number of world lists returned", 1, worldListOfLists.size());
+        assertEquals(1, worldListOfLists.size(), "invalid number of world lists returned");
 
         final List<TileCoordinates> returnedWorldList = worldListOfLists.get(0);
 
-        Assert.assertEquals("invalid number of coordinates in first world list", 3, returnedWorldList.size());
+        assertEquals(3, returnedWorldList.size(), "invalid number of coordinates in first world list");
 
         final TileCoordinates returnedWorldCoord = returnedWorldList.get(0);
 
-        Assert.assertFalse("returned world coordinates have error: " + returnedWorldCoord.toJson(),
-                           returnedWorldCoord.hasError());
+        assertFalse(returnedWorldCoord.hasError(),
+                    "returned world coordinates have error: " + returnedWorldCoord.toJson());
 
-        Assert.assertEquals("invalid tileId returned",
-                            "150226193751108009.3451.0", returnedWorldCoord.getTileId());
+        assertEquals("150226193751108009.3451.0", returnedWorldCoord.getTileId(),
+                     "invalid tileId returned");
     }
 
     @Test
@@ -163,7 +168,7 @@ public class CoordinateClientTest {
         swcHelper.addCoordinatesForAllFilesInDirectory(swcSourceDirectoryPath,
                                                        coordinatesList);
 
-        Assert.assertEquals("invalid number of coordinates parsed from swc directory", 99, coordinatesList.size());
+        assertEquals(99, coordinatesList.size(), "invalid number of coordinates parsed from swc directory");
 
         targetSwcDirectory = MipmapClientTest.createTestDirectory("target_swc");
 
@@ -173,14 +178,14 @@ public class CoordinateClientTest {
         final String swcFileName = "8881_swc.swc";
         final File sourceFile = new File(swcSourceDirectoryPath, swcFileName);
         final File targetFile = new File(targetSwcDirectory, swcFileName);
-        Assert.assertTrue(targetFile.getAbsolutePath() + " was not saved", targetFile.exists());
+        assertTrue(targetFile.exists(), targetFile.getAbsolutePath() + " was not saved");
 
         final String beforeText = Files.toString(sourceFile, Charset.defaultCharset());
         final String afterText = Files.toString(targetFile, Charset.defaultCharset());
 
         final String hackedAfterTextForComparison = afterText.replaceAll("\\.0", "");
 
-        Assert.assertEquals(swcFileName + " contents should be the same", beforeText, hackedAfterTextForComparison);
+        assertEquals(beforeText, hackedAfterTextForComparison, swcFileName + " contents should be the same");
     }
 
     private void validateBatchIndexes(final int threads,
@@ -192,12 +197,12 @@ public class CoordinateClientTest {
         final List<Integer> list = CoordinateClient.getBatchIndexes(threads, size);
 
         final String context = threads + " threads and " + size + " items";
-        Assert.assertEquals("invalid number of batch indexes returned for " + context,
-                            expectedNumberOfIndexes, list.size());
-        Assert.assertEquals("invalid delta between first and second indexes " + context,
-                            expectedFirstDelta, (list.get(1) - list.get(0)));
-        Assert.assertEquals("invalid delta between last and second-to-last indexes " + context,
-                            expectedLastDelta, (list.get(list.size() - 1) - list.get(list.size() - 2)));
+        assertEquals(expectedNumberOfIndexes, list.size(),
+                     "invalid number of batch indexes returned for " + context);
+        assertEquals(expectedFirstDelta, (list.get(1) - list.get(0)),
+                     "invalid delta between first and second indexes " + context);
+        assertEquals(expectedLastDelta, (list.get(list.size() - 1) - list.get(list.size() - 2)),
+                     "invalid delta between last and second-to-last indexes " + context);
     }
 
     private void testRoundTripMapping(final int numberOfThreads)
@@ -222,35 +227,35 @@ public class CoordinateClientTest {
         final ResolvedTileSpecCollection tiles = new ResolvedTileSpecCollection(tileSpecList);
         final List<List<TileCoordinates>> localListOfLists = client.worldToLocal(worldListOfLists, tiles);
 
-        Assert.assertEquals("invalid number of local lists returned",
-                            worldListOfLists.size(), localListOfLists.size());
+        assertEquals(worldListOfLists.size(), localListOfLists.size(),
+                     "invalid number of local lists returned");
 
         final double acceptableDelta = 0.001;
         for (int i = 0; i < worldListOfLists.size(); i++) {
             final List<TileCoordinates> worldList = worldListOfLists.get(i);
             final List<TileCoordinates> localList = localListOfLists.get(i);
 
-            Assert.assertEquals("invalid number of coordinates in worldList[" + i + "]", 1, worldList.size());
-            Assert.assertEquals("invalid number of coordinates in localList[" + i + "]", 1, localList.size());
+            assertEquals(1, worldList.size(), "invalid number of coordinates in worldList[" + i + "]");
+            assertEquals(1, localList.size(), "invalid number of coordinates in localList[" + i + "]");
 
             final TileCoordinates worldCoord = worldList.get(0);
             final TileCoordinates localCoord = localList.get(0);
 
-            Assert.assertFalse("returned local coordinates for localList[" + i +
-                               "] have error: " + localCoord.toJson(),
-                               localCoord.hasError());
+            assertFalse(localCoord.hasError(),
+                        "returned local coordinates for localList[" + i +
+                        "] have error: " + localCoord.toJson());
 
-            Assert.assertEquals("invalid local x coordinate returned for localList[" + i + "]",
-                                worldCoord.getWorld()[0], localCoord.getLocal()[0], acceptableDelta);
+            assertEquals(worldCoord.getWorld()[0], localCoord.getLocal()[0], acceptableDelta,
+                         "invalid local x coordinate returned for localList[" + i + "]");
 
-            Assert.assertEquals("invalid local y coordinate returned for localList[" + i + "]",
-                                worldCoord.getWorld()[1], localCoord.getLocal()[1], acceptableDelta);
+            assertEquals(worldCoord.getWorld()[1], localCoord.getLocal()[1], acceptableDelta,
+                         "invalid local y coordinate returned for localList[" + i + "]");
         }
 
         final List<TileCoordinates> roundTripWorldList = client.localToWorld(localListOfLists, tiles);
 
-        Assert.assertEquals("incorrect number of round trip world coordinates",
-                            worldListOfLists.size(), roundTripWorldList.size());
+        assertEquals(worldListOfLists.size(), roundTripWorldList.size(),
+                     "incorrect number of round trip world coordinates");
 
         for (int i = 0; i < worldListOfLists.size(); i++) {
             final String context = "worldListOfLists[" + i + "]";
@@ -258,16 +263,16 @@ public class CoordinateClientTest {
             final TileCoordinates worldCoord = worldList.get(0);
 
             final TileCoordinates roundTripWorldCoord = roundTripWorldList.get(i);
-            Assert.assertEquals("incorrect round trip tile id for " + context,
-                                worldCoord.getTileId(), roundTripWorldCoord.getTileId());
+            assertEquals(worldCoord.getTileId(), roundTripWorldCoord.getTileId(),
+                         "incorrect round trip tile id for " + context);
 
             final double[] expectedArray = worldCoord.getWorld();
             final double[] actualArray = roundTripWorldCoord.getWorld();
-            Assert.assertEquals("incorrect round trip world array length for " + context,
-                                expectedArray.length, actualArray.length);
+            assertEquals(expectedArray.length, actualArray.length,
+                         "incorrect round trip world array length for " + context);
             for (int j = 0; j < expectedArray.length; j++) {
-                Assert.assertEquals("incorrect round trip value for item " + j + " in " + context,
-                                    expectedArray[j], actualArray[j], 0.01);
+                assertEquals(expectedArray[j], actualArray[j], 0.01,
+                             "incorrect round trip value for item " + j + " in " + context);
             }
         }
 

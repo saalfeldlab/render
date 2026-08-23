@@ -16,8 +16,10 @@
  */
 package org.janelia.alignment.spec.stack;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests the {@link StackId} class.
@@ -47,7 +49,7 @@ public class StackIdTest {
             try {
                 new StackId(owner, project, stack);
             } catch (final IllegalArgumentException e) {
-                Assert.fail("valid name failed check " + e);
+                fail("valid name failed check " + e);
             }
         }
 
@@ -66,9 +68,9 @@ public class StackIdTest {
             stack = testData[2];
             try {
                 stackId = new StackId(owner, project, stack);
-                Assert.fail("invalid id " + stackId + " did not cause exception");
+                fail("invalid id " + stackId + " did not cause exception");
             } catch (final IllegalArgumentException e) {
-                Assert.assertTrue(true); // test passed
+                assertTrue(true); // test passed
             }
         }
 

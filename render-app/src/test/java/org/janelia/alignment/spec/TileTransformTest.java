@@ -16,8 +16,10 @@
  */
 package org.janelia.alignment.spec;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link TileTransform} class.
@@ -38,14 +40,14 @@ public class TileTransformTest {
 
         final TileTransform tileTransform = TileTransform.fromJson(json);
 
-        Assert.assertNotNull("null object parsed for " + context, tileTransform);
-        Assert.assertEquals("invalid tileId parsed for " + context,
-                            EXPECTED_TILE_ID, tileTransform.getTileId());
+        assertNotNull(tileTransform, "null object parsed for " + context);
+        assertEquals(EXPECTED_TILE_ID, tileTransform.getTileId(),
+                     "invalid tileId parsed for " + context);
 
         final TransformSpec transformSpec = tileTransform.getTransform();
-        Assert.assertNotNull("null transform spec parsed for " + context, transformSpec);
-        Assert.assertEquals("invalid transform spec parsed for " + context,
-                            expectedTransformClass, transformSpec.getClass());
+        assertNotNull(transformSpec, "null transform spec parsed for " + context);
+        assertEquals(expectedTransformClass, transformSpec.getClass(),
+                     "invalid transform spec parsed for " + context);
 
     }
 

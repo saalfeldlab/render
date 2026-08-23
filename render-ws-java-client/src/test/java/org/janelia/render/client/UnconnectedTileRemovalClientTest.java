@@ -9,8 +9,10 @@ import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.Matches;
 import org.janelia.alignment.match.SortedConnectedCanvasIdClusters;
 import org.janelia.render.client.parameter.CommandLineParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link UnconnectedTileRemovalClient} class.
@@ -89,16 +91,16 @@ public class UnconnectedTileRemovalClientTest {
                                                                             unconnectedTileIds);
 
         final String[] expectedUnconnectedTiles = {"I", "J", "K", "L", "M", "N", "O", "P", "X", "Y"};
-        Assert.assertEquals("invalid number of small cluster tiles found ",
-                            expectedUnconnectedTiles.length, unconnectedTileIds.size());
+        assertEquals(expectedUnconnectedTiles.length, unconnectedTileIds.size(),
+                     "invalid number of small cluster tiles found ");
 
         for (final String tileId : expectedUnconnectedTiles) {
-            Assert.assertTrue("tileId " + tileId + " should have been marked as unconnected",
-                              unconnectedTileIds.contains(tileId));
+            assertTrue(unconnectedTileIds.contains(tileId),
+                       "tileId " + tileId + " should have been marked as unconnected");
         }
 
-        Assert.assertEquals("invalid number of smaller remaining clusters returned",
-                            1, smallerRemainingClusters.size());
+        assertEquals(1, smallerRemainingClusters.size(),
+                     "invalid number of smaller remaining clusters returned");
 
         // all-inclusive test
         parameters.tileCluster.maxSmallClusterSize = 1;
@@ -110,8 +112,8 @@ public class UnconnectedTileRemovalClientTest {
                                                                             keeperTileIds,
                                                                             unconnectedTileIds);
 
-        Assert.assertEquals("all inclusive test: invalid number of smaller remaining clusters returned",
-                            5, smallerRemainingClusters.size());
+        assertEquals(5, smallerRemainingClusters.size(),
+                     "all inclusive test: invalid number of smaller remaining clusters returned");
 
     }
 

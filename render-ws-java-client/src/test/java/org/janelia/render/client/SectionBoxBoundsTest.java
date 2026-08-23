@@ -1,8 +1,11 @@
 package org.janelia.render.client;
 
 import org.janelia.alignment.spec.Bounds;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link SectionBoxBounds} class.
@@ -159,8 +162,8 @@ public class SectionBoxBoundsTest {
             if (rowAndColumn.length > 1) {
                 row = rowAndColumn[0];
                 column = rowAndColumn[1];
-                Assert.assertTrue("row " + row + ", column " + column + " should be in " + context,
-                                  boxBounds.isInRenderGroup(row, column));
+                assertTrue(boxBounds.isInRenderGroup(row, column),
+                           "row " + row + ", column " + column + " should be in " + context);
             }
         }
 
@@ -168,8 +171,8 @@ public class SectionBoxBoundsTest {
             if (rowAndColumn.length > 1) {
                 row = rowAndColumn[0];
                 column = rowAndColumn[1];
-                Assert.assertFalse("row " + row + ", column " + column + " should NOT be in " + context,
-                                   boxBounds.isInRenderGroup(row, column));
+                assertFalse(boxBounds.isInRenderGroup(row, column),
+                            "row " + row + ", column " + column + " should NOT be in " + context);
             }
         }
     }
@@ -177,16 +180,16 @@ public class SectionBoxBoundsTest {
     private void validateBoxBounds(final String context,
                                    final SectionBoxBounds boxBounds) {
 
-        Assert.assertEquals(context + "invalid z", z.intValue(), boxBounds.getZ());
+        assertEquals(z.intValue(), boxBounds.getZ(), context + "invalid z");
 
-        Assert.assertEquals(context + "invalid first column", expectedFirstColumn, boxBounds.getFirstColumn());
-        Assert.assertEquals(context + "invalid last column", expectedLastColumn, boxBounds.getLastColumn());
-        Assert.assertEquals(context + "invalid first row", expectedFirstRow, boxBounds.getFirstRow());
-        Assert.assertEquals(context + "invalid last row", expectedLastRow, boxBounds.getLastRow());
+        assertEquals(expectedFirstColumn, boxBounds.getFirstColumn(), context + "invalid first column");
+        assertEquals(expectedLastColumn, boxBounds.getLastColumn(), context + "invalid last column");
+        assertEquals(expectedFirstRow, boxBounds.getFirstRow(), context + "invalid first row");
+        assertEquals(expectedLastRow, boxBounds.getLastRow(), context + "invalid last row");
 
-        Assert.assertEquals(context + "invalid first x", expectedFirstX, boxBounds.getFirstX());
-        Assert.assertEquals(context + "invalid last x", expectedLastX, boxBounds.getLastX());
-        Assert.assertEquals(context + "invalid first y", expectedFirstY, boxBounds.getFirstY());
-        Assert.assertEquals(context + "invalid last y", expectedLastY, boxBounds.getLastY());
+        assertEquals(expectedFirstX, boxBounds.getFirstX(), context + "invalid first x");
+        assertEquals(expectedLastX, boxBounds.getLastX(), context + "invalid last x");
+        assertEquals(expectedFirstY, boxBounds.getFirstY(), context + "invalid first y");
+        assertEquals(expectedLastY, boxBounds.getLastY(), context + "invalid last y");
     }
 }

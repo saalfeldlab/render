@@ -25,8 +25,7 @@ import org.janelia.alignment.match.parameters.GeometricDescriptorParameters;
 import org.janelia.alignment.match.parameters.MatchDerivationParameters;
 import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +36,7 @@ import net.imglib2.util.Pair;
 import net.imglib2.util.ValuePair;
 
 import static org.janelia.alignment.match.GeometricDescriptorMatcherTest.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Runs SIFT match derivation followed by peak extraction for two tiles.
@@ -45,7 +45,7 @@ public class GeometricDescriptorSIFTMatcherTest {
 
     @Test
     public void testNothing() {
-		Assert.assertTrue(true);
+		assertTrue(true);
 	}
 
     public static void main(final String[] args) {

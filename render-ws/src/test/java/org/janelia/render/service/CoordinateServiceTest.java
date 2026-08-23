@@ -8,10 +8,15 @@ import org.janelia.alignment.spec.TileCoordinates;
 import org.janelia.render.service.dao.RenderDao;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.test.EmbeddedMongoDb;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link org.janelia.render.service.CoordinateService} class.
@@ -24,7 +29,7 @@ public class CoordinateServiceTest {
     private static EmbeddedMongoDb embeddedMongoDb;
     private static CoordinateService service;
 
-    @BeforeClass
+    @BeforeAll
     public static void before() throws Exception {
         stackId = new StackId("flyTEM", "test", "elastic");
         embeddedMongoDb = new EmbeddedMongoDb(RenderDao.RENDER_DB_NAME);
@@ -44,7 +49,7 @@ public class CoordinateServiceTest {
                                          true);
     }
 
-    @AfterClass
+    @AfterAll
     public static void after() throws Exception {
         embeddedMongoDb.stop();
     }
@@ -63,8 +68,8 @@ public class CoordinateServiceTest {
                                             y,
                                             Z);
 
-        Assert.assertEquals("invalid number of tiles found for (" + x + "," + y + ")",
-                            1, localCoordinatesList.size());
+        assertEquals(1, localCoordinatesList.size(),
+                     "invalid number of tiles found for (" + x + "," + y + ")");
 
         final TileCoordinates localCoordinates = localCoordinatesList.get(0);
 
@@ -116,9 +121,9 @@ public class CoordinateServiceTest {
                                             Z,
                                             worldCoordinateList);
 
-        Assert.assertNotNull("null local list retrieved", localCoordinatesListOfLists);
-        Assert.assertEquals("invalid local list size",
-                            worldCoordinateList.size(), localCoordinatesListOfLists.size());
+        assertNotNull(localCoordinatesListOfLists, "null local list retrieved");
+        assertEquals(worldCoordinateList.size(), localCoordinatesListOfLists.size(),
+                     "invalid local list size");
 
         final List<TileCoordinates> localCoordinatesList = new ArrayList<>();
         for (final List<TileCoordinates> nestedList : localCoordinatesListOfLists) {
@@ -129,9 +134,9 @@ public class CoordinateServiceTest {
         for (int i = 0; i < localCoordinatesList.size(); i++) {
             tileCoordinates = localCoordinatesList.get(i);
             if (i == errorPointIndex) {
-                Assert.assertTrue("local list [" + i + "] should have error", tileCoordinates.hasError());
-                Assert.assertNotNull("local list [" + i + "] with error should have world values",
-                                     tileCoordinates.getWorld());
+                assertTrue(tileCoordinates.hasError(), "local list [" + i + "] should have error");
+                assertNotNull(tileCoordinates.getWorld(),
+                              "local list [" + i + "] with error should have world values");
             } else {
                 validateCoordinates("local list [" + i + "]",
                                     tileCoordinates,
@@ -152,16 +157,16 @@ public class CoordinateServiceTest {
 
 
 
-        Assert.assertNotNull("null world list retrieved", worldCoordinatesList);
-        Assert.assertEquals("invalid world list size",
-                            localCoordinatesList.size(), worldCoordinatesList.size());
+        assertNotNull(worldCoordinatesList, "null world list retrieved");
+        assertEquals(localCoordinatesList.size(), worldCoordinatesList.size(),
+                     "invalid world list size");
 
         for (int i = 0; i < worldCoordinatesList.size(); i++) {
             tileCoordinates = worldCoordinatesList.get(i);
             if (i == errorPointIndex) {
-                Assert.assertTrue("world list [" + i + "] should have error", tileCoordinates.hasError());
-                Assert.assertNotNull("world list [" + i + "] with error should have world values",
-                                     tileCoordinates.getWorld());
+                assertTrue(tileCoordinates.hasError(), "world list [" + i + "] should have error");
+                assertNotNull(tileCoordinates.getWorld(),
+                              "world list [" + i + "] with error should have world values");
             } else {
                 validateCoordinates("world list [" + i + "]",
                                     tileCoordinates,
@@ -186,19 +191,19 @@ public class CoordinateServiceTest {
                                             5900.0, //
                                             Z);
 
-        Assert.assertNotNull("null local list retrieved", localCoordinateList);
-        Assert.assertEquals("invalid local list size",
-                            2, localCoordinateList.size());
+        assertNotNull(localCoordinateList, "null local list retrieved");
+        assertEquals(2, localCoordinateList.size(),
+                     "invalid local list size");
 
         TileCoordinates localCoordinates = localCoordinateList.get(0);
-        Assert.assertNotNull("null first coordinates", localCoordinates);
-        Assert.assertFalse("first coordinates should NOT be marked as visible",
-                          localCoordinates.isVisible());
+        assertNotNull(localCoordinates, "null first coordinates");
+        assertFalse(localCoordinates.isVisible(),
+                    "first coordinates should NOT be marked as visible");
 
         localCoordinates = localCoordinateList.get(1);
-        Assert.assertNotNull("null second coordinates", localCoordinates);
-        Assert.assertTrue("second coordinates should be marked as visible",
-                           localCoordinates.isVisible());
+        assertNotNull(localCoordinates, "null second coordinates");
+        assertTrue(localCoordinates.isVisible(),
+                   "second coordinates should be marked as visible");
     }
 
     private void validateCoordinates(final String context,
@@ -209,33 +214,33 @@ public class CoordinateServiceTest {
                                      final Double expectedY,
                                      final Double expectedZ) {
 
-        Assert.assertNotNull(context + " coordinates are null", coordinates);
-        Assert.assertEquals(context + " tileId is invalid", expectedTileId, coordinates.getTileId());
+        assertNotNull(coordinates, context + " coordinates are null");
+        assertEquals(expectedTileId, coordinates.getTileId(), context + " tileId is invalid");
 
         double[] values;
         String valueContext;
         if (isLocal) {
             valueContext = context + " local values";
-            Assert.assertNull(context + " world values should be null", coordinates.getWorld());
+            assertNull(coordinates.getWorld(), context + " world values should be null");
             values = coordinates.getLocal();
         } else {
             valueContext = context + " world values";
-            Assert.assertNull(context + " local values should be null", coordinates.getLocal());
+            assertNull(coordinates.getLocal(), context + " local values should be null");
             values = coordinates.getWorld();
         }
 
-        Assert.assertNotNull(valueContext + " are null", values);
-        Assert.assertEquals("invalid number of " + valueContext, 3, values.length);
+        assertNotNull(values, valueContext + " are null");
+        assertEquals(3, values.length, "invalid number of " + valueContext);
 
         if (expectedX != null) {
-            Assert.assertEquals("incorrect x value for " + valueContext, expectedX, values[0], ACCEPTABLE_DELTA);
+            assertEquals(expectedX, values[0], ACCEPTABLE_DELTA, "incorrect x value for " + valueContext);
         }
 
         if (expectedY != null) {
-            Assert.assertEquals("incorrect y value for " + valueContext, expectedY, values[1], ACCEPTABLE_DELTA);
+            assertEquals(expectedY, values[1], ACCEPTABLE_DELTA, "incorrect y value for " + valueContext);
         }
 
-        Assert.assertEquals("incorrect z value for " + valueContext, expectedZ, values[2], ACCEPTABLE_DELTA);
+        assertEquals(expectedZ, values[2], ACCEPTABLE_DELTA, "incorrect z value for " + valueContext);
     }
 
     private static final String ID_FOR_TILE_WITH_REAL_TRANSFORMS = "254-with-real-transforms";

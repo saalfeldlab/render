@@ -15,10 +15,12 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ListTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.TransformSpec;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link ThinPlateSplineBuilder} class.
@@ -75,8 +77,8 @@ public class ThinPlateSplineBuilderTest {
 
             alignCenter = getCenter(alignTileSpec);
 
-            Assert.assertEquals(montageCenter[0], alignCenter[0], acceptableCenterDelta);
-            Assert.assertEquals(montageCenter[1], alignCenter[1], acceptableCenterDelta);
+            assertEquals(montageCenter[0], alignCenter[0], acceptableCenterDelta);
+            assertEquals(montageCenter[1], alignCenter[1], acceptableCenterDelta);
         }
 
         LOG.info("intersection.size = {}", j);
@@ -158,9 +160,9 @@ public class ThinPlateSplineBuilderTest {
 
         LOG.info(context + " maximum warp was " + maxChangePct + " percent");
 
-        Assert.assertTrue(context + overWarpedTileIds.size() + " tiles " + overWarpedTileIds +
-                          " were warped more than " + acceptableChangePct + "%",
-                          overWarpedTileIds.size() == 0);
+        assertTrue(overWarpedTileIds.size() == 0,
+                   context + overWarpedTileIds.size() + " tiles " + overWarpedTileIds +
+                   " were warped more than " + acceptableChangePct + "%");
     }
 
     private List<TileSpec> getTiles(final String jsonFileName) throws IOException {

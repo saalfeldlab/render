@@ -5,8 +5,9 @@ import ij.ImagePlus;
 
 import java.util.Map;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class ConfigurableStreakExtractorTest {
 
@@ -20,7 +21,7 @@ public class ConfigurableStreakExtractorTest {
 
         final String expectedDataString = ConfigurableStreakCorrectorTest.TOUGH_RESIN_CORRECTOR.toDataString();
         final String actualDataString = deserializedExtractor.toDataString();
-        Assert.assertEquals("data strings should match", expectedDataString, actualDataString);
+        assertEquals(expectedDataString, actualDataString, "data strings should match");
     }
 
     @SuppressWarnings({"ConstantConditions"})

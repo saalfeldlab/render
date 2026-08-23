@@ -15,8 +15,10 @@ import org.janelia.alignment.match.parameters.FeatureRenderParameters;
 import org.janelia.alignment.match.cache.CachedCanvasFeatures;
 import org.janelia.alignment.match.cache.CanvasDataCache;
 import org.janelia.alignment.match.cache.CanvasFeatureListLoader;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Tests the {@link CanvasDataCache} class.
@@ -61,9 +63,9 @@ public class CanvasDataCacheTest {
         final List<Feature> firstCallFeatureList = firstCallFeatures.getFeatureList();
         final double[] firstCallClipOffsets = firstCallFeatures.getClipOffsets();
 
-        Assert.assertTrue("first call: no features found", firstCallFeatureList.size() > 0);
-        Assert.assertTrue("first call: x clip offset not set", firstCallClipOffsets[0] > 0);
-        Assert.assertEquals("first call: invalid y clip offset", 0.0, firstCallClipOffsets[1], 0.01);
+        assertTrue(firstCallFeatureList.size() > 0, "first call: no features found");
+        assertTrue(firstCallClipOffsets[0] > 0, "first call: x clip offset not set");
+        assertEquals(0.0, firstCallClipOffsets[1], 0.01, "first call: invalid y clip offset");
 
         final CachedCanvasFeatures secondCallFeatures =
                 dataCache.getCanvasFeatures(CanvasIdWithRenderContext.build(q, template));
@@ -71,12 +73,12 @@ public class CanvasDataCacheTest {
         final List<Feature> secondCallFeatureList = secondCallFeatures.getFeatureList();
         final double[] secondCallClipOffsets = secondCallFeatures.getClipOffsets();
 
-        Assert.assertEquals("second call: invalid number of features",
-                            firstCallFeatureList.size(), secondCallFeatureList.size());
-        Assert.assertEquals("second call: invalid x clip offset",
-                            firstCallClipOffsets[0], secondCallClipOffsets[0], 0.01);
-        Assert.assertEquals("second call: invalid y clip offset",
-                            firstCallClipOffsets[1], secondCallClipOffsets[1], 0.01);
+        assertEquals(firstCallFeatureList.size(), secondCallFeatureList.size(),
+                     "second call: invalid number of features");
+        assertEquals(firstCallClipOffsets[0], secondCallClipOffsets[0], 0.01,
+                     "second call: invalid x clip offset");
+        assertEquals(firstCallClipOffsets[1], secondCallClipOffsets[1], 0.01,
+                     "second call: invalid y clip offset");
 
     }
 

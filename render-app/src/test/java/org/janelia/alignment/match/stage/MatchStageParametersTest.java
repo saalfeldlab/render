@@ -4,8 +4,10 @@ import java.io.StringReader;
 import java.util.List;
 
 import org.janelia.alignment.match.parameters.MatchStageParameters;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests the {@link StageMatchingResources} class.
@@ -20,36 +22,35 @@ public class MatchStageParametersTest {
         final List<MatchStageParameters> stageParametersList =
                 MatchStageParameters.fromJsonArray(new StringReader(CROSS_JSON));
 
-        Assert.assertEquals("invalid number of stage parameters loaded",
-                            6, stageParametersList.size());
+        assertEquals(6, stageParametersList.size(),
+                     "invalid number of stage parameters loaded");
 
         MatchStageParameters p = stageParametersList.get(2);
         String expectedSlug = "crossPass3_SIFT_s0.15e09_i020_c050pct_" +
                               "GEO_s0.25e04_i150_c050pct_" +
                               "d006_" +
                               "h1588887f682e680539e3654936b5dac3";
-        Assert.assertEquals("invalid slug for " + p.getStageName(),
-                            expectedSlug, p.toSlug());
+        assertEquals(expectedSlug, p.toSlug(),
+                     "invalid slug for " + p.getStageName());
 
         p = stageParametersList.get(3);
         expectedSlug = "crossPass4_SIFT_s0.25e15_i150_c030pct_" +
                        "GEO_none----_----_-------_" +
                        "d003_" +
                        "h94f34f08766629b82aa6c28506897514";
-        Assert.assertEquals("invalid slug for " + p.getStageName(),
-                            expectedSlug, p.toSlug());
+        assertEquals(expectedSlug, p.toSlug(),
+                     "invalid slug for " + p.getStageName());
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void testMissingLambda() {
 
         final List<MatchStageParameters> stageParametersList =
                 MatchStageParameters.fromJsonArray(new StringReader(MISSING_LAMBDA_JSON));
 
-        Assert.assertEquals("invalid number of stage parameters loaded",
-                            1, stageParametersList.size());
-
-        stageParametersList.get(0).validateAndSetDefaults();
+        assertEquals(1, stageParametersList.size(),
+                     "invalid number of stage parameters loaded");
+        assertThrows(IllegalArgumentException.class, () -> stageParametersList.get(0).validateAndSetDefaults());
     }
 
     private static final String CROSS_JSON =

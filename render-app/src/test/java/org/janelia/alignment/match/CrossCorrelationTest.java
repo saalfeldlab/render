@@ -25,13 +25,14 @@ import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.ImageDebugUtil;
 import org.janelia.alignment.util.ImageProcessorCache;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.type.numeric.real.FloatType;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Run cross correlation for two tiles.
@@ -64,7 +65,7 @@ public class CrossCorrelationTest {
 
     @Test
     public void testNothing() {
-        Assert.assertTrue(true);
+        assertTrue(true);
     }
 
     public static void main(final String[] args) {

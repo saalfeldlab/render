@@ -2,9 +2,8 @@ package org.janelia.perf;
 
 import ij.ImagePlus;
 import org.janelia.alignment.Utils;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -12,6 +11,8 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Tests the {@link ImagePlus} load times for different image formats and mipmap levels.
@@ -74,7 +75,7 @@ public class ImageLoadPerformanceTest {
         }
     }
 
-    @Before
+    @BeforeEach
     public void setup() throws Exception {
         enableTests = false; // set this to true to enable tests - normally, there is no need to run them
         numberOfTimesToRepeatEachTest = 5;
@@ -108,7 +109,7 @@ public class ImageLoadPerformanceTest {
         testData.calculateElapsedTime();
 
         // make sure image plus didn't quietly fail
-        Assert.assertNotNull("null imagePlus object returned for " + testData.file, imagePlus);
+        assertNotNull(imagePlus, "null imagePlus object returned for " + testData.file);
     }
 
     private void createAndOrderTests() {
