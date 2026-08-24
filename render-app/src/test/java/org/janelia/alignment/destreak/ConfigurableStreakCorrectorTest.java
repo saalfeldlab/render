@@ -186,7 +186,7 @@ public class ConfigurableStreakCorrectorTest {
         final RandomAccessibleInterval<UnsignedByteType> fixed =
                 Converters.convertRAI(imgCorr,
                                       patternCorr,
-                                      (i1,i2,o) -> o.set(Math.max(0, Math.min(255, Math.round(i1.get() - i2.get())))),
+                                      (i1,i2,o) -> o.set(Math.clamp(Math.round(i1.get() - i2.get()), 0, 255)),
                                       new UnsignedByteType());
 
         ImageJFunctions.show(imgCorr).setTitle("imgCorr");

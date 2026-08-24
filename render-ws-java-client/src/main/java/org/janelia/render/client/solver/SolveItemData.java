@@ -139,7 +139,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 	public double getCosineWeight( final int z )
 	{
-		return Math.max( Math.min( 1.0 - Math.cos( getLinearWeight( z ) * Math.PI/2 ), 1 ), 0.0000001 );
+		return Math.clamp(1.0 - Math.cos(getLinearWeight(z) * Math.PI / 2), 0.0000001, 1);
 	}
 
 	public ImagePlus visualizeInput() { return visualizeInput( 0.15 ); }

@@ -77,8 +77,8 @@ class CachedTileRenderer extends TileRenderer {
 		// Keep the w x h window inside the full render. Since box is contained in the tile box, the
 		// full render is at least w x h, so only the offset (not the size) can need clamping; this also
 		// guards against off-by-one rounding at the far edge.
-		x = Math.max(0, Math.min(x, fullTile.getWidth() - w));
-		y = Math.max(0, Math.min(y, fullTile.getHeight() - h));
+		x = Math.clamp(x, 0, fullTile.getWidth() - w);
+		y = Math.clamp(y, 0, fullTile.getHeight() - h);
 
 		final long[] min = {x, y};
 		final long[] max = {x + w - 1L, y + h - 1L};

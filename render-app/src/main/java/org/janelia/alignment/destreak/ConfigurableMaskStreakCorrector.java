@@ -157,8 +157,7 @@ public class ConfigurableMaskStreakCorrector extends StreakCorrector {
                 Converters.convertRAI(imgCorr,
                                       patternCorr,
                                       (i1,i2,o) ->
-                                              o.set(Math.max(0,
-                                                             Math.min( 255, Math.round( i1.get() - i2.get() ) ) ) ),
+                                              o.set(Math.clamp(Math.round(i1.get() - i2.get()), 0, 255)),
                                       new UnsignedByteType());
 
         // TODO: check with @StephanPreibisch to see if there is a better way to copy fixedIp to input

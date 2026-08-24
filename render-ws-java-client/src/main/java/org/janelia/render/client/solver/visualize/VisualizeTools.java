@@ -94,7 +94,7 @@ public class VisualizeTools
 		}
 
 		source = VisualizeTools.visualizeMultiRes( source, "dynamic lambda (f=" + dynamicLambdaFactor + ")", idToModel, idToTileSpec, idToValue, 1, 128, 2, Runtime.getRuntime().availableProcessors() );
-		source.setDisplayRange( 1, Math.max( 1.05, Math.min( 2, 1.05 + dynamicLambdaFactor ) ) );
+		source.setDisplayRange(1, Math.clamp(1.05 + dynamicLambdaFactor, 1.05, 2));
 		source.setDisplayRangeBounds( 0, 2 );
 
 		return source;
