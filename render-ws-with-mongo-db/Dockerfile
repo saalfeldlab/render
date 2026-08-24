@@ -11,23 +11,23 @@
 #
 # To build with CORS enabled only for https://neuroglancer-demo.appspot.com (the default build):
 #   cd ${RENDER_REPO_ROOT_DIR}
-#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --build-arg CORS_ALLOWED_ORIGINS='https://neuroglancer-demo.appspot.com' --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19 .
+#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --build-arg CORS_ALLOWED_ORIGINS='https://neuroglancer-demo.appspot.com' --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.20 .
 #
 # To build with CORS enabled for all origins (note tag suffix '.cors-star'):
 #   cd ${RENDER_REPO_ROOT_DIR}
-#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --build-arg CORS_ALLOWED_ORIGINS='*' --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19.cors-star .
+#   docker build --file render-ws-with-mongo-db/Dockerfile --no-cache --build-arg CORS_ALLOWED_ORIGINS='*' --tag ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.20.cors-star .
 #
 # To run a container in detached mode:
-#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19
+#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.20
 #
 # To run a container in detached mode with the standard MongoDB dump directory mounted:
-#   docker run --publish 8080:8080 --detach --rm --mount type=bind,source=/mnt/disks/mongodb_dump_fs/dump,target=/mnt/disks/mongodb_dump_fs/dump ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19
+#   docker run --publish 8080:8080 --detach --rm --mount type=bind,source=/mnt/disks/mongodb_dump_fs/dump,target=/mnt/disks/mongodb_dump_fs/dump ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.20
 #
 # To run a container with 4GB headroom and the test/two_z_with_four_tiles/mongodb/render collections loaded at startup:
-#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19 4 test/two_z_with_four_tiles/mongodb/render
+#   docker run --publish 8080:8080 --detach --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.20 4 test/two_z_with_four_tiles/mongodb/render
 #
 # To launch an interactive bash shell within a new container:
-#   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19
+#   docker run --interactive --tty --publish 8080:8080 --entrypoint /bin/bash --rm ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.20
 #
 # To launch an interactive bash shell within an already running container:
 #   docker ps -a     # to get the container id
@@ -37,7 +37,7 @@
 #   docker exec --interactive --tty "$(docker ps -q)" /bin/bash
 #
 # To push the image to the janeliascicomp containers GitHub registry (see https://github.com/JaneliaSciComp/containers/tree/main):
-#   docker push ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.19
+#   docker push ghcr.io/janeliascicomp/render-ws-with-mongodb:0.0.20
 #
 # Published Containers Notes:
 #   - Before pushing, your docker instance needs to be logged in to GitHub.
