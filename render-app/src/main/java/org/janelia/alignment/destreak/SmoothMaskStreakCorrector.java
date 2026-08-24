@@ -188,14 +188,14 @@ public class SmoothMaskStreakCorrector
         if (bitDepth == 8) {
             final RandomAccessibleInterval<UnsignedByteType> fixed =
                     Converters.convertRAI(imgCorr,
-                                          (i, o) -> o.set(Math.max(0, Math.min(255, Math.round(i.get())))),
+                                          (i, o) -> o.set(Math.clamp(Math.round(i.get()), 0, 255)),
                                           new UnsignedByteType());
             final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
             fixedIp = fixedImp.getProcessor().convertToByteProcessor();
         } else if (bitDepth == 16) {
             final RandomAccessibleInterval<UnsignedShortType> fixed =
                     Converters.convertRAI(imgCorr,
-                                          (i, o) -> o.set(Math.max(0, Math.min(65535, Math.round(i.get())))),
+                                          (i, o) -> o.set(Math.clamp(Math.round(i.get()), 0, 65535)),
                                           new UnsignedShortType());
             final ImagePlus fixedImp = ImageJFunctions.wrap(fixed, "fixed");
             fixedIp = fixedImp.getProcessor().convertToShortProcessor();

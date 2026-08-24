@@ -412,7 +412,7 @@ public class SolveTools
 			rY.get().set( sum );
 
 			// the quadratic function is between f(0.0)=1 and f(114)=3.4293999999879254E-5
-			final double lambda = Math.min( 1, Math.max( 0, sum < 115 ? ( 0.000076667*sum*sum - 0.017511667*sum + 1.0 ) * dynamicFactor : 3.4293999999879254E-5 * dynamicFactor ) );
+			final double lambda = Math.clamp(sum < 115 ? (0.000076667 * sum * sum - 0.017511667 * sum + 1.0) * dynamicFactor : 3.4293999999879254E-5 * dynamicFactor, 0, 1);
 
 			rX.get().set( lambda );
 		}

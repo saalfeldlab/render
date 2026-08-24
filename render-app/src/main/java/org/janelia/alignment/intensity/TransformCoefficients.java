@@ -78,7 +78,7 @@ class TransformCoefficients {
         final float[] tmp = tempArrays[0].get(L0);
         int o = 0;
         for (int d = 1; d < n; ++d) {
-            final int posd = Math.min(Math.max(S[d], 0), coefficients.size(d) - 1);
+            final int posd = Math.clamp(S[d], 0, coefficients.size(d) - 1);
             o += coefficients.stride(d) * posd;
         }
         interpolate_coeff_line(1, L0, coeff, tmp, o);
