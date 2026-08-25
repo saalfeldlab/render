@@ -398,7 +398,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 		coefficientTile.connect(equilibrationTile, List.of(eqMatch));
 	}
 
-	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2) {
+	protected static void identityConnect(final Tile<?> t1, final Tile<?> t2) {
 		final ArrayList<PointMatch> matches = new ArrayList<>();
 		matches.add(new PointMatch1D(new Point1D(0), new Point1D(0)));
 		matches.add(new PointMatch1D(new Point1D(1), new Point1D(1)));

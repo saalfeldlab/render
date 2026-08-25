@@ -50,12 +50,12 @@ import net.imglib2.view.Views;
 
 public class RenderTools
 {
-	final static public String ownerFormat = "%s/owner/%s";
-	final static public String stackListFormat = ownerFormat + "/stacks";
-	final static public String stackFormat = ownerFormat + "/project/%s/stack/%s";
-	final static public String stackBoundsFormat = stackFormat  + "/bounds";
-	final static public String boundingBoxFormat = stackFormat + "/z/%d/box/%d,%d,%d,%d,%f";
-	final static public String renderParametersFormat = boundingBoxFormat + "/render-parameters";
+	public static final String ownerFormat = "%s/owner/%s";
+	public static final String stackListFormat = ownerFormat + "/stacks";
+	public static final String stackFormat = ownerFormat + "/project/%s/stack/%s";
+	public static final String stackBoundsFormat = stackFormat + "/bounds";
+	public static final String boundingBoxFormat = stackFormat + "/z/%d/box/%d,%d,%d,%d,%f";
+	public static final String renderParametersFormat = boundingBoxFormat + "/render-parameters";
 
 	public static StackMetaData openStackMetaData(
 			final String baseUrl,
@@ -67,7 +67,7 @@ public class RenderTools
 		return renderDataClient.getStackMetaData( stack );
 	}
 
-	static public int[] availableDownsamplings(
+	public static int[] availableDownsamplings(
 			final String baseUrl,
 			final String owner,
 			final String project,
@@ -76,7 +76,7 @@ public class RenderTools
 		return availableDownsamplings( openStackMetaData( baseUrl, owner, project, stack ) );
 	}
 
-	static public int[] availableDownsamplings(
+	public static int[] availableDownsamplings(
 			final StackMetaData sourceStackMetaData) {
 		// Say you have scalings of 0.5, 0.25, 0.1
 		// and I query 0.500000001
@@ -99,7 +99,7 @@ public class RenderTools
 		}
 	}
 
-	static public Interval stackBounds(final StackMetaData sourceStackMetaData) throws IOException
+	public static Interval stackBounds(final StackMetaData sourceStackMetaData) throws IOException
 	{
 		final Bounds bounds = sourceStackMetaData.getStats().stackBounds();
 		
@@ -126,7 +126,7 @@ public class RenderTools
 	 * @param scale - the preexisting downsampled image as stored on disk
 	 * @return
 	 */
-	static public BufferedImage renderImage(
+    public static BufferedImage renderImage(
 			final ImageProcessorCache ipCache,
 			final String baseUrl,
 			final String owner,
@@ -139,7 +139,7 @@ public class RenderTools
 		return null;
 	}
 
-	static public ImageProcessorWithMasks renderImage(
+	public static ImageProcessorWithMasks renderImage(
 			final ImageProcessorCache ipCache,
 			final String baseUrl,
 			final String owner,

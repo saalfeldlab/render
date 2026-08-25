@@ -25,18 +25,18 @@ import java.util.Arrays;
 public class QuadraticIntensityMap<T extends RealType<T>> {
 	public enum Interpolation {NN, NL}
 
-	static private <T extends RealType<T>> InterpolatorFactory<RealComposite<T>, RandomAccessible<RealComposite<T>>> interpolatorFactory(final Interpolation interpolation) {
+	private static <T extends RealType<T>> InterpolatorFactory<RealComposite<T>, RandomAccessible<RealComposite<T>>> interpolatorFactory(final Interpolation interpolation) {
         return switch (interpolation) {
             case NN -> new NearestNeighborInterpolatorFactory<>();
             case NL -> new NLinearInterpolatorFactory<>();
         };
 	}
 
-	final protected Dimensions dimensions;
-	final protected Translation translation;
-	final protected RealRandomAccessible<RealComposite<T>> coefficients;
+	protected final Dimensions dimensions;
+	protected final Translation translation;
+	protected final RealRandomAccessible<RealComposite<T>> coefficients;
 
-	final protected InterpolatorFactory<RealComposite<T>, RandomAccessible<RealComposite<T>>> interpolatorFactory;
+	protected final InterpolatorFactory<RealComposite<T>, RandomAccessible<RealComposite<T>>> interpolatorFactory;
 
 	public QuadraticIntensityMap(final RandomAccessibleInterval<T> source, final InterpolatorFactory<RealComposite<T>, RandomAccessible<RealComposite<T>>> interpolatorFactory) {
 		this.interpolatorFactory = interpolatorFactory;
@@ -88,7 +88,7 @@ public class QuadraticIntensityMap<T extends RealType<T>> {
 			map(Views.flatIterable((RandomAccessibleInterval<RealType>) (Object) image), Views.flatIterable(stretchedCoefficients));
 	}
 
-	static protected <S extends RealType<S>, T extends RealType<T>> void map(
+	protected static <S extends RealType<S>, T extends RealType<T>> void map(
 			final IterableInterval<S> image,
 			final IterableInterval<RealComposite<T>> coefficients) {
 		final Cursor<S> cs = image.cursor();
@@ -102,7 +102,7 @@ public class QuadraticIntensityMap<T extends RealType<T>> {
 		}
 	}
 
-	static protected <S extends RealType<S>, T extends RealType<T>> void mapCrop(
+	protected static <S extends RealType<S>, T extends RealType<T>> void mapCrop(
 			final IterableInterval<S> image,
 			final IterableInterval<RealComposite<T>> coefficients) {
 

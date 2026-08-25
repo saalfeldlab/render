@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 
 public class AffineBlockDataWrapper<M extends Model<M> & Affine2D<M>, S extends Model<S> & Affine2D<S>>
 {
-	final public static int samplesPerDimension = 2;
+	public static final int samplesPerDimension = 2;
 
 	final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData;
 
@@ -28,19 +28,19 @@ public class AffineBlockDataWrapper<M extends Model<M> & Affine2D<M>, S extends 
 	//
 
 	// all tiles, used for solving when not grouped
-	final private HashMap<String, Tile< M > > idToTileMap = new HashMap<>();
+    private final HashMap<String, Tile< M > > idToTileMap = new HashMap<>();
 
 	// used locally to map Tile back to TileId
-	final private HashMap< Tile< M >, String > tileToIdMap = new HashMap<>();
+    private final HashMap< Tile< M >, String > tileToIdMap = new HashMap<>();
 
 	// stitching-related (local)
 
 	// contains the model as after local stitching (tmp)
-	final private HashMap<String, AffineModel2D> idToStitchingModel = new HashMap<>();
+    private final HashMap<String, AffineModel2D> idToStitchingModel = new HashMap<>();
 
 	// all grouped tiles, used for solving when stitching first
-	final private HashMap< Tile< M >, Tile< M > > tileToGroupedTile = new HashMap<>();
-	final private HashMap< Tile< M >, List< Tile< M > > > groupedTileToTiles = new HashMap<>();
+    private final HashMap< Tile< M >, Tile< M > > tileToGroupedTile = new HashMap<>();
+	private final HashMap< Tile< M >, List< Tile< M > > > groupedTileToTiles = new HashMap<>();
 
 	// removed layer-specific handling of restarts (needed for not using regularization with StabilizingAffineModel2D)
 	// >> just do it for the entire block if needed
@@ -49,7 +49,7 @@ public class AffineBlockDataWrapper<M extends Model<M> & Affine2D<M>, S extends 
 	// final private HashSet< Integer > restarts = new HashSet<Integer>();
 
 	// contains the model as loaded from renderer (can go right now except for debugging)
-	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
+    private final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
 
 	public AffineBlockDataWrapper( final BlockData<AffineModel2D, FIBSEMAlignmentParameters<M, S>> blockData )
 	{

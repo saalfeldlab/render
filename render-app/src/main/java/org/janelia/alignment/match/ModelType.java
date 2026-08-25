@@ -55,7 +55,7 @@ public enum ModelType {
     }
 
     @SuppressWarnings("serial")
-    private static abstract class AbstractInterpolatedModelSupplier<
+    private abstract static class AbstractInterpolatedModelSupplier<
             A extends Model<A>,
             B extends Model<B>,
             C extends InterpolatedModel<A, B, C>

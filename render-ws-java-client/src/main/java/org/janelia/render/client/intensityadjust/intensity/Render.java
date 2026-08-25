@@ -91,7 +91,7 @@ public class Render
 	 *
 	 * @return BufferedImage
 	 */
-	static public BufferedImage createARGBImage( final int[] pixels, final int width, final int height )
+    public static BufferedImage createARGBImage( final int[] pixels, final int width, final int height )
 	{
 		assert( pixels.length == width * height ) : "The number of pixels is not equal to width * height.";
 
@@ -119,7 +119,7 @@ public class Render
 	 *
 	 * @return average scale factor
 	 */
-	static protected  double sampleAverageScale( final CoordinateTransform ct, final int width, final int height, final double dx )
+    protected static double sampleAverageScale( final CoordinateTransform ct, final int width, final int height, final double dx )
 	{
 		final ArrayList< PointMatch > samples = new ArrayList<>();
 		for ( double y = 0; y < height; y += dx )
@@ -147,7 +147,7 @@ public class Render
 	}
 
 
-	static protected int bestMipmapLevel( final double scale )
+	protected static int bestMipmapLevel(final double scale )
 	{
 		int invScale = ( int )( 1.0 / scale );
 		int scaleLevel = 0;
@@ -166,7 +166,7 @@ public class Render
 	 *
 	 * @param scaleLevel
 	 */
-	static protected AffineModel2D createScaleLevelTransform( final int scaleLevel )
+    protected static AffineModel2D createScaleLevelTransform( final int scaleLevel )
 	{
 		final AffineModel2D a = new AffineModel2D();
 		final int scale = 1 << scaleLevel;

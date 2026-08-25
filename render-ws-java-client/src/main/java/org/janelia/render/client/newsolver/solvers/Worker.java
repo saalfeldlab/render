@@ -21,11 +21,11 @@ import mpicbg.models.NoninvertibleModelException;
  */
 public abstract class Worker <R, P extends BlockDataSolveParameters<?, R, P>>
 		implements Callable<List<BlockData<R, P>>> {
-	final protected BlockData<R, P> blockData;
-	final protected RenderDataClient renderDataClient;
-	final protected String renderStack;
+	protected final BlockData<R, P> blockData;
+	protected final RenderDataClient renderDataClient;
+	protected final String renderStack;
 
-	final protected int numThreads;
+	protected final int numThreads;
 
 	public Worker(final BlockData<R, P> blockData,
 				  final int numThreads) {

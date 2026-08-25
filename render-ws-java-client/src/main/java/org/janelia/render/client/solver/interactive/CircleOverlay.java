@@ -23,11 +23,11 @@ import net.imglib2.realtransform.AffineTransform3D;
  */
 public class CircleOverlay implements OverlayRenderer {
 
-	final static protected BasicStroke stroke = new BasicStroke(1);
-	final protected ViewerPanel viewer;
+	protected static final BasicStroke stroke = new BasicStroke(1);
+	protected final ViewerPanel viewer;
 	protected final int[] radii;
 	protected final Color[] colors;
-	final protected AffineTransform3D viewerTransform = new AffineTransform3D();
+	protected final AffineTransform3D viewerTransform = new AffineTransform3D();
 
 	protected int x, y, width, height;
 	protected boolean visible = false;

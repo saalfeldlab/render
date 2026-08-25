@@ -309,7 +309,7 @@ public class ExponentialFitClient {
 		 */
 		REPLACE_ALL((coeff, avg) -> avg);
 
-		final private BinaryOperator<double[]> action;
+		private final BinaryOperator<double[]> action;
 
 
 		OutlierPolicy(final BinaryOperator<double[]> action) {

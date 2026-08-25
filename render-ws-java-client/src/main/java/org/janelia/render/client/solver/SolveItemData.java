@@ -34,35 +34,35 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	int minZ, maxZ;
 
 	// used for global solve outside
-	final private HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
+    private final HashMap<Integer, HashSet<String> > zToTileId = new HashMap<>();
 
 	// used for saving and display
-	final private HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
+    private final HashMap<String, TileSpec> idToTileSpec = new HashMap<>();
 
 	// contains the model as determined by the local solve
-	final private HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
+    private final HashMap<String, AffineModel2D> idToNewModel = new HashMap<>();
 
 	// contains the model as loaded from renderer (can go right now except for debugging)
-	final private HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
+    private final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
 
 	// stores the per-z dynamic lambdas
-	final private HashMap<Integer, Double > zToDynamicLambda = new HashMap<>();
+    private final HashMap<Integer, Double > zToDynamicLambda = new HashMap<>();
 
 	// the errors per tile
 	final HashMap< String, List< Pair< String, Double > > > idToSolveItemErrorMap = new HashMap<>();
 
-	final private G globalSolveModel;
-	final private B blockSolveModel;
-	final private Function< Integer, S > stitchingModelSupplier;
+	private final G globalSolveModel;
+	private final B blockSolveModel;
+	private final Function< Integer, S > stitchingModelSupplier;
 
-	final private List<Double> blockOptimizerLambdasRigid;
-	final private List<Double> blockOptimizerLambdasTranslation;
-	final private List<Integer> blockOptimizerIterations;
-	final private List<Integer> blockMaxPlateauWidth;
-	final private int minStitchingInliers; // if it is less, it is not stitched first
-	final private double blockMaxAllowedError;
-	final private double dynamicLambdaFactor;
-	final private boolean rigidPreAlign;
+	private final List<Double> blockOptimizerLambdasRigid;
+	private final List<Double> blockOptimizerLambdasTranslation;
+	private final List<Integer> blockOptimizerIterations;
+	private final List<Integer> blockMaxPlateauWidth;
+	private final int minStitchingInliers; // if it is less, it is not stitched first
+	private final double blockMaxAllowedError;
+	private final double dynamicLambdaFactor;
+	private final boolean rigidPreAlign;
 
 	public SolveItemData(
 			final int id,

@@ -53,9 +53,9 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	// the advantage is that potential deformations do not propagate into the individual
 	// sections, but can be solved easily later using non-rigid alignment.
 
-	final protected static int visualizeZSection = 0;//10000;
-	final private static int zRadiusRestarts = 10;
-	final private static int stabilizationRadius = 25;
+	protected static final int visualizeZSection = 0;//10000;
+	private static final int zRadiusRestarts = 10;
+	private static final int stabilizationRadius = 25;
 
 	final RenderDataClient renderDataClient;
 	final RenderDataClient matchDataClient;
@@ -104,7 +104,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 	final int minStitchingInliers;
 
 	// global switch to disable "stitch first"
-	final private boolean stitchFirst = true;
+    private final boolean stitchFirst = true;
 
 	// limit the z-range of the solver (default: Double.NaN)
 	final double maxRange;

@@ -68,11 +68,11 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
 {
     private static final long serialVersionUID = -5344324666263462355L;
 
-    final public double[] unitWeights = new double[]{1.0, 1.0, 1.0};
+    public final double[] unitWeights = new double[]{1.0, 1.0, 1.0};
 
-    final protected double width, height;
+    protected final double width, height;
 
-    final protected double[] min, max;
+    protected final double[] min, max;
 
     public double getWidth() {
         return width;
@@ -82,15 +82,15 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
         return height;
     }
 
-	final protected ArrayList< Pair< AffineModel2D, double[][] > > av = new ArrayList< Pair< AffineModel2D, double[][] > >();
+	protected final ArrayList< Pair< AffineModel2D, double[][] > > av = new ArrayList< Pair< AffineModel2D, double[][] > >();
 	public ArrayList< Pair< AffineModel2D, double[][] > > getAV(){ return av; }
 
-    final static protected void initPoint(final double[] point, final double x, final double y) {
+    protected static final void initPoint(final double[] point, final double x, final double y) {
         point[0] = x;
         point[1] = y;
     }
 
-    final static protected void addPointMatch(final int i, final double[][] pq, final double[] point, final CoordinateTransform t, final double x, final double y) {
+    protected static final void addPointMatch(final int i, final double[][] pq, final double[] point, final CoordinateTransform t, final double x, final double y) {
         point[0] = x;
         point[1] = y;
         t.applyInPlace(point);
@@ -101,7 +101,7 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
         pq[3][i] = point[1];
     }
 
-    final static protected void addTriangle(
+    protected static final void addTriangle(
             final ArrayList< Pair< AffineModel2D, double[][] > > av,
             final double[][] pq,
             final int i1,
@@ -236,7 +236,7 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
         }
 	}
 
-	final static protected int numY(
+	protected static final int numY(
 			final int numX,
 			final double width,
 			final double height )
@@ -291,7 +291,7 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
      *
      * @return
      */
-    final static public boolean isInTriangle(
+    public static final boolean isInTriangle(
             final double ax, final double ay,
             final double bx, final double by,
             final double cx, final double cy,
@@ -335,7 +335,7 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
      *
      * @return
      */
-    final static public boolean isInTargetTriangle(final double[][] pq, final double tx, final double ty) {
+    public static final boolean isInTargetTriangle(final double[][] pq, final double tx, final double ty) {
 
         return isInTriangle(pq[2][0], pq[3][0], pq[2][1], pq[3][1], pq[2][2], pq[3][2], tx, ty);
     }
@@ -351,7 +351,7 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
      *
      * @return
      */
-    final static public boolean isInTargetTriangle(final double[][] pq, final double[] t) {
+    public static final boolean isInTargetTriangle(final double[][] pq, final double[] t) {
         assert t.length == 2 : "2d transform meshs can be applied to 2d points only.";
 
         return isInTargetTriangle(pq, t[0], t[1]);
@@ -370,7 +370,7 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
      *
      * @return
      */
-    final static public boolean isInSourceTriangle(final double[][] pq, final double tx, final double ty) {
+    public static final boolean isInSourceTriangle(final double[][] pq, final double tx, final double ty) {
 
         return isInTriangle(
                 pq[0][0], pq[1][0],
@@ -390,14 +390,14 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
      *
      * @return
      */
-    final static public boolean isInSourceTriangle(final double[][] pq, final double[] t) {
+    public static final boolean isInSourceTriangle(final double[][] pq, final double[] t) {
         assert t.length == 2 : "2d transform meshs can be applied to 2d points only.";
 
         return isInSourceTriangle(pq, t[0], t[1]);
     }
 
 
-    final static public void calculateBoundingBox(
+    public static final void calculateBoundingBox(
             final double[] xs,
             final double[] ys,
             final double[] min,
@@ -430,7 +430,7 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
      * @param max
      *            x = max[0], y = max[1]
      */
-    final static public void calculateTargetBoundingBox(final double[][] pq, final double[] min, final double[] max) {
+    public static final void calculateTargetBoundingBox(final double[][] pq, final double[] min, final double[] max) {
 
         calculateBoundingBox(pq[2], pq[3], min, max);
     }
@@ -445,7 +445,7 @@ public class RenderTransformMesh implements InvertibleCoordinateTransform
      * @param max
      *            x = max[0], y = max[1]
      */
-    final static public void calculateSourceBoundingBox(final double[][] pq, final double[] min, final double[] max) {
+    public static final void calculateSourceBoundingBox(final double[][] pq, final double[] min, final double[] max) {
 
         calculateBoundingBox(pq[0], pq[1], min, max);
     }

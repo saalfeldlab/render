@@ -155,7 +155,7 @@ public class N5SliceLoader implements ImageLoader {
         return new N5FSReader(basePath);
     }
 
-    public static abstract class Helper <A extends NativeType< A >, B extends ImageProcessor> {
+    public abstract static class Helper <A extends NativeType< A >, B extends ImageProcessor> {
 
         public abstract B buildImageProcessor(final int width,
                                               final int height);

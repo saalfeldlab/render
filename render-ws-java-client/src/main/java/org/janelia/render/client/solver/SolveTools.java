@@ -207,7 +207,7 @@ public class SolveTools
 		return error;
 	}
 
-	static public double distance(final double px, final double py, final double qx, final double qy)
+	public static double distance(final double px, final double py, final double qx, final double qy)
 	{
 		double sum = 0.0;
 		

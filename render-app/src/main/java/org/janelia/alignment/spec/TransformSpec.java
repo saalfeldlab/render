@@ -219,7 +219,7 @@ public abstract class TransformSpec implements Serializable {
      * {@link mpicbg.trakem2.transform.CoordinateTransform}.  Otherwise the
      * method returns null.
      */
-    static public TransformSpec create(final CoordinateTransform transform) {
+    public static TransformSpec create(final CoordinateTransform transform) {
         if (transform instanceof CoordinateTransformList) {
             final ListTransformSpec listSpec = new ListTransformSpec(UUID.randomUUID().toString(), null);
             @SuppressWarnings({ "rawtypes", "unchecked" })
