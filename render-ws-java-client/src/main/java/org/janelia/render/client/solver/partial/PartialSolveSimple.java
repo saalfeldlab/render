@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -51,8 +52,8 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 	{
 		LOG.info("run: entry");
 
-		LOG.info( "fixing tiles from layer " + runParams.minZ );
-		LOG.info( "grouping tiles from layer " + runParams.maxZ );
+        LOG.info("fixing tiles from layer {}", runParams.minZ);
+        LOG.info("grouping tiles from layer {}", runParams.maxZ);
 
 		final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 		final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
@@ -61,7 +62,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 		final List< Tile<InterpolatedAffineModel2D<AffineModel2D, B>> > fixedTiles = new ArrayList<>();
 		final List< String > fixedTileNames = new ArrayList<>();
 
-		// we want group all tiles of the last layer to have a common transformation that we can propgate through the rest of the stack
+		// we want group all tiles of the last layer to have a common transformation that we can propagate through the rest of the stack
 		// therefore, we also want a differential transform for the grouped tiles, which means that we have to apply the current 
 		// transformation to the local points
 		final HashSet< String > groupedTiles = new HashSet<>(); 
@@ -71,9 +72,9 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 					parameters.regularizerModelType.getInstance(),
 					parameters.startLambda)); // note: lambda gets reset during optimization loops
 
-		ArrayList< String > log = new ArrayList<>();
+		final ArrayList< String > log = new ArrayList<>();
 
-		for (final String pGroupId : runParams.pGroupList.stream().map(Pair::getA).collect( Collectors.toList() ) )
+		for (final String pGroupId : runParams.pGroupList.stream().map(Pair::getA).toList())
 		{
 			LOG.info("run: connecting tiles with pGroupId {}", pGroupId);
 
@@ -94,8 +95,8 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 					continue;
 				}
 
-				boolean pGrouped = false;
-				boolean qGrouped = false;
+				final boolean pGrouped;
+				final boolean qGrouped;
 
 				final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> p, q;
 
@@ -133,11 +134,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 				else
 				{
 					p = idToTileMap.get( pId );
-
-					if ( groupedTiles.contains( pId ))
-						pGrouped = true;
-					else
-						pGrouped = false;
+                    pGrouped = groupedTiles.contains(pId);
 				}
 
 				if ( !idToTileMap.containsKey( qId ) )
@@ -174,11 +171,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 				else
 				{
 					q = idToTileMap.get( qId );
-
-					if ( groupedTiles.contains( qId ))
-						qGrouped = true;
-					else
-						qGrouped = false;
+                    qGrouped = groupedTiles.contains(qId);
 				}
 
 				// both images are not grouped, this is the "classical" case
@@ -210,7 +203,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 		LOG.info( "Fixed tiles:" );
 
 		for ( int i = 0; i < fixedTiles.size(); ++i )
-			LOG.info( fixedTileNames.get( i ) + " " + fixedTiles.get( i ) + " model: " + idToPreviousModel.get( fixedTileNames.get( i ) ) );
+            LOG.info("{} {} model: {}", fixedTileNames.get(i), fixedTiles.get(i), idToPreviousModel.get(fixedTileNames.get(i)));
 
 		LOG.info( "Grouped tiles:" );
 
@@ -246,7 +239,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 		LOG.info( "lambda's used:" );
 
 		for ( final double lambda : lambdaValues )
-			LOG.info( "l=" + lambda );
+            LOG.info("l={}", lambda);
 
 		for (final double lambda : lambdaValues)
 		{
@@ -290,7 +283,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 				if ( groupedTiles.contains( tileId ) )
 				{
 					// the relative propagation model of the last z plane
-					if ( propagationModel == null && idToTileSpec.get( tileId ).getZ() == runParams.maxZ && groupedTiles.contains( tileId ) )
+					if (propagationModel == null && Objects.equals(idToTileSpec.get(tileId).getZ(), runParams.maxZ) && groupedTiles.contains(tileId))
 						propagationModel = affine.copy();
 
 					final AffineModel2D previous = idToPreviousModel.get( tileId ).copy();
@@ -307,7 +300,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 			}
 
 			LOG.info("");
-			LOG.info("Relative propagation model for all layers > " + runParams.maxZ + " = " + propagationModel );
+            LOG.info("Relative propagation model for all layers > {} = {}", runParams.maxZ, propagationModel);
 			LOG.info("");
 
 			// save the re-aligned part
@@ -319,14 +312,14 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 			List< Double > zToSave = new ArrayList<>( zToSaveSet );
 			Collections.sort( zToSave );
 
-			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
+            LOG.info("Saving from {} to {}", zToSave.getFirst(), zToSave.getLast());
 
 			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, idToNewModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
 			// save the bottom part
 			zToSave = runParams.renderDataClient.getStackZValues(parameters.stack, zToSave.getLast() + 0.1, null );
 
-			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
+            LOG.info("Saving from {} to {}", zToSave.getFirst(), zToSave.getLast());
 
 			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, null, propagationModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
 
@@ -403,7 +396,7 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 		return pointMatchList;
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args )
 	{
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override

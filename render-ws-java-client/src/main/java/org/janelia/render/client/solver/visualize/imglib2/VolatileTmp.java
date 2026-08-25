@@ -57,8 +57,7 @@ public class VolatileTmp {
 			final SharedQueue queue,
 			final CacheHints hints )
 	{
-		@SuppressWarnings( "unchecked" )
-		Pair< VolatileViewData< T, V >, VolatileCache > pair = ( Pair ) wrapAsVolatileViewData( rai, queue, hints );
+		@SuppressWarnings( "unchecked" ) final Pair< VolatileViewData< T, V >, VolatileCache > pair = ( Pair ) wrapAsVolatileViewData( rai, queue, hints );
 		final VolatileViewData< T, V > viewData = pair.getA();
 		return new ValuePair( new VolatileRandomAccessibleIntervalView<>( viewData ), pair.getB() );
 	}
@@ -74,7 +73,7 @@ public class VolatileTmp {
 			@SuppressWarnings( "rawtypes" )
 			final Object o = wrapCachedCellImg( ( CachedCellImg ) rai, queue, hints );
 			/*
-			 * Need to assign to a Object first to satisfy Eclipse... Otherwise
+			 * Need to assign to an Object first to satisfy Eclipse... Otherwise,
 			 * the following "unnecessary cast" will be removed, followed by
 			 * compile error. Proposed solution: Add cast. Doh...
 			 */
@@ -83,7 +82,7 @@ public class VolatileTmp {
 		}
 		else if (rai instanceof final IntervalView<T> view)
 		{
-            Pair< VolatileViewData< T, V >, VolatileCache > pair = wrapAsVolatileViewData( view.getSource(), queue, hints );
+            final Pair< VolatileViewData< T, V >, VolatileCache > pair = wrapAsVolatileViewData(view.getSource(), queue, hints );
 			final VolatileViewData< T, V > sourceData = pair.getA();
 			return new ValuePair( new VolatileViewData<>(
 					new IntervalView<>( sourceData.getImg(), view ),
@@ -93,7 +92,7 @@ public class VolatileTmp {
 		}
 		else if (rai instanceof final MixedTransformView<T> view)
 		{
-            Pair< VolatileViewData< T, V >, VolatileCache > pair = wrapAsVolatileViewData( view.getSource(), queue, hints );
+            final Pair< VolatileViewData< T, V >, VolatileCache > pair = wrapAsVolatileViewData(view.getSource(), queue, hints );
 			final VolatileViewData< T, V > sourceData = pair.getA();
 			return new ValuePair( new VolatileViewData<>(
 					new MixedTransformView<>( sourceData.getImg(), view.getTransformToSource() ),
@@ -154,10 +153,10 @@ public class VolatileTmp {
 
 	public static void simpleCacheTest()
 	{
-		Interval interval = new FinalInterval( 512, 512, 256 );
+		final Interval interval = new FinalInterval(512, 512, 256 );
 
 		final Random rnd = new Random( 35 );
-		CachedCellImg<FloatType, ?> cachedCellImg =
+		final CachedCellImg<FloatType, ?> cachedCellImg =
 				Lazy.process(
 					interval,
 					new int[] { 64, 64, 32 },
@@ -169,14 +168,12 @@ public class VolatileTmp {
 						});
 
 		final RandomAccessibleInterval<FloatType> cachedImg =
-				Views.translate(
-						cachedCellImg,
-						new long[] { 10, 10, 10 } );
+				Views.translate(cachedCellImg, 10, 10, 10);
 
 		final SharedQueue queue = new SharedQueue( 8, 1 );
 		final Pair< RandomAccessibleInterval< VolatileFloatType >, VolatileCache > pair = VolatileTmp.wrapAsVolatile( cachedImg, queue, null );
 
-		Bdv source = BdvFunctions.show( pair.getA(), "gg" );
+		final Bdv source = BdvFunctions.show(pair.getA(), "gg" );
 
 		while ( source != null )
 		{
@@ -189,7 +186,7 @@ public class VolatileTmp {
 		}
 	}
 
-	public static void main( String[] args ) throws IOException
+	public static void main(final String[] args ) throws IOException
 	{
 		simpleCacheTest();
 	}

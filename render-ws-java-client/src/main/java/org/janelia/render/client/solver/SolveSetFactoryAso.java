@@ -9,7 +9,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.janelia.render.client.solver.SolveSetFactory.SetInit;
 import org.janelia.render.client.solver.SolveSetFactory.SetInit.Location;
 
 import mpicbg.models.Affine2D;
@@ -69,7 +68,7 @@ public class SolveSetFactoryAso extends SolveSetFactory
 		{
 			boolean rigidPreAlign = false;
 			Affine2D< ? > stitchingModel = defaultStitchingModel;
-			int minStitchingInliers = defaultMinStitchingInliers;
+			final int minStitchingInliers = defaultMinStitchingInliers;
 			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
 			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
@@ -94,14 +93,14 @@ public class SolveSetFactoryAso extends SolveSetFactory
 			}
 			else if ( initSet.minZ() > 4636 )
 			{
-				blockOptimizerLambdasTranslation = new ArrayList<Double>();
+				blockOptimizerLambdasTranslation = new ArrayList<>();
 				for ( final double lambda : this.defaultBlockOptimizerLambdasTranslation )
 					blockOptimizerLambdasTranslation.add( Math.max( lambda, 0.1 ) );
 			}
 
 			final Affine2D<?> stitchingModelf = stitchingModel;
 
-			SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid = 
+			final SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid =
 					instantiateSolveItemData(
 							initSet.getId(),
 							this.defaultGlobalSolveModel,

@@ -2,7 +2,6 @@ package org.janelia.alignment.warp;
 
 import java.io.File;
 import java.io.FileReader;
-import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -147,10 +146,10 @@ public class ThinPlateSplineBuilderTest {
             maxChangePct = Math.max(maxChangePct, widthChangePct);
             maxChangePct = Math.max(maxChangePct, heightChangePct);
 
-            LOG.info(context + "tile " + montageTileSpec.getTileId() + " width was warped " + widthChangePct +
-                     " percent from " + originalWidth + " to " + warpWidth);
-            LOG.info(context + "tile " + montageTileSpec.getTileId() + " height was warped " + heightChangePct +
-                     " percent from " + originalHeight + " to " + warpHeight);
+            LOG.info("{}tile {} width was warped {} percent from {} to {}",
+                     context, montageTileSpec.getTileId(), widthChangePct, originalWidth, warpWidth);
+            LOG.info("{}tile {} height was warped {} percent from {} to {}",
+                     context, montageTileSpec.getTileId(), heightChangePct, originalHeight, warpHeight);
 
             if ((widthChangePct > acceptableChangePct) || (heightChangePct > acceptableChangePct)) {
                 overWarpedTileIds.add(montageTileSpec.getTileId());
@@ -158,17 +157,17 @@ public class ThinPlateSplineBuilderTest {
 
         }
 
-        LOG.info(context + " maximum warp was " + maxChangePct + " percent");
+        LOG.info("{} maximum warp was {} percent", context, maxChangePct);
 
         assertTrue(overWarpedTileIds.isEmpty(),
                    context + overWarpedTileIds.size() + " tiles " + overWarpedTileIds +
                    " were warped more than " + acceptableChangePct + "%");
     }
 
-    private List<TileSpec> getTiles(final String jsonFileName) throws IOException {
+    private List<TileSpec> getTiles(final String jsonFileName) {
         final File jsonFile = new File("src/test/resources/warp-test/" + jsonFileName);
         final List<TileSpec> tileSpecs;
-        try (Reader reader = new FileReader(jsonFile)) {
+        try (final Reader reader = new FileReader(jsonFile)) {
             tileSpecs = TileSpec.fromJsonArray(reader);
         } catch (final Throwable t) {
             throw new IllegalArgumentException(

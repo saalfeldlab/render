@@ -80,7 +80,7 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 		this.maxZ = maxZ;
 	}
 
-	// Note: the output RAI typically sits at 0,0...0 because it usually is a CachedCellImage
+	// Note: the output RAI typically sits at 0,0...0 because it is usually a CachedCellImage
 	// (but the actual interval to process in many blocks sits somewhere else) 
 	@Override
 	public void accept( final RandomAccessibleInterval<T> output )
@@ -120,7 +120,7 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 
 	protected void update( final RandomAccessibleInterval<T> output, final int x, final int y, final int z, final int w, final int h )
 	{
-		ImageProcessorWithMasks ipm = RenderTools.renderImage( ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, false );
+		final ImageProcessorWithMasks ipm = RenderTools.renderImage(ipCache, baseUrl, owner, project, stack, x, y, z, w, h, scale, false );
 
 		if ( ipm == null ) // if the requested block contains no images, null will be returned
 		{
@@ -137,7 +137,7 @@ public class RenderRA<T extends RealType<T> & NativeType<T>> implements Consumer
 
 	protected void fillZero( final RandomAccessibleInterval<T> output )
 	{
-		for ( final T t : Views.iterable( output ) )
+		for (final T t : output)
 			t.setZero();
 	}
 }

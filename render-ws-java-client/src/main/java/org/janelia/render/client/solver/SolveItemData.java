@@ -1,5 +1,6 @@
 package org.janelia.render.client.solver;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,7 +27,8 @@ import net.imglib2.util.Pair;
  */
 public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > > implements Serializable
 {
-	private static final long serialVersionUID = -4933629169992559913L;
+	@Serial
+    private static final long serialVersionUID = -4933629169992559913L;
 
 	private int id;
 	int minZ, maxZ;
@@ -152,7 +154,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 			imp.setTitle( "input" );
 			return imp;
 		}
-		catch ( NoninvertibleModelException e )
+		catch (final NoninvertibleModelException e)
 		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -166,11 +168,11 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 	{
 		try
 		{
-			ImagePlus imp = VisualizeTools.render( idToNewModel(), idToTileSpec(), 0.15 );
+			final ImagePlus imp = VisualizeTools.render(idToNewModel(), idToTileSpec(), 0.15 );
 			imp.setTitle( "aligned" );
 			return imp;
 		}
-		catch ( NoninvertibleModelException e )
+		catch (final NoninvertibleModelException e)
 		{
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -197,7 +199,7 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 
 	public DummySolveItemData<G, B, S> createCorrespondingDummySolveItem( final int id, final int z )
 	{
-		return new DummySolveItemData< G, B, S >( id, globalSolveModelInstance(), blockSolveModelInstance(), stitchingSolveModelInstance( z ), z );
+		return new DummySolveItemData<>(id, globalSolveModelInstance(), blockSolveModelInstance(), stitchingSolveModelInstance(z), z);
 	}
 
 	@Override
@@ -225,24 +227,24 @@ public class SolveItemData< G extends Model< G > & Affine2D< G >, B extends Mode
 			final Set<Integer> excludeFromRegularization,
 			final int numThreads )
 	{
-		return new DistributedSolveWorker< G, B, S >(
-				this,
-				startId,
-				pGroupList,
-				sectionIdToZMap,
-				baseDataUrl,
-				owner,
-				project,
-				matchOwner,
-				matchCollection,
-				stack,
-				maxNumMatches,
-				serializeMatches,
-				maxAllowedErrorStitching,
-				maxIterationsStitching,
-				maxPlateauWidthStitching,
-				maxRange,
-				excludeFromRegularization,
-				numThreads );
+		return new DistributedSolveWorker<>(
+                this,
+                startId,
+                pGroupList,
+                sectionIdToZMap,
+                baseDataUrl,
+                owner,
+                project,
+                matchOwner,
+                matchCollection,
+                stack,
+                maxNumMatches,
+                serializeMatches,
+                maxAllowedErrorStitching,
+                maxIterationsStitching,
+                maxPlateauWidthStitching,
+                maxRange,
+                excludeFromRegularization,
+                numThreads);
 	}
 }

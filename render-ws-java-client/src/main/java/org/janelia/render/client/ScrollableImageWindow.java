@@ -20,8 +20,8 @@ import javax.swing.WindowConstants;
  */
 public class ScrollableImageWindow extends JFrame {
 
-    public ScrollableImageWindow(String title,
-                                 Image image) {
+    public ScrollableImageWindow(final String title,
+                                 final Image image) {
         super(title);
 
         final JPanel contentPanel = new JPanel();
@@ -37,7 +37,7 @@ public class ScrollableImageWindow extends JFrame {
         sizeWindow(contentPanel.getSize());
     }
 
-    private void sizeWindow(Dimension preferredSize) {
+    private void sizeWindow(final Dimension preferredSize) {
         final Dimension windowSize = new Dimension(preferredSize);
         final Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
         final double screenSizeFactor = 0.8;

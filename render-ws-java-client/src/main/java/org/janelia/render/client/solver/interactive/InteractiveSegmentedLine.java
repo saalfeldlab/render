@@ -7,8 +7,8 @@ import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
+import java.io.Serial;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -83,15 +83,14 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		// default input trigger config, disables "control button1" drag in bdv
 		// (collides with default of "move annotation")
 		final InputTriggerConfig config = new InputTriggerConfig(
-				Arrays.asList(
-						new InputTriggerDescription[]{new InputTriggerDescription(
-								new String[]{"not mapped"},
-								"drag rotate slow",
-								"bdv")}));
+				List.of(new InputTriggerDescription(
+						new String[]{"not mapped"},
+						"drag rotate slow",
+						"bdv")));
 
-		ActionMap ksActionMap = new ActionMap();
-		InputMap ksInputMap = new InputMap();
-		KeyStrokeAdder ksKeyStrokeAdder = config.keyStrokeAdder(ksInputMap, "persistence");
+		final ActionMap ksActionMap = new ActionMap();
+		final InputMap ksInputMap = new InputMap();
+		final KeyStrokeAdder ksKeyStrokeAdder = config.keyStrokeAdder(ksInputMap, "persistence");
 
 		new AddPoint().register(ksActionMap, ksKeyStrokeAdder);
 		new DeletePoint().register(ksActionMap, ksKeyStrokeAdder);
@@ -249,7 +248,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		int movintPointId = -1;
 
 		@Override
-		public void init(int x, int y)
+		public void init(final int x, final int y)
 		{
 			if ( pointId >= 0 )
 			{
@@ -259,12 +258,12 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		}
 
 		@Override
-		public void drag(int x, int y)
+		public void drag(final int x, final int y)
 		{
 			if ( moving )
 			{
 				// map original location to screen
-				double[] p = points.get( movintPointId );
+				final double[] p = points.get(movintPointId );
 				viewerTransform.apply( p, p );
 
 				// update x,y and not z
@@ -279,7 +278,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		}
 
 		@Override
-		public void end(int x, int y)
+		public void end(final int x, final int y)
 		{
 			moving = false;
 			movintPointId = -1;
@@ -288,12 +287,13 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 	public class Confirm extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = -8388751240134830158L;
+		@Serial
+        private static final long serialVersionUID = -8388751240134830158L;
 
 		public Confirm() { super( "Confirm" ); }
 
 		@Override
-		public void actionPerformed(ActionEvent e)
+		public void actionPerformed(final ActionEvent e)
 		{
 			synchronized ( monitor )
 			{
@@ -301,7 +301,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 			}
 		}
 
-		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+		public void register(final ActionMap ksActionMap, final KeyStrokeAdder ksKeyStrokeAdder ) {
 			put(ksActionMap);
 			ksKeyStrokeAdder.put(name(), "ENTER" );
 		}
@@ -309,12 +309,13 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 	public class Cancel extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = 7966320561651920538L;
+		@Serial
+        private static final long serialVersionUID = 7966320561651920538L;
 
 		public Cancel() { super( "Cancel" ); }
 
 		@Override
-		public void actionPerformed(ActionEvent e)
+		public void actionPerformed(final ActionEvent e)
 		{
 			synchronized ( monitor )
 			{
@@ -323,7 +324,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 			}
 		}
 
-		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+		public void register(final ActionMap ksActionMap, final KeyStrokeAdder ksKeyStrokeAdder ) {
 			put(ksActionMap);
 			ksKeyStrokeAdder.put(name(), "ESCAPE" );
 		}
@@ -331,14 +332,15 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 	public class AddPoint extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = 3640052275162419689L;
+		@Serial
+        private static final long serialVersionUID = 3640052275162419689L;
 
 		public AddPoint() { super( "Add point" ); }
 
 		private final ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
 
 		@Override
-		public void actionPerformed(ActionEvent e)
+		public void actionPerformed(final ActionEvent e)
 		{
 			// a point is highlighted
 			if ( pointId >= 0)
@@ -358,7 +360,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 			}
 		}
 
-		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+		public void register(final ActionMap ksActionMap, final KeyStrokeAdder ksKeyStrokeAdder ) {
 			put(ksActionMap);
 			ksKeyStrokeAdder.put(name(), "ctrl A" );
 		}
@@ -366,12 +368,13 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 	public class DeletePoint extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = 3640052275162419689L;
+		@Serial
+        private static final long serialVersionUID = 3640052275162419689L;
 
 		public DeletePoint() { super( "Delete point" ); }
 
 		@Override
-		public void actionPerformed(ActionEvent e)
+		public void actionPerformed(final ActionEvent e)
 		{
 			// a point is highlighted
 			if ( pointId >= 0)
@@ -385,7 +388,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 			}
 		}
 
-		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+		public void register(final ActionMap ksActionMap, final KeyStrokeAdder ksKeyStrokeAdder ) {
 			put(ksActionMap);
 			ksKeyStrokeAdder.put(name(), "ctrl D" );
 		}
@@ -393,14 +396,15 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 	public class JumpToPoint extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = 3640052275162419689L;
+		@Serial
+        private static final long serialVersionUID = 3640052275162419689L;
 
 		public JumpToPoint() { super( "Jump to point" ); }
 
 		private final ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
 
 		@Override
-		public void actionPerformed(ActionEvent e)
+		public void actionPerformed(final ActionEvent e)
 		{
 			// a point is highlighted
 			if ( pointId >= 0)
@@ -425,7 +429,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 			}
 		}
 
-		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+		public void register(final ActionMap ksActionMap, final KeyStrokeAdder ksKeyStrokeAdder ) {
 			put(ksActionMap);
 			ksKeyStrokeAdder.put(name(), "ctrl J" );
 		}
@@ -482,7 +486,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		points.add( new double[] { 50, 20 ,30 } );
 		points.add( new double[] { 90, 90 ,90 } );
 
-		InteractiveSegmentedLine line = new InteractiveSegmentedLine( bdv, points );
+		final InteractiveSegmentedLine line = new InteractiveSegmentedLine(bdv, points );
 		points = line.getResult();
 
 		if ( points != null && !points.isEmpty())

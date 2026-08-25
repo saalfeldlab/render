@@ -134,7 +134,7 @@ public class CrossCorrelationDataTest {
         		Converters.convert( crossCorrelationMatrix, (i,o) -> o.setReal( i.get() * 65535 ), new DoubleType() );
 
         // TODO: ask SP how to set maxIntensity to 1 (and maybe zoom in) by default here
-        BdvStackSource<?> bdv = BdvFunctions.show(crossCorrelationMatrix, tabStackRun);
+        final BdvStackSource<?> bdv = BdvFunctions.show(crossCorrelationMatrix, tabStackRun);
         bdv.setDisplayRange(0, 1);
         bdv.setDisplayRangeBounds(0, 2);
     }

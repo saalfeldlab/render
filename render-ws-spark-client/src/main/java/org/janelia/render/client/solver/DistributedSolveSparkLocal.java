@@ -16,7 +16,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import mpicbg.models.Affine2D;
-import mpicbg.models.Model;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.util.Pair;
 
@@ -101,12 +100,12 @@ public class DistributedSolveSparkLocal extends DistributedSolve
 
 		sc.close();
 
-		LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
+        LOG.info("Took: {} sec.", (System.currentTimeMillis() - time) / 100);
 
 		return allItems;
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args)
 	{
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
@@ -117,11 +116,11 @@ public class DistributedSolveSparkLocal extends DistributedSolve
 
 				if ( sparkLocal == null || sparkLocal.trim().isEmpty())
 				{
-					LOG.info( "Spark System property not set: " + sparkLocal );
+                    LOG.info("Spark System property not set: {}", sparkLocal);
 					System.setProperty( "spark.master", "local[" + Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 ) + "]" );
 				}
 
-				LOG.info( "Spark System property is: " + System.getProperty( "spark.master" ) );
+                LOG.info("Spark System property is: {}", System.getProperty("spark.master"));
 
                 final DistributedSolveParameters parameters = new DistributedSolveParameters();
 
@@ -200,6 +199,6 @@ public class DistributedSolveSparkLocal extends DistributedSolve
         clientRunner.run();
 	}
 
-	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveSpark.class);
+	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveSparkLocal.class);
 
 }

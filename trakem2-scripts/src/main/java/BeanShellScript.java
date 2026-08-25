@@ -5,7 +5,7 @@
  */
 public class BeanShellScript {
 
-    public void print(String text) {
+    public void print(final String text) {
         System.out.println(text);
     }
 }

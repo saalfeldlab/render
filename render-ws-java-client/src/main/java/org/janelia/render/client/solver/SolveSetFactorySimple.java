@@ -49,7 +49,7 @@ public class SolveSetFactorySimple extends SolveSetFactory
 
 		for ( final SetInit initSet : initSets )
 		{
-			SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid = 
+			final SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid =
 					instantiateSolveItemData(
 							initSet.getId(),
 							this.defaultGlobalSolveModel,
@@ -75,10 +75,10 @@ public class SolveSetFactorySimple extends SolveSetFactory
 		return new SolveSet( leftSets, rightSets );
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args )
 	{
-		SolveSetFactorySimple setF = new SolveSetFactorySimple(new AffineModel2D(), new AffineModel2D(), new AffineModel2D(), null, null, null, null, 0, 0, 0);
-		SolveSet set = setF.defineSolveSet(0, 100, 50, 30, null);
+		final SolveSetFactorySimple setF = new SolveSetFactorySimple(new AffineModel2D(), new AffineModel2D(), new AffineModel2D(), null, null, null, null, 0, 0, 0);
+		final SolveSet set = setF.defineSolveSet(0, 100, 50, 30, null);
 
 		System.out.println( "Defined sets for global solve" );
 		System.out.println( "\n" + set );

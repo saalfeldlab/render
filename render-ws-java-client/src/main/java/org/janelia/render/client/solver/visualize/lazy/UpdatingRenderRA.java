@@ -53,7 +53,7 @@ public class UpdatingRenderRA<T extends RealType<T> & NativeType<T>> extends Ren
 	@Override
 	protected void update( final RandomAccessibleInterval<T> output, final int x, final int y, final int z, final int w, final int h )
 	{
-		AffineTransform2D t = zToTransform.apply( z ).copy();
+		final AffineTransform2D t = zToTransform.apply(z ).copy();
 
 		if ( t.isIdentity() )
 		{
@@ -116,28 +116,28 @@ public class UpdatingRenderRA<T extends RealType<T> & NativeType<T>> extends Ren
 	}
 
 	protected < S extends RealType< S > > void transform(
-			final RandomAccessibleInterval<T> output,
-			final RandomAccessibleInterval< S > fromRender,
-			final Interval transformedInterval,
-			final int x, final int y, final int w, final int h,
-			AffineTransform2D t )
+            final RandomAccessibleInterval<T> output,
+            final RandomAccessibleInterval<S> fromRender,
+            final Interval transformedInterval,
+            final int x, final int y, final int w, final int h,
+            final AffineTransform2D t)
 	{
 		// make the downsampled image sitting at 0,0 a full-scale version of itself
-		AffineTransform2D correctImage = new AffineTransform2D();
-		Translation2D offsetT = new Translation2D( transformedInterval.min( 0 ), transformedInterval.min( 1 ) );
-		Scale2D scaleT = new Scale2D( scale, scale );
+		final AffineTransform2D correctImage = new AffineTransform2D();
+		final Translation2D offsetT = new Translation2D(transformedInterval.min(0 ), transformedInterval.min(1 ) );
+		final Scale2D scaleT = new Scale2D(scale, scale );
 
-		correctImage = correctImage.preConcatenate( scaleT.inverse() );
-		correctImage = correctImage.preConcatenate( offsetT );
+		correctImage.preConcatenate(scaleT.inverse());
+		correctImage.preConcatenate(offsetT);
 
 		// before applying our transformation we make the downsampled block a full-scale image
-		t = t.concatenate( correctImage );
+		t.concatenate(correctImage);
 
 		// now after applying the transform, we scale down again
-		t = t.preConcatenate( scaleT );
+		t.preConcatenate(scaleT);
 
-		RandomAccessible< S > transformed = RealViews.affine( Views.interpolate( Views.extendBorder( fromRender ), new NLinearInterpolatorFactory<>() ), t );
-		RandomAccessibleInterval< S > input = Views.interval( transformed, Intervals.createMinSize( Math.round( x*scale ), Math.round(y*scale), Math.round(w*scale), Math.round(h*scale)) );
+		final RandomAccessible< S > transformed = RealViews.affine(Views.interpolate(Views.extendBorder(fromRender ), new NLinearInterpolatorFactory<>() ), t );
+		final RandomAccessibleInterval< S > input = Views.interval(transformed, Intervals.createMinSize(Math.round(x * scale ), Math.round(y * scale), Math.round(w * scale), Math.round(h * scale)) );
 
 		final Cursor< S > in = Views.flatIterable( input ).cursor();
 		final Cursor< T > out = Views.flatIterable( output ).cursor();
@@ -214,21 +214,21 @@ public class UpdatingRenderRA<T extends RealType<T> & NativeType<T>> extends Ren
 		final boolean filter = false;
 
 		// always in world coordinates
-		int w = 512;
-		int h = 512;
-		int x = 10000;
-		int y = 1000;
-		int z = 6151;
+		final int w = 512;
+		final int h = 512;
+		final int x = 10000;
+		final int y = 1000;
+		final int z = 6151;
 
-		double scale = 1.0 /8.0;
-		ImageProcessorWithMasks img1 = RenderTools.renderImage( null, baseUrl, owner, project, stack, x, y, z, w, h, scale, filter );
+		final double scale = 1.0 / 8.0;
+		final ImageProcessorWithMasks img1 = RenderTools.renderImage(null, baseUrl, owner, project, stack, x, y, z, w, h, scale, filter );
 
 		new ImageJ();
 		final ImagePlus imp1 = new ImagePlus("img1", img1.ip);
 		imp1.show();
 
 		// world coordinates
-		AffineTransform2D t = new AffineTransform2D();
+		final AffineTransform2D t = new AffineTransform2D();
 		// simple translation test
 		//t.translate( 256, 256 );
 
@@ -256,7 +256,7 @@ public class UpdatingRenderRA<T extends RealType<T> & NativeType<T>> extends Ren
 				scale,
 				false );
 
-		RandomAccessibleInterval fromRender;
+		final RandomAccessibleInterval fromRender;
 
 		if ( ipm.ip.getBitDepth() == 8 )
 		{
@@ -278,34 +278,34 @@ public class UpdatingRenderRA<T extends RealType<T> & NativeType<T>> extends Ren
 		ImageJFunctions.show( fromRender );
 
 		// make the downsampled image sitting at 0,0 a full-scale version of itself
-		AffineTransform2D correctImage = new AffineTransform2D();
-		Translation2D offsetT = new Translation2D( transformedInterval.min( 0 ), transformedInterval.min( 1 ) );
-		Scale2D scaleT = new Scale2D( scale, scale );
+		final AffineTransform2D correctImage = new AffineTransform2D();
+		final Translation2D offsetT = new Translation2D(transformedInterval.min(0 ), transformedInterval.min(1 ) );
+		final Scale2D scaleT = new Scale2D(scale, scale );
 
-		correctImage = correctImage.preConcatenate( scaleT.inverse() );
-		correctImage = correctImage.preConcatenate( offsetT );
+		correctImage.preConcatenate(scaleT.inverse());
+		correctImage.preConcatenate(offsetT);
 
 		// before applying our transformation we make the downsampled block a full-scale image
-		t = t.concatenate( correctImage );
+		t.concatenate(correctImage);
 
 		// now after applying the transform, we scale down again
-		t = t.preConcatenate( scaleT );
+		t.preConcatenate(scaleT);
 
 		// TODO: do we need to scale t here since the result is a small block
-		RandomAccessible transformed = RealViews.affine( Views.interpolate( Views.extendZero( fromRender ), new NLinearInterpolatorFactory() ), t );
+		final RandomAccessible transformed = RealViews.affine(Views.interpolate(Views.extendZero(fromRender ), new NLinearInterpolatorFactory() ), t );
 
-		RandomAccessibleInterval finalImg = Views.interval( transformed, Intervals.createMinSize( Math.round( x*scale ), Math.round(y*scale), Math.round(w*scale), Math.round(h*scale)) );
+		final RandomAccessibleInterval finalImg = Views.interval(transformed, Intervals.createMinSize(Math.round(x * scale ), Math.round(y * scale), Math.round(w * scale), Math.round(h * scale)) );
 
 		ImageJFunctions.show( finalImg );
 		
 	}
 
-	public static void main( String[] args ) throws IOException
+	public static void main(final String[] args ) throws IOException
 	{
-		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "Z0720_07m_VNC"; //"flyem";
-		String project = "Sec32"; //"Z0419_25_Alpha3";
-		String stack = "v1_acquire_trimmed_sp1"; //"v1_acquire_sp_nodyn_v2";
+		final String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
+		final String owner = "Z0720_07m_VNC"; //"flyem";
+		final String project = "Sec32"; //"Z0419_25_Alpha3";
+		final String stack = "v1_acquire_trimmed_sp1"; //"v1_acquire_sp_nodyn_v2";
 
 		testAdditionalTransform(baseUrl, owner, project, stack);
 	}

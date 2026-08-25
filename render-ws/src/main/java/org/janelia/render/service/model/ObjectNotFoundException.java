@@ -10,7 +10,7 @@ import javax.ws.rs.core.Response;
 public class ObjectNotFoundException
         extends ServiceException {
 
-    public ObjectNotFoundException(String message) {
+    public ObjectNotFoundException(final String message) {
         super(message, Response.Status.NOT_FOUND);
     }
 }

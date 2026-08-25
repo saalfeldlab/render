@@ -112,7 +112,7 @@ public class SolveSetFactoryBRSec36 extends SolveSetFactory
 
 			final Affine2D<?> stitchingModelf = stitchingModel;
 
-			SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid =
+			final SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid =
 					instantiateSolveItemData(
 							initSet.getId(),
 							this.defaultGlobalSolveModel,

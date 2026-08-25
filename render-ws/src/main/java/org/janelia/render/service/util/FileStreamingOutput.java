@@ -28,7 +28,7 @@ public class FileStreamingOutput
     @Override
     public void write(final OutputStream outputStream)
             throws IOException, WebApplicationException {
-        try (FileInputStream inputStream = new FileInputStream(file)) {
+        try (final FileInputStream inputStream = new FileInputStream(file)) {
             IOUtils.copyLarge(inputStream, outputStream);
         }
     }

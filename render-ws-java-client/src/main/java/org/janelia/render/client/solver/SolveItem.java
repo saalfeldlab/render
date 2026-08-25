@@ -52,7 +52,7 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	final private HashMap< Tile< B >, List< Tile< B > > > groupedTileToTiles = new HashMap<>();
 
 	// which z layers are restarts
-	final private HashSet< Integer > restarts = new HashSet<Integer>();
+	final private HashSet< Integer > restarts = new HashSet<>();
 
 	// matches for error computation
 	final List< Pair< Pair< String, String>, Matches > > matches = new ArrayList<>();
@@ -139,9 +139,9 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 		return getId();
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args )
 	{
-		SolveItem< TranslationModel2D, TranslationModel2D, TranslationModel2D > s = new SolveItem<>(
+		final SolveItem<TranslationModel2D, TranslationModel2D, TranslationModel2D> s = new SolveItem<>(
 				new SolveItemData< TranslationModel2D, TranslationModel2D, TranslationModel2D >( 0, null, null, null, null, null, null, null, 0, 0.0, 0.0, false, 100, 102 ) );
 
 		for ( int z = s.minZ(); z <= s.maxZ(); ++z )
