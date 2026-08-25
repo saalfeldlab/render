@@ -42,12 +42,12 @@ public class CopyStackClientTest {
     @Test
     public void testExcludedCellParametersParsing() throws Exception {
 
-        final String json =
-                "[\n" +
-                " { \"cellIds\": [ \"0,0\", \"0,1\", \"0,2\", \"1,0\", \"2,0\" ], \"minZ\": 1, \"maxZ\": 1000 },\n" +
-                " { \"cellIds\": [ \"0,0\", \"0,2\", \"1,0\", \"2,0\" ], \"minZ\": 1001, \"maxZ\": 3500 },\n" +
-                " { \"cellIds\": [ \"1,0\", \"2,0\" ], \"minZ\": 3501, \"maxZ\": 4608 }\n" +
-                "]";
+        final String json = """
+                        [
+                         { "cellIds": [ "0,0", "0,1", "0,2", "1,0", "2,0" ], "minZ": 1, "maxZ": 1000 },
+                         { "cellIds": [ "0,0", "0,2", "1,0", "2,0" ], "minZ": 1001, "maxZ": 3500 },
+                         { "cellIds": [ "1,0", "2,0" ], "minZ": 3501, "maxZ": 4608 }
+                        ]""";
 
         Files.write(testJsonFile.toPath(), json.getBytes(StandardCharsets.UTF_8));
 

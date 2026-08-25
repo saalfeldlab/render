@@ -60,89 +60,89 @@ public class IntensityMatcherTest {
         matcher.match(renderStack, p1, p2, coefficientTiles);
     }
 
-    private static final String P_TILE_SPEC_JSON =
-            "{\n" +
-            "\"tileId\": \"w61_magc0145_scan046_m0000_r19_s23\",\n" +
-            "\"layout\": {\n" +
-            "\"sectionId\": \"42.0\",\n" +
-            "\"imageRow\": 33,\n" +
-            "\"imageCol\": 13,\n" +
-            "\"stageX\": -70298.15398095643,\n" +
-            "\"stageY\": -40518.08008146928\n" +
-            "},\n" +
-            "\"z\": 42,\n" +
-            "\"minX\": 14293,\n" +
-            "\"minY\": 31631,\n" +
-            "\"maxX\": 16297,\n" +
-            "\"maxY\": 33379,\n" +
-            "\"width\": 2000,\n" +
-            "\"height\": 1748,\n" +
-            "\"minIntensity\": 0,\n" +
-            "\"maxIntensity\": 255,\n" +
-            "\"mipmapLevels\": {\n" +
-            "\"0\": {\n" +
-            "\"imageUrl\": \"https://storage.googleapis.com/janelia-spark-test/hess_wafer_61_data/scan_046/slab_0145/mfov_0000/sfov_023.png\",\n" +
-            "\"imageLoaderType\": \"IMAGEJ_DEFAULT_W_TIMEOUT\"\n" +
-            "}\n" +
-            "},\n" +
-            "\"transforms\": {\n" +
-            "\"type\": \"list\",\n" +
-            "\"specList\": [\n" +
-            "{\n" +
-            "\"type\": \"leaf\",\n" +
-            "\"className\": \"org.janelia.alignment.transform.ExponentialFunctionOffsetTransform\",\n" +
-            "\"dataString\": \"3.164065083689898,0.010223592506552219,0.0,0\"\n" +
-            "},\n" +
-            "{\n" +
-            "\"type\": \"leaf\",\n" +
-            "\"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-            "\"dataString\": \"1 0 0 1 14296.41339989654 31631.33097979614\"\n" +
-            "}\n" +
-            "]\n" +
-            "},\n" +
-            "\"meshCellSize\": 64\n" +
-            "}";
+    private static final String P_TILE_SPEC_JSON = """
+                    {
+                    "tileId": "w61_magc0145_scan046_m0000_r19_s23",
+                    "layout": {
+                    "sectionId": "42.0",
+                    "imageRow": 33,
+                    "imageCol": 13,
+                    "stageX": -70298.15398095643,
+                    "stageY": -40518.08008146928
+                    },
+                    "z": 42,
+                    "minX": 14293,
+                    "minY": 31631,
+                    "maxX": 16297,
+                    "maxY": 33379,
+                    "width": 2000,
+                    "height": 1748,
+                    "minIntensity": 0,
+                    "maxIntensity": 255,
+                    "mipmapLevels": {
+                    "0": {
+                    "imageUrl": "https://storage.googleapis.com/janelia-spark-test/hess_wafer_61_data/scan_046/slab_0145/mfov_0000/sfov_023.png",
+                    "imageLoaderType": "IMAGEJ_DEFAULT_W_TIMEOUT"
+                    }
+                    },
+                    "transforms": {
+                    "type": "list",
+                    "specList": [
+                    {
+                    "type": "leaf",
+                    "className": "org.janelia.alignment.transform.ExponentialFunctionOffsetTransform",
+                    "dataString": "3.164065083689898,0.010223592506552219,0.0,0"
+                    },
+                    {
+                    "type": "leaf",
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1 0 0 1 14296.41339989654 31631.33097979614"
+                    }
+                    ]
+                    },
+                    "meshCellSize": 64
+                    }""";
 
-    private static final String Q_TILE_SPEC_JSON =
-            "{\n" +
-            "\"tileId\": \"w61_magc0145_scan046_m0000_r20_s41\",\n" +
-            "\"layout\": {\n" +
-            "\"sectionId\": \"42.0\",\n" +
-            "\"imageRow\": 33,\n" +
-            "\"imageCol\": 15,\n" +
-            "\"stageX\": -68411.98666969372,\n" +
-            "\"stageY\": -40520.934959339866\n" +
-            "},\n" +
-            "\"z\": 42,\n" +
-            "\"minX\": 16179,\n" +
-            "\"minY\": 31628,\n" +
-            "\"maxX\": 18183,\n" +
-            "\"maxY\": 33376,\n" +
-            "\"width\": 2000,\n" +
-            "\"height\": 1748,\n" +
-            "\"minIntensity\": 0,\n" +
-            "\"maxIntensity\": 255,\n" +
-            "\"mipmapLevels\": {\n" +
-            "\"0\": {\n" +
-            "\"imageUrl\": \"https://storage.googleapis.com/janelia-spark-test/hess_wafer_61_data/scan_046/slab_0145/mfov_0000/sfov_041.png\",\n" +
-            "\"imageLoaderType\": \"IMAGEJ_DEFAULT_W_TIMEOUT\"\n" +
-            "}\n" +
-            "},\n" +
-            "\"transforms\": {\n" +
-            "\"type\": \"list\",\n" +
-            "\"specList\": [\n" +
-            "{\n" +
-            "\"type\": \"leaf\",\n" +
-            "\"className\": \"org.janelia.alignment.transform.ExponentialFunctionOffsetTransform\",\n" +
-            "\"dataString\": \"3.164065083689898,0.010223592506552219,0.0,0\"\n" +
-            "},\n" +
-            "{\n" +
-            "\"type\": \"leaf\",\n" +
-            "\"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-            "\"dataString\": \"1 0 0 1 16182.580711159244 31628.476101925553\"\n" +
-            "}\n" +
-            "]\n" +
-            "},\n" +
-            "\"meshCellSize\": 64\n" +
-            "}";
+    private static final String Q_TILE_SPEC_JSON = """
+                    {
+                    "tileId": "w61_magc0145_scan046_m0000_r20_s41",
+                    "layout": {
+                    "sectionId": "42.0",
+                    "imageRow": 33,
+                    "imageCol": 15,
+                    "stageX": -68411.98666969372,
+                    "stageY": -40520.934959339866
+                    },
+                    "z": 42,
+                    "minX": 16179,
+                    "minY": 31628,
+                    "maxX": 18183,
+                    "maxY": 33376,
+                    "width": 2000,
+                    "height": 1748,
+                    "minIntensity": 0,
+                    "maxIntensity": 255,
+                    "mipmapLevels": {
+                    "0": {
+                    "imageUrl": "https://storage.googleapis.com/janelia-spark-test/hess_wafer_61_data/scan_046/slab_0145/mfov_0000/sfov_041.png",
+                    "imageLoaderType": "IMAGEJ_DEFAULT_W_TIMEOUT"
+                    }
+                    },
+                    "transforms": {
+                    "type": "list",
+                    "specList": [
+                    {
+                    "type": "leaf",
+                    "className": "org.janelia.alignment.transform.ExponentialFunctionOffsetTransform",
+                    "dataString": "3.164065083689898,0.010223592506552219,0.0,0"
+                    },
+                    {
+                    "type": "leaf",
+                    "className": "mpicbg.trakem2.transform.AffineModel2D",
+                    "dataString": "1 0 0 1 16182.580711159244 31628.476101925553"
+                    }
+                    ]
+                    },
+                    "meshCellSize": 64
+                    }""";
 }

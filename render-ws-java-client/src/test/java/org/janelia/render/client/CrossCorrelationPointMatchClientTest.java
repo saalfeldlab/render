@@ -92,38 +92,35 @@ public class CrossCorrelationPointMatchClientTest {
             { "400.0", "20-07-12_061129_0-0-0.400.0", "LEFT", "400.0", "20-07-12_061129_0-0-1.400.0", "RIGHT" }
     };
 
-    private static final String[] TEST_PARAMETERS_JSON = {
-
-            // -----------------------------------------------------------------------------------------------
-            // test 0 parameters:
-            "{\n" +
-            "  \"matchClient\" : {\n" +
-            "    \"baseDataUrl\" : \"http://renderer-dev.int.janelia.org:8080/render-ws/v1\",\n" +
-            "    \"owner\" : \"Z0620_23m_VNC\",\n" +
-            "    \"collection\" : \"test_matches_Sec25\"\n" +
-            "  },\n" +
-            "  \"featureRender\" : { " +
-            "    \"renderScale\" : 1.0, \"renderWithFilter\" : false, \"renderWithoutMask\" : false\n" +
-            "  },\n" +
-            "  \"featureRenderClip\" : { \"clipWidth\": 250 },\n" +
-            "  \"correlation\" : {\n" +
-            "    \"fullScaleSampleSize\" : 250,\n" +
-            "    \"fullScaleStepSize\" : 5,\n" +
-            "    \"minResultThreshold\" : 0.5,\n" +
-            "    \"checkPeaks\" : 50\n" +
-            "  },\n" +
-            "  \"matchDerivation\" : {\n" +
-            "    \"matchRod\" : 0.92,\n" +
-            "    \"matchModelType\" : \"TRANSLATION\",\n" +
-            "    \"matchIterations\" : 1000,\n" +
-            "    \"matchMaxEpsilon\" : 2.0,\n" +
-            "    \"matchMinInlierRatio\" : 0.0,\n" +
-            "    \"matchMinNumInliers\" : 20,\n" +
-            "    \"matchMaxTrust\" : 3.0,\n" +
-            "    \"matchFilter\" : \"SINGLE_SET\"\n" +
-            "  }\n" +
-            "}"
-    };
+    private static final String TEST_PARAMETERS_JSON_0 = """
+            {
+              "matchClient" : {
+                "baseDataUrl" : "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                "owner" : "Z0620_23m_VNC",
+                "collection" : "test_matches_Sec25"
+              },
+              "featureRender" : { \
+                "renderScale" : 1.0, "renderWithFilter" : false, "renderWithoutMask" : false
+              },
+              "featureRenderClip" : { "clipWidth": 250 },
+              "correlation" : {
+                "fullScaleSampleSize" : 250,
+                "fullScaleStepSize" : 5,
+                "minResultThreshold" : 0.5,
+                "checkPeaks" : 50
+              },
+              "matchDerivation" : {
+                "matchRod" : 0.92,
+                "matchModelType" : "TRANSLATION",
+                "matchIterations" : 1000,
+                "matchMaxEpsilon" : 2.0,
+                "matchMinInlierRatio" : 0.0,
+                "matchMinNumInliers" : 20,
+                "matchMaxTrust" : 3.0,
+                "matchFilter" : "SINGLE_SET"
+              }
+            }""";
+    private static final String[] TEST_PARAMETERS_JSON = {TEST_PARAMETERS_JSON_0};
 
     private static final JsonUtils.Helper<CrossCorrelationPointMatchClient.Parameters> JSON_HELPER =
             new JsonUtils.Helper<>(CrossCorrelationPointMatchClient.Parameters.class);

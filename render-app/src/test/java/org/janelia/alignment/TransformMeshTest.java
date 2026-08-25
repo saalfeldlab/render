@@ -162,28 +162,28 @@ public class TransformMeshTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(TransformMeshTest.class);
 
-    private static final String TILE_SPEC_JSON =
-            "{\n" +
-            "  \"width\": 2650.0,\n" +
-            "  \"height\": 2260.0,\n" +
-            "  \"mipmapLevels\": {\n" +
-            "    \"0\": {\n" +
-            "      \"imageUrl\": \"src/test/resources/stitch-test/col0075_row0021_cam1.png\",\n" +
-            "      \"maskUrl\": \"src/test/resources/stitch-test/test_mask.jpg\"\n" +
-            "    }\n" +
-            "  },\n" +
-            "  \"transforms\": {\n" +
-            "    \"type\": \"list\",\n" +
-            "    \"specList\": [\n" +
-            "      {\n" +
-            "        \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-            "        \"dataString\": \"0.959851    -0.007319      0.00872     0.923958      47.5933      45.6929\"\n" +
-            "      },\n" +
-            "      {\n" +
-            "        \"className\": \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-            "        \"dataString\": \"1  0  0  1  0  0\"\n" +
-            "      }\n" +
-            "    ]\n" +
-            "  }\n" +
-            "}";
+    private static final String TILE_SPEC_JSON = """
+                    {
+                      "width": 2650.0,
+                      "height": 2260.0,
+                      "mipmapLevels": {
+                        "0": {
+                          "imageUrl": "src/test/resources/stitch-test/col0075_row0021_cam1.png",
+                          "maskUrl": "src/test/resources/stitch-test/test_mask.jpg"
+                        }
+                      },
+                      "transforms": {
+                        "type": "list",
+                        "specList": [
+                          {
+                            "className": "mpicbg.trakem2.transform.AffineModel2D",
+                            "dataString": "0.959851    -0.007319      0.00872     0.923958      47.5933      45.6929"
+                          },
+                          {
+                            "className": "mpicbg.trakem2.transform.AffineModel2D",
+                            "dataString": "1  0  0  1  0  0"
+                          }
+                        ]
+                      }
+                    }""";
 }

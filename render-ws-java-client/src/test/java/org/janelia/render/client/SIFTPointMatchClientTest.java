@@ -151,299 +151,300 @@ public class SIFTPointMatchClientTest {
             { "19996.0", "19-02-16_090916_0-0-0.19996.0", "LEFT", "19996.0", "19-02-16_090916_0-0-1.19996.0", "RIGHT" }
     };
 
+    private static final String TEST_PARAMETERS_0 = """
+                    {
+                      "matchClient" : {
+                        "baseDataUrl" : "http://renderer-dev.int.janelia.org:8080/render-ws/v1",
+                        "owner" : "Z1217_19m",
+                        "collection" : "test_gd_matches_Sec07"
+                      },
+                      "featureRender" : {
+                        "renderScale" : 0.15,
+                        "renderWithFilter" : true,
+                        "renderWithoutMask" : false
+                      },
+                      "featureRenderClip" : { },
+                      "featureExtraction" : {
+                        "fdSize" : 4,
+                        "minScale" : 0.25,
+                        "maxScale" : 1.0,
+                        "steps" : 3
+                      },
+                      "featureStorage" : {
+                        "requireStoredFeatures" : false,
+                        "maxFeatureCacheGb" : 2,
+                        "maxFeatureSourceCacheGb" : 2
+                      },
+                      "matchDerivation" : {
+                        "matchRod" : 0.92,
+                        "matchModelType" : "AFFINE",
+                        "matchRegularizerModelType" : "RIGID",
+                        "matchInterpolatedModelLambda" : 0.25,
+                        "matchIterations" : 1000,
+                        "matchMaxEpsilon" : 50.0,
+                        "matchMinInlierRatio" : 0.0,
+                        "matchMinNumInliers" : 10,
+                        "matchMaxTrust" : 4.0,
+                        "matchFilter" : "SINGLE_SET",
+                        "matchFullScaleCoverageRadius" : 300.0
+                      },
+                      "geometricDescriptorAndMatch" : {
+                        "gdEnabled" : true,
+                        "renderScale" : 0.25,
+                        "geometricDescriptorParameters" : {
+                          "numberOfNeighbors" : 3,
+                          "redundancy" : 1,
+                          "significance" : 2.0,
+                          "sigma" : 2.04,
+                          "threshold" : 0.008,
+                          "localization" : "NONE",
+                          "lookForMinima" : true,
+                          "lookForMaxima" : false,
+                          "similarOrientation" : true,
+                          "fullScaleBlockRadius" : 0.0,
+                          "fullScaleNonMaxSuppressionRadius" : 120.0,
+                          "gdStoredMatchWeight" : 0.4
+                        },
+                        "matchDerivationParameters" : {
+                          "matchRod" : 0.92,
+                          "matchModelType" : "RIGID",
+                          "matchIterations" : 1000,
+                          "matchMaxEpsilon" : 20.0,
+                          "matchMinInlierRatio" : 0.0,
+                          "matchMinNumInliers" : 4,
+                          "matchMaxTrust" : 3.0,
+                          "matchFilter" : "SINGLE_SET",
+                          "matchFullScaleCoverageRadius" : 300.0
+                        },
+                        "minCombinedInliers" : 600,
+                        "minCombinedCoveragePercentage" : 55.0
+                      }
+                    }""";
+
+    // -----------------------------------------------------------------------------------------------
+    private static final String TEST_PARAMETERS_1 = """
+                    {
+                        "featureAndMatchParameters" : {
+                          "siftFeatureParameters" : {
+                            "fdSize" : 4,
+                            "minScale" : 0.25,
+                            "maxScale" : 1.0,
+                            "steps" : 5
+                          },
+                          "matchDerivationParameters" : {
+                            "matchRod" : 0.92,
+                            "matchModelType" : "RIGID",
+                            "matchRegularizerModelType" : "TRANSLATION",
+                            "matchInterpolatedModelLambda" : 0.25,
+                            "matchIterations" : 1000,
+                            "matchMaxEpsilon" : 60.0,
+                            "matchMinInlierRatio" : 0.0,
+                            "matchMinNumInliers" : 10,
+                            "matchMaxTrust" : 4.0,
+                            "matchFilter" : "SINGLE_SET",
+                            "matchFullScaleCoverageRadius" : 300.0
+                          },
+                          "pClipPosition" : "LEFT",
+                          "clipPixels" : 500
+                        },
+                        "pRenderParametersUrl" : "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/19-02-18_163401_0-0-0.22718.0/render-parameters?filter=true&scale=0.6",
+                        "qRenderParametersUrl" : "http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/19-02-18_163401_0-0-1.22718.0/render-parameters?filter=true&scale=0.6",
+                        "geometricDescriptorAndMatchFilterParameters" : {
+                          "gdEnabled" : true,
+                          "renderScale" : 1.0,
+                          "renderWithFilter" : false,
+                          "geometricDescriptorParameters" : {
+                            "numberOfNeighbors" : 3,
+                            "redundancy" : 2,
+                            "significance" : 1.5,
+                            "sigma" : 6.04,
+                            "threshold" : 0.008,
+                            "localization" : "THREE_D_QUADRATIC",
+                            "lookForMinima" : true,
+                            "lookForMaxima" : false,
+                            "similarOrientation" : true,
+                            "fullScaleBlockRadius" : 100.0,
+                            "fullScaleNonMaxSuppressionRadius" : 20.0,
+                            "gdStoredMatchWeight" : 0.4
+                          },
+                          "matchDerivationParameters" : {
+                            "matchRod" : 0.92,
+                            "matchModelType" : "RIGID",
+                            "matchRegularizerModelType" : "TRANSLATION",
+                            "matchInterpolatedModelLambda" : 0.25,
+                            "matchIterations" : 10000,
+                            "matchMaxEpsilon" : 20.0,
+                            "matchMinInlierRatio" : 0.0,
+                            "matchMinNumInliers" : 10,
+                            "matchMaxTrust" : 3.0,
+                            "matchFilter" : "SINGLE_SET",
+                            "matchFullScaleCoverageRadius" : 300.0
+                          }
+                        }
+                      }""";
+
+    // -----------------------------------------------------------------------------------------------
+    private static final String TEST_PARAMETERS_2 = """
+                    {
+                      "matchClient" : {
+                        "baseDataUrl" : "http://10.40.3.162:8080/render-ws/v1",
+                        "owner" : "Z1217_19m",
+                        "collection" : "gd_test_Sec07_v1"
+                      },
+                      "featureRender" : {
+                        "renderScale" : 0.6,
+                        "renderWithFilter" : true,
+                        "renderWithoutMask" : false
+                      },
+                      "featureRenderClip" : {
+                        "clipWidth" : 500,
+                        "clipHeight" : 500
+                      },
+                      "featureExtraction" : {
+                        "fdSize" : 4,
+                        "minScale" : 0.25,
+                        "maxScale" : 1.0,
+                        "steps" : 5
+                      },
+                      "featureStorage" : {
+                        "requireStoredFeatures" : false,
+                        "maxFeatureCacheGb" : 6,
+                        "maxFeatureSourceCacheGb" : 6
+                      },
+                      "matchDerivation" : {
+                        "matchRod" : 0.92,
+                        "matchModelType" : "RIGID",
+                        "matchRegularizerModelType" : "TRANSLATION",
+                        "matchInterpolatedModelLambda" : 0.25,
+                        "matchIterations" : 1000,
+                        "matchMaxEpsilon" : 60.0,
+                        "matchMinInlierRatio" : 0.0,
+                        "matchMinNumInliers" : 10,
+                        "matchMaxTrust" : 4.0,
+                        "matchFilter" : "SINGLE_SET",
+                        "matchFullScaleCoverageRadius" : 300.0,
+                        "matchMinCoveragePercentage" : 70.0
+                      },
+                      "geometricDescriptorAndMatch" : {
+                        "gdEnabled" : true,
+                        "renderScale" : 1.0,
+                        "renderWithFilter" : false,
+                        "geometricDescriptorParameters" : {
+                          "numberOfNeighbors" : 3,
+                          "redundancy" : 2,
+                          "significance" : 1.5,
+                          "sigma" : 6.04,
+                          "threshold" : 0.008,
+                          "localization" : "THREE_D_QUADRATIC",
+                          "lookForMinima" : true,
+                          "lookForMaxima" : false,
+                          "similarOrientation" : true,
+                          "fullScaleBlockRadius" : 100.0,
+                          "fullScaleNonMaxSuppressionRadius" : 20.0,
+                          "gdStoredMatchWeight" : 0.39
+                        },
+                        "matchDerivationParameters" : {
+                          "matchRod" : 0.92,
+                          "matchModelType" : "RIGID",
+                          "matchRegularizerModelType" : "TRANSLATION",
+                          "matchInterpolatedModelLambda" : 0.25,
+                          "matchIterations" : 10000,
+                          "matchMaxEpsilon" : 20.0,
+                          "matchMinInlierRatio" : 0.0,
+                          "matchMinNumInliers" : 10,
+                          "matchMaxTrust" : 3.0,
+                          "matchFilter" : "SINGLE_SET",
+                          "matchFullScaleCoverageRadius" : 300.0
+                        },
+                        "minCombinedInliers" : 0,
+                        "minCombinedCoveragePercentage" : 65.0
+                      }
+                    }""";
+
+    // -----------------------------------------------------------------------------------------------
+    private static final String TEST_PARAMETERS_3 = """
+                    {
+                      "matchClient" : {
+                        "baseDataUrl" : "http://10.40.3.162:8080/render-ws/v1",
+                        "owner" : "Z1217_19m",
+                        "collection" : "gd_test_3_Sec07_v1"
+                      },
+                      "featureRender" : {
+                        "renderScale" : 0.6,
+                        "renderWithFilter" : true,
+                        "renderWithoutMask" : false
+                      },
+                      "featureRenderClip" : {
+                        "clipWidth" : 500,
+                        "clipHeight" : 500
+                      },
+                      "featureExtraction" : {
+                        "fdSize" : 4,
+                        "minScale" : 0.25,
+                        "maxScale" : 1.0,
+                        "steps" : 5
+                      },
+                      "featureStorage" : {
+                        "requireStoredFeatures" : false,
+                        "maxFeatureCacheGb" : 6,
+                        "maxFeatureSourceCacheGb" : 6
+                      },
+                      "matchDerivation" : {
+                        "matchRod" : 0.92,
+                        "matchModelType" : "RIGID",
+                        "matchRegularizerModelType" : "TRANSLATION",
+                        "matchInterpolatedModelLambda" : 0.25,
+                        "matchIterations" : 1000,
+                        "matchMaxEpsilon" : 20.0,
+                        "matchMinInlierRatio" : 0.0,
+                        "matchMinNumInliers" : 25,
+                        "matchMaxTrust" : 4.0,
+                        "matchFilter" : "SINGLE_SET",
+                        "matchFullScaleCoverageRadius" : 300.0,
+                        "matchMinCoveragePercentage" : 70.0
+                      },
+                      "geometricDescriptorAndMatch" : {
+                        "gdEnabled" : true,
+                        "renderScale" : 1.0,
+                        "renderWithFilter" : false,
+                        "geometricDescriptorParameters" : {
+                          "numberOfNeighbors" : 3,
+                          "redundancy" : 2,
+                          "significance" : 1.5,
+                          "sigma" : 6.04,
+                          "threshold" : 0.008,
+                          "localization" : "THREE_D_QUADRATIC",
+                          "lookForMinima" : true,
+                          "lookForMaxima" : false,
+                          "similarOrientation" : true,
+                          "fullScaleBlockRadius" : 100.0,
+                          "fullScaleNonMaxSuppressionRadius" : 20.0,
+                          "gdStoredMatchWeight" : 0.39
+                        },
+                        "matchDerivationParameters" : {
+                          "matchRod" : 0.92,
+                          "matchModelType" : "RIGID",
+                          "matchRegularizerModelType" : "TRANSLATION",
+                          "matchInterpolatedModelLambda" : 0.25,
+                          "matchIterations" : 10000,
+                          "matchMaxEpsilon" : 20.0,
+                          "matchMinInlierRatio" : 0.0,
+                          "matchMinNumInliers" : 10,
+                          "matchMaxTrust" : 3.0,
+                          "matchFilter" : "SINGLE_SET",
+                          "matchFullScaleCoverageRadius" : 300.0
+                        },
+                        "runGeoRegardlessOfSiftResults" : false,
+                        "minCombinedInliers" : 0,
+                        "minCombinedCoveragePercentage" : 60.0
+                      },
+                      "pairJson" : [
+                        "/groups/flyem/data/alignment/flyem-alignment-ett/Z1217-19m/VNC/Sec07/alignment_scripts/montage/p3_pairs/tile_pairs_v1_acquire_dist_0_p230.json.gz"
+                      ]
+                    }""";
+
     private static final String[] TEST_PARAMETERS_JSON = {
-
-            // -----------------------------------------------------------------------------------------------
-            // test 0 parameters:
-            "{\n" +
-            "  \"matchClient\" : {\n" +
-            "    \"baseDataUrl\" : \"http://renderer-dev.int.janelia.org:8080/render-ws/v1\",\n" +
-            "    \"owner\" : \"Z1217_19m\",\n" +
-            "    \"collection\" : \"test_gd_matches_Sec07\"\n" +
-            "  },\n" +
-            "  \"featureRender\" : {\n" +
-            "    \"renderScale\" : 0.15,\n" +
-            "    \"renderWithFilter\" : true,\n" +
-            "    \"renderWithoutMask\" : false\n" +
-            "  },\n" +
-            "  \"featureRenderClip\" : { },\n" +
-            "  \"featureExtraction\" : {\n" +
-            "    \"fdSize\" : 4,\n" +
-            "    \"minScale\" : 0.25,\n" +
-            "    \"maxScale\" : 1.0,\n" +
-            "    \"steps\" : 3\n" +
-            "  },\n" +
-            "  \"featureStorage\" : {\n" +
-            "    \"requireStoredFeatures\" : false,\n" +
-            "    \"maxFeatureCacheGb\" : 2,\n" +
-            "    \"maxFeatureSourceCacheGb\" : 2\n" +
-            "  },\n" +
-            "  \"matchDerivation\" : {\n" +
-            "    \"matchRod\" : 0.92,\n" +
-            "    \"matchModelType\" : \"AFFINE\",\n" +
-            "    \"matchRegularizerModelType\" : \"RIGID\",\n" +
-            "    \"matchInterpolatedModelLambda\" : 0.25,\n" +
-            "    \"matchIterations\" : 1000,\n" +
-            "    \"matchMaxEpsilon\" : 50.0,\n" +
-            "    \"matchMinInlierRatio\" : 0.0,\n" +
-            "    \"matchMinNumInliers\" : 10,\n" +
-            "    \"matchMaxTrust\" : 4.0,\n" +
-            "    \"matchFilter\" : \"SINGLE_SET\",\n" +
-            "    \"matchFullScaleCoverageRadius\" : 300.0\n" +
-            "  },\n" +
-            "  \"geometricDescriptorAndMatch\" : {\n" +
-            "    \"gdEnabled\" : true,\n" +
-            "    \"renderScale\" : 0.25,\n" +
-            "    \"geometricDescriptorParameters\" : {\n" +
-            "      \"numberOfNeighbors\" : 3,\n" +
-            "      \"redundancy\" : 1,\n" +
-            "      \"significance\" : 2.0,\n" +
-            "      \"sigma\" : 2.04,\n" +
-            "      \"threshold\" : 0.008,\n" +
-            "      \"localization\" : \"NONE\",\n" +
-            "      \"lookForMinima\" : true,\n" +
-            "      \"lookForMaxima\" : false,\n" +
-            "      \"similarOrientation\" : true,\n" +
-            "      \"fullScaleBlockRadius\" : 0.0,\n" +
-            "      \"fullScaleNonMaxSuppressionRadius\" : 120.0,\n" +
-            "      \"gdStoredMatchWeight\" : 0.4\n" +
-            "    },\n" +
-            "    \"matchDerivationParameters\" : {\n" +
-            "      \"matchRod\" : 0.92,\n" +
-            "      \"matchModelType\" : \"RIGID\",\n" +
-            "      \"matchIterations\" : 1000,\n" +
-            "      \"matchMaxEpsilon\" : 20.0,\n" +
-            "      \"matchMinInlierRatio\" : 0.0,\n" +
-            "      \"matchMinNumInliers\" : 4,\n" +
-            "      \"matchMaxTrust\" : 3.0,\n" +
-            "      \"matchFilter\" : \"SINGLE_SET\",\n" +
-            "      \"matchFullScaleCoverageRadius\" : 300.0\n" +
-            "    },\n" +
-            "    \"minCombinedInliers\" : 600,\n" +
-            "    \"minCombinedCoveragePercentage\" : 55.0\n" +
-            "  }\n" +
-            "}",
-
-            // -----------------------------------------------------------------------------------------------
-            // test 1 parameters
-            "{\n" +
-            "    \"featureAndMatchParameters\" : {\n" +
-            "      \"siftFeatureParameters\" : {\n" +
-            "        \"fdSize\" : 4,\n" +
-            "        \"minScale\" : 0.25,\n" +
-            "        \"maxScale\" : 1.0,\n" +
-            "        \"steps\" : 5\n" +
-            "      },\n" +
-            "      \"matchDerivationParameters\" : {\n" +
-            "        \"matchRod\" : 0.92,\n" +
-            "        \"matchModelType\" : \"RIGID\",\n" +
-            "        \"matchRegularizerModelType\" : \"TRANSLATION\",\n" +
-            "        \"matchInterpolatedModelLambda\" : 0.25,\n" +
-            "        \"matchIterations\" : 1000,\n" +
-            "        \"matchMaxEpsilon\" : 60.0,\n" +
-            "        \"matchMinInlierRatio\" : 0.0,\n" +
-            "        \"matchMinNumInliers\" : 10,\n" +
-            "        \"matchMaxTrust\" : 4.0,\n" +
-            "        \"matchFilter\" : \"SINGLE_SET\",\n" +
-            "        \"matchFullScaleCoverageRadius\" : 300.0\n" +
-            "      },\n" +
-            "      \"pClipPosition\" : \"LEFT\",\n" +
-            "      \"clipPixels\" : 500\n" +
-            "    },\n" +
-            "    \"pRenderParametersUrl\" : \"http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/19-02-18_163401_0-0-0.22718.0/render-parameters?filter=true&scale=0.6\",\n" +
-            "    \"qRenderParametersUrl\" : \"http://renderer-dev.int.janelia.org:8080/render-ws/v1/owner/Z1217_19m/project/Sec07/stack/v1_acquire/tile/19-02-18_163401_0-0-1.22718.0/render-parameters?filter=true&scale=0.6\",\n" +
-            "    \"geometricDescriptorAndMatchFilterParameters\" : {\n" +
-            "      \"gdEnabled\" : true,\n" +
-            "      \"renderScale\" : 1.0,\n" +
-            "      \"renderWithFilter\" : false,\n" +
-            "      \"geometricDescriptorParameters\" : {\n" +
-            "        \"numberOfNeighbors\" : 3,\n" +
-            "        \"redundancy\" : 2,\n" +
-            "        \"significance\" : 1.5,\n" +
-            "        \"sigma\" : 6.04,\n" +
-            "        \"threshold\" : 0.008,\n" +
-            "        \"localization\" : \"THREE_D_QUADRATIC\",\n" +
-            "        \"lookForMinima\" : true,\n" +
-            "        \"lookForMaxima\" : false,\n" +
-            "        \"similarOrientation\" : true,\n" +
-            "        \"fullScaleBlockRadius\" : 100.0,\n" +
-            "        \"fullScaleNonMaxSuppressionRadius\" : 20.0,\n" +
-            "        \"gdStoredMatchWeight\" : 0.4\n" +
-            "      },\n" +
-            "      \"matchDerivationParameters\" : {\n" +
-            "        \"matchRod\" : 0.92,\n" +
-            "        \"matchModelType\" : \"RIGID\",\n" +
-            "        \"matchRegularizerModelType\" : \"TRANSLATION\",\n" +
-            "        \"matchInterpolatedModelLambda\" : 0.25,\n" +
-            "        \"matchIterations\" : 10000,\n" +
-            "        \"matchMaxEpsilon\" : 20.0,\n" +
-            "        \"matchMinInlierRatio\" : 0.0,\n" +
-            "        \"matchMinNumInliers\" : 10,\n" +
-            "        \"matchMaxTrust\" : 3.0,\n" +
-            "        \"matchFilter\" : \"SINGLE_SET\",\n" +
-            "        \"matchFullScaleCoverageRadius\" : 300.0\n" +
-            "      }\n" +
-            "    }\n" +
-            "  }",
-
-            // -----------------------------------------------------------------------------------------------
-            // test 2 parameters
-            "{\n" +
-            "  \"matchClient\" : {\n" +
-            "    \"baseDataUrl\" : \"http://10.40.3.162:8080/render-ws/v1\",\n" +
-            "    \"owner\" : \"Z1217_19m\",\n" +
-            "    \"collection\" : \"gd_test_Sec07_v1\"\n" +
-            "  },\n" +
-            "  \"featureRender\" : {\n" +
-            "    \"renderScale\" : 0.6,\n" +
-            "    \"renderWithFilter\" : true,\n" +
-            "    \"renderWithoutMask\" : false\n" +
-            "  },\n" +
-            "  \"featureRenderClip\" : {\n" +
-            "    \"clipWidth\" : 500,\n" +
-            "    \"clipHeight\" : 500\n" +
-            "  },\n" +
-            "  \"featureExtraction\" : {\n" +
-            "    \"fdSize\" : 4,\n" +
-            "    \"minScale\" : 0.25,\n" +
-            "    \"maxScale\" : 1.0,\n" +
-            "    \"steps\" : 5\n" +
-            "  },\n" +
-            "  \"featureStorage\" : {\n" +
-            "    \"requireStoredFeatures\" : false,\n" +
-            "    \"maxFeatureCacheGb\" : 6,\n" +
-            "    \"maxFeatureSourceCacheGb\" : 6\n" +
-            "  },\n" +
-            "  \"matchDerivation\" : {\n" +
-            "    \"matchRod\" : 0.92,\n" +
-            "    \"matchModelType\" : \"RIGID\",\n" +
-            "    \"matchRegularizerModelType\" : \"TRANSLATION\",\n" +
-            "    \"matchInterpolatedModelLambda\" : 0.25,\n" +
-            "    \"matchIterations\" : 1000,\n" +
-            "    \"matchMaxEpsilon\" : 60.0,\n" +
-            "    \"matchMinInlierRatio\" : 0.0,\n" +
-            "    \"matchMinNumInliers\" : 10,\n" +
-            "    \"matchMaxTrust\" : 4.0,\n" +
-            "    \"matchFilter\" : \"SINGLE_SET\",\n" +
-            "    \"matchFullScaleCoverageRadius\" : 300.0,\n" +
-            "    \"matchMinCoveragePercentage\" : 70.0\n" +
-            "  },\n" +
-            "  \"geometricDescriptorAndMatch\" : {\n" +
-            "    \"gdEnabled\" : true,\n" +
-            "    \"renderScale\" : 1.0,\n" +
-            "    \"renderWithFilter\" : false,\n" +
-            "    \"geometricDescriptorParameters\" : {\n" +
-            "      \"numberOfNeighbors\" : 3,\n" +
-            "      \"redundancy\" : 2,\n" +
-            "      \"significance\" : 1.5,\n" +
-            "      \"sigma\" : 6.04,\n" +
-            "      \"threshold\" : 0.008,\n" +
-            "      \"localization\" : \"THREE_D_QUADRATIC\",\n" +
-            "      \"lookForMinima\" : true,\n" +
-            "      \"lookForMaxima\" : false,\n" +
-            "      \"similarOrientation\" : true,\n" +
-            "      \"fullScaleBlockRadius\" : 100.0,\n" +
-            "      \"fullScaleNonMaxSuppressionRadius\" : 20.0,\n" +
-            "      \"gdStoredMatchWeight\" : 0.39\n" +
-            "    },\n" +
-            "    \"matchDerivationParameters\" : {\n" +
-            "      \"matchRod\" : 0.92,\n" +
-            "      \"matchModelType\" : \"RIGID\",\n" +
-            "      \"matchRegularizerModelType\" : \"TRANSLATION\",\n" +
-            "      \"matchInterpolatedModelLambda\" : 0.25,\n" +
-            "      \"matchIterations\" : 10000,\n" +
-            "      \"matchMaxEpsilon\" : 20.0,\n" +
-            "      \"matchMinInlierRatio\" : 0.0,\n" +
-            "      \"matchMinNumInliers\" : 10,\n" +
-            "      \"matchMaxTrust\" : 3.0,\n" +
-            "      \"matchFilter\" : \"SINGLE_SET\",\n" +
-            "      \"matchFullScaleCoverageRadius\" : 300.0\n" +
-            "    },\n" +
-            "    \"minCombinedInliers\" : 0,\n" +
-            "    \"minCombinedCoveragePercentage\" : 65.0\n" +
-            "  }\n" +
-            "}",
-
-            // test 3 parameters
-            "{\n" +
-            "  \"matchClient\" : {\n" +
-            "    \"baseDataUrl\" : \"http://10.40.3.162:8080/render-ws/v1\",\n" +
-            "    \"owner\" : \"Z1217_19m\",\n" +
-            "    \"collection\" : \"gd_test_3_Sec07_v1\"\n" +
-            "  },\n" +
-            "  \"featureRender\" : {\n" +
-            "    \"renderScale\" : 0.6,\n" +
-            "    \"renderWithFilter\" : true,\n" +
-            "    \"renderWithoutMask\" : false\n" +
-            "  },\n" +
-            "  \"featureRenderClip\" : {\n" +
-            "    \"clipWidth\" : 500,\n" +
-            "    \"clipHeight\" : 500\n" +
-            "  },\n" +
-            "  \"featureExtraction\" : {\n" +
-            "    \"fdSize\" : 4,\n" +
-            "    \"minScale\" : 0.25,\n" +
-            "    \"maxScale\" : 1.0,\n" +
-            "    \"steps\" : 5\n" +
-            "  },\n" +
-            "  \"featureStorage\" : {\n" +
-            "    \"requireStoredFeatures\" : false,\n" +
-            "    \"maxFeatureCacheGb\" : 6,\n" +
-            "    \"maxFeatureSourceCacheGb\" : 6\n" +
-            "  },\n" +
-            "  \"matchDerivation\" : {\n" +
-            "    \"matchRod\" : 0.92,\n" +
-            "    \"matchModelType\" : \"RIGID\",\n" +
-            "    \"matchRegularizerModelType\" : \"TRANSLATION\",\n" +
-            "    \"matchInterpolatedModelLambda\" : 0.25,\n" +
-            "    \"matchIterations\" : 1000,\n" +
-            "    \"matchMaxEpsilon\" : 20.0,\n" +
-            "    \"matchMinInlierRatio\" : 0.0,\n" +
-            "    \"matchMinNumInliers\" : 25,\n" +
-            "    \"matchMaxTrust\" : 4.0,\n" +
-            "    \"matchFilter\" : \"SINGLE_SET\",\n" +
-            "    \"matchFullScaleCoverageRadius\" : 300.0,\n" +
-            "    \"matchMinCoveragePercentage\" : 70.0\n" +
-            "  },\n" +
-            "  \"geometricDescriptorAndMatch\" : {\n" +
-            "    \"gdEnabled\" : true,\n" +
-            "    \"renderScale\" : 1.0,\n" +
-            "    \"renderWithFilter\" : false,\n" +
-            "    \"geometricDescriptorParameters\" : {\n" +
-            "      \"numberOfNeighbors\" : 3,\n" +
-            "      \"redundancy\" : 2,\n" +
-            "      \"significance\" : 1.5,\n" +
-            "      \"sigma\" : 6.04,\n" +
-            "      \"threshold\" : 0.008,\n" +
-            "      \"localization\" : \"THREE_D_QUADRATIC\",\n" +
-            "      \"lookForMinima\" : true,\n" +
-            "      \"lookForMaxima\" : false,\n" +
-            "      \"similarOrientation\" : true,\n" +
-            "      \"fullScaleBlockRadius\" : 100.0,\n" +
-            "      \"fullScaleNonMaxSuppressionRadius\" : 20.0,\n" +
-            "      \"gdStoredMatchWeight\" : 0.39\n" +
-            "    },\n" +
-            "    \"matchDerivationParameters\" : {\n" +
-            "      \"matchRod\" : 0.92,\n" +
-            "      \"matchModelType\" : \"RIGID\",\n" +
-            "      \"matchRegularizerModelType\" : \"TRANSLATION\",\n" +
-            "      \"matchInterpolatedModelLambda\" : 0.25,\n" +
-            "      \"matchIterations\" : 10000,\n" +
-            "      \"matchMaxEpsilon\" : 20.0,\n" +
-            "      \"matchMinInlierRatio\" : 0.0,\n" +
-            "      \"matchMinNumInliers\" : 10,\n" +
-            "      \"matchMaxTrust\" : 3.0,\n" +
-            "      \"matchFilter\" : \"SINGLE_SET\",\n" +
-            "      \"matchFullScaleCoverageRadius\" : 300.0\n" +
-            "    },\n" +
-            "    \"runGeoRegardlessOfSiftResults\" : false,\n" +
-            "    \"minCombinedInliers\" : 0,\n" +
-            "    \"minCombinedCoveragePercentage\" : 60.0\n" +
-            "  },\n" +
-            "  \"pairJson\" : [\n" +
-            "    \"/groups/flyem/data/alignment/flyem-alignment-ett/Z1217-19m/VNC/Sec07/alignment_scripts/montage/p3_pairs/tile_pairs_v1_acquire_dist_0_p230.json.gz\"\n" +
-            "  ]\n" +
-            "}"
+            TEST_PARAMETERS_0, TEST_PARAMETERS_1, TEST_PARAMETERS_2, TEST_PARAMETERS_3
     };
 
     private static final JsonUtils.Helper<SIFTPointMatchClient.Parameters> JSON_HELPER =

@@ -21,27 +21,27 @@ public class TileDataServiceTest {
     public void testGetCoreTileRenderParameters() {
 
         // from https://github.com/saalfeldlab/render/issues/24
-        final String json =
-                "{\n" +
-                "  \"tileId\" : \"1,3484_aligned_0_1_flip\",\n" +
-                "  \"z\" : 3484.0,\n" +
-                "  \"width\" : 1024.0, \"height\" : 1024.0,\n" +
-                "  \"mipmapLevels\" : {\n" +
-                "    \"0\" : {\n" +
-                "      \"imageUrl\" : \"file:///data/nc-em/russelt/20170227_Princeton_Pinky40/4_aligned_tiled/1,3484_aligned_0_1_flip.png\"\n" +
-                "    }\n" +
-                "  },\n" +
-                "  \"transforms\" : {\n" +
-                "    \"type\" : \"list\",\n" +
-                "    \"specList\" : [ {\n" +
-                "         \"className\" : \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-                "         \"dataString\" : \"1.0000000000 0.0000000000 0.0000000000 1.0000000000 1896.0000000000 -876.0000000000\"\n" +
-                "      }, {\n" +
-                "          \"className\" : \"mpicbg.trakem2.transform.AffineModel2D\",\n" +
-                "          \"dataString\" : \"1.0000000000 0.0000000000 0.0000000000 1.0000000000 0.0000000000 1752.0000000000\"\n" +
-                "      } ]\n" +
-                "  }\n" +
-                "}";
+        final String json = """
+                        {
+                          "tileId" : "1,3484_aligned_0_1_flip",
+                          "z" : 3484.0,
+                          "width" : 1024.0, "height" : 1024.0,
+                          "mipmapLevels" : {
+                            "0" : {
+                              "imageUrl" : "file:///data/nc-em/russelt/20170227_Princeton_Pinky40/4_aligned_tiled/1,3484_aligned_0_1_flip.png"
+                            }
+                          },
+                          "transforms" : {
+                            "type" : "list",
+                            "specList" : [ {
+                                 "className" : "mpicbg.trakem2.transform.AffineModel2D",
+                                 "dataString" : "1.0000000000 0.0000000000 0.0000000000 1.0000000000 1896.0000000000 -876.0000000000"
+                              }, {
+                                  "className" : "mpicbg.trakem2.transform.AffineModel2D",
+                                  "dataString" : "1.0000000000 0.0000000000 0.0000000000 1.0000000000 0.0000000000 1752.0000000000"
+                              } ]
+                          }
+                        }""";
 
         TileSpec tileSpec = TileSpec.fromJson(json);
         
