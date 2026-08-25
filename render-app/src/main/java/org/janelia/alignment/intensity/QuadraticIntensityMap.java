@@ -26,12 +26,10 @@ public class QuadraticIntensityMap<T extends RealType<T>> {
 	public enum Interpolation {NN, NL}
 
 	static private <T extends RealType<T>> InterpolatorFactory<RealComposite<T>, RandomAccessible<RealComposite<T>>> interpolatorFactory(final Interpolation interpolation) {
-		switch (interpolation) {
-			case NN:
-				return new NearestNeighborInterpolatorFactory<>();
-			default:
-				return new NLinearInterpolatorFactory<>();
-		}
+        return switch (interpolation) {
+            case NN -> new NearestNeighborInterpolatorFactory<>();
+            case NL -> new NLinearInterpolatorFactory<>();
+        };
 	}
 
 	final protected Dimensions dimensions;

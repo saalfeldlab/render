@@ -168,14 +168,12 @@ public class PointMatchClient {
         String getCanvasGroupId(final RenderParameters renderParameters) {
             String matchGroupId = null;
             if (renderParameters.hasTileSpecs()) {
-                switch (canvasGroupIdAlgorithm) {
-                    case FIRST_TILE_SECTION_ID:
-                        matchGroupId = getTileSectionId(renderParameters.getTileSpecs().getFirst(), matchClient.collection);
-                        break;
-                    case FIRST_TILE_Z:
-                        matchGroupId = getTileZId(renderParameters.getTileSpecs().getFirst(), matchClient.collection);
-                        break;
-                }
+                matchGroupId = switch (canvasGroupIdAlgorithm) {
+                    case FIRST_TILE_SECTION_ID ->
+                            getTileSectionId(renderParameters.getTileSpecs().getFirst(), matchClient.collection);
+                    case FIRST_TILE_Z -> getTileZId(renderParameters.getTileSpecs().getFirst(), matchClient.collection);
+                    default -> null;
+                };
             }
             if (matchGroupId == null) {
                 matchGroupId = matchClient.collection;
@@ -193,14 +191,11 @@ public class PointMatchClient {
                            final String canvasName) {
             String matchId = null;
             if (renderParameters.hasTileSpecs()) {
-                switch (canvasIdAlgorithm) {
-                    case FIRST_TILE_ID:
-                        matchId = renderParameters.getTileSpecs().getFirst().getTileId();
-                        break;
-                    case FIRST_TILE_Z:
-                        matchId = getTileZId(renderParameters.getTileSpecs().getFirst(), canvasName);
-                        break;
-                }
+                matchId = switch (canvasIdAlgorithm) {
+                    case FIRST_TILE_ID -> renderParameters.getTileSpecs().getFirst().getTileId();
+                    case FIRST_TILE_Z -> getTileZId(renderParameters.getTileSpecs().getFirst(), canvasName);
+                    default -> null;
+                };
             }
             if (matchId == null) {
                 matchId = canvasName;

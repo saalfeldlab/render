@@ -9,11 +9,9 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.Charset;
-import java.util.Optional;
 
 import net.imglib2.loops.LoopBuilder;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
-import org.janelia.alignment.util.QueryKeyValueParameters;
 import org.janelia.saalfeldlab.n5.DataType;
 import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5FSReader;
@@ -69,19 +67,44 @@ public class N5SliceLoader implements ImageLoader {
 
             final String defaultCharsetName = Charset.defaultCharset().name();
             final String basePath = URLDecoder.decode(uri.getPath(), defaultCharsetName);
-            final QueryKeyValueParameters query = new QueryKeyValueParameters(uri.getQuery(), urlString);
+            final String query = uri.getQuery();
+            final String[] queryKeyValuePairs = query.split("&"); // note: uses "fastpath" for simple regex
+            String dataSet = null;
+            Long x = null;
+            Long y = null;
+            Long z = null;
+            Integer width = null;
+            Integer height = null;
+            for (final String keyValuePair : queryKeyValuePairs) {
+                final String[] keyValue = keyValuePair.split("=");
+                if (keyValue.length == 2) {
+                    final String key = keyValue[0];
+                    if ("x".equals(key)){
+                        x = Long.valueOf(keyValue[1]);
+                    } else if ("y".equals(key)) {
+                        y = Long.valueOf(keyValue[1]);
+                    } else if ("z".equals(key)) {
+                        z = Long.valueOf(keyValue[1]);
+                    } else if ("w".equals(key)) {
+                        width = Integer.valueOf(keyValue[1]);
+                    } else if ("h".equals(key)) {
+                        height = Integer.valueOf(keyValue[1]);
+                    } else if ("dataSet".equals(key)) {
+                        dataSet = URLDecoder.decode(keyValue[1], defaultCharsetName);
+                    }
+                }
+            }
 
-            final Optional<String> rawDataSet = query.getString("dataSet");
-            final String dataSet = rawDataSet.isPresent() ? URLDecoder.decode(rawDataSet.get(), defaultCharsetName) : null;
-            final Long z = query.getLong("z").orElse(null);
-            Integer width = query.getInt("w").orElse(null);
-            Integer height = query.getInt("h").orElse(null);
-
-            final Optional<Long> x = query.getLong("x");
-            final Optional<Long> y = query.getLong("y");
-            final long[] xAndYOffsets = (x.isPresent() || y.isPresent())
-                                        ? new long[] { x.orElse(0L), y.orElse(0L) }
-                                        : null;
+            long[] xAndYOffsets = null;
+            if (x != null) {
+                if (y != null) {
+                    xAndYOffsets = new long[] { x, y };
+                } else {
+                    xAndYOffsets = new long[] { x, 0 };
+                }
+            } else if (y != null) {
+                xAndYOffsets = new long[] { 0, y };
+            }
 
             if ((basePath != null) && (dataSet != null)) {
 
@@ -109,7 +132,7 @@ public class N5SliceLoader implements ImageLoader {
                     case UINT8 -> UNSIGNED_BYTE_HELPER.load(reader, dataSet, width, height, xAndYOffsets, z);
                     case INT16 -> SHORT_HELPER.load(reader, dataSet, width, height, xAndYOffsets, z);
                     case FLOAT32 -> FLOAT_HELPER.load(reader, dataSet, width, height, xAndYOffsets, z);
-                    // case INT8: case INT32: case INT64: case FLOAT64: case OBJECT: case UINT16: case UINT32: case UINT64:
+                    // This covers INT8, INT32, INT64, FLOAT64, OBJECT, UINT16, UINT32, UINT64
                     default -> throw new IllegalArgumentException("dataType " + dataType + " is not supported");
                 };
 

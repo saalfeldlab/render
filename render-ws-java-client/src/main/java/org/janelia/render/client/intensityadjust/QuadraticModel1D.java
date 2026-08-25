@@ -70,16 +70,12 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> implements
 	public double getC(){ return c; }
 
 	public double getCoefficient(final int j) {
-		switch (j) {
-			case 0:
-				return c;
-			case 1:
-				return b;
-			case 2:
-				return a;
-			default:
-				return 0.0;
-		}
+        return switch (j) {
+            case 0 -> c;
+            case 1 -> b;
+            case 2 -> a;
+            default -> 0.0;
+        };
 	}
 
 	@Override

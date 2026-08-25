@@ -48,15 +48,12 @@ public enum MontageRelativePosition {
     }
 
     public MontageRelativePosition getOpposite() {
-        final MontageRelativePosition opposite;
-        switch (this) {
-            case TOP: opposite = BOTTOM; break;
-            case BOTTOM: opposite = TOP; break;
-            case LEFT: opposite = RIGHT; break;
-            case RIGHT: opposite = LEFT; break;
-            default: throw new IllegalStateException("opposite of " + this + " is not mapped");
-        }
-        return opposite;
+        return switch (this) {
+            case TOP -> BOTTOM;
+            case BOTTOM -> TOP;
+            case LEFT -> RIGHT;
+            case RIGHT -> LEFT;
+        };
     }
 
     public static final Comparator<MontageRelativePosition> NULLS_FIRST_POSITION_COMPARATOR =

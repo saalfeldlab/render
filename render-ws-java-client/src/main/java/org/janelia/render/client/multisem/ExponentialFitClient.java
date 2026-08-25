@@ -275,16 +275,12 @@ public class ExponentialFitClient {
 		public double grad(final double[] x, final double[] a, final int i) {
 			final double z = Math.exp(-a[1] * (x[0] - a[2]));
 			final double z1 = 1 + z;
-			switch (i) {
-				case 0:
-					return 1 / z1;
-				case 1:
-					return a[0] * (x[0] - a[2]) * z / (z1 * z1);
-				case 2:
-					return - a[0] * a[1] * z / (z1 * z1);
-				default:
-					throw new IllegalArgumentException("Invalid parameter index: " + i);
-			}
+            return switch (i) {
+                case 0 -> 1 / z1;
+                case 1 -> a[0] * (x[0] - a[2]) * z / (z1 * z1);
+                case 2 -> -a[0] * a[1] * z / (z1 * z1);
+                default -> throw new IllegalArgumentException("Invalid parameter index: " + i);
+            };
 		}
 
 		@Override

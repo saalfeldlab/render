@@ -107,16 +107,12 @@ public class ShadingModelProvider implements Serializable {
 		}
 
 		public ShadingModel getModel() {
-			switch (modelType) {
-				case "quadratic":
-					return new QuadraticShading(coefficients);
-				case "fourthOrder":
-					return new FourthOrderShading(coefficients);
-				case "none":
-					return null;
-				default:
-					throw new IllegalArgumentException("Unknown model type: " + modelType);
-			}
+            return switch (modelType) {
+                case "quadratic" -> new QuadraticShading(coefficients);
+                case "fourthOrder" -> new FourthOrderShading(coefficients);
+                case "none" -> null;
+                default -> throw new IllegalArgumentException("Unknown model type: " + modelType);
+            };
 		}
 
 		public String toString() {
