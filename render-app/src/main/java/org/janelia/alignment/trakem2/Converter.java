@@ -219,9 +219,8 @@ public class Converter {
                     layerSetPatchCount++;
                     layerPatchCount++;
 
-                } else if (target instanceof T2Layer) {
+                } else if (target instanceof final T2Layer layer) {
 
-                    final T2Layer layer = (T2Layer) target;
                     final boolean isFirstLayer = (layerCount == 0);
                     layer.addPatchListener(patchListener, baseMaskPath, isFirstLayer);
 
@@ -246,9 +245,8 @@ public class Converter {
                         logStats("Patch", layerStartTime, layerPatchCount, false);
                     }
 
-                } else if (target instanceof T2Layer) {
+                } else if (target instanceof final T2Layer layer) {
 
-                    final T2Layer layer = (T2Layer) target;
                     layer.removePatchListener();
                     if ((layerCount == 1) || (layerCount % layerBatchSize == 0)) {
                         logStats("Layer", layerStartTime, layerPatchCount, false);

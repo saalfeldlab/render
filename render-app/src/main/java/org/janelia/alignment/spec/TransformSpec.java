@@ -227,14 +227,11 @@ public abstract class TransformSpec implements Serializable {
             for (final CoordinateTransform t : transforms)
                 listSpec.addSpec(create(t));
             return listSpec;
-        } else if (transform instanceof InterpolatedCoordinateTransform) {
-            @SuppressWarnings("rawtypes")
-            final InterpolatedCoordinateTransform ab = (InterpolatedCoordinateTransform)transform;
+        } else if (transform instanceof @SuppressWarnings("rawtypes") final InterpolatedCoordinateTransform ab) {
             final CoordinateTransform a = ab.getA();
             final CoordinateTransform b = ab.getB();
             return new InterpolatedTransformSpec(UUID.randomUUID().toString(), null, create(a), create(b), ab.getLambda());
-        } else if (transform instanceof mpicbg.trakem2.transform.CoordinateTransform) {
-            final mpicbg.trakem2.transform.CoordinateTransform t = (mpicbg.trakem2.transform.CoordinateTransform)transform;
+        } else if (transform instanceof final mpicbg.trakem2.transform.CoordinateTransform t) {
             return new LeafTransformSpec(UUID.randomUUID().toString(), null, t.getClass().getCanonicalName(), t.toDataString());
             //return new LeafTransformSpec(UUID.randomUUID().toString(), null, t.getClass().getCanonicalName(), null);
         } else return null;

@@ -25,9 +25,7 @@ public class RenderWebServiceParametersWithValidatorTest {
 
         final TileSpecValidator tileSpecValidator = p.getValidatorInstance();
 
-        if (tileSpecValidator instanceof TemTileSpecValidator) {
-
-            final TemTileSpecValidator temTileSpecValidator = (TemTileSpecValidator) tileSpecValidator;
+        if (tileSpecValidator instanceof final TemTileSpecValidator temTileSpecValidator) {
 
             final double delta = 0.001;
 

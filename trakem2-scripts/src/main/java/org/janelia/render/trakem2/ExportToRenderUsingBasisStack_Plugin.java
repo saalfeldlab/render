@@ -36,9 +36,9 @@ import ini.trakem2.utils.Utils;
 /**
  * This plug-in exports TrakEM patch data into a render web services stack using a basis stack
  * to identify shared lens correction transformations.
- * -
+ *
  * WARNING: this is a hack!
- * -
+ *
  * Make sure transformation logic in {@link #exportPatches()} matches your use case before using.
  *
  * @author Eric Trautman
@@ -85,7 +85,7 @@ public class ExportToRenderUsingBasisStack_Plugin
                                                                             true,
                                                                             true);
 
-            if (! displayableList.isEmpty()) {
+            if (!displayableList.isEmpty()) {
 
                 final Patch firstPatch = (Patch) displayableList.getFirst();
                 final Matcher m = TILE_SECTION_ID_PATTERN.matcher(firstPatch.getTitle());
@@ -143,10 +143,10 @@ public class ExportToRenderUsingBasisStack_Plugin
                     final CoordinateTransform alignmentTransform = flattenedTransformList.get(alignmentTransformIndex);
 
                     if (alignmentTransform instanceof final AffineModel2D alignmentModel) {
-                        if (stageTransform instanceof TranslationModel2D) {
-                            alignmentModel.concatenate((TranslationModel2D) stageTransform);
-                        } else if (stageTransform instanceof AffineModel2D) {
-                            alignmentModel.concatenate((AffineModel2D) stageTransform);
+                        if (stageTransform instanceof final TranslationModel2D translationModel) {
+                            alignmentModel.concatenate(translationModel);
+                        } else if (stageTransform instanceof final AffineModel2D affineModel) {
+                            alignmentModel.concatenate(affineModel);
                         } else {
                             throw new IllegalArgumentException("tile " + tileId + " stage transform class is " +
                                                                stageTransform.getClass().getName() +
@@ -220,7 +220,7 @@ public class ExportToRenderUsingBasisStack_Plugin
 
     private static ExportData exportData = null;
 
-    private static class ExportData {
+    private class ExportData {
 
         private String baseDataUrl;
         private String basisRenderOwner;
@@ -310,8 +310,7 @@ public class ExportToRenderUsingBasisStack_Plugin
                         try {
                             for (final String zPair : trakZToTargetZMapString.split(",")) {
                                 final String[] zPairArray = zPair.split("=");
-                                trakZToTargetZMap.put(Double.parseDouble(zPairArray[0]),
-                                                      Double.parseDouble(zPairArray[1]));
+                                trakZToTargetZMap.put(new Double(zPairArray[0]), new Double(zPairArray[1]));
                             }
                         } catch (final Throwable t) {
                             throw new IllegalArgumentException(
@@ -349,7 +348,7 @@ public class ExportToRenderUsingBasisStack_Plugin
         }
 
         boolean hasMappedZValues() {
-             return !trakZToTargetZMapString.isEmpty();
+             return trakZToTargetZMapString.length() > 0;
         }
 
         Double getRenderStackZ(final Double forTrakZ) {

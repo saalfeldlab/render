@@ -25,8 +25,7 @@ public class FilterSpecTest {
 
         Filter parsedInstance = parseAndBuildFilter(filterSpec);
 
-        if (parsedInstance instanceof CLAHE) {
-            final CLAHE clahe = (CLAHE) parsedInstance;
+        if (parsedInstance instanceof final CLAHE clahe) {
             assertEquals(originalFilter.getBlockRadius(), clahe.getBlockRadius(),
                          "invalid block radius parsed");
         } else {
@@ -52,8 +51,7 @@ public class FilterSpecTest {
         filterSpec = FilterSpec.forFilter(originalMapFilter);
         parsedInstance = parseAndBuildFilter(filterSpec);
 
-        if (parsedInstance instanceof LinearIntensityMap8BitFilter) {
-            final LinearIntensityMap8BitFilter mapFilter = (LinearIntensityMap8BitFilter) parsedInstance;
+        if (parsedInstance instanceof final LinearIntensityMap8BitFilter mapFilter) {
             final double[][] parsedCoefficients = mapFilter.getCoefficients();
             assertEquals(numberOfRegionRows, mapFilter.getNumberOfRegionRows(),
                          "invalid number of regions parsed");

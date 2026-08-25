@@ -64,13 +64,12 @@ public class LabelRenderer {
     private static BufferedImage targetToLabelImage(final ImageProcessorWithMasks renderedImageProcessorWithMasks) {
 
         // convert to 16-bit gray-scale
-        if (! (renderedImageProcessorWithMasks.ip instanceof FloatProcessor)) {
+        if (! (renderedImageProcessorWithMasks.ip instanceof final FloatProcessor fp)) {
             throw new IllegalArgumentException("target must be a " + FloatProcessor.class +
                                                " instance but instead is " +
                                                renderedImageProcessorWithMasks.ip.getClass());
         }
 
-        final FloatProcessor fp = (FloatProcessor) renderedImageProcessorWithMasks.ip;
         final float[] pixels = (float[]) renderedImageProcessorWithMasks.ip.getPixels();
         final short[] labelPixels = new short[pixels.length];
         final short emptyPixel = (short) LabelImageProcessorCache.MAX_LABEL_INTENSITY;

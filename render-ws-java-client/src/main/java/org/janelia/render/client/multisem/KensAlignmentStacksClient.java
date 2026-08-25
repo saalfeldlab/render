@@ -182,11 +182,10 @@ public class KensAlignmentStacksClient {
     // Make sure the correct scan correction transform is the first transform in the list and return it
     private static TransformSpec extractScanCorrection(final TileSpec tileSpec) {
         final TransformSpec firstTransformSpec = tileSpec.getTransforms().getSpec(0);
-        if (! (firstTransformSpec instanceof LeafTransformSpec)) {
+        if (! (firstTransformSpec instanceof final LeafTransformSpec oldScanCorrection)) {
             throw new IllegalArgumentException("first transform spec is not a leaf transform spec");
         }
 
-        final LeafTransformSpec oldScanCorrection = (LeafTransformSpec) firstTransformSpec;
         if (!oldScanCorrection.getClassName().equals("org.janelia.alignment.transform.ExponentialFunctionOffsetTransform")) {
             throw new IllegalArgumentException("first transform spec is not a scan correction transform");
         }

@@ -316,8 +316,7 @@ public class ImageProcessorCache {
         public boolean equals(final Object o) {
             boolean result = true;
             if (this != o) {
-                if (o instanceof CacheKey) {
-                    final CacheKey that = (CacheKey) o;
+                if (o instanceof final CacheKey that) {
                     result = this.url.equals(that.url) &&
                              (this.downSampleLevels == that.downSampleLevels) &&
                              (this.imageLoader.hasSame3DContext(that.imageLoader));

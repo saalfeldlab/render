@@ -71,8 +71,7 @@ public class BoxPartitioner extends Partitioner {
     @Override
     public int getPartition(final Object key) {
         int partition = 0;
-        if (key instanceof BoxData) {
-            final BoxData boxData = (BoxData) key;
+        if (key instanceof final BoxData boxData) {
             final LevelPartitioner levelPartitioner = levelPartitionerList.get(boxData.getLevel());
             partition = levelPartitioner.getPartition(boxData);
         }

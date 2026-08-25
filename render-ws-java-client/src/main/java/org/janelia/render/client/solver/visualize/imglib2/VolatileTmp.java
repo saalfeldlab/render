@@ -81,10 +81,9 @@ public class VolatileTmp {
 			final VolatileViewData< T, V > viewData = ( VolatileViewData< T, V > ) ((Pair)o).getA();
 			return new ValuePair( viewData, ((Pair)o).getB());
 		}
-		else if ( rai instanceof IntervalView )
+		else if (rai instanceof final IntervalView<T> view)
 		{
-			final IntervalView< T > view = ( IntervalView< T > ) rai;
-			Pair< VolatileViewData< T, V >, VolatileCache > pair = wrapAsVolatileViewData( view.getSource(), queue, hints );
+            Pair< VolatileViewData< T, V >, VolatileCache > pair = wrapAsVolatileViewData( view.getSource(), queue, hints );
 			final VolatileViewData< T, V > sourceData = pair.getA();
 			return new ValuePair( new VolatileViewData<>(
 					new IntervalView<>( sourceData.getImg(), view ),
@@ -92,10 +91,9 @@ public class VolatileTmp {
 					sourceData.getType(),
 					sourceData.getVolatileType() ), pair.getB() );
 		}
-		else if ( rai instanceof MixedTransformView )
+		else if (rai instanceof final MixedTransformView<T> view)
 		{
-			final MixedTransformView< T > view = ( MixedTransformView< T > ) rai;
-			Pair< VolatileViewData< T, V >, VolatileCache > pair = wrapAsVolatileViewData( view.getSource(), queue, hints );
+            Pair< VolatileViewData< T, V >, VolatileCache > pair = wrapAsVolatileViewData( view.getSource(), queue, hints );
 			final VolatileViewData< T, V > sourceData = pair.getA();
 			return new ValuePair( new VolatileViewData<>(
 					new MixedTransformView<>( sourceData.getImg(), view.getTransformToSource() ),
