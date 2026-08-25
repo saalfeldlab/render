@@ -44,11 +44,9 @@ public class MultiBoxDynamicMaskLoader
     public ImageProcessor load(final String urlString)
             throws IllegalArgumentException {
 
-        ByteProcessor maskProcessor;
-
         final MultiBoxDynamicMaskDescription description = parseUrl(urlString);
 
-        maskProcessor = new ByteProcessor(description.width, description.height);
+        ByteProcessor maskProcessor = new ByteProcessor(description.width, description.height);
 
         maskProcessor.setColor(255);
         for (final Rectangle box : description.boxList) {

@@ -266,9 +266,7 @@ public class SIFTAlignDebug
 
 			IJ.log( candidates.size() + " potentially corresponding features identified" );
 
-			/**
-			 * draw all correspondence candidates
-			 */
+			// draw all correspondence candidates
 			if (p.showInfo )
 			{
 				ip2 = downScale( ip2, vis_scale );
@@ -345,10 +343,7 @@ public class SIFTAlignDebug
 				IJ.log("found " + inliers.size() + " inlier matches with mean distance " +
 						PointMatch.meanDistance(inliers) + " and max distance "+ PointMatch.maxDistance(inliers));
 
-				/**
-				 * append the estimated transformation model
-				 *
-				 */
+				//append the estimated transformation model
 				model.concatenate( currentModel );
 
 				if ( p.showMatrix )
@@ -372,8 +367,7 @@ public class SIFTAlignDebug
 			stackAligned.addSlice( null, alignedSlice );
 			if ( p.showInfo )
 			{
-				ImageProcessor tmp;
-				tmp = ip3.createProcessor( stackInfo.getWidth(), stackInfo.getHeight() );
+				ImageProcessor tmp = ip3.createProcessor( stackInfo.getWidth(), stackInfo.getHeight() );
 				tmp.insert( ip3, 0, 0 );
 				stackInfo.addSlice( null, tmp ); // fixing silly 1 pixel size missmatches
 				tmp = ip4.createProcessor( stackInfo.getWidth(), stackInfo.getHeight() );

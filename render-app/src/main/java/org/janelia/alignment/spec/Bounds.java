@@ -148,22 +148,12 @@ public class Bounds implements Serializable {
 
         final Bounds bounds = (Bounds) o;
 
-        if (!minX.equals(bounds.minX)) {
-            return false;
-        }
-        if (!minY.equals(bounds.minY)) {
-            return false;
-        }
-        if (! Objects.equals(minZ, bounds.minZ)) {
-            return false;
-        }
-        if (!maxX.equals(bounds.maxX)) {
-            return false;
-        }
-        if (!maxY.equals(bounds.maxY)) {
-            return false;
-        }
-        return Objects.equals(maxZ, bounds.maxZ);
+        return minX.equals(bounds.minX)
+               && minY.equals(bounds.minY)
+               && Objects.equals(minZ, bounds.minZ)
+               && maxX.equals(bounds.maxX)
+               && maxY.equals(bounds.maxY)
+               && Objects.equals(maxZ, bounds.maxZ);
     }
 
     @Override

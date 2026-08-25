@@ -2,7 +2,6 @@ package org.janelia.alignment.match;
 
 import java.io.Serializable;
 import java.net.URISyntaxException;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -95,13 +94,12 @@ public class CanvasRenderParametersUrlTemplate
     }
 
     public boolean matchesExceptForScale(final CanvasRenderParametersUrlTemplate that) {
-        return Objects.equals(this.getTemplateStringWithoutQueryParameters(),
-                              that.getTemplateStringWithoutQueryParameters()) &&
-               this.featureRenderParameters.matchesExceptForScale(that.featureRenderParameters);
+        return this.getTemplateStringWithoutQueryParameters().equals(that.getTemplateStringWithoutQueryParameters())
+               && this.featureRenderParameters.matchesExceptForScale(that.featureRenderParameters);
     }
 
     /**
-     * Converts general template (typically read from from a pairs list file) into
+     * Converts general template (typically read from a pairs list file) into
      * a run-specific template with the specified parameters.
      *
      * @param  generalTemplateString    general URL template string.
@@ -180,10 +178,10 @@ public class CanvasRenderParametersUrlTemplate
             throw new IllegalArgumentException("invalid parameterized URL", e);
         }
 
-        String runTemplate = populatedRunTemplate.replaceAll(canvasGroupIdToken,
-                                                             RenderableCanvasIdPairs.TEMPLATE_GROUP_ID_TOKEN);
-        runTemplate = runTemplate.replaceAll(canvasIdToken,
-                                             RenderableCanvasIdPairs.TEMPLATE_ID_TOKEN);
+        String runTemplate = populatedRunTemplate.replace(canvasGroupIdToken,
+                                                          RenderableCanvasIdPairs.TEMPLATE_GROUP_ID_TOKEN);
+        runTemplate = runTemplate.replace(canvasIdToken,
+                                          RenderableCanvasIdPairs.TEMPLATE_ID_TOKEN);
 
         LOG.info("getTemplateForRun: returning {}", runTemplate);
 

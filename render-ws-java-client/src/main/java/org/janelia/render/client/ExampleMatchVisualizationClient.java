@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasId;
 import org.janelia.alignment.match.CanvasMatches;
@@ -182,7 +181,7 @@ public class ExampleMatchVisualizationClient {
     void printConnections()
             throws IllegalArgumentException, IOException {
 
-        final List<Double> zValues = zToSectionIdMap.keySet().stream().sorted().collect(Collectors.toList());
+        final List<Double> zValues = zToSectionIdMap.keySet().stream().sorted().toList();
 
         if (zValues.isEmpty()) {
             throw new IllegalArgumentException(
@@ -222,7 +221,7 @@ public class ExampleMatchVisualizationClient {
                                                                null);
                             })
                             .sorted()
-                            .collect(Collectors.toList());
+                            .toList();
 
 
             for (final OrderedCanvasIdPair pair : sameLayerNeighborPairs) {
@@ -249,7 +248,7 @@ public class ExampleMatchVisualizationClient {
                                                                    false,
                                                                   false,
                                                                   false)
-                                .stream().sorted().collect(Collectors.toList());
+                                .stream().sorted().toList();
 
                 for (final OrderedCanvasIdPair pair : crossLayerNeighborPairs) {
                     if (! currentLayerMatchedPairs.contains(pair)) {
@@ -274,18 +273,14 @@ public class ExampleMatchVisualizationClient {
     private  TileBoundsRTree buildRTreeForLayer(final double z)
             throws IOException {
 
-        TileBoundsRTree tree;
-        List<TileBounds> tileBoundsList;
-        final int totalTileCount;
-
         // We only need tile bounds (as opposed to full tile specs with transformation data) to determine neighbors.
         // Retrieving bounds is much faster.
         // If you need full tile specs, see renderDataClient.getResolvedTiles(...).
 
-        tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
-        totalTileCount = tileBoundsList.size();
+        List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(parameters.stack, z);
+        final int totalTileCount = tileBoundsList.size();
 
-        tree = new TileBoundsRTree(z, tileBoundsList);
+        TileBoundsRTree tree = new TileBoundsRTree(z, tileBoundsList);
 
         if (filterTilesWithBox) {
 

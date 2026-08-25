@@ -161,10 +161,7 @@ public class BoxClient
 
         setupForRun();
 
-        boolean foundBoxesRenderedForPriorRun = false;
-        if (parameters.cleanUpPriorRun) {
-            foundBoxesRenderedForPriorRun = cleanUpPriorRun(sparkContext);
-        }
+        final boolean foundBoxesRenderedForPriorRun = parameters.cleanUpPriorRun && cleanUpPriorRun(sparkContext);
 
         final JavaRDD<BoxData> distributedBoxDataRdd = partitionBoxes(sparkContext,
                                                                       foundBoxesRenderedForPriorRun);
@@ -847,10 +844,7 @@ public class BoxClient
 
                 final File parentBoxFile = parentBox.getAbsoluteLevelFile(baseBoxPath, pathSuffix);
 
-                boolean foundAndDeletedParentFile = false;
-                if (parentBoxFile.exists()) {
-                    foundAndDeletedParentFile = parentBoxFile.delete();
-                }
+                final boolean foundAndDeletedParentFile = parentBoxFile.exists() && parentBoxFile.delete();
 
                 if (foundAndDeletedParentFile) {
                     removedPaths.add("\n" + parentBoxFile);

@@ -70,13 +70,9 @@ public class CanvasFeatureExtractor implements Serializable {
 
         final CanvasFeatureExtractor that = (CanvasFeatureExtractor) o;
 
-        if (Double.compare(that.minScale, minScale) != 0) {
-            return false;
-        }
-        if (Double.compare(that.maxScale, maxScale) != 0) {
-            return false;
-        }
-        return coreSiftParameters.equals(that.coreSiftParameters);
+        return Double.compare(that.minScale, minScale) == 0
+               && Double.compare(that.maxScale, maxScale) == 0 &&
+               coreSiftParameters.equals(that.coreSiftParameters);
     }
 
     @Override

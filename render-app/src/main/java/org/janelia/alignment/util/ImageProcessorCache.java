@@ -13,6 +13,7 @@ import mpicbg.trakem2.util.Downsampler;
 
 import org.janelia.alignment.loader.ImageLoader;
 import org.janelia.alignment.loader.ImageLoader.LoaderType;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,10 +94,10 @@ public class ImageProcessorCache {
                 };
 
         final CacheLoader<CacheKey, ImageProcessor> loader =
-                new CacheLoader<CacheKey, ImageProcessor>() {
+                new CacheLoader<>() {
 
                     @Override
-                    public ImageProcessor load(final CacheKey key) {
+                    public @NonNull ImageProcessor load(final CacheKey key) {
                         return loadImageProcessor(key.getUri(),
                                                   key.getDownSampleLevels(),
                                                   key.isMask(),
@@ -314,17 +315,14 @@ public class ImageProcessorCache {
 
         @Override
         public boolean equals(final Object o) {
-            boolean result = true;
-            if (this != o) {
-                if (o instanceof final CacheKey that) {
-                    result = this.url.equals(that.url) &&
-                             (this.downSampleLevels == that.downSampleLevels) &&
-                             (this.imageLoader.hasSame3DContext(that.imageLoader));
-                } else {
-                    result = false;
-                }
+            if (this == o) {
+                return true;
             }
-            return result;
+
+            return o instanceof final CacheKey that
+                   && this.url.equals(that.url)
+                   && (this.downSampleLevels == that.downSampleLevels)
+                   && (this.imageLoader.hasSame3DContext(that.imageLoader));
         }
 
         @Override

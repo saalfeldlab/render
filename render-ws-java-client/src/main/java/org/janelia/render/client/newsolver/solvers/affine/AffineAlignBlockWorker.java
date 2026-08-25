@@ -311,10 +311,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		if (inputSolveItem.idToTileMap().containsKey(id))
 			return inputSolveItem.idToTileMap().get(id);
 
-		final Tile<M> tile;
-		final Pair<Tile<M>, AffineModel2D> pair =
+        final Pair<Tile<M>, AffineModel2D> pair =
 				SolveTools.buildTileFromSpec(inputSolveItem.blockData().solveTypeParameters().blockSolveModel().copy(), AffineBlockDataWrapper.samplesPerDimension, tileSpec);
-		tile = pair.getA();
+        final Tile<M> tile = pair.getA();
 		inputSolveItem.idToTileMap().put(id, tile);
 		inputSolveItem.tileToIdMap().put(tile, id);
 
@@ -748,10 +747,10 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		} else {
 			// log error in worker thread before throwing exception that will get logged in main/driver thread
 			final String errorMsg = "inconsistent tileIds for block " + blockData.toDetailsString() +
-									", check block tile/match filtering, block only tileIds are " +
-									blockOnlyTileIds.stream().sorted().collect(Collectors.toList()) +
-									", solveItem only tileIds are " +
-									solveItemOnlyTileIds.stream().sorted().collect(Collectors.toList());
+                                    ", check block tile/match filtering, block only tileIds are " +
+                                    blockOnlyTileIds.stream().sorted().toList() +
+                                    ", solveItem only tileIds are " +
+                                    solveItemOnlyTileIds.stream().sorted().toList();
 			LOG.error("stitchSectionsAndCreateGroupedTiles: exit, {}", errorMsg);
 
 			throw new IllegalStateException(errorMsg);

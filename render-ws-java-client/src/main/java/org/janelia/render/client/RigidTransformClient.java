@@ -378,9 +378,7 @@ public class RigidTransformClient {
         final AbstractWarpTransformBuilder<? extends CoordinateTransform> transformBuilder =
                 new RigidBuilder(montageTiles, alignTiles);
 
-        final CoordinateTransform transform;
-
-        transform = transformBuilder.call();
+        final CoordinateTransform transform = transformBuilder.call();
 
         LOG.info("buildTransform: completed {} transform derivation", transformId);
 
@@ -421,7 +419,7 @@ public class RigidTransformClient {
             });
 
             final List<String> sortedSectionIds =
-                    sectionIdToTileSpecs.keySet().stream().sorted().collect(Collectors.toList());
+                    sectionIdToTileSpecs.keySet().stream().sorted().toList();
             for (final String sectionId : sortedSectionIds) {
                 if (missingSectionIds.contains(sectionId)) {
 

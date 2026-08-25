@@ -320,9 +320,7 @@ public class WarpTransformClient {
         final AbstractWarpTransformBuilder<? extends CoordinateTransform> transformBuilder =
                 new ThinPlateSplineBuilder(montageTiles, alignTiles);
 
-        final CoordinateTransform transform;
-
-        transform = transformBuilder.call();
+        final CoordinateTransform transform = transformBuilder.call();
 
         LOG.info("buildTransform: completed {} transform derivation", transformId);
 
