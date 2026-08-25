@@ -628,7 +628,7 @@ public class VisualizeTools
 				}
 			}
 
-			IJ.showProgress(ai.getAndIncrement(), idToRenderModels.keySet().size() - 1 );
+			IJ.showProgress(ai.getAndIncrement(), idToRenderModels.size() - 1 );
 		}
 		return null;
 	}

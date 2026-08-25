@@ -381,7 +381,8 @@ public class CoordinateClient {
                                                                      worldListOfLists,
                                                                      0,
                                                                      worldListOfLists.size());
-            mapper.start();
+            //noinspection CallToThreadRun - deliberately mapped synchronously on the main thread
+            mapper.run();
             localListOfLists = mapper.getLocalListOfLists();
         }
 
@@ -456,7 +457,8 @@ public class CoordinateClient {
                                                                      localListOfLists,
                                                                      0,
                                                                      localListOfLists.size());
-            mapper.start();
+            //noinspection CallToThreadRun - deliberately mapped synchronously on the main thread
+            mapper.run();
             worldList = mapper.getWorldList();
         }
 
