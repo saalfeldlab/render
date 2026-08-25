@@ -41,11 +41,11 @@ import org.janelia.render.client.newsolver.solvers.intensity.PointMatch1D;
 public class RansacRegressionReduceFilter implements PointMatchFilter
 {
 	protected Model<?> model;
-	final protected int iterations = 1000;
-	final protected double  maxEpsilon = 0.1;
-	final protected double minInlierRatio = 0.1;
-	final protected int minNumInliers = 10;
-	final protected double maxTrust = 3.0;
+	protected final int iterations = 1000;
+	protected final double  maxEpsilon = 0.1;
+	protected final double minInlierRatio = 0.1;
+	protected final int minNumInliers = 10;
+	protected final double maxTrust = 3.0;
 
 	public RansacRegressionReduceFilter() {
 		model = new AffineModel1D();
@@ -55,7 +55,7 @@ public class RansacRegressionReduceFilter implements PointMatchFilter
 		this.model = model;
 	}
 
-	static protected double[] minMax( final Iterable< PointMatch > matches )
+	protected static double[] minMax(final Iterable< PointMatch > matches )
 	{
 		final Iterator< PointMatch > iter = matches.iterator();
 		PointMatch m = iter.next();

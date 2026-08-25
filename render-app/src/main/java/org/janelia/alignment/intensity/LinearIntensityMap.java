@@ -85,22 +85,22 @@ import net.imglib2.view.composite.RealComposite;
  */
 public class LinearIntensityMap< T extends RealType< T > >
 {
-	static public enum Interpolation{ NN, NL };
+	public static enum Interpolation{ NN, NL };
 
-	static private <T extends RealType<T>> InterpolatorFactory<T, RandomAccessible<T>> interpolatorFactory(final Interpolation interpolation) {
+	private static <T extends RealType<T>> InterpolatorFactory<T, RandomAccessible<T>> interpolatorFactory(final Interpolation interpolation) {
 		return switch (interpolation) {
 			case NN -> new NearestNeighborInterpolatorFactory<T>();
 			case NL -> new NLinearInterpolatorFactory<T>();
         };
     }
 
-	final protected Dimensions dimensions;
-	final protected Translation translation;
+	protected final Dimensions dimensions;
+	protected final Translation translation;
 	//final protected RealRandomAccessible< RealComposite< T > > coefficients;
 
-	final protected RealRandomAccessible< T > coefficientsA, coefficientsB;
+	protected final RealRandomAccessible< T > coefficientsA, coefficientsB;
 
-	final protected InterpolatorFactory< T, RandomAccessible< T > > interpolatorFactory;
+	protected final InterpolatorFactory< T, RandomAccessible< T > > interpolatorFactory;
 
 	public LinearIntensityMap(
 			final RandomAccessibleInterval< T > source,
@@ -222,7 +222,7 @@ public class LinearIntensityMap< T extends RealType< T > >
 
 	}
 
-	final static protected < S extends RealType< S >, T extends RealType< T > > void map(
+	protected static final < S extends RealType< S >, T extends RealType< T > > void map(
 			final IterableInterval< S > image,
 			final IterableInterval< T > coefficientsA,
 			final IterableInterval< T > coefficientsB )
@@ -239,7 +239,7 @@ public class LinearIntensityMap< T extends RealType< T > >
 		}
 	}
 
-	final static protected < S extends RealType< S >, T extends RealType< T > > void mapCrop(
+	protected static final < S extends RealType< S >, T extends RealType< T > > void mapCrop(
 			final IterableInterval< S > image,
 			final IterableInterval< T > coefficientsA,
 			final IterableInterval< T > coefficientsB )
@@ -263,7 +263,7 @@ public class LinearIntensityMap< T extends RealType< T > >
 		}
 	}
 
-	final static protected < S extends RealType< S >, T extends RealType< T > > void mapComposite(
+	protected static final < S extends RealType< S >, T extends RealType< T > > void mapComposite(
 			final IterableInterval< RealComposite< S > > image,
 			final IterableInterval< T > coefficientsA,
 			final IterableInterval< T > coefficientsB )
@@ -281,7 +281,7 @@ public class LinearIntensityMap< T extends RealType< T > >
 		}
 	}
 
-	final static protected < T extends RealType< T > > void mapARGB(
+	protected static final < T extends RealType< T > > void mapARGB(
 			final IterableInterval< ARGBType > image,
 			final IterableInterval< T > coefficientsA,
 			final IterableInterval< T > coefficientsB )

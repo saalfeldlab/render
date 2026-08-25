@@ -48,7 +48,7 @@ public class HeightFieldBrushController extends AbstractHeightFieldBrushControll
 			super(name, defaultTriggers);
 		}
 
-		abstract protected double getValue();
+		protected abstract double getValue();
 
 		@Override
 		protected void paint(final RealLocalizable coords)

@@ -49,14 +49,14 @@ import net.imglib2.util.ValuePair;
 public class IntensityMatcher
 {
 
-	static final private class Matcher implements Runnable
+	private static final class Matcher implements Runnable
 	{
 		//final private Rectangle roi;
-		final private ValuePair<TileSpec, TileSpec> patchPair;
-		final private HashMap<TileSpec, ArrayList< Tile< ? > > > coefficientsTiles;
-		final private PointMatchFilter filter;
-		final private double scale;
-		final private int numCoefficients;
+        private final ValuePair<TileSpec, TileSpec> patchPair;
+		private final HashMap<TileSpec, ArrayList< Tile< ? > > > coefficientsTiles;
+		private final PointMatchFilter filter;
+		private final double scale;
+		private final int numCoefficients;
 		final int meshResolution;
 		final ImageProcessorCache imageProcessorCache;
 
@@ -507,7 +507,7 @@ public class IntensityMatcher
 		return onTheFlyIntensities;
 	}
 
-	static protected void identityConnect(final Tile<?> t1, final Tile<?> t2, final double weight)
+	protected static void identityConnect(final Tile<?> t1, final Tile<?> t2, final double weight)
 	{
 		final ArrayList< PointMatch > matches = new ArrayList<>();
 		matches.add( new PointMatch( new Point( new double[] { 0 } ), new Point( new double[] { 0 } ) ) );
@@ -529,7 +529,7 @@ public class IntensityMatcher
 		return new FinalRealInterval(p1min, p1max);
 	}
 
-	static protected <T extends Model<T> & Affine1D<T>> HashMap<TileSpec, ArrayList<Tile<T>>> generateCoefficientsTiles(
+	protected static <T extends Model<T> & Affine1D<T>> HashMap<TileSpec, ArrayList<Tile<T>>> generateCoefficientsTiles(
 			final Collection<TileSpec> patches,
 			final IntensityCorrectionStrategy provider,
 			final int nCoefficients)

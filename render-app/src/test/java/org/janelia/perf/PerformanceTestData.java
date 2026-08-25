@@ -51,7 +51,7 @@ public class PerformanceTestData {
      *
      * @param  <T>  the PerformanceTestData subclass used for testing.
      */
-    public static abstract class TestResults<T extends PerformanceTestData> {
+    public abstract static class TestResults<T extends PerformanceTestData> {
 
         public abstract T getAverageInstance(T groupInstance,
                                              long averageElapsedTime,

@@ -27,8 +27,8 @@ import org.janelia.alignment.spec.TileSpec;
  */
 public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B > & Affine2D< B >, S extends Model< S > & Affine2D< S > >
 {
-	final public static int samplesPerDimension = 2;
-	final public static boolean useCosineWeight = false;
+	public static final int samplesPerDimension = 2;
+	public static final boolean useCosineWeight = false;
 
 	final SolveItemData< G, B, S > solveItemData;
 
@@ -37,22 +37,22 @@ public class SolveItem< G extends Model< G > & Affine2D< G >, B extends Model< B
 	//
 
 	// all tiles, used for solving when not grouped
-	final private HashMap<String, Tile< B > > idToTileMap = new HashMap<>();
+    private final HashMap<String, Tile< B > > idToTileMap = new HashMap<>();
 
 	// used locally to map Tile back to TileId
-	final private HashMap<Tile<B>, String > tileToIdMap = new HashMap<>();
+    private final HashMap<Tile<B>, String > tileToIdMap = new HashMap<>();
 
 	// stitching-related (local)
 
 	// contains the model as after local stitching (tmp)
-	final private HashMap<String, AffineModel2D> idToStitchingModel = new HashMap<>();
+    private final HashMap<String, AffineModel2D> idToStitchingModel = new HashMap<>();
 
 	// all grouped tiles, used for solving when stitching first
-	final private HashMap< Tile< B >, Tile< B > > tileToGroupedTile = new HashMap<>();
-	final private HashMap< Tile< B >, List< Tile< B > > > groupedTileToTiles = new HashMap<>();
+    private final HashMap< Tile< B >, Tile< B > > tileToGroupedTile = new HashMap<>();
+	private final HashMap< Tile< B >, List< Tile< B > > > groupedTileToTiles = new HashMap<>();
 
 	// which z layers are restarts
-	final private HashSet< Integer > restarts = new HashSet<>();
+    private final HashSet< Integer > restarts = new HashSet<>();
 
 	// matches for error computation
 	final List< Pair< Pair< String, String>, Matches > > matches = new ArrayList<>();

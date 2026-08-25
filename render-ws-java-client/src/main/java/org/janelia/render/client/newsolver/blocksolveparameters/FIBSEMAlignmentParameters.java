@@ -31,11 +31,11 @@ public class FIBSEMAlignmentParameters< M extends Model< M > & Affine2D< M >, S 
 	private static final long serialVersionUID = 4247180309556813829L;
 	public enum PreAlign { NONE, TRANSLATION, RIGID, MULTI_SEM }
 
-	final private Function< Integer, S > stitchingModelSupplier;
-	final private Function< Integer, Integer > minStitchingInliersSupplier; // if it is less, it is not stitched first
+	private final Function< Integer, S > stitchingModelSupplier;
+	private final Function< Integer, Integer > minStitchingInliersSupplier; // if it is less, it is not stitched first
 
-	final private StitchingParameters stitchingParameters;
-	final private BlockOptimizerParameters blockOptimizerParameters;
+	private final StitchingParameters stitchingParameters;
+	private final BlockOptimizerParameters blockOptimizerParameters;
 
 	final int preAlignOrdinal; // storing the ordinal of the enum for serialization purposes
 

@@ -59,16 +59,16 @@ public class Matches implements Serializable {
     }
 
     /** source point coordinates */
-    @ApiModelProperty(value = "Source point coordinates", required=true)
-    final protected double[][] p;
+    @ApiModelProperty(value = "Source point coordinates", required = true)
+    protected final double[][] p;
 
     /** target point coordinates */
-    @ApiModelProperty(value = "Target point coordinates", required=true)
-    final protected double[][] q;
+    @ApiModelProperty(value = "Target point coordinates", required = true)
+    protected final double[][] q;
 
     /** weights */
-    @ApiModelProperty(value = "Weights", required=true)
-    final protected double[] w;
+    @ApiModelProperty(value = "Weights", required = true)
+    protected final double[] w;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")

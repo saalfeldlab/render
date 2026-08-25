@@ -68,7 +68,7 @@ import net.imglib2.view.Views;
 
 public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 {
-	final protected Parameters parameters;
+	protected final Parameters parameters;
 	protected final RenderDataClient renderDataClient;
 	protected final RenderDataClient matchDataClient;
 	protected final RenderDataClient targetDataClient;

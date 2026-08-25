@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
  * @author Eric Trautman
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
-abstract public class AbstractWarpTransformBuilder<T extends CoordinateTransform> implements Callable<T>
+public abstract class AbstractWarpTransformBuilder<T extends CoordinateTransform> implements Callable<T>
 {
     protected double[][] p;
     protected double[][] q;

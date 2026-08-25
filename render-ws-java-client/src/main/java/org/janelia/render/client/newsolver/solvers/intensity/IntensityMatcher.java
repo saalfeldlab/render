@@ -34,11 +34,11 @@ import net.imglib2.util.StopWatch;
  */
 class IntensityMatcher {
 	// separate filters per layer relationship: a per-pixel cutoff (when configured) only applies to cross-layer pairs
-	final private MatchFilter sameLayerFilter;
-	final private MatchFilter crossLayerFilter;
-	final private int numCoefficients;
-	final private TileRenderer sameLayerRenderer;
-	final private TileRenderer crossLayerRenderer;
+    private final MatchFilter sameLayerFilter;
+	private final MatchFilter crossLayerFilter;
+	private final int numCoefficients;
+	private final TileRenderer sameLayerRenderer;
+	private final TileRenderer crossLayerRenderer;
 
 	public IntensityMatcher(
 			final MatchFilter sameLayerFilter,

@@ -25,9 +25,9 @@ import java.util.function.Supplier;
  */
 class IntensityTile {
 
-	final private int nSubTilesPerDimension;
-	final private int nFittingCycles;
-	final private List<Tile<? extends Affine1D<?>>> subTiles;
+	private final int nSubTilesPerDimension;
+	private final int nFittingCycles;
+	private final List<Tile<? extends Affine1D<?>>> subTiles;
 
 	private double distance = 0;
 	private final Set<IntensityTile> connectedTiles = new HashSet<>();

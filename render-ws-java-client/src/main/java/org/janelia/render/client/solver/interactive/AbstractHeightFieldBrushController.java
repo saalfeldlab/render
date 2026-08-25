@@ -30,13 +30,13 @@ import net.imglib2.view.Views;
  */
 public class AbstractHeightFieldBrushController {
 
-	final protected ViewerPanel viewer;
-	final protected RandomAccessibleInterval<FloatType> heightField;
-	final protected RandomAccessible<FloatType> extendedHeightField, zeroExtendedHeightField;
-	final protected ScaleAndTranslation heightFieldTransform;
-	final protected RealPoint brushLocation;
-	final protected CircleOverlay brushOverlay;
-	final protected AffineTransform3D viewerTransform = new AffineTransform3D();
+	protected final ViewerPanel viewer;
+	protected final RandomAccessibleInterval<FloatType> heightField;
+	protected final RandomAccessible<FloatType> extendedHeightField, zeroExtendedHeightField;
+	protected final ScaleAndTranslation heightFieldTransform;
+	protected final RealPoint brushLocation;
+	protected final CircleOverlay brushOverlay;
+	protected final AffineTransform3D viewerTransform = new AffineTransform3D();
 	protected ArrayImg<DoubleType, DoubleArray> brushMask;
 	protected double brushSigma = 100;
 
@@ -149,7 +149,7 @@ public class AbstractHeightFieldBrushController {
 			super(name, defaultTriggers);
 		}
 
-		abstract protected void paint(final RealLocalizable coords);
+		protected abstract void paint(final RealLocalizable coords);
 
 		protected void paint(final int x, final int y) {
 

@@ -34,12 +34,12 @@ import mpicbg.models.PointMatch;
  */
 public class RansacRegressionFilter implements PointMatchFilter
 {
-	final protected Model< ? > model = new AffineModel1D();
-	final protected int iterations = 1000;
-	final protected float  maxEpsilon = 0.1f;
-	final protected float minInlierRatio = 0.1f;
-	final protected int minNumInliers = 10;
-	final protected float maxTrust = 3.0f;
+	protected final Model< ? > model = new AffineModel1D();
+	protected final int iterations = 1000;
+	protected final float  maxEpsilon = 0.1f;
+	protected final float minInlierRatio = 0.1f;
+	protected final int minNumInliers = 10;
+	protected final float maxTrust = 3.0f;
 	
 	@Override
 	public void filter(final List< PointMatch > candidates, final Collection< PointMatch > inliers )

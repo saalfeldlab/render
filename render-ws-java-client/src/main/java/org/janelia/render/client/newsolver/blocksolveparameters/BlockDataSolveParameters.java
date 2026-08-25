@@ -24,7 +24,7 @@ public abstract class BlockDataSolveParameters< M, R, P extends BlockDataSolvePa
 	final String project;
 	final String stack;
 
-	final private M blockSolveModel;
+	private final M blockSolveModel;
 
 	public BlockDataSolveParameters(
 			final String baseDataUrl,

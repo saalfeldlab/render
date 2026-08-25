@@ -26,13 +26,13 @@ import org.slf4j.LoggerFactory;
 
 public class GlobalSolver<G extends Model<G>, R> {
 
-	final private G globalModel;
-	final private SameTileMatchCreator<R> sameTileMatchCreator;
+	private final G globalModel;
+	private final SameTileMatchCreator<R> sameTileMatchCreator;
 
-	final private int maxPlateauWidth;
-	final private double maxAllowedError;
-	final private int maxIterations;
-	final private int numThreads;
+	private final int maxPlateauWidth;
+	private final double maxAllowedError;
+	private final int maxIterations;
+	private final int numThreads;
 
 	final private String sourceStackDevString;
 

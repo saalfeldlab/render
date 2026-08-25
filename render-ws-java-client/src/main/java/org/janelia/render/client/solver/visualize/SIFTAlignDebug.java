@@ -39,9 +39,9 @@ import mpicbg.models.TranslationModel2D;
 public class SIFTAlignDebug
         implements PlugIn, KeyListener
 {
-	final private List< Feature > fs1 = new ArrayList<>();
-	final private List< Feature > fs2 = new ArrayList<>();
-	final private List< PointMatch > inliers = new ArrayList<>();
+	private final List< Feature > fs1 = new ArrayList<>();
+	private final List< Feature > fs2 = new ArrayList<>();
+	private final List< PointMatch > inliers = new ArrayList<>();
 	private AbstractAffineModel2D< ? > currentModel;
 
 	public List<PointMatch> getInliers() {
@@ -54,7 +54,7 @@ public class SIFTAlignDebug
 
 	public static class Param
 	{
-		final public FloatArray2DSIFT.Param sift = new FloatArray2DSIFT.Param();
+		public final FloatArray2DSIFT.Param sift = new FloatArray2DSIFT.Param();
 
 		/**
 		 * Closest/next closest neighbour distance ratio
@@ -74,7 +74,7 @@ public class SIFTAlignDebug
 		/**
 		 * Implemeted transformation models for choice
 		 */
-		final static public String[] modelStrings = new String[]{ "Translation", "Rigid", "Similarity", "Affine" };
+        public static final String[] modelStrings = new String[]{ "Translation", "Rigid", "Similarity", "Affine" };
 		public int modelIndex = 1;
 
 		public boolean interpolate = true;
@@ -106,7 +106,7 @@ public class SIFTAlignDebug
 	/**
 	 * downscale a grey scale float image using gaussian blur
 	 */
-	static private ImageProcessor downScale( final ImageProcessor ip, final double s )
+    private static ImageProcessor downScale( final ImageProcessor ip, final double s )
 	{
 		final FloatArray2D g = new FloatArray2D( ip.getWidth(), ip.getHeight() );
 		ImageArrayConverter.imageProcessorToFloatArray2D( ip, g );
@@ -123,7 +123,7 @@ public class SIFTAlignDebug
 	}
 
 	@Override
-    final public void run( final String args ) {
+    public final void run(final String args ) {
 		final Param p = new Param();
 
 		if (IJ.versionLessThan("1.41n")) return;
@@ -367,7 +367,7 @@ public class SIFTAlignDebug
 			stackAligned.addSlice( null, alignedSlice );
 			if ( p.showInfo )
 			{
-				ImageProcessor tmp = ip3.createProcessor( stackInfo.getWidth(), stackInfo.getHeight() );
+				ImageProcessor tmp = ip3.createProcessor(stackInfo.getWidth(), stackInfo.getHeight() );
 				tmp.insert( ip3, 0, 0 );
 				stackInfo.addSlice( null, tmp ); // fixing silly 1 pixel size missmatches
 				tmp = ip4.createProcessor( stackInfo.getWidth(), stackInfo.getHeight() );

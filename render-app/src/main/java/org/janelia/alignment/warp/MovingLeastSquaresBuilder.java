@@ -26,7 +26,7 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
 
     protected Double alpha;
 
-    final static private float[] toFloats(final double[] doubles) {
+    private static final float[] toFloats(final double[] doubles) {
         final float[] floats = new float[doubles.length];
         for (int i = 0; i < doubles.length; ++i) {
             floats[i] = (float)doubles[i];
@@ -34,7 +34,7 @@ public class MovingLeastSquaresBuilder extends AbstractWarpTransformBuilder<Movi
         return floats;
     }
 
-    final static private float[][] toFloats(final double[][] doubles) {
+    private static final float[][] toFloats(final double[][] doubles) {
         final float[][] floats = new float[doubles.length][];
         for (int i = 0; i < doubles.length; ++i)
             floats[i] = toFloats(doubles[i]);

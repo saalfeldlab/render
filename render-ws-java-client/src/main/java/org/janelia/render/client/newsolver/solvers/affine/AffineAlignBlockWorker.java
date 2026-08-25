@@ -72,9 +72,9 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 	// the advantage is that potential deformations do not propagate into the individual
 	// sections, but can be solved easily later using non-rigid alignment.
 
-	final protected static int visualizeZSection = 0;//10000;
+	protected static final int visualizeZSection = 0;//10000;
 	//final private static int zRadiusRestarts = 10;
-	final private static int stabilizationRadius = 25;
+    private static final int stabilizationRadius = 25;
 
 	final RenderDataClient matchDataClient;
 
