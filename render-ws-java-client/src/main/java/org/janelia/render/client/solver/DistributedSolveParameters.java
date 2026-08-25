@@ -1,9 +1,9 @@
 package org.janelia.render.client.solver;
 
 import java.io.IOException;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,7 +37,8 @@ import net.imglib2.util.Pair;
 
 public class DistributedSolveParameters extends CommandLineParameters
 {
-	private static final long serialVersionUID = 6845718387096692785L;
+	@Serial
+    private static final long serialVersionUID = 6845718387096692785L;
 
 	public static class RangeConverter implements IStringConverter<SerializableValuePair<Integer, Integer>>
 	{
@@ -46,8 +47,8 @@ public class DistributedSolveParameters extends CommandLineParameters
 		{
 			final String[] values = value.split( "-" );
 
-			int a = Integer.parseInt( values[ 0 ] );
-			int b = Integer.parseInt( values[ 1 ] );
+			final int a = Integer.parseInt(values[ 0 ] );
+			final int b = Integer.parseInt(values[ 1 ] );
 
 			if ( b >= a )
 				return new SerializableValuePair<>( a, b );
@@ -452,7 +453,7 @@ public class DistributedSolveParameters extends CommandLineParameters
 			if ( zFilter.accept( data.getZ() ) )
 			{
 				final String sectionId = data.getSectionId();
-				final double z = data.getZ().doubleValue();
+				final double z = data.getZ();
 
 				if ( !sectionIds.containsKey( sectionId ) )
 					sectionIds.put( sectionId, z );
@@ -460,18 +461,11 @@ public class DistributedSolveParameters extends CommandLineParameters
 		}
 
 		for ( final String entry : sectionIds.keySet() )
-			runParams.pGroupList.add( new SerializableValuePair< String, Double >( entry, sectionIds.get( entry ) ) );
+			runParams.pGroupList.add(new SerializableValuePair<>(entry, sectionIds.get(entry)));
 
-		Collections.sort( runParams.pGroupList, new Comparator< Pair< String, Double > >()
-		{
-			@Override
-			public int compare( final Pair< String, Double > o1, final Pair< String, Double > o2 )
-			{
-				return o1.getA().compareTo( o2.getA() );
-			}
-		} );
+		runParams.pGroupList.sort(Comparator.comparing(Pair::getA));
 
-		if (runParams.pGroupList.size() == 0)
+		if (runParams.pGroupList.isEmpty())
 			throw new IllegalArgumentException("stack " + parameters.stack + " does not contain any sections with the specified z values");
 
 		Double minZForRun = parameters.minZ;

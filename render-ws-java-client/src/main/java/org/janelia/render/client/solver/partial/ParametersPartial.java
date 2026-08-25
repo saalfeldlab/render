@@ -1,8 +1,8 @@
 package org.janelia.render.client.solver.partial;
 
 import java.io.IOException;
+import java.io.Serial;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +27,8 @@ import net.imglib2.util.Pair;
 
 public class ParametersPartial extends CommandLineParameters
 {
-	private static final long serialVersionUID = 6845718387096692785L;
+	@Serial
+    private static final long serialVersionUID = 6845718387096692785L;
 
 	@ParametersDelegate
     public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();
@@ -207,7 +208,7 @@ public class ParametersPartial extends CommandLineParameters
 			if ( zFilter.accept( data.getZ() ) )
 			{
 				final String sectionId = data.getSectionId();
-				final double z = data.getZ().doubleValue();
+				final double z = data.getZ();
 
 				if ( !sectionIds.containsKey( sectionId ) )
 					sectionIds.put( sectionId, z );
@@ -215,18 +216,11 @@ public class ParametersPartial extends CommandLineParameters
 		}
 
 		for ( final String entry : sectionIds.keySet() )
-			runParams.pGroupList.add( new SerializableValuePair< String, Double >( entry, sectionIds.get( entry ) ) );
+			runParams.pGroupList.add(new SerializableValuePair<>(entry, sectionIds.get(entry)) );
 
-		Collections.sort( runParams.pGroupList, new Comparator< Pair< String, Double > >()
-		{
-			@Override
-			public int compare( final Pair< String, Double > o1, final Pair< String, Double > o2 )
-			{
-				return o1.getA().compareTo( o2.getA() );
-			}
-		} );
+		runParams.pGroupList.sort(Comparator.comparing(Pair::getA));
 
-		if (runParams.pGroupList.size() == 0)
+		if (runParams.pGroupList.isEmpty())
 			throw new IllegalArgumentException("stack " + parameters.stack + " does not contain any sections with the specified z values");
 
 		Double minZForRun = parameters.minZ;

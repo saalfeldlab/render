@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.PriorityQueue;
-import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
 
@@ -35,17 +34,17 @@ public class LayerDistributor implements Serializable {
         bucketList = bucketLayers(layerList);
 
         final List<List<Double>> distributedZValues = new ArrayList<>(numberOfBuckets);
-        distributedZValues.addAll(bucketList.stream().map(Bucket::getOrderedZValues).collect(Collectors.toList()));
+        distributedZValues.addAll(bucketList.stream().map(Bucket::getOrderedZValues).toList());
 
         return distributedZValues;
     }
 
     public long getMinBucketTileCount() {
-        return bucketList.size() == 0 ? 0 : bucketList.getFirst().getTileCount();
+        return bucketList.isEmpty() ? 0 : bucketList.getFirst().getTileCount();
     }
 
     public long getMaxBucketTileCount() {
-        return bucketList.size() == 0 ? 0 : bucketList.getLast().getTileCount();
+        return bucketList.isEmpty() ? 0 : bucketList.getLast().getTileCount();
     }
 
     @Override
@@ -58,7 +57,7 @@ public class LayerDistributor implements Serializable {
 
         final List<LayerData> layerList = new ArrayList<>(sectionDataList.size());
 
-        Collections.sort(sectionDataList, SectionData.Z_COMPARATOR);
+        sectionDataList.sort(SectionData.Z_COMPARATOR);
 
         LayerData layerData = null;
         for (final SectionData sectionData : sectionDataList) {
@@ -95,7 +94,7 @@ public class LayerDistributor implements Serializable {
         }
 
         final List<Bucket> sortedBucketList = new ArrayList<>(numberOfBuckets);
-        sortedBucketList.addAll(bucketQueue.stream().collect(Collectors.toList()));
+        sortedBucketList.addAll(bucketQueue);
         Collections.sort(sortedBucketList);
 
         return sortedBucketList;
@@ -160,7 +159,7 @@ public class LayerDistributor implements Serializable {
 
         public List<Double> getOrderedZValues() {
             final List<Double> orderedZValues = new ArrayList<>(layerDataList.size());
-            orderedZValues.addAll(layerDataList.stream().map(LayerData::getZ).sorted().collect(Collectors.toList()));
+            orderedZValues.addAll(layerDataList.stream().map(LayerData::getZ).sorted().toList());
             return orderedZValues;
         }
 

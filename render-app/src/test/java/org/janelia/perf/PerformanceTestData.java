@@ -1,7 +1,6 @@
 package org.janelia.perf;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -31,7 +30,7 @@ public class PerformanceTestData {
         return elapsedTime;
     }
 
-    public void setElapsedTime(long elapsedTime) {
+    public void setElapsedTime(final long elapsedTime) {
         this.elapsedTime = elapsedTime;
     }
 
@@ -64,26 +63,23 @@ public class PerformanceTestData {
 
         public abstract Map<String, Comparator<T>> getReportNameToComparatorMap();
 
-        public void collateAndPrintTimes(List<T> results) {
+        public void collateAndPrintTimes(final List<T> results) {
 
-            final List<T> finalResults = new ArrayList<T>();
+            final List<T> finalResults = new ArrayList<>();
 
-            final Map<String, List<T>> averageGroupToResultsMap = new LinkedHashMap<String, List<T>>();
+            final Map<String, List<T>> averageGroupToResultsMap = new LinkedHashMap<>();
 
             // -------------------------------------------
             // separate results into averaging groups
 
             List<T> averageGroupResults;
-            for (T result : results) {
+            for (final T result : results) {
                 final String averageGroup = result.getAverageGroup();
                 if (averageGroup == null) {
                     averageGroupResults = finalResults;
                 } else {
-                    averageGroupResults = averageGroupToResultsMap.get(averageGroup);
-                    if (averageGroupResults == null) {
-                        averageGroupResults = new ArrayList<T>();
-                        averageGroupToResultsMap.put(averageGroup, averageGroupResults);
-                    }
+                    averageGroupResults =
+                            averageGroupToResultsMap.computeIfAbsent(averageGroup, k -> new ArrayList<>());
                 }
                 averageGroupResults.add(result);
             }
@@ -93,10 +89,10 @@ public class PerformanceTestData {
 
             long sum;
             long averageTime;
-            for (String averageGroup : averageGroupToResultsMap.keySet()) {
+            for (final String averageGroup : averageGroupToResultsMap.keySet()) {
                 sum = 0;
                 averageGroupResults = averageGroupToResultsMap.get(averageGroup);
-                for (PerformanceTestData result : averageGroupResults) {
+                for (final PerformanceTestData result : averageGroupResults) {
                     sum += result.elapsedTime;
                 }
                 averageTime = sum / averageGroupResults.size();
@@ -108,19 +104,19 @@ public class PerformanceTestData {
             // -------------------------------------------
             // print sorted results
 
-            if (finalResults.size() > 0) {
+            if (!finalResults.isEmpty()) {
 
                 final Map<String, Comparator<T>> reportNameToComparatorMap = getReportNameToComparatorMap();
 
                 String reportGroup;
-                for (String reportName : reportNameToComparatorMap.keySet()) {
+                for (final String reportName : reportNameToComparatorMap.keySet()) {
 
                     System.out.println(getReportHeader(reportName));
 
-                    Collections.sort(finalResults, reportNameToComparatorMap.get(reportName));
+                    finalResults.sort(reportNameToComparatorMap.get(reportName));
 
                     reportGroup = finalResults.getFirst().getReportGroup();
-                    for (T result : finalResults) {
+                    for (final T result : finalResults) {
                         if (! reportGroup.equals(result.getReportGroup())) {
                             reportGroup = result.getReportGroup();
                             System.out.println();
