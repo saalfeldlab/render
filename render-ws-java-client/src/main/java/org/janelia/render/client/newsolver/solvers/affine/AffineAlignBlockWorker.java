@@ -430,7 +430,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 						final double distance = Point.distance(pm.getP1(), pm.getP2());
 						sumError += distance;
 					}
-					LOG.info("assignConstantAffineModel: Error={}", (sumError / matches.size()));
+					LOG.info("assignConstantAffineModel: Error={}", sumError / matches.size());
 				} catch (final Exception e) {
 					LOG.warn("assignConstantAffineModel: Caught exception: ", e);
 				}
@@ -682,7 +682,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					for ( final Tile< ? > t : set )
 					{
 						final String tileId = tileToId.get( t );
-						final AffineModel2D affine = SolveTools.createAffine( ((Affine2D<?>)t.getModel()) );
+						final AffineModel2D affine = SolveTools.createAffine((Affine2D<?>)t.getModel());
 
 						solveItem.idToStitchingModel().put( tileId, affine );
 

@@ -9,5 +9,7 @@ import mpicbg.models.PointMatch;
 
 public interface MatchFilter
 {
-	public List<PointMatch> filter( final Matches matches, final TileSpec pTileSpec, final TileSpec qTileSpec );
+	List<PointMatch> filter(final Matches matches,
+                            final TileSpec pTileSpec,
+                            final TileSpec qTileSpec);
 }

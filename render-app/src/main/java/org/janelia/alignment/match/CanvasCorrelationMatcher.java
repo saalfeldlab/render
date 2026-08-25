@@ -80,7 +80,7 @@ public class CanvasCorrelationMatcher
 
         final CanvasMatchResult result = matchFilter.buildMatchResult(candidates);
 
-        LOG.info("deriveMatchResult: exit, result={}, elapsedTime={}s", result, (timer.stop() / 1000));
+        LOG.info("deriveMatchResult: exit, result={}, elapsedTime={}s", result, timer.stop() / 1000);
 
         return result;
     }
@@ -116,7 +116,7 @@ public class CanvasCorrelationMatcher
                                         unmaskedArea2.x + unmaskedArea2.width - 1);
         }
         final int endStep = maxHeightOrWidth - startStep - scaledSampleSize + scaledStepSize + 1;
-        final int numTests = (endStep / scaledStepSize) + Math.min(1, (endStep % scaledStepSize));
+        final int numTests = endStep / scaledStepSize + Math.min(1, endStep % scaledStepSize);
         final double stepIncrement = endStep / (double) numTests;
 
         LOG.debug("getCandidateMatches: renderScale={}, minResultThreshold={}, scaledSampleSize={}, scaledStepSize={}, numTests={}, stepIncrement={}",

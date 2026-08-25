@@ -55,7 +55,7 @@ public class AbstractHeightFieldBrushController {
                 1,
                 (l, t) -> {
                     final double x = l.getDoublePosition(0);
-                    final double v = Math.exp((x * x) * varScaled);
+                    final double v = Math.exp(x * x * varScaled);
                     t.set(v);
                 },
                 DoubleType::new);

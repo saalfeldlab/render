@@ -199,9 +199,9 @@ public class CoordinateClientTest {
         final String context = threads + " threads and " + size + " items";
         assertEquals(expectedNumberOfIndexes, list.size(),
                      "invalid number of batch indexes returned for " + context);
-        assertEquals(expectedFirstDelta, (list.get(1) - list.get(0)),
+        assertEquals(expectedFirstDelta, list.get(1) - list.get(0),
                      "invalid delta between first and second indexes " + context);
-        assertEquals(expectedLastDelta, (list.getLast() - list.get(list.size() - 2)),
+        assertEquals(expectedLastDelta, list.getLast() - list.get(list.size() - 2),
                      "invalid delta between last and second-to-last indexes " + context);
     }
 
@@ -220,7 +220,7 @@ public class CoordinateClientTest {
 
         for (int i = 0; i < numberOfThreads; i++) {
             final TileCoordinates worldCoord = TileCoordinates.buildWorldInstance(tile.getTileId(),
-                                                                                  new double[]{i, (i+1), z});
+                                                                                  new double[]{i, i + 1, z});
             worldListOfLists.add(Collections.singletonList(worldCoord));
         }
 

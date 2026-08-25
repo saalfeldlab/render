@@ -85,7 +85,7 @@ import net.imglib2.view.composite.RealComposite;
  */
 public class LinearIntensityMap< T extends RealType< T > >
 {
-	public static enum Interpolation{ NN, NL };
+	public enum Interpolation{ NN, NL };
 
 	private static <T extends RealType<T>> InterpolatorFactory<T, RandomAccessible<T>> interpolatorFactory(final Interpolation interpolation) {
 		return switch (interpolation) {

@@ -153,7 +153,7 @@ public class BlockLayoutCreator {
 	}
 
 	private List<IntegerInterval> createGrid(final int min, final int max, final int intervalSize) {
-		final int totalSize = (max - min + 1);
+		final int totalSize = max - min + 1;
 		final int nIntervals = totalSize / intervalSize;
 
 		if (nIntervals == 0)

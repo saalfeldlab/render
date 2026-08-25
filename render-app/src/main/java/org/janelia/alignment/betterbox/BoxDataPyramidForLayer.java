@@ -140,16 +140,16 @@ public class BoxDataPyramidForLayer
 
                 levelOneBox = new BoxData(z,
                                           1,
-                                          (loopRow / 2),
-                                          (loopColumn / 2));
+                                          loopRow / 2,
+                                          loopColumn / 2);
 
-                for (int childRow = loopRow; childRow < (loopRow + 2); childRow++) {
-                    for (int childColumn = loopColumn; childColumn < (loopColumn + 2); childColumn++) {
+                for (int childRow = loopRow; childRow < loopRow + 2; childRow++) {
+                    for (int childColumn = loopColumn; childColumn < loopColumn + 2; childColumn++) {
 
                         y = childRow * boxHeight;
                         x = childColumn * boxWidth;
 
-                        boxTileBoundsList = rTree.findTilesInBox(x, y, (x + boxWidth), (y + boxHeight));
+                        boxTileBoundsList = rTree.findTilesInBox(x, y, x + boxWidth, y + boxHeight);
 
                         if (!boxTileBoundsList.isEmpty()) {
 
@@ -175,7 +175,7 @@ public class BoxDataPyramidForLayer
 
         levelBoxCounts.add(pyramidList.size());
 
-        while ((!parentBoxes.isEmpty()) && (parentBoxes.getFirst().getLevel() < maxLevel)) {
+        while (!parentBoxes.isEmpty() && parentBoxes.getFirst().getLevel() < maxLevel) {
             addParentBoxesForLevel(parentBoxes);
             parentBoxes = buildNextLevel(parentBoxes);
         }

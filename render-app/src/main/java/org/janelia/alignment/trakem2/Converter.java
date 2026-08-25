@@ -457,7 +457,7 @@ public class Converter {
         private String createIdPath(final String sid,
                                     final String filename,
                                     final String ext) {
-            final StringBuilder sf = new StringBuilder(((sid.length() * 3) / 2) + 1);
+            final StringBuilder sf = new StringBuilder((sid.length() * 3) / 2 + 1);
             final int len = sid.length();
             for (int i=1; i<=len; i++) {
                 sf.append(sid.charAt(i-1));

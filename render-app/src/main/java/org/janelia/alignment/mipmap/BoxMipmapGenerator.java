@@ -174,10 +174,10 @@ public class BoxMipmapGenerator {
                                                                               boxHeight,
                                                                               boxDirectory,
                                                                               scaledLevel,
-                                                                              (firstSourceRow / 2),
-                                                                              (lastSourceRow / 2),
-                                                                              (firstSourceColumn / 2),
-                                                                              (lastSourceColumn / 2),
+                                                                              firstSourceRow / 2,
+                                                                              lastSourceRow / 2,
+                                                                              firstSourceColumn / 2,
+                                                                              lastSourceColumn / 2,
                                                                               forceGeneration);
         List<File> firstRowFiles;
         int secondRow;

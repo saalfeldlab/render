@@ -184,7 +184,7 @@ public class CanvasPeakExtractor
 
             if (totalPeakCount > peakList.size()) {
                 LOG.info("extractPeaksFromImageAndMask: removed {} peaks found in the masked region",
-                         (totalPeakCount - peakList.size()));
+                         totalPeakCount - peakList.size());
             }
 
         }
@@ -255,7 +255,7 @@ public class CanvasPeakExtractor
             }
 
             LOG.info("filterPeaksByInliers: exit, removed {} peaks, {} peaks remain",
-                     (beforeCount - canvasPeaks.size()), canvasPeaks.size());
+                     beforeCount - canvasPeaks.size(), canvasPeaks.size());
 
         }
 
@@ -318,7 +318,7 @@ public class CanvasPeakExtractor
             }
 
             LOG.info("nonMaximalSuppression: exit, removed {} peaks, {} peaks remain",
-                     (canvasPeaks.size() - filteredPeaks.size()), filteredPeaks.size());
+                     canvasPeaks.size() - filteredPeaks.size(), filteredPeaks.size());
 
         }
 

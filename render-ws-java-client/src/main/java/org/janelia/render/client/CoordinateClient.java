@@ -634,7 +634,7 @@ public class CoordinateClient {
                 } catch (final Throwable t) {
 
                     LOG.warn("worldToLocal run: caught exception for list item {}, " +
-                             "adding original coordinates with error message to list", (i + startIndex), t);
+                             "adding original coordinates with error message to list", i + startIndex, t);
 
                     errorCount++;
 
@@ -648,7 +648,7 @@ public class CoordinateClient {
 
                 if (timer.hasIntervalPassed()) {
                     LOG.info("{}: inversely transformed {} out of {} points",
-                             this, (i - startIndex + 1), numberOfPoints());
+                             this, i - startIndex + 1, numberOfPoints());
                 }
 
             }
@@ -775,7 +775,7 @@ public class CoordinateClient {
                 } catch (final Throwable t) {
 
                     LOG.warn("{}: caught exception for list item {}, " +
-                             "adding original coordinates with error message to list", this, (i + startIndex), t);
+                             "adding original coordinates with error message to list", this, i + startIndex, t);
 
                     errorCount++;
 
@@ -789,7 +789,7 @@ public class CoordinateClient {
 
                 if (timer.hasIntervalPassed()) {
                     LOG.info("{}: transformed {} out of {} points",
-                             this, (i - startIndex + 1), numberOfPoints());
+                             this, i - startIndex + 1, numberOfPoints());
                 }
 
             }
@@ -835,7 +835,7 @@ public class CoordinateClient {
 
         public int getToIndexAndLogStart(final int fromIndex) {
             startTime = System.currentTimeMillis();
-            final int toIndex = Math.min((fromIndex + batchSize), totalCoordinatesToMap);
+            final int toIndex = Math.min(fromIndex + batchSize, totalCoordinatesToMap);
             LOG.info("{}: processing points {} to {} of {}",
                      methodName, fromIndex + 1, toIndex, totalCoordinatesToMap);
             return toIndex;
@@ -844,7 +844,7 @@ public class CoordinateClient {
         public void logCompletion(final int fromIndex,
                                   final int toIndex) {
             final long elapsedSeconds = (System.currentTimeMillis() - startTime) / 1000;
-            final int elapsedMinutes = (int) ((elapsedSeconds / 60.0) + 0.5);
+            final int elapsedMinutes = (int) (elapsedSeconds / 60.0 + 0.5);
             final String elapsedTimeLog = elapsedMinutes > 0 ? elapsedMinutes + " minutes" :
                                           elapsedSeconds + " seconds";
             LOG.info("{}: mapped points {} to {} of {} in {}",

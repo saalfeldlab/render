@@ -36,9 +36,9 @@ public class AlignmentErrors {
 			final String pId = pairWithValue.getP().getId();
 			final String qId = pairWithValue.getQ().getId();
 			final double pErr = tileToError.computeIfAbsent(pId, k -> 0.0);
-			tileToError.put(pId, (pErr + pairWithValue.getValue()));
+			tileToError.put(pId, pErr + pairWithValue.getValue());
 			final double qErr = tileToError.computeIfAbsent(qId, k -> 0.0);
-			tileToError.put(qId, (qErr + pairWithValue.getValue()));
+			tileToError.put(qId, qErr + pairWithValue.getValue());
 		});
 		return tileToError;
 	}

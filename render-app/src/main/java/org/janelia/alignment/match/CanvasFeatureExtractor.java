@@ -248,7 +248,7 @@ public class CanvasFeatureExtractor implements Serializable {
             }
             if (totalFeatureCount > featureList.size()) {
                 LOG.info("extractFeatures: removed {} features found in the masked region",
-                         (totalFeatureCount - featureList.size()));
+                         totalFeatureCount - featureList.size());
             }
         }
 

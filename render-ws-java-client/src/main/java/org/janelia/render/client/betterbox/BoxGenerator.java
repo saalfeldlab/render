@@ -282,8 +282,9 @@ public class BoxGenerator
             levelScale = 1.0 / Math.pow(2, sourceBoxLevel);
             scaledStackMaxX = levelScale * stackMaxX;
             scaledStackMaxY = levelScale * stackMaxY;
-            if ( ( (scaledStackMaxX < boxWidth) && (scaledStackMaxY < boxHeight) ) ||
-                 (sourceBoxLevel == boxParameters.maxLevel)) {
+            if ((scaledStackMaxX < boxWidth)
+                && (scaledStackMaxY < boxHeight)
+                || (sourceBoxLevel == boxParameters.maxLevel)) {
                 break;
             }
         }
@@ -488,7 +489,7 @@ public class BoxGenerator
                 if (percentComplete > 0) {
                     final double msPerBox = processTimer.getElapsedMilliseconds() / (double) renderedLevelBoxCount;
                     final long remainingMs = (long) (msPerBox * (numberOfLevelBoxes - renderedLevelBoxCount));
-                    final Date eta = new Date((new Date().getTime()) + remainingMs);
+                    final Date eta = new Date(new Date().getTime() + remainingMs);
                     etaString = ", ETA is " + sdf.format(eta);
                 }
 

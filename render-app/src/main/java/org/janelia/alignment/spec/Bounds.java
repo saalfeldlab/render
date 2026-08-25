@@ -123,12 +123,12 @@ public class Bounds implements Serializable {
 
     @JsonIgnore
     public double getCenterX() {
-        return minX + (getDeltaX() / 2.0);
+        return minX + getDeltaX() / 2.0;
     }
 
     @JsonIgnore
     public double getCenterY() {
-        return minY + (getDeltaY() / 2.0);
+        return minY + getDeltaY() / 2.0;
     }
 
     @Override

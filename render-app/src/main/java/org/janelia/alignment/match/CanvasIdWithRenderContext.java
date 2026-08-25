@@ -141,8 +141,8 @@ public class CanvasIdWithRenderContext
     public int hashCode() {
         final MontageRelativePosition relativePosition = canvasId.getRelativePosition();
         int result = url.hashCode();
-        result = (31 * result) + (loaderName == null ? 0 : loaderName.hashCode());
-        result = (31 * result) + (relativePosition == null ? 0 : relativePosition.hashCode());
+        result = 31 * result + (loaderName == null ? 0 : loaderName.hashCode());
+        result = 31 * result + (relativePosition == null ? 0 : relativePosition.hashCode());
         // ignore clipWidth and clipHeight for hashCode since those values
         // should rarely (if ever) differ for canvases with the same URL and relative position
         return result;
