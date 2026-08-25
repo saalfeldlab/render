@@ -533,7 +533,7 @@ public class SIFTPointMatchClient
                                                                          q.getId(),
                                                                          siftRenderScale,
                                                                          pClipOffsets,
-                                                                         qClipOffsets).get(0);
+                                                                         qClipOffsets).getFirst();
         }
 
         final CanvasPeakMatcher peakMatcher = new CanvasPeakMatcher(gdParameters,

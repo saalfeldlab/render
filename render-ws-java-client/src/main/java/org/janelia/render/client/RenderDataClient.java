@@ -1351,7 +1351,7 @@ public class RenderDataClient {
                                                             false);
         CanvasMatches canvasMatches = null;
         if (responseList.size() == 1) {
-            canvasMatches = responseList.get(0);
+            canvasMatches = responseList.getFirst();
         } else if (responseList.size() > 1) {
             throw new IOException(responseList.size() + " match records returned for pId " + pId +
                                   " and qId " + qId + " when there should only be one record");

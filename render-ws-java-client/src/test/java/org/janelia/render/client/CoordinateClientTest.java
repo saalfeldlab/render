@@ -88,7 +88,7 @@ public class CoordinateClientTest {
             assertEquals(1, localList.size(),
                          "invalid number of coordinates in local list " + i);
 
-            localCoordinates = localList.get(0);
+            localCoordinates = localList.getFirst();
             assertNull(localCoordinates.getTileId(),
                        "tileId for coordinates in local list " + i + " should be null");
             assertNull(localCoordinates.getLocal(),
@@ -132,11 +132,11 @@ public class CoordinateClientTest {
 
         assertEquals(1, worldListOfLists.size(), "invalid number of world lists returned");
 
-        final List<TileCoordinates> returnedWorldList = worldListOfLists.get(0);
+        final List<TileCoordinates> returnedWorldList = worldListOfLists.getFirst();
 
         assertEquals(3, returnedWorldList.size(), "invalid number of coordinates in first world list");
 
-        final TileCoordinates returnedWorldCoord = returnedWorldList.get(0);
+        final TileCoordinates returnedWorldCoord = returnedWorldList.getFirst();
 
         assertFalse(returnedWorldCoord.hasError(),
                     "returned world coordinates have error: " + returnedWorldCoord.toJson());
@@ -201,7 +201,7 @@ public class CoordinateClientTest {
                      "invalid number of batch indexes returned for " + context);
         assertEquals(expectedFirstDelta, (list.get(1) - list.get(0)),
                      "invalid delta between first and second indexes " + context);
-        assertEquals(expectedLastDelta, (list.get(list.size() - 1) - list.get(list.size() - 2)),
+        assertEquals(expectedLastDelta, (list.getLast() - list.get(list.size() - 2)),
                      "invalid delta between last and second-to-last indexes " + context);
     }
 
@@ -238,8 +238,8 @@ public class CoordinateClientTest {
             assertEquals(1, worldList.size(), "invalid number of coordinates in worldList[" + i + "]");
             assertEquals(1, localList.size(), "invalid number of coordinates in localList[" + i + "]");
 
-            final TileCoordinates worldCoord = worldList.get(0);
-            final TileCoordinates localCoord = localList.get(0);
+            final TileCoordinates worldCoord = worldList.getFirst();
+            final TileCoordinates localCoord = localList.getFirst();
 
             assertFalse(localCoord.hasError(),
                         "returned local coordinates for localList[" + i +
@@ -260,7 +260,7 @@ public class CoordinateClientTest {
         for (int i = 0; i < worldListOfLists.size(); i++) {
             final String context = "worldListOfLists[" + i + "]";
             final List<TileCoordinates> worldList = worldListOfLists.get(i);
-            final TileCoordinates worldCoord = worldList.get(0);
+            final TileCoordinates worldCoord = worldList.getFirst();
 
             final TileCoordinates roundTripWorldCoord = roundTripWorldList.get(i);
             assertEquals(worldCoord.getTileId(), roundTripWorldCoord.getTileId(),

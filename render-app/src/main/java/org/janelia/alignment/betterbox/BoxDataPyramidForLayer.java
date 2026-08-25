@@ -175,7 +175,7 @@ public class BoxDataPyramidForLayer
 
         levelBoxCounts.add(pyramidList.size());
 
-        while ((parentBoxes.size() > 0) && (parentBoxes.get(0).getLevel() < maxLevel)) {
+        while ((!parentBoxes.isEmpty()) && (parentBoxes.getFirst().getLevel() < maxLevel)) {
             addParentBoxesForLevel(parentBoxes);
             parentBoxes = buildNextLevel(parentBoxes);
         }

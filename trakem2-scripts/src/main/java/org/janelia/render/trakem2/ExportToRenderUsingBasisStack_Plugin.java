@@ -85,9 +85,9 @@ public class ExportToRenderUsingBasisStack_Plugin
                                                                             true,
                                                                             true);
 
-            if (displayableList.size() > 0) {
+            if (!displayableList.isEmpty()) {
 
-                final Patch firstPatch = (Patch) displayableList.get(0);
+                final Patch firstPatch = (Patch) displayableList.getFirst();
                 final Matcher m = TILE_SECTION_ID_PATTERN.matcher(firstPatch.getTitle());
                 if (! m.matches()) {
                     throw new IllegalArgumentException("cannot parse sectionId from patch title (tileId): " +

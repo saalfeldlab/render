@@ -132,7 +132,7 @@ public class DebugTransformedCornersClient {
         this.parameters = parameters;
         this.renderDataClient = parameters.renderWeb.getDataClient();
 
-        final String firstStackName = parameters.stackNames.get(0);
+        final String firstStackName = parameters.stackNames.getFirst();
 
         final Set<Double> explicitZValues = new HashSet<>();
         if (parameters.hasTileIds()) {
@@ -192,7 +192,7 @@ public class DebugTransformedCornersClient {
 
         final List<String> debugInfo = new ArrayList<>();
 
-        final double maxZ = zValues.get(zValues.size() - 1);
+        final double maxZ = zValues.getLast();
 
         final Map<Double, TileBoundsRTree> zToTreeMap = new LinkedHashMap<>(zValues.size());
 

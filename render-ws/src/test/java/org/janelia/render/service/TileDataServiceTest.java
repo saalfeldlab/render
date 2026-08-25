@@ -70,7 +70,7 @@ public class TileDataServiceTest {
         List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
         assertEquals(1, tileSpecs.size(), "invalid number of tile specs returned after normalization");
 
-        TileSpec flattenedTileSpec = tileSpecs.get(0);
+        TileSpec flattenedTileSpec = tileSpecs.getFirst();
         ListTransformSpec transforms = flattenedTileSpec.getTransforms();
         assertEquals(1, transforms.size(), "invalid number of transforms after normalization");
 
@@ -86,7 +86,7 @@ public class TileDataServiceTest {
         tileSpecs = renderParameters.getTileSpecs();
         assertEquals(1, tileSpecs.size(), "invalid number of tile specs returned with empty sets");
 
-        flattenedTileSpec = tileSpecs.get(0);
+        flattenedTileSpec = tileSpecs.getFirst();
         transforms = flattenedTileSpec.getTransforms();
         assertEquals(1, transforms.size(), "invalid number of transforms with empty sets");
 

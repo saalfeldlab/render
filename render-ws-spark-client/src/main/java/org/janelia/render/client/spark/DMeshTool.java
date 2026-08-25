@@ -167,7 +167,7 @@ public class DMeshTool implements Serializable {
         final int integralZ;
         final List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
         if (tileSpecs.size() == 1) {
-            integralZ = tileSpecs.get(0).getZ().intValue();
+            integralZ = tileSpecs.getFirst().getZ().intValue();
         } else {
             throw new IllegalStateException("Render parameters must have one and only one tile spec.  " +
                                             "Render parameters are " + renderParameters);
@@ -183,7 +183,7 @@ public class DMeshTool implements Serializable {
         final List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
         final TileSpec theOnlyTileSpec;
         if (tileSpecs.size() == 1) {
-            theOnlyTileSpec = tileSpecs.get(0);
+            theOnlyTileSpec = tileSpecs.getFirst();
         } else {
             throw new IllegalArgumentException(
                     "To derive affine coefficients, the render parameters must contain one and only one tile spec.");
@@ -219,7 +219,7 @@ public class DMeshTool implements Serializable {
         for (int i = 2; i < 4; i++) {
 
             final RenderParameters renderParameters = RenderParameters.loadFromUrl(args[i]);
-            final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+            final TileSpec tileSpec = renderParameters.getTileSpecs().getFirst();
             final CanvasId canvasId = new CanvasId(tileSpec.getLayout().getSectionId(), tileSpec.getTileId());
 
             final File renderedTileFile = new File(tileSpec.getTileId() + ".png");

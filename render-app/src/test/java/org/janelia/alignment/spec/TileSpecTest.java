@@ -41,7 +41,7 @@ public class TileSpecTest {
         assertEquals(new Integer(0), firstMipMap.getKey(),
                      "mipmap sorting failed, unexpected first entry returned");
 
-        final ChannelSpec channelSpec = tileSpec.getAllChannels().get(0);
+        final ChannelSpec channelSpec = tileSpec.getAllChannels().getFirst();
 
         Map.Entry<Integer, ImageAndMask> floorMipMap = channelSpec.getFloorMipmapEntry(3);
         assertNotNull(floorMipMap, "floor 3 mipmap entry is null");

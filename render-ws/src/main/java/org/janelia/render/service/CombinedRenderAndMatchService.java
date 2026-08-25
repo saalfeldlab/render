@@ -299,7 +299,7 @@ public class CombinedRenderAndMatchService {
                         true,
                         null, null, null,
                         matchTileSpec);
-        return matchRenderParameters.getTileSpecs().get(0);
+        return matchRenderParameters.getTileSpecs().getFirst();
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(CombinedRenderAndMatchService.class);

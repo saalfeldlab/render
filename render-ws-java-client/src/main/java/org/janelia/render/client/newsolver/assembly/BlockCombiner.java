@@ -61,7 +61,7 @@ public class BlockCombiner<Z, I, G extends Model<G>, R> {
 			// LOG.debug("fuseGlobally: tile '{}' is in following blocks: {}", tileId, blocksForTile);
 
 			// all tileSpecs are identical for all overlapping blocks
-			final TileSpec tile = blocksForTile.get(0).rtsc().getTileSpec(tileId);
+			final TileSpec tile = blocksForTile.getFirst().rtsc().getTileSpec(tileId);
 			final double[] midpointXY = tile.getWorldCoordinates((tile.getWidth() - 1) / 2.0, (tile.getHeight() - 1) / 2.0);
 			final double z = tile.getZ();
 

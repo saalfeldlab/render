@@ -268,7 +268,7 @@ public class RenderTileWithTransformsClientTest {
             throws IOException {
 
         final int maxTestsToRun = 1000;
-        final double firstRenderScale = stepParametersList.get(0).renderScale;
+        final double firstRenderScale = stepParametersList.getFirst().renderScale;
         final RenderTileWithTransformsClient client = getOcellarClient(fullScaleClipPixels, firstRenderScale);
         double[] startingParameters = originalParameters.clone();
 
@@ -576,7 +576,7 @@ public class RenderTileWithTransformsClientTest {
 
         public TestResultWithContext optimizeTransformParametersForAllSteps() {
 
-            final StepParameters firstStepParameters = stepParametersList.get(0);
+            final StepParameters firstStepParameters = stepParametersList.getFirst();
             final String startingTransformDataString = buildTransformDataString(startingParameters);
             final String originalDataStringWithRenderScale = dataStringWithRenderScale(startingTransformDataString,
                                                                                        firstStepParameters.renderScale);

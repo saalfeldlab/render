@@ -385,8 +385,8 @@ public class DistributedSolveParameters extends CommandLineParameters
 						new InterpolatedAffineModel2D(
 								new InterpolatedAffineModel2D(
 										new AffineModel2D(),
-										new RigidModel2D(), blockOptimizerLambdasRigid.get( 0 ) ),
-								new TranslationModel2D(), blockOptimizerLambdasTranslation.get( 0 ) ),
+										new RigidModel2D(), blockOptimizerLambdasRigid.getFirst() ),
+								new TranslationModel2D(), blockOptimizerLambdasTranslation.getFirst() ),
 						new StabilizingAffineModel2D( new RigidModel2D() ), 0.0 );
 						//new StabilizingAffineModel2D( stitchingModel() ), 0.0 );
 						//new ConstantAffineModel2D( stitchingModel() ), 0.0 );

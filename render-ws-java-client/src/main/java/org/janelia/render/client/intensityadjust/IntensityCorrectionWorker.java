@@ -50,7 +50,7 @@ public class IntensityCorrectionWorker implements Serializable {
 
             this.strategy = new QuadraticIntensityCorrectionStrategy(parameters.algorithmic.lambda1,
                                                                      parameters.algorithmic.lambda2,
-                                                                     this.zValues.get(0));
+                                                                     this.zValues.getFirst());
 
         } else if (StrategyName.ALL_LAYERS_QUADRATIC.equals(parameters.strategyName)) {
 

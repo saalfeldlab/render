@@ -218,7 +218,7 @@ public class FeatureExtractionTest {
     private File getRenderFile(final RenderParameters renderParameters) {
         File renderFile = null;
         if (saveTileImage) {
-            renderFile = new File(renderParameters.getTileSpecs().get(0).getTileId() + ".png");
+            renderFile = new File(renderParameters.getTileSpecs().getFirst().getTileId() + ".png");
         }
         return renderFile;
     }

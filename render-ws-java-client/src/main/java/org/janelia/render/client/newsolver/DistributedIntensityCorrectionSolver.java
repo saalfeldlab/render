@@ -224,14 +224,14 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
 
 		if (tiledModels.size() == 1)
-			return tiledModels.get(0);
+			return tiledModels.getFirst();
 
 		// normalize weights
 		final double sumWeights = weights.stream().mapToDouble(v -> v).sum();
 		final double[] normalizedWeights = weights.stream().mapToDouble(v -> v / sumWeights).toArray();
 
 		final int nCoefficients = 2;
-		final int nModelsPerTile = tiledModels.get(0).size();
+		final int nModelsPerTile = tiledModels.getFirst().size();
 		final double[] c = new double[nCoefficients];
 		final List<double[]> finalCoefficients = new ArrayList<>();
 		for (int i = 0; i < nModelsPerTile; ++i)
@@ -264,7 +264,7 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
 
 		if (models.size() == 1)
-			return models.get(0);
+			return models.getFirst();
 
 		final double randomSample = ThreadLocalRandom.current().nextDouble();
 		final int i = getRandomIndex(weights, randomSample);

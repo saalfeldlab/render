@@ -308,7 +308,7 @@ public class ResaveSegmentations {
 	// I.e., instead of going source -> tile -> target, we go source -> scan corrected tile -> target
 	private Interval createRawBoundingBox(final TileSpec tileSpec) {
 		final List<CoordinateTransform> transforms = tileSpec.getTransformList().getList(null);
-		final CoordinateTransform scanTransform = transforms.get(0);
+		final CoordinateTransform scanTransform = transforms.getFirst();
 		if (! scanTransform.getClass().getName().equals("org.janelia.alignment.transform.ExponentialFunctionOffsetTransform")) {
 			throw new IllegalArgumentException("First transform is not the scan correction");
 		}

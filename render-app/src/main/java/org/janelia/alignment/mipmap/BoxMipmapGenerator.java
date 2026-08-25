@@ -265,8 +265,8 @@ public class BoxMipmapGenerator {
 
             makeDirectories(overviewFile.getCanonicalFile());
 
-            final List<File> firstRowFiles = rowFileLists.get(0);
-            final File sourceFile = firstRowFiles.get(0);
+            final List<File> firstRowFiles = rowFileLists.getFirst();
+            final File sourceFile = firstRowFiles.getFirst();
             BufferedImage sourceImage = Utils.openImage(sourceFile.getAbsolutePath());
 
             // clip source image if it is bigger than scaled stack bounds

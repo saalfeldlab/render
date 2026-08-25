@@ -83,7 +83,7 @@ public class AdjustBlockTest {
                                                             NUM_THREADS);
 
 
-        final OnTheFlyIntensity tile = correctedList.get(0);
+        final OnTheFlyIntensity tile = correctedList.getFirst();
         final Filter affineFilter = new LinearIntensityMap8BitFilter(numCoefficients, numCoefficients, 2, tile.getCoefficients());
         final Filter quadraticFilter = new QuadraticIntensityMap8BitFilter(numCoefficients, numCoefficients, 3, padCoefficients(tile.getCoefficients()));
 
@@ -131,7 +131,7 @@ public class AdjustBlockTest {
         final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection(tileSpecs);
         final List<TileSpec> tiles = AdjustBlock.sortTileSpecs(resolvedTiles);
 
-        final TileSpec tileSpec = tiles.get(0);
+        final TileSpec tileSpec = tiles.getFirst();
         final double[][] coefficients = new double[numCoefficients*numCoefficients][2];
         for (final double[] coeff : coefficients)
             coeff[1] = Math.PI / 255; // take scaling of coefficients into account

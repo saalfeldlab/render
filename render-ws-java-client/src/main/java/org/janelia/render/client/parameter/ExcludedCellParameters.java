@@ -68,7 +68,7 @@ public class ExcludedCellParameters
         }
 
         public boolean isDefined() {
-            return (list.size() > 0) && (list.get(0).cellIds != null);
+            return (!list.isEmpty()) && (list.getFirst().cellIds != null);
         }
 
         public boolean isExcludedCell(final CellId cell,

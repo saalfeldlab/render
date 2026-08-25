@@ -249,7 +249,7 @@ public class RigidTransformClient {
         LOG.info("buildTransformsForClusters: for z {}, found {} connected tile sets with sizes {}",
                  z, clusters.size(), clusters.getClusterSizes());
 
-        final Set<String> largestCluster = connectedTileSets.get(0);
+        final Set<String> largestCluster = connectedTileSets.getFirst();
         final int maxSmallClusterSize = tileClusterParameters.getEffectiveMaxSmallClusterSize(largestCluster.size());
 
         final int tileCountBeforeRemoval = montageTiles.getTileCount();
@@ -483,7 +483,7 @@ public class RigidTransformClient {
 
         private void setDeltaXAndY(final List<TileSpec> clusterTileSpecs) {
 
-            final TileSpec firstTileSpec = clusterTileSpecs.get(0);
+            final TileSpec firstTileSpec = clusterTileSpecs.getFirst();
             final LayoutData firstLayout = firstTileSpec.getLayout();
             final int row = firstLayout.getImageRow();
             final int column = firstLayout.getImageCol();
@@ -544,7 +544,7 @@ public class RigidTransformClient {
                     layoutTree.findTilesNearestToBox(layoutBounds.getMinX(), layoutBounds.getMinY(),
                                                      layoutBounds.getMaxX(), layoutBounds.getMaxY(),
                                                      100000, 1);
-            final String nearestTileId = nearestLayoutBounds.get(0).getTileId();
+            final String nearestTileId = nearestLayoutBounds.getFirst().getTileId();
             final TileBounds nearestTileBounds = tileIdToSourceBoundsMap.get(nearestTileId);
             final LayoutData nearestLayout = tileIdToSourceLayoutMap.get(nearestTileId);
             final int row = nearestLayout.getImageRow();

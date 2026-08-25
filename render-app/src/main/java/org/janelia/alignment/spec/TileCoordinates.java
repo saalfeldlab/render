@@ -149,7 +149,7 @@ public class TileCoordinates implements Serializable {
 
         if (nonInvertibleTileIds != null) {
             LOG.info("getLocalCoordinates: skipped inverse transform of ({}, {}) for non-invertible tile id(s) {}, used tile id {} instead",
-                     x, y, nonInvertibleTileIds, tileCoordinatesList.get(0).getTileId());
+                     x, y, nonInvertibleTileIds, tileCoordinatesList.getFirst().getTileId());
         }
 
         return tileCoordinatesList;

@@ -181,8 +181,8 @@ public class DistributedAffineBlockSolver implements Serializable
 		runParams.zToGroupIdMap = null; // not needed below
 		runParams.sectionIdToZMap = new HashMap<>();
 		runParams.zToTileSpecsMap = new HashMap<>();
-		runParams.minZ = zToSave.get(0);
-		runParams.maxZ = zToSave.get(zToSave.size() - 1);
+		runParams.minZ = zToSave.getFirst();
+		runParams.maxZ = zToSave.getLast();
 		LOG.info("main: saving from {} to {}", runParams.minZ, runParams.maxZ);
 
 		SolveTools.saveTargetStackTiles(cmdLineSetup.stack, cmdLineSetup.targetStack.stack, runParams, finalTiles.getModelMap(), null, zToSave, ResolvedTileSpecCollection.TransformApplicationMethod.REPLACE_LAST);
@@ -250,7 +250,7 @@ public class DistributedAffineBlockSolver implements Serializable
 			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
 
 		if (models.size() == 1)
-			return models.get(0);
+			return models.getFirst();
 
 		final AlignmentModelBuilder builder = new AlignmentModelBuilder();
 		final Map<String, Double> weightMap = new HashMap<>();
@@ -270,7 +270,7 @@ public class DistributedAffineBlockSolver implements Serializable
 			throw new IllegalArgumentException("models and weights must be non-empty and of the same size");
 
 		if (models.size() == 1)
-			return models.get(0);
+			return models.getFirst();
 
 		final double randomSample = ThreadLocalRandom.current().nextDouble();
 		final int i = getRandomIndex(weights, randomSample);

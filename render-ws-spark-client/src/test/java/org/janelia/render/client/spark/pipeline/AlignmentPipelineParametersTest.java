@@ -43,7 +43,7 @@ public class AlignmentPipelineParametersTest {
         assertNotNull(stepClients, "stepClients is null");
         assertEquals(7, stepClients.size(), "incorrect number of stepClients");
 
-        final AlignmentPipelineStep stepClient = stepClients.get(0);
+        final AlignmentPipelineStep stepClient = stepClients.getFirst();
         assertEquals(AlignmentPipelineStepId.GENERATE_MIPMAPS, stepClient.getDefaultStepId(),
                      "first stepClient has incorrect defaultStepId");
     }
@@ -70,7 +70,7 @@ public class AlignmentPipelineParametersTest {
         assertNotNull(pipelineSteps, "pipelineSteps are null");
         assertEquals(1, pipelineSteps.size(),
                      "incorrect number of pipelineSteps");
-        assertEquals(DERIVE_TILE_MATCHES.toString(), pipelineSteps.get(0).toString(),
+        assertEquals(DERIVE_TILE_MATCHES.toString(), pipelineSteps.getFirst().toString(),
                      "incorrect first pipelineStep");
     }
 

@@ -189,7 +189,7 @@ public class LabelImageProcessorCache extends ImageProcessorCache {
         tileSpecs.stream()
                 .sorted(Comparator.comparing(TileSpec::getTileId))
                 .forEach(tileSpec -> {
-                    final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().get(0);
+                    final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().getFirst();
                     final ImageAndMask imageAndMask = firstChannelSpec.getFloorMipmapEntry(0).getValue();
                     final CacheKey key = buildKey(imageAndMask);
                     final int colorIndex = tileIndex.getAndIncrement();

@@ -360,7 +360,7 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
     private Set<OrderedCanvasIdPair> getCrossLayerPairs(final Map<Double, TileBoundsRTree> zToTileBounds,
                                                         final List<DoubleRange> consistentLayerRanges) {
         final Set<OrderedCanvasIdPair> crossLayerPairs = new HashSet<>();
-        double fromZ = consistentLayerRanges.get(0).getMaximumDouble();
+        double fromZ = consistentLayerRanges.getFirst().getMaximumDouble();
         for (int i = 1; i < consistentLayerRanges.size(); i++) {
             final DoubleRange consistentLayerRange = consistentLayerRanges.get(i);
             final TileBoundsRTree fromBoundsRTree = zToTileBounds.get(fromZ);

@@ -57,7 +57,7 @@ public class ImportRenderTile_Plugin
         boolean renderLocally = tileData.renderLocallyIfPossible;
 
         if (tileData.renderLocallyIfPossible) {
-            final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+            final TileSpec tileSpec = renderParameters.getTileSpecs().getFirst();
             final ImageAndMask imageAndMask = tileSpec.getFirstMipmapEntry().getValue();
             try {
                 imageAndMask.validate();

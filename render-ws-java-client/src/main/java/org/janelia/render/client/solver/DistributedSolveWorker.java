@@ -374,7 +374,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 					(int)Math.round(
 						solveItem.idToTileSpec().get(
 							solveItem.tileToIdMap().get( 
-									solveItem.groupedTileToTiles().get( groupedTile ).get( 0 ) ) ).getZ() );
+									solveItem.groupedTileToTiles().get( groupedTile ).getFirst() ) ).getZ() );
 
 			zToGroupedTileList.putIfAbsent(z, new ArrayList<>());
 			zToGroupedTileList.get( z ).add( groupedTile );
@@ -383,7 +383,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		final ArrayList< Integer > allZ = new ArrayList<>( zToGroupedTileList.keySet() );
 		Collections.sort( allZ );
 
-		if ( ConstantAffineModel2D.class.isInstance( ((InterpolatedAffineModel2D)zToGroupedTileList.get( allZ.get( 0 ) ).get( 0 ).getModel()).getB() ) )
+		if ( ConstantAffineModel2D.class.isInstance( ((InterpolatedAffineModel2D)zToGroupedTileList.get( allZ.getFirst() ).getFirst().getModel()).getB() ) )
 		{
 			//
 			// it is based on ConstantAffineModels, meaning we extract metadata and use that as regularizer
@@ -849,7 +849,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 		{
 			solveItems.add( inputSolveItem );
 
-			LOG.info( "block " + inputSolveItem.getId() + ": Graph 0 has " + graphs.get( 0 ).size() + " tiles." );
+			LOG.info( "block " + inputSolveItem.getId() + ": Graph 0 has " + graphs.getFirst().size() + " tiles." );
 		}
 		else
 		{
@@ -996,7 +996,7 @@ public class DistributedSolveWorker< G extends Model< G > & Affine2D< G >, B ext
 			final Map< Tile< ? >, Integer > tileToZ = new HashMap<>();
 
 			for ( final Tile< ? > tile : tileConfig.getTiles() )
-				tileToZ.put( tile, (int)Math.round( solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) );
+				tileToZ.put( tile, (int)Math.round( solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).getFirst() ) ).getZ() ) );
 
 			SolveTools.preAlignByLayerDistance( tileConfig, tileToZ );
 			//tileConfig.preAlign();

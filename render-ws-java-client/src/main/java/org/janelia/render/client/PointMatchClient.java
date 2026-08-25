@@ -170,10 +170,10 @@ public class PointMatchClient {
             if (renderParameters.hasTileSpecs()) {
                 switch (canvasGroupIdAlgorithm) {
                     case FIRST_TILE_SECTION_ID:
-                        matchGroupId = getTileSectionId(renderParameters.getTileSpecs().get(0), matchClient.collection);
+                        matchGroupId = getTileSectionId(renderParameters.getTileSpecs().getFirst(), matchClient.collection);
                         break;
                     case FIRST_TILE_Z:
-                        matchGroupId = getTileZId(renderParameters.getTileSpecs().get(0), matchClient.collection);
+                        matchGroupId = getTileZId(renderParameters.getTileSpecs().getFirst(), matchClient.collection);
                         break;
                 }
             }
@@ -195,10 +195,10 @@ public class PointMatchClient {
             if (renderParameters.hasTileSpecs()) {
                 switch (canvasIdAlgorithm) {
                     case FIRST_TILE_ID:
-                        matchId = renderParameters.getTileSpecs().get(0).getTileId();
+                        matchId = renderParameters.getTileSpecs().getFirst().getTileId();
                         break;
                     case FIRST_TILE_Z:
-                        matchId = getTileZId(renderParameters.getTileSpecs().get(0), canvasName);
+                        matchId = getTileZId(renderParameters.getTileSpecs().getFirst(), canvasName);
                         break;
                 }
             }

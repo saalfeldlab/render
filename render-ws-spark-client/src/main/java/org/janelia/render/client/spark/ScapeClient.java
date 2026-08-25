@@ -499,7 +499,7 @@ public class ScapeClient
         File getOutputFile(final String fileExtension) {
             final String paddedZName;
             if (sectionDataList.size() > 1) {
-                final Double lastZ = sectionDataList.get(sectionDataList.size() - 1).getZ();
+                final Double lastZ = sectionDataList.getLast().getZ();
                 final String formatPattern = "z" + zFormatSpec + "_to_" + zFormatSpec;
                 paddedZName = String.format(formatPattern, firstZ, lastZ);
             } else {

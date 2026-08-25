@@ -26,7 +26,7 @@ public class GridTest {
         assertNotNull(blockList, "block list is null");
         assertEquals(20745, blockList.size(), "invalid number of blocks");
 
-        final Grid.Block firstBlock = blockList.get(0);
+        final Grid.Block firstBlock = blockList.getFirst();
         assertNotNull(firstBlock, "first block is null");
         assertEquals(3, firstBlock.numDimensions(),
                      "first block has invalid number of dimensions");

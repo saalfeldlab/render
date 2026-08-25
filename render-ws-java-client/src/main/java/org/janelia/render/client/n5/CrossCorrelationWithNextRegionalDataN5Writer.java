@@ -52,7 +52,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
         LOG.info("writeN5: entry, processing {} z layers for -i {} -d {}",
                  numberOfLayers, basePath, datasetName);
 
-        final CrossCorrelationWithNextRegionalData firstLayerData = dataList.get(0);
+        final CrossCorrelationWithNextRegionalData firstLayerData = dataList.getFirst();
         final int rowCount = firstLayerData.getRegionalRowCount();
         final int columnCount = firstLayerData.getRegionalColumnCount();
         final Bounds stackBounds = stackMetaData.getStats().getStackBounds();

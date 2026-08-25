@@ -180,7 +180,7 @@ public class CrossCorrelationTest {
         final LeafTransformSpec modelSpec = new LeafTransformSpec(inverseModel.getClass().getName(),
                                                                   inverseModel.toDataString());
 
-        final TileSpec tileSpec2 = renderParametersTile2.getTileSpecs().get(0);
+        final TileSpec tileSpec2 = renderParametersTile2.getTileSpecs().getFirst();
         tileSpec2.addTransformSpecs(Collections.singletonList(modelSpec));
         tileSpec2.deriveBoundingBox(tileSpec2.getMeshCellSize(), true);
 

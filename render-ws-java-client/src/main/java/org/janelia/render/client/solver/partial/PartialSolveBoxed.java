@@ -447,16 +447,16 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 			List< Double > zToSave = new ArrayList<>( zToSaveSet );
 			Collections.sort( zToSave );
 
-			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
 
 			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, idToFinalModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
 			//
 			// save the bottom part
 			//
-			zToSave = runParams.renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
+			zToSave = runParams.renderDataClient.getStackZValues(parameters.stack, zToSave.getLast() + 0.1, null );
 
-			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
 
 			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, null, bottomBlockModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
 
@@ -466,7 +466,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > >
 			//
 			zToSave = runParams.renderDataClient.getStackZValues( parameters.stack, null, runParams.minZ - 0.1 );
 
-			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
 			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, null, null, zToSave, null );
 
 			// complete the stack after everything has been saved

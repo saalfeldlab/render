@@ -28,7 +28,7 @@ public class ZDistanceParametersTest {
         assertEquals(2, normalizedDistances.size(),
                      "invalid number of normalized distance lists");
 
-        final DistanceListForRegion defaultList = normalizedDistances.get(0);
+        final DistanceListForRegion defaultList = normalizedDistances.getFirst();
         assertEquals(1, defaultList.getMaxDistance(),
                      "invalid maxDistance for default list " + defaultList);
 

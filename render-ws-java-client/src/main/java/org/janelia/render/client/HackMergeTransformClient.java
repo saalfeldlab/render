@@ -259,7 +259,7 @@ public class HackMergeTransformClient {
 
         final String stack = parameters.firstAlignedStack;
         final Double z = parameters.firstStackLastZ;
-        final SectionData sectionData = renderDataClient.getStackSectionData(stack, z, z).get(0);
+        final SectionData sectionData = renderDataClient.getStackSectionData(stack, z, z).getFirst();
         final Double sectionMinX = sectionData.getMinX();
         final Double sectionMinY = sectionData.getMinY();
 

@@ -32,7 +32,7 @@ class LayerRange {
         final Display front = Display.getFront();
         if (front == null) {
             final List<Project> projectList = Project.getProjects();
-            final Project trakProject = projectList.get(0);
+            final Project trakProject = projectList.getFirst();
             layerSet = trakProject.getRootLayerSet();
         } else {
             layerSet = front.getLayerSet();

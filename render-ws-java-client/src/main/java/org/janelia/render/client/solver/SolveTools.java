@@ -492,7 +492,7 @@ public class SolveTools
 			for ( final PointMatch pm : tile.getMatches() )
 				p1ToTile.put( pm.getP1(), tile );
 
-			final Tile< ? > aTile = solveItem.groupedTileToTiles().get( tile ).get( 0 ); 
+			final Tile< ? > aTile = solveItem.groupedTileToTiles().get( tile ).getFirst();
 			final String tileId = solveItem.tileToIdMap().get( aTile );
 			final int z = (int)Math.round( solveItem.idToTileSpec().get( tileId ).getZ() );
 			zToTiles.computeIfAbsent(z, k -> new ArrayList<>())
@@ -549,7 +549,7 @@ public class SolveTools
 			for ( final Tile< ? > tile : tilesToFaketiles.keySet() )
 			{
 				final Tile< TranslationModel2D > fakeTile = tilesToFaketiles.get( tile );
-				tileToZ.put( fakeTile, (int)Math.round( solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).get( 0 ) ) ).getZ() ) );
+				tileToZ.put( fakeTile, (int)Math.round( solveItem.idToTileSpec().get( solveItem.tileToIdMap().get( solveItem.groupedTileToTiles().get( tile ).getFirst() ) ).getZ() ) );
 			}
 
 			preAlignByLayerDistance( tileConfig, tileToZ );
@@ -632,7 +632,7 @@ public class SolveTools
 			final Iterator< Tile< ? > > it = tileConfig.getTiles().iterator();
 			alignedTiles.add( it.next() );
 
-			firstTile = alignedTiles.get(0);
+			firstTile = alignedTiles.getFirst();
 			
 			while ( it.hasNext() )
 				unAlignedTiles.add( it.next() );
@@ -768,7 +768,7 @@ public class SolveTools
 		if (absolutePMs.isEmpty())
 			return relativePMs;
 
-		final PointMatch firstMatch = absolutePMs.get(0);
+		final PointMatch firstMatch = absolutePMs.getFirst();
 		final int n = firstMatch.getP1().getL().length;
 
 		for (final PointMatch absPM : absolutePMs) {
@@ -1089,7 +1089,7 @@ public class SolveTools
 									   " post match transforms but was expecting one and only one");
 		}
 
-		CoordinateTransform lastTransform = simpleList.get(0);
+		CoordinateTransform lastTransform = simpleList.getFirst();
 		if (! (lastTransform instanceof AffineModel2D)) {
 			if (lastTransform instanceof TranslationModel2D) {
 				final AffineModel2D affineModel2D = new AffineModel2D();

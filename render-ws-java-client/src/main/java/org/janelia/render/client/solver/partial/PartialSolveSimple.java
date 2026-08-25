@@ -319,14 +319,14 @@ public class PartialSolveSimple< B extends Model< B > & Affine2D< B > >
 			List< Double > zToSave = new ArrayList<>( zToSaveSet );
 			Collections.sort( zToSave );
 
-			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
 
 			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, idToNewModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
 			// save the bottom part
-			zToSave = runParams.renderDataClient.getStackZValues( parameters.stack, zToSave.get( zToSave.size() - 1 ) + 0.1, null );
+			zToSave = runParams.renderDataClient.getStackZValues(parameters.stack, zToSave.getLast() + 0.1, null );
 
-			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
 
 			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, null, propagationModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
 

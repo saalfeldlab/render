@@ -221,7 +221,7 @@ public class SplitClusterClient {
                                                                                 unconnectedTileIds);
             setZForClusters(resolvedTiles,
                             z,
-                            sortedConnectedTileIdSets.get(0),
+                            sortedConnectedTileIdSets.getFirst(),
                             smallerRemainingClusters);
 
             LOG.info("splitLayers: found {} unconnected tiles for z {}", unconnectedTileIds.size(), z);

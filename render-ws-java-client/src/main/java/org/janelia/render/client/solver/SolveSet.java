@@ -20,11 +20,11 @@ public class SolveSet
 
 		int maxId = Integer.MIN_VALUE;
 
-		if ( leftItems.size() > 0 )
-			maxId = leftItems.get( 0 ).getId();
+		if (!leftItems.isEmpty())
+			maxId = leftItems.getFirst().getId();
 
-		if ( rightItems.size() > 0 )
-			maxId = rightItems.get( 0 ).getId();
+		if (!rightItems.isEmpty())
+			maxId = rightItems.getFirst().getId();
 
 		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > sid : leftItems )
 			maxId = Math.max( sid.getId(), maxId );

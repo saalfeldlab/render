@@ -292,8 +292,8 @@ public class TilePairClient {
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
 
-        final double minZ = sortedZValues.get(0);
-        final double maxZ = sortedZValues.get(sortedZValues.size() - 1);
+        final double minZ = sortedZValues.getFirst();
+        final double maxZ = sortedZValues.getLast();
 
         LOG.info("deriveAndSaveSortedNeighborPairsForZValues: entry, processing {} zValues with minZ {}",
                  sortedZValues.size(), minZ);
@@ -332,7 +332,7 @@ public class TilePairClient {
 
         // edge case: add existing montage pairs (distance == 0)
         if ((tpdp.zNeighborDistance == 0) && (existingMatchHelper != null)) {
-            existingMatchHelper.addExistingPairs(sortedZValues.get(0));
+            existingMatchHelper.addExistingPairs(sortedZValues.getFirst());
         }
 
         final Set<OrderedCanvasIdPair> neighborPairs = new TreeSet<>();
@@ -709,7 +709,7 @@ public class TilePairClient {
         final List<Double> isolatedZValues = new ArrayList<>();
 
         List<Double> contiguousZValues = new ArrayList<>();
-        int previousZ = zValues.get(0).intValue();
+        int previousZ = zValues.getFirst().intValue();
 
         contiguousZValues.add((double) previousZ);
 
@@ -720,7 +720,7 @@ public class TilePairClient {
                     contiguousZValueLists.add(contiguousZValues);
                     contiguousZValues = new ArrayList<>();
                 } else {
-                    isolatedZValues.add(contiguousZValues.get(0));
+                    isolatedZValues.add(contiguousZValues.getFirst());
                     contiguousZValues.clear();
                 }
             }
@@ -731,7 +731,7 @@ public class TilePairClient {
         if (contiguousZValues.size() > 1) {
             contiguousZValueLists.add(contiguousZValues);
         } else {
-            isolatedZValues.add(contiguousZValues.get(0));
+            isolatedZValues.add(contiguousZValues.getFirst());
         }
 
         if (! isolatedZValues.isEmpty()) {

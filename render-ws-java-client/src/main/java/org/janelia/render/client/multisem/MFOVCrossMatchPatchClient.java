@@ -362,7 +362,7 @@ public class MFOVCrossMatchPatchClient {
         if (mFOVMatchesList.size() == 1) {
 
             final List<PointMatch> mFOVMatches =
-                    CanvasMatchResult.convertMatchesToPointMatchList(mFOVMatchesList.get(0).getMatches());
+                    CanvasMatchResult.convertMatchesToPointMatchList(mFOVMatchesList.getFirst().getMatches());
 
             final List<CanvasMatches> sFOVMatchesList = buildMatches(pZ,
                                                                      qZ,

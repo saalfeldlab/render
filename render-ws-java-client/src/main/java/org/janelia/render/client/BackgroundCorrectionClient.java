@@ -134,7 +134,7 @@ public class BackgroundCorrectionClient {
 	}
 
 	private ImageProcessor loadImage(final TileSpec tileSpec, final ImageProcessorCache imageProcessorCache) {
-		final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().get(0);
+		final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().getFirst();
 		final String tileId = tileSpec.getTileId();
 		final ImageAndMask imageAndMask = firstChannelSpec.getFirstMipmapImageAndMask(tileId);
 		return imageProcessorCache.get(imageAndMask.getImageUrl(),

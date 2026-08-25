@@ -162,7 +162,7 @@ public class XYBlockFactory extends BlockFactory implements Serializable {
 
 		public static FloatProcessor createLayerDistanceMap(final List<TileSpec> layerTiles, final double resolution, final Bounds bounds) {
 
-			final String firstTileId = layerTiles.isEmpty() ? null : layerTiles.get(0).getTileId();
+			final String firstTileId = layerTiles.isEmpty() ? null : layerTiles.getFirst().getTileId();
 			LOG.info("createLayerDistanceMap: entry, firstTileId={}", firstTileId);
 
 			layerTiles.forEach(ts -> ts.replaceFirstChannelImageWithMask(false));

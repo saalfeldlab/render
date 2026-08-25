@@ -182,7 +182,7 @@ public class ResidualCalculator implements Serializable {
 
             Collections.sort(distanceList);
 
-            final double max = distanceList.get(distanceList.size() - 1);
+            final double max = distanceList.getLast();
 
             final int middleIndex = distanceList.size() / 2;
             double median = distanceList.get(middleIndex);

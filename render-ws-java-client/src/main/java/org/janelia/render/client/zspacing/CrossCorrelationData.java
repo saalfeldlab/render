@@ -208,8 +208,8 @@ public class CrossCorrelationData
                     .sorted(Comparator.comparingInt(o -> o.firstLayerOffset))
                     .collect(Collectors.toList());
 
-            final CrossCorrelationData firstDataSet = sortedDataSets.get(0);
-            final CrossCorrelationData lastDataSet = sortedDataSets.get(sortedDataSets.size() - 1);
+            final CrossCorrelationData firstDataSet = sortedDataSets.getFirst();
+            final CrossCorrelationData lastDataSet = sortedDataSets.getLast();
 
             final int mergedFirstLayerOffset = firstDataSet.firstLayerOffset;
             final int mergedLayerCount = lastDataSet.firstLayerOffset + lastDataSet.layerCount - mergedFirstLayerOffset;

@@ -542,7 +542,7 @@ public class TileSpec implements Serializable {
         String firstChannelName = null;
         final List<ChannelSpec> channelSpecs = getAllChannels();
         if (! channelSpecs.isEmpty()) {
-            firstChannelName = channelSpecs.get(0).getName();
+            firstChannelName = channelSpecs.getFirst().getName();
         }
         return firstChannelName;
     }
@@ -581,7 +581,7 @@ public class TileSpec implements Serializable {
                 throw new IllegalStateException(channels.size() +
                                                 " channels exist but must only have one to convert to legacy form");
             }
-            final ChannelSpec channelSpec = channels.get(0);
+            final ChannelSpec channelSpec = channels.getFirst();
             channels = null;
             minIntensity = channelSpec.getMinIntensity();
             maxIntensity = channelSpec.getMaxIntensity();
@@ -604,7 +604,7 @@ public class TileSpec implements Serializable {
         if ((channels == null) || channels.isEmpty()) {
             firstEntry = mipmapLevels.firstEntry();
         } else {
-            firstEntry = channels.get(0).getFirstMipmapEntry();
+            firstEntry = channels.getFirst().getFirstMipmapEntry();
         }
         return firstEntry;
     }
@@ -656,7 +656,7 @@ public class TileSpec implements Serializable {
     public FilterSpec getFilterSpec() {
         FilterSpec spec = filterSpec;
         if ((spec == null) && (channels != null) && (! channels.isEmpty())) {
-            spec = channels.get(0).getFilterSpec();
+            spec = channels.getFirst().getFilterSpec();
         }
         return spec;
     }
@@ -715,7 +715,7 @@ public class TileSpec implements Serializable {
             levels = mipmapLevels;
             filterSpec = null;
         } else {
-            final ChannelSpec firstChannelSpec = channels.get(0);
+            final ChannelSpec firstChannelSpec = channels.getFirst();
             levels = firstChannelSpec.getMipmapLevels();
             firstChannelSpec.setFilterSpec(null);
         }

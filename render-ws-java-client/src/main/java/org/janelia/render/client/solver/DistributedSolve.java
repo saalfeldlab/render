@@ -136,7 +136,7 @@ public abstract class DistributedSolve
 			final List<Double> zToSave = new ArrayList<>(zToSaveSet);
 			Collections.sort( zToSave );
 
-			LOG.info("Saving from " + zToSave.get( 0 ) + " to " + zToSave.get( zToSave.size() - 1 ) );
+			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
 
 			SolveTools.saveTargetStackTiles( parameters.stack, parameters.targetStack, runParams, solve.idToFinalModelGlobal, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
@@ -209,7 +209,7 @@ public abstract class DistributedSolve
 		{
 			LOG.info( "globalSolve: only a single solveitem, no solve across blocks necessary." );
 
-			final SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> solveItem = allSolveItems.get( 0 );
+			final SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> solveItem = allSolveItems.getFirst();
 	
 			for ( int z = solveItem.minZ(); z <= solveItem.maxZ(); ++z )
 			{

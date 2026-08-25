@@ -688,7 +688,7 @@ public class MatchDao {
         outputStream.write("]}".getBytes());
 
         if (LOG.isDebugEnabled()) {
-            final Document firstQuery = queryList.get(0);
+            final Document firstQuery = queryList.getFirst();
             LOG.debug("writeMatchesAndTileSpecs: wrote data for {} tiles and {} pairs returned by {} queries like {}.find({},{}), elapsedSeconds={}",
                       resolvedTileSpecCollection.getTileCount(), pairCount, queryList.size(), MongoUtil.fullName(collection),
                       firstQuery.toJson(), EXCLUDE_MONGO_ID_KEY.toJson(), timer.getElapsedSeconds());
@@ -870,7 +870,7 @@ public class MatchDao {
 
         } else {
 
-            final MongoCollection<Document> collection = collectionList.get(0);
+            final MongoCollection<Document> collection = collectionList.getFirst();
 
             final ProcessTimer timer = new ProcessTimer();
 

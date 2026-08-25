@@ -456,7 +456,7 @@ public class HackLabelEdgesClient {
                 // assuming inefficient loop through tile specs is okay since there should not be too many edges
                 for (final TileSpec tileSpec : tileSpecs) {
                     if (tileEdge.tileId.equals(tileSpec.getTileId())) {
-                        final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().get(0);
+                        final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().getFirst();
                         final String imageUrl = firstChannelSpec.getFloorMipmapEntry(0).getValue().getImageUrl();
                         final List<TileEdgeAndColor> edgeAndColorList =
                                 urlToEdgeAndColorList.computeIfAbsent(imageUrl, s -> new ArrayList<>());

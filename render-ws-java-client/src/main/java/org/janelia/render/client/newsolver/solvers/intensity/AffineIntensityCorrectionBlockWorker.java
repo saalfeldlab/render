@@ -208,7 +208,7 @@ public class AffineIntensityCorrectionBlockWorker<M>
 			crossLayerFilter = sameLayerFilter;
 		}
 
-		final int meshResolution = (int) tiles.get(0).getMeshCellSize();
+		final int meshResolution = (int) tiles.getFirst().getMeshCellSize();
 		return new IntensityMatcher(sameLayerFilter, crossLayerFilter, parameters, meshResolution, maximumCachedKilobytes);
 	}
 

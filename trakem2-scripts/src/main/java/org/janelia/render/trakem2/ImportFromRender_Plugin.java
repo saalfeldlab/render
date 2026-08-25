@@ -102,7 +102,7 @@ public class ImportFromRender_Plugin
                     final LayerSet trakLayerSet;
                     final Display front = Display.getFront();
                     if (front == null) {
-                        trakProject = projectList.get(0);
+                        trakProject = projectList.getFirst();
                         trakLayerSet = trakProject.getRootLayerSet();
                     } else {
                         trakLayerSet = front.getLayerSet();
@@ -170,7 +170,7 @@ public class ImportFromRender_Plugin
             try {
                 final List<ChannelSpec> allChannelSpecs = importData.channels.isEmpty() ? tileSpec.getAllChannels() :
                     tileSpec.getChannels(importData.channels);
-                final ChannelSpec firstChannelSpec = allChannelSpecs.get(0);
+                final ChannelSpec firstChannelSpec = allChannelSpecs.getFirst();
                 final ImageAndMask imageAndMask = firstChannelSpec.getFirstMipmapEntry().getValue();
                 final String imageFilePath = imageAndMask.getImageFilePath();
 
@@ -433,7 +433,7 @@ public class ImportFromRender_Plugin
 
                         if (isNewProject) {
 
-                            final TileSpec firstTileSpec = layerRenderParametersList.get(0).getTileSpecs().get(0);
+                            final TileSpec firstTileSpec = layerRenderParametersList.getFirst().getTileSpecs().getFirst();
                             @SuppressWarnings("WrapperTypeMayBePrimitive")
                             final Double meshCellSize = firstTileSpec.getMeshCellSize();
                             trakProject.setProperty("mesh_resolution", String.valueOf(meshCellSize.intValue()));

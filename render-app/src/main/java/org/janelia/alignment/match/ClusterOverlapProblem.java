@@ -141,7 +141,7 @@ public class ClusterOverlapProblem {
         this.originalZ = originalZ;
         this.z = tileBounds.getZ();
         this.tileIdToBounds = new HashMap<>();
-        this.intersectingZ = intersectingTileBoundsList.get(0).getZ();
+        this.intersectingZ = intersectingTileBoundsList.getFirst().getZ();
         this.intersectingTileIdToBounds = new HashMap<>();
         this.problemDetailsList = new ArrayList<>();
         this.problemName = null;

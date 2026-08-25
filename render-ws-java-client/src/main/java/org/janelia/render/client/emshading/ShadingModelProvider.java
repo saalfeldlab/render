@@ -37,9 +37,9 @@ public class ShadingModelProvider implements Serializable {
 	}
 
 	public ShadingModel getModel(final int z) {
-		if (z < sortedZValues.get(0)) {
+		if (z < sortedZValues.getFirst()) {
 			// before the first model
-			return sortedModelSpecs.get(0).getModel();
+			return sortedModelSpecs.getFirst().getModel();
 		}
 
 		for (int i = 1; i < sortedZValues.size(); i++) {
@@ -53,7 +53,7 @@ public class ShadingModelProvider implements Serializable {
 		}
 
 		// after the last model
-		return sortedModelSpecs.get(sortedModelSpecs.size() - 1).getModel();
+		return sortedModelSpecs.getLast().getModel();
 	}
 
 	public static ShadingModelProvider fromJsonFile(final String fileName) throws IOException {

@@ -151,7 +151,7 @@ public class FlatFieldCorrectionClient {
 	}
 
 	private void patchTileSpec(final TileSpec tileSpec, final Path newPath) {
-		final ChannelSpec firstChannel = tileSpec.getAllChannels().get(0);
+		final ChannelSpec firstChannel = tileSpec.getAllChannels().getFirst();
 		final ImageAndMask originalImage = firstChannel.getFirstMipmapEntry().getValue();
 		final ImageAndMask newImage = originalImage.copyWithImage(newPath.toString(), null, null);
 		firstChannel.putMipmap(0, newImage);
@@ -177,7 +177,7 @@ public class FlatFieldCorrectionClient {
 	}
 
 	private ImageProcessor loadImageTile(final TileSpec tileSpec) {
-		final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().get(0);
+		final ChannelSpec firstChannelSpec = tileSpec.getAllChannels().getFirst();
 		final String tileId = tileSpec.getTileId();
 		final ImageAndMask imageAndMask = firstChannelSpec.getFirstMipmapImageAndMask(tileId);
 

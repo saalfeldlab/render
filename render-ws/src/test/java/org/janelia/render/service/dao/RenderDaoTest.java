@@ -183,7 +183,7 @@ public class RenderDaoTest {
 
         zValues = dao.getZValues(filteredStackId);
         assertEquals(1, zValues.size(), "invalid number of z values after clone filter");
-        assertEquals(newZValue, zValues.get(0), "invalid z value after clone filter");
+        assertEquals(newZValue, zValues.getFirst(), "invalid z value after clone filter");
     }
 
     @Test
@@ -223,7 +223,7 @@ public class RenderDaoTest {
 
         assertNotNull(list, "null list retrieved");
         assertEquals(3, list.size(), "invalid number of sections found");
-        final SectionData sectionData = list.get(0);
+        final SectionData sectionData = list.getFirst();
         assertEquals("3903.0", sectionData.getSectionId(), "invalid sectionId for first section");
         assertEquals(3903, sectionData.getZ(), 0.01, "invalid z for section 3903.0");
         assertEquals(new Long(2), sectionData.getTileCount(), "invalid tileCount for section 3903.0");

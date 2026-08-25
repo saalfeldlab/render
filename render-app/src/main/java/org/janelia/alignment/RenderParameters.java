@@ -922,8 +922,8 @@ public class RenderParameters implements Serializable {
 
     private String getFirstChannelName() {
         String firstChannelName = null;
-        if ((tileSpecs != null) && (tileSpecs.size() > 0)) {
-            firstChannelName = tileSpecs.get(0).getFirstChannelName();
+        if ((tileSpecs != null) && (!tileSpecs.isEmpty())) {
+            firstChannelName = tileSpecs.getFirst().getFirstChannelName();
         }
         return firstChannelName;
     }

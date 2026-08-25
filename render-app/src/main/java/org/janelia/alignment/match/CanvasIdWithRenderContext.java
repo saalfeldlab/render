@@ -117,7 +117,7 @@ public class CanvasIdWithRenderContext
         if (tileSpecList.size() != 1) {
             throw new IllegalArgumentException(tileSpecList.size() + "tile specs retrieved for " + this + " but only one is expected");
         }
-        final TileSpec tileSpec = tileSpecList.get(0);
+        final TileSpec tileSpec = tileSpecList.getFirst();
         return tileSpec.toTileBounds().toRectangle();
     }
 

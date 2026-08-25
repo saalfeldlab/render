@@ -150,7 +150,7 @@ public class MatchTrial implements Serializable {
         this.matches = canvasMatchesList.stream().map(CanvasMatches::getMatches).collect(Collectors.toList());
 
         final List<StageMatcher.PairResult> stagePairResultList = pairResult.getStagePairResultList();
-        final StageMatcher.PairResult lastStagePairResult = stagePairResultList.get(stagePairResultList.size() - 1);
+        final StageMatcher.PairResult lastStagePairResult = stagePairResultList.getLast();
         this.stats = lastStagePairResult.getSiftStats();
         this.gdStats = lastStagePairResult.getGdStats();
     }

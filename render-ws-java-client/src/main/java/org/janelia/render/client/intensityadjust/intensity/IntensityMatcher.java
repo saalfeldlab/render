@@ -421,7 +421,7 @@ public class IntensityMatcher
 																	   final HashSet<TileSpec> completedPatches,
 																	   final List<ValuePair<TileSpec, TileSpec>> patchPairs)
 			throws InterruptedException, ExecutionException {
-		final int meshResolution = !patches.isEmpty() ? (int) patches.get(0).getMeshCellSize() : 64;
+		final int meshResolution = !patches.isEmpty() ? (int) patches.getFirst().getMeshCellSize() : 64;
 
 		LOG.info("getOnTheFlyIntensities: entry, matching intensities for {} pairs using {} threads",
 				 patchPairs.size(), numThreads);

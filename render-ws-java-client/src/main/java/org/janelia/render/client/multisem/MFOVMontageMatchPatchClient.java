@@ -210,7 +210,7 @@ public class MFOVMontageMatchPatchClient {
         final int numberOfDerivedMatchPairs = derivedMatchesForMFOV.size();
         if (numberOfDerivedMatchPairs > 0) {
 
-            final String firstPairKey = derivedMatchesForMFOV.get(0).toKeyString();
+            final String firstPairKey = derivedMatchesForMFOV.getFirst().toKeyString();
             LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}, first save pair is {}",
                      numberOfDerivedMatchPairs, stackMFOVWithZValues, firstPairKey);
 

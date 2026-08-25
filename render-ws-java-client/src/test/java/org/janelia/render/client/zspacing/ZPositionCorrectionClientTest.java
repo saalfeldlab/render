@@ -83,7 +83,7 @@ public class ZPositionCorrectionClientTest {
                                final int expectedLayerCount,
                                final Double expectedFirstZ) {
         assertEquals(expectedLayerCount, zList.size(), "invalid number of layers " + context);
-        assertEquals(expectedFirstZ, zList.get(0), "invalid first z " + context);
+        assertEquals(expectedFirstZ, zList.getFirst(), "invalid first z " + context);
     }
 
     public static void main(final String[] args) {

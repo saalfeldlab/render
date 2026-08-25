@@ -41,11 +41,11 @@ public class LayerDistributor implements Serializable {
     }
 
     public long getMinBucketTileCount() {
-        return bucketList.size() == 0 ? 0 : bucketList.get(0).getTileCount();
+        return bucketList.size() == 0 ? 0 : bucketList.getFirst().getTileCount();
     }
 
     public long getMaxBucketTileCount() {
-        return bucketList.size() == 0 ? 0 : bucketList.get(bucketList.size() - 1).getTileCount();
+        return bucketList.size() == 0 ? 0 : bucketList.getLast().getTileCount();
     }
 
     @Override

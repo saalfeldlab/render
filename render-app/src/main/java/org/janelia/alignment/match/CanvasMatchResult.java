@@ -63,7 +63,7 @@ public class CanvasMatchResult
     public List<PointMatch> getInlierPointMatchList() {
         final List<PointMatch> list;
         if (consensusSetInliers.size() == 1) {
-            list = consensusSetInliers.get(0);
+            list = consensusSetInliers.getFirst();
         } else {
             list = new ArrayList<>();
             for (final List<PointMatch> consensusSetList : consensusSetInliers) {
@@ -218,7 +218,7 @@ public class CanvasMatchResult
 
         if (pointMatchCount > 0) {
 
-            PointMatch pointMatch = pointMatchList.get(0);
+            PointMatch pointMatch = pointMatchList.getFirst();
             Point p1 = pointMatch.getP1();
             double[] local1 = p1.getL();
             final int dimensionCount = local1.length;

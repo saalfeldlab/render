@@ -190,7 +190,7 @@ public class RenderTilesClient {
                                 "The filterListPath file " + filterFile.getAbsolutePath() + " contains " +
                                 filterListNames.size() + " lists but must contain one and only one list");
                     }
-                    filterSpecList = factory.getFilterList(filterListNames.get(0));
+                    filterSpecList = factory.getFilterList(filterListNames.getFirst());
                 } catch(final IOException ioe) {
                     throw new IllegalArgumentException("Failed to read filterListPath " + filterFile.getAbsolutePath(),
                                                        ioe);
@@ -353,7 +353,7 @@ public class RenderTilesClient {
                                      renderParametersQueryString;
 
         RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
-        final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+        final TileSpec tileSpec = renderParameters.getTileSpecs().getFirst();
 
         if (tileRender.renderTileImagesLocally) {
             final String imageUrl = tileSpec.getFirstMipmapEntry().getValue().getImageUrl();
@@ -364,7 +364,7 @@ public class RenderTilesClient {
         }
 
         if (filterSpecList != null) {
-            tileSpec.setFilterSpec(filterSpecList.get(0));
+            tileSpec.setFilterSpec(filterSpecList.getFirst());
             for (int i = 1; i < filterSpecList.size(); i++) {
                 tileSpec.addFilterSpec(filterSpecList.get(i));
             }
@@ -461,7 +461,7 @@ public class RenderTilesClient {
                 throw new IllegalArgumentException("hack stack tiles should have only one channel but tile " +
                                                    tileId + " has " + allChannels.size() + " channels");
             }
-            final ChannelSpec channelSpec = allChannels.get(0);
+            final ChannelSpec channelSpec = allChannels.getFirst();
 
             // Use the URI string directly instead of the file path
             ImageAndMask renderedImageAndMask = channelSpec

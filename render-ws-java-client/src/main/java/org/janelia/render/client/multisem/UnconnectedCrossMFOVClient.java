@@ -161,7 +161,7 @@ public class UnconnectedCrossMFOVClient {
             final List<Double> zValues = renderDataClient.getStackZValues(stack);
             final int lastPZ = zValues.size() > 1 ? zValues.get(zValues.size() - 2).intValue() : -1;
             for (final UnconnectedMFOVPairsForStack pairsForZ : UnconnectedMFOVPairsForStack.groupByPZ(pairsForStack)) {
-                final int pZ = (int) pairsForZ.getUnconnectedMFOVPairs().get(0).getP().getZ();
+                final int pZ = (int) pairsForZ.getUnconnectedMFOVPairs().getFirst().getP().getZ();
                 final String fileNameSuffix = pZ == lastPZ ? ".lastPZ.json" : ".json";
                 final String fileName = "unconnected_mfov_pairs." + stack + "." + pZ + fileNameSuffix;
                 final Path storagePath = Paths.get(unconnectedMFOVPairsDirectory,

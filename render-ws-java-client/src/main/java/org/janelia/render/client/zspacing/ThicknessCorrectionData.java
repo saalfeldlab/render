@@ -156,8 +156,8 @@ public class ThicknessCorrectionData
 
         // pin first and last corrected z values to first and last stack z values unless they are very different
         final double maxDelta = 0.5;
-        final Double firstCorrectedZ = orderedCorrectedZValues.get(0);
-        final Integer firstStackZ = orderedStackZValues.get(0);
+        final Double firstCorrectedZ = orderedCorrectedZValues.getFirst();
+        final Integer firstStackZ = orderedStackZValues.getFirst();
         double delta = Math.abs(firstCorrectedZ - firstStackZ);
         if (delta < maxDelta) {
             orderedCorrectedZValues.set(0, firstStackZ.doubleValue());
@@ -180,11 +180,11 @@ public class ThicknessCorrectionData
     }
 
     public double getFirstCorrectedZ() {
-        return orderedCorrectedZValues.get(0);
+        return orderedCorrectedZValues.getFirst();
     }
 
     public double getLastCorrectedZ() {
-        return orderedCorrectedZValues.get(orderedCorrectedZValues.size() - 1);
+        return orderedCorrectedZValues.getLast();
     }
 
     /**

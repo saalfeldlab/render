@@ -104,7 +104,7 @@ public class MFOVPositionPairMatchDataTest {
 
         assertEquals(1, derivedMatchesList.size(), "invalid number of derived matches");
 
-        final CanvasMatches derivedMatches = derivedMatchesList.get(0);
+        final CanvasMatches derivedMatches = derivedMatchesList.getFirst();
         final Matches matches = derivedMatches.getMatches();
         final double[] ws = matches.getWs();
         assertEquals(4, ws.length, "invalid number of weights");

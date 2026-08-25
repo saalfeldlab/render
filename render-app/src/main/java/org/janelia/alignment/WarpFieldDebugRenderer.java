@@ -63,8 +63,8 @@ public class WarpFieldDebugRenderer {
         AffineWarpFieldTransform lastWarpFieldTransform = null;
 
         final List<TileSpec> tileSpecs = renderParameters.getTileSpecs();
-        if (tileSpecs.size() > 0) {
-            final TileSpec firstTileSpec = tileSpecs.get(0);
+        if (!tileSpecs.isEmpty()) {
+            final TileSpec firstTileSpec = tileSpecs.getFirst();
             final List<CoordinateTransform> firstTileTransformList = new ArrayList<>();
             firstTileSpec.getTransformList().getList(firstTileTransformList);
             for (final CoordinateTransform transform : firstTileTransformList) {

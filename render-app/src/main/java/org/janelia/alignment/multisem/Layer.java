@@ -83,7 +83,7 @@ public class Layer {
         final String pngImageUrl = renderParametersUrl.replace("render-parameters", "png-image") +
                                    "&maxTileSpecsToRender=" + numberOfTilesInZLayer;
 
-        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().get(0);
+        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().getFirst();
         final ImageAndMask firstSfovImageAndMask = firstSfovTileSpec.getFirstMipmapEntry().getValue();
         final ImageLoader.LoaderType firstSfovImageLoaderType = firstSfovImageAndMask.getImageLoaderType();
         ImageLoader.LoaderType loaderType = null;

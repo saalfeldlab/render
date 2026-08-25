@@ -223,7 +223,7 @@ public class TileBoundsRTree {
 
         String firstTileId = null;
         if (! sourceTileBoundsList.isEmpty()) {
-            firstTileId = sourceTileBoundsList.get(0).getTileId();
+            firstTileId = sourceTileBoundsList.getFirst().getTileId();
         }
 
         LOG.debug("getCircleNeighbors: entry, checking {} tiles with z {}, {} neighborTrees, firstTileId is {}",

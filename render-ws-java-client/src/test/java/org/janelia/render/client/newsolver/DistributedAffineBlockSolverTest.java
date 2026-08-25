@@ -345,7 +345,7 @@ public class DistributedAffineBlockSolverTest {
         setupStack(sourceDataClient, sourceStackMetaData, TEST_PROJECT, TEST_ALL_STACK, Z_VALUES,null);
 
         final RenderDataClient sourceMatchClient = buildClient(SOURCE_MATCH_COLLECTION);
-        final String groupId = String.valueOf(Z_VALUES.get(0));
+        final String groupId = String.valueOf(Z_VALUES.getFirst());
         final List<CanvasMatches> sourceCmList = sourceMatchClient.getMatchesWithinGroup(groupId);
 
         setupMatchCollection(sourceCmList, TEST_TWO_ONLY_REAL_MATCH_COLLECTION,
