@@ -48,7 +48,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 	private static final String[] SEGMENTED_LINE_TOGGLE_EDITOR_KEYS = new String[] { "button1" };//, "ctrl K" };
 
 	private int pointId = -1;
-	private PointHighlighter pointHighLighter;
+	private final PointHighlighter pointHighLighter;
 	private final TriggerBehaviourBindings triggerbindings;
 	private final Behaviours behaviours;
 	private final BehaviourMap blockMap;
@@ -244,7 +244,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 	public class DragPointBehaviour implements DragBehaviour
 	{
-		private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
+		private final ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
 		boolean moving = false;
 		int movintPointId = -1;
 
@@ -335,7 +335,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 		public AddPoint() { super( "Add point" ); }
 
-		private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
+		private final ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
 
 		@Override
 		public void actionPerformed(ActionEvent e)
@@ -397,7 +397,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 
 		public JumpToPoint() { super( "Jump to point" ); }
 
-		private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
+		private final ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
 
 		@Override
 		public void actionPerformed(ActionEvent e)

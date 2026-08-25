@@ -12,27 +12,22 @@ import javax.ws.rs.core.Response;
 public class ServiceException
         extends WebApplicationException {
 
-    private String message;
+    private final String message;
 
-//    public ServiceException(String message) {
-//        this(message, Response.Status.INTERNAL_SERVER_ERROR, null);
-//    }
-//
-    public ServiceException(String message,
-                            Response.Status status) {
+    public ServiceException(final String message,
+                            final Response.Status status) {
         this(message, status, null);
     }
 
-    public ServiceException(String message,
-                            Throwable cause) {
+    public ServiceException(final String message,
+                            final Throwable cause) {
         this(message, Response.Status.INTERNAL_SERVER_ERROR, cause);
     }
 
-    public ServiceException(String message,
-                            Response.Status status,
-                            Throwable cause) {
-        super(cause,
-              getResponse(message, status));
+    public ServiceException(final String message,
+                            final Response.Status status,
+                            final Throwable cause) {
+        super(cause, getResponse(message, status));
         this.message = message;
     }
 
@@ -41,10 +36,9 @@ public class ServiceException
         return message;
     }
 
-    public static Response getResponse(String message,
-                                       Response.Status status) {
-        Response.ResponseBuilder builder =
-                Response.status(status);
+    public static Response getResponse(final String message,
+                                       final Response.Status status) {
+        final Response.ResponseBuilder builder = Response.status(status);
         builder.entity(message).type(MediaType.TEXT_PLAIN_TYPE);
         return builder.build();
     }
