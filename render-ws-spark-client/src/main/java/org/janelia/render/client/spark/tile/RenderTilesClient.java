@@ -119,7 +119,7 @@ public class RenderTilesClient
         // build a java client for each stack before distributing the rendering tasks just to validate parameters
         final List<org.janelia.render.client.tile.RenderTilesClient> javaStackSetupClients = new ArrayList<>();
         stackWithZValuesList.stream()
-                .map(StackWithZValues::getStackId)
+                .map(StackWithZValues::stackId)
                 .distinct()
                 .sorted()
                 .forEach(stackId -> {
@@ -143,11 +143,11 @@ public class RenderTilesClient
 
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
-            final StackId stackId = stackWithZ.getStackId();
+            final StackId stackId = stackWithZ.stackId();
             final org.janelia.render.client.tile.RenderTilesClient jClient = buildJavaRenderTilesClient(baseDataUrl,
                                                                                                         stackId,
                                                                                                         tileRenderParameters);
-            jClient.renderTiles(stackWithZ.getzValues());
+            jClient.renderTiles(stackWithZ.zValues());
 
             return 1;
         };

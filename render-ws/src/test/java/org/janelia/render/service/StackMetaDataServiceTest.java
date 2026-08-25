@@ -197,19 +197,19 @@ public class StackMetaDataServiceTest {
         final StackStats stats = stackMetaData2.getStats();
         assertNotNull(stats, "stats not derived after setting state to complete");
 
-        final Bounds stackBounds = stats.getStackBounds();
+        final Bounds stackBounds = stats.stackBounds();
         assertNotNull(stackBounds, "stack bounds not derived");
 
         assertEquals(3903.0, stackBounds.getMinZ(), 0.01, "invalid stackBounds.minZ");
 
-        assertEquals(new Long(2), stats.getSectionCount(), "invalid sectionCount");
-        assertEquals(new Long(1), stats.getNonIntegralSectionCount(), "invalid nonIntegralSectionCount");
-        assertEquals(new Long(14), stats.getTileCount(), "invalid tileCount");
-        assertEquals(new Long(3), stats.getTransformCount(), "invalid transformCount");
-        assertEquals(new Integer(2631), stats.getMinTileWidth(), "invalid minTileWidth");
-        assertEquals(new Integer(2772), stats.getMaxTileWidth(), "invalid maxTileWidth");
-        assertEquals(new Integer(2257), stats.getMinTileHeight(), "invalid minTileHeight");
-        assertEquals(new Integer(2414), stats.getMaxTileHeight(), "invalid maxTileHeight");
+        assertEquals(new Long(2), stats.sectionCount(), "invalid sectionCount");
+        assertEquals(new Long(1), stats.nonIntegralSectionCount(), "invalid nonIntegralSectionCount");
+        assertEquals(new Long(14), stats.tileCount(), "invalid tileCount");
+        assertEquals(new Long(3), stats.transformCount(), "invalid transformCount");
+        assertEquals(new Integer(2631), stats.minTileWidth(), "invalid minTileWidth");
+        assertEquals(new Integer(2772), stats.maxTileWidth(), "invalid maxTileWidth");
+        assertEquals(new Integer(2257), stats.minTileHeight(), "invalid minTileHeight");
+        assertEquals(new Integer(2414), stats.maxTileHeight(), "invalid maxTileHeight");
 
         final Bounds stackBounds2 = service.getStackBounds(completeStackId.getOwner(),
                                                            completeStackId.getProject(),

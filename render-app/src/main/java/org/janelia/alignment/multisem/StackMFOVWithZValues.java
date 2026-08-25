@@ -24,11 +24,11 @@ public class StackMFOVWithZValues
     }
 
     public StackId getStackId() {
-        return stackWithZValues.getStackId();
+        return stackWithZValues.stackId();
     }
 
     public List<Double> getzValues() {
-        return stackWithZValues.getzValues();
+        return stackWithZValues.zValues();
     }
 
     public String getmFOVId() {

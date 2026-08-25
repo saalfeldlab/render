@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.SectionData;
@@ -210,7 +209,7 @@ public class Trakem2SolverPreAlignClient{
             final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
             final StackStats stackStats = stackMetaData.getStats();
             if (stackStats != null) {
-                final Bounds stackBounds = stackStats.getStackBounds();
+                final Bounds stackBounds = stackStats.stackBounds();
                 if (stackBounds != null) {
                     if (minZForRun == null) {
                         minZForRun = stackBounds.getMinZ();

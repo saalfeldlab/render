@@ -196,7 +196,7 @@ public class ImportSlicesClient {
                 zToSlicePath.put(z, sliceFile.getAbsolutePath());
             }
 
-            final Bounds bounds = basisStackMetaData.getStats().getStackBounds();
+            final Bounds bounds = basisStackMetaData.getStats().stackBounds();
             final TranslationModel2D model = new TranslationModel2D();
             model.set(bounds.getMinX(), bounds.getMinY());
             final String modelDataString = model.toDataString();

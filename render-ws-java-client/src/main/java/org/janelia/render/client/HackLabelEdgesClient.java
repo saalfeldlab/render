@@ -31,6 +31,7 @@ import org.janelia.alignment.util.LabelImageProcessorCache;
 import org.janelia.render.client.betterbox.LabelBoxValidator;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -322,37 +323,17 @@ public class HackLabelEdgesClient {
         TOP, RIGHT, BOTTOM, LEFT
     }
 
-    private static class TileEdge {
-
-        private final String tileId;
-        private final TileEdgePosition position;
-
-        private TileEdge(final String tileId,
-                         final TileEdgePosition position) {
-            this.tileId = tileId;
-            this.position = position;
-        }
+    private record TileEdge(String tileId, TileEdgePosition position) {
 
         @Override
-        public String toString() {
+        public @NonNull String toString() {
             return tileId + "::" + position;
         }
-
     }
 
-    private static class TileEdgeAndColor {
+    private record TileEdgeAndColor(TileEdge tileEdge, Color color) {}
 
-        private final TileEdge tileEdge;
-        private final Color color;
-
-        private TileEdgeAndColor(final TileEdge tileEdge,
-                                 final Color color) {
-            this.tileEdge = tileEdge;
-            this.color = color;
-        }
-    }
-
-    private class LabelWithEdgesImageProcessorCache
+    private static class LabelWithEdgesImageProcessorCache
             extends LabelImageProcessorCache {
 
         private final int edgePixelSize;

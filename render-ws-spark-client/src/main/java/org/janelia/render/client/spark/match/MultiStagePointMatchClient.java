@@ -155,9 +155,9 @@ public class MultiStagePointMatchClient
 
             final Map<StackId, List<Double>> stackToZValuesMap = new HashMap<>();
             for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
-                final StackId stackId = stackWithZValues.getStackId();
+                final StackId stackId = stackWithZValues.stackId();
                 final List<Double> zValues = stackToZValuesMap.computeIfAbsent(stackId, sid -> new ArrayList<>());
-                zValues.addAll(stackWithZValues.getzValues());
+                zValues.addAll(stackWithZValues.zValues());
             }
 
             effectiveStackWithZValuesList = stackToZValuesMap.keySet().stream()
@@ -251,7 +251,7 @@ public class MultiStagePointMatchClient
                                               final List<RenderableCanvasIdPairsForCollection> pairsList)
             throws IOException {
 
-        final StackId stackId = stackWithZValues.getStackId();
+        final StackId stackId = stackWithZValues.stackId();
 
         final TilePairClient.Parameters tilePairParameters =
                 new TilePairClient.Parameters(multiProjectParameters.baseDataUrl,

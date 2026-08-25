@@ -41,12 +41,12 @@ public class MFOVAsTileStackLists implements Serializable {
         final Map<String, Set<String>> ownerToProjectNames = new HashMap<>();
         for (final StackWithZValues rawStackWithAllZ : this.rawSfovStacksWithAllZ) {
 
-            final StackId rawSfovStackId = rawStackWithAllZ.getStackId();
+            final StackId rawSfovStackId = rawStackWithAllZ.stackId();
             final StackId prealignedSfovStackId = mfovAsTile.getPrealignedStackId(rawSfovStackId);
             final StackId renderedMfovStackId = mfovAsTile.getRenderedMfovStackId(rawSfovStackId);
             final StackId roughSfovStackId = mfovAsTile.getRoughSfovStackId(rawSfovStackId);
 
-            final List<Double> allZValues = rawStackWithAllZ.getzValues();
+            final List<Double> allZValues = rawStackWithAllZ.zValues();
             this.prealignedSfovStacksWithAllZ.add(new StackWithZValues(prealignedSfovStackId, allZValues));
             this.renderedMfovStacksWithAllZ.add(new StackWithZValues(renderedMfovStackId, allZValues));
             this.roughSfovStacksWithAllZ.add(new StackWithZValues(roughSfovStackId, allZValues));
@@ -89,7 +89,7 @@ public class MFOVAsTileStackLists implements Serializable {
     }
 
     public List<String> getOwners() {
-        return rawSfovStacksWithAllZ.stream().map(s -> s.getStackId().getOwner())
+        return rawSfovStacksWithAllZ.stream().map(s -> s.stackId().getOwner())
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
@@ -97,8 +97,8 @@ public class MFOVAsTileStackLists implements Serializable {
 
     public List<String> getProjectsWithOwner(final String owner) {
         return rawSfovStacksWithAllZ.stream()
-                .filter(s -> s.getStackId().getOwner().equals(owner))
-                .map(s -> s.getStackId().getProject())
+                .filter(s -> s.stackId().getOwner().equals(owner))
+                .map(s -> s.stackId().getProject())
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
@@ -108,7 +108,7 @@ public class MFOVAsTileStackLists implements Serializable {
                                                                  final String project) {
         return renderedMfovStacksWithAllZ.stream()
                 .filter(stackWithZ -> {
-                    final StackId stackId = stackWithZ.getStackId();
+                    final StackId stackId = stackWithZ.stackId();
                     return stackId.getOwner().equals(owner) && stackId.getProject().equals(project);
                 }).collect(Collectors.toList());
     }

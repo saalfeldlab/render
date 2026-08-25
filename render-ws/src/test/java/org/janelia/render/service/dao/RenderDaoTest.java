@@ -164,9 +164,9 @@ public class RenderDaoTest {
         final StackStats toStats = toStackMetaData.getStats();
         assertNotNull(toStats, "null toStats");
 
-        assertEquals(fromStats.getTileCount(), toStats.getTileCount(),
+        assertEquals(fromStats.tileCount(), toStats.tileCount(),
                      "cloned tile count does not match");
-        assertEquals(fromStats.getTransformCount(), toStats.getTransformCount(),
+        assertEquals(fromStats.transformCount(), toStats.transformCount(),
                      "cloned transform count does not match");
 
         final Double newZValue = 999.0;
@@ -215,8 +215,8 @@ public class RenderDaoTest {
 
         final Bounds expectedBounds = new Bounds(1094.0, 1769.0, 3903.0, 9917.0, 8301.0, 3903.1);
 
-        assertEquals(expectedBounds.toJson(), stats.getStackBounds().toJson(), "invalid bounds");
-        assertEquals(new Long(14), stats.getTileCount(), "invalid tile count");
+        assertEquals(expectedBounds.toJson(), stats.stackBounds().toJson(), "invalid bounds");
+        assertEquals(new Long(14), stats.tileCount(), "invalid tile count");
 
         // test getSectionData after section collection was created by call to ensureIndexesAndDeriveStats
         final List<SectionData> list = dao.getSectionData(stackId, null, null);

@@ -92,33 +92,11 @@ public class CanvasFeatureExtractor implements Serializable {
     }
 
     /**
-     * Extracted feature list with information about the sources used to produce it.
-     */
-    public static class FeaturesWithSourceData {
-
-        private final RenderParameters renderParameters;
-        private final ImageProcessorWithMasks renderedProcessorWithMasks;
-        private final List<Feature> featureList;
-
-        public FeaturesWithSourceData(final RenderParameters renderParameters,
-                                      final ImageProcessorWithMasks renderedProcessorWithMasks,
-                                      final List<Feature> featureList) {
-            this.renderParameters = renderParameters;
-            this.renderedProcessorWithMasks = renderedProcessorWithMasks;
-            this.featureList = featureList;
-        }
-
-        public RenderParameters getRenderParameters() {
-            return renderParameters;
-        }
-
-        public ImageProcessorWithMasks getRenderedProcessorWithMasks() {
-            return renderedProcessorWithMasks;
-        }
-
-        public List<Feature> getFeatureList() {
-            return featureList;
-        }
+         * Extracted feature list with information about the sources used to produce it.
+         */
+    public record FeaturesWithSourceData(RenderParameters renderParameters,
+                                         ImageProcessorWithMasks renderedProcessorWithMasks,
+                                         List<Feature> featureList) {
 
         public long getKilobytes() {
 
@@ -141,7 +119,6 @@ public class CanvasFeatureExtractor implements Serializable {
 
             return kilobyteCount;
         }
-
     }
 
     /**

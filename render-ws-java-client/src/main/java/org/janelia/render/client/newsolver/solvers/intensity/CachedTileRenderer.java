@@ -83,9 +83,9 @@ class CachedTileRenderer extends TileRenderer {
 		final long[] min = {x, y};
 		final long[] max = {x + w - 1L, y + h - 1L};
 		return new RenderedRegion(
-				Views.zeroMin(Views.interval(fullTile.image, min, max)),
-				Views.zeroMin(Views.interval(fullTile.weight, min, max)),
-				Views.zeroMin(Views.interval(fullTile.coefficients, min, max)));
+				Views.zeroMin(Views.interval(fullTile.image(), min, max)),
+				Views.zeroMin(Views.interval(fullTile.weight(), min, max)),
+				Views.zeroMin(Views.interval(fullTile.coefficients(), min, max)));
 	}
 
 	private static Rectangle boundingBox(final TileSpec patch) {

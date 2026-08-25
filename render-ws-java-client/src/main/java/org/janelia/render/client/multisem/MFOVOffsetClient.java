@@ -98,7 +98,7 @@ public class MFOVOffsetClient {
 
         for (final StackWithZValues stackWithZ : stackWithZList) {
             final MatchCollectionId matchCollectionId =
-                    parameters.multiProject.getMatchCollectionIdForStack(stackWithZ.getStackId());
+                    parameters.multiProject.getMatchCollectionIdForStack(stackWithZ.stackId());
             final RenderDataClient matchDataClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
                                                                                   matchCollectionId.getName());
             buildOneOffsetStack(stackWithZ,
@@ -125,7 +125,7 @@ public class MFOVOffsetClient {
                                            final MFOVOffsetParameters mfovOffsetParameters)
             throws IOException, IllegalStateException {
 
-        final StackId offsetStackId = stackWithZ.getStackId().withStackSuffix(mfovOffsetParameters.offsetStackSuffix);
+        final StackId offsetStackId = stackWithZ.stackId().withStackSuffix(mfovOffsetParameters.offsetStackSuffix);
 
         // 1. Use number of connected match points to order same layer tile pairs in each MFOV of the first z layer.
         final MFOVOffsetSupportData mfovOffsetSupportData =
@@ -194,7 +194,7 @@ public class MFOVOffsetClient {
                                                                      mfovOffsetParameters.renderScale);
 
         final Map<Double, double[]> nextZToTranslationMap = new HashMap<>();
-        final List<Double> zValues = stackWithZ.getzValues();
+        final List<Double> zValues = stackWithZ.zValues();
         final double[] maxActualAbsoluteMFOVTranslationDelta = new double[] {0.0, 0.0};
 
         for (int nextZIndex = 1; nextZIndex < zValues.size(); nextZIndex++) {
@@ -224,7 +224,7 @@ public class MFOVOffsetClient {
                 // 5. For each z layer if any MFOVs have an offset that is significantly different from the others
                 //    log the large difference and fail the run since this should rarely occur.
                 final double[] maxActualAbsoluteMFOVTranslationDeltaForLayer =
-                        checkNextLayerMFOVTranslationConsistency(stackWithZ.getStackId(),
+                        checkNextLayerMFOVTranslationConsistency(stackWithZ.stackId(),
                                                                  sortedMFOVsForCurrentLayer,
                                                                  nextLayerMFOVTranslations,
                                                                  mfovOffsetParameters.maxAbsoluteMFOVTranslationDelta);
@@ -269,7 +269,7 @@ public class MFOVOffsetClient {
         List<PointMatch> layerMFOVMatches = null;
 
         final RenderWebServiceUrls urls = renderDataClient.getUrls();
-        final String urlPrefix = urls.getStackUrlString(stackWithZ.getStackId().getStack()) + "/tile/";
+        final String urlPrefix = urls.getStackUrlString(stackWithZ.stackId().getStack()) + "/tile/";
         final String urlSuffix = "/render-parameters?excludeMask=false&normalizeForMatching=true&scale=" + renderScale;
 
         final List<String> nearestPairsListTileIds = nearestPairsList.getSortedTileIds();
@@ -420,13 +420,13 @@ public class MFOVOffsetClient {
                                         final Map<Double, double[]> nextZToTranslationMap)
             throws IOException {
 
-        final String stackName = stackWithZ.getStackId().getStack();
+        final String stackName = stackWithZ.stackId().getStack();
         final String offsetStackName = offsetStackId.getStack();
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(stackName);
         final StackMetaData offsetStackMetaData = renderDataClient.setupDerivedStack(stackMetaData, offsetStackName);
 
-        final List<Double> zValues = stackWithZ.getzValues();
+        final List<Double> zValues = stackWithZ.zValues();
         final Double firstZ = zValues.getFirst();
 
         ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stackName, firstZ);

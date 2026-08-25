@@ -8,6 +8,8 @@ import java.util.regex.Pattern;
 
 import mpicbg.trakem2.util.Downsampler;
 
+import org.jspecify.annotations.NonNull;
+
 import static org.janelia.alignment.spec.stack.MipmapPathBuilder.DYNAMIC_MASK_PROTOCOL;
 
 /**
@@ -59,30 +61,10 @@ public class DynamicMaskLoader
         return maskProcessor;
     }
 
-    public static class DynamicMaskDescription {
-        public final int minX;
-        public final int minY;
-        public final int maxX;
-        public final int maxY;
-        public final int width;
-        public final int height;
-
-        public DynamicMaskDescription(final int minX,
-                                      final int minY,
-                                      final int maxX,
-                                      final int maxY,
-                                      final int width,
-                                      final int height) {
-            this.minX = minX;
-            this.minY = minY;
-            this.maxX = maxX;
-            this.maxY = maxY;
-            this.width = width;
-            this.height = height;
-        }
+    public record DynamicMaskDescription(int minX, int minY, int maxX, int maxY, int width, int height) {
 
         @Override
-        public String toString() {
+        public @NonNull String toString() {
             return "mask://outside-box?minX=" + minX + "&minY=" + minY + "&maxX=" + maxX + "&maxY=" + maxY +
                    "&width=" + width + "&height=" + height;
         }

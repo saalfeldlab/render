@@ -141,7 +141,7 @@ public class UnconnectedCrossMFOVClient
 
                 LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
-                final StackId stackId = stackWithZ.getStackId();
+                final StackId stackId = stackWithZ.stackId();
                 final RenderDataClient localDataClient = new RenderDataClient(baseDataUrl,
                                                                               stackId.getOwner(),
                                                                               stackId.getProject());

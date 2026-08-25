@@ -117,7 +117,7 @@ public class MipmapClient
             final org.janelia.render.client.MipmapClient mc =
                     new org.janelia.render.client.MipmapClient(clientParameters.renderWeb,
                                                                clientParameters.mipmap);
-            return mc.processMipmapsForZ(stackIdWithZ.getStackId(),
+            return mc.processMipmapsForZ(stackIdWithZ.stackId(),
                                          stackIdWithZ.getFirstZ());
         };
 
@@ -136,7 +136,7 @@ public class MipmapClient
                 new org.janelia.render.client.MipmapClient(clientParameters.renderWeb,
                                                            clientParameters.mipmap);
         final List<StackId> distinctStackIds = batchedList.stream()
-                .map(StackWithZValues::getStackId)
+                .map(StackWithZValues::stackId)
                 .distinct()
                 .collect(Collectors.toList());
         for (final StackId stackId : distinctStackIds) {

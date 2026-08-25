@@ -7,36 +7,16 @@ import java.io.Serializable;
  *
  * @author Eric Trautman
  */
-public class PipelineStackIdNamingGroups
+public record PipelineStackIdNamingGroups(StackIdNamingGroup raw,
+                                          StackIdNamingGroup aligned,
+                                          StackIdNamingGroup intensityCorrected)
         implements Serializable {
 
-    private final StackIdNamingGroup raw;
-    private final StackIdNamingGroup aligned;
-    private final StackIdNamingGroup intensityCorrected;
-
-    /** No-arg constructor required for JSON deserialization. */
+    /**
+     * No-arg constructor required for JSON deserialization.
+     */
     @SuppressWarnings("unused")
     private PipelineStackIdNamingGroups() {
         this(null, null, null);
-    }
-
-    public PipelineStackIdNamingGroups(final StackIdNamingGroup raw,
-                                       final StackIdNamingGroup aligned,
-                                       final StackIdNamingGroup intensityCorrected) {
-        this.raw = raw;
-        this.aligned = aligned;
-        this.intensityCorrected = intensityCorrected;
-    }
-
-    public StackIdNamingGroup getRaw() {
-        return raw;
-    }
-
-    public StackIdNamingGroup getAligned() {
-        return aligned;
-    }
-
-    public StackIdNamingGroup getIntensityCorrected() {
-        return intensityCorrected;
     }
 }

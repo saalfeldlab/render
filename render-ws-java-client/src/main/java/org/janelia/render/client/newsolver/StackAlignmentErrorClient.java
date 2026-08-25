@@ -192,7 +192,7 @@ public class StackAlignmentErrorClient {
 		final RenderDataClient renderClient = params.renderParams.getDataClient();
 		final StackMetaData stackMetaData = renderClient.getStackMetaData(stack);
 		final StackId stackId = stackMetaData.getStackId();
-		final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+		final Bounds stackBounds = stackMetaData.getStats().stackBounds();
 		final List<Double> zValues = renderClient.getStackZValues(stack);
 		final MatchCollectionId matchCollectionId = params.matchParams.getMatchCollectionId(stackId.getOwner());
 
@@ -362,7 +362,7 @@ public class StackAlignmentErrorClient {
 											   final Bounds bounds) {
 		final List<Double> res = stackMetaData.getCurrentResolutionValues();
 		final StackId stackId = stackMetaData.getStackId();
-		final Bounds boundsToRender = (bounds != null) ? bounds : stackMetaData.getStats().getStackBounds();
+		final Bounds boundsToRender = (bounds != null) ? bounds : stackMetaData.getStats().stackBounds();
 
 		final String stackDimensions = "\"x\":[" + res.get(0).intValue() + "e-9,\"m\"]," +
 									   "\"y\":[" + res.get(1).intValue() + "e-9,\"m\"]," +

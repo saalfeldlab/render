@@ -141,7 +141,7 @@ public class TilePairDerivationParameters implements Serializable {
             for (final String layerShiftString : layerShiftList) {
                 final LayerShift layerShift = LayerShift.parse(layerShiftString);
                 if (layerShift.matches(project, stack)) {
-                    zToLayerShift.put(layerShift.getZ(), layerShift);
+                    zToLayerShift.put(layerShift.z(), layerShift);
                 }
             }
 
@@ -150,8 +150,8 @@ public class TilePairDerivationParameters implements Serializable {
                 if (layerShift == null) {
                     shiftedTileBoundsList.add(tileBounds);
                 } else {
-                    shiftedTileBoundsList.add(tileBounds.withXYShift(layerShift.getShiftX(),
-                                                                     layerShift.getShiftY()));
+                    shiftedTileBoundsList.add(tileBounds.withXYShift(layerShift.xShift(),
+                                                                     layerShift.yShift()));
                 }
             }
 

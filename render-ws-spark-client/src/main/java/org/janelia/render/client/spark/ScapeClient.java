@@ -178,7 +178,7 @@ public class ScapeClient
                                                                        stackId.getProject());
 
         final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(stack);
-        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+        final Bounds stackBounds = stackMetaData.getStats().stackBounds();
 
         final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(stack,
                                                                                        layerRange.minZ,

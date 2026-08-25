@@ -54,7 +54,7 @@ public class ZPositionCorrectionClient
 
             jClientParameters.renderWeb.baseDataUrl = multiProject.baseDataUrl;
 
-            final StackId stackId = stackIdWithZValues.getStackId();
+            final StackId stackId = stackIdWithZValues.stackId();
             jClientParameters.renderWeb.owner = stackId.getOwner();
             jClientParameters.renderWeb.project = stackId.getProject();
             jClientParameters.stack = stackId.getStack();
@@ -143,7 +143,7 @@ public class ZPositionCorrectionClient
         final List<StackWithZValues> stackWithAllZValuesList = multiProjectParameters.buildListOfStackWithAllZ();
 
         final long totalNumberOfZValues = stackWithAllZValuesList.stream()
-                .map(stackWithZ -> (long) stackWithZ.getzValues().size())
+                .map(stackWithZ -> (long) stackWithZ.zValues().size())
                 .reduce(0L, Long::sum);
 
         final String runName = "run_" + new SimpleDateFormat("yyyyMMdd_HHmmss_SSS").format(new Date()) + "_z_corr";

@@ -199,7 +199,7 @@ public class CopyStackClient implements Serializable {
         final LeafTransformSpec moveStackTransform;
         if (parameters.moveToOrigin) {
             final StackStats sourceStackStats = sourceStackMetaData.getStats();
-            final Bounds sourceStackBounds = sourceStackStats.getStackBounds();
+            final Bounds sourceStackBounds = sourceStackStats.stackBounds();
 
             final double padding = 10.0;
             if ((sourceStackBounds.getMinX() < 0) || (sourceStackBounds.getMinX() > padding) ||

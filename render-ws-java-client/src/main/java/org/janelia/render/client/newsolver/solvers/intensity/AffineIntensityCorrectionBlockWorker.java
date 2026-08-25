@@ -302,17 +302,10 @@ public class AffineIntensityCorrectionBlockWorker<M>
                  stackAndBlockForLog, coefficientTiles.size());
 	}
 
-	/** The sub-tile pinned as the gauge anchor: its owning {@link IntensityTile} and the index of the held sub-tile. */
-	private static final class FixedAnchor {
-		private final IntensityTile tile;
-		private final int subTileIndex;
-		private FixedAnchor(final IntensityTile tile, final int subTileIndex) {
-			this.tile = tile;
-			this.subTileIndex = subTileIndex;
-		}
-		private IntensityTile tile() { return tile; }
-		private int subTileIndex() { return subTileIndex; }
-	}
+    /**
+     * The sub-tile pinned as the gauge anchor: its owning {@link IntensityTile} and the index of the held sub-tile.
+     */
+    private record FixedAnchor(IntensityTile tile, int subTileIndex) {}
 
 	/**
 	 * Choose a deterministic, representative gauge anchor (pinned sub-tile) for the gauge-free per-block solve.

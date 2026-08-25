@@ -385,19 +385,15 @@ public class Wafer6061Inpainter {
 
 	}
 
-	private static class ExtendedAttributes implements Serializable {
-		public final DatasetAttributes attrs;
-		public final long[] min;
+    private record ExtendedAttributes(DatasetAttributes attrs, long[] min)
+            implements Serializable {
 
-		public ExtendedAttributes(final DatasetAttributes attrs, final long[] min) {
-			this.attrs = attrs;
-			this.min = min;
-		}
-
-		public static ExtendedAttributes read(final N5Reader n5, final String attrsPath, final String minPath) {
-			final DatasetAttributes attrs = n5.getDatasetAttributes(attrsPath);
-			final long[] min = n5.getAttribute(minPath, "translate", long[].class);
-			return new ExtendedAttributes(attrs, min);
-		}
-	}
+        public static ExtendedAttributes read(final N5Reader n5,
+                                              final String attrsPath,
+                                              final String minPath) {
+            final DatasetAttributes attrs = n5.getDatasetAttributes(attrsPath);
+            final long[] min = n5.getAttribute(minPath, "translate", long[].class);
+            return new ExtendedAttributes(attrs, min);
+        }
+    }
 }

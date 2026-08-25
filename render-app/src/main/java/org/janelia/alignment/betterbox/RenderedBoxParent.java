@@ -130,7 +130,7 @@ public class RenderedBoxParent {
                            final int y,
                            final Graphics2D fourTileGraphics) {
         if (renderedBox != null) {
-            fourTileGraphics.drawImage(renderedBox.getImage(), x, y, null);
+            fourTileGraphics.drawImage(renderedBox.image(), x, y, null);
         }
     }
 }

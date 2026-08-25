@@ -101,7 +101,7 @@ public class RenderTools
 
 	static public Interval stackBounds(final StackMetaData sourceStackMetaData) throws IOException
 	{
-		final Bounds bounds = sourceStackMetaData.getStats().getStackBounds();
+		final Bounds bounds = sourceStackMetaData.getStats().stackBounds();
 		
 		return new FinalInterval(
 				new long[] {
@@ -454,7 +454,7 @@ public class RenderTools
 		img.setDisplayRange( 0, 256 );
 
 		final AffineTransform3D transform3d = new AffineTransform3D();
-		final Bounds stackBounds = meta.getStats().getStackBounds();
+		final Bounds stackBounds = meta.getStats().stackBounds();
 		transform3d.translate(stackBounds.getMinX(), stackBounds.getMinY(), stackBounds.getMinZ());
 		img.getBdvHandle().getManualTransformEditor().transformChanged(transform3d);
 	}

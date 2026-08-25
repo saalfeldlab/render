@@ -28,7 +28,7 @@ public class NeuroglancerUtil {
 
         final List<Double> res = stackMetaData.getCurrentResolutionValues();
         final StackId stackId = stackMetaData.getStackId();
-        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+        final Bounds stackBounds = stackMetaData.getStats().stackBounds();
 
         final String stackDimensions = "\"x\":[" + res.get(0).intValue() + "e-9,\"m\"]," +
                                        "\"y\":[" + res.get(1).intValue() + "e-9,\"m\"]," +

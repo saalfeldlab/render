@@ -81,7 +81,7 @@ public class MFOVAsTileMontageMatchPatchClient {
         final List<StackWithZValues> stackWithZValuesList = multiProject.buildListOfStackWithAllZ();
 
         for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
-            final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackWithZValues.getStackId());
+            final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackWithZValues.stackId());
             deriveAndSaveMatchesForUnconnectedSameLayerPairsInStack(defaultDataClient,
                                                                     stackWithZValues,
                                                                     matchCollectionId,
@@ -106,7 +106,7 @@ public class MFOVAsTileMontageMatchPatchClient {
             throw new IllegalStateException("startPositionMatchWeight must be specified");
         }
 
-        final StackId stackId = stackWithZValues.getStackId();
+        final StackId stackId = stackWithZValues.stackId();
         final String stack = stackId.getStack();
 
         final RenderDataClient renderDataClient = defaultDataClient.buildClient(stackId.getOwner(),
@@ -115,7 +115,7 @@ public class MFOVAsTileMontageMatchPatchClient {
                                                                           matchCollectionId.getName());
 
         int numberOfDerivedMatchPairs = 0;
-        for (final Double z :stackWithZValues.getzValues()) {
+        for (final Double z :stackWithZValues.zValues()) {
             numberOfDerivedMatchPairs += patchUnconnectedPairsForZ(stack,
                                                                    z,
                                                                    renderDataClient,

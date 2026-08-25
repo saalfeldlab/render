@@ -20,31 +20,31 @@ public class VolumeTransferInfoTest {
         final VolumeTransferInfo volumeTransferInfo = VolumeTransferInfo.fromJson(TRANSFER_INFO_JSON);
         assertNotNull(volumeTransferInfo, "json parse returned null spec");
 
-        final ScopeDataSet scopeDataSet = volumeTransferInfo.getScopeDataSet();
+        final ScopeDataSet scopeDataSet = volumeTransferInfo.scopeDataSet();
         assertNotNull(scopeDataSet, "scopeDataSet is null");
-        assertEquals(FIRST_DAT_NAME, scopeDataSet.getFirstDatName(), "invalid first_dat_name parsed");
+        assertEquals(FIRST_DAT_NAME, scopeDataSet.firstDatName(), "invalid first_dat_name parsed");
 
-        final ClusterRootPaths clusterRootPaths = volumeTransferInfo.getClusterRootPaths();
+        final ClusterRootPaths clusterRootPaths = volumeTransferInfo.clusterRootPaths();
         assertNotNull(clusterRootPaths, "clusterRootPaths is null");
         assertEquals(ALIGN_H5, clusterRootPaths.getAlignH5(), "invalid align_h5 parsed");
 
-        final Integer maxMipmapLevel = volumeTransferInfo.getMaxMipmapLevel();
+        final Integer maxMipmapLevel = volumeTransferInfo.maxMipmapLevel();
         assertNotNull(maxMipmapLevel, "maxMipmapLevel is null");
         assertEquals(MAX_MIPMAP_LEVEL, maxMipmapLevel.intValue(), "invalid maxMipmapLevel parsed");
 
-        final RenderDataSet renderDataSet = volumeTransferInfo.getRenderDataSet();
+        final RenderDataSet renderDataSet = volumeTransferInfo.renderDataSet();
         assertNotNull(renderDataSet, "renderDataSet is null");
-        assertEquals(STACK, renderDataSet.getStack(), "invalid stack parsed");
+        assertEquals(STACK, renderDataSet.stack(), "invalid stack parsed");
 
-        final Integer maskWidth = renderDataSet.getMaskWidth();
+        final Integer maskWidth = renderDataSet.maskWidth();
         assertNotNull(maskWidth, "maskWidth is null");
         assertEquals(MASK_WIDTH, maskWidth.intValue(), "invalid mask_width parsed");
 
-        final Connect connect = renderDataSet.getConnect();
+        final Connect connect = renderDataSet.connect();
         assertNotNull(connect, "connect is null");
-        assertEquals(HOST, connect.getHost(), "invalid host parsed");
+        assertEquals(HOST, connect.host(), "invalid host parsed");
 
-        final List<TransferTask> transferTasks = volumeTransferInfo.getTransferTasks();
+        final List<TransferTask> transferTasks = volumeTransferInfo.transferTasks();
         assertNotNull(transferTasks, "transfer_tasks is null");
         assertEquals(7, transferTasks.size(), "invalid number of transfer tasks parsed");
     }

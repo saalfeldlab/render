@@ -1198,7 +1198,7 @@ public class RenderDataClient {
         final List<Bounds> requestBoundsList = new ArrayList<>();
 
         final StackMetaData stackMetaData = getStackMetaData(stack);
-        final int numberOfRequestsNeeded = 1 + (int) (stackMetaData.getStats().getTileCount() / maxTilesPerRequest);
+        final int numberOfRequestsNeeded = 1 + (int) (stackMetaData.getStats().tileCount() / maxTilesPerRequest);
 
         if (numberOfRequestsNeeded > 1) {
 

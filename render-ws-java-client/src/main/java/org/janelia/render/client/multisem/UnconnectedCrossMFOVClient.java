@@ -100,7 +100,7 @@ public class UnconnectedCrossMFOVClient {
 
         LOG.info("findUnconnectedMFOVs: entry, stackWithZ={}", stackWithZ);
 
-        final StackId renderStackId = stackWithZ.getStackId();
+        final StackId renderStackId = stackWithZ.stackId();
         final MatchCollectionId matchCollectionId =
                 renderStackId.getDefaultMatchCollectionId(deriveMatchCollectionNamesFromProject);
 
@@ -113,7 +113,7 @@ public class UnconnectedCrossMFOVClient {
                 renderDataClient.getStackZToSectionIdsMap(renderStackId.getStack(),
                                                           null,
                                                           null,
-                                                          stackWithZ.getzValues());
+                                                          stackWithZ.zValues());
 
         LOG.info("findUnconnectedMFOVs: for {}, processing {} z values {}",
                  renderStackId.getStack(), zToSectionIdsMap.size(), zToSectionIdsMap.keySet().stream().sorted());

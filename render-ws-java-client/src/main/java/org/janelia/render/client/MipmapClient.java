@@ -160,13 +160,13 @@ public class MipmapClient {
                 parameters.stackIdWithZ.buildListOfStackWithBatchedZ(renderDataClient);
         for (final StackWithZValues stackWithZ : batchedList) {
             if ((previousStackWithZ != null) && ! stackWithZ.hasSameStack(previousStackWithZ)) {
-                updateMipmapPathBuilderForStack(previousStackWithZ.getStackId());
+                updateMipmapPathBuilderForStack(previousStackWithZ.stackId());
             }
-            processMipmapsForZ(stackWithZ.getStackId(), stackWithZ.getFirstZ());
+            processMipmapsForZ(stackWithZ.stackId(), stackWithZ.getFirstZ());
             previousStackWithZ = stackWithZ;
         }
         if (previousStackWithZ != null) {
-            updateMipmapPathBuilderForStack(previousStackWithZ.getStackId());
+            updateMipmapPathBuilderForStack(previousStackWithZ.stackId());
         }
     }
 

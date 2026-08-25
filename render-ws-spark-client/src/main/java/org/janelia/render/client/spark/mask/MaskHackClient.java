@@ -129,7 +129,7 @@ public class MaskHackClient
 
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
-            final StackId stackId = stackWithZ.getStackId();
+            final StackId stackId = stackWithZ.stackId();
             final RenderDataClient sourceDataClient = new RenderDataClient(baseDataUrl,
                                                                            stackId.getOwner(),
                                                                            stackId.getProject());
@@ -142,7 +142,7 @@ public class MaskHackClient
             final StackMetaData sourceMetaData = sourceDataClient.getStackMetaData(stackId.getStack());
             targetDataClient.setupDerivedStack(sourceMetaData, target.stack);
 
-            for (final Double z : stackWithZ.getzValues()) {
+            for (final Double z : stackWithZ.zValues()) {
 
                 final ResolvedTileSpecCollection resolvedTiles = sourceDataClient.getResolvedTiles(stackId.getStack(),
                                                                                                    z);

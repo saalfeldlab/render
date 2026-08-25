@@ -197,9 +197,9 @@ public class DistributedAffineBlockSolverClient
 
         final List<AffineBlockSolverSetup> setupListForLayers = new ArrayList<>();
 
-        for (final Double z : stackWithZValues.getzValues()) {
+        for (final Double z : stackWithZValues.zValues()) {
 
-           final StackWithZValues stackWithOneZ = new StackWithZValues(stackWithZValues.getStackId(), z);
+           final StackWithZValues stackWithOneZ = new StackWithZValues(stackWithZValues.stackId(), z);
 
             final AffineBlockSolverSetup setupClone =
                     setup.buildPipelineClone(multiProject.getBaseDataUrl(),

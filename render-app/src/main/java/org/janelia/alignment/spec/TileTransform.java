@@ -25,35 +25,18 @@ import java.util.List;
 import org.janelia.alignment.json.JsonUtils;
 
 /**
- * Pairing of a tile identifier and a transform spec that can be used during data import
- * to specify data to be applied to an existing tile spec.
+ * Pairing of a tile identifier and a transform spec that can be used during data import to specify data to be applied
+ * to an existing tile spec.
  *
  * @author Eric Trautman
  */
-public class TileTransform
+public record TileTransform(String tileId, TransformSpec transform)
         implements Serializable {
-
-    private final String tileId;
-    private final TransformSpec transform;
 
     // empty constructor required for JSON processing
     @SuppressWarnings("unused")
     private TileTransform() {
         this(null, null);
-    }
-
-    public TileTransform(final String tileId,
-                         final TransformSpec transform) {
-        this.tileId = tileId;
-        this.transform = transform;
-    }
-
-    public String getTileId() {
-        return tileId;
-    }
-
-    public TransformSpec getTransform() {
-        return transform;
     }
 
     public String toJson() {

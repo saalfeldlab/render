@@ -134,7 +134,7 @@ public class BoxGenerator implements Serializable {
             throw new IllegalArgumentException("missing bounds for stack " + this.stack +
                                                ", completing the stack will derive and store bounds");
         }
-        this.stackBounds = stats.getStackBounds();
+        this.stackBounds = stats.stackBounds();
     }
 
     public RenderDataClient getRenderDataClient() {

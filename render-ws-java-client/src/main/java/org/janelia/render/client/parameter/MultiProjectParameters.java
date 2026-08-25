@@ -118,12 +118,12 @@ public class MultiProjectParameters
         final RenderDataClient defaultRenderClient = getDataClient();
         final List<StackWithZValues> stackWithZValuesList = buildListOfStackWithAllZ();
         for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
-            final StackId stackId = stackWithZValues.getStackId();
+            final StackId stackId = stackWithZValues.stackId();
             final RenderDataClient dataClient = defaultRenderClient.buildClient(stackId.getOwner(),
                                                                                 stackId.getProject());
             final List<String> mFOVIdList = getSortedMFOVNamesForZValues(dataClient,
                                                                          stackId.getStack(),
-                                                                         stackWithZValues.getzValues());
+                                                                         stackWithZValues.zValues());
 
             LOG.info("buildListOfStackMFOVWithAllZ: found {} MFOVs in {}", mFOVIdList.size(), stackWithZValues);
 

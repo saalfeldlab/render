@@ -279,7 +279,7 @@ public class CopyStackClient {
 
             final StackMetaData sourceStackMetaData = fromDataClient.getStackMetaData(parameters.fromStack);
             final StackStats sourceStackStats = sourceStackMetaData.getStats();
-            final Bounds sourceStackBounds = sourceStackStats.getStackBounds();
+            final Bounds sourceStackBounds = sourceStackStats.stackBounds();
 
             final double padding = 10.0;
             if ((sourceStackBounds.getMinX() < 0) || (sourceStackBounds.getMinX() > padding) ||

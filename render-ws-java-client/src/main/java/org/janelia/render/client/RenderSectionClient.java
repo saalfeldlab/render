@@ -225,7 +225,7 @@ public class RenderSectionClient {
 
         if (clientParameters.useStackBounds) {
             final StackMetaData stackMetaData = renderDataClient.getStackMetaData(clientParameters.stack);
-            this.stackBounds = stackMetaData.getStats().getStackBounds();
+            this.stackBounds = stackMetaData.getStats().stackBounds();
         } else {
             this.stackBounds = null;
         }

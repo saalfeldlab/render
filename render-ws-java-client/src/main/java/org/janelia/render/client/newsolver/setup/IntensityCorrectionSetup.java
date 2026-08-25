@@ -75,7 +75,7 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 
 		clone.renderWeb.baseDataUrl = baseDataUrl;
 
-		final StackId sourceStackId = stackWithZValues.getStackId();
+		final StackId sourceStackId = stackWithZValues.stackId();
 		clone.renderWeb.owner = sourceStackId.getOwner();
 		clone.renderWeb.project = sourceStackId.getProject();
 		clone.intensityAdjust.stack = sourceStackId.getStack();

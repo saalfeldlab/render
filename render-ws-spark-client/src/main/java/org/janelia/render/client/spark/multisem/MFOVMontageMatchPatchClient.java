@@ -185,9 +185,9 @@ public class MFOVMontageMatchPatchClient
 
         final Function<StackWithZValues, Void> findFunction = stackWithZValues -> {
 
-            LogUtilities.setupExecutorLog4j(stackWithZValues.getStackId().toDevString());
+            LogUtilities.setupExecutorLog4j(stackWithZValues.stackId().toDevString());
 
-            final StackId stackId = stackWithZValues.getStackId();
+            final StackId stackId = stackWithZValues.stackId();
             final RenderDataClient renderDataClient =
                     new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
 
@@ -287,7 +287,7 @@ public class MFOVMontageMatchPatchClient
 
         for (final StackWithZValues stackWithZValues : stackWithAllZValuesList) {
 
-            final StackId stackId = stackWithZValues.getStackId();
+            final StackId stackId = stackWithZValues.stackId();
             final RenderDataClient stackDataClient = defaultDataClient.buildClient(stackId.getOwner(),
                                                                                    stackId.getProject());
             final StackMetaData stackMetaData = stackDataClient.getStackMetaData(stackId.getStack());

@@ -269,7 +269,7 @@ public class N5Client {
         final ThicknessCorrectionData thicknessCorrectionData =
                 parameters.zCoordsPath == null ? null : new ThicknessCorrectionData(parameters.zCoordsPath);
 
-        final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
+        final Bounds defaultBounds = stackMetaData.getStats().stackBounds();
         final Bounds boundsForRun = parameters.getBoundsForRun(defaultBounds,
                                                                thicknessCorrectionData);
 

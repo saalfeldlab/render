@@ -7,6 +7,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.jspecify.annotations.NonNull;
+
 import io.swagger.annotations.ApiModelProperty;
 
 /**
@@ -14,37 +16,30 @@ import io.swagger.annotations.ApiModelProperty;
  *
  * @author Eric Trautman
  */
-public class StackWithZValues implements Serializable {
-
-    private final StackId stackId;
-    private final List<Double> zValues;
-
-    public StackWithZValues(final StackId stackId,
-                            final List<Double> zValues) {
-        this.stackId = stackId;
-        this.zValues = zValues;
-    }
+public record StackWithZValues(StackId stackId, List<Double> zValues)
+        implements Serializable {
 
     public StackWithZValues(final StackId stackId,
                             final Double z) {
-        this.stackId = stackId;
-        this.zValues = Collections.singletonList(z);
+        this(stackId, Collections.singletonList(z));
     }
 
+    @Override
     @ApiModelProperty(value = "stack identifier")
-    public StackId getStackId() {
+    public StackId stackId() {
         return stackId;
     }
 
+    @Override
     @ApiModelProperty(
             name = "zValues",
             value = "list of z values for the stack")
-    public List<Double> getzValues() {
+    public List<Double> zValues() {
         return zValues;
     }
 
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return stackId.toDevString() + "::z" + getFirstZ() + "_to_" + getLastZ();
     }
 

@@ -305,7 +305,7 @@ public class RestartSolverClient<B extends Model< B > & Affine2D< B >> {
      */
     private List<DoubleRange> getConsistentLayerRanges(final List<Double> orderedZValues) {
         final List<DoubleRange> consistentLayerRanges = new ArrayList<>();
-        final Bounds stackBounds = sourceStackMetaData.getStats().getStackBounds();
+        final Bounds stackBounds = sourceStackMetaData.getStats().stackBounds();
         Double minZ = stackBounds.getMinZ();
         Double maxZ;
         for (int i = 1; i < orderedZValues.size(); i+=2) {

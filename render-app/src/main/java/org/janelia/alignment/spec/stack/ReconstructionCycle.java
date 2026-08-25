@@ -3,38 +3,22 @@ package org.janelia.alignment.spec.stack;
 import java.io.Serializable;
 
 import org.janelia.alignment.json.JsonUtils;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Details about a reconstruction cycle.
  *
  * @author Eric Trautman
  */
-public class ReconstructionCycle
+public record ReconstructionCycle(Integer number, Integer stepNumber)
         implements Serializable {
-
-    private final Integer number;
-    private final Integer stepNumber;
 
     public ReconstructionCycle() {
         this(null, null);
     }
 
-    public ReconstructionCycle(final Integer number,
-                               final Integer stepNumber) {
-        this.number = number;
-        this.stepNumber = stepNumber;
-    }
-
-    public Integer getNumber() {
-        return number;
-    }
-
-    public Integer getStepNumber() {
-        return stepNumber;
-    }
-
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return toJson();
     }
 
@@ -44,5 +28,4 @@ public class ReconstructionCycle
 
     private static final JsonUtils.Helper<ReconstructionCycle> JSON_HELPER =
             new JsonUtils.Helper<>(ReconstructionCycle.class);
-
 }

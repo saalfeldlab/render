@@ -888,7 +888,7 @@ public class StackMetaDataService {
             if (stats == null) {
                 errorCondition = " have not been stored.  ";
             } else {
-                bounds = stats.getStackBounds();
+                bounds = stats.stackBounds();
                 if (bounds == null) {
                     errorCondition = " have been stored without bounds.  ";
                 }

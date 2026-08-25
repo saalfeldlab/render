@@ -99,7 +99,7 @@ public class CreepCorrectionSparkClient
                              clientParameters.multiProject.getBaseDataUrl(),
                              stackWithAllZ,
                              clientParameters.creepCorrection,
-                             clientParameters.multiProject.getMatchCollectionIdForStack(stackWithAllZ.getStackId()));
+                             clientParameters.multiProject.getMatchCollectionIdForStack(stackWithAllZ.stackId()));
             }
         }
     }
@@ -128,7 +128,7 @@ public class CreepCorrectionSparkClient
                          multiProject.getBaseDataUrl(),
                          stackWithAllZ,
                          pipelineParameters.getCreepCorrection(),
-                         multiProject.getMatchCollectionIdForStack(stackWithAllZ.getStackId()));
+                         multiProject.getMatchCollectionIdForStack(stackWithAllZ.stackId()));
         }
     }
 
@@ -143,7 +143,7 @@ public class CreepCorrectionSparkClient
                              final CreepCorrectionParameters creepCorrection,
                              final MatchCollectionId matchCollectionId) throws IOException {
 
-        final StackId sourceStackId = stackWithAllZ.getStackId();
+        final StackId sourceStackId = stackWithAllZ.stackId();
         final String sourceStackDevString = sourceStackId.toDevString();
 
         LOG.info("correctCreep: entry, {} with z {} to {} and creepCorrection {}",
@@ -158,7 +158,7 @@ public class CreepCorrectionSparkClient
                                                                        sourceStackId.getOwner(),
                                                                        sourceStackId.getProject());
 
-        final List<Double> correctedZValues = creepCorrection.buildCorrectedZValues(stackWithAllZ.getzValues());
+        final List<Double> correctedZValues = creepCorrection.buildCorrectedZValues(stackWithAllZ.zValues());
         if (correctedZValues.isEmpty()) {
             throw new IllegalArgumentException("source stack does not contain any matching z values to be corrected");
         }
@@ -188,7 +188,7 @@ public class CreepCorrectionSparkClient
             allResults.put(String.valueOf(correctedZValues.get(i).doubleValue()), resultList.get(i));
         }
 
-        final List<Double> uncorrectedZValues = creepCorrection.buildUncorrectedZValues(stackWithAllZ.getzValues());
+        final List<Double> uncorrectedZValues = creepCorrection.buildUncorrectedZValues(stackWithAllZ.zValues());
         if (! uncorrectedZValues.isEmpty()) {
 
             LOG.info("correctCreep: {}, phase 1 - distributing {} z values for simple copy",
