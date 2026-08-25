@@ -19,20 +19,20 @@ public class FileResponseHandler
         extends BaseResponseHandler
         implements ResponseHandler<File> {
 
-    private File file;
+    private final File file;
 
     /**
      * @param  requestContext  context (e.g. "PUT http://janelia.org") for use in error messages.
      * @param  file            file to which response should be written.
      */
-    public FileResponseHandler(String requestContext,
-                               File file) {
+    public FileResponseHandler(final String requestContext,
+                               final File file) {
         super(requestContext);
         this.file = file;
     }
 
     @Override
-    public File handleResponse(HttpResponse response)
+    public File handleResponse(final HttpResponse response)
             throws IOException {
 
         final HttpEntity entity = getValidatedResponseEntity(response, OK);

@@ -9,8 +9,8 @@ import mpicbg.models.CoordinateTransform;
  */
 public class CurveFitterTransform implements CoordinateTransform {
 
-	private CurveFitter cf;
-	private int dimension;
+	private final CurveFitter cf;
+	private final int dimension;
 
 	public CurveFitterTransform(final CurveFitter cf, final int dimension) {
 		this.cf = cf;

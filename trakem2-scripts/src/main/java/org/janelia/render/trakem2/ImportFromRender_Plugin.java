@@ -302,7 +302,7 @@ public class ImportFromRender_Plugin
         private String renderOwner;
         private String renderProject;
         private String renderStack;
-        private Set<String> channels;
+        private final Set<String> channels;
         private double minZ;
         private double maxZ;
         private boolean splitSections;

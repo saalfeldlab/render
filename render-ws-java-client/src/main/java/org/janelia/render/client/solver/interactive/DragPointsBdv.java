@@ -9,6 +9,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.geom.Ellipse2D;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -59,7 +60,7 @@ public class DragPointsBdv extends MinimalInteractiveBdvOverlay< List< double[] 
 	}
 
 	@Override
-	public void drawOverlays(Graphics g)
+	public void drawOverlays(final Graphics g)
 	{
 		final Graphics2D graphics = ( Graphics2D ) g;
 
@@ -137,12 +138,12 @@ public class DragPointsBdv extends MinimalInteractiveBdvOverlay< List< double[] 
 
 	public class DragPointBehaviour implements DragBehaviour
 	{
-		private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
+		private final ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
 		boolean moving = false;
 		int movintPointId = -1;
 
 		@Override
-		public void init(int x, int y)
+		public void init(final int x, final int y)
 		{
 			if ( highLightedObjectId >= 0 )
 			{
@@ -152,12 +153,12 @@ public class DragPointsBdv extends MinimalInteractiveBdvOverlay< List< double[] 
 		}
 
 		@Override
-		public void drag(int x, int y)
+		public void drag(final int x, final int y)
 		{
 			if ( moving )
 			{
 				// map original location to screen
-				double[] p = points.get( movintPointId );
+				final double[] p = points.get(movintPointId );
 				viewerTransform.apply( p, p );
 
 				// update x,y and not z
@@ -172,7 +173,7 @@ public class DragPointsBdv extends MinimalInteractiveBdvOverlay< List< double[] 
 		}
 
 		@Override
-		public void end(int x, int y)
+		public void end(final int x, final int y)
 		{
 			moving = false;
 			movintPointId = -1;
@@ -180,14 +181,15 @@ public class DragPointsBdv extends MinimalInteractiveBdvOverlay< List< double[] 
 	}
 	public class AddPoint extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = 3640052275162419689L;
+		@Serial
+        private static final long serialVersionUID = 3640052275162419689L;
 
 		public AddPoint() { super( "Add point" ); }
 
-		private ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
+		private final ViewerPanel viewer = bdv.getBdvHandle().getViewerPanel();
 
 		@Override
-		public void actionPerformed(ActionEvent e)
+		public void actionPerformed(final ActionEvent e)
 		{
 			// a point is highlighted
 			if ( highLightedObjectId >= 0)
@@ -207,7 +209,7 @@ public class DragPointsBdv extends MinimalInteractiveBdvOverlay< List< double[] 
 			}
 		}
 
-		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+		public void register(final ActionMap ksActionMap, final KeyStrokeAdder ksKeyStrokeAdder ) {
 			put(ksActionMap);
 			ksKeyStrokeAdder.put(name(), "ctrl A" );
 		}
@@ -232,7 +234,7 @@ public class DragPointsBdv extends MinimalInteractiveBdvOverlay< List< double[] 
 		points.add( new double[] { 50, 20 ,30 } );
 		points.add( new double[] { 90, 90 ,90 } );
 
-		DragPointsBdv p = new DragPointsBdv( bdv, points );
+		final DragPointsBdv p = new DragPointsBdv(bdv, points );
 		points = p.getResult();
 	}
 
