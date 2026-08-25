@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.janelia.alignment.match.CanvasMatchResult;
 import org.janelia.alignment.match.CanvasMatches;
@@ -160,7 +159,7 @@ public class ErrorVisualizationClient {
     void printConnections()
             throws IllegalArgumentException, IOException {
 
-        final List<Double> zValues = zToSectionIdMap.keySet().stream().sorted().collect(Collectors.toList());
+        final List<Double> zValues = zToSectionIdMap.keySet().stream().sorted().toList();
 
         if (zValues.isEmpty()) {
             throw new IllegalArgumentException(
@@ -177,189 +176,176 @@ public class ErrorVisualizationClient {
         //final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles( parameters.stack, zValues.get( 0 ), zValues.get( zValues.size() - 1 ) + 6, null, null, null, null, null );
         
         // TODO: Loop
-        for ( int i = 0; i < zValues.size(); ++i )
-        {
-	        final double currentZ = zValues.get( i );
-	        System.out.println( "---CURRENT-Z =" + currentZ );
-	
-	        tileIdStore.add( new ArrayList<>() );
-	        loc.add( new ArrayList<>() );
-	        realLoc.add( new ArrayList<>() );
-	        avgError.add( new ArrayList<>() );
-	        maxError.add( new ArrayList<>() );
-	        maxErrorLoc.add( new ArrayList<>() );
-	
-	        // all connected pairs that contain p-tiles from layer z
-	        final List<CanvasMatches> cmatches = getMatchedPairsForLayer(currentZ);
+        for (final double currentZ : zValues) {
+            System.out.println("---CURRENT-Z =" + currentZ);
 
-	        // maps tileId to TileSpec and has transformations
-			final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTilesForZRange(parameters.stack,
-																										currentZ,
-																										currentZ+6);
-	
-	        // map tileId to CanvasMatches
-	        final Map< String, List< CanvasMatches> > matchMap = new HashMap<>();
-	
-	        for ( final CanvasMatches cm : cmatches )
-	        {
-	        	final String tileId = cm.getpId();
-	        	if ( resolvedTiles.getTileSpec( tileId ) == null )
-	        		continue;
-	
-	        	if ( matchMap.containsKey( tileId ) )
-	        	{
-	        		matchMap.get( tileId ).add( cm );
-	        	}
-	        	else
-	        	{
-	        		final List< CanvasMatches > tmp = new ArrayList<>();
-	        		tmp.add( cm );
-	        		matchMap.put( tileId, tmp );
-	        	}
-	        }
+            tileIdStore.add(new ArrayList<>());
+            loc.add(new ArrayList<>());
+            realLoc.add(new ArrayList<>());
+            avgError.add(new ArrayList<>());
+            maxError.add(new ArrayList<>());
+            maxErrorLoc.add(new ArrayList<>());
 
-	        // sort by tileId
-	        final ArrayList< String > tileIds = new ArrayList<>();
-	        tileIds.addAll( matchMap.keySet() );
-	        Collections.sort( tileIds );
-	
-	        // for each tileid do
-	        final double pGlobal[] = new double[ 2 ];
-	        final double qGlobal[] = new double[ 2 ];
-	
-	        final double pLocal[] = new double[ 2 ];
-	        final double qLocal[] = new double[ 2 ];
-	
-	        // parsed location in x and z
-	        final int[] tmpLoc = new int[ 2 ];
-	
-	        // for local fits
-	        final InterpolatedAffineModel2D< AffineModel2D, RigidModel2D > crossLayerModel = new InterpolatedAffineModel2D<>( new AffineModel2D(), new RigidModel2D(), 0.25 );
-	        final InterpolatedAffineModel2D< RigidModel2D, TranslationModel2D > montageLayerModel = new InterpolatedAffineModel2D<>( new RigidModel2D(), new TranslationModel2D(), 0.25 );
-	  
-	        for ( final String tileId : tileIds )
-	        {
-	        	getTilePositions( tileId, tmpLoc );
-	
-	        	final int xPos = tmpLoc[ 0 ];
-	        	final int zPos = tmpLoc[ 1 ];
-	
-	        	System.out.println( "\ncurrent tile: " + tileId + " [x=" + xPos + ",z=" + zPos + "]" );
-	
-	        	double avgDiff = 0;
-	        	int countDiff = 0;
-	        	double maxDiff = -1;
-	        	TileSpec maxTileSpec = null;
-	
-	        	for ( final CanvasMatches cm : matchMap.get( tileId ) )
-		        {
-			        	// could be null if some tiles were removed (resin tiles)
-			        	final TileSpec pTileSpec = resolvedTiles.getTileSpec( cm.getpId() );
-			        	final TileSpec qTileSpec = resolvedTiles.getTileSpec( cm.getqId() );
-		
-			        	if ( qTileSpec == null )
-			        		continue; //System.out.println( "non-existent tile" );
-		
-			        	System.out.println( " >>> " + qTileSpec.getTileId() );
-		
-			        	// size of tiles (apply to the center)
-			        	pGlobal[ 0 ] = pLocal[ 0 ] = pTileSpec.getWidth() / 2;
-			        	pGlobal[ 1 ] = pLocal[ 1 ] = pTileSpec.getHeight() / 2;
-		
-			        	qGlobal[ 0 ] = qLocal[ 0 ] = qTileSpec.getWidth() / 2;
-			        	qGlobal[ 1 ] = qLocal[ 1 ] = qTileSpec.getHeight() / 2;
-		
-			        	// global models (when calling it after running a solve)
-			        	//System.out.print( Util.printCoordinates( pGlobal ) + ", " + Util.printCoordinates( qGlobal ) + " >>> ");
-			        	pTileSpec.getTransformList().applyInPlace( pGlobal );
-			        	qTileSpec.getTransformList().applyInPlace( qGlobal );
-			        	//System.out.println( Util.printCoordinates( pGlobal ) + ", " + Util.printCoordinates( qGlobal ) );
-		
-			        	// the actual matches, local solve
-			        	cm.getMatches().getPList();
-			        	cm.getMatches().getQList();
-			        	final List< PointMatch > pms = CanvasMatchResult.convertMatchesToPointMatchList( cm.getMatches() );
-			        	
-			        	final InterpolatedAffineModel2D< ?,? > model;
-		
-			        	if ( pTileSpec.getZ().doubleValue() == qTileSpec.getZ().doubleValue() )
-			        		model = montageLayerModel;
-			        	else
-			        		model = crossLayerModel;
-		
-			        	try
-						{
-							model.fit( pms );
-						}
-			        	catch ( Exception e )
-						{
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-			        	model.applyInPlace( pLocal );
-			        	
-			        	// vectors
-			        	pGlobal[ 0 ] = qGlobal[ 0 ] - pGlobal[ 0 ];
-			        	pGlobal[ 1 ] = qGlobal[ 1 ] - pGlobal[ 1 ];
-		
-			        	pLocal[ 0 ] = qLocal[ 0 ] - pLocal[ 0 ];
-			        	pLocal[ 1 ] = qLocal[ 1 ] - pLocal[ 1 ];
-		
-			        	//System.out.println( "vGlobal: " + Util.printCoordinates( pGlobal ) );
-			        	//System.out.println( "vLocal: " + Util.printCoordinates( pLocal ) );
-		
-			        	final double vDiff = SolveTools.distance( pLocal[ 0 ], pLocal[ 1 ], pGlobal[ 0 ], pGlobal[ 1 ] );
-			        	//System.out.println( "diff: " + vDiff );
-		
-			        	avgDiff += vDiff;
-			        	++countDiff;
-		
-			        	if ( vDiff > maxDiff )
-			        	{
-			        		maxDiff = vDiff;
-			        		maxTileSpec = qTileSpec;
-			        	}
-		        }
-	
-	        	int maxLocX = 0;
-	        	int maxLocZ = 0;
-	
-	        	if ( countDiff > 0 )
-	        	{
-	        		avgDiff /= (double)countDiff;
-	        		getTilePositions( maxTileSpec.getTileId(), tmpLoc );
-	        		maxLocX = tmpLoc[ 0 ];
-	        		maxLocZ = tmpLoc[ 1 ];
-	        	}
-	        	else
-	        	{
-	        		//unconnected
-	        		avgDiff = 0;
-	        		maxDiff = 0;
-	        	}
-	
-	        	System.out.println( "avg_diff: " + avgDiff );
-	        	System.out.println( "max_diff: " + maxDiff + " to tile: [x=" + maxLocX + ",z=" + maxLocZ + "]" );
-	
-	        	// figure out real location of tile in x
-	        	final TileSpec tileSpec = resolvedTiles.getTileSpec( tileId );
-	        	pGlobal[ 0 ] = 0;
-	        	pGlobal[ 1 ] = tileSpec.getHeight() / 2;
-	        	tileSpec.getTransformList().applyInPlace( pGlobal );
-	        	final double xStart = pGlobal[ 0 ];
+            // all connected pairs that contain p-tiles from layer z
+            final List<CanvasMatches> cmatches = getMatchedPairsForLayer(currentZ);
 
-	        	pGlobal[ 0 ] = tileSpec.getWidth() - 1;
-	        	pGlobal[ 1 ] = tileSpec.getHeight() / 2;
-	        	tileSpec.getTransformList().applyInPlace( pGlobal );
-	        	final double xEnd = pGlobal[ 0 ];
-	        	
-	        	loc.getLast().add(new ValuePair<>(xPos, zPos ) );
-	        	realLoc.getLast().add(new ValuePair<>(xStart, xEnd ) );
-	        	tileIdStore.getLast().add(tileId );
-	        	avgError.getLast().add(avgDiff );
-	        	maxError.getLast().add(maxDiff );
-	        	maxErrorLoc.getLast().add(new ValuePair<>(maxLocX, maxLocZ ) );
-	        }
+            // maps tileId to TileSpec and has transformations
+            final ResolvedTileSpecCollection resolvedTiles =
+                    renderDataClient.getResolvedTilesForZRange(parameters.stack,
+                                                               currentZ,
+                                                               currentZ + 6);
+
+            // map tileId to CanvasMatches
+            final Map<String, List<CanvasMatches>> matchMap = new HashMap<>();
+
+            for (final CanvasMatches cm : cmatches) {
+                final String tileId = cm.getpId();
+                if (resolvedTiles.getTileSpec(tileId) == null)
+                    continue;
+
+                if (matchMap.containsKey(tileId)) {
+                    matchMap.get(tileId).add(cm);
+                } else {
+                    final List<CanvasMatches> tmp = new ArrayList<>();
+                    tmp.add(cm);
+                    matchMap.put(tileId, tmp);
+                }
+            }
+
+            // sort by tileId
+            final ArrayList<String> tileIds = new ArrayList<>(matchMap.keySet());
+            Collections.sort(tileIds);
+
+            // for each tileId do
+            final double[] pGlobal = new double[2];
+            final double[] qGlobal = new double[2];
+
+            final double[] pLocal = new double[2];
+            final double[] qLocal = new double[2];
+
+            // parsed location in x and z
+            final int[] tmpLoc = new int[2];
+
+            // for local fits
+            final InterpolatedAffineModel2D<AffineModel2D, RigidModel2D> crossLayerModel =
+                    new InterpolatedAffineModel2D<>(new AffineModel2D(), new RigidModel2D(), 0.25);
+            final InterpolatedAffineModel2D<RigidModel2D, TranslationModel2D> montageLayerModel =
+                    new InterpolatedAffineModel2D<>(new RigidModel2D(), new TranslationModel2D(), 0.25);
+
+            for (final String tileId : tileIds) {
+                getTilePositions(tileId, tmpLoc);
+
+                final int xPos = tmpLoc[0];
+                final int zPos = tmpLoc[1];
+
+                System.out.println("\ncurrent tile: " + tileId + " [x=" + xPos + ",z=" + zPos + "]");
+
+                double avgDiff = 0;
+                int countDiff = 0;
+                double maxDiff = -1;
+                TileSpec maxTileSpec = null;
+
+                for (final CanvasMatches cm : matchMap.get(tileId)) {
+                    // could be null if some tiles were removed (resin tiles)
+                    final TileSpec pTileSpec = resolvedTiles.getTileSpec(cm.getpId());
+                    final TileSpec qTileSpec = resolvedTiles.getTileSpec(cm.getqId());
+
+                    if (qTileSpec == null)
+                        continue; //System.out.println( "non-existent tile" );
+
+                    System.out.println(" >>> " + qTileSpec.getTileId());
+
+                    // size of tiles (apply to the center)
+                    pGlobal[0] = pLocal[0] = pTileSpec.getWidth() / 2;
+                    pGlobal[1] = pLocal[1] = pTileSpec.getHeight() / 2;
+
+                    qGlobal[0] = qLocal[0] = qTileSpec.getWidth() / 2;
+                    qGlobal[1] = qLocal[1] = qTileSpec.getHeight() / 2;
+
+                    // global models (when calling it after running a solve)
+                    //System.out.print( Util.printCoordinates( pGlobal ) + ", " + Util.printCoordinates( qGlobal ) + " >>> ");
+                    pTileSpec.getTransformList().applyInPlace(pGlobal);
+                    qTileSpec.getTransformList().applyInPlace(qGlobal);
+                    //System.out.println( Util.printCoordinates( pGlobal ) + ", " + Util.printCoordinates( qGlobal ) );
+
+                    // the actual matches, local solve
+                    cm.getMatches().getPList();
+                    cm.getMatches().getQList();
+                    final List<PointMatch> pms = CanvasMatchResult.convertMatchesToPointMatchList(cm.getMatches());
+
+                    final InterpolatedAffineModel2D<?, ?> model;
+
+                    if (pTileSpec.getZ().doubleValue() == qTileSpec.getZ().doubleValue())
+                        model = montageLayerModel;
+                    else
+                        model = crossLayerModel;
+
+                    try {
+                        model.fit(pms);
+                    } catch (final Exception e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                    model.applyInPlace(pLocal);
+
+                    // vectors
+                    pGlobal[0] = qGlobal[0] - pGlobal[0];
+                    pGlobal[1] = qGlobal[1] - pGlobal[1];
+
+                    pLocal[0] = qLocal[0] - pLocal[0];
+                    pLocal[1] = qLocal[1] - pLocal[1];
+
+                    //System.out.println( "vGlobal: " + Util.printCoordinates( pGlobal ) );
+                    //System.out.println( "vLocal: " + Util.printCoordinates( pLocal ) );
+
+                    final double vDiff = SolveTools.distance(pLocal[0], pLocal[1], pGlobal[0], pGlobal[1]);
+                    //System.out.println( "diff: " + vDiff );
+
+                    avgDiff += vDiff;
+                    ++countDiff;
+
+                    if (vDiff > maxDiff) {
+                        maxDiff = vDiff;
+                        maxTileSpec = qTileSpec;
+                    }
+                }
+
+                int maxLocX = 0;
+                int maxLocZ = 0;
+
+                if (countDiff > 0) {
+                    avgDiff /= countDiff;
+                    getTilePositions(maxTileSpec.getTileId(), tmpLoc);
+                    maxLocX = tmpLoc[0];
+                    maxLocZ = tmpLoc[1];
+                } else {
+                    //unconnected
+                    avgDiff = 0;
+                    maxDiff = 0;
+                }
+
+                System.out.println("avg_diff: " + avgDiff);
+                System.out.println("max_diff: " + maxDiff + " to tile: [x=" + maxLocX + ",z=" + maxLocZ + "]");
+
+                // figure out real location of tile in x
+                final TileSpec tileSpec = resolvedTiles.getTileSpec(tileId);
+                pGlobal[0] = 0;
+                pGlobal[1] = tileSpec.getHeight() / 2;
+                tileSpec.getTransformList().applyInPlace(pGlobal);
+                final double xStart = pGlobal[0];
+
+                pGlobal[0] = tileSpec.getWidth() - 1;
+                pGlobal[1] = tileSpec.getHeight() / 2;
+                tileSpec.getTransformList().applyInPlace(pGlobal);
+                final double xEnd = pGlobal[0];
+
+                loc.getLast().add(new ValuePair<>(xPos, zPos));
+                realLoc.getLast().add(new ValuePair<>(xStart, xEnd));
+                tileIdStore.getLast().add(tileId);
+                avgError.getLast().add(avgDiff);
+                maxError.getLast().add(maxDiff);
+                maxErrorLoc.getLast().add(new ValuePair<>(maxLocX, maxLocZ));
+            }
 
         }
         
@@ -398,14 +384,14 @@ public class ErrorVisualizationClient {
     		if (lineRealLoc.isEmpty())
     			continue;
 
-        	double rX0 = lineRealLoc.getFirst().getA();
-        	double rX1 = lineRealLoc.getFirst().getB();
+        	final double rX0 = lineRealLoc.getFirst().getA();
+        	final double rX1 = lineRealLoc.getFirst().getB();
 
         	realMinX = Math.min( Math.min( rX0, rX1 ), realMinX );
         	realMaxX = Math.max( Math.max( rX0, rX1 ), realMaxX );
 
-    		int x = lineLoc.getFirst().getA();
-    		int z = lineLoc.getFirst().getB();
+    		final int x = lineLoc.getFirst().getA();
+    		final int z = lineLoc.getFirst().getB();
 
     		minX = Math.min( x, minX );
     		maxX = Math.max( x, maxX );
@@ -520,8 +506,7 @@ public class ErrorVisualizationClient {
     	impLX.show();
     }
 
-    private static final void setTo( final FloatProcessor fp, final float value )
-    {
+    private static void setTo(final FloatProcessor fp, final float value) {
     	for ( int i = 0; i < fp.getPixelCount(); ++i )
     		fp.setf( i, value );
     }

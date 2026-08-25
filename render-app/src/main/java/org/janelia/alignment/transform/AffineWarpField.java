@@ -322,7 +322,7 @@ public class AffineWarpField
         for (int row = 0; row < rowCount; row++) {
             for (int column = 0; column < columnCount; column++) {
                 final int startIndex = (row * columnCount) + column;
-                final double cellValues[] = new double[VALUES_PER_AFFINE];
+                final double[] cellValues = new double[VALUES_PER_AFFINE];
                 int valuesIndex;
                 for (int i = 0; i < VALUES_PER_AFFINE; i++) {
                     valuesIndex = startIndex + (i * affineCount);
