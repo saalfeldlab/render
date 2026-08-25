@@ -128,20 +128,13 @@ public class N5SliceLoader implements ImageLoader {
                     height = (int) dimensions[1];
                 }
 
-                switch(dataType) {
-                    case UINT8:
-                        imageProcessor = UNSIGNED_BYTE_HELPER.load(reader, dataSet, width, height, xAndYOffsets, z);
-                        break;
-                    case INT16:
-                        imageProcessor = SHORT_HELPER.load(reader, dataSet, width, height, xAndYOffsets, z);
-                        break;
-                    case FLOAT32:
-                        imageProcessor = FLOAT_HELPER.load(reader, dataSet, width, height, xAndYOffsets, z);
-                        break;
-                    default:
-                        // case INT8: case INT32: case INT64: case FLOAT64: case OBJECT: case UINT16: case UINT32: case UINT64:
-                        throw new IllegalArgumentException("dataType " + dataType + " is not supported");
-                }
+                imageProcessor = switch (dataType) {
+                    case UINT8 -> UNSIGNED_BYTE_HELPER.load(reader, dataSet, width, height, xAndYOffsets, z);
+                    case INT16 -> SHORT_HELPER.load(reader, dataSet, width, height, xAndYOffsets, z);
+                    case FLOAT32 -> FLOAT_HELPER.load(reader, dataSet, width, height, xAndYOffsets, z);
+                    // This covers INT8, INT32, INT64, FLOAT64, OBJECT, UINT16, UINT32, UINT64
+                    default -> throw new IllegalArgumentException("dataType " + dataType + " is not supported");
+                };
 
             } else {
                 throw new IllegalArgumentException(

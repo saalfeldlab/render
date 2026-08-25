@@ -243,36 +243,33 @@ public class StreakCorrection_Plugin implements PlugIn {
 		}
 
 		public double addToParameter(final String parameter, final double increment) {
-			final double newValue;
-			switch (parameter) {
-				case "innerCutoff":
+			return switch (parameter) {
+				case "innerCutoff" -> {
 					innerCutoff = (int) (innerCutoff + increment);
-					newValue = innerCutoff;
-					break;
-				case "bandWidth":
+					yield innerCutoff;
+				}
+				case "bandWidth" -> {
 					bandWidth = (int) (bandWidth + increment);
-					newValue = bandWidth;
-					break;
-				case "angle":
+					yield bandWidth;
+				}
+				case "angle" -> {
 					angle += increment;
-					newValue = angle;
-					break;
-				case "gaussianBlurRadius":
+					yield angle;
+				}
+				case "gaussianBlurRadius" -> {
 					gaussianBlurRadius = (int) (gaussianBlurRadius + increment);
-					newValue = gaussianBlurRadius;
-					break;
-				case "initialThreshold":
+					yield gaussianBlurRadius;
+				}
+				case "initialThreshold" -> {
 					initialThreshold = (int) (initialThreshold + increment);
-					newValue = initialThreshold;
-					break;
-				case "finalThreshold":
+					yield initialThreshold;
+				}
+				case "finalThreshold" -> {
 					finalThreshold += increment;
-					newValue = finalThreshold;
-					break;
-				default:
-					throw new IllegalArgumentException("Unknown parameter: " + parameter);
-			}
-			return newValue;
+					yield finalThreshold;
+				}
+				default -> throw new IllegalArgumentException("Unknown parameter: " + parameter);
+			};
 		}
 
 		public String toString() {

@@ -122,20 +122,12 @@ public class WaferCrossZIntensityAdjustTest {
             final double[][] coefficients) {
         final TileSpec derivedTileSpec = tileSpec.slowClone();
         final int numPolynomialCoefficients = (coefficients == null) ? 0 : coefficients[0].length;
-        final Filter filter;
-
-        switch (numPolynomialCoefficients) {
-            case 2:
-                filter = new LinearIntensityMap8BitFilter(numCoefficients, numCoefficients, 2, coefficients);
-                break;
-
-            case 3:
-                filter = new QuadraticIntensityMap8BitFilter(numCoefficients, numCoefficients, 3, coefficients);
-                break;
-
-            default:
-                throw new IllegalArgumentException("Cannot instantiate 8bit intensity filter for " + numPolynomialCoefficients + " coefficients.");
-        }
+        final Filter filter = switch (numPolynomialCoefficients) {
+            case 2 -> new LinearIntensityMap8BitFilter(numCoefficients, numCoefficients, 2, coefficients);
+            case 3 -> new QuadraticIntensityMap8BitFilter(numCoefficients, numCoefficients, 3, coefficients);
+            default -> throw new IllegalArgumentException(
+                    "Cannot instantiate 8bit intensity filter for " + numPolynomialCoefficients + " coefficients.");
+        };
 
         final FilterSpec filterSpec = new FilterSpec(filter.getClass().getName(), filter.toParametersMap());
         derivedTileSpec.setFilterSpec(filterSpec);

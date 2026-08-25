@@ -48,28 +48,17 @@ public class HackImageUrlPathClient {
         NO_PATH_TRANSFORMATION,
         FIBSEM_CHANNEL_ONE;
         public UnaryOperator<String> getOperator() {
-            switch (this) {
-                case HAYWORTH_CREEP_CORRECTION:
-                    return new HayworthCreepCorrectionPathTransformation(false);
-                case HAYWORTH_CREEP_CORRECTION_BASELINE:
-                    return new HayworthCreepCorrectionPathTransformation(true);
-                case HAYWORTH_CONTRAST:
-                    return new HayworthContrastPathTransformation();
-                case BASIC_BACKGROUND_CORRECTION:
-                    return new BasicBackgroundCorrectionPathTransformation();
-                case SAMPLE_68_BACKGROUND_CORRECTION:
-                    return new Sample68BackgroundCorrectionPathTransformation();
-                case GOOGLE_CLOUD_TEST:
-                    return new GoogleCloudTestPathTransformation();
-                case GOOGLE_CLOUD_WAFER_60:
-                    return new GoogleCloudWafer60PathTransformation();
-                case NO_PATH_TRANSFORMATION:
-                    return new NoPathTransformation();
-                case FIBSEM_CHANNEL_ONE:
-                    return new FibsemChannelOneTransformation();
-                default:
-                    throw new IllegalArgumentException("unsupported transformation type: " + this);
-            }
+            return switch (this) {
+                case HAYWORTH_CREEP_CORRECTION -> new HayworthCreepCorrectionPathTransformation(false);
+                case HAYWORTH_CREEP_CORRECTION_BASELINE -> new HayworthCreepCorrectionPathTransformation(true);
+                case HAYWORTH_CONTRAST -> new HayworthContrastPathTransformation();
+                case BASIC_BACKGROUND_CORRECTION -> new BasicBackgroundCorrectionPathTransformation();
+                case SAMPLE_68_BACKGROUND_CORRECTION -> new Sample68BackgroundCorrectionPathTransformation();
+                case GOOGLE_CLOUD_TEST -> new GoogleCloudTestPathTransformation();
+                case GOOGLE_CLOUD_WAFER_60 -> new GoogleCloudWafer60PathTransformation();
+                case NO_PATH_TRANSFORMATION -> new NoPathTransformation();
+                case FIBSEM_CHANNEL_ONE -> new FibsemChannelOneTransformation();
+            };
         }
     }
 

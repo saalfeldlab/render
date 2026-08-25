@@ -69,7 +69,6 @@ import net.imglib2.type.numeric.real.DoubleType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.IntervalView;
 import net.imglib2.view.Views;
-import net.imglib2.view.composite.CompositeIntervalView;
 import net.imglib2.view.composite.RealComposite;
 
 /**
@@ -88,16 +87,12 @@ public class LinearIntensityMap< T extends RealType< T > >
 {
 	static public enum Interpolation{ NN, NL };
 
-	final static private < T extends RealType< T > > InterpolatorFactory< T, RandomAccessible< T > > interpolatorFactory( final Interpolation interpolation )
-	{
-		switch ( interpolation )
-		{
-		case NN:
-			return new NearestNeighborInterpolatorFactory< T >();
-		default:
-			return new NLinearInterpolatorFactory< T >();
-		}
-	}
+	static private <T extends RealType<T>> InterpolatorFactory<T, RandomAccessible<T>> interpolatorFactory(final Interpolation interpolation) {
+		return switch (interpolation) {
+			case NN -> new NearestNeighborInterpolatorFactory<T>();
+			case NL -> new NLinearInterpolatorFactory<T>();
+        };
+    }
 
 	final protected Dimensions dimensions;
 	final protected Translation translation;
