@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Extension of {@link ImageJDefaultLoader} that wraps each load in
- * a Thread that will time out after {@link #TIMEOUT_SECONDS} seconds.
+ * a virtual thread that will time out after {@link #TIMEOUT_SECONDS} seconds.
  */
 public class ImageJDefaultLoaderWithTimeout
         extends ImageJDefaultLoader {
@@ -45,8 +45,9 @@ public class ImageJDefaultLoaderWithTimeout
                                                    final int maxRetries) {
         ImagePlus imagePlus = null;
 
-        // TODO: consider using a shared Executors.newCachedThreadPool
-        final ExecutorService executor = Executors.newSingleThreadExecutor();
+        // Use virtual threads for the retry because of the minimal overhead compared to normal threads
+        //noinspection resource - close would block, so cancel the future at timeout instead
+        final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
         final Future<ImagePlus> future =
                 executor.submit(() -> super.loadImagePlus(urlString,
                                                           retryNumber,
