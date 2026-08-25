@@ -74,8 +74,7 @@ public class MatchCollectionId
         final boolean result;
         if (this == o) {
             result = true;
-        } else if (o instanceof MatchCollectionId) {
-            final MatchCollectionId that = (MatchCollectionId) o;
+        } else if (o instanceof final MatchCollectionId that) {
             result = this.owner.equals(that.owner) &&
                      this.name.equals(that.name);
         } else {

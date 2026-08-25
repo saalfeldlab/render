@@ -126,11 +126,9 @@ public class FixAutoLoaderScaleClient {
         int fixCount = 0;
 
         for (final TransformSpec transformSpec : tileData.getTransformSpecs()) {
-            if (transformSpec instanceof ListTransformSpec) {
-                final ListTransformSpec lensCorrection = (ListTransformSpec) transformSpec;
+            if (transformSpec instanceof final ListTransformSpec lensCorrection) {
                 final TransformSpec lastSpec = lensCorrection.getLastSpec();
-                if (lastSpec instanceof LeafTransformSpec) {
-                    final LeafTransformSpec oldScaleSpec = (LeafTransformSpec) lastSpec;
+                if (lastSpec instanceof final LeafTransformSpec oldScaleSpec) {
                     if (oldData.equals(oldScaleSpec.getDataString())) {
                         final LeafTransformSpec newScaleSpec = new LeafTransformSpec(oldScaleSpec.getId(),
                                                                                      null,

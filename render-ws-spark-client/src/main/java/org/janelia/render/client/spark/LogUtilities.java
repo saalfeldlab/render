@@ -39,8 +39,7 @@ public class LogUtilities {
             final Appender a = (Appender) e.nextElement();
             if (a instanceof ConsoleAppender) {
                 final Layout layout = a.getLayout();
-                if (layout instanceof PatternLayout) {
-                    final PatternLayout patternLayout = (PatternLayout) layout;
+                if (layout instanceof final PatternLayout patternLayout) {
                     final String conversionPattern = "%d{ISO8601} [%t] [%X{context}] %-5p [%c] %m%n";
                     if (! conversionPattern.equals(patternLayout.getConversionPattern())) {
                         a.setLayout(new PatternLayout(conversionPattern));

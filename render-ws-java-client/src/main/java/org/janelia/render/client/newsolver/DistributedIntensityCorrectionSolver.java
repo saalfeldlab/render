@@ -315,11 +315,9 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 	}
 
 	private static Filter checkAndMergeFilters(final Filter oldFilter, final Filter newFilter) {
-		if (oldFilter instanceof LinearIntensityMap8BitFilter
-				&& newFilter instanceof LinearIntensityMap8BitFilter) {
-			final LinearIntensityMap8BitFilter oldLinearFilter = (LinearIntensityMap8BitFilter) oldFilter;
-			final LinearIntensityMap8BitFilter newLinearFilter = (LinearIntensityMap8BitFilter) newFilter;
-			newLinearFilter.after(oldLinearFilter);
+		if (oldFilter instanceof final LinearIntensityMap8BitFilter oldLinearFilter
+			&& newFilter instanceof final LinearIntensityMap8BitFilter newLinearFilter) {
+            newLinearFilter.after(oldLinearFilter);
 			return newLinearFilter;
 		} else {
 			return new CompositeFilter(oldFilter, newFilter);

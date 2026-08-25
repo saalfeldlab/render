@@ -142,12 +142,11 @@ public class ExportToRenderUsingBasisStack_Plugin
                     final CoordinateTransform stageTransform = flattenedTransformList.get(stageTransformIndex);
                     final CoordinateTransform alignmentTransform = flattenedTransformList.get(alignmentTransformIndex);
 
-                    if (alignmentTransform instanceof AffineModel2D) {
-                        final AffineModel2D alignmentModel = (AffineModel2D) alignmentTransform;
-                        if (stageTransform instanceof TranslationModel2D) {
-                            alignmentModel.concatenate((TranslationModel2D) stageTransform);
-                        } else if (stageTransform instanceof AffineModel2D) {
-                            alignmentModel.concatenate((AffineModel2D) stageTransform);
+                    if (alignmentTransform instanceof final AffineModel2D alignmentModel) {
+                        if (stageTransform instanceof final TranslationModel2D translationModel) {
+                            alignmentModel.concatenate(translationModel);
+                        } else if (stageTransform instanceof final AffineModel2D affineModel) {
+                            alignmentModel.concatenate(affineModel);
                         } else {
                             throw new IllegalArgumentException("tile " + tileId + " stage transform class is " +
                                                                stageTransform.getClass().getName() +

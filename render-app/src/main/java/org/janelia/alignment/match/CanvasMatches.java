@@ -200,8 +200,7 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         final boolean result;
         if (this == o) {
             result = true;
-        } else if (o instanceof CanvasMatches) {
-            final CanvasMatches that = (CanvasMatches) o;
+        } else if (o instanceof final CanvasMatches that) {
             result = this.pGroupId.equals(that.pGroupId) &&
                      this.qGroupId.equals(that.qGroupId) &&
                      this.pId.equals(that.pId) &&

@@ -169,8 +169,7 @@ public class TileSpecLayout {
 
         if (tileSpec.hasTransforms()) {
             final TransformSpec lastSpec = tileSpec.getLastTransform();
-            if (lastSpec instanceof LeafTransformSpec) {
-                final LeafTransformSpec leafSpec = (LeafTransformSpec) lastSpec;
+            if (lastSpec instanceof final LeafTransformSpec leafSpec) {
                 final String[] data = WHITESPACE_PATTERN.split(leafSpec.getDataString(), -1);
                 if (data.length == 6) {
 
