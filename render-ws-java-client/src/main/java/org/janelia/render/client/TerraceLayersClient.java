@@ -104,7 +104,7 @@ public class TerraceLayersClient {
         public String roughMatchCollection;
 
         public String getTargetStack() {
-            if ((targetStack == null) || (targetStack.trim().length() == 0)) {
+            if ((targetStack == null) || (targetStack.trim().isEmpty())) {
                 targetStack = stack;
             }
             return targetStack;
@@ -147,7 +147,7 @@ public class TerraceLayersClient {
         this.sourceRenderDataClient = parameters.renderWeb.getDataClient();
 
         if ((parameters.targetProject == null) ||
-            (parameters.targetProject.trim().length() == 0) ||
+            (parameters.targetProject.trim().isEmpty()) ||
             (parameters.targetProject.equals(parameters.renderWeb.project))) {
             this.targetRenderDataClient = sourceRenderDataClient;
         } else {

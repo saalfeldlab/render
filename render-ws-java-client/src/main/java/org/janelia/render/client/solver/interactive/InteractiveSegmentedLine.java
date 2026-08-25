@@ -485,7 +485,7 @@ public class InteractiveSegmentedLine extends VisualizeSegmentedLine
 		InteractiveSegmentedLine line = new InteractiveSegmentedLine( bdv, points );
 		points = line.getResult();
 
-		if ( points != null && points.size() > 0 )
+		if ( points != null && !points.isEmpty())
 			new VisualizeSegmentedLine( bdv, points, Color.yellow, Color.yellow.darker(), null ).install();
 	}
 }

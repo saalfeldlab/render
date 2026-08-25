@@ -214,7 +214,7 @@ public class CanvasFeatureExtractor implements Serializable {
         final List<Feature> featureList = new ArrayList<>();
         ijSIFT.extractFeatures(imageProcessor, featureList);
 
-        if (featureList.size() == 0) {
+        if (featureList.isEmpty()) {
 
             final StringBuilder sb = new StringBuilder(256);
             sb.append("no features were extracted");
@@ -256,8 +256,7 @@ public class CanvasFeatureExtractor implements Serializable {
             }
         }
 
-        LOG.info("extractFeatures: exit, extracted " + featureList.size() +
-                 " features, elapsedTime=" + timer.stop() + "ms");
+        LOG.info("extractFeatures: exit, extracted {} features, elapsedTime={}ms", featureList.size(), timer.stop());
 
         return featureList;
     }

@@ -184,7 +184,7 @@ public class TranslateClustersClient {
                                     .collect(Collectors.toList()));
 
                     // once a stack with tiles for the current z is found, use that as the filter
-                    if (tileIdsToKeep.size() > 0) {
+                    if (!tileIdsToKeep.isEmpty()) {
                         filterStack = tileIdStack;
                         break;
                     }
@@ -192,7 +192,7 @@ public class TranslateClustersClient {
 
             }
 
-            if (tileIdsToKeep.size() > 0) {
+            if (!tileIdsToKeep.isEmpty()) {
                 final int numberOfTilesBeforeFilter = resolvedTiles.getTileCount();
                 resolvedTiles.retainTileSpecs(tileIdsToKeep);
                 final int numberOfTilesRemoved = numberOfTilesBeforeFilter - resolvedTiles.getTileCount();
@@ -230,7 +230,7 @@ public class TranslateClustersClient {
                                                                                 new HashSet<>(),
                                                                                 unconnectedTileIds);
 
-            if (unconnectedTileIds.size() > 0) {
+            if (!unconnectedTileIds.isEmpty()) {
                 LOG.info("translateLayerClusters: removing {} unconnected tiles from z {}",
                          unconnectedTileIds.size(), z);
                 resolvedTiles.removeTileSpecs(unconnectedTileIds);

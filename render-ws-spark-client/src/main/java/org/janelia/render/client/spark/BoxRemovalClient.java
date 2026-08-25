@@ -104,7 +104,7 @@ public class BoxRemovalClient implements Serializable {
                                                                       parameters.layerRange.minZ,
                                                                       parameters.layerRange.maxZ);
 
-        if (zValues.size() == 0) {
+        if (zValues.isEmpty()) {
             throw new IllegalArgumentException("stack does not contain any matching z values");
         }
 

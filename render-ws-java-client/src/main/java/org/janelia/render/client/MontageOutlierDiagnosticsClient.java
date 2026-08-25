@@ -177,7 +177,7 @@ public class MontageOutlierDiagnosticsClient {
 
         for (final Double z : zToOutlierPairsMap.keySet()) {
             final List<OutlierPair> pairList = zToOutlierPairsMap.get(z);
-            if (pairList.size() > 0) {
+            if (!pairList.isEmpty()) {
                 final File imageDir = FileUtil.createBatchedZDirectory(parameters.rootOutputDirectory,
                                                                        "problem_outlier_batch_",
                                                                        z);
@@ -210,7 +210,7 @@ public class MontageOutlierDiagnosticsClient {
             }
         });
 
-        if (pairList.size() > 0) {
+        if (!pairList.isEmpty()) {
 
             final String jsonFileName = String.format("problem_outlier_%s_z%06.0f.json", stackName, z);
             final Path path = Paths.get(imageDir.getAbsolutePath(), jsonFileName);
@@ -219,7 +219,7 @@ public class MontageOutlierDiagnosticsClient {
             // note: problem name is set by render call above (hack-y)
             final StringBuilder outlierPairsJson = new StringBuilder();
             pairList.stream().sorted(Comparator.comparing(p -> p.problemName)).forEach(p -> {
-                if (outlierPairsJson.length() > 0) {
+                if (!outlierPairsJson.isEmpty()) {
                     outlierPairsJson.append(",\n");
                 }
                 outlierPairsJson.append(p.toJson());

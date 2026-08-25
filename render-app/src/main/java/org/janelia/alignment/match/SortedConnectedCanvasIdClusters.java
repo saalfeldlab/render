@@ -43,7 +43,7 @@ public class SortedConnectedCanvasIdClusters
         this.sortedConnectedCanvasIdSets = new ArrayList<>();
 
         boolean needsMerge = false;
-        while (connectionsMap.size() > 0) {
+        while (!connectionsMap.isEmpty()) {
             final CanvasId canvasId = connectionsMap.keySet().stream().findFirst().get();
             final Set<CanvasId> connectedTileSet = new HashSet<>();
             final boolean isMaxRecursion = addConnectedCanvases(canvasId,
@@ -96,7 +96,7 @@ public class SortedConnectedCanvasIdClusters
 
             final Set<CanvasId> existingCluster = sortedConnectedCanvasIdSets.get(clusterIndex);
 
-            if (existingCluster.size() > 0) {
+            if (!existingCluster.isEmpty()) {
 
                 for (final Iterator<Set<CanvasId>> unmergedClusterIterator = unmergedClusters.iterator();
                      unmergedClusterIterator.hasNext(); ) {
@@ -122,7 +122,7 @@ public class SortedConnectedCanvasIdClusters
                                                                     sortedConnectedCanvasIdSets.size());
 
                         for (final Set<CanvasId> uncheckedExistingCluster : uncheckedExistingClusters) {
-                            if (uncheckedExistingCluster.size() > 0) {
+                            if (!uncheckedExistingCluster.isEmpty()) {
                                 for (final CanvasId canvasId : unmergedCluster) {
                                     if (uncheckedExistingCluster.contains(canvasId)) {
                                         existingCluster.addAll(uncheckedExistingCluster);
@@ -139,7 +139,7 @@ public class SortedConnectedCanvasIdClusters
 
         }
 
-        sortedConnectedCanvasIdSets.removeIf(s -> s.size() == 0);
+        sortedConnectedCanvasIdSets.removeIf(s -> s.isEmpty());
         
         // then add any remaining unmerged clusters
         sortedConnectedCanvasIdSets.addAll(unmergedClusters);

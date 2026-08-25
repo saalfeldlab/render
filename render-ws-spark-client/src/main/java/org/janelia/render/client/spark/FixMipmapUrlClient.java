@@ -102,7 +102,7 @@ public class FixMipmapUrlClient
         }
 
         public String getTargetStack() {
-            if ((targetStack == null) || (targetStack.trim().length() == 0)) {
+            if ((targetStack == null) || (targetStack.trim().isEmpty())) {
                 targetStack = stack;
             }
             return targetStack;
@@ -173,7 +173,7 @@ public class FixMipmapUrlClient
                                                                       parameters.layerRange.minZ,
                                                                       parameters.layerRange.maxZ);
 
-        if (zValues.size() == 0) {
+        if (zValues.isEmpty()) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 
@@ -224,7 +224,7 @@ public class FixMipmapUrlClient
 
                             if (fixImage) {
                                 imageUrl = imageAndMask.getImageUrl();
-                                if ((imageUrl != null) && (imageUrl.length() > 0)) {
+                                if ((imageUrl != null) && (!imageUrl.isEmpty())) {
                                     for (final Pattern p : replacementData.keySet()) {
                                         imageUrl = fixUrl(p, imageUrl, replacementData.get(p));
                                     }
@@ -235,7 +235,7 @@ public class FixMipmapUrlClient
 
                             if (fixMask) {
                                 maskUrl = imageAndMask.getMaskUrl();
-                                if ((maskUrl != null) && (maskUrl.length() > 0)) {
+                                if ((maskUrl != null) && (!maskUrl.isEmpty())) {
                                     for (final Pattern p : replacementData.keySet()) {
                                         maskUrl = fixUrl(p, maskUrl, replacementData.get(p));
                                     }

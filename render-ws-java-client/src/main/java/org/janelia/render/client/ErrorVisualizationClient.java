@@ -162,7 +162,7 @@ public class ErrorVisualizationClient {
 
         final List<Double> zValues = zToSectionIdMap.keySet().stream().sorted().collect(Collectors.toList());
 
-        if (zValues.size() == 0) {
+        if (zValues.isEmpty()) {
             throw new IllegalArgumentException(
                     "stack " + parameters.stack + " does not contain any layers with the specified z values");
         }
@@ -395,7 +395,7 @@ public class ErrorVisualizationClient {
         	final ArrayList< Pair< Double, Double > > lineRealLoc = realLoc.get( j );
         	final ArrayList< Pair< Integer, Integer > > lineLoc = loc.get( j );
 
-    		if ( lineRealLoc.size() == 0 )
+    		if (lineRealLoc.isEmpty())
     			continue;
 
         	double rX0 = lineRealLoc.getFirst().getA();

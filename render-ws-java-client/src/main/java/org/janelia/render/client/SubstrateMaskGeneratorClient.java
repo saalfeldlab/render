@@ -195,7 +195,7 @@ public class SubstrateMaskGeneratorClient {
         }
 
         final int zCount = parameters.zValues == null ? 0 : parameters.zValues.size();
-        if ((zCount == 0) && (tileIdList.size() == 0)) {
+        if ((zCount == 0) && (tileIdList.isEmpty())) {
             throw new IllegalArgumentException("no tiles to process, must specify --z or --tileIdJson");
         }
 
@@ -264,7 +264,7 @@ public class SubstrateMaskGeneratorClient {
 
         LOG.info("generateMasksForExplicitTiles: entry");
 
-        if ((tileIdList != null) && (tileIdList.size() > 0)) {
+        if ((tileIdList != null) && (!tileIdList.isEmpty())) {
             final List<TileSpec> tileSpecs = sourceDataClient.getTileSpecsWithIds(tileIdList, parameters.stack);
 
             final Map<Double, Set<String>> zToTileIdsMap = new HashMap<>();

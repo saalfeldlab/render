@@ -127,7 +127,7 @@ public class TransformSectionClient {
         public List<Double> zValues;
 
         public String getTargetStack() {
-            if ((targetStack == null) || (targetStack.trim().length() == 0)) {
+            if ((targetStack == null) || (targetStack.trim().isEmpty())) {
                 targetStack = stack;
             }
             return targetStack;
@@ -211,7 +211,7 @@ public class TransformSectionClient {
         this.tileSpecValidator = parameters.tileSpecValidator.getValidatorInstance();
 
         if ((parameters.targetProject == null) ||
-            (parameters.targetProject.trim().length() == 0) ||
+            (parameters.targetProject.trim().isEmpty()) ||
             (parameters.targetProject.equals(parameters.renderWeb.project))) {
             this.targetRenderDataClient = sourceRenderDataClient;
         } else {

@@ -217,7 +217,7 @@ public class SectionUpdateClient {
 
         }
 
-        if (zValues.size() == 0) {
+        if (zValues.isEmpty()) {
 
             if (parameters.flattenAllLayers) {
                 throw new IllegalArgumentException("The stack " + parameters.stack + " is already flattened.");
@@ -285,7 +285,7 @@ public class SectionUpdateClient {
                     }
                 }
 
-                if (updateTileIds.size() == 0) {
+                if (updateTileIds.isEmpty()) {
                     throw new IllegalArgumentException(
                             "no tile specs exist in stack " + stack + " within the bounding box: " +
                             "min (" + parameters.minX + ", " + parameters.minY +
@@ -302,7 +302,7 @@ public class SectionUpdateClient {
                                 .map(TileSpec::getTileId)
                                 .collect(Collectors.toSet());
 
-                if (updateTileIds.size() == 0) {
+                if (updateTileIds.isEmpty()) {
                     throw new IllegalArgumentException(
                             "no tile specs exist in stack " + stack + " with sectionId(s) " + sectionIdSet);
                 }

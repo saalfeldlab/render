@@ -97,17 +97,8 @@ public class SplitCanvasHelper {
 
             final Double z = Double.parseDouble(groupId);
 
-            Map<String, Set<String>> splitTileIdMap = zToSplitCanvasMaps.get(z);
-            if (splitTileIdMap == null) {
-                splitTileIdMap = new HashMap<>();
-                zToSplitCanvasMaps.put(z, splitTileIdMap);
-            }
-
-            Set<String> splitTileIds = splitTileIdMap.get(originalId);
-            if (splitTileIds == null) {
-                splitTileIds = new HashSet<>();
-                splitTileIdMap.put(originalId, splitTileIds);
-            }
+            final Map<String, Set<String>> splitTileIdMap = zToSplitCanvasMaps.computeIfAbsent(z, k -> new HashMap<>());
+            final Set<String> splitTileIds = splitTileIdMap.computeIfAbsent(originalId, k -> new HashSet<>());
 
             splitTileIds.add(derivedId);
             canvasCount++;

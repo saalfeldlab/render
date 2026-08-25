@@ -105,7 +105,7 @@ public class CanvasMatchResult
 
             final List<PointMatch> inlierList = getInlierPointMatchList();
 
-            if (inlierList.size() > 0) {
+            if (!inlierList.isEmpty()) {
                 final Matches inlierMatches =
                         convertPointMatchListToMatches(inlierList, renderScale, pOffsets, qOffsets);
                 list.add(new CanvasMatches(pGroupId, pId, qGroupId, qId, inlierMatches));
@@ -151,8 +151,8 @@ public class CanvasMatchResult
 
     }
 
-    public Model getAggregateModelForQualityChecks() {
-        final Model aggregateModel;
+    public Model<?> getAggregateModelForQualityChecks() {
+        final Model<?> aggregateModel;
         if (AGGREGATED_CONSENSUS_SETS.equals(matchFilter.getFilterType()) || (consensusSetInliers.size() > 1)) {
             aggregateModel = matchFilter.getModel();
         } else {
@@ -169,7 +169,7 @@ public class CanvasMatchResult
             throws IllegalArgumentException {
 
         final PointMatchQualityStats qualityStats = new PointMatchQualityStats();
-        final Model aggregateModel = getAggregateModelForQualityChecks();
+        final Model<?> aggregateModel = getAggregateModelForQualityChecks();
 
         try {
             qualityStats.calculate(pRenderParameters, pMask,

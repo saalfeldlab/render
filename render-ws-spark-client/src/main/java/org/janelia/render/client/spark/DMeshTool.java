@@ -105,7 +105,7 @@ public class DMeshTool implements Serializable {
                     LOG.info("tool returned successfully, log is:\n{}", toolLog);
                 }
 
-                if ((json != null) && (json.length() > 0)) {
+                if ((json != null) && (!json.isEmpty())) {
                     toolMatches = CanvasMatches.fromJson(json);
                 } else {
                     toolMatches = new CanvasMatches(p.getGroupId(), p.getId(),

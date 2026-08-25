@@ -299,7 +299,7 @@ public class CrossCorrelationData
                     });
         }
 
-        if (dataSets.size() < 1) {
+        if (dataSets.isEmpty()) {
             throw new IllegalArgumentException("no " + dataFileName + " files found in " + parentDirectoryPath);
         }
 

@@ -258,7 +258,7 @@ public class ImportMETClient {
 
         }
 
-        if (metSectionToDataMap.size() == 0) {
+        if (metSectionToDataMap.isEmpty()) {
             throw new IllegalArgumentException("No tile information found in MET file " + path + ".");
         }
 
@@ -367,7 +367,7 @@ public class ImportMETClient {
             }
         }
 
-        if (metSectionToDataMap.size() == 0) {
+        if (metSectionToDataMap.isEmpty()) {
             throw new IllegalArgumentException("No tile information found in MET file " + path + ".");
         }
 

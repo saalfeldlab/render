@@ -248,7 +248,7 @@ public class SplitClusterClient {
                 final List<ClusterOverlapProblem> overlapProblems =
                         ClusterOverlapProblem.findOverlapProblems(z, clusterBoundsLists);
 
-                if (overlapProblems.size() > 0) {
+                if (!overlapProblems.isEmpty()) {
                     final File imageDir = FileUtil.createBatchedZDirectory(parameters.rootOutputDirectory,
                                                                            "problem_overlap_batch_",
                                                                            z);
@@ -308,7 +308,7 @@ public class SplitClusterClient {
                     clusterBoundsList.add(tileSpec.toTileBounds());
                 }
             }
-            if (clusterBoundsList.size() > 0) {
+            if (!clusterBoundsList.isEmpty()) {
                 clusterBoundsLists.add(clusterBoundsList);
             }
         }
@@ -391,7 +391,7 @@ public class SplitClusterClient {
             }
         }
 
-        if (missingClusterSizes.size() > 0) {
+        if (!missingClusterSizes.isEmpty()) {
             LOG.info("source stack is completely missing clusters with sizes {}", missingClusterSizes);
         }
     }
@@ -409,7 +409,7 @@ public class SplitClusterClient {
         File imageDir = null;
         for (final List<TileBounds> clusterBoundsList : clusterBoundsLists) {
 
-            if ((clusterBoundsList.size() > 0) && (clusterBoundsList.size() <= parameters.renderClustersMaxCount)) {
+            if ((!clusterBoundsList.isEmpty()) && (clusterBoundsList.size() <= parameters.renderClustersMaxCount)) {
 
                 final List<Bounds> boundsList = new ArrayList<>(clusterBoundsList);
                 @SuppressWarnings("OptionalGetWithoutIsPresent")
@@ -448,7 +448,7 @@ public class SplitClusterClient {
                     LOG.error("failed to save " + imageFile, e);
                 }
 
-                if (renderedClusterJson.length() == 0) {
+                if (renderedClusterJson.isEmpty()) {
                     renderedClusterJson.append("[\n  ");
                 } else {
                     renderedClusterJson.append(",\n  ");

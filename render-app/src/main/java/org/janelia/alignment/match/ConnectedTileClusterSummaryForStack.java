@@ -117,6 +117,6 @@ public class ConnectedTileClusterSummaryForStack
             sb.append("Expected ").append(expectedUnconnectedEdgeCount).append(" unconnected edges, but found ")
                     .append(unconnectedEdgeCount).append(".  ");
         }
-        return sb.length() > 0 ? "Stack " + stackId.toDevString() + " has count errors.  " + sb : "";
+        return !sb.isEmpty() ? "Stack " + stackId.toDevString() + " has count errors.  " + sb : "";
     }
 }

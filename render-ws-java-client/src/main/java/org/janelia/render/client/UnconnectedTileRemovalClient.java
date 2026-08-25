@@ -187,7 +187,7 @@ public class UnconnectedTileRemovalClient {
                                                unconnectedTileIds);
             }
 
-            if (unconnectedTileIds.size() > 0) {
+            if (!unconnectedTileIds.isEmpty()) {
 
                 LOG.info("run: found {} unconnected tiles for z {}", unconnectedTileIds.size(), z);
 
@@ -311,7 +311,7 @@ public class UnconnectedTileRemovalClient {
                 if (clusterTileIds.size() <= maxSmallClusterSize) {
 
                     String keeperTileId = null;
-                    if (keeperTileIds.size() > 0) {
+                    if (!keeperTileIds.isEmpty()) {
                         for (final String tileId : clusterTileIds) {
                             if (keeperTileIds.contains(tileId)) {
                                 keeperTileId = tileId;

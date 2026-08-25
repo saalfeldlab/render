@@ -266,7 +266,7 @@ public class BoxClient
                 // reverse sort the list so that the last run is first
                 partitionDirectories.sort((o1, o2) -> o2.getName().compareTo(o1.getName()));
 
-                if (partitionDirectories.size() > 0) {
+                if (!partitionDirectories.isEmpty()) {
                     final File latestPartitionDirectory = partitionDirectories.getFirst();
                     LOG.info("cleanUpPriorRun: found prior run partition directory {}", latestPartitionDirectory);
                     priorRunBoxDataStringsRdd = sparkContext.textFile(latestPartitionDirectory.getAbsolutePath());
@@ -325,7 +325,7 @@ public class BoxClient
             LOG.info("cleanUpPriorRun: removed {} box images: {}", removedBoxPaths.size(), removedBoxPaths);
         }
 
-        return (removedBoxPaths.size() > 0);
+        return (!removedBoxPaths.isEmpty());
     }
 
     /**
@@ -446,7 +446,7 @@ public class BoxClient
                                 list.addAll(pyramid.getPyramidList()
                                                     .stream()
                                                     .map(boxKey -> new Tuple2<>(boxKey, boxKey))
-                                                    .collect(Collectors.toList()));
+                                                    .toList());
                             }
 
                             return list.iterator();
@@ -637,7 +637,7 @@ public class BoxClient
                         index++;
                     }
 
-                    if (renderableBoxes.size() > 0) {
+                    if (!renderableBoxes.isEmpty()) {
                         sb.setLength(sb.length() - 2);
                     }
 

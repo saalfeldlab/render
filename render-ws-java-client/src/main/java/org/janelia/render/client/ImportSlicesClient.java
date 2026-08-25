@@ -168,7 +168,7 @@ public class ImportSlicesClient {
             }
             stackTransformSpecList = null;
 
-            if (zToSlicePath.size() > 0) {
+            if (!zToSlicePath.isEmpty()) {
                 final StackVersion stackVersion = new StackVersion(new Date(),
                                                                    null,
                                                                    null,
@@ -204,7 +204,7 @@ public class ImportSlicesClient {
                                                                            modelDataString);
             stackTransformSpecList = Collections.singletonList(stackTransform);
 
-            if (zToSlicePath.size() > 0) {
+            if (!zToSlicePath.isEmpty()) {
                 renderDataClient.setupDerivedStack(basisStackMetaData, parameters.stack);
             }
 

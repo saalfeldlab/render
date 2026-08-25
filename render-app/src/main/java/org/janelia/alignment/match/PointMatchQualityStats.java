@@ -87,7 +87,7 @@ public class PointMatchQualityStats
 
         final List<PointMatch> aggregatedInliers = new ArrayList<>();
         for (final List<PointMatch> consensusSet : consensusSetInliers) {
-            if (consensusSet.size() > 0) {
+            if (!consensusSet.isEmpty()) {
                 final double[] worldDeltaXAndYStandardDeviation = getWorldDeltaXAndYStandardDeviation(consensusSet);
                 consensusSetDeltaXStandardDeviations.add(worldDeltaXAndYStandardDeviation[0] / renderScale);
                 consensusSetDeltaYStandardDeviations.add(worldDeltaXAndYStandardDeviation[1] / renderScale);

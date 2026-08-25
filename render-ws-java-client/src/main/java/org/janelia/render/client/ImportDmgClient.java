@@ -168,7 +168,7 @@ public class ImportDmgClient {
                 final List<TileBounds> sourceBoxTileBounds =
                         sourceTileBoundsRTree.findTilesInBox(minX, minY, (minX + dWidth), (minY + dHeight));
 
-                if (sourceBoxTileBounds.size() > 0) {
+                if (!sourceBoxTileBounds.isEmpty()) {
 
                     final String translateDataString = minX + " " + minY;
 

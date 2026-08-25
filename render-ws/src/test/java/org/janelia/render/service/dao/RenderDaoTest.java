@@ -243,7 +243,7 @@ public class RenderDaoTest {
         final List<Double> zValuesBeforeRemove = dao.getZValues(stackId);
         assertNotNull(zValuesBeforeRemove,
                       "zValues null for " + stackId + " before removal");
-        assertTrue(zValuesBeforeRemove.size() > 0,
+        assertTrue(!zValuesBeforeRemove.isEmpty(),
                    "zValues missing for " + stackId + " before removal");
 
         dao.removeStack(stackId, true);

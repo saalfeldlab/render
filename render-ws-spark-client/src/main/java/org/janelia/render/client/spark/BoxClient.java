@@ -102,7 +102,7 @@ public class BoxClient implements Serializable {
                                                                                        parameters.layerRange.minZ,
                                                                                        parameters.layerRange.maxZ,
                                                                                        parameters.getZValues());
-        if (sectionDataList.size() == 0) {
+        if (sectionDataList.isEmpty()) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 

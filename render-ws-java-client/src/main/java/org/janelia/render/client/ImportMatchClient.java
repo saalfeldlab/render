@@ -78,7 +78,7 @@ public class ImportMatchClient {
 
         final List<CanvasMatches> canvasMatches = loadCanvasMatches(dataFile);
 
-        if (canvasMatches.size() > 0) {
+        if (!canvasMatches.isEmpty()) {
 
 
             final ProcessTimer timer = new ProcessTimer();

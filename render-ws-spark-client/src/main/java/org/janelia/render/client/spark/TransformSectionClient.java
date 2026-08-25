@@ -84,7 +84,7 @@ public class TransformSectionClient implements Serializable {
         }
 
         public String getTargetStack() {
-            if ((targetStack == null) || (targetStack.trim().length() == 0)) {
+            if ((targetStack == null) || (targetStack.trim().isEmpty())) {
                 targetStack = stack;
             }
             return targetStack;
@@ -133,7 +133,7 @@ public class TransformSectionClient implements Serializable {
                                                                       parameters.layerRange.minZ,
                                                                       parameters.layerRange.maxZ);
 
-        if (zValues.size() == 0) {
+        if (zValues.isEmpty()) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 

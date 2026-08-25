@@ -321,7 +321,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
                         .sorted()
                         .collect(Collectors.toList()));
 
-        if (this.pGroupList.size() == 0) {
+        if (this.pGroupList.isEmpty()) {
             throw new IllegalArgumentException(
                     "stack " + parameters.stack + " does not contain any sections with the specified z values");
         }
@@ -526,7 +526,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
 
             }
 
-            if (tileIdsToRemove.size() > 0) {
+            if (!tileIdsToRemove.isEmpty()) {
                 LOG.info("removed {} unaligned tile specs from target collection", tileIdsToRemove.size());
                 resolvedTiles.removeTileSpecs(tileIdsToRemove);
             }

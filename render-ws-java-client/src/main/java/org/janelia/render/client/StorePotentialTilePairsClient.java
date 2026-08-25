@@ -94,7 +94,7 @@ public class StorePotentialTilePairsClient {
             matchesList.add(new CanvasMatches(p.getGroupId(), p.getId(), q.getGroupId(), q.getId(), emptyMatches));
         }
 
-        if (matchesList.size() > 0) {
+        if (!matchesList.isEmpty()) {
             matchStorageClient.saveMatches(matchesList);
         }
 

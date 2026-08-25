@@ -361,7 +361,7 @@ public class HeadlessZPositionCorrection {
 
                 if (layerPaths.size() > 100) {
                     LOG.warn("processing is single threaded so this might take a while");
-                } else if (layerPaths.size() == 0) {
+                } else if (layerPaths.isEmpty()) {
                     throw new IllegalArgumentException("no layer images found in " + parameters.imagePaths);
                 }
 

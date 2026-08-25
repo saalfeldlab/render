@@ -100,7 +100,7 @@ public class ImportJsonClient {
 
         final List<TileSpec> tileSpecs = loadTileData(tileFile);
 
-        if (tileSpecs.size() > 0) {
+        if (!tileSpecs.isEmpty()) {
 
             final ProcessTimer timer = new ProcessTimer();
             int tileSpecCount = 0;

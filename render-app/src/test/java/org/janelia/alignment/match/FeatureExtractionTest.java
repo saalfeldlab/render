@@ -62,7 +62,7 @@ public class FeatureExtractionTest {
     @AfterEach
     public void tearDown() {
 
-        if ((featureList != null) && (featureList.size() > 0)) {
+        if ((featureList != null) && (!featureList.isEmpty())) {
 
             final FeatureSorter sorter = new FeatureSorter();
             featureList.sort(sorter.comparator);

@@ -128,7 +128,7 @@ public class FixMaskClient {
                 .filter(path -> path.toString().endsWith(".png"))
                 .forEach(path -> fixedMaskNamesToUrls.put(path.getFileName().toString(), "file:" + path));
 
-        if (this.fixedMaskNamesToUrls.size() == 0) {
+        if (this.fixedMaskNamesToUrls.isEmpty()) {
             throw new IOException(fixedMasksDirectoryPath + " does not contain any fixed .png mask files");
         }
     }

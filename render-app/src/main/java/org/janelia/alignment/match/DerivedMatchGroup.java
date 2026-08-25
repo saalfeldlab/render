@@ -96,11 +96,7 @@ public class DerivedMatchGroup {
             } else {
                 continue;
             }
-            pairList = outsideGroupToPairs.get(outsideGroup);
-            if (pairList == null) {
-                pairList = new ArrayList<>();
-                outsideGroupToPairs.put(outsideGroup, pairList);
-            }
+            pairList = outsideGroupToPairs.computeIfAbsent(outsideGroup, k -> new ArrayList<>());
             pairList.add(pair);
             if (pairList.size() > largestOutsideGroupPairCount) {
                 largestOutsideGroupPairCount = pairList.size();

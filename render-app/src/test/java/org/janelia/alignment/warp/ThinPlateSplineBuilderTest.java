@@ -160,7 +160,7 @@ public class ThinPlateSplineBuilderTest {
 
         LOG.info(context + " maximum warp was " + maxChangePct + " percent");
 
-        assertTrue(overWarpedTileIds.size() == 0,
+        assertTrue(overWarpedTileIds.isEmpty(),
                    context + overWarpedTileIds.size() + " tiles " + overWarpedTileIds +
                    " were warped more than " + acceptableChangePct + "%");
     }

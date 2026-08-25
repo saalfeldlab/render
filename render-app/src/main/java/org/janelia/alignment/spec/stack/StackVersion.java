@@ -125,7 +125,7 @@ public class StackVersion
     }
 
     public void setStackResolutionValues(final List<Double> resolutionValues) {
-        if (resolutionValues.size() > 0) {
+        if (!resolutionValues.isEmpty()) {
             stackResolutionX = resolutionValues.get(0);
             if (resolutionValues.size() > 1) {
                 stackResolutionY = resolutionValues.get(1);
@@ -144,7 +144,7 @@ public class StackVersion
         String trimmedPath = null;
         if (materializedBoxRootPath != null) {
             trimmedPath = materializedBoxRootPath.trim();
-            if (trimmedPath.length() == 0) {
+            if (trimmedPath.isEmpty()) {
                 trimmedPath = null;
             }
         }

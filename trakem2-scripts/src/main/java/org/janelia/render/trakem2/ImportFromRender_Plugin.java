@@ -69,7 +69,7 @@ public class ImportFromRender_Plugin
             final List<Project> projectList = Project.getProjects();
 
             final boolean isNewProject = PluginArgument.NEW_PROJECT.equals(pluginArgument) ||
-                                         (projectList.size() == 0);
+                                         (projectList.isEmpty());
 
             final boolean isImportLayer = PluginArgument.IMPORT_LAYER.equals(pluginArgument);
 
@@ -255,7 +255,7 @@ public class ImportFromRender_Plugin
             Utils.log("\nWARNING: Check console window for details about tile conversion failures!\n");
         }
 
-        if (skippedMasksCsvData.length() > 0) {
+        if (!skippedMasksCsvData.isEmpty()) {
             final String storageFolder = importData.trakProject.getLoader().getStorageFolder();
             final String csvFileName = "skipped_masks_" + new Date().getTime() + ".csv";
             final Path csvPath = Paths.get(storageFolder, csvFileName);
@@ -377,7 +377,7 @@ public class ImportFromRender_Plugin
                 renderProject = dialog.getNextString();
                 renderStack =  dialog.getNextString();
                 String channelString = dialog.getNextString();
-                if (channelString != null && channelString.length() > 0) {
+                if (channelString != null && !channelString.isEmpty()) {
                     channels.add(channelString);
                 }
                 minZ = dialog.getNextNumber();
@@ -420,7 +420,7 @@ public class ImportFromRender_Plugin
                         zValues.add(sectionData.getZ());
                     }
 
-                    if (zValues.size() == 0) {
+                    if (zValues.isEmpty()) {
                         throw new IllegalArgumentException(
                                 "The " + stackId + " does not contain any layers with z values between " +
                                 minZ + " and " + maxZ);
