@@ -5,6 +5,8 @@ import com.google.common.io.CharStreams;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 
 import org.apache.log4j.Appender;
@@ -184,7 +186,7 @@ public class LogUtilities {
 
         final URL url;
         try {
-            url = new URL(apiUrl + "/api/v1/applications/" + appId + "/executors");
+            url = new URI(apiUrl + "/api/v1/applications/" + appId + "/executors").toURL();
 
             try (final BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()))) {
                 json = CharStreams.toString(in);
@@ -192,7 +194,7 @@ public class LogUtilities {
                 json = getErrorJson("failed to retrieve executors data", t);
             }
 
-        } catch (final MalformedURLException e) {
+        } catch (final URISyntaxException | MalformedURLException e) {
             json = getErrorJson("bad executors URL", e);
         }
 

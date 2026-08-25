@@ -4,6 +4,7 @@ import com.beust.jcommander.Parameter;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.net.URI;
 import java.net.URL;
 import java.util.List;
 
@@ -72,7 +73,7 @@ public class AlignmentPipelineClient
                         AlignmentPipelineParameters.fromJsonFile(clientParameters.pipelineJson,
                                                                  clientParameters.baseDataUrl);
             } else {
-                final URL jsonUrl = new URL(clientParameters.pipelineJson);
+                final URL jsonUrl = URI.create(clientParameters.pipelineJson).toURL();
                 parsedParameters = AlignmentPipelineParameters.fromJsonUrl(jsonUrl,
                                                                            clientParameters.baseDataUrl);
             }

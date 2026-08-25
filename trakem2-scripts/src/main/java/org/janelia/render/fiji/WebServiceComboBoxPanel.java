@@ -6,6 +6,7 @@ import java.awt.event.ItemListener;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.stream.Collectors;
@@ -166,7 +167,7 @@ public class WebServiceComboBoxPanel
         frame.pack();
         frame.setVisible(true);
 
-        panel.loadValues(new URL("http://renderer-dev:8080/render-ws/v1/owners"), STRING_PARSER);
+        panel.loadValues(URI.create("http://renderer-dev:8080/render-ws/v1/owners").toURL(), STRING_PARSER);
     }
 
 
