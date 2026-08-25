@@ -3,10 +3,12 @@ package org.janelia.render.client;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 import org.janelia.alignment.betterbox.BoxData;
 import org.slf4j.Logger;
@@ -67,12 +69,7 @@ public class IGridPaths {
             throws IllegalArgumentException {
 
         boxes.stream()
-                .sorted((o1, o2) -> {
-                    int result = Integer.compare(o1.getRow(), o2.getRow());
-                    if (result == 0) {
-                        result = Integer.compare(o1.getColumn(), o2.getColumn());
-                    }
-                    return result; })
+                .sorted(Comparator.comparingInt(BoxData::getRow).thenComparingInt(BoxData::getColumn))
                 .forEach(box -> addImage(box.getAbsoluteLevelFile(baseBoxPath, pathSuffix),
                                          box.getRow(),
                                          box.getColumn()));
@@ -98,14 +95,10 @@ public class IGridPaths {
         final String emptyImagePath = emptyImage.getAbsolutePath();
 
         try (final BufferedWriter writer = Files.newBufferedWriter(file.toPath(),
-                                                                   Charset.forName("US-ASCII"))){
+                                                                   StandardCharsets.US_ASCII)){
             writer.write(header);
             for (final String imagePath : pathList) {
-                if (imagePath == null) {
-                    writer.write(emptyImagePath);
-                } else {
-                    writer.write(imagePath);
-                }
+                writer.write(Objects.requireNonNullElse(imagePath, emptyImagePath));
                 writer.newLine();
             }
 
