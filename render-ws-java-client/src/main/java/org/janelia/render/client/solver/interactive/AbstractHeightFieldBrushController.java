@@ -50,24 +50,24 @@ public class AbstractHeightFieldBrushController {
 		final double sigmaScaled = sigma / scale;
 		final double varScaled = -0.5 / sigmaScaled / sigmaScaled;
 		final int radius = (int)Math.round(sigmaScaled * 3);
-		final ArrayImg<DoubleType, DoubleArray> brushMask = ArrayImgs.doubles(radius * 2 + 1);
-		final FunctionRandomAccessible<DoubleType> gauss = new FunctionRandomAccessible<DoubleType>(
-				1,
-				(l, t) -> {
-					final double x = l.getDoublePosition(0);
-					final double v = Math.exp((x * x) * varScaled);
-					t.set(v);
-				},
-				DoubleType::new);
+		final ArrayImg<DoubleType, DoubleArray> brushMask = ArrayImgs.doubles(radius * 2L + 1);
+		final FunctionRandomAccessible<DoubleType> gauss = new FunctionRandomAccessible<>(
+                1,
+                (l, t) -> {
+                    final double x = l.getDoublePosition(0);
+                    final double v = Math.exp((x * x) * varScaled);
+                    t.set(v);
+                },
+                DoubleType::new);
 
 		copy(gauss, Views.translate(brushMask, -radius));
 
 		return brushMask;
 	}
 
-	public static final <T extends Type<T>> void copy(
-			final RandomAccessible<? extends T> source,
-			final RandomAccessibleInterval<T> target) {
+	public static <T extends Type<T>> void copy(
+            final RandomAccessible<? extends T> source,
+            final RandomAccessibleInterval<T> target) {
 
 		Views.flatIterable(Views.interval(Views.pair(source, target), target)).forEach(
 				pair -> pair.getB().set(pair.getA()));

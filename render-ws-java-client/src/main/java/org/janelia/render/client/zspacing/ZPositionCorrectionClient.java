@@ -465,7 +465,7 @@ public class ZPositionCorrectionClient {
             final Path layerThicknessPath = Paths.get(runDirectory.getAbsolutePath(), "Zthick.txt");
             if (stackResolutionValues.size() > 2) {
                 final String zResolutionString = stackResolutionValues.get(2) + " nm/section\n";
-                Files.write(layerThicknessPath, zResolutionString.getBytes(StandardCharsets.UTF_8));
+                Files.writeString(layerThicknessPath, zResolutionString);
                 LOG.info("saveRunFiles: wrote {}", layerThicknessPath);
             } else {
                 LOG.warn("saveRunFiles: stack resolution values are not defined, skipping creation of {}",

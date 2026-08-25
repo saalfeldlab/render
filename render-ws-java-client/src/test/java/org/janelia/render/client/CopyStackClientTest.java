@@ -49,7 +49,7 @@ public class CopyStackClientTest {
                          { "cellIds": [ "1,0", "2,0" ], "minZ": 3501, "maxZ": 4608 }
                         ]""";
 
-        Files.write(testJsonFile.toPath(), json.getBytes(StandardCharsets.UTF_8));
+        Files.writeString(testJsonFile.toPath(), json);
 
         final CopyStackClient.Parameters p = new CopyStackClient.Parameters();
         p.parse(new String[]{
