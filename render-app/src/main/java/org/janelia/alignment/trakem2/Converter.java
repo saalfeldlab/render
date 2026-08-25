@@ -57,10 +57,10 @@ public class Converter {
             final String rawProjectPath = args[1];
             final File jsonFile = new File(args[2]);
             if (args.length > 3) {
-                validateConvertedTileSpecs = Boolean.valueOf(args[3]);
+                validateConvertedTileSpecs = Boolean.parseBoolean(args[3]);
             }
             if (args.length >4) {
-            	useTitleForTileId = Boolean.valueOf(args[4]);
+            	useTitleForTileId = Boolean.parseBoolean(args[4]);
             }
 
             Converter.xmlToJson(xmlFile, rawProjectPath, jsonFile, validateConvertedTileSpecs,useTitleForTileId);
@@ -99,31 +99,13 @@ public class Converter {
                                  final File jsonFile,
                                  final boolean validateConvertedTileSpecs,
                                  final boolean useTitleForTileId) {
-        FileInputStream trakEm2XmlStream = null;
-        FileOutputStream jsonStream = null;
-        try {
-            trakEm2XmlStream = new FileInputStream(trakEM2XmlFile);
-            jsonStream = new FileOutputStream(jsonFile);
-            LOG.info("xmlToJson: reading TrakEM2 XML from " + trakEM2XmlFile.getAbsolutePath());
+        try (final FileInputStream trakEm2XmlStream = new FileInputStream(trakEM2XmlFile);
+             final FileOutputStream jsonStream = new FileOutputStream(jsonFile)) {
+            LOG.info("xmlToJson: reading TrakEM2 XML from {}", trakEM2XmlFile.getAbsolutePath());
             Converter.xmlToJson(trakEm2XmlStream, projectPath, jsonStream, validateConvertedTileSpecs, useTitleForTileId);
-            LOG.info("xmlToJson: wrote JSON to " + jsonFile.getAbsolutePath());
+            LOG.info("xmlToJson: wrote JSON to {}", jsonFile.getAbsolutePath());
         } catch (final Throwable t) {
-            LOG.error("failed to convert " + trakEM2XmlFile.getAbsolutePath(), t);
-        } finally {
-            if (trakEm2XmlStream != null) {
-                try {
-                    trakEm2XmlStream.close();
-                } catch (final IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            if (jsonStream != null) {
-                try {
-                    jsonStream.close();
-                } catch (final IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            LOG.error("failed to convert {}", trakEM2XmlFile.getAbsolutePath(), t);
         }
     }
 
@@ -169,39 +151,29 @@ public class Converter {
         final Unmarshaller unmarshaller = ctx.createUnmarshaller();
 
         // patch notification callback
-        final T2Layer.Listener patchListener = new T2Layer.Listener() {
+        final T2Layer.Listener patchListener = (baseMaskPath, layer, patch, isFirstPatch) -> {
 
-            @Override
-            public void handlePatch(final String baseMaskPath,
-                                    final T2Layer layer,
-                                    final T2Patch patch,
-                                    final boolean isFirstPatch) {
+            final StringBuilder json = new StringBuilder(16 * 1024);
+            if (! isFirstPatch) {
+                json.append(",\n");
+            }
 
-                final StringBuilder json = new StringBuilder(16 * 1024);
-                if (! isFirstPatch) {
-                    json.append(",\n");
-                }
+            final TileSpec tileSpec = patch.getTileSpec(projectPath, baseMaskPath, layer.z,useTitleForTileId);
+            if (validateConvertedTileSpecs) {
+                tileSpec.validate();
+            }
 
-                final TileSpec tileSpec = patch.getTileSpec(projectPath, baseMaskPath, layer.z,useTitleForTileId);
-                if (validateConvertedTileSpecs) {
-                    tileSpec.validate();
-                }
+            json.append(tileSpec.toJson());
 
-                json.append(tileSpec.toJson());
-
-                try {
-                    jsonStream.write(json.toString().getBytes());
-                } catch (final IOException e) {
-                    throw new RuntimeException("failed to write to JSON stream", e);
-                }
+            try {
+                jsonStream.write(json.toString().getBytes());
+            } catch (final IOException e) {
+                throw new RuntimeException("failed to write to JSON stream", e);
             }
         };
 
         // install the callback on all patch instances
         unmarshaller.setListener(new Unmarshaller.Listener() {
-
-            private final int patchBatchSize = 200;
-            private final int layerBatchSize = 10;
 
             private String baseMaskPath = "";
             private long layerSetStartTime;
@@ -241,6 +213,7 @@ public class Converter {
 
                 if (target instanceof T2Patch) {
 
+                    final int patchBatchSize = 200;
                     if (layerPatchCount % patchBatchSize == 0) {
                         logStats("Patch", layerStartTime, layerPatchCount, false);
                     }
@@ -248,6 +221,7 @@ public class Converter {
                 } else if (target instanceof final T2Layer layer) {
 
                     layer.removePatchListener();
+                    final int layerBatchSize = 10;
                     if ((layerCount == 1) || (layerCount % layerBatchSize == 0)) {
                         logStats("Layer", layerStartTime, layerPatchCount, false);
                     }
@@ -508,7 +482,7 @@ public class Converter {
         public void addPatchListener(final Listener l,
                                      final String baseMaskPath,
                                      final boolean isFirstLayer) {
-            patches = new ArrayList<T2Patch>() {
+            patches = new ArrayList<>() {
                 @Override
                 public boolean add(final T2Patch patch) {
                     if (patch.isVisible) {

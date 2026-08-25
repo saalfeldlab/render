@@ -38,7 +38,7 @@ public class ImageAndMaskTest {
     })
     public void testValidateWithInvalidImage(final String imageUrl) {
         final ImageAndMask imageAndMask = new ImageAndMask(imageUrl, null);
-        assertThrows(IllegalArgumentException.class, () -> imageAndMask.validate());
+        assertThrows(IllegalArgumentException.class, imageAndMask::validate);
     }
 
 }

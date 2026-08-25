@@ -38,19 +38,19 @@ public class TileSpecTest {
 
         final Map.Entry<Integer, ImageAndMask> firstMipMap = tileSpec.getFirstMipmapEntry();
         assertNotNull(firstMipMap, "first mipmap entry is null");
-        assertEquals(new Integer(0), firstMipMap.getKey(),
+        assertEquals(Integer.valueOf(0), firstMipMap.getKey(),
                      "mipmap sorting failed, unexpected first entry returned");
 
         final ChannelSpec channelSpec = tileSpec.getAllChannels().getFirst();
 
         Map.Entry<Integer, ImageAndMask> floorMipMap = channelSpec.getFloorMipmapEntry(3);
         assertNotNull(floorMipMap, "floor 3 mipmap entry is null");
-        assertEquals(new Integer(3), floorMipMap.getKey(),
+        assertEquals(Integer.valueOf(3), floorMipMap.getKey(),
                      "invalid key for floor 3 mipmap entry");
 
         floorMipMap = channelSpec.getFloorMipmapEntry(4);
         assertNotNull(floorMipMap, "floor 4 mipmap entry is null");
-        assertEquals(new Integer(3), floorMipMap.getKey(),
+        assertEquals(Integer.valueOf(3), floorMipMap.getKey(),
                      "invalid key for floor 3 mipmap entry");
 
         final FilterSpec filterSpec = channelSpec.getFilterSpec();
@@ -120,7 +120,7 @@ public class TileSpecTest {
 
         assertNotNull(tileSpec, "json parse returned null spec");
         assertEquals(EXPECTED_WIDTH, tileSpec.getWidth(), "invalid width parsed");
-        assertThrows(IllegalArgumentException.class, () -> tileSpec.validate());
+        assertThrows(IllegalArgumentException.class, tileSpec::validate);
     }
 
     @Test

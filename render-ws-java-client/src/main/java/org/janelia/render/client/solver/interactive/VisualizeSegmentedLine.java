@@ -60,7 +60,7 @@ public class VisualizeSegmentedLine extends MinimalBdvOverlay
 	}
 
 	@Override
-	public void drawOverlays(Graphics g)
+	public void drawOverlays(final Graphics g)
 	{
 		final Graphics2D graphics = ( Graphics2D ) g;
 
@@ -91,7 +91,7 @@ public class VisualizeSegmentedLine extends MinimalBdvOverlay
 			{
 				final MonotoneCubicSpline spline =
 						MonotoneCubicSpline.createMonotoneCubicSpline(
-								points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
+								points.stream().map(RealPoint::new).collect(Collectors.toList() ) );
 	
 				final RealPoint p0 = new RealPoint( points.getFirst().length );
 				final RealPoint p1 = new RealPoint( points.getFirst().length );
@@ -129,10 +129,10 @@ public class VisualizeSegmentedLine extends MinimalBdvOverlay
 		drawPoints( graphics );
 	}
 
-	protected void drawPoints( final Graphics2D graphics )
-	{
-		for ( int i = 0; i < transformedPoints.size(); ++i )
-			drawPoint( graphics, transformedPoints.get( i ), false );		
+	protected void drawPoints(final Graphics2D graphics) {
+		for (final double[] transformedPoint : transformedPoints) {
+			drawPoint(graphics, transformedPoint, false);
+		}
 	}
 
 	protected void drawPoint( final Graphics2D graphics, final double[] p, final boolean isHighlighted )
@@ -219,7 +219,7 @@ public class VisualizeSegmentedLine extends MinimalBdvOverlay
 		points.add( new double[] { 50, 20 ,30 } );
 		points.add( new double[] { 90, 90 ,90 } );
 
-		VisualizeSegmentedLine line = new VisualizeSegmentedLine( bdv, points, Color.yellow, Color.yellow.darker(), null );
+		final VisualizeSegmentedLine line = new VisualizeSegmentedLine(bdv, points, Color.yellow, Color.yellow.darker(), null );
 		line.install();
 
 		/*

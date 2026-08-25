@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -75,7 +76,7 @@ public class MultiSemPreAligner<M extends Model<M> & Affine2D<M>> implements Ser
 		final Map<String, String> tileIdToMFovLayer = rtsc.getTileSpecs().stream()
 				.map(TileSpec::getTileId)
 				.collect(Collectors.toMap(
-						tileId -> tileId,
+                        Function.identity(),
 						MultiSemPreAligner::extractMFovLayerId
 				));
 		final Map<String, Tile<M>> mFovLayerToTile = initializeAndConnectTiles(rtsc, tileIdToMFovLayer, canvasMatches);

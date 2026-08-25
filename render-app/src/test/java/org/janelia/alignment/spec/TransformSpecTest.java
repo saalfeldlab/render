@@ -34,7 +34,7 @@ public class TransformSpecTest {
     private ListTransformSpec list6;
 
     @BeforeEach
-    public void setUp() throws Exception {
+    public void setUp() {
         final TransformSpecMetaData lcMetaData = new TransformSpecMetaData();
         lcMetaData.addLabel(lensLabel);
 
@@ -74,7 +74,7 @@ public class TransformSpecTest {
     }
 
     @Test
-    public void testJsonProcessing() throws Exception {
+    public void testJsonProcessing() {
 
         final String json = list6.toJson();
         assertNotNull(json, "json generation returned null string");
@@ -109,7 +109,7 @@ public class TransformSpecTest {
     }
 
     @Test
-    public void testResolveReferencesAndFlatten() throws Exception {
+    public void testResolveReferencesAndFlatten() {
 
         validateUnresolvedSize("before resolution", list6, 2);
 
@@ -177,7 +177,7 @@ public class TransformSpecTest {
     }
 
     @Test
-    public void testGetNewInstance() throws Exception {
+    public void testGetNewInstance() {
 
         leaf1.validate();
 
@@ -192,15 +192,15 @@ public class TransformSpecTest {
     }
 
     @Test
-    public void testValidateWithUnknownClass() throws Exception {
+    public void testValidateWithUnknownClass() {
         final LeafTransformSpec spec = new LeafTransformSpec("bad-class", "1 0 0 1 0 0");
-        assertThrows(IllegalArgumentException.class, () -> spec.validate());
+        assertThrows(IllegalArgumentException.class, spec::validate);
     }
 
     @Test
-    public void testValidateWithNonTransformClass() throws Exception {
+    public void testValidateWithNonTransformClass() {
         final LeafTransformSpec spec = new LeafTransformSpec(this.getClass().getName(), "1 0 0 1 0 0");
-        assertThrows(IllegalArgumentException.class, () -> spec.validate());
+        assertThrows(IllegalArgumentException.class, spec::validate);
     }
 
     private void validateUnresolvedSize(final String context,

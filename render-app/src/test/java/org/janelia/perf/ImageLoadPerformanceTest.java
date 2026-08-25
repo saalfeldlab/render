@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * </p>
  *
  * <p>
- * Initial results from Mac OS 10.7.5 with SSD file system:
+ * Initial results from macOS 10.7.5 with SSD file system:
  * </p>
  *
  * <pre>
@@ -59,18 +59,18 @@ public class ImageLoadPerformanceTest {
     private boolean enableTests;
     private int numberOfTimesToRepeatEachTest;
 
-    private String[] formats = { "jpg", "pgm", "png", "tif" };
+    private final String[] formats = {"jpg", "pgm", "png", "tif" };
 
     private PerformanceTestData.TestResults<TestData> testResults;
     private List<TestData> testDataList;
 
-    public static void main(String[] args) {
-        ImageLoadPerformanceTest test = new ImageLoadPerformanceTest();
+    public static void main(final String[] args) {
+        final ImageLoadPerformanceTest test = new ImageLoadPerformanceTest();
         try {
             test.setup();
             test.enableTests = true;
             test.runTests();
-        } catch (Throwable t) {
+        } catch (final Throwable t) {
             t.printStackTrace();
         }
     }
@@ -83,22 +83,22 @@ public class ImageLoadPerformanceTest {
 
         // the first usage of ImagePlus sometimes incurs a significant performance penalty,
         // so open a different file for each format here before starting the tests
-        for (String format : formats) {
+        for (final String format : formats) {
             Utils.openImagePlus("src/test/resources/perf-test/image-plus-start/start." + format);
         }
     }
 
     @Test
-    public void runTests() throws Exception {
+    public void runTests() {
         if (enableTests) {
-            for (TestData testData : testDataList) {
+            for (final TestData testData : testDataList) {
                 runTest(testData);
             }
             testResults.collateAndPrintTimes(testDataList);
         }
     }
 
-    private void runTest(TestData testData) {
+    private void runTest(final TestData testData) {
 
         // *** Start Clock ***
         testData.setStartTime();
@@ -114,14 +114,14 @@ public class ImageLoadPerformanceTest {
 
     private void createAndOrderTests() {
 
-        testDataList = new ArrayList<TestData>();
+        testDataList = new ArrayList<>();
 
         final String baseImagePath = "src/test/resources/perf-test/mipmaps/";
 
         File file;
         for (int testNumber = 0; testNumber < numberOfTimesToRepeatEachTest; testNumber++) {
             for (int level = 1; level < 4; level++) {
-                for (String format : formats) {
+                for (final String format : formats) {
                     final String fileName = "/col0060_row0140_cam0.tif_level_" + level + "_mipmap." + format;
                     file = new File(baseImagePath + format + fileName);
                     testDataList.add(new TestData(file, format, level, String.valueOf(testNumber)));
@@ -129,30 +129,30 @@ public class ImageLoadPerformanceTest {
             }
         }
 
-        testResults = new PerformanceTestData.TestResults<TestData>() {
+        testResults = new PerformanceTestData.TestResults<>() {
 
             @Override
-            public TestData getAverageInstance(TestData groupInstance,
-                                               long averageElapsedTime,
-                                               int numberOfTests) {
+            public TestData getAverageInstance(final TestData groupInstance,
+                                               final long averageElapsedTime,
+                                               final int numberOfTests) {
 
-                TestData averageInstance = new TestData(groupInstance.file,
-                                                        groupInstance.format,
-                                                        groupInstance.level,
+                final TestData averageInstance = new TestData(groupInstance.file,
+                                                              groupInstance.format,
+                                                              groupInstance.level,
                                                         "avg(" + numberOfTests + ")");
                 averageInstance.setElapsedTime(averageElapsedTime);
                 return averageInstance;
             }
 
             @Override
-            public String getReportHeader(String reportName) {
+            public String getReportHeader(final String reportName) {
                 final String headerFormat = "%5s  %6s  %11s  %-7s  %11s";
                 return String.format(headerFormat, "level", "format", "file length", "test   ", "elapsedTime") + "\n" +
                        String.format(headerFormat, "-----", "------", "-----------", "-------", "-----------");
             }
 
             @Override
-            public String formatTestResult(TestData result) {
+            public String formatTestResult(final TestData result) {
                 return String.format("%5d  %6s  %11d  %-7s  %11d",
                                      result.level,
                                      result.format,
@@ -163,47 +163,43 @@ public class ImageLoadPerformanceTest {
 
             @Override
             public Map<String, Comparator<TestData>> getReportNameToComparatorMap() {
-                Map<String, Comparator<TestData>> map =
-                        new LinkedHashMap<String, Comparator<TestData>>();
+                final Map<String, Comparator<TestData>> map =
+                        new LinkedHashMap<>();
                 map.put("Level::Threads Results", levelTimeComparator);
                 return map;
             }
 
             private final Comparator<TestData> levelTimeComparator =
-                    new Comparator<TestData>() {
-                        @Override
-                        public int compare(TestData o1,
-                                           TestData o2) {
-                            int result = o1.level - o2.level;
+                    (o1, o2) -> {
+                        int result = o1.level - o2.level;
+                        if (result == 0) {
+                            result = (int) (o1.getElapsedTime() - o2.getElapsedTime());
                             if (result == 0) {
-                                result = (int) (o1.getElapsedTime() - o2.getElapsedTime());
+                                result = (int) (o1.file.length() - o2.file.length());
                                 if (result == 0) {
-                                    result = (int) (o1.file.length() - o2.file.length());
+                                    result = o1.format.compareTo(o2.format);
                                     if (result == 0) {
-                                        result = o1.format.compareTo(o2.format);
-                                        if (result == 0) {
-                                            result = o1.test.compareTo(o2.test);
-                                        }
+                                        result = o1.test.compareTo(o2.test);
                                     }
                                 }
                             }
-                            return result;
                         }
+                        return result;
                     };
         };
     }
 
-    public class TestData extends PerformanceTestData {
+    public static class TestData extends PerformanceTestData {
 
-        private File file;
-        private String format;
-        private int level;
-        private String test;
+        private final File file;
+        private final String format;
+        private final int level;
+        private final String test;
 
-        public TestData(File file,
-                        String format,
-                        int level,
-                        String test) {
+        public TestData(final File file,
+                        final String format,
+                        final int level,
+                        final String test) {
             if (! file.exists()) {
                 throw new IllegalArgumentException(file.getAbsolutePath() + " not found");
             }

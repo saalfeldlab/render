@@ -39,20 +39,20 @@ import net.imglib2.util.ValuePair;
 
 public class Unbend
 {
-	protected static void updatePoints( List< double[] > points, final double[] avg )
+	protected static void updatePoints(final List<double[]> points, final double[] avg)
 	{
 		// spline goes through the points, applying the transformation is equal to setting it to the average
-		for ( final double p[] : points )
+		for ( final double[] p : points )
 		{
 			p[ 0 ] = avg[ 0 ];
 			p[ 1 ] = avg[ 1 ];
 		}
 	}
 
-	protected static ArrayList<Pair<Integer, double[]>> centerTranslations( ArrayList<Pair<Integer, double[]>> positions, double[] avg )
+	protected static ArrayList<Pair<Integer, double[]>> centerTranslations(final ArrayList<Pair<Integer, double[]>> positions, final double[] avg)
 	{
-		RealSum x = new RealSum( positions.size() );
-		RealSum y = new RealSum( positions.size() );
+		final RealSum x = new RealSum();
+		final RealSum y = new RealSum();
 
 		positions.forEach( p -> {
 			x.add( p.getB()[ 0 ]);
@@ -100,11 +100,11 @@ public class Unbend
 		System.out.println( "slices from " + minZ + " > " + maxZ );
 
 		if ( minZ < minPointZ || maxZ > maxPointZ )
-			throw new RuntimeException( "Z range not entirely convered. Stoping." );
+			throw new RuntimeException( "Z range not entirely converged. Stoping." );
 
 		final MonotoneCubicSpline spline =
 				MonotoneCubicSpline.createMonotoneCubicSpline(
-						points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
+						points.stream().map(RealPoint::new).collect(Collectors.toList()));
 
 		final ArrayList<Pair<Integer, double[]>> positions = new ArrayList<>();
 		final RealPoint p = new RealPoint( points.getFirst().length );
@@ -145,7 +145,7 @@ public class Unbend
 		return x;
 	}
 
-	protected static double gradientAt( final MonotoneCubicSpline spline, double x, final RealPoint p )
+	protected static double gradientAt(final MonotoneCubicSpline spline, final double x, final RealPoint p )
 	{
 		spline.interpolate( x, p );
 		final double z0 = p.getDoublePosition( 2 );
@@ -273,15 +273,15 @@ public class Unbend
 		points.add( new double[] {18069.563192165682, 4781.255819355375, 12703.129389095324});
 		*/
 
-		BdvStackSource<?> bdv = RenderTools.renderMultiRes(
+		final BdvStackSource<?> bdv = RenderTools.renderMultiRes(
 				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads,
 				unbending, caches );
 		bdv.setDisplayRange( 0, 256 );
 
-		InteractiveSegmentedLine line = new InteractiveSegmentedLine( bdv, points );
+		final InteractiveSegmentedLine line = new InteractiveSegmentedLine(bdv, points );
 		points = line.getResult();
 
-		if ( points != null && points.size() > 0 )
+		if ( points != null && !points.isEmpty())
 		{
 			for ( final double[] p : points )
 				System.out.println( Util.printCoordinates( p ) );
@@ -294,7 +294,7 @@ public class Unbend
 
 		unbending.setTranslations( centerTranslations( positions, avg ));
 
-		caches.forEach( c -> c.invalidateAll() );
+		caches.forEach(Invalidate::invalidateAll);
 		updatePoints( points, avg );
 		bdv.getBdvHandle().getViewerPanel().requestRepaint();
 
