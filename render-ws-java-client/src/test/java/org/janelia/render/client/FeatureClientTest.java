@@ -40,29 +40,29 @@ public class FeatureClientTest {
 
         final Path pairsPath = Paths.get(rootDirectory, "pairs.json");
 
-        final String json =
-                "{\n" +
-                "  \"renderParametersUrlTemplate\" : \"{baseDataUrl}/owner/flyTEM/project/trautmane_test/stack/rough_tiles/tile/{id}/render-parameters\",\n" +
-                "  \"neighborPairs\" : [ {\n" +
-                "    \"p\" : {\n" +
-                "      \"groupId\" : \"2.0\",\n" +
-                "      \"id\" : \"151215054132012010.2.0\"\n" +
-                "    },\n" +
-                "    \"q\" : {\n" +
-                "      \"groupId\" : \"3.0\",\n" +
-                "      \"id\" : \"151215054802011011.3.0\"\n" +
-                "    }\n" +
-                "  }, {\n" +
-                "    \"p\" : {\n" +
-                "      \"groupId\" : \"2.0\",\n" +
-                "      \"id\" : \"151215054132012010.2.0\"\n" +
-                "    },\n" +
-                "    \"q\" : {\n" +
-                "      \"groupId\" : \"3.0\",\n" +
-                "      \"id\" : \"151215054802012010.3.0\"\n" +
-                "    }\n" +
-                "  } ]\n" +
-                "}";
+        final String json = """
+                        {
+                          "renderParametersUrlTemplate" : "{baseDataUrl}/owner/flyTEM/project/trautmane_test/stack/rough_tiles/tile/{id}/render-parameters",
+                          "neighborPairs" : [ {
+                            "p" : {
+                              "groupId" : "2.0",
+                              "id" : "151215054132012010.2.0"
+                            },
+                            "q" : {
+                              "groupId" : "3.0",
+                              "id" : "151215054802011011.3.0"
+                            }
+                          }, {
+                            "p" : {
+                              "groupId" : "2.0",
+                              "id" : "151215054132012010.2.0"
+                            },
+                            "q" : {
+                              "groupId" : "3.0",
+                              "id" : "151215054802012010.3.0"
+                            }
+                          } ]
+                        }""";
 
         Files.write(pairsPath, json.getBytes());
 
@@ -81,33 +81,33 @@ public class FeatureClientTest {
 
         final Path pairsPath = Paths.get(rootDirectory, "pairs_clip.json");
 
-        final String json =
-                "{\n" +
-                "  \"renderParametersUrlTemplate\" : \"{baseDataUrl}/owner/flyTEM/project/trautmane_test/stack/rough_tiles/tile/{id}/render-parameters\",\n" +
-                "  \"neighborPairs\" : [ {\n" +
-                "    \"p\" : {\n" +
-                "      \"groupId\" : \"2.0\",\n" +
-                "      \"id\" : \"151215054132012010.2.0\",\n" +
-                "      \"relativePosition\" : \"LEFT\"\n" +
-                "    },\n" +
-                "    \"q\" : {\n" +
-                "      \"groupId\" : \"3.0\",\n" +
-                "      \"id\" : \"151215054802011011.3.0\",\n" +
-                "      \"relativePosition\" : \"RIGHT\"\n" +
-                "    }\n" +
-                "  }, {\n" +
-                "    \"p\" : {\n" +
-                "      \"groupId\" : \"2.0\",\n" +
-                "      \"id\" : \"151215054132012010.2.0\",\n" +
-                "      \"relativePosition\" : \"LEFT\"\n" +
-                "    },\n" +
-                "    \"q\" : {\n" +
-                "      \"groupId\" : \"3.0\",\n" +
-                "      \"id\" : \"151215054802012010.3.0\",\n" +
-                "      \"relativePosition\" : \"RIGHT\"\n" +
-                "    }\n" +
-                "  } ]\n" +
-                "}";
+        final String json = """
+                        {
+                          "renderParametersUrlTemplate" : "{baseDataUrl}/owner/flyTEM/project/trautmane_test/stack/rough_tiles/tile/{id}/render-parameters",
+                          "neighborPairs" : [ {
+                            "p" : {
+                              "groupId" : "2.0",
+                              "id" : "151215054132012010.2.0",
+                              "relativePosition" : "LEFT"
+                            },
+                            "q" : {
+                              "groupId" : "3.0",
+                              "id" : "151215054802011011.3.0",
+                              "relativePosition" : "RIGHT"
+                            }
+                          }, {
+                            "p" : {
+                              "groupId" : "2.0",
+                              "id" : "151215054132012010.2.0",
+                              "relativePosition" : "LEFT"
+                            },
+                            "q" : {
+                              "groupId" : "3.0",
+                              "id" : "151215054802012010.3.0",
+                              "relativePosition" : "RIGHT"
+                            }
+                          } ]
+                        }""";
 
         Files.write(pairsPath, json.getBytes());
 

@@ -48,25 +48,25 @@ public class BoundingBoxRendererTest {
 
     }
 
-    private static final String TEST_JSON =
-            "{\n" +
-            "  \"x\" : 0.0, \"y\" : 0.0, \"width\" : 400, \"height\" : 100, \"scale\" : 1.0,\n" +
-            "  \"tileSpecs\" : [ {\n" +
-            "    \"tileId\" : \"tile_a.1.0\",\n" +
-            "    \"z\" : 1.0, \"minX\" : 0.0, \"minY\" : 0.0, \"maxX\" : 199.0, \"maxY\" : 99.0, \"width\" : 200.0, \"height\" : 100.0,\n" +
-            "    \"mipmapLevels\" : { \"0\" : { \"imageUrl\" : \"src/test/resources/stitch-test/col0075_row0021_cam1.png\" } },\n" +
-            "    \"transforms\" : { \"type\" : \"list\", \"specList\" : [ \n" +
-            "      { \"className\" : \"mpicbg.trakem2.transform.AffineModel2D\", \"dataString\" : \"1 0 0 1 0 0\" } ]\n" +
-            "    }\n" +
-            "  }, {\n" +
-            "    \"tileId\" : \"tile_b.1.0\",\n" +
-            "    \"z\" : 1.0, \"minX\" : 190.0, \"minY\" : 0.0, \"maxX\" : 389.0, \"maxY\" : 99.0, \"width\" : 200.0, \"height\" : 100.0,\n" +
-            "    \"mipmapLevels\" : { \"0\" : { \"imageUrl\" : \"src/test/resources/stitch-test/col0076_row0021_cam0.png\" } },\n" +
-            "    \"transforms\" : { \"type\" : \"list\", \"specList\" : [ \n" +
-            "      { \"className\" : \"mpicbg.trakem2.transform.AffineModel2D\", \"dataString\" : \"1 0 0 1 190 0\" } ]\n" +
-            "    }\n" +
-            "  } ]\n" +
-            "}";
+    private static final String TEST_JSON = """
+                    {
+                      "x" : 0.0, "y" : 0.0, "width" : 400, "height" : 100, "scale" : 1.0,
+                      "tileSpecs" : [ {
+                        "tileId" : "tile_a.1.0",
+                        "z" : 1.0, "minX" : 0.0, "minY" : 0.0, "maxX" : 199.0, "maxY" : 99.0, "width" : 200.0, "height" : 100.0,
+                        "mipmapLevels" : { "0" : { "imageUrl" : "src/test/resources/stitch-test/col0075_row0021_cam1.png" } },
+                        "transforms" : { "type" : "list", "specList" : [\s
+                          { "className" : "mpicbg.trakem2.transform.AffineModel2D", "dataString" : "1 0 0 1 0 0" } ]
+                        }
+                      }, {
+                        "tileId" : "tile_b.1.0",
+                        "z" : 1.0, "minX" : 190.0, "minY" : 0.0, "maxX" : 389.0, "maxY" : 99.0, "width" : 200.0, "height" : 100.0,
+                        "mipmapLevels" : { "0" : { "imageUrl" : "src/test/resources/stitch-test/col0076_row0021_cam0.png" } },
+                        "transforms" : { "type" : "list", "specList" : [\s
+                          { "className" : "mpicbg.trakem2.transform.AffineModel2D", "dataString" : "1 0 0 1 190 0" } ]
+                        }
+                      } ]
+                    }""";
 
     /**
      * Generates PNG files showing bounding-box renders at several scales so that tile-id
