@@ -40,6 +40,7 @@ import java.io.Serializable;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -162,7 +163,7 @@ public class StreakStatisticsClient implements Serializable {
 
 		// convert to image and store on disk - list needs to be copied since the list returned by spark is not sortable
 		final List<Tuple2<Double, LayerResults>> sortedResults = new ArrayList<>(result);
-		sortedResults.sort((a, b) -> a._1.compareTo(b._1));
+		sortedResults.sort(Comparator.comparing(a -> a._1));
 		final Img<DoubleType> data = statisticsToImage(sortedResults);
 		final Img<DoubleType> min = minMaxToImage(sortedResults, LayerResults::min);
 		final Img<DoubleType> max = minMaxToImage(sortedResults, LayerResults::max);

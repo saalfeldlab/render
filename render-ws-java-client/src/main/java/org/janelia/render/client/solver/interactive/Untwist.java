@@ -44,8 +44,8 @@ public class Untwist
 			if ( positionA.size() != positionB.size() )
 				throw new RuntimeException( "position lists do not have the same size." );
 
-			RealSum x = new RealSum( positionA.size() );
-			RealSum y = new RealSum( positionA.size() );
+			final RealSum x = new RealSum();
+			final RealSum y = new RealSum();
 
 			final double[] xc = new double[ positionA.size() ];
 			final double[] yc = new double[ positionA.size() ];
@@ -71,7 +71,7 @@ public class Untwist
 				vector[ 0 ] = (x1 - x0);
 				vector[ 1 ] = (y1 - y0);
 
-				if ( pairA.getA().intValue() == 6470 )
+				if (pairA.getA() == 6470)
 					System.out.println( x0 + "," + y0 + " -> " + x1 + "," + y1 + " - v" + Util.printCoordinates( vector ) );
 				// point of rotation and translation center
 				xc[ i ] = vector[ 0 ]/2.0 + x0;
@@ -80,7 +80,7 @@ public class Untwist
 				x.add( xc[ i ] );
 				y.add( yc[ i ] );
 
-				if ( pairA.getA().intValue() == 6470 )
+				if (pairA.getA() == 6470)
 					System.out.println( "c: " + xc[ i ] + "," + yc[ i ] );
 				
 				//l[ i ] = Math.sqrt( vector[ 0 ]*vector[ 0 ] + vector[ 1 ]*vector[ 1 ] );
@@ -88,7 +88,7 @@ public class Untwist
 				// e.g. (1,1) -> (1,0) = 45 degrees
 				LinAlgHelpers.normalize( vector );
 
-				if ( pairA.getA().intValue() == 6470 )
+				if (pairA.getA() == 6470)
 				{
 					System.out.println( "nv: " + Util.printCoordinates( vector ) );
 					System.out.println( "dot: " + LinAlgHelpers.dot( vector, rotationAxis ) );
@@ -98,7 +98,7 @@ public class Untwist
 				// this will break if the rotation axis is not the x-axis or maybe on other things?
 				angle[ i ] = Math.acos( LinAlgHelpers.dot( vector, rotationAxis ) ) * Math.signum( vector[ 1 ] );
 
-				if ( pairA.getA().intValue() == 6470 )
+				if (pairA.getA() == 6470)
 					System.out.println( "angle: " + angle[ i ] + " " + Math.toDegrees( angle[ i ] ) );
 
 				// TODO: not sure about these hacks that do not allow flipping the sample around
@@ -107,7 +107,7 @@ public class Untwist
 				else if ( Math.toDegrees( angle[ i ] ) < -90 )
 					angle[ i ] = Math.toRadians( Math.toDegrees( angle[ i ] ) + 180);
 
-				if ( pairA.getA().intValue() == 6470 )
+				if (pairA.getA() == 6470)
 					System.out.println( "angle: " + angle[ i ] + " " + Math.toDegrees( angle[ i ] ) );
 			}
 
@@ -129,11 +129,11 @@ public class Untwist
 
 				transforms.put( positionA.get( i ).getA(), t );
 
-				if ( positionA.get( i ).getA().intValue() == 6470 )
+				if (positionA.get(i).getA() == 6470)
 				{
-					double[] p0 = positionA.get( i ).getB().clone();
-					double[] p1 = positionB.get( i ).getB().clone();
-					double[] pc = new double[] { xc[i], yc[i]};
+					final double[] p0 = positionA.get(i).getB().clone();
+					final double[] p1 = positionB.get(i).getB().clone();
+					final double[] pc = new double[] {xc[i], yc[i]};
 
 					System.out.println( "p0: " + Util.printCoordinates( p0 ) );
 					System.out.println( "p1: " + Util.printCoordinates( p1 ) );
@@ -162,10 +162,10 @@ public class Untwist
 		}
 	}
 
-	protected static void updatePoints( List< double[] > points, HashMap< Integer, AffineTransform2D > transforms, final int minZ, final int maxZ )
+	protected static void updatePoints(final List<double[]> points, final HashMap<Integer, AffineTransform2D> transforms, final int minZ, final int maxZ)
 	{
 		// spline goes through the points
-		for ( final double p[] : points )
+		for (final double[] p : points)
 		{
 			int z = (int)Math.round( p[ 2 ] );
 
@@ -176,14 +176,14 @@ public class Untwist
 		}
 	}
 
-	public static void main( String[] args ) throws IOException
+	public static void main(final String[] args) throws IOException
 	{
 		// TODO: does something weird with points that are at locations greater than the stack size in z
-		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
-		String owner = "Z0720_07m_VNC";
-		String project = "Sec29"; //"Z0419_25_Alpha3";
-		String stack = "v8_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
-		String targetStack = "v8_acquire_trimmed_align_untwisted";
+		final String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
+		final String owner = "Z0720_07m_VNC";
+		final String project = "Sec29"; //"Z0419_25_Alpha3";
+		final String stack = "v8_acquire_trimmed_align"; //"v1_acquire_sp_nodyn_v2";
+		final String targetStack = "v8_acquire_trimmed_align_untwisted";
 
 		/*
 		String baseUrl = "http://tem-services.int.janelia.org:8080/render-ws/v1";
@@ -243,15 +243,15 @@ public class Untwist
 		pointsB.add( new double[] {8069.563192165682, 4781.255819355375-500, 12703.129389095324});
 		*/
 
-		BdvStackSource<?> bdv = RenderTools.renderMultiRes(
+		final BdvStackSource<?> bdv = RenderTools.renderMultiRes(
 				ipCache, baseUrl, owner, project, stack, interval, null, numRenderingThreads, numFetchThreads,
 				untwisting, caches );
 		bdv.setDisplayRange( 0, 256 );
 
-		InteractiveSegmentedLine lineA = new InteractiveSegmentedLine( bdv, pointsA );
+		final InteractiveSegmentedLine lineA = new InteractiveSegmentedLine(bdv, pointsA);
 		pointsA = lineA.getResult();
 
-		if ( pointsA != null && pointsA.size() > 0 )
+		if (pointsA != null && !pointsA.isEmpty())
 		{
 			for ( final double[] p : pointsA )
 				System.out.println( Util.printCoordinates( p ) );
@@ -264,10 +264,10 @@ public class Untwist
 			return;
 		}
 
-		InteractiveSegmentedLine lineB = new InteractiveSegmentedLine( bdv, pointsB );
+		final InteractiveSegmentedLine lineB = new InteractiveSegmentedLine(bdv, pointsB);
 		pointsB = lineB.getResult();
 
-		if ( pointsB != null && pointsB.size() > 0 )
+		if (pointsB != null && !pointsB.isEmpty())
 		{
 			for ( final double[] p : pointsB )
 				System.out.println( Util.printCoordinates( p ) );
@@ -305,7 +305,7 @@ public class Untwist
 
 		untwisting.setRotation( positionsB, positionsA );
 
-		caches.forEach( c -> c.invalidateAll() );
+		caches.forEach(Invalidate::invalidateAll);
 		updatePoints( pointsA, untwisting.transforms, (int)interval.min( 2 ), (int)interval.max( 2 ) );
 		updatePoints( pointsB, untwisting.transforms, (int)interval.min( 2 ), (int)interval.max( 2 ) );
 		bdv.getBdvHandle().getViewerPanel().requestRepaint();
@@ -315,21 +315,21 @@ public class Untwist
 		if ( targetStack != null )
 		{
 			System.out.println( "saving target stack " + targetStack );
-	
+
 			//final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 			final RenderDataClient targetDataClient = new RenderDataClient(baseUrl, owner, project );
-	
+
 			targetDataClient.setupDerivedStack(meta, targetStack);
-	
+
 			for ( long z = interval.min( 2 ); z <= interval.max( 2 ); ++z )
 			{
 				final ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles( stack, (double)z );
-	
+
 				for (final TileSpec tileSpec : resolvedTiles.getTileSpecs())
 				{
 					final String tileId = tileSpec.getTileId();
 					final AffineTransform2D model = untwisting.transforms.get( (int)z );
-	
+
 					if ( model != null )
 					{
 						resolvedTiles.addTransformSpecToTile( tileId,
@@ -337,16 +337,16 @@ public class Untwist
 								TransformApplicationMethod.PRE_CONCATENATE_LAST );
 					}
 				}
-	
+
 				if ( resolvedTiles.getTileCount() > 0 )
 					targetDataClient.saveResolvedTiles( resolvedTiles, targetStack, null );
 				else
 					System.out.println( "skipping tile spec save since no specs are left to save" );
 			}
-	
+
 			System.out.println( "saveTargetStackTiles: exit" );
-	
-	
+
+
 			targetDataClient.setStackState( targetStack, StackState.COMPLETE );
 		}
 

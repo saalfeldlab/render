@@ -120,7 +120,7 @@ public class TileSpecTest {
 
         assertNotNull(tileSpec, "json parse returned null spec");
         assertEquals(EXPECTED_WIDTH, tileSpec.getWidth(), "invalid width parsed");
-        assertThrows(IllegalArgumentException.class, () -> tileSpec.validate());
+        assertThrows(IllegalArgumentException.class, tileSpec::validate);
     }
 
     @Test

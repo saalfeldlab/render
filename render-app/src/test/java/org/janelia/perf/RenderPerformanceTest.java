@@ -105,7 +105,7 @@ public class RenderPerformanceTest {
     }
 
     @Test
-    public void runTests() throws Exception {
+    public void runTests() {
         if (enableTests) {
             for (final TestData testData : testDataList) {
                 runTest(testData);
@@ -169,7 +169,7 @@ public class RenderPerformanceTest {
             }
         }
 
-        testResults = new PerformanceTestData.TestResults<TestData>() {
+        testResults = new PerformanceTestData.TestResults<>() {
 
             @Override
             public TestData getAverageInstance(final TestData groupInstance,
@@ -177,10 +177,10 @@ public class RenderPerformanceTest {
                                                final int numberOfTests) {
 
                 final TestData averageInstance = new TestData(groupInstance.renderParametersFile,
-                                                        groupInstance.format,
-                                                        groupInstance.level,
-                                                        groupInstance.threads,
-                                                        "avg(" + numberOfTests + ")");
+                                                              groupInstance.format,
+                                                              groupInstance.level,
+                                                              groupInstance.threads,
+                                                              "avg(" + numberOfTests + ")");
                 averageInstance.setElapsedTime(averageElapsedTime);
                 return averageInstance;
             }
@@ -207,30 +207,26 @@ public class RenderPerformanceTest {
             }
 
             private final Comparator<TestData> levelThreadsComparator =
-                    new Comparator<TestData>() {
-                        @Override
-                        public int compare(final TestData o1,
-                                           final TestData o2) {
-                            int result = o1.level - o2.level;
+                    (o1, o2) -> {
+                        int result = o1.level - o2.level;
+                        if (result == 0) {
+                            result = (int) (o1.getElapsedTime() - o2.getElapsedTime());
                             if (result == 0) {
-                                result = (int) (o1.getElapsedTime() - o2.getElapsedTime());
+                                result = o1.threads - o2.threads;
                                 if (result == 0) {
-                                    result = o1.threads - o2.threads;
+                                    result = o1.format.compareTo(o2.format);
                                     if (result == 0) {
-                                        result = o1.format.compareTo(o2.format);
-                                        if (result == 0) {
-                                            result = o1.test.compareTo(o2.test);
-                                        }
+                                        result = o1.test.compareTo(o2.test);
                                     }
                                 }
                             }
-                            return result;
                         }
+                        return result;
                     };
         };
     }
 
-    public class TestData extends PerformanceTestData {
+    public static class TestData extends PerformanceTestData {
 
         private final File renderParametersFile;
         private final String format;

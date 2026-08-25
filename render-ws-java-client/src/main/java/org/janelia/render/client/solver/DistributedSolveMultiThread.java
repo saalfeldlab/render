@@ -39,68 +39,61 @@ public class DistributedSolveMultiThread extends DistributedSolve
 		// set up executor service
 		LOG.info( "Multithreading with thread num=" + parameters.threadsGlobal );
 
-		final ExecutorService taskExecutor = Executors.newFixedThreadPool( parameters.threadsGlobal );
-		final ArrayList< Callable< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > > tasks = new ArrayList<>();
+		try (final ExecutorService taskExecutor = Executors.newFixedThreadPool(parameters.threadsGlobal)) {
 
-		for ( final SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > solveItemData : this.solveSet.allItems() )
-		{
-			tasks.add( new Callable< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > >()
-			{
-				@Override
-				public List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > call() throws Exception
-				{
-					final DistributedSolveWorker< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > w = 
+			final ArrayList<Callable<List<? extends SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>>>>>
+					tasks = new ArrayList<>();
+
+			for (final SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> solveItemData : this.solveSet.allItems()) {
+				tasks.add(() -> {
+					final DistributedSolveWorker<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>>
+							w =
 							solveItemData.createWorker(
-								solveSet.getMaxId() + 1,
-								runParams.pGroupList,
-								runParams.sectionIdToZMap,
-								parameters.renderWeb.baseDataUrl,
-								parameters.renderWeb.owner,
-								parameters.renderWeb.project,
-								parameters.matchOwner,
-								parameters.matchCollection,
-								parameters.stack,
-								parameters.maxNumMatches,
-								parameters.serializeMatches,
-								parameters.maxAllowedErrorStitching,
-								parameters.maxIterationsStitching,
-								parameters.maxPlateauWidthStitching,
-								Double.NaN, // maxRange
-								parameters.excludeSet(),
-								parameters.threadsWorker );
+									solveSet.getMaxId() + 1,
+									runParams.pGroupList,
+									runParams.sectionIdToZMap,
+									parameters.renderWeb.baseDataUrl,
+									parameters.renderWeb.owner,
+									parameters.renderWeb.project,
+									parameters.matchOwner,
+									parameters.matchCollection,
+									parameters.stack,
+									parameters.maxNumMatches,
+									parameters.serializeMatches,
+									parameters.maxAllowedErrorStitching,
+									parameters.maxIterationsStitching,
+									parameters.maxPlateauWidthStitching,
+									Double.NaN, // maxRange
+									parameters.excludeSet(),
+									parameters.threadsWorker);
 					w.run();
-	
+
 					return w.getSolveItemDataList();
-				}
-			});
+				});
+			}
+
+			allItems = new ArrayList<>();
+
+			try {
+				// invokeAll() returns when all tasks are complete
+				final List<Future<List<? extends SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>>>>>
+						futures = taskExecutor.invokeAll(tasks);
+
+				for (final Future<List<? extends SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>>>> future : futures)
+					allItems.addAll(future.get());
+			} catch (final Exception e) {
+				IOFunctions.println("Failed to compute alignments: " + e);
+				e.printStackTrace();
+				return null;
+			}
 		}
 
-		allItems = new ArrayList<>();			
-
-		try
-		{
-			// invokeAll() returns when all tasks are complete
-			final List< Future< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > > futures = taskExecutor.invokeAll( tasks );
-
-			
-			for ( final Future< List< ? extends SolveItemData< ? extends Affine2D< ? >, ? extends Affine2D< ? >, ? extends Affine2D< ? > > > > future : futures )
-				allItems.addAll( future.get() );
-		}
-		catch ( final Exception e )
-		{
-			IOFunctions.println( "Failed to compute alignments: " + e );
-			e.printStackTrace();
-			return null;
-		}
-
-		taskExecutor.shutdown();
-
-		LOG.info( "Took: " + ( System.currentTimeMillis() - time )/100 + " sec.");
+        LOG.info("Took: {} sec.", (System.currentTimeMillis() - time) / 100);
 
 		return allItems;
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args)
 	{
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override
