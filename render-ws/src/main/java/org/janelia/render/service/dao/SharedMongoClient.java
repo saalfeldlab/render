@@ -9,7 +9,7 @@ import com.mongodb.connection.ClusterDescription;
 
 import java.io.File;
 import java.io.InputStream;
-import java.net.URL;
+import java.net.URI;
 import java.util.concurrent.TimeUnit;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
@@ -100,7 +100,7 @@ public class SharedMongoClient {
         final String classPath = String.valueOf(clazz.getResource(className));
         if (classPath.startsWith("jar")) {
             final String manifestPath = classPath.substring(0, classPath.lastIndexOf("!") + 1) + "/META-INF/MANIFEST.MF";
-            try (final InputStream manifestStream = new URL(manifestPath).openStream()) {
+            try (final InputStream manifestStream = URI.create(manifestPath).toURL().openStream()) {
                 final Manifest manifest = new Manifest(manifestStream);
                 final Attributes attr = manifest.getMainAttributes();
                 versionString = attr.getValue("Bundle-Name") + " (" + attr.getValue("Bundle-Version") + ")";

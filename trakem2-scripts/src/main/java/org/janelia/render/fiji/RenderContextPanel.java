@@ -8,6 +8,8 @@ import java.awt.Panel;
 import java.awt.event.ActionEvent;
 import java.awt.event.ItemEvent;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -283,9 +285,9 @@ public class RenderContextPanel extends Panel {
                                      final WebServiceComboBoxPanel comboBoxPanel,
                                      final WebServiceComboBoxPanel.JsonToStringArrayParser parser) {
         try {
-            final URL url = new URL(urlString);
+            final URL url = new URI(urlString).toURL();
             comboBoxPanel.loadValues(url, parser);
-        } catch (final MalformedURLException e) {
+        } catch (final URISyntaxException | MalformedURLException e) {
             Utils.logStamped("failed to construct URL " + urlString);
             e.printStackTrace();
         }

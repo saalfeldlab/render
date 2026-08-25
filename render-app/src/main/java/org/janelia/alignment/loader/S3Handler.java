@@ -41,6 +41,7 @@ public class S3Handler extends URLStreamHandler {
         return urlString.startsWith("s3://");
     }
 
+    @SuppressWarnings("deprecation") // URI has no equivalent for a URL with a custom stream handler
     public static URL getUrl(final String urlString)
             throws IOException {
         return new URL(null, urlString, getSharedInstance());

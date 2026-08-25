@@ -1,6 +1,7 @@
 package org.janelia.render.client.spark.pipeline;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.util.List;
 
@@ -55,7 +56,7 @@ public class AlignmentPipelineParametersTest {
                 "https://raw.githubusercontent.com/saalfeldlab/render/748e99806b3be06d5c7ac06a538698f7c523cb26";
         final String pathJsonUrlString =
                 "/render-ws-spark-client/src/main/resources/multisem/wafer_60/pipeline_json/01_match/pipe.01.match.json";
-        final URL jsonUrl = new URL(commitJsonUrlString + pathJsonUrlString);
+        final URL jsonUrl = URI.create(commitJsonUrlString + pathJsonUrlString).toURL();
 
         final String baseDataUrl = "http://renderer-dev.int.janelia.org:8080/render-ws/v1";
         final AlignmentPipelineParameters pipelineParameters =
