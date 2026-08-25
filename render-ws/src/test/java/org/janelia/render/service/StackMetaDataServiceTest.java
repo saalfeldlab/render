@@ -315,7 +315,7 @@ public class StackMetaDataServiceTest {
                                   clonedStackVersion);
 
         List<TileSpec> specList = renderDao.getTileSpecs(clonedStackId, z);
-        assertTrue(specList.size() > 0,
+        assertTrue(!specList.isEmpty(),
                    "before removal, no tile specs exist for z " + z);
 
 

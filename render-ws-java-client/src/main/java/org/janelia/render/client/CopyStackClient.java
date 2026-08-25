@@ -250,7 +250,7 @@ public class CopyStackClient {
                                                  parameters.getToOwner(),
                                                  parameters.getToProject());
 
-        if ((parameters.zValues == null) || (parameters.zValues.size() == 0)) {
+        if ((parameters.zValues == null) || (parameters.zValues.isEmpty())) {
             this.zValues = fromDataClient.getStackZValues(parameters.fromStack);
         } else {
             this.zValues = parameters.zValues;
@@ -389,7 +389,7 @@ public class CopyStackClient {
                                 .collect(Collectors.toList()));
 
                 // once a stack with tiles for the current z is found, use that as the filter
-                if (tileIdsToKeep.size() > 0) {
+                if (!tileIdsToKeep.isEmpty()) {
                     filterStack = tileIdStack;
                     break;
                 }
@@ -397,7 +397,7 @@ public class CopyStackClient {
 
         }
 
-        if (tileIdsToKeep.size() > 0) {
+        if (!tileIdsToKeep.isEmpty()) {
             final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
             sourceCollection.retainTileSpecs(tileIdsToKeep);
             final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();
@@ -423,7 +423,7 @@ public class CopyStackClient {
                     tileIdsToRemove.add(tileSpec.getTileId());
                 }
             });
-            if (tileIdsToRemove.size() > 0) {
+            if (!tileIdsToRemove.isEmpty()) {
                 sourceCollection.removeTileSpecs(tileIdsToRemove);
                 LOG.info("copyLayer: removed {} tiles in excluded columns", tileIdsToRemove.size());
             }
@@ -527,7 +527,7 @@ public class CopyStackClient {
 
         final Map<String, Double> sectionIdToZMap = new HashMap<>(orderedSectionDataList.size());
 
-        if (orderedSectionDataList.size() > 0) {
+        if (!orderedSectionDataList.isEmpty()) {
 
             Double currentZ = null;
             int sectionIndex = 0;

@@ -174,7 +174,7 @@ public class ImportTransformChangesClient {
             list = TileTransform.fromJsonArray(reader);
         }
 
-        if (list.size() == 0) {
+        if (list.isEmpty()) {
             throw new IOException("No transform information found in " + path + ".");
         }
 

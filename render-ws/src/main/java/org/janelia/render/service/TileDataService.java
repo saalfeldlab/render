@@ -316,8 +316,8 @@ public class TileDataService {
 
         final boolean useLabelNormalization =
                 (excludeAllTransforms != null) ||
-                ((excludeAfterLastLabels != null) && (excludeAfterLastLabels.size() > 0)) ||
-                ((excludeFirstAndAllAfterLabels != null) && (excludeFirstAndAllAfterLabels.size() > 0));
+                ((excludeAfterLastLabels != null) && (!excludeAfterLastLabels.isEmpty())) ||
+                ((excludeFirstAndAllAfterLabels != null) && (!excludeFirstAndAllAfterLabels.isEmpty()));
 
         final boolean useLegacyNormalization = (normalizeForMatching != null) && normalizeForMatching;
 

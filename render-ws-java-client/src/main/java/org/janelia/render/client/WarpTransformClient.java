@@ -127,7 +127,7 @@ public class WarpTransformClient {
                                                                                         z,
                                                                                         z,
                                                                                        null);
-        if (sectionDataList.size() == 0) {
+        if (sectionDataList.isEmpty()) {
             throw new IllegalArgumentException("montage stack does not contain any matching z values");
         }
 
@@ -211,7 +211,7 @@ public class WarpTransformClient {
             }
         }
 
-        if (matchesList.size() == 0) {
+        if (matchesList.isEmpty()) {
             throw new IllegalStateException("cannot determine clusters because no matches were found for z " + z);
         }
 
@@ -275,7 +275,7 @@ public class WarpTransformClient {
                 }
             });
 
-            if (clusterTileSpecs.size() == 0) {
+            if (clusterTileSpecs.isEmpty()) {
 
                 LOG.info("buildTransformsForClusters: skipped build for z {} cluster {} because none of the {} tiles were found in the montage stack, missing tile ids are: {}",
                          z, clusterIndex, clusterTileIds.size(), clusterTileIds);

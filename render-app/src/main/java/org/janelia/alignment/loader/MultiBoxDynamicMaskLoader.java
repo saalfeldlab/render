@@ -120,7 +120,7 @@ public class MultiBoxDynamicMaskLoader
 
             final StringBuilder boxesStringBuilder = new StringBuilder();
             for (final Rectangle box : boxList) {
-                if (boxesStringBuilder.length() > 0) {
+                if (!boxesStringBuilder.isEmpty()) {
                     boxesStringBuilder.append(",");
                 }
                 boxesStringBuilder.append(box.x).append(",").append(box.y)

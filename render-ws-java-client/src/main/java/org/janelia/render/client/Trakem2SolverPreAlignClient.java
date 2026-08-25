@@ -244,7 +244,7 @@ public class Trakem2SolverPreAlignClient{
             }
         });
 
-        if (zToSectionIdsMap.size() == 0) {
+        if (zToSectionIdsMap.isEmpty()) {
             throw new IllegalArgumentException(
                     "stack " + parameters.stack + " does not contain any sections with the specified z values");
         }
@@ -387,7 +387,7 @@ public class Trakem2SolverPreAlignClient{
             zToSave.add(z);
 
             // if we have unaligned tiles in the last batch try to align them as much as possible
-            if (unalignedTiles.size() > 0) {
+            if (!unalignedTiles.isEmpty()) {
                 preAlignUnalignedTiles(unalignedTiles, idToTileMap);
             }
 
@@ -448,7 +448,7 @@ public class Trakem2SolverPreAlignClient{
             }
 
 
-            if (unalignedTileIds.size() > 0) {
+            if (!unalignedTileIds.isEmpty()) {
 
                 LOG.warn("preAlignAndSaveBatch: {} tiles could not be aligned, keeping them for later, tileIds are {}",
                          unalignedTileIds.size(), unalignedTileIds.stream().sorted().collect(Collectors.toList()));
@@ -464,7 +464,7 @@ public class Trakem2SolverPreAlignClient{
                 keptAlignedTileIds.addAll(idToTileMap.keySet());
             }
 
-            if (keptAlignedTileIds.size() == 0) {
+            if (keptAlignedTileIds.isEmpty()) {
                 LOG.error("no previously aligned tiles remain for the next batch");
             }
 
@@ -489,7 +489,7 @@ public class Trakem2SolverPreAlignClient{
 
         final Tile connectedUnalignedTile =
                 unalignedTiles.stream()
-                        .filter(tile -> tile.getConnectedTiles().size() > 0)
+                        .filter(tile -> !tile.getConnectedTiles().isEmpty())
                         .findFirst()
                         .orElse(null);
 
@@ -515,7 +515,7 @@ public class Trakem2SolverPreAlignClient{
 
             final List<Tile<?>> remainingUnalignedTiles = tileConfig.preAlign();
 
-            if (remainingUnalignedTiles.size() > 0) {
+            if (!remainingUnalignedTiles.isEmpty()) {
                 if (remainingUnalignedTiles.size() < unalignedTiles.size()) {
                     preAlignUnalignedTiles(remainingUnalignedTiles, idToTileMap);
                 } else {

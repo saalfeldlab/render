@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Parameters for render operations.  Includes a collection of TileSpecs and
- * thus represents a `snapshot of the world'.
+ * thus represents a 'snapshot of the world'.
  *
  * @author Stephan Saalfeld <saalfelds@janelia.hhmi.org>
  */
@@ -261,10 +261,10 @@ public class RenderParameters implements Serializable {
     /**
      * @param  jsonText  text to parse.
      *
-     * @return parameters instance populated by parsing the specified json text.
+     * @return parameters instance populated by parsing the specified JSON text.
      *
      * @throws IllegalArgumentException
-     *   if the json cannot be parsed.
+     *   if the JSON cannot be parsed.
      */
     public static RenderParameters parseJson(final String jsonText) throws IllegalArgumentException {
         final RenderParameters parameters;
@@ -279,10 +279,10 @@ public class RenderParameters implements Serializable {
     /**
      * @param  jsonReader  reader to parse.
      *
-     * @return parameters instance populated by parsing the specified json reader's stream.
+     * @return parameters instance populated by parsing the specified JSON reader's stream.
      *
      * @throws IllegalArgumentException
-     *   if the json cannot be parsed.
+     *   if the JSON cannot be parsed.
      */
     public static RenderParameters parseJson(final Reader jsonReader) throws IllegalArgumentException {
         final RenderParameters parameters;
@@ -297,10 +297,10 @@ public class RenderParameters implements Serializable {
     /**
      * @param  jsonFile  reader to parse.
      *
-     * @return parameters instance populated by parsing the specified json reader's stream.
+     * @return parameters instance populated by parsing the specified JSON reader's stream.
      *
      * @throws IllegalArgumentException
-     *   if the json cannot be parsed.
+     *   if the JSON cannot be parsed.
      */
     public static RenderParameters parseJson(final File jsonFile) throws IllegalArgumentException {
 
@@ -329,7 +329,7 @@ public class RenderParameters implements Serializable {
             try {
                 parametersReader.close();
             } catch (final IOException e) {
-                LOG.warn("failed to close reader for " + jsonFile.getAbsolutePath() + ", ignoring error", e);
+                LOG.warn("failed to close reader for {}, ignoring error", jsonFile.getAbsolutePath(), e);
             }
         }
 
@@ -355,7 +355,7 @@ public class RenderParameters implements Serializable {
         try {
 
             // work around January 2016 DNS issue at Janelia by retrying unknown host failures
-            // up to 3 times with a 5 second delay between each retry ...
+            // up to 3 times with a 5-second delay between each retry ...
 
             for (int attempt = 1; attempt <= maxNumberOfAttempts; attempt++) {
 
@@ -399,7 +399,7 @@ public class RenderParameters implements Serializable {
                 try {
                     urlStream.close();
                 } catch (final IOException e) {
-                    LOG.warn("failed to close " + uri + ", ignoring error", e);
+                    LOG.warn("failed to close {}, ignoring error", uri, e);
                 }
             }
         }
@@ -625,7 +625,7 @@ public class RenderParameters implements Serializable {
     }
 
     public boolean hasTileSpecs() {
-        return ((tileSpecs != null) && (tileSpecs.size() > 0));
+        return ((tileSpecs != null) && (!tileSpecs.isEmpty()));
     }
 
     public int numberOfTileSpecs() {
@@ -968,7 +968,7 @@ public class RenderParameters implements Serializable {
                     try {
                         urlStream.close();
                     } catch (final IOException e) {
-                        LOG.warn("failed to close " + uri + ", ignoring error", e);
+                        LOG.warn("failed to close {}, ignoring error", uri, e);
                     }
                 }
             }

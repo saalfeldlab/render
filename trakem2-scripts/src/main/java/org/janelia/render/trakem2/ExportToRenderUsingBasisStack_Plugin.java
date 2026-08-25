@@ -348,7 +348,7 @@ public class ExportToRenderUsingBasisStack_Plugin
         }
 
         boolean hasMappedZValues() {
-             return trakZToTargetZMapString.length() > 0;
+             return !trakZToTargetZMapString.isEmpty();
         }
 
         Double getRenderStackZ(final Double forTrakZ) {

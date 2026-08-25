@@ -175,7 +175,7 @@ public class ListTransformSpec extends TransformSpec {
 
         flatten(flattenedList);
 
-        if ((excludeAfterLastLabels != null) && (excludeAfterLastLabels.size() > 0)) {
+        if ((excludeAfterLastLabels != null) && (!excludeAfterLastLabels.isEmpty())) {
 
             final int listSize = flattenedList.specList.size();
             int lastIndexWithoutLabel = listSize;
@@ -195,7 +195,7 @@ public class ListTransformSpec extends TransformSpec {
 
         }
 
-        if ((excludeFirstAndAllAfterLabels != null) && (excludeFirstAndAllAfterLabels.size() > 0)) {
+        if ((excludeFirstAndAllAfterLabels != null) && (!excludeFirstAndAllAfterLabels.isEmpty())) {
 
             final int listSize = flattenedList.specList.size();
             int firstIndexWithLabel = listSize;

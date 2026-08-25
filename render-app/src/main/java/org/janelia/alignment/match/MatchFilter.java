@@ -74,7 +74,7 @@ public class MatchFilter
 
         final List<PointMatch> inliers = new ArrayList<>(candidates.size());
 
-        if (candidates.size() > 0) {
+        if (!candidates.isEmpty()) {
             try {
                 model.filterRansac(candidates,
                                    inliers,
@@ -143,7 +143,7 @@ public class MatchFilter
         for (int i = 0; i < listOfInliersLists.size(); i++) {
             final List<PointMatch> modelInliers = listOfInliersLists.get(i);
             postProcessInliers(modelInliers);
-            if (modelInliers.size() > 0) {
+            if (!modelInliers.isEmpty()) {
                 processedListOfInliersLists.add(modelInliers);
                 consensusSetSizes.add(modelInliers.size());
                 totalNumberOfInliers += modelInliers.size();
@@ -174,7 +174,7 @@ public class MatchFilter
     private void postProcessInliers(final List<PointMatch> inliers) {
 
         // TODO: remove this extra check once RANSAC filter issue is fixed
-        if ((inliers.size() > 0) && (inliers.size() < minNumInliers)) {
+        if ((!inliers.isEmpty()) && (inliers.size() < minNumInliers)) {
             LOG.warn("removing {} inliers that mysteriously did not get removed with minNumInliers value of {}",
                      inliers.size(), minNumInliers);
             inliers.clear();

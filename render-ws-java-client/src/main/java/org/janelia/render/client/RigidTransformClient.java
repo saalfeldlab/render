@@ -144,7 +144,7 @@ public class RigidTransformClient {
                                                                                         z,
                                                                                         z,
                                                                                        null);
-        if (sectionDataList.size() == 0) {
+        if (sectionDataList.isEmpty()) {
             throw new IllegalArgumentException("montage stack does not contain any matching z values");
         }
 
@@ -239,7 +239,7 @@ public class RigidTransformClient {
         tileIdsWithMatches.addMatches(allMatches, montageTileIds);
         final List<CanvasMatches> matchesList = tileIdsWithMatches.getCanvasMatchesList();
 
-        if (matchesList.size() == 0) {
+        if (matchesList.isEmpty()) {
             throw new IllegalStateException("cannot determine clusters because no matches were found for z " + z);
         }
 
@@ -275,7 +275,7 @@ public class RigidTransformClient {
                 }
 
                 // TODO: add this check to Warp client
-                if (clusterTileIds.size() > 0) {
+                if (!clusterTileIds.isEmpty()) {
                     largestConnectedTileSets.add(clusterTileIds);
                 }
             }
@@ -402,7 +402,7 @@ public class RigidTransformClient {
         }
 
         private boolean isMissingSections() {
-            return missingSectionIds.size() > 0;
+            return !missingSectionIds.isEmpty();
         }
 
         private LargestClusterStageData getStageData(final String forSectionId) {

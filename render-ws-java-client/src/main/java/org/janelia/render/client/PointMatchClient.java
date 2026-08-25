@@ -416,7 +416,7 @@ public class PointMatchClient {
             LOG.info("saveMatches: filtered out {} pairs with no matches", numberOfPairsWithoutMatches);
         }
 
-        if (filteredCanvasMatchesList.size() > 0) {
+        if (!filteredCanvasMatchesList.isEmpty()) {
 
             CanvasMatches canvasMatches;
             if (parameters.matchStorageFile != null) {

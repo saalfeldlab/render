@@ -289,7 +289,7 @@ public class HackLabelEdgesClient {
                 if (values.length == 3) {
                     final String zString = values[0].trim();
                     final String positionString = values[2].trim().toUpperCase();
-                    if ((zString.length() > 0) && (Character.isDigit(zString.charAt(0)))) {
+                    if ((!zString.isEmpty()) && (Character.isDigit(zString.charAt(0)))) {
                         final Double z = Double.parseDouble(zString);
                         final List<TileEdge> tileEdgeList = zToEdgeList.computeIfAbsent(z, list -> new ArrayList<>());
                         final TileEdgePosition position;

@@ -498,7 +498,7 @@ public class CoordinateClient {
                 tileIdList.add(tileId);
             }
 
-            if (tileIdList.size() > 0) {
+            if (!tileIdList.isEmpty()) {
                 tileSpecList.addAll(renderDataClient.getTileSpecsWithIds(tileIdList, stack));
             }
 
@@ -671,7 +671,7 @@ public class CoordinateClient {
         private List<TileSpec> getTileSpecsForCoordinates(final List<TileCoordinates> coordinatesList,
                                                           final ResolvedTileSpecCollection tiles) {
 
-            if ((coordinatesList == null) || (coordinatesList.size() == 0)) {
+            if ((coordinatesList == null) || (coordinatesList.isEmpty())) {
                 throw new IllegalArgumentException("coordinates are missing");
             }
 
@@ -688,7 +688,7 @@ public class CoordinateClient {
                 }
             }
 
-            if (tileSpecList.size() == 0) {
+            if (tileSpecList.isEmpty()) {
                 final String zMessage = z == null ? "" : "layer " + z + " of ";
                 throw new IllegalArgumentException("no tile specifications found in " + zMessage + "stack " + stack +
                                                    " for " + Arrays.toString(coordinatesList.getFirst().getWorld()));
@@ -814,7 +814,7 @@ public class CoordinateClient {
          */
         private TileCoordinates getVisibleCoordinates(final List<TileCoordinates> mappedCoordinatesList) {
             TileCoordinates tileCoordinates = null;
-            if (mappedCoordinatesList.size() > 0) {
+            if (!mappedCoordinatesList.isEmpty()) {
                 tileCoordinates = mappedCoordinatesList.getFirst();
                 for (final TileCoordinates mappedCoordinates : mappedCoordinatesList) {
                     if (mappedCoordinates.isVisible()) {
@@ -996,7 +996,7 @@ public class CoordinateClient {
 
             }
 
-            if (failureData.length() > 0) {
+            if (!failureData.isEmpty()) {
                 final File failuresFile = new File(targetDirectory, "failed_mappings.txt");
                 Files.write(Paths.get(failuresFile.getAbsolutePath()), failureData.toString().getBytes());
                 LOG.warn("saved failed mapping details in {}", failuresFile.getAbsolutePath());

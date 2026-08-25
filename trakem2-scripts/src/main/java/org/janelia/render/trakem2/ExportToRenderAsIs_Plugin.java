@@ -90,7 +90,7 @@ public class ExportToRenderAsIs_Plugin
                                                                             exportData.onlyExportVisiblePatches,
                                                                             true);
 
-            if (displayableList.size() > 0) {
+            if (!displayableList.isEmpty()) {
 
                 final ResolvedTileSpecCollection resolvedTiles = new ResolvedTileSpecCollection();
 

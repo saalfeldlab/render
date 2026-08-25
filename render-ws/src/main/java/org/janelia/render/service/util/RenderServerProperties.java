@@ -54,7 +54,7 @@ public class RenderServerProperties {
     public Integer getInteger(final String key) {
         final String valueString = get(key);
         Integer value = null;
-        if ((valueString != null) && (valueString.trim().length() > 0)) {
+        if ((valueString != null) && (!valueString.trim().isEmpty())) {
             try {
                 value = Integer.parseInt(valueString);
             } catch (final Throwable t) {

@@ -64,7 +64,7 @@ public class RenderContextPanel extends Panel {
             String trimmedValue = null;
             if (value != null) {
                 trimmedValue = value.trim();
-                if (trimmedValue.length() == 0) {
+                if (trimmedValue.isEmpty()) {
                     trimmedValue = null;
                 }
             }
@@ -223,7 +223,7 @@ public class RenderContextPanel extends Panel {
 
         if (defaultValues.protocolHostAndPort != null) {
             final String trimmedValue = defaultValues.protocolHostAndPort.trim();
-            if (trimmedValue.length() > 0) {
+            if (!trimmedValue.isEmpty()) {
                 this.protocolHostAndPortTextField.setText(trimmedValue);
                 loadOwnersComboBoxValues();
             }
@@ -235,7 +235,7 @@ public class RenderContextPanel extends Panel {
 
     public String getBaseUrlString() {
         final String protocolHostAndPort = protocolHostAndPortTextField.getText().trim();
-        return protocolHostAndPort.length() > 0 ? protocolHostAndPortTextField.getText() + "/render-ws/v1" : null;
+        return !protocolHostAndPort.isEmpty() ? protocolHostAndPortTextField.getText() + "/render-ws/v1" : null;
     }
 
     public String getOwnerUrlString() {
@@ -303,7 +303,7 @@ public class RenderContextPanel extends Panel {
     private void loadTileIdComboBoxValues() {
         final String stackUrl = getStackUrlString();
         final String tilePattern = tilePatternTextField.getText().trim();
-        if ((stackUrl != null) && (tilePattern.length() > 0)) {
+        if ((stackUrl != null) && (!tilePattern.isEmpty())) {
             loadComboxBoxValues(stackUrl + "/tileIds?matchPattern=" + tilePattern,
                                 tileIdComboBoxPanel,
                                 WebServiceComboBoxPanel.STRING_PARSER);

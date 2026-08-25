@@ -107,7 +107,7 @@ public class UpdateMaskUrlClient
         }
 
         public String getTargetStack() {
-            if ((targetStack == null) || (targetStack.trim().length() == 0)) {
+            if ((targetStack == null) || (targetStack.trim().isEmpty())) {
                 targetStack = stack;
             }
             return targetStack;
@@ -176,7 +176,7 @@ public class UpdateMaskUrlClient
         for (final String line : java.nio.file.Files.readAllLines(Paths.get(maskListFileName),
                                                                   Charset.defaultCharset())) {
             final String path = line.trim();
-            if (path.length() > 0) {
+            if (!path.isEmpty()) {
                 final BufferedImage mask = Utils.openImage(path);
                 maskDataList.add(new MaskData(path, mask.getWidth(), mask.getHeight()));
             }
@@ -202,7 +202,7 @@ public class UpdateMaskUrlClient
                 sourceDataClient.getStackSectionData(parameters.stack,
                                                      parameters.layerRange.minZ,
                                                      parameters.layerRange.maxZ);
-        if (sectionDataList.size() == 0) {
+        if (sectionDataList.isEmpty()) {
             throw new IllegalArgumentException("source stack does not contain any matching z values");
         }
 

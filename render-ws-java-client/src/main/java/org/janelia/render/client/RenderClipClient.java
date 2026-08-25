@@ -224,7 +224,7 @@ public class RenderClipClient {
 
         final RenderParameters renderParameters = RenderParameters.loadFromUrl(parametersUrl);
 
-        if (renderParameters.getTileSpecs().size() == 0) {
+        if (renderParameters.getTileSpecs().isEmpty()) {
             throw new IOException("no tiles found for " + parametersUrl);
         }
 

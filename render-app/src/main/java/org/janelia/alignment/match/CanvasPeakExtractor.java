@@ -189,8 +189,7 @@ public class CanvasPeakExtractor
 
         }
 
-        LOG.info("extractPeaksFromImageAndMask: exit, extracted " + peakList.size() + " peaks, elapsedTime=" +
-                 timer.stop() + "ms");
+        LOG.info("extractPeaksFromImageAndMask: exit, extracted {} peaks, elapsedTime={}ms", peakList.size(), timer.stop());
 
         return peakList;
     }
@@ -222,7 +221,7 @@ public class CanvasPeakExtractor
                                             final List<Point> inlierPoints,
                                             final double inlierRenderScale) {
 
-        if ((fullScaleBlockRadius != null) && (canvasPeaks.size() > 0) && (inlierPoints.size() > 0)) {
+        if ((fullScaleBlockRadius != null) && (!canvasPeaks.isEmpty()) && (!inlierPoints.isEmpty())) {
 
             final double scaledBlockRadius = peakRenderScale * fullScaleBlockRadius;
 
@@ -269,7 +268,7 @@ public class CanvasPeakExtractor
 
         List<DifferenceOfGaussianPeak<FloatType>> filteredPeaks = canvasPeaks;
 
-        if ((fullScaleNonMaxSuppressionRadius != null) && (canvasPeaks.size() > 0)) {
+        if ((fullScaleNonMaxSuppressionRadius != null) && (!canvasPeaks.isEmpty())) {
 
             final double scaledNonMaxSuppressionRadius = fullScaleNonMaxSuppressionRadius * peakRenderScale;
 

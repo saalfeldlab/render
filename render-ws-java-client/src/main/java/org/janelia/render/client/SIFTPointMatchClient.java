@@ -515,7 +515,7 @@ public class SIFTPointMatchClient
         final List<PointMatch> siftScaledInliers = siftMatchResult.getInlierPointMatchList();
 
         CanvasMatches combinedCanvasMatches = null;
-        if (siftScaledInliers.size() > 0) {
+        if (!siftScaledInliers.isEmpty()) {
 
             final List<Point> pInlierPoints = new ArrayList<>();
             final List<Point> qInlierPoints = new ArrayList<>();

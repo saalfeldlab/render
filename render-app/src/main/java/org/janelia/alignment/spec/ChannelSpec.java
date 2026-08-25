@@ -167,7 +167,7 @@ public class ChannelSpec implements Serializable {
      *   if this spec's mipmaps are invalid.
      */
     public void validateMipmaps(final String tileId) throws IllegalArgumentException {
-        if (mipmapLevels.size() == 0) {
+        if (mipmapLevels.isEmpty()) {
             final String context = name == null ? "tile '" : "channel '" + name + "' of tile '";
             throw new IllegalArgumentException(context + tileId + "' does not contain any mipmapLevel elements");
         }

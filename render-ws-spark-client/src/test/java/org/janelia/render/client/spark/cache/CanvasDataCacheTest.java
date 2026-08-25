@@ -63,7 +63,7 @@ public class CanvasDataCacheTest {
         final List<Feature> firstCallFeatureList = firstCallFeatures.getFeatureList();
         final double[] firstCallClipOffsets = firstCallFeatures.getClipOffsets();
 
-        assertTrue(firstCallFeatureList.size() > 0, "first call: no features found");
+        assertTrue(!firstCallFeatureList.isEmpty(), "first call: no features found");
         assertTrue(firstCallClipOffsets[0] > 0, "first call: x clip offset not set");
         assertEquals(0.0, firstCallClipOffsets[1], 0.01, "first call: invalid y clip offset");
 

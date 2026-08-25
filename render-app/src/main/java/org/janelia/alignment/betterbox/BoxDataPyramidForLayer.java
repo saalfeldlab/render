@@ -101,7 +101,7 @@ public class BoxDataPyramidForLayer
      * @return list of the total number of boxes in each mipmap level of this layer.
      *         The index of each element identifies the mipmap level,
      *         so element 0 contains the number of level zero boxes,
-     *         element 1 contains the the number of level one boxes, etc.
+     *         element 1 contains the number of level one boxes, etc.
      */
     public List<Integer> getLevelBoxCounts() {
         return levelBoxCounts;
@@ -151,7 +151,7 @@ public class BoxDataPyramidForLayer
 
                         boxTileBoundsList = rTree.findTilesInBox(x, y, (x + boxWidth), (y + boxHeight));
 
-                        if (boxTileBoundsList.size() > 0) {
+                        if (!boxTileBoundsList.isEmpty()) {
 
                             levelZeroBox = new BoxData(z, 0, childRow, childColumn);
 

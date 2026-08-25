@@ -62,7 +62,7 @@ public class MatchAggregator {
 
                 // keep combining points until we have fewer than maxMatchesPerPair ...
                 int matchIndex;
-                while ((remainingIndexes.size() > 0) &&
+                while ((!remainingIndexes.isEmpty()) &&
                        (remainingIndexes.size() + radiusSearchResultList.size()) > maxMatchesPerPair) {
 
                     // randomly choose next point for radius search

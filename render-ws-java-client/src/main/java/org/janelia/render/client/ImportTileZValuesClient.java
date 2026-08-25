@@ -110,7 +110,7 @@ public class ImportTileZValuesClient {
 
             String line;
             String[] w;
-            Double z;
+            double z;
             List<String> tileIdList;
             while ((line = reader.readLine()) != null) {
 
@@ -132,19 +132,14 @@ public class ImportTileZValuesClient {
                                                            w[0] + "'.", e);
                     }
 
-                    tileIdList = zToTileIdMap.get(z);
-                    if (tileIdList == null) {
-                        tileIdList = new ArrayList<>();
-                        zToTileIdMap.put(z, tileIdList);
-                    }
-
+                    tileIdList = zToTileIdMap.computeIfAbsent(z, k -> new ArrayList<>());
                     tileIdList.add(w[1]);
                 }
 
             }
         }
 
-        if (zToTileIdMap.size() == 0) {
+        if (zToTileIdMap.isEmpty()) {
             throw new IllegalArgumentException("No tile information found in " + path + ".");
         }
 

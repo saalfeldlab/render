@@ -142,7 +142,7 @@ public class ClusterOverlapClient {
             final List<ClusterOverlapProblem> overlapProblems =
                     ClusterOverlapProblem.findOverlapProblems(z, clusterBoundsLists);
 
-            if (overlapProblems.size() > 0) {
+            if (!overlapProblems.isEmpty()) {
                 overlapProblems.forEach(ClusterOverlapProblem::logProblemDetails);
 
                 if (parameters.renderIntersectingClusters) {
@@ -178,7 +178,7 @@ public class ClusterOverlapClient {
                     clusterBoundsList.add(tileSpec.toTileBounds());
                 }
             }
-            if (clusterBoundsList.size() > 0) {
+            if (!clusterBoundsList.isEmpty()) {
                 clusterBoundsLists.add(clusterBoundsList);
             }
         }

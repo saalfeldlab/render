@@ -102,7 +102,7 @@ public class FixAutoLoaderScaleClient {
         this.sourceRenderDataClient = parameters.renderWeb.getDataClient();
 
         if ((parameters.targetProject == null) ||
-            (parameters.targetProject.trim().length() == 0) ||
+            (parameters.targetProject.trim().isEmpty()) ||
             (parameters.targetProject.equals(parameters.renderWeb.project))){
             this.targetRenderDataClient = sourceRenderDataClient;
         } else {

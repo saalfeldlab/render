@@ -115,7 +115,7 @@ public class DistributedSolveSparkLocal extends DistributedSolve
 				// System property for spark has to be set, e.g. -Dspark.master=local[4]
 				final String sparkLocal = System.getProperty( "spark.master" );
 
-				if ( sparkLocal == null || sparkLocal.trim().length() == 0 )
+				if ( sparkLocal == null || sparkLocal.trim().isEmpty())
 				{
 					LOG.info( "Spark System property not set: " + sparkLocal );
 					System.setProperty( "spark.master", "local[" + Math.max( 1, Runtime.getRuntime().availableProcessors() / 2 ) + "]" );

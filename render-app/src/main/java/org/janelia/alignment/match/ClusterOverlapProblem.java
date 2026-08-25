@@ -59,7 +59,7 @@ public class ClusterOverlapProblem {
                                                                                           tileBounds.getMinY(),
                                                                                           tileBounds.getMaxX(),
                                                                                           tileBounds.getMaxY());
-                    if (intersectingTiles.size() > 0) {
+                    if (!intersectingTiles.isEmpty()) {
                         if (overlapProblem == null) {
                             overlapProblem = new ClusterOverlapProblem(originalZ,
                                                                        tileBounds,
@@ -118,7 +118,7 @@ public class ClusterOverlapProblem {
     public static String getTileIdListJson(final Collection<String> tileIds) {
         final StringBuilder json = new StringBuilder();
         tileIds.stream().sorted().forEach(tileId -> {
-            if (json.length() > 0) {
+            if (!json.isEmpty()) {
                 json.append(",\n");
             }
             json.append('"').append(tileId).append('"');
@@ -204,7 +204,7 @@ public class ClusterOverlapProblem {
         try {
             Utils.saveImage(targetImage, this.problemImageFile, false, 0.85f);
         } catch (final IOException e) {
-            LOG.error("failed to save data for " + problemName, e);
+            LOG.error("failed to save data for {}", problemName, e);
         }
     }
 

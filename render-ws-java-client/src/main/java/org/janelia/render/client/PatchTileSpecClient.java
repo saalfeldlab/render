@@ -97,7 +97,7 @@ public class PatchTileSpecClient {
     private void patchTiles()
             throws IOException, IllegalArgumentException {
 
-        if (parameters.sourceTileIds.size() < 1) {
+        if (parameters.sourceTileIds.isEmpty()) {
             throw new IllegalArgumentException("at least one sourceTileId must be specified");
         }
 

@@ -132,7 +132,7 @@ public class RedistributeTilePairsClient {
 
         }
 
-        if (neighborPairs.size() > 0) {
+        if (!neighborPairs.isEmpty()) {
             final List<OrderedCanvasIdPair> neighborPairsList = new ArrayList<>(neighborPairs);
             final String outputFileName = numberOfOutputFiles == 0 ? parameters.toJson : getOutputFileName();
             savePairs(neighborPairsList, renderableCanvasIdPairs.getRenderParametersUrlTemplate(), outputFileName);

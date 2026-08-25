@@ -146,7 +146,7 @@ public class DeltaStackClient {
                                                  parameters.getToOwner(),
                                                  parameters.getToProject());
 
-        if ((parameters.zValues == null) || (parameters.zValues.size() == 0)) {
+        if ((parameters.zValues == null) || (parameters.zValues.isEmpty())) {
             this.zValues = fromDataClient.getStackZValues(parameters.fromStack);
         } else {
             this.zValues = parameters.zValues;
@@ -186,7 +186,7 @@ public class DeltaStackClient {
 
 
 
-        if (tileIdsToRemove.size() > 0) {
+        if (!tileIdsToRemove.isEmpty()) {
             final int numberOfTilesBeforeFilter = sourceCollection.getTileCount();
             sourceCollection.removeTileSpecs(tileIdsToRemove);
             final int numberOfTilesRemoved = numberOfTilesBeforeFilter - sourceCollection.getTileCount();

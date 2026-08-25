@@ -321,7 +321,7 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 						.sorted()
 						.collect(Collectors.toList()));
 		
-		if (this.pGroupList.size() == 0)
+		if (this.pGroupList.isEmpty())
 			throw new IllegalArgumentException("stack " + parameters.stack + " does not contain any sections with the specified z values");
 
 		Double minZForRun = parameters.minZ;
