@@ -40,10 +40,10 @@ public class MultiSemMfovColumn {
         this.mfovBoundsList = mfovBoundsList;
         this.rowList = new ArrayList<>();
 
-        final TileBounds firstMfovBounds = mfovBoundsList.get(0);
+        final TileBounds firstMfovBounds = mfovBoundsList.getFirst();
         this.minY = firstMfovBounds.getMinY().intValue();
 
-        final TileBounds lastMfovBounds = mfovBoundsList.get(mfovBoundsList.size() - 1);
+        final TileBounds lastMfovBounds = mfovBoundsList.getLast();
         this.maxY = lastMfovBounds.getMaxY().intValue();
 
         this.minDeltaY = mfovBoundsList.size() > 1 ? findMinimumDeltaY(mfovBoundsList) : firstMfovBounds.getHeight();
@@ -203,7 +203,7 @@ public class MultiSemMfovColumn {
 
             final List<TileBounds> sfovBoundsList = mfovToSfovBounds.get(mfovId);
 
-            Bounds aggregatedSfovBounds = sfovBoundsList.get(0);
+            Bounds aggregatedSfovBounds = sfovBoundsList.getFirst();
             for (final TileBounds sfovBounds : sfovBoundsList) {
                 aggregatedSfovBounds = aggregatedSfovBounds.union(sfovBounds);
             }

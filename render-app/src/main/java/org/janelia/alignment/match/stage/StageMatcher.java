@@ -477,7 +477,7 @@ public class StageMatcher {
                                                                          qPeakContextCanvasId.getId(),
                                                                          siftRenderScale,
                                                                          pClipOffsets,
-                                                                         qClipOffsets).get(0);
+                                                                         qClipOffsets).getFirst();
         }
 
 

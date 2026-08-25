@@ -161,7 +161,7 @@ public class RecapKensAlignment
 		System.out.println( Arrays.toString( dir.list( (d,fn) -> fn.toLowerCase().endsWith(".xml" ) ) ) );
 
 		// Common bounds to create common frame for all images
-		final Rectangle commonBounds = new Rectangle(0, 0, models.get( slices.get( 0 ) ).width, models.get( slices.get( 0 ) ).height );
+		final Rectangle commonBounds = new Rectangle(0, 0, models.get( slices.getFirst() ).width, models.get(slices.getFirst() ).height );
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
 		{

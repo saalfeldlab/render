@@ -87,7 +87,7 @@ public class SortedNearestCrossPairsForLayerMFOV
                           tileBounds.getTileId(),
                           layerMFOV);
 
-                final Double deltaZ = tileBounds.getZ() - sortedNearestNextLayerTileBoundsList.get(0).getZ();
+                final Double deltaZ = tileBounds.getZ() - sortedNearestNextLayerTileBoundsList.getFirst().getZ();
                 final List<OrderedCanvasIdPair> sortedNearestPairsForCurrentLayerTile = new ArrayList<>();
                 for (final TileBounds qTileBounds : sortedNearestNextLayerTileBoundsList) {
 
@@ -224,7 +224,7 @@ public class SortedNearestCrossPairsForLayerMFOV
                 final List<TileBounds> currentLayerSortedTileBoundsListForComparisonArea =
                         currentLayerMfovToMostConnectedTileBoundsMap.get(currentLayerMFOV);
 
-                final TileBounds firstCurrentLayerTileBounds = currentLayerSortedTileBoundsListForComparisonArea.get(0);
+                final TileBounds firstCurrentLayerTileBounds = currentLayerSortedTileBoundsListForComparisonArea.getFirst();
                 LOG.debug("buildPairsLists: for {} {} and nextZ {} in {}, firstCurrentLayerTileBounds is {}",
                           stackDevString, currentLayerMFOV, nextZ, stackDevString, firstCurrentLayerTileBounds);
 

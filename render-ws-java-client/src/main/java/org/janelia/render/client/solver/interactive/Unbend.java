@@ -80,8 +80,8 @@ public class Unbend
 	protected static ArrayList<Pair<Integer, double[]>> positionPerZSlice( final List< double[] > points, final long minZ, final long maxZ )
 	{
 		// check that list has an increasing z
-		double minPointZ = points.get( 0 )[ 2 ];
-		double maxPointZ = points.get( 0 )[ 2 ];
+		double minPointZ = points.getFirst()[ 2 ];
+		double maxPointZ = points.getFirst()[ 2 ];
 
 		for ( int i = 1; i < points.size(); ++i )
 		{
@@ -107,7 +107,7 @@ public class Unbend
 						points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
 
 		final ArrayList<Pair<Integer, double[]>> positions = new ArrayList<>();
-		final RealPoint p = new RealPoint( points.get( 0 ).length );
+		final RealPoint p = new RealPoint( points.getFirst().length );
 		double x = 0;
 
 		for ( int z = (int)minZ; z <= maxZ; ++z )

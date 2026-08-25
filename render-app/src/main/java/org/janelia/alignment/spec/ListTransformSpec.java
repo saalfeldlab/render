@@ -50,8 +50,8 @@ public class ListTransformSpec extends TransformSpec {
     @JsonIgnore
     public TransformSpec getLastSpec() {
         final TransformSpec lastSpec;
-        if ((specList.size() > 0)) {
-            lastSpec = specList.get(specList.size() - 1);
+        if (!specList.isEmpty()) {
+            lastSpec = specList.getLast();
         } else {
             lastSpec = null;
         }
@@ -63,8 +63,8 @@ public class ListTransformSpec extends TransformSpec {
     }
 
     public void removeLastSpec() {
-        if (specList.size() > 0) {
-            specList.remove(specList.size() - 1);
+        if (!specList.isEmpty()) {
+            specList.removeLast();
         }
     }
 

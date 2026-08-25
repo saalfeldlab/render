@@ -88,8 +88,8 @@ public class StackStraighteningClient {
             throw new IllegalArgumentException("Stack must have at least 2 layers for straightening");
         }
 
-        this.minZ = zValues.get(0);
-        this.maxZ = zValues.get(zValues.size() - 1);
+        this.minZ = zValues.getFirst();
+        this.maxZ = zValues.getLast();
         this.zRange = maxZ - minZ;
 
         if (parameters.numberOfZLayersPerChunk < 1) {
@@ -149,8 +149,8 @@ public class StackStraighteningClient {
                                   final double totalOffsetY)
             throws Exception {
 
-        final Double firstZ = zLayersChunk.get(0);
-        final Double lastZ = zLayersChunk.get(zLayersChunk.size() - 1);
+        final Double firstZ = zLayersChunk.getFirst();
+        final Double lastZ = zLayersChunk.getLast();
 
         LOG.info("straightenLayers: entry, firstZ={}, lastZ={}", firstZ, lastZ);
 

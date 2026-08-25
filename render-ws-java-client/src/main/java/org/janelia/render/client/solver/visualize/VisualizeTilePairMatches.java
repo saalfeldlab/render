@@ -474,7 +474,7 @@ public class VisualizeTilePairMatches {
                                        parameters.renderWithFilter + "&scale=" + parameters.renderScale;
                 this.renderParameters = RenderParameters.loadFromUrl(tileUrl);
                 this.renderParameters.initializeDerivedValues();
-                this.tileSpec = renderParameters.getTileSpecs().get(0);
+                this.tileSpec = renderParameters.getTileSpecs().getFirst();
 
             } else {
 

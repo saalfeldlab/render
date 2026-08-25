@@ -363,7 +363,7 @@ public class MFOVMontageMatchPatchClient {
 
         if (numberOfDerivedMatchPairs > 0) {
 
-            final String firstPairKey = derivedMatches.get(0).toKeyString();
+            final String firstPairKey = derivedMatches.getFirst().toKeyString();
             LOG.info("saveDerivedMatches: saving matches for {} pairs in {}, first save pair is {}",
                      numberOfDerivedMatchPairs, context, firstPairKey);
 

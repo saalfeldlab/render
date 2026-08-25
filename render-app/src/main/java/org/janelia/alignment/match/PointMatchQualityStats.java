@@ -103,8 +103,8 @@ public class PointMatchQualityStats
 
             if (aggregateModel == null) {
                 aggregateDeltaXAndYStandardDeviation = new double[]{
-                        consensusSetDeltaXStandardDeviations.get(0),
-                        consensusSetDeltaYStandardDeviations.get(0)
+                        consensusSetDeltaXStandardDeviations.getFirst(),
+                        consensusSetDeltaYStandardDeviations.getFirst()
                 };
             } else {
                 aggregateModel.fit(aggregatedInliers);

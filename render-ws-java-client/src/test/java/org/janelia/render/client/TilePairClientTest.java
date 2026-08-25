@@ -122,7 +122,7 @@ public class TilePairClientTest {
 
         assertEquals(1, pairFilePaths.size(), "invalid number of pairs files created");
 
-        final File resultFile = pairFilePaths.get(0).toFile();
+        final File resultFile = pairFilePaths.getFirst().toFile();
         final FileReader resultReader = new FileReader(resultFile);
         final RenderableCanvasIdPairs renderableCanvasIdPairs = RenderableCanvasIdPairs.fromJson(resultReader);
 

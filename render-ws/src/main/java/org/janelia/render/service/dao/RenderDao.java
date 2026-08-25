@@ -146,7 +146,7 @@ public class RenderDao {
         if (tileIdPattern != null) {
             final List<TileSpec> tileSpecList = renderParameters.getTileSpecs();
             if (! tileSpecList.isEmpty()) {
-                Bounds filteredBounds = tileSpecList.get(0).toTileBounds();
+                Bounds filteredBounds = tileSpecList.getFirst().toTileBounds();
                 for (int i = 1; i < tileSpecList.size(); i++) {
                     filteredBounds = filteredBounds.union(tileSpecList.get(i).toTileBounds());
                 }

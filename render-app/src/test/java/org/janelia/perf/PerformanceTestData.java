@@ -100,7 +100,7 @@ public class PerformanceTestData {
                     sum += result.elapsedTime;
                 }
                 averageTime = sum / averageGroupResults.size();
-                finalResults.add(getAverageInstance(averageGroupResults.get(0),
+                finalResults.add(getAverageInstance(averageGroupResults.getFirst(),
                                                     averageTime,
                                                     averageGroupResults.size()));
             }
@@ -119,7 +119,7 @@ public class PerformanceTestData {
 
                     Collections.sort(finalResults, reportNameToComparatorMap.get(reportName));
 
-                    reportGroup = finalResults.get(0).getReportGroup();
+                    reportGroup = finalResults.getFirst().getReportGroup();
                     for (T result : finalResults) {
                         if (! reportGroup.equals(result.getReportGroup())) {
                             reportGroup = result.getReportGroup();

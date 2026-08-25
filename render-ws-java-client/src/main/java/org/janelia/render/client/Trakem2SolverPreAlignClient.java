@@ -284,7 +284,7 @@ public class Trakem2SolverPreAlignClient{
 
         }
 
-        final Double lastZ = orderedZValues.get(orderedZValues.size() - 1);
+        final Double lastZ = orderedZValues.getLast();
         preAlignAndSaveBatch(idToTileMap, previouslyAlignedTileIds, lastZ, true);
 
         if (parameters.completeTargetStack) {

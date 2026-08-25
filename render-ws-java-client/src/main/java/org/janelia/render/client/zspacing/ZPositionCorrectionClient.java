@@ -261,11 +261,11 @@ public class ZPositionCorrectionClient {
                                                       parameters.currentBatchNumber,
                                                       parameters.totalBatchCount,
                                                       this.inferenceOptions.comparisonRange);
-            this.firstLayerOffset = allSortedZList.indexOf(this.sortedZList.get(0));
+            this.firstLayerOffset = allSortedZList.indexOf(this.sortedZList.getFirst());
         } else {
             this.sortedZList = allSortedZList;
             final List<Double> allSortedZIgnoringParameters = renderDataClient.getStackZValues(parameters.stack);
-            this.firstLayerOffset = allSortedZIgnoringParameters.indexOf(this.sortedZList.get(0));
+            this.firstLayerOffset = allSortedZIgnoringParameters.indexOf(this.sortedZList.getFirst());
         }
 
         if (parameters.zSpacing.runName == null) {
@@ -274,8 +274,8 @@ public class ZPositionCorrectionClient {
             final SimpleDateFormat sdf = new SimpleDateFormat("'solve_'yyyyMMdd_HHmmss");
             this.runDirectory = new File(this.baseRunDirectory, sdf.format(new Date()));
         } else { // batched cross correlation run
-            final Double firstZ = sortedZList.get(0);
-            final Double lastZ = sortedZList.get(sortedZList.size() - 1);
+            final Double firstZ = sortedZList.getFirst();
+            final Double lastZ = sortedZList.getLast();
             final String zRange = String.format("z_%08.1f_to_%08.1f", firstZ, lastZ);
             final Path path = Paths.get(this.baseRunDirectory.getAbsolutePath(),
                                         CrossCorrelationData.DEFAULT_BATCHES_DIR_NAME,
@@ -511,7 +511,7 @@ public class ZPositionCorrectionClient {
         }
         
         final String outputFilePath = new File(runDirectory, "Zcoords.txt").getAbsolutePath();
-        HeadlessZPositionCorrection.writeEstimations(transforms, outputFilePath, sortedZList.get(0));
+        HeadlessZPositionCorrection.writeEstimations(transforms, outputFilePath, sortedZList.getFirst());
 
         stopWatch.stop();
 

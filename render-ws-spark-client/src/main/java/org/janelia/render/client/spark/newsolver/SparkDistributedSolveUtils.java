@@ -32,7 +32,7 @@ public class SparkDistributedSolveUtils {
 		//   - Mesos fine grained mode: 8
 		//   - Others: total number of cores on all executor nodes or 2, whichever is larger.
 		int parallelism = sparkContext.defaultParallelism();
-		final DistributedSolveParameters firstSolveParameters = solveParametersList.get(0);
+		final DistributedSolveParameters firstSolveParameters = solveParametersList.getFirst();
 
 		LOG.info("deriveParallelismValues: entry, threadsGlobal={}, threadsWorker={}, parallelism={}",
 				 firstSolveParameters.threadsGlobal, firstSolveParameters.threadsWorker, parallelism);

@@ -166,7 +166,7 @@ public class ZDistanceParameters implements Serializable {
 
         public int getMaxDistance() {
             // list is always sorted and has at least one element (0), so just return last element
-            return distanceList.get(distanceList.size() - 1);
+            return distanceList.getLast();
         }
 
         /**

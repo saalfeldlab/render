@@ -97,7 +97,7 @@ public class MFOVMontageSolverClient {
 
             final ArrayList<UnconnectedMFOVPairsForStack> unconnectedMFOVsForAllStacks =
                     new ArrayList<>(
-                            UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFiles.get(0))
+                            UnconnectedMFOVPairsForStack.load(parameters.unconnectedMFOVPairsFiles.getFirst())
                     );
 
             // add more pairs if multiple files have been specified

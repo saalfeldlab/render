@@ -50,14 +50,14 @@ public class BoundsBatchTest {
 
         assertEquals(expectedBatchCount, batchList.size(), testContext + ": invalid number of batches");
 
-        assertEquals(batchList.get(0).getTotalArea(),
+        assertEquals(batchList.getFirst().getTotalArea(),
                      batchList.get(numberOfBatchesWithAllCells-1).getTotalArea(),
                      0.1,
                      testContext + ": batches with all cells should have same total area");
 
         if (numberOfBatchesWithAllCells < batchList.size()) {
             assertEquals(batchList.get(numberOfBatchesWithAllCells).getTotalArea(),
-                         batchList.get(batchList.size() - 1).getTotalArea(),
+                         batchList.getLast().getTotalArea(),
                          0.1,
                          testContext + ": batches with reduced cells should have same total area");
         }

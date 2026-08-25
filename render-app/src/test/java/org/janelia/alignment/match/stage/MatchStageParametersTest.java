@@ -50,7 +50,7 @@ public class MatchStageParametersTest {
 
         assertEquals(1, stageParametersList.size(),
                      "invalid number of stage parameters loaded");
-        assertThrows(IllegalArgumentException.class, () -> stageParametersList.get(0).validateAndSetDefaults());
+        assertThrows(IllegalArgumentException.class, () -> stageParametersList.getFirst().validateAndSetDefaults());
     }
 
     private static final String CROSS_JSON =

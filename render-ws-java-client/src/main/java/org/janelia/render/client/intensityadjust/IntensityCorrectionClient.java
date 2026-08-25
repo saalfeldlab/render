@@ -36,8 +36,8 @@ public class IntensityCorrectionClient
                 // TODO: revisit this once we decide how to partition cross layer runs
                 final List<Double> zValues = worker.getzValues();
                 worker.correctZRange(dataClient,
-                                     zValues.get(0),
-                                     zValues.get(zValues.size()-1));
+                                     zValues.getFirst(),
+                                     zValues.getLast());
 
                 worker.completeCorrectedStackAsNeeded(dataClient);
 

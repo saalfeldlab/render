@@ -238,7 +238,7 @@ public class TranslateClustersClient {
 
             moveSmallClustersForLayer(resolvedTiles,
                                       z,
-                                      sortedConnectedTileIdSets.get(0),
+                                      sortedConnectedTileIdSets.getFirst(),
                                       smallerRemainingClusters);
 
             moveLayerToOrigin(resolvedTiles, z);
@@ -306,8 +306,8 @@ public class TranslateClustersClient {
                                                                                        bounds.getMaxY(),
                                                                                        maxDistance,
                                                                                        1);
-                if (nearestTiles.size() > 0) {
-                    final TileBounds nearestBounds = nearestTiles.get(0);
+                if (!nearestTiles.isEmpty()) {
+                    final TileBounds nearestBounds = nearestTiles.getFirst();
                     final double deltaX = nearestBounds.getMinX() - bounds.getMinX();
                     final double deltaY = nearestBounds.getMinY() - bounds.getMinY();
                     final double distance = Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
@@ -526,7 +526,7 @@ public class TranslateClustersClient {
 
         final int lastIndex = layoutBoundsList.size() - 1;
         if (lastIndex > 0) {
-            final TileSpec firstTileSpec = allTiles.getTileSpec(layoutBoundsList.get(0).getTileId());
+            final TileSpec firstTileSpec = allTiles.getTileSpec(layoutBoundsList.getFirst().getTileId());
             final LayoutData firstLayout = firstTileSpec.getLayout();
             final TileSpec lastTileSpec = allTiles.getTileSpec(layoutBoundsList.get(lastIndex).getTileId());
             final LayoutData lastLayout = lastTileSpec.getLayout();

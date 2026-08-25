@@ -347,7 +347,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		{
 			try
 			{
-				currentTile = solveItem.groupedTileToTiles().get(groupedTile).get(0);
+				currentTile = solveItem.groupedTileToTiles().get(groupedTile).getFirst();
 				final int z = (int)Math.round(
 								solveItem.blockData().rtsc().getTileSpec(solveItem.tileToIdMap().get(currentTile)).getZ());
 
@@ -364,7 +364,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		final ArrayList<Integer> allZ = new ArrayList<>(zToGroupedTileList.keySet());
 		Collections.sort(allZ);
 
-		final AlignmentModel model = (AlignmentModel) zToGroupedTileList.get(allZ.get(0)).get(0).getModel();
+		final AlignmentModel model = (AlignmentModel) zToGroupedTileList.get(allZ.getFirst()).getFirst().getModel();
 		final Model<?> regularizer = model.getModel(AlignmentModelType.REGULARIZATION.name());
 
 		if (regularizer instanceof ConstantAffineModel2D) {
@@ -802,7 +802,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		{
 			solveItems.add( inputSolveItem );
 
-			LOG.info("splitSolveItem: block {}: Graph 0 has {} tiles.", blockData, graphs.get(0).size());
+			LOG.info("splitSolveItem: block {}: Graph 0 has {} tiles.", blockData, graphs.getFirst().size());
 		}
 		else
 		{
@@ -987,7 +987,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 		try {
 			final Map<Tile<?>, Integer> tileToZ = new HashMap<>();
 			for (final Tile<?> tile : tileConfig.getTiles()) {
-				final Tile<?> firstTile = solveItem.groupedTileToTiles().get(tile).get(0);
+				final Tile<?> firstTile = solveItem.groupedTileToTiles().get(tile).getFirst();
 				final String firstTileId = solveItem.tileToIdMap().get(firstTile);
 				final int z = (int) Math.round(solveItem.blockData().rtsc().getTileIdToSpecMap().get(firstTileId).getZ());
 				tileToZ.put(tile, z);

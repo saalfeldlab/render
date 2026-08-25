@@ -108,7 +108,7 @@ public class MFOVOffsetSupportData
 
         final StackId renderStackId = stackWithZ.getStackId();
         final String stackName = renderStackId.getStack();
-        final Double z = stackWithZ.getzValues().get(0);
+        final Double z = stackWithZ.getzValues().getFirst();
 
         final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stackName, z);
         for (final TileBounds tileBounds : tileBoundsList) {

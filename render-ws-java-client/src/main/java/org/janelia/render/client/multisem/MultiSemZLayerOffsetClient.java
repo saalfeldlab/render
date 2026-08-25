@@ -131,7 +131,7 @@ public class MultiSemZLayerOffsetClient {
         final Map<Double, int[]> zToOffsets = new HashMap<>();
 
         final String baseDataUrlForStack = dataClient.getBaseDataUrl();
-        final Double firstZ = zValues.get(0);
+        final Double firstZ = zValues.getFirst();
         final Bounds regionBounds = deriveBoundsForRenderRegion(dataClient, stackId, firstZ);
 
         final long fullScalePixelCount = (long) (Math.ceil(regionBounds.getDeltaX()) * Math.ceil(regionBounds.getDeltaY()));
@@ -219,7 +219,7 @@ public class MultiSemZLayerOffsetClient {
         final Map<String, TileBounds> sfovIndexToBounds = magcMfovToSfovBounds.get(magcMfovWithLargestTileCount);
         final List<String> sortedSfovIndices = sfovIndexToBounds.keySet().stream().sorted().collect(Collectors.toList());
 
-        final String firstSfovIndex = sortedSfovIndices.get(0);
+        final String firstSfovIndex = sortedSfovIndices.getFirst();
         final int stopValue = Math.min(7, sortedSfovIndices.size());
 
         // sFOVs within region when firstSfovIndex is 0 and stopValue is 7:

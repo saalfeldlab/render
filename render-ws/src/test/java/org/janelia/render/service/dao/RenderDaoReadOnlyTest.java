@@ -316,12 +316,12 @@ public class RenderDaoReadOnlyTest {
                      "invalid number of lists returned");
 
         // first coordinate
-        List<TileCoordinates> tileCoordinatesList = worldCoordinatesWithTileIds.get(0);
+        List<TileCoordinates> tileCoordinatesList = worldCoordinatesWithTileIds.getFirst();
 
         assertEquals(1, tileCoordinatesList.size(),
                      "invalid number of tiles found for first coordinate");
 
-        TileCoordinates tileCoordinates = tileCoordinatesList.get(0);
+        TileCoordinates tileCoordinates = tileCoordinatesList.getFirst();
 
         assertEquals("134", tileCoordinates.getTileId(),
                      "invalid tileId for first coordinate");

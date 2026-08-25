@@ -30,7 +30,7 @@ public class MonotoneCubicSpline
 		this.mX = x;
 		this.mY = y;
 		this.mM = m;
-		this.nd = y.get( 0 ).numDimensions();
+		this.nd = y.getFirst().numDimensions();
 	}
 
 	public static MonotoneCubicSpline createMonotoneCubicSpline( final List<? extends RealLocalizable> y )
@@ -71,7 +71,7 @@ public class MonotoneCubicSpline
 					+ "points and the arrays must be of equal length.");
 		}
 
-		final int nd = y.get( 0 ).numDimensions();
+		final int nd = y.getFirst().numDimensions();
 
 		final int n = x.size();
 		double[][] d = new double[n - 1][nd]; // could optimize this out
@@ -140,9 +140,9 @@ public class MonotoneCubicSpline
 			return;
 		}
 
-		if (x <= mX.get(0))
+		if (x <= mX.getFirst())
 		{
-			p.setPosition( mY.get( 0 ) );
+			p.setPosition( mY.getFirst() );
 			return;
 		}
 
@@ -198,7 +198,7 @@ public class MonotoneCubicSpline
 		new ImageJ();
 
 		final FloatProcessor fp = new FloatProcessor( 512, 512 );
-		final RealPoint p = new RealPoint( points.get( 0 ).numDimensions() );
+		final RealPoint p = new RealPoint( points.getFirst().numDimensions() );
 
 		for ( double x = 0; x < points.size() - 1; x += 0.001 )
 		{

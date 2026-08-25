@@ -179,7 +179,7 @@ public class LayerMFOV
         final String pngImageUrl = renderParametersUrl.replace("render-parameters", "png-image") +
                                    "&maxTileSpecsToRender=" + MultiSemUtilities.NUMBER_OF_TILES_IN_MFOV;
 
-        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().get(0);
+        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().getFirst();
         final ImageAndMask firstSfovImageAndMask = firstSfovTileSpec.getFirstMipmapEntry().getValue();
         final ImageLoader.LoaderType firstSfovImageLoaderType = firstSfovImageAndMask.getImageLoaderType();
         ImageLoader.LoaderType loaderType = null;

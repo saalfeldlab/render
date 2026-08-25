@@ -50,12 +50,12 @@ public class StackWithZValues implements Serializable {
 
     @JsonIgnore
     public Double getFirstZ() {
-        return zValues.isEmpty() ? null : zValues.get(0);
+        return zValues.isEmpty() ? null : zValues.getFirst();
     }
 
     @JsonIgnore
     public Double getLastZ() {
-        return zValues.isEmpty() ? null : zValues.get(zValues.size() - 1);
+        return zValues.isEmpty() ? null : zValues.getLast();
     }
 
     @JsonIgnore

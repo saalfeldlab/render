@@ -118,13 +118,13 @@ public class DebugTileDataTest {
             zToTileSpecLists.put(z, tileSpecsForZSortedByTileId);
         }
 
-        final Double firstZ = zValues.get(0);
+        final Double firstZ = zValues.getFirst();
         final List<TileBounds> tileBoundsForFirstZ = zToTileBoundsLists.get(firstZ);
-        final TileBounds firstTileBounds = tileBoundsForFirstZ.get(0);
+        final TileBounds firstTileBounds = tileBoundsForFirstZ.getFirst();
         LOG.info("first tile bounds are {}", firstTileBounds);
 
         final List<TileSpec> tileSpecsForFirstZ = zToTileSpecLists.get(firstZ);
-        final TileSpec firstTileSpec = tileSpecsForFirstZ.get(0);
+        final TileSpec firstTileSpec = tileSpecsForFirstZ.getFirst();
         LOG.info("first tile spec is {}", firstTileSpec.toJson());
 
         return firstTileBounds;

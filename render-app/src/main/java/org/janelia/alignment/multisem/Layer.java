@@ -65,7 +65,7 @@ public class Layer {
         final int numberOfTilesInZLayer = renderParameters.numberOfTileSpecs();
 
         // all SFOVs in a z layer come from the same scan, so the first one identifies the layer's scan
-        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().get(0);
+        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().getFirst();
         final String scanName = MultiSemUtilities.getScanStringForTileId(firstSfovTileSpec.getTileId());
 
         final double scaledImageWidth = Math.floor(renderParameters.width * renderScale);

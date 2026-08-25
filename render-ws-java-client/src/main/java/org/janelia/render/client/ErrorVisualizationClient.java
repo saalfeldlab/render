@@ -353,12 +353,12 @@ public class ErrorVisualizationClient {
 	        	tileSpec.getTransformList().applyInPlace( pGlobal );
 	        	final double xEnd = pGlobal[ 0 ];
 	        	
-	        	loc.get( loc.size() - 1 ).add( new ValuePair<>( xPos, zPos ) );
-	        	realLoc.get( realLoc.size() - 1 ).add( new ValuePair<>( xStart, xEnd ) );
-	        	tileIdStore.get( tileIdStore.size() - 1 ).add( tileId );
-	        	avgError.get( avgError.size() - 1 ).add( avgDiff );
-	        	maxError.get( maxError.size() - 1 ).add( maxDiff );
-	        	maxErrorLoc.get( maxErrorLoc.size() - 1 ).add( new ValuePair<>( maxLocX, maxLocZ ) );
+	        	loc.getLast().add(new ValuePair<>(xPos, zPos ) );
+	        	realLoc.getLast().add(new ValuePair<>(xStart, xEnd ) );
+	        	tileIdStore.getLast().add(tileId );
+	        	avgError.getLast().add(avgDiff );
+	        	maxError.getLast().add(maxDiff );
+	        	maxErrorLoc.getLast().add(new ValuePair<>(maxLocX, maxLocZ ) );
 	        }
 
         }
@@ -374,13 +374,13 @@ public class ErrorVisualizationClient {
             final ArrayList< ArrayList< Pair< Integer, Integer > > > maxErrorLoc,
             final double scaleX )
     {
-    	int minX = loc.get( 0 ).get( 0 ).getA();
+    	int minX = loc.getFirst().getFirst().getA();
     	int maxX = minX;
 
-    	double realMinX = realLoc.get( 0 ).get( 0 ).getA();
+    	double realMinX = realLoc.getFirst().getFirst().getA();
     	double realMaxX = realMinX;
 
-    	int minZ = loc.get( 0 ).get( 0 ).getB();
+    	int minZ = loc.getFirst().getFirst().getB();
     	int maxZ = minZ;
 
     	int prevZ = -1;
@@ -398,14 +398,14 @@ public class ErrorVisualizationClient {
     		if ( lineRealLoc.size() == 0 )
     			continue;
 
-        	double rX0 = lineRealLoc.get( 0 ).getA();
-        	double rX1 = lineRealLoc.get( 0 ).getB();
+        	double rX0 = lineRealLoc.getFirst().getA();
+        	double rX1 = lineRealLoc.getFirst().getB();
 
         	realMinX = Math.min( Math.min( rX0, rX1 ), realMinX );
         	realMaxX = Math.max( Math.max( rX0, rX1 ), realMaxX );
 
-    		int x = lineLoc.get( 0 ).getA();
-    		int z = lineLoc.get( 0 ).getB();
+    		int x = lineLoc.getFirst().getA();
+    		int z = lineLoc.getFirst().getB();
 
     		minX = Math.min( x, minX );
     		maxX = Math.max( x, maxX );

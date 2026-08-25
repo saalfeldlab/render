@@ -164,7 +164,7 @@ public class ClusterCountClient {
             if ((tileCount > 1) && (tileCount < 1_000_000)) {
                 final List<String> sortedTileIds = tileIdSet.stream().sorted().collect(Collectors.toList());
                 tileSummary = new ConnectedTileClusterSummary(tileCount,
-                                                              sortedTileIds.get(0),
+                                                              sortedTileIds.getFirst(),
                                                               sortedTileIds.get(tileCount - 1));
             } else {
                 tileSummary = new ConnectedTileClusterSummary(tileCount,
@@ -256,8 +256,8 @@ public class ClusterCountClient {
                 new SortedConnectedCanvasIdClusters(allTileIdsWithMatches.getCanvasMatchesList());
 
         LOG.info("findConnectedClustersForSlab: slab z {} to {} has {} connected tile sets with sizes {}",
-                 sortedZValues.get(0),
-                 sortedZValues.get(sortedZValues.size() - 1),
+                 sortedZValues.getFirst(),
+                 sortedZValues.getLast(),
                  clusters.size(),
                  clusters.getClusterSizes());
 

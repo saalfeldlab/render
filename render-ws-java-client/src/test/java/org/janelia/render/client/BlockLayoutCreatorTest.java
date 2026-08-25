@@ -33,7 +33,7 @@ public class BlockLayoutCreatorTest {
 				.singleBlock(In.Y, 2*MIN, 3*MAX)
 				.singleBlock(In.Z, 4*MIN, 5*MAX)
 				.create();
-		final Bounds bounds = blocks.get(0);
+		final Bounds bounds = blocks.getFirst();
 		assertEquals(0, bounds.getMinX().intValue());
 		assertEquals(2*MIN, bounds.getMinY().intValue());
 		assertEquals(4*MIN, bounds.getMinZ().intValue());
@@ -56,7 +56,7 @@ public class BlockLayoutCreatorTest {
 				.regularGrid(In.X, 1, BLOCK_SIZE - 1, BLOCK_SIZE)
 				.create();
 		assertEquals(1, blocks.size());
-		assertTrue(blocks.get(0).getDeltaX() < BLOCK_SIZE);
+		assertTrue(blocks.getFirst().getDeltaX() < BLOCK_SIZE);
 	}
 
 	@Test

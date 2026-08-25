@@ -71,7 +71,7 @@ public class CoordinateServiceTest {
         assertEquals(1, localCoordinatesList.size(),
                      "invalid number of tiles found for (" + x + "," + y + ")");
 
-        final TileCoordinates localCoordinates = localCoordinatesList.get(0);
+        final TileCoordinates localCoordinates = localCoordinatesList.getFirst();
 
         validateCoordinates("local",
                             localCoordinates,
@@ -195,7 +195,7 @@ public class CoordinateServiceTest {
         assertEquals(2, localCoordinateList.size(),
                      "invalid local list size");
 
-        TileCoordinates localCoordinates = localCoordinateList.get(0);
+        TileCoordinates localCoordinates = localCoordinateList.getFirst();
         assertNotNull(localCoordinates, "null first coordinates");
         assertFalse(localCoordinates.isVisible(),
                     "first coordinates should NOT be marked as visible");

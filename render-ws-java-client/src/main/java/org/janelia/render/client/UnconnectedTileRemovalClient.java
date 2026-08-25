@@ -297,7 +297,7 @@ public class UnconnectedTileRemovalClient {
         if (sortedConnectedTileSets.size() > 1) {
 
             // keep largest connected tile set regardless of size
-            final Set<String> largestCluster = sortedConnectedTileSets.get(0);
+            final Set<String> largestCluster = sortedConnectedTileSets.getFirst();
             final int maxSmallClusterSize = clusterParameters.getEffectiveMaxSmallClusterSize(largestCluster.size());
 
             LOG.info("markSmallClustersAsUnconnected: for z {}, maxSmallClusterSize is {}",

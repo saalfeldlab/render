@@ -629,7 +629,7 @@ public class CoordinateClient {
 
                     final List<TileSpec> tileSpecList = getTileSpecsForCoordinates(coordinatesList, tiles);
 
-                    coordinates = coordinatesList.get(0);
+                    coordinates = coordinatesList.getFirst();
                     final double[] world = coordinates.getWorld();
                     if (world == null) {
                         throw new IllegalArgumentException("world values are missing");
@@ -691,7 +691,7 @@ public class CoordinateClient {
             if (tileSpecList.size() == 0) {
                 final String zMessage = z == null ? "" : "layer " + z + " of ";
                 throw new IllegalArgumentException("no tile specifications found in " + zMessage + "stack " + stack +
-                                                   " for " + Arrays.toString(coordinatesList.get(0).getWorld()));
+                                                   " for " + Arrays.toString(coordinatesList.getFirst().getWorld()));
             }
 
             return tileSpecList;
@@ -815,7 +815,7 @@ public class CoordinateClient {
         private TileCoordinates getVisibleCoordinates(final List<TileCoordinates> mappedCoordinatesList) {
             TileCoordinates tileCoordinates = null;
             if (mappedCoordinatesList.size() > 0) {
-                tileCoordinates = mappedCoordinatesList.get(0);
+                tileCoordinates = mappedCoordinatesList.getFirst();
                 for (final TileCoordinates mappedCoordinates : mappedCoordinatesList) {
                     if (mappedCoordinates.isVisible()) {
                         tileCoordinates = mappedCoordinates;

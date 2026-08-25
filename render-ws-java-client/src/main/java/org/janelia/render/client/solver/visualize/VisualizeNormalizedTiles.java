@@ -125,7 +125,7 @@ public class VisualizeNormalizedTiles {
             renderParameters.initializeDerivedValues();
 
             if (parameters.hackDataString != null) {
-                final TileSpec tileSpec = renderParameters.getTileSpecs().get(0);
+                final TileSpec tileSpec = renderParameters.getTileSpecs().getFirst();
                 final LeafTransformSpec lastTransformSpec = (LeafTransformSpec) tileSpec.getLastTransform();
                 final LeafTransformSpec hackedTransformSpec = new LeafTransformSpec(lastTransformSpec.getClassName(),
                                                                                     parameters.hackDataString);

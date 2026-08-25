@@ -105,7 +105,7 @@ public class UrlMipmapSource
 
             final long loadMipStart = System.currentTimeMillis();
 
-            final ChannelSpec firstChannelSpec = channelSpecList.get(0);
+            final ChannelSpec firstChannelSpec = channelSpecList.getFirst();
 
             int downSampleLevels = 0;
 
@@ -293,7 +293,7 @@ public class UrlMipmapSource
      * Derives the full scale (level 0) width and height of this source's first channel.
      */
     private void setWidthAndHeight() {
-        final ChannelSpec firstChannelSpec = channelSpecList.get(0);
+        final ChannelSpec firstChannelSpec = channelSpecList.getFirst();
         final Map.Entry<Integer, ImageAndMask> mipmapEntry = firstChannelSpec.getFloorMipmapEntry(0);
         final ImageAndMask imageAndMask = mipmapEntry.getValue();
         final ImageProcessor imageProcessor = imageProcessorCache.get(imageAndMask.getImageUrl(),

@@ -108,7 +108,7 @@ public class HeadlessZPositionCorrectionTest {
                 .filter(bounds -> bounds.containsInt(testBoundsCenter))
                 .map(bounds -> bounds.withZ(testBoundsCenter.getMinZ()))
                 .collect(Collectors.toList());
-        final Bounds bounds = boundsList.get(0).withZRange(z, z + 1.0);
+        final Bounds bounds = boundsList.getFirst().withZRange(z, z + 1.0);
         final String stackUrlString = String.format("%s/owner/%s/project/%s/stack/%s",
                                                     baseDataUrl, owner, project, stack);
         final double renderScale = 0.22;

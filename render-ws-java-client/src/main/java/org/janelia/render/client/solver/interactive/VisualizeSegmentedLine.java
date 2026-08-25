@@ -93,8 +93,8 @@ public class VisualizeSegmentedLine extends MinimalBdvOverlay
 						MonotoneCubicSpline.createMonotoneCubicSpline(
 								points.stream().map( p -> new RealPoint( p ) ).collect( Collectors.toList() ) );
 	
-				final RealPoint p0 = new RealPoint( points.get( 0 ).length );
-				final RealPoint p1 = new RealPoint( points.get( 0 ).length );
+				final RealPoint p0 = new RealPoint( points.getFirst().length );
+				final RealPoint p1 = new RealPoint( points.getFirst().length );
 	
 				final double[] d0 = new double[ p0.numDimensions() ];
 				final double[] d1 = new double[ p0.numDimensions() ];

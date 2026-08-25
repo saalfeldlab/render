@@ -193,8 +193,8 @@ public class ExampleMatchVisualizationClient {
         final StringBuilder output = new StringBuilder(4096);
         output.append("\n\n");
 
-        TileBoundsRTree currentLayerBoundsTree = buildRTreeForLayer(zValues.get(0));
-        Set<OrderedCanvasIdPair> currentLayerMatchedPairs = getMatchedPairsForLayer(zValues.get(0));
+        TileBoundsRTree currentLayerBoundsTree = buildRTreeForLayer(zValues.getFirst());
+        Set<OrderedCanvasIdPair> currentLayerMatchedPairs = getMatchedPairsForLayer(zValues.getFirst());
 
         for (int zIndex = 1; zIndex <= zValues.size(); zIndex++) {
 

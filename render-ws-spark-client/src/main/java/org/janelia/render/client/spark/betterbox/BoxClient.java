@@ -267,7 +267,7 @@ public class BoxClient
                 partitionDirectories.sort((o1, o2) -> o2.getName().compareTo(o1.getName()));
 
                 if (partitionDirectories.size() > 0) {
-                    final File latestPartitionDirectory = partitionDirectories.get(0);
+                    final File latestPartitionDirectory = partitionDirectories.getFirst();
                     LOG.info("cleanUpPriorRun: found prior run partition directory {}", latestPartitionDirectory);
                     priorRunBoxDataStringsRdd = sparkContext.textFile(latestPartitionDirectory.getAbsolutePath());
                 }

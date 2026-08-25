@@ -309,7 +309,7 @@ public class MFOVOffsetClient {
                 matchTrial.deriveResults(ImageProcessorCache.DISABLED_CACHE, "pGroupId", "qGroupId");
 
                 if (matchTrial.hasMatches()) {
-                    layerMFOVMatches = convertMatchesToPointMatchList(matchTrial.getMatches().get(0));
+                    layerMFOVMatches = convertMatchesToPointMatchList(matchTrial.getMatches().getFirst());
                     LOG.info("deriveMatchesForLayerMFOV: found {} match points for pair {}",
                              layerMFOVMatches.size(), pair);
                     break;
@@ -427,7 +427,7 @@ public class MFOVOffsetClient {
         final StackMetaData offsetStackMetaData = renderDataClient.setupDerivedStack(stackMetaData, offsetStackName);
 
         final List<Double> zValues = stackWithZ.getzValues();
-        final Double firstZ = zValues.get(0);
+        final Double firstZ = zValues.getFirst();
 
         ResolvedTileSpecCollection resolvedTiles = renderDataClient.getResolvedTiles(stackName, firstZ);
         renderDataClient.saveResolvedTiles(resolvedTiles, offsetStackName, firstZ);
