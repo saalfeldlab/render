@@ -150,10 +150,10 @@ public class AveragedChannelMipmapSource
             final float weightedSourceIntensity = source.ip.getf(pixelIndex) * weightedSourceAlpha;
 
             final float intensity = weightedSourceIntensity + target.ip.getf(pixelIndex);
-            final float alpha = weightedSourceAlpha + (target.mask.getf(pixelIndex) / maxMaskIntensity);
+            final float alpha = weightedSourceAlpha + target.mask.getf(pixelIndex) / maxMaskIntensity;
 
             target.ip.setf(pixelIndex, intensity);
-            target.mask.setf(pixelIndex, (alpha * maxMaskIntensity));
+            target.mask.setf(pixelIndex, alpha * maxMaskIntensity);
 
         } // else weightedSourceAlpha is 0, so nothing needs to change in the target
     }

@@ -255,7 +255,7 @@ public class ClusterOverlapProblem {
         final int firstDot = tileId.indexOf('.');
         if (firstDot > 6) {
             final String rowAndColumn = tileId.substring(firstDot - 6, firstDot);
-            targetGraphics.drawString(rowAndColumn, (x + 10), (y + 20));
+            targetGraphics.drawString(rowAndColumn, x + 10, y + 20);
         }
         targetGraphics.drawRect(x, y, width, height);
     }

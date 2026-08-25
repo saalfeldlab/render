@@ -78,7 +78,7 @@ public class ByteRenderer {
 
     private static final Logger LOG = LoggerFactory.getLogger(ByteRenderer.class);
 
-    private static final Renderer.ImageOpener OPENER = (renderParameters) -> {
+    private static final Renderer.ImageOpener OPENER = renderParameters -> {
         final double derivedScale = renderParameters.getScale();
         final int targetWidth = (int) (derivedScale * renderParameters.getWidth());
         final int targetHeight = (int) (derivedScale * renderParameters.getHeight());

@@ -321,7 +321,7 @@ public class CanvasMatches implements Serializable, Comparable<CanvasMatches> {
         for (int i = 0; i < numMatchPoints; i++) {
             final double deltaX = ps[0][i] - qs[0][i];
             final double deltaY = ps[1][i] - qs[1][i];
-            distanceSum += Math.sqrt((deltaX * deltaX) + (deltaY * deltaY));
+            distanceSum += Math.sqrt(deltaX * deltaX + deltaY * deltaY);
         }
 
         final double averageDistance = distanceSum / numMatchPoints;

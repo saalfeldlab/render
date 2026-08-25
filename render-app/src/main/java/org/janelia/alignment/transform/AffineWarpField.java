@@ -181,10 +181,10 @@ public class AffineWarpField
 
         final double[] affineMatrixElements = new double[VALUES_PER_AFFINE];
         final int affineCount = rowCount * columnCount;
-        final int startIndex = (row * columnCount) + column;
+        final int startIndex = row * columnCount + column;
 
         for (int i = 0; i < VALUES_PER_AFFINE; i++) {
-            final int valuesIndex = startIndex + (i * affineCount);
+            final int valuesIndex = startIndex + i * affineCount;
             affineMatrixElements[i] = values[valuesIndex];
         }
 
@@ -211,10 +211,10 @@ public class AffineWarpField
         //               0,     0,     0,    29      m12
 
         final int affineCount = rowCount * columnCount;
-        final int startIndex = (row * columnCount) + column;
+        final int startIndex = row * columnCount + column;
         int valuesIndex;
         for (int i = 0; i < VALUES_PER_AFFINE; i++) {
-            valuesIndex = startIndex + (i * affineCount);
+            valuesIndex = startIndex + i * affineCount;
             values[valuesIndex] = affineMatrixElements[i];
         }
     }
@@ -280,7 +280,7 @@ public class AffineWarpField
 
             for (int column = 0; column < columnCount; column++ ) {
 
-                final int startIndex = (row * columnCount) + column;
+                final int startIndex = row * columnCount + column;
                 final int hiResStartRow = row * divideRowsBy;
                 final int hiResStartColumn = column * divideColumnsBy;
 
@@ -291,12 +291,12 @@ public class AffineWarpField
                     for (int c = 0; c < divideColumnsBy; c++) {
 
                         final int hiResColumn = hiResStartColumn + c;
-                        final int hiResStartIndex = (hiResRow * hiResColumnCount) + hiResColumn;
+                        final int hiResStartIndex = hiResRow * hiResColumnCount + hiResColumn;
 
                         for (int i = 0; i < VALUES_PER_AFFINE; i++) {
 
-                            final int valuesIndex = startIndex + (i * affineCount);
-                            final int hiResValuesIndex = hiResStartIndex + (i * hiResAffineCount);
+                            final int valuesIndex = startIndex + i * affineCount;
+                            final int hiResValuesIndex = hiResStartIndex + i * hiResAffineCount;
 
                             hiResValues[hiResValuesIndex] = values[valuesIndex];
                         }
@@ -321,11 +321,11 @@ public class AffineWarpField
 
         for (int row = 0; row < rowCount; row++) {
             for (int column = 0; column < columnCount; column++) {
-                final int startIndex = (row * columnCount) + column;
+                final int startIndex = row * columnCount + column;
                 final double[] cellValues = new double[VALUES_PER_AFFINE];
                 int valuesIndex;
                 for (int i = 0; i < VALUES_PER_AFFINE; i++) {
-                    valuesIndex = startIndex + (i * affineCount);
+                    valuesIndex = startIndex + i * affineCount;
                     cellValues[i] = values[valuesIndex];
                 }
                 sb.append(String.format("    { \"index\": %6d, \"row\": %3d, \"column\": %3d, \"affine\": \"%16.12f %16.12f %16.12f %16.12f %20.12f %20.12f\" },\n",

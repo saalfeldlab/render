@@ -498,7 +498,7 @@ public class BoxGenerator implements Serializable {
             if (percentComplete > 0) {
                 final double msPerTile = (System.currentTimeMillis() - startTime) / numberOfProcessedTiles;
                 final long remainingMs = (long) (msPerTile * (numberOfLayerTiles - numberOfProcessedTiles));
-                final Date eta = new Date((new Date().getTime()) + remainingMs);
+                final Date eta = new Date(new Date().getTime() + remainingMs);
                 sb.append(", level 0 ETA is ").append(sdf.format(eta));
             }
             return sb.toString();

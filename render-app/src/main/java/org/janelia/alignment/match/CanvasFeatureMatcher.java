@@ -58,7 +58,7 @@ public class CanvasFeatureMatcher implements Serializable {
 
         final CanvasMatchResult result = matchFilter.buildMatchResult(candidates);
 
-        LOG.info("deriveMatchResult: exit, result={}, elapsedTime={}s", result, (timer.stop() / 1000));
+        LOG.info("deriveMatchResult: exit, result={}, elapsedTime={}s", result, timer.stop() / 1000);
 
         return result;
     }

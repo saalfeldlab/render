@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 
 /**
  * Key information about a mipmap pyramid box that can be rendered from stack source data.
- *
+ * <p>
  * The provided {@link #compareTo} method supports sorting boxes so that boxes that share a common
  * parent (and are therefore geographically close) are kept near each other in the ordering.
  *
@@ -101,7 +101,7 @@ public class BoxData
     }
 
     public boolean hasChildren() {
-        return (getChildCount() > 0);
+        return getChildCount() > 0;
     }
 
     public int getChildCount() {
@@ -151,7 +151,7 @@ public class BoxData
      *         within its parent.
      */
     public int getParentIndex() {
-        return ((row % 2) * 2) + (column % 2);
+        return row % 2 * 2 + column % 2;
     }
 
     /**
@@ -290,7 +290,7 @@ public class BoxData
     @Override
     public int hashCode() {
         // NOTE: does not worry about z since most box maps and sets should only have data for a single z
-        return (31 * ((31 * level) + row)) + column;
+        return 31 * (31 * level + row) + column;
     }
 
     /**
@@ -363,8 +363,8 @@ public class BoxData
             for (final char childIndexValue : stringElements[5].toCharArray()) {
                 final int childIndex = Character.getNumericValue(childIndexValue);
                 final int childLevel = level - 1;
-                final int childRow = (row * 2) + (childIndex / 2);
-                final int childColumn = (column * 2) + (childIndex % 2);
+                final int childRow = row * 2 + childIndex / 2;
+                final int childColumn = column * 2 + childIndex % 2;
                 boxData.addChild(new BoxData(z, childLevel, childRow, childColumn));
             }
 

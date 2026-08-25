@@ -136,7 +136,7 @@ public class AffineBlockSolverSetup extends CommandLineParameters
 		return new FIBSEMAlignmentParameters<>(
 				blockModel.copy(),
 				(Function<Integer, S> & Serializable) z -> stitchingModel.copy(),
-				(Function< Integer, Integer > & Serializable )(z) -> stitching.minInliers,
+				(Function< Integer, Integer > & Serializable ) z -> stitching.minInliers,
 				stitching,
 				blockOptimizer,
 				preAlign,

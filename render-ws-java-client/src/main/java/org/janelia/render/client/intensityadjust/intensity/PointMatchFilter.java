@@ -35,7 +35,7 @@ import mpicbg.models.PointMatch;
  */
 public interface PointMatchFilter
 {
-	public void filter(
-			final List< PointMatch > candidates,
-			final Collection< PointMatch > inliers );
+	void filter(
+            final List<PointMatch> candidates,
+            final Collection<PointMatch> inliers);
 }

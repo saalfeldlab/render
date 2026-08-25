@@ -322,7 +322,7 @@ public class BoxClient
             LOG.info("cleanUpPriorRun: removed {} box images: {}", removedBoxPaths.size(), removedBoxPaths);
         }
 
-        return (!removedBoxPaths.isEmpty());
+        return !removedBoxPaths.isEmpty();
     }
 
     /**

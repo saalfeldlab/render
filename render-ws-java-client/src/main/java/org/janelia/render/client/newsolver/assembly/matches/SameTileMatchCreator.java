@@ -19,13 +19,13 @@ public interface SameTileMatchCreator< R >
 	 * @param blockContextB - the block that is queried for context data
 	 * @param matchesAtoB - list to add the PointMatches to
 	 */
-	public void addMatches(
-			TileSpec tileSpec,
-			R modelA,
-			R modelB,
-			BlockData<R, ?> blockContextA,
-			BlockData<R, ?> blockContextB,
-			List< PointMatch > matchesAtoB );
+    void addMatches(
+            TileSpec tileSpec,
+            R modelA,
+            R modelB,
+            BlockData<R, ?> blockContextA,
+            BlockData<R, ?> blockContextB,
+            List<PointMatch> matchesAtoB);
 
 	
 	// TODO: IMPORTANT: you need both blocks, blockA for modelA and blockB for modelB, no (see above)

@@ -37,7 +37,7 @@ public class AffineWarpFieldTest {
 
         for (int row = 0; row < rowCount; row++) {
             for (int column = 0; column < columnCount; column++) {
-                final double v = (row * columnCount) + column;
+                final double v = row * columnCount + column;
                 warpField.set(row, column, new double[] {v, v, v, v, v, v});
             }
         }

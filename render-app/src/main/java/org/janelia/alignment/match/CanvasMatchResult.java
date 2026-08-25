@@ -245,8 +245,8 @@ public class CanvasMatchResult
                         p[j][i] = local1[j] + pOffsets[j];
                         q[j][i] = local2[j] + qOffsets[j];
                     } else {
-                        p[j][i] = (local1[j] / renderScale) + pOffsets[j];
-                        q[j][i] = (local2[j] / renderScale) + qOffsets[j];
+                        p[j][i] = local1[j] / renderScale + pOffsets[j];
+                        q[j][i] = local2[j] / renderScale + qOffsets[j];
                     }
                 }
 

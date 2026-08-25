@@ -66,8 +66,8 @@ public class BoxMipmapGeneratorTest {
 
         this.maxOverviewWidthAndHeight = 80;
 
-        final double layerMaxX = ((lastColumn + 1) * boxWidth) - 1;
-        final double layerMaxY = ((lastRow + 1) * boxHeight) - 1;
+        final double layerMaxX = (lastColumn + 1) * boxWidth - 1;
+        final double layerMaxY = (lastRow + 1) * boxHeight - 1;
         this.stackBounds = new Bounds(0.0, 0.0, layerMaxX, layerMaxY);
     }
 

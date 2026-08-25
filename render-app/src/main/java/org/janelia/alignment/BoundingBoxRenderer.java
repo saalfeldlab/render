@@ -142,7 +142,7 @@ public class BoundingBoxRenderer {
                 }
             }
 
-            final int x = box.x + ((box.width - maxLineWidth) / 2);                    // centre horizontally
+            final int x = box.x + (box.width - maxLineWidth) / 2;                    // centre horizontally
             int y = box.y + ((box.height - totalTextHeight) / 2) + metrics.getAscent(); // centre vertically
 
             for (final String line : lines) {
@@ -185,8 +185,8 @@ public class BoundingBoxRenderer {
     private Rectangle getScaledBox(final TileSpec tileSpec) {
         final double x = (tileSpec.getMinX() - xOffset) * scale;
         final double y = (tileSpec.getMinY() - yOffset) * scale;
-        final double w = ((tileSpec.getMaxX() - xOffset) * scale) - x;
-        final double h = ((tileSpec.getMaxY() - yOffset) * scale) - y;
+        final double w = (tileSpec.getMaxX() - xOffset) * scale - x;
+        final double h = (tileSpec.getMaxY() - yOffset) * scale - y;
         return new Rectangle((int) x, (int) y, (int) w, (int) h);
     }
 
