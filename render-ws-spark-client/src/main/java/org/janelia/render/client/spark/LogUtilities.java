@@ -10,14 +10,15 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Enumeration;
 
-import org.apache.log4j.Appender;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.Layout;
-import org.apache.log4j.Level;
-import org.apache.log4j.LogManager;
-import org.apache.log4j.Logger;
-import org.apache.log4j.MDC;
-import org.apache.log4j.PatternLayout;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.ThreadContext;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.ConsoleAppender;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.slf4j.LoggerFactory;
 
@@ -35,24 +36,31 @@ public class LogUtilities {
     public static void setupExecutorLog4j(final String context,
                                           final String rootLoggerName) {
 
-        final Logger logger = LogManager.getLogger(rootLoggerName);
+        final LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        final LoggerConfig rootConfig = ctx.getConfiguration().getRootLogger();
+        final String conversionPattern = "%d{ISO8601} [%t] [%X{context}] %-5p [%c] %m%n";
 
-        for (final Enumeration e = LogManager.getRootLogger().getAllAppenders(); e.hasMoreElements(); ) {
-            final Appender a = (Appender) e.nextElement();
-            if (a instanceof ConsoleAppender) {
-                final Layout layout = a.getLayout();
-                if (layout instanceof final PatternLayout patternLayout) {
-                    final String conversionPattern = "%d{ISO8601} [%t] [%X{context}] %-5p [%c] %m%n";
-                    if (! conversionPattern.equals(patternLayout.getConversionPattern())) {
-                        a.setLayout(new PatternLayout(conversionPattern));
-                    }
-                }
+        for (final Appender appender : rootConfig.getAppenders().values()) {
+            if (appender instanceof final ConsoleAppender consoleAppender &&
+                consoleAppender.getLayout() instanceof final PatternLayout patternLayout &&
+                ! conversionPattern.equals(patternLayout.getConversionPattern())) {
+
+                final ConsoleAppender newAppender =
+                        ConsoleAppender.newBuilder()
+                                .setName(consoleAppender.getName())
+                                .setTarget(consoleAppender.getTarget())
+                                .setLayout(PatternLayout.newBuilder().withPattern(conversionPattern).build())
+                                .build();
+                newAppender.start();
+                rootConfig.removeAppender(consoleAppender.getName());
+                rootConfig.addAppender(newAppender, null, null);
+                ctx.updateLoggers();
             }
         }
 
-        MDC.put("context", context);
+        ThreadContext.put("context", context);
 
-        logger.setLevel(Level.DEBUG);
+        Configurator.setLevel(rootLoggerName, Level.DEBUG);
     }
 
     /**
