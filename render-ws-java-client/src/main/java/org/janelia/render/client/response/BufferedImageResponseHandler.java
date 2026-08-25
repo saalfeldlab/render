@@ -22,12 +22,12 @@ public class BufferedImageResponseHandler
     /**
      * @param  requestContext  context (e.g. "PUT http://janelia.org") for use in error messages.
      */
-    public BufferedImageResponseHandler(String requestContext) {
+    public BufferedImageResponseHandler(final String requestContext) {
         super(requestContext);
     }
 
     @Override
-    public BufferedImage handleResponse(HttpResponse response)
+    public BufferedImage handleResponse(final HttpResponse response)
             throws IOException {
 
         final HttpEntity entity = getValidatedResponseEntity(response, OK);

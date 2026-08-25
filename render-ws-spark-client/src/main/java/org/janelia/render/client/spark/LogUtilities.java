@@ -96,7 +96,7 @@ public class LogUtilities {
         try {
             url = new URL(apiUrl + "/api/v1/applications/" + appId + "/executors");
 
-            try (BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()))) {
+            try (final BufferedReader in = new BufferedReader(new InputStreamReader(url.openStream()))) {
                 json = CharStreams.toString(in);
             } catch (final Throwable t) {
                 json = getErrorJson("failed to retrieve executors data", t);

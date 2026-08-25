@@ -1,5 +1,6 @@
 package org.janelia.render.client.intensityadjust;
 
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Collection;
 
@@ -16,7 +17,8 @@ import mpicbg.models.PointMatch;
  */
 public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> implements Affine1D<QuadraticModel1D>, Quadratic1D<QuadraticModel1D> {
 	// TODO: right now, this implements Affine1D to have a common interface with AffineModel1D; this should be changed when an alternative is available!
-	private static final long serialVersionUID = 3144894252699485124L;
+	@Serial
+    private static final long serialVersionUID = 3144894252699485124L;
 
 	protected final int minNumMatches = 3;
 	protected double a, b, c; // a*x*x + b*x + c
@@ -133,7 +135,7 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> implements
 							  | . . 4 |         | . . 5 |
 	   the input theta is overwritten by the solution vector x
  	*/
-	private static void solve3x3LinearSystem(double[] delta, double[] theta) throws NoninvertibleModelException {
+	private static void solve3x3LinearSystem(final double[] delta, final double[] theta) throws NoninvertibleModelException {
 		// compute row-wise upper triangle of Cholesky factorization U^T*U
 		final double[] chol = new double[6];
 		chol[0] = Math.sqrt(delta[0]);
@@ -233,12 +235,12 @@ public class QuadraticModel1D extends AbstractModel<QuadraticModel1D> implements
 	}
 
 	@Override
-	public double[] applyInverse(final double[] doubles) throws NoninvertibleModelException {
+	public double[] applyInverse(final double[] doubles) {
 		throw new UnsupportedOperationException("'applyInverse' not implemented for QuadraticModel1D.");
 	}
 
 	@Override
-	public void applyInverseInPlace(final double[] doubles) throws NoninvertibleModelException {
+	public void applyInverseInPlace(final double[] doubles) {
 		throw new UnsupportedOperationException("'applyInverseInPlace' not implemented for QuadraticModel1D.");
 	}
 }

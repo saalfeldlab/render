@@ -38,18 +38,18 @@ public class DistributedSolveSerializer
 	            out.writeObject(data); 
 	              
 	            out.close(); 
-	            fileStream.close(); 
-	              
-	            LOG.info( "Object " + data.getId() + " has been serialized to " + file.getAbsolutePath() ); 
+	            fileStream.close();
+
+                LOG.info("Object {} has been serialized to {}", data.getId(), file.getAbsolutePath());
         	}
 
         	LOG.info( "SUCCESS." );
         }
-        catch(IOException ex) 
-        { 
-            LOG.info("IOException is caught: " + ex );
-            ex.printStackTrace();
-        }
+		catch(final IOException e)
+		{
+			LOG.info("IOException is caught: {}", String.valueOf(e));
+			e.printStackTrace();
+		}
 	}
 
 	private static final Logger LOG = LoggerFactory.getLogger(DistributedSolveSerializer.class);

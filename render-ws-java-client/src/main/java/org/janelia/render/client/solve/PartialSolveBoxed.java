@@ -18,6 +18,7 @@ import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicatio
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.solver.SolveTools;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,8 +54,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		final int topBorder = ((int)Math.round( minZ ) + parameters.overlapTop -1);
 		final int bottomBorder = ((int)Math.round( maxZ ) - parameters.overlapBottom +1);
 
-		LOG.info( "using " + parameters.overlapTop + " layers on the top for blending (" + Math.round( minZ ) + "-" + topBorder + ")" );
-		LOG.info( "using " + parameters.overlapBottom + " layers on the bottom for blending (" + Math.round( maxZ ) + "-" + bottomBorder + ")" );
+        LOG.info("using {} layers on the top for blending ({}-{})", parameters.overlapTop, Math.round(minZ), topBorder);
+        LOG.info("using {} layers on the bottom for blending ({}-{})", parameters.overlapBottom, Math.round(maxZ), bottomBorder);
 
 		final HashMap<String, Tile<InterpolatedAffineModel2D<AffineModel2D, B>>> idToTileMap = new HashMap<>();
 		final HashMap<String, AffineModel2D> idToPreviousModel = new HashMap<>();
@@ -62,8 +63,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 		// one object per Tile, we just later know the new affine model to create all matches
 		// just want to avoid to load the data twice
-		HashSet< String > topTileIds = new HashSet<>();
-		HashSet< String > bottomTileIds = new HashSet<>();
+		final HashSet< String > topTileIds = new HashSet<>();
+		final HashSet< String > bottomTileIds = new HashSet<>();
 
 		for (final String pGroupId : pGroupList)
 		{
@@ -136,8 +137,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			}
 		}
 
-		LOG.info("top block #tiles " + topTileIds.size());
-		LOG.info("bottom block #tiles " + bottomTileIds.size());
+        LOG.info("top block #tiles {}", topTileIds.size());
+        LOG.info("bottom block #tiles {}", bottomTileIds.size());
 
 		final TileConfiguration tileConfig = new TileConfiguration();
 		tileConfig.addTiles(idToTileMap.values());
@@ -158,7 +159,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		LOG.info( "lambda's used:" );
 
 		for ( final double lambda : lambdaValues )
-			LOG.info( "l=" + lambda );
+            LOG.info("l={}", lambda);
 
 		for (final double lambda : lambdaValues)
 		{
@@ -175,8 +176,8 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				numIterations = 100;
 
 			// tileConfig.optimize(parameters.maxAllowedError, parameters.maxIterations, parameters.maxPlateauWidth);
-		
-			LOG.info( "l=" + lambda + ", numIterations=" + numIterations );
+
+            LOG.info("l={}, numIterations={}", lambda, numIterations);
 
 			final ErrorStatistic observer = new ErrorStatistic(parameters.maxPlateauWidth + 1 );
 			final float damp = 1.0f;
@@ -203,7 +204,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 		for (final String tileId : tileIds )
 		{
 			final Tile<InterpolatedAffineModel2D<AffineModel2D, B>> tile = idToTileMap.get(tileId);
-			AffineModel2D affine = tile.getModel().createAffineModel2D();
+			final AffineModel2D affine = tile.getModel().createAffineModel2D();
 
 			idToNewModel.put( tileId, affine );
 			LOG.info("tile {} model is {}", tileId, affine);
@@ -303,9 +304,9 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 				tileConfigBlocks.getFixedTiles(),
 				1);
 
-		LOG.info( "TOP block: " + topBlock.getModel() );
-		LOG.info( "REALIGN block: " + reAlignedBlock.getModel() );
-		LOG.info( "BOTTOM block: " + bottomBlock.getModel() );
+        LOG.info("TOP block: {}", topBlock.getModel());
+        LOG.info("REALIGN block: {}", reAlignedBlock.getModel());
+        LOG.info("BOTTOM block: {}", bottomBlock.getModel());
 
 		final AffineModel2D topBlockModel = createAffineModel( topBlock.getModel() );
 		final AffineModel2D reAlignBlockModel = createAffineModel( reAlignedBlock.getModel() );
@@ -385,7 +386,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			List< Double > zToSave = new ArrayList<>( zToSaveSet );
 			Collections.sort( zToSave );
 
-			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
+            LOG.info("Saving from {} to {}", zToSave.getFirst(), zToSave.getLast());
 
 			saveTargetStackTiles( idToFinalModel, null, zToSave, TransformApplicationMethod.REPLACE_LAST );
 
@@ -394,7 +395,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			//
 			zToSave = renderDataClient.getStackZValues(parameters.stack, zToSave.getLast() + 0.1, null );
 
-			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
+            LOG.info("Saving from {} to {}", zToSave.getFirst(), zToSave.getLast());
 
 			saveTargetStackTiles( null, bottomBlockModel, zToSave, TransformApplicationMethod.PRE_CONCATENATE_LAST );
 
@@ -404,7 +405,7 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			//
 			zToSave = renderDataClient.getStackZValues( parameters.stack, null, minZ - 0.1 );
 
-			LOG.info("Saving from " + zToSave.getFirst() + " to " + zToSave.getLast() );
+            LOG.info("Saving from {} to {}", zToSave.getFirst(), zToSave.getLast());
 			saveTargetStackTiles( null, null, zToSave, null );
 
 			// complete the stack after everything has been saved
@@ -418,13 +419,13 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 			new ImageJ();
 
 			// visualize new result
-			ImagePlus imp1 = render(idToFinalModel, idToTileSpec, 0.15, parameters.visualizationDirectory);
+			final ImagePlus imp1 = render(idToFinalModel, idToTileSpec, 0.15, parameters.visualizationDirectory);
 			imp1.setTitle("final");
 
-			ImagePlus imp2 = render(idToNewModel, idToTileSpec, 0.15, parameters.visualizationDirectory);
+			final ImagePlus imp2 = render(idToNewModel, idToTileSpec, 0.15, parameters.visualizationDirectory);
 			imp2.setTitle("realign");
 
-			ImagePlus imp3 = render(idToPreviousModel, idToTileSpec, 0.15, parameters.visualizationDirectory);
+			final ImagePlus imp3 = render(idToPreviousModel, idToTileSpec, 0.15, parameters.visualizationDirectory);
 			imp3.setTitle("previous");
 
 			SimpleMultiThreading.threadHaltUnClean();
@@ -434,16 +435,11 @@ public class PartialSolveBoxed< B extends Model< B > & Affine2D< B > > extends P
 
 	}
 
-	public static AffineModel2D createAffineModel( final RigidModel2D rigid )
-	{
-		final double[] array = new double[ 6 ];
-		rigid.toArray( array );
-		final AffineModel2D affine = new AffineModel2D();
-		affine.set( array[ 0 ], array[ 1 ], array[ 2 ], array[ 3 ], array[ 4 ], array[ 5 ] );
-		return affine;
+	public static AffineModel2D createAffineModel(final RigidModel2D rigid) {
+        return SolveTools.createAffineModel(rigid);
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args )
 	{
         final ClientRunner clientRunner = new ClientRunner(args) {
             @Override

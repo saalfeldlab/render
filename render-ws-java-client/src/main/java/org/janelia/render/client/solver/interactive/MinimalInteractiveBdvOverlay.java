@@ -2,9 +2,10 @@ package org.janelia.render.client.solver.interactive;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.util.Arrays;
+import java.io.Serial;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -72,11 +73,7 @@ public abstract class MinimalInteractiveBdvOverlay< R > extends MinimalBdvOverla
 		// default input trigger config, disables "control button1" drag in bdv
 		// (collides with default of "move annotation")
 		config = new InputTriggerConfig(
-				Arrays.asList(
-						new InputTriggerDescription[]{new InputTriggerDescription(
-								new String[]{"not mapped"},
-								"drag rotate slow",
-								"bdv")}));
+                List.of(new InputTriggerDescription(new String[]{"not mapped"}, "drag rotate slow", "bdv")));
 
 		ksActionMap = new ActionMap();
 		ksInputMap = new InputMap();
@@ -199,12 +196,13 @@ public abstract class MinimalInteractiveBdvOverlay< R > extends MinimalBdvOverla
 
 	public class Confirm extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = -8388751240134830158L;
+		@Serial
+        private static final long serialVersionUID = -8388751240134830158L;
 
 		public Confirm() { super( "Confirm" ); }
 
 		@Override
-		public void actionPerformed(ActionEvent e)
+		public void actionPerformed(final ActionEvent e)
 		{
 			synchronized ( monitor )
 			{
@@ -212,7 +210,7 @@ public abstract class MinimalInteractiveBdvOverlay< R > extends MinimalBdvOverla
 			}
 		}
 
-		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+		public void register(final ActionMap ksActionMap, final KeyStrokeAdder ksKeyStrokeAdder ) {
 			put(ksActionMap);
 			ksKeyStrokeAdder.put(name(), "ENTER" );
 		}
@@ -220,12 +218,13 @@ public abstract class MinimalInteractiveBdvOverlay< R > extends MinimalBdvOverla
 
 	public class Cancel extends AbstractNamedAction
 	{
-		private static final long serialVersionUID = 7966320561651920538L;
+		@Serial
+        private static final long serialVersionUID = 7966320561651920538L;
 
 		public Cancel() { super( "Cancel" ); }
 
 		@Override
-		public void actionPerformed(ActionEvent e)
+		public void actionPerformed(final ActionEvent e)
 		{
 			synchronized ( monitor )
 			{
@@ -234,7 +233,7 @@ public abstract class MinimalInteractiveBdvOverlay< R > extends MinimalBdvOverla
 			}
 		}
 
-		public void register(ActionMap ksActionMap, KeyStrokeAdder ksKeyStrokeAdder ) {
+		public void register(final ActionMap ksActionMap, final KeyStrokeAdder ksKeyStrokeAdder ) {
 			put(ksActionMap);
 			ksKeyStrokeAdder.put(name(), "ESCAPE" );
 		}

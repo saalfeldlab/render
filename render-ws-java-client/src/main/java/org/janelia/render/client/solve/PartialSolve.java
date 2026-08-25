@@ -2,6 +2,7 @@ package org.janelia.render.client.solve;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -80,7 +81,7 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 
 	protected abstract void run() throws IOException, ExecutionException, InterruptedException, NoninvertibleModelException;
 
-	// must be called after all Tilespecs are updated
+	// must be called after all TileSpecs are updated
 	protected void completeStack() throws IOException
 	{
 		if ( parameters.completeTargetStack )
@@ -227,15 +228,15 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 			model.concatenate( invScaleModel );
 
 			final ImageProcessorWithMasks imp = getImage( tileSpec, scale, visualizationDirectory );
-			RealRandomAccessible<FloatType> interpolant = Views.interpolate( Views.extendValue( (RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.ip) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
-			RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate( Views.extendZero( (RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from( new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
-			
+			final RealRandomAccessible<FloatType> interpolant = Views.interpolate(Views.extendValue((RandomAccessibleInterval<FloatType>)(Object)ImagePlusImgs.from(new ImagePlus("", imp.ip) ), new FloatType(-1f) ), new NLinearInterpolatorFactory<>() );
+			final RealRandomAccessible<UnsignedByteType> interpolantMask = Views.interpolate(Views.extendZero((RandomAccessibleInterval<UnsignedByteType>)(Object)ImagePlusImgs.from(new ImagePlus("", imp.mask) ) ), new NearestNeighborInterpolatorFactory() );
+
 			// draw
 			final IterableInterval< FloatType > slice = Views.iterable( Views.hyperSlice( img, 2, z ) );
 			final Cursor< FloatType > c = slice.cursor();
 			
-			AffineTransform2D affine = new AffineTransform2D();
-			double[] array = new double[6];
+			final AffineTransform2D affine = new AffineTransform2D();
+			final double[] array = new double[6];
 			model.toArray( array );
 			affine.set( array[0], array[2], array[4], array[1], array[3], array[5] );
 			final Cursor< FloatType > cSrc = Views.interval( RealViews.affine( interpolant, affine ), img ).cursor();
@@ -247,10 +248,10 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 				cMask.fwd();
 				cSrc.fwd();
 				if (cMask.get().get() == 255) {
-					FloatType srcType = cSrc.get();
-					float value = srcType.get();
+					final FloatType srcType = cSrc.get();
+					final float value = srcType.get();
 					if (value >= 0) {
-						FloatType type = c.get();
+						final FloatType type = c.get();
 						final float currentValue = type.get();
 						if ( currentValue > 0 )
 							type.set( ( value + currentValue ) / 2 );
@@ -260,13 +261,13 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 				}
 			}
 
-			IJ.showProgress( ++i, idToRenderModels.keySet().size() - 1 );
+			IJ.showProgress( ++i, idToRenderModels.size() - 1 );
 		}
 
 
 		final ImagePlus imp = ImageJFunctions.wrap( img, "stack", null );
 
-		Calibration cal = new Calibration();
+		final Calibration cal = new Calibration();
 		cal.xOrigin = -minI[ 0 ];
 		cal.yOrigin = -minI[ 1 ];
 		cal.zOrigin = -minI[ 2 ];
@@ -319,7 +320,7 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 						.map(SectionData::getSectionId)
 						.distinct()
 						.sorted()
-						.collect(Collectors.toList()));
+						.toList());
 		
 		if (this.pGroupList.isEmpty())
 			throw new IllegalArgumentException("stack " + parameters.stack + " does not contain any sections with the specified z values");
@@ -433,7 +434,7 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 			// hack to get a not transformed image:
 			imp = new ImageProcessorWithMasks( imageFP, maskIP, null );
 
-			// write temp if doesn't exist
+			// write temp if it doesn't exist
 			if ( !imageFile.exists() || !maskFile.exists() )
 			{
 				System.out.println( "Saving: " + imageFile );
@@ -560,7 +561,8 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 
     public static class Parameters extends CommandLineParameters {
 
-		private static final long serialVersionUID = 6845718387096692785L;
+		@Serial
+        private static final long serialVersionUID = 6845718387096692785L;
 
 		@ParametersDelegate
         public RenderWebServiceParameters renderWeb = new RenderWebServiceParameters();

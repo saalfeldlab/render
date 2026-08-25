@@ -1,15 +1,15 @@
 /**
  * License: GPL
- *
+ * <p>
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License 2
  * as published by the Free Software Foundation.
- *
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
@@ -17,6 +17,7 @@
 package org.janelia.render.client.solver;
 
 import java.awt.geom.AffineTransform;
+import java.io.Serial;
 import java.util.Collection;
 
 import mpicbg.models.AbstractModel;
@@ -36,7 +37,8 @@ import mpicbg.models.PointMatch;
 
 public class ConstantAffineModel2D< A extends Model< A > & Affine2D< A >, M extends ConstantAffineModel2D< A, M > > extends AbstractModel< M > implements Affine2D< M >
 {
-	private static final long serialVersionUID = 4028319936789363770L;
+	@Serial
+    private static final long serialVersionUID = 4028319936789363770L;
 
 	protected A model;
 
@@ -91,13 +93,13 @@ public class ConstantAffineModel2D< A extends Model< A > & Affine2D< A >, M exte
 	}
 
 	@Override
-	public double[] applyInverse(double[] point) throws NoninvertibleModelException
+	public double[] applyInverse(final double[] point) throws NoninvertibleModelException
 	{
 		return model.applyInverse(point);
 	}
 
 	@Override
-	public void applyInverseInPlace(double[] point) throws NoninvertibleModelException
+	public void applyInverseInPlace(final double[] point) throws NoninvertibleModelException
 	{
 		model.applyInverseInPlace(point);
 	}
@@ -117,23 +119,23 @@ public class ConstantAffineModel2D< A extends Model< A > & Affine2D< A >, M exte
 	@Override
 	public void preConcatenate(final M affine2d)
 	{
-		throw new RuntimeException( "Constant Model cannot preconcatentate" );
+		throw new RuntimeException("Constant Model cannot preconcatenate");
 	}
 
 	@Override
-	public void concatenate(M affine2d)
+	public void concatenate(final M affine2d)
 	{
-		throw new RuntimeException( "Constant Model cannot concatentate" );
+		throw new RuntimeException("Constant Model cannot concatenate");
 	}
 
 	@Override
-	public void toArray(double[] data)
+	public void toArray(final double[] data)
 	{
 		model.toArray(data);
 	}
 
 	@Override
-	public void toMatrix(double[][] data) {
+	public void toMatrix(final double[][] data) {
 		model.toMatrix(data);
 	}
 

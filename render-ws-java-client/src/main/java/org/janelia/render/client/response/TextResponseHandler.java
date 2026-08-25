@@ -18,14 +18,14 @@ public class TextResponseHandler
     /**
      * Constructs a handler suitable for deserialization of text response messages.
      *
-     * @param  requestContext  context (e.g. "GET http://janelia.org") for use in error messages.
+     * @param  requestContext  context (e.g. "GET <a href="http://janelia.org">...</a>") for use in error messages.
      */
-    public TextResponseHandler(String requestContext) {
+    public TextResponseHandler(final String requestContext) {
         super(requestContext);
     }
 
     @Override
-    public String handleResponse(HttpResponse response)
+    public String handleResponse(final HttpResponse response)
             throws IOException {
         final HttpEntity entity = getValidatedResponseEntity(response, OK);
         return getResponseBodyText(entity);

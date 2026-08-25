@@ -50,12 +50,12 @@ public class CoordinateServiceTest {
     }
 
     @AfterAll
-    public static void after() throws Exception {
+    public static void after() {
         embeddedMongoDb.stop();
     }
 
     @Test
-    public void testSinglePointCoordinateMethods() throws Exception {
+    public void testSinglePointCoordinateMethods() {
 
         final Double x = 9000.0;
         final Double y = 7000.0;
@@ -99,7 +99,7 @@ public class CoordinateServiceTest {
     }
 
     @Test
-    public void testMultiplePointCoordinateMethods() throws Exception {
+    public void testMultiplePointCoordinateMethods() {
 
         final int errorPointIndex = 2;
         final double[][] points = new double[][]{
@@ -180,7 +180,7 @@ public class CoordinateServiceTest {
     }
 
     @Test
-    public void testPointWithMultipleTiles() throws Exception {
+    public void testPointWithMultipleTiles() {
 
         // coordinate (8000, 5900) was chosen because it is invertible in both tiles 252 and 253
         final List<TileCoordinates> localCoordinateList =
@@ -217,8 +217,8 @@ public class CoordinateServiceTest {
         assertNotNull(coordinates, context + " coordinates are null");
         assertEquals(expectedTileId, coordinates.getTileId(), context + " tileId is invalid");
 
-        double[] values;
-        String valueContext;
+        final double[] values;
+        final String valueContext;
         if (isLocal) {
             valueContext = context + " local values";
             assertNull(coordinates.getWorld(), context + " world values should be null");

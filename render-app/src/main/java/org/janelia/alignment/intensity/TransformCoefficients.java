@@ -52,7 +52,7 @@ class TransformCoefficients {
         Arrays.setAll(tempArrays, i -> TempArray.forPrimitiveType(FLOAT));
     }
 
-    private TransformCoefficients(TransformCoefficients t) {
+    private TransformCoefficients(final TransformCoefficients t) {
         this.coefficients = t.coefficients;
         this.n = t.n;
         this.g = t.g;

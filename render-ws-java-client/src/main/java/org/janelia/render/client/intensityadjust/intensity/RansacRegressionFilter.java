@@ -19,9 +19,6 @@
  * <http://www.gnu.org/licenses/gpl-3.0.html>.
  * #L%
  */
-/**
- * 
- */
 package org.janelia.render.client.intensityadjust.intensity;
 
 import java.util.Collection;
@@ -45,7 +42,7 @@ public class RansacRegressionFilter implements PointMatchFilter
 	final protected float maxTrust = 3.0f;
 	
 	@Override
-	public void filter( List< PointMatch > candidates, Collection< PointMatch > inliers )
+	public void filter(final List< PointMatch > candidates, final Collection< PointMatch > inliers )
 	{
 		try
 		{
@@ -60,7 +57,7 @@ public class RansacRegressionFilter implements PointMatchFilter
 						maxTrust ) )
 				inliers.clear();
 		}
-		catch ( Exception e )
+		catch ( final Exception e )
 		{
 			inliers.clear();
 		}

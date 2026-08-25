@@ -17,14 +17,14 @@ public class ResourceCreatedResponseHandler
         implements ResponseHandler<String> {
 
     /**
-     * @param  requestContext  context (e.g. "PUT http://janelia.org") for use in error messages.
+     * @param  requestContext  context (e.g. "PUT <a href="http://janelia.org">...</a>") for use in error messages.
      */
-    public ResourceCreatedResponseHandler(String requestContext) {
+    public ResourceCreatedResponseHandler(final String requestContext) {
         super(requestContext);
     }
 
     @Override
-    public String handleResponse(HttpResponse response)
+    public String handleResponse(final HttpResponse response)
             throws IOException {
 
         getValidatedResponseEntity(response, CREATED);

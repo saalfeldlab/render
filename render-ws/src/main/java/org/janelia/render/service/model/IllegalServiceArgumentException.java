@@ -10,12 +10,12 @@ import javax.ws.rs.core.Response;
 public class IllegalServiceArgumentException
         extends ServiceException {
 
-    public IllegalServiceArgumentException(String message) {
+    public IllegalServiceArgumentException(final String message) {
         super(message, Response.Status.BAD_REQUEST);
     }
 
-    public IllegalServiceArgumentException(String message,
-                                           Throwable cause) {
+    public IllegalServiceArgumentException(final String message,
+                                           final Throwable cause) {
         super(message, Response.Status.BAD_REQUEST, cause);
     }
 }

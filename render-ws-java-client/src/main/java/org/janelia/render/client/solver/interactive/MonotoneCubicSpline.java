@@ -13,8 +13,8 @@ import net.imglib2.RealPositionable;
 
 /**
  * n-dimensional extension of the monotone cubic spline implementation by Leszek Wach:
- * https://gist.github.com/lecho/7627739#file-splineinterpolation-java
- * 
+ * <a href="https://gist.github.com/lecho/7627739#file-splineinterpolation-java">...</a>
+ *
  * @author Stephan Preibisch
  *
  */
@@ -74,8 +74,8 @@ public class MonotoneCubicSpline
 		final int nd = y.getFirst().numDimensions();
 
 		final int n = x.size();
-		double[][] d = new double[n - 1][nd]; // could optimize this out
-		double[][] m = new double[n][nd];
+		final double[][] d = new double[n - 1][nd]; // could optimize this out
+		final double[][] m = new double[n][nd];
 
 		// Compute slopes of secant lines between successive points.
 		for (int i = 0; i < n - 1; i++)
@@ -178,7 +178,7 @@ public class MonotoneCubicSpline
 		}
 	}
 
-	public static void main( String[] args )
+	public static void main(final String[] args )
 	{
 		final ArrayList< Point > points = new ArrayList<>();
 

@@ -293,7 +293,7 @@ public class ImportFromRender_Plugin
 
     }
 
-    private class ImportData {
+    private static class ImportData {
 
         private Project trakProject;
         private LayerSet trakLayerSet;
@@ -325,7 +325,7 @@ public class ImportFromRender_Plugin
             renderOwner = "flyTEM";
             renderProject = "FAFB00";
             renderStack = "v12_acquire_merged";
-            channels = new HashSet<String>();
+            channels = new HashSet<>();
             minZ = 1.0;
             maxZ = minZ;
             imagePlusType = ImagePlus.GRAY8;
@@ -376,13 +376,13 @@ public class ImportFromRender_Plugin
                 renderOwner = dialog.getNextString();
                 renderProject = dialog.getNextString();
                 renderStack =  dialog.getNextString();
-                String channelString = dialog.getNextString();
+                final String channelString = dialog.getNextString();
                 if (channelString != null && !channelString.isEmpty()) {
                     channels.add(channelString);
                 }
                 minZ = dialog.getNextNumber();
                 maxZ = dialog.getNextNumber();
-                imagePlusType = new Double(dialog.getNextNumber()).intValue();
+                imagePlusType = Double.valueOf(dialog.getNextNumber()).intValue();
                 loadMasks = dialog.getNextBoolean();
                 splitSections = dialog.getNextBoolean();
                 replaceLastWithStage = dialog.getNextBoolean();

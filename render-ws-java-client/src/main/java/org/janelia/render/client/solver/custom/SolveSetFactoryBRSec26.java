@@ -81,7 +81,7 @@ public class SolveSetFactoryBRSec26 extends SolveSetFactory
 		{
 			boolean rigidPreAlign = false;
 			Affine2D< ? > stitchingModel = defaultStitchingModel;
-			int minStitchingInliers = defaultMinStitchingInliers;
+			final int minStitchingInliers = defaultMinStitchingInliers;
 			List<Double> blockOptimizerLambdasRigid = defaultBlockOptimizerLambdasRigid;
 			List<Double> blockOptimizerLambdasTranslation = defaultBlockOptimizerLambdasTranslation;
 			List<Integer> blockOptimizerIterations = defaultBlockOptimizerIterations;
@@ -111,7 +111,7 @@ public class SolveSetFactoryBRSec26 extends SolveSetFactory
 
 			final Affine2D<?> stitchingModelf = stitchingModel;
 
-			SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid =
+			final SolveItemData<? extends Affine2D<?>, ? extends Affine2D<?>, ? extends Affine2D<?>> sid =
 					instantiateSolveItemData(
 							initSet.getId(),
 							this.defaultGlobalSolveModel,

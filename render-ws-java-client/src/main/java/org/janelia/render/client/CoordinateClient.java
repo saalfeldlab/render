@@ -60,63 +60,53 @@ public class CoordinateClient {
 
         @Parameter(
                 names = "--toOwner",
-                description = "Name of target stack owner (for round trip mapping, default is source owner)",
-                required = false)
+                description = "Name of target stack owner (for round trip mapping, default is source owner)")
         public String toOwner;
 
         @Parameter(
                 names = "--toProject",
-                description = "Name of target stack project (for round trip mapping, default is source owner)",
-                required = false)
+                description = "Name of target stack project (for round trip mapping, default is source owner)")
         public String toProject;
 
         @Parameter(
                 names = "--toStack",
-                description = "Name of target stack (for round trip mapping, omit for one way mapping)",
-                required = false)
+                description = "Name of target stack (for round trip mapping, omit for one way mapping)")
         public String toStack;
 
         @Parameter(
                 names = "--z",
-                description = "Z value for all source coordinates",
-                required = false)
+                description = "Z value for all source coordinates")
         public Double z;
 
         @Parameter(
                 names = "--fromJson",
-                description = "JSON file containing coordinates to be mapped (.json, .gz, or .zip)",
-                required = false)
+                description = "JSON file containing coordinates to be mapped (.json, .gz, or .zip)")
         public String fromJson;
 
         @Parameter(
                 names = "--toJson",
-                description = "JSON file where mapped coordinates are to be stored (.json, .gz, or .zip)",
-                required = false)
+                description = "JSON file where mapped coordinates are to be stored (.json, .gz, or .zip)")
         private String toJson;
 
         @Parameter(
                 names = "--localToWorld",
                 description = "Convert from local to world coordinates (default is to convert from world to local)",
-                required = false,
                 arity = 0)
         public boolean localToWorld = false;
 
         @Parameter(
                 names = "--fromSwcDirectory",
-                description = "directory containing source .swc files",
-                required = false)
+                description = "directory containing source .swc files")
         public String fromSwcDirectory;
 
         @Parameter(
                 names = "--toSwcDirectory",
-                description = "directory to write target .swc files with mapped coordinates",
-                required = false)
+                description = "directory to write target .swc files with mapped coordinates")
         public String toSwcDirectory;
 
         @Parameter(
                 names = "--numberOfThreads",
-                description = "Number of threads to use for conversion",
-                required = false)
+                description = "Number of threads to use for conversion")
         public int numberOfThreads = 1;
 
         public String getToOwner() {
@@ -350,7 +340,7 @@ public class CoordinateClient {
 
     public List<List<TileCoordinates>> worldToLocal(final List<List<TileCoordinates>> worldListOfLists,
                                                     final ResolvedTileSpecCollection tiles)
-            throws IOException, InterruptedException {
+            throws InterruptedException {
 
         final List<List<TileCoordinates>> localListOfLists;
 
@@ -391,7 +381,7 @@ public class CoordinateClient {
                                                                      worldListOfLists,
                                                                      0,
                                                                      worldListOfLists.size());
-            mapper.run();
+            mapper.start();
             localListOfLists = mapper.getLocalListOfLists();
         }
 
@@ -401,7 +391,7 @@ public class CoordinateClient {
     }
 
     public List<TileCoordinates> localToWorldInBatches(final List<List<TileCoordinates>> loadedLocalCoordinates)
-            throws IOException, InterruptedException {
+            throws InterruptedException {
 
         final BatchHelper batchHelper = new BatchHelper("localToWorldInBatches", loadedLocalCoordinates.size());
 
@@ -425,7 +415,7 @@ public class CoordinateClient {
 
     public List<TileCoordinates> localToWorld(final List<List<TileCoordinates>> localListOfLists,
                                               final ResolvedTileSpecCollection tiles)
-            throws IOException, InterruptedException {
+            throws InterruptedException {
 
         final List<TileCoordinates> worldList;
 
@@ -466,7 +456,7 @@ public class CoordinateClient {
                                                                      localListOfLists,
                                                                      0,
                                                                      localListOfLists.size());
-            mapper.run();
+            mapper.start();
             worldList = mapper.getWorldList();
         }
 
@@ -828,7 +818,7 @@ public class CoordinateClient {
 
     }
 
-    private class BatchHelper {
+    private static class BatchHelper {
 
         private final String methodName;
         private final int batchSize;
@@ -884,7 +874,7 @@ public class CoordinateClient {
                                                          final List<TileCoordinates> coordinatesList)
                 throws IOException {
 
-            try (DirectoryStream<Path> directoryStream =
+            try (final DirectoryStream<Path> directoryStream =
                          Files.newDirectoryStream(Paths.get(directoryPath), "*.swc")) {
                 for (final Path path : directoryStream) {
                     addCoordinatesForFile(new File(path.toString()),
@@ -904,7 +894,7 @@ public class CoordinateClient {
             final double yPerPixel = sourceStackVersion.getStackResolutionY();
             final double zPerPixel = sourceStackVersion.getStackResolutionZ();
 
-            try (BufferedReader reader = new BufferedReader(new FileReader(sourceFile))) {
+            try (final BufferedReader reader = new BufferedReader(new FileReader(sourceFile))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     final Matcher m = readPattern.matcher(line);
@@ -950,8 +940,8 @@ public class CoordinateClient {
                 final File targetFile = new File(targetDirectory, sourceFile.getName());
 
                 int i = 0;
-                try (BufferedReader reader = new BufferedReader(new FileReader(sourceFile));
-                     BufferedWriter writer = new BufferedWriter(new FileWriter(targetFile))) {
+                try (final BufferedReader reader = new BufferedReader(new FileReader(sourceFile));
+                     final BufferedWriter writer = new BufferedWriter(new FileWriter(targetFile))) {
 
                     String line;
                     TileCoordinates tileCoordinates;

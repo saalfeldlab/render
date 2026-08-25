@@ -1,15 +1,15 @@
 /**
  * License: GPL
- *
+ * <p>
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License 2
  * as published by the Free Software Foundation.
- *
+ * <p>
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
+ * <p>
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
@@ -17,6 +17,7 @@
 package org.janelia.render.client.solver;
 
 import java.awt.geom.AffineTransform;
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -38,7 +39,8 @@ import net.imglib2.util.Pair;
 
 public class StabilizingAffineModel2D< A extends Model< A > & Affine2D< A > > extends AbstractModel< StabilizingAffineModel2D< A > > implements Affine2D< StabilizingAffineModel2D< A > >
 {
-	private static final long serialVersionUID = 4028319936789363770L;
+	@Serial
+    private static final long serialVersionUID = 4028319936789363770L;
 
 	final List< Pair< List< PointMatch >, ? extends Tile< ? > > > matchesList;
 	protected A model;
@@ -100,7 +102,7 @@ public class StabilizingAffineModel2D< A extends Model< A > & Affine2D< A > > ex
 	@Override
 	public StabilizingAffineModel2D< A > copy()
 	{
-		final StabilizingAffineModel2D< A > copy = new StabilizingAffineModel2D< A >( model.copy() );
+		final StabilizingAffineModel2D< A > copy = new StabilizingAffineModel2D<>(model.copy());
 		copy.cost = cost;
 		return copy;
 	}
@@ -120,13 +122,13 @@ public class StabilizingAffineModel2D< A extends Model< A > & Affine2D< A > > ex
 	}
 
 	@Override
-	public double[] applyInverse(double[] point) throws NoninvertibleModelException
+	public double[] applyInverse(final double[] point) throws NoninvertibleModelException
 	{
 		return model.applyInverse(point);
 	}
 
 	@Override
-	public void applyInverseInPlace(double[] point) throws NoninvertibleModelException
+	public void applyInverseInPlace(final double[] point) throws NoninvertibleModelException
 	{
 		model.applyInverseInPlace(point);
 	}
@@ -146,30 +148,30 @@ public class StabilizingAffineModel2D< A extends Model< A > & Affine2D< A > > ex
 	@Override
 	public void preConcatenate(final StabilizingAffineModel2D< A > affine2d)
 	{
-		throw new RuntimeException( "Constant Model cannot preconcatentate" );
+		throw new RuntimeException( "Constant Model cannot preconcatenate" );
 	}
 
 	@Override
 	public void concatenate(final StabilizingAffineModel2D< A > affine2d)
 	{
-		throw new RuntimeException( "Constant Model cannot concatentate" );
+		throw new RuntimeException( "Constant Model cannot concatenate" );
 	}
 
 	@Override
-	public void toArray(double[] data)
+	public void toArray(final double[] data)
 	{
 		model.toArray(data);
 	}
 
 	@Override
-	public void toMatrix(double[][] data) {
+	public void toMatrix(final double[][] data) {
 		model.toMatrix(data);
 	}
 
 	@Override
 	public StabilizingAffineModel2D< A > createInverse()
 	{
-		final StabilizingAffineModel2D< A > inverse = new StabilizingAffineModel2D< A >( model.createInverse() );
+		final StabilizingAffineModel2D< A > inverse = new StabilizingAffineModel2D<>(model.createInverse());
 		inverse.cost = cost;
 		return inverse;
 	}

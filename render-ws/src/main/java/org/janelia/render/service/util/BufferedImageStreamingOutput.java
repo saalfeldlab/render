@@ -54,15 +54,14 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
 
         LOG.info("write: entry");
 
-        if (Utils.RAW_FORMAT.equals(format)) {
-            writeRawImage(targetImage, outputStream);
-        } else if (Utils.PNG_FORMAT.equals(format)) {
-            writePngImage(targetImage, 6, FilterType.FILTER_PAETH, outputStream);
-        } else if (Utils.TIFF_FORMAT.equals(format)) {
-            Utils.writeTiffImage(targetImage, outputStream);
-        } else {
-            final ImageOutputStream imageOutputStream = new MemoryCacheImageOutputStream(outputStream);
-            Utils.writeImage(targetImage, format, convertToGray, quality, imageOutputStream);
+        switch (format) {
+            case Utils.RAW_FORMAT -> writeRawImage(targetImage, outputStream);
+            case Utils.PNG_FORMAT -> writePngImage(targetImage, 6, FilterType.FILTER_PAETH, outputStream);
+            case Utils.TIFF_FORMAT -> Utils.writeTiffImage(targetImage, outputStream);
+            case null, default -> {
+                final ImageOutputStream imageOutputStream = new MemoryCacheImageOutputStream(outputStream);
+                Utils.writeImage(targetImage, format, convertToGray, quality, imageOutputStream);
+            }
         }
 
         LOG.info("write: exit");
@@ -71,7 +70,7 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
     /**
      * Writes a {@link BufferedImage} to the specified {@link OutputStream} using the PNGJ library
      * which is much faster than Java's ImageIO library.
-     *
+     * <p>
      * This implementation was copied from
      * <a href="https://github.com/leonbloy/pngj/wiki/Snippets">
      *     https://github.com/leonbloy/pngj/wiki/Snippets
@@ -132,7 +131,7 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
             }
 
             final int [] scanline = new int[imageInfo.cols];
-            ImageLineInt line = new ImageLineInt(imageInfo, scanline);
+            final ImageLineInt line = new ImageLineInt(imageInfo, scanline);
 
             for (int row = 0; row < imageInfo.rows; row++) {
                 for (int col = 0; col < imageInfo.cols; col++) {
@@ -167,11 +166,11 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
                                      final OutputStream outputStream)
             throws IOException {
 
-            DataOutputStream dataStream = new DataOutputStream(outputStream);
+            final DataOutputStream dataStream = new DataOutputStream(outputStream);
 
         if (bufferedImage.getType() == BufferedImage.TYPE_INT_ARGB) {
             final DataBufferInt dataBuffer = (DataBufferInt) bufferedImage.getRaster().getDataBuffer();
-            for (int i:dataBuffer.getData()){
+            for (final int i:dataBuffer.getData()){
                 dataStream.writeInt(i);
             }
         } else if (bufferedImage.getType() == BufferedImage.TYPE_BYTE_GRAY) {
@@ -179,7 +178,7 @@ public class BufferedImageStreamingOutput implements StreamingOutput {
             dataStream.write(dataBuffer.getData());
         } else if (bufferedImage.getType() == BufferedImage.TYPE_USHORT_GRAY) {
             final DataBufferUShort dataBuffer = (DataBufferUShort) bufferedImage.getRaster().getDataBuffer();
-            for (int i:dataBuffer.getData()){
+            for (final int i:dataBuffer.getData()){
                 dataStream.writeShort(i);
             }
         } else {
