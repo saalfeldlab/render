@@ -1,7 +1,6 @@
 package org.janelia.render.client.solver;
 
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -18,8 +17,8 @@ import mpicbg.models.Tile;
  */
 public class Graph
 {
-	private int v; // No. of vertices
-	private LinkedList< Integer > adj[]; // Adjacency List Represntation
+	private final int v; // No. of vertices
+	private final List<Integer>[] adj; // Adjacency List Represntation
 
 	public Graph( final int v )
 	{
@@ -63,30 +62,25 @@ public class Graph
 
 	// A recursive function that uses visited[] and parent to detect
 	// cycle in subgraph reachable from vertex v.
-	boolean isCyclicUtil( final int v, final boolean visited[], final int parent )
+	boolean isCyclicUtil(final int v, final boolean[] visited, final int parent )
 	{
 		// Mark the current node as visited
 		visited[ v ] = true;
 
 		// Recur for all the vertices adjacent to this vertex
-		Iterator< Integer > it = adj[ v ].iterator();
-		while ( it.hasNext() )
-		{
-			final int i = it.next();
+        for (final int i : adj[v]) {
+            // If an adjacent is not visited, then recur for that
+            // adjacent
+            if (!visited[i]) {
+                if (isCyclicUtil(i, visited, v))
+                    return true;
+            }
 
-			// If an adjacent is not visited, then recur for that
-			// adjacent
-			if ( !visited[ i ] )
-			{
-				if ( isCyclicUtil( i, visited, v ) )
-					return true;
-			}
-
-			// If an adjacent is visited and not parent of current
-			// vertex, then there is a cycle.
-			else if ( i != parent )
-				return true;
-		}
+            // If an adjacent is visited and not parent of current
+            // vertex, then there is a cycle.
+            else if (i != parent)
+                return true;
+        }
 		return false;
 	}
 
@@ -95,7 +89,7 @@ public class Graph
 	{
 		// Mark all the vertices as not visited and not part of
 		// recursion stack
-		boolean visited[] = new boolean[ v ];
+		final boolean[] visited = new boolean[ v ];
 		for (int i = 0; i < v; i++)
 			visited[ i ] = false;
 
@@ -110,10 +104,10 @@ public class Graph
 	}
 
 	// Driver method to test above methods
-	public static void main( String args[] )
+	public static void main(final String[] args)
 	{
 		// Create a graph given in the above diagram
-		Graph g1 = new Graph( 5 );
+		final Graph g1 = new Graph(5 );
 		g1.addEdge( 1, 0 );
 		g1.addEdge( 2, 0 );
 		g1.addEdge( 2, 1 );
@@ -132,7 +126,7 @@ Added edge 2--0, 19-02-09_112345_0-0-2.10000.0--19-02-09_112345_0-0-3.10000.0
 Added edge 2--1, 19-02-09_112345_0-0-2.10000.0--19-02-09_112345_0-0-1.10000.0
 Added edge 3--1, 19-02-09_112345_0-0-0.10000.0--19-02-09_112345_0-0-1.10000.0
 		 */
-		Graph g2 = new Graph(4); 
+		final Graph g2 = new Graph(4);
 		g2.addEdge(0, 2); 
 		g2.addEdge(1, 2);
 		g2.addEdge(1, 3);
