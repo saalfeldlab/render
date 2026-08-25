@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Spark client for adding or removing maskUrl attributes to all tile specs in a stack.
- * When adding masks, tile size is used to determine which mask (from a list of masks) is should be used for each tile.
+ * When adding masks, tile size is used to determine which mask (from a list of masks) it should be used for each tile.
  *
  * @author Eric Trautman
  */
@@ -224,15 +224,13 @@ public class UpdateMaskUrlClient
 
         final JavaRDD<List<Double>> rddZValues = sparkContext.parallelize(batchedZValues);
 
-        final JavaRDD<Integer> rddTileCounts;
-
         List<MaskData> maskDataList = null;
         if (! parameters.removeMasks) {
             maskDataList = loadMaskData(parameters.maskListFile);
             LOG.info("loaded {} from {}", maskDataList, parameters.maskListFile);
         }
 
-        rddTileCounts = rddZValues.map(getUpdateMaskFunction(maskDataList));
+        final JavaRDD<Integer> rddTileCounts = rddZValues.map(getUpdateMaskFunction(maskDataList));
 
         // use an action to get the results
         final List<Integer> tileCountList = rddTileCounts.collect();

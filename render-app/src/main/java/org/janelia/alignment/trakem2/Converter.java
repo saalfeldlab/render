@@ -132,7 +132,7 @@ public class Converter {
      *                                     (only set this to true if conversion process has access
      *                                     to image and mask filesystem).
      * @throws JAXBException
-     *   if the the specified XML stream cannot be parsed.
+     *   if the specified XML stream cannot be parsed.
      *
      * @throws IOException
      *   if JSON data cannot be written to the specified output stream.

@@ -63,10 +63,7 @@ public class CellEdge
 
         final CellEdge cellEdge = (CellEdge) o;
 
-        if (!fromCell.equals(cellEdge.fromCell)) {
-            return false;
-        }
-        return toCell.equals(cellEdge.toCell);
+        return fromCell.equals(cellEdge.fromCell) && toCell.equals(cellEdge.toCell);
     }
 
     @Override

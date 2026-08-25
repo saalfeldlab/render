@@ -97,18 +97,17 @@ public class HeadlessZPositionCorrectionTest {
         final StackMetaData stackMetaData = RenderTools.openStackMetaData(baseDataUrl, owner, project, stack);
         final Bounds boundsForRun = stackMetaData.getStackBounds();
         final int regionRowsForRun = (int) Math.ceil(boundsForRun.getDeltaY() / regionSize);
-        final int regionColumnsForRun = (int) Math.ceil(boundsForRun.getDeltaX() / regionSize);;
+        final int regionColumnsForRun = (int) Math.ceil(boundsForRun.getDeltaX() / regionSize);
 
         final List<BoundsBatch> batchList = BoundsBatch.batchByAdjacentZThenXY(boundsForRun,
                                                                                regionRowsForRun,
                                                                                regionColumnsForRun,
                                                                                1);
-        final List<Bounds> boundsList = batchList.stream()
+        final Bounds bounds = batchList.stream()
                 .flatMap(batch -> batch.getList().stream())
-                .filter(bounds -> bounds.containsInt(testBoundsCenter))
-                .map(bounds -> bounds.withZ(testBoundsCenter.getMinZ()))
-                .collect(Collectors.toList());
-        final Bounds bounds = boundsList.getFirst().withZRange(z, z + 1.0);
+                .filter(b -> b.containsInt(testBoundsCenter))
+                .map(b -> b.withZ(testBoundsCenter.getMinZ()))
+                .findFirst().orElseThrow().withZRange(z, z + 1.0);
         final String stackUrlString = String.format("%s/owner/%s/project/%s/stack/%s",
                                                     baseDataUrl, owner, project, stack);
         final double renderScale = 0.22;
@@ -166,8 +165,8 @@ public class HeadlessZPositionCorrectionTest {
         final int totalNumberOfLayers = 50;
 
         // setup layers, shifting subset of them
-        Random rnd = new Random( 3434795 );
-        double noise = 0;
+        final Random rnd = new Random(3434795 );
+        final double noise = 0;
 
         final List<LayerLoader.FloatProcessors> layers = new ArrayList<>();
 
@@ -190,7 +189,7 @@ public class HeadlessZPositionCorrectionTest {
 
         	final float[] pixels = (float[])testProcessor.crop().convertToFloatProcessor().getPixelsCopy();
         	for ( int i = 0; i < pixels.length; ++i )
-        		pixels[ i ] += rnd.nextFloat() * noise - (noise/2.0);
+                pixels[i] = (float) (pixels[i] + (rnd.nextFloat() * noise - (noise / 2.0)));
         	final FloatProcessor fp =
                     new FloatProcessor( movingW, standardLayer.getHeight(), pixels); // standardLayer.convertToFloatProcessor()
             layers.add(new LayerLoader.FloatProcessors(fp, null));
@@ -274,19 +273,15 @@ public class HeadlessZPositionCorrectionTest {
         // ]
 
         // crop area for the largest layer group (z 14000 - z 25100)
-        double minX = 2500;
-        double maxX = 5500;
-        double minY = 400;
-        double maxY = 1700;
 
-		StackMetaData meta = RenderTools.openStackMetaData( "http://tem-services.int.janelia.org:8080/render-ws/v1", owner, project, stack);
-		Interval interval = RenderTools.stackBounds( meta );
+        final StackMetaData meta = RenderTools.openStackMetaData("http://tem-services.int.janelia.org:8080/render-ws/v1", owner, project, stack);
+		final Interval interval = RenderTools.stackBounds(meta );
 		System.out.println( "stack size: " + Util.printInterval( interval ) );
 
-		minX = interval.min( 0 );
-		maxX = interval.max( 0 );
-		minY = interval.min( 1 );
-		maxY = interval.max( 1 );
+        final double minX = interval.min(0);
+        final double maxX = interval.max(0);
+        final double minY = interval.min(1);
+        final double maxY = interval.max(1);
 
         final Bounds layerBounds = new Bounds(minX, minY, maxX, maxY);
 
@@ -294,7 +289,7 @@ public class HeadlessZPositionCorrectionTest {
         final int minZ = 10;
         final int maxZ = minZ + 9; // inclusive
         final List<Double> sortedZList = IntStream.rangeClosed(minZ, maxZ)
-                .boxed().map(Double::new).collect(Collectors.toList());
+                .mapToObj(Double::valueOf).collect(Collectors.toList());
 
         // for 19m VNC, layers were rendered at scale 0.125
         final double renderScale = 0.25;

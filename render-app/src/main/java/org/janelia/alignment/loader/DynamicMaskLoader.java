@@ -39,13 +39,11 @@ public class DynamicMaskLoader
     public ImageProcessor load(final String urlString)
             throws IllegalArgumentException {
 
-        ByteProcessor maskProcessor;
-
         final DynamicMaskDescription description = parseUrl(urlString);
         final int unmaskedWidth = description.maxX - description.minX;
         final int unmaskedHeight = description.maxY - description.minY;
 
-        maskProcessor = new ByteProcessor(description.width, description.height);
+        ByteProcessor maskProcessor = new ByteProcessor(description.width, description.height);
 
         maskProcessor.setColor(255);
         maskProcessor.fillRect(description.minX, description.minY, unmaskedWidth, unmaskedHeight);

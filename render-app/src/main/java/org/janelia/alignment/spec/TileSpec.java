@@ -688,11 +688,7 @@ public class TileSpec implements Serializable {
     }
 
     public boolean hasTransformWithLabel(final String label) {
-        boolean hasLabel = false;
-        if (transforms != null) {
-            hasLabel = transforms.hasLabel(label);
-        }
-        return hasLabel;
+        return transforms != null && transforms.hasLabel(label);
     }
 
     /**

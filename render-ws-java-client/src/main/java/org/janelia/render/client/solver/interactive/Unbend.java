@@ -123,17 +123,16 @@ public class Unbend
 
 	protected static double descentToSlice( final MonotoneCubicSpline spline, double x, final double targetZ, final RealPoint p )
 	{
-		double z, dx, gradientZ, dz;
 
-		spline.interpolate( x, p );
-		z = p.getDoublePosition( 2 );
-		gradientZ = gradientAt(spline, x, p);
-		dz = targetZ - z;
+        spline.interpolate( x, p );
+        double z = p.getDoublePosition(2);
+        double gradientZ = gradientAt(spline, x, p);
+        double dz = targetZ - z;
 		//System.out.println( "x:"+ x + ", z:" + z + ", gradientZ:" + gradientZ + ", dz:" + dz );
 
 		while ( Math.abs( dz ) > 1E-10 )
 		{
-			dx = (dz / gradientZ );
+			final double dx = (dz / gradientZ);
 			x += dx;
 			spline.interpolate( x, p );
 			z = p.getDoublePosition( 2 );

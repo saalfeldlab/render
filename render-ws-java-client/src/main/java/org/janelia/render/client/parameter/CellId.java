@@ -43,10 +43,7 @@ public class CellId
 
         final CellId that = (CellId) o;
 
-        if (row != that.row) {
-            return false;
-        }
-        return column == that.column;
+        return row == that.row && column == that.column;
     }
 
     @Override
