@@ -188,13 +188,13 @@ abstract class TileRenderer {
 		affineScale.set(scale, 0, 0, scale, -x * scale, -y * scale);
 		ctl.add(affineScale);
 
-		final ImageProcessor image = source.image;
+		final ImageProcessor image = source.image();
 
 		/* create a target */
 		final ImageProcessor tp = image.createProcessor(targetImage.getWidth(), targetImage.getHeight());
 
 		/* prepare target for the alpha mask if there is one */
-		final ByteProcessor bpMaskMipmap = source.mask;
+		final ByteProcessor bpMaskMipmap = source.mask();
 		final ByteProcessor bpMaskTarget = (bpMaskMipmap == null) ? null : new ByteProcessor(tp.getWidth(), tp.getHeight());
 
 		/* create coefficients map */
@@ -211,7 +211,7 @@ abstract class TileRenderer {
 
 		/* attach mipmap transformation */
 		final CoordinateTransformList<CoordinateTransform> ctlMipmap = new CoordinateTransformList<>();
-		ctlMipmap.add(createScaleLevelTransform(source.mipmapLevel));
+		ctlMipmap.add(createScaleLevelTransform(source.mipmapLevel()));
 		ctlMipmap.add(ctl);
 
 		/* create mesh */

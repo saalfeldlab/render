@@ -184,7 +184,7 @@ public class MFOVAsTileClient
         final List<StackId> prealignedStackIds = new ArrayList<>();
 
         for (final StackWithZValues rawSfovStackWithZ : rawSfovStacksWithAllZ) {
-            final StackId rawSfovStackId = rawSfovStackWithZ.getStackId();
+            final StackId rawSfovStackId = rawSfovStackWithZ.stackId();
             final String rawSfovStack = rawSfovStackId.getStack();
             final StackId prealignedStackId = rawSfovStackId.withStackSuffix(prealignedSfovStackSuffix);
             final MatchCollectionId rawSfovMatchCollectionId = deriveSfovMatchData ? null : new MatchCollectionId(rawSfovStackId.getOwner(),
@@ -205,7 +205,7 @@ public class MFOVAsTileClient
             prealignedStackIds.add(prealignedStackId);
 
             // Collect MFOV tasks for each layer
-            for (final Double z : rawSfovStackWithZ.getzValues()) {
+            for (final Double z : rawSfovStackWithZ.zValues()) {
                 final List<String> mfovNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(stackDataClient,
                                                                                                     rawSfovStack,
                                                                                                     z);
@@ -267,9 +267,9 @@ public class MFOVAsTileClient
 
             StackId builtStackId = null;
 
-            LogUtilities.setupExecutorLog4j(stackWithAllZ.getStackId().toDevString());
+            LogUtilities.setupExecutorLog4j(stackWithAllZ.stackId().toDevString());
 
-            final StackId prealignedStackId = stackWithAllZ.getStackId();
+            final StackId prealignedStackId = stackWithAllZ.stackId();
             final StackId dynamicMfovAsTileStackId = prealignedStackId.withStackSuffix(dynamicMfovStackSuffix);
 
             LOG.info("buildMfovStackFunction: entry, prealignedStackId={}, dynamicMfovAsTileStackId={}",
@@ -320,7 +320,7 @@ public class MFOVAsTileClient
         final List<StackId> renderedMfovStackList = new ArrayList<>();
         for (final StackWithZValues rawSfovStackWithAllZ : mfovAsTileStackLists.getRawSfovStacksWithAllZ()) {
 
-            final StackId rawStackId = rawSfovStackWithAllZ.getStackId();
+            final StackId rawStackId = rawSfovStackWithAllZ.stackId();
             final StackId dynamicMfovAsTileStackId = mfovAsTile.getDynamicMfovStackId(rawStackId);
             final StackId renderedMfovAsTileStackId = mfovAsTile.getRenderedMfovStackId(rawStackId);
 
@@ -336,7 +336,7 @@ public class MFOVAsTileClient
                                                                          rawStackId.getProject());
 
                 boolean isSetupNeeded = true;
-                for (final Double z : rawSfovStackWithAllZ.getzValues()) {
+                for (final Double z : rawSfovStackWithAllZ.zValues()) {
                     final List<String> mfovNames = MultiProjectParameters.getSortedMFOVNamesForOneLayer(dataClient,
                                                                                                         rawStackId.getStack(),
                                                                                                         z);
@@ -413,7 +413,7 @@ public class MFOVAsTileClient
 
                 for (final StackWithZValues stackWithZ : mfovAsTileStackLists.getRenderedMfovStacksWithAllZ(owner, project)) {
 
-                    final StackId stackId = stackWithZ.getStackId();
+                    final StackId stackId = stackWithZ.stackId();
                     final String matchCollectionName = stackId.getDefaultMatchCollectionId(false).getName();
 
                     if (existingMatchCollectionNames.contains(matchCollectionName)) {
@@ -421,7 +421,7 @@ public class MFOVAsTileClient
                                  matchCollectionName);
                     } else {
                         projectStackNameList.add(stackId.getStack());
-                        for (final Double z : stackWithZ.getzValues()) {
+                        for (final Double z : stackWithZ.zValues()) {
                             listOfRenderedMfovStackLayersInProject.add(new StackWithZValues(stackId,
                                                                                             Collections.singletonList(z)));
                         }
@@ -475,9 +475,9 @@ public class MFOVAsTileClient
 
         final Function<StackWithZValues, String> removalFunction = stackWithZValues -> {
 
-            LogUtilities.setupExecutorLog4j(stackWithZValues.getStackId().toDevString());
+            LogUtilities.setupExecutorLog4j(stackWithZValues.stackId().toDevString());
 
-            final StackId stackId = stackWithZValues.getStackId();
+            final StackId stackId = stackWithZValues.stackId();
             final MatchCollectionId matchCollectionId = stackId.getDefaultMatchCollectionId(false);
             final RenderDataClient matchClient = new RenderDataClient(baseDataUrl,
                                                                       matchCollectionId.getOwner(),
@@ -524,12 +524,12 @@ public class MFOVAsTileClient
 
         final Function<StackWithZValues, Integer> patchFunction = stackWithZValues -> {
 
-            LogUtilities.setupExecutorLog4j(stackWithZValues.getStackId().toDevString());
+            LogUtilities.setupExecutorLog4j(stackWithZValues.stackId().toDevString());
 
             // -------------------------------
             // 1. patch unconnected pairs in the stack
 
-            final StackId stackId = stackWithZValues.getStackId();
+            final StackId stackId = stackWithZValues.stackId();
             final RenderDataClient dataClient = new RenderDataClient(baseDataUrl,
                                                                      stackId.getOwner(),
                                                                      stackId.getProject());
@@ -602,7 +602,7 @@ public class MFOVAsTileClient
         final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
         for (final StackWithZValues renderedMfovStackWithAllZ : mfovAsTileStackLists.getRenderedMfovStacksWithAllZ()) {
 
-            final StackId renderedMfovStackId = renderedMfovStackWithAllZ.getStackId();
+            final StackId renderedMfovStackId = renderedMfovStackWithAllZ.stackId();
             final StackId alignedMfovStackId =
                     renderedMfovStackId.withStackSuffix(mfovAsTile.getAlignedMfovStackSuffix());
 
@@ -644,7 +644,7 @@ public class MFOVAsTileClient
 
         for (int i = 0; i < roughSfovStacksWithAllZ.size(); i++) {
             final StackWithZValues roughSfovStackWithAllZ = roughSfovStacksWithAllZ.get(i);
-            final StackId roughSfovStackId = roughSfovStackWithAllZ.getStackId();
+            final StackId roughSfovStackId = roughSfovStackWithAllZ.stackId();
             if (mfovAsTileStackLists.isExistingStack(roughSfovStackId)) {
                 LOG.info("buildRoughSfovStacks: skipping creation of {} because it already exists",
                          roughSfovStackId.toDevString());
@@ -665,9 +665,9 @@ public class MFOVAsTileClient
 
             final Function<StackWithZValues, StackId> buildRoughStackFunction = stackWithAllZ -> {
 
-                LogUtilities.setupExecutorLog4j(stackWithAllZ.getStackId().toDevString());
+                LogUtilities.setupExecutorLog4j(stackWithAllZ.stackId().toDevString());
 
-                final StackId rawSfovStackId = stackWithAllZ.getStackId();
+                final StackId rawSfovStackId = stackWithAllZ.stackId();
                 final StackId renderedMfovStackId = rawSfovStackId.withStackSuffix(renderedMfovStackSuffix);
                 final StackId alignedMfovStackId = rawSfovStackId.withStackSuffix(alignedMfovStackSuffixForRaw);
                 final StackId roughSfovStackId = rawSfovStackId.withStackSuffix(roughSfovStackSuffix);
@@ -680,7 +680,7 @@ public class MFOVAsTileClient
                 final StackMetaData rawSfovStackMetaData = workerDataClient.getStackMetaData(rawSfovStackId.getStack());
                 workerDataClient.setupDerivedStack(rawSfovStackMetaData, roughSfovStack);
 
-                for (final Double z : stackWithAllZ.getzValues()) {
+                for (final Double z : stackWithAllZ.zValues()) {
                     final ResolvedTileSpecCollection roughTiles = buildRoughTileSpecsForZ(workerDataClient,
                                                                                           rawSfovStackId.getStack(),
                                                                                           z,

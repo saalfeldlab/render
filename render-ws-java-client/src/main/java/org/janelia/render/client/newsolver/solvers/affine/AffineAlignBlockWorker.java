@@ -491,7 +491,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 					final ArrayList<LayerDetails<M>> neighbors = new ArrayList<>();
 
 					for (final LayerDetails<M> neighboringTile : neighboringTiles)
-						if (neighboringTile.tileCol == tileCol && neighboringTile.tileRow == tileRow)
+						if (neighboringTile.tileCol() == tileCol && neighboringTile.tileRow() == tileRow)
 							neighbors.add(neighboringTile);
 
 					if (neighbors.isEmpty()) {
@@ -502,7 +502,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 
 					for (final LayerDetails<M> neighbor : neighbors) {
 						final AffineModel2D stitchingTransform = solveItem.idToStitchingModel().get(tileId);
-						final AffineModel2D stitchingTransformPrev = solveItem.idToStitchingModel().get(neighbor.tileId);
+						final AffineModel2D stitchingTransformPrev = solveItem.idToStitchingModel().get(neighbor.tileId());
 
 						final List<PointMatch> matches = SolveTools.createFakeMatches(
 								tileSpec.getWidth(),
@@ -511,7 +511,7 @@ public class AffineAlignBlockWorker<M extends Model<M> & Affine2D<M>, S extends 
 								stitchingTransformPrev, // q
 								samplesPerDimension);
 
-						matchesList.add(new ValuePair<>(matches, neighbor.prevGroupedTile));
+						matchesList.add(new ValuePair<>(matches, neighbor.prevGroupedTile()));
 					}
 				}
 

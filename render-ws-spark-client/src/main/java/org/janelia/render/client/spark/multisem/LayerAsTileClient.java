@@ -172,9 +172,9 @@ public class LayerAsTileClient
 
             StackId builtStackId = null;
 
-            LogUtilities.setupExecutorLog4j(stackWithAllZ.getStackId().toDevString());
+            LogUtilities.setupExecutorLog4j(stackWithAllZ.stackId().toDevString());
 
-            final StackId align2DStackId = stackWithAllZ.getStackId();
+            final StackId align2DStackId = stackWithAllZ.stackId();
             final StackId dynamicLayerAsTileStackId = align2DStackId.withStackSuffix(dynamicLayerStackSuffix);
 
             LOG.info("buildLayerStackFunction: entry, prealignedStackId={}, dynamicLayerAsTileStackId={}",
@@ -225,7 +225,7 @@ public class LayerAsTileClient
         final List<StackId> renderedLayerStackList = new ArrayList<>();
         for (final StackWithZValues rawSfovStackWithAllZ : layerAsTileStackLists.getAlign2DSfovStacksWithAllZ()) {
 
-            final StackId rawStackId = rawSfovStackWithAllZ.getStackId();
+            final StackId rawStackId = rawSfovStackWithAllZ.stackId();
             final StackId dynamicLayerAsTileStackId = layerAsTile.getDynamicLayerStackId(rawStackId);
             final StackId renderedLayerAsTileStackId = layerAsTile.getRenderedLayerStackId(rawStackId);
 
@@ -237,7 +237,7 @@ public class LayerAsTileClient
             } else {
 
                 boolean isSetupNeeded = true;
-                for (final Double z : rawSfovStackWithAllZ.getzValues()) {
+                for (final Double z : rawSfovStackWithAllZ.zValues()) {
                     final JavaRenderTilesClientInfoForLayer info =
                             new JavaRenderTilesClientInfoForLayer(baseDataUrl,
                                                                   dynamicLayerAsTileStackId,
@@ -314,7 +314,7 @@ public class LayerAsTileClient
 
                 for (final StackWithZValues stackWithZ : projectStacks) {
 
-                    final StackId stackId = stackWithZ.getStackId();
+                    final StackId stackId = stackWithZ.stackId();
                     final Bounds stackBounds = projectStackClient.getStackMetaData(stackId.getStack()).getStackBounds();
 
                     final String matchCollectionName = stackId.getDefaultMatchCollectionId(false).getName();
@@ -340,9 +340,9 @@ public class LayerAsTileClient
                     final List<StackWithZValues> batchLayers = new ArrayList<>();
 
                     for (final StackWithZValues stackWithZ : batchStacks) {
-                        final StackId stackId = stackWithZ.getStackId();
+                        final StackId stackId = stackWithZ.stackId();
                         batchStackNames.add(stackId.getStack());
-                        for (final Double z : stackWithZ.getzValues()) {
+                        for (final Double z : stackWithZ.zValues()) {
                             batchLayers.add(new StackWithZValues(stackId, Collections.singletonList(z)));
                         }
                     }
@@ -381,7 +381,7 @@ public class LayerAsTileClient
 
         for (final StackWithZValues stackWithZValues : projectStacks) {
 
-            final StackId stackId = stackWithZValues.getStackId();
+            final StackId stackId = stackWithZValues.stackId();
             final String matchCollectionName = stackId.getDefaultMatchCollectionId(false).getName();
             final MatchCollectionId matchCollectionId = new MatchCollectionId(stackId.getOwner(),
                                                                               matchCollectionName);
@@ -434,7 +434,7 @@ public class LayerAsTileClient
 
         final ClusterCountClient.Parameters jcccp = new ClusterCountClient.Parameters();
         jcccp.multiProject = MultiProjectParameters.singleStackInstance(renderDataClient.getBaseDataUrl(),
-                                                                        stackWithZValues.getStackId());
+                                                                        stackWithZValues.stackId());
         jcccp.tileCluster = new TileClusterParameters();
 
         final int zCount = stackWithZValues.getZCount();
@@ -472,7 +472,7 @@ public class LayerAsTileClient
                                                    final RenderDataClient renderDataClient)
             throws IOException {
 
-        final StackId stackId = stackWithZValues.getStackId();
+        final StackId stackId = stackWithZValues.stackId();
         final String stack = stackId.getStack();
 
         LOG.info("patchLayerClusterBoundaries: entry, {}", stackId.toDevString());
@@ -598,7 +598,7 @@ public class LayerAsTileClient
         final List<AffineBlockSolverSetup> setupList = new ArrayList<>();
         for (final StackWithZValues renderedLayerStackWithAllZ : layerAsTileStackLists.getRenderedLayerStacksWithAllZ()) {
 
-            final StackId renderedLayerStackId = renderedLayerStackWithAllZ.getStackId();
+            final StackId renderedLayerStackId = renderedLayerStackWithAllZ.stackId();
             final StackId alignedLayerStackId =
                     renderedLayerStackId.withStackSuffix(layerAsTile.getAlignedLayerStackSuffix());
 
@@ -640,7 +640,7 @@ public class LayerAsTileClient
 
         for (int i = 0; i < align3DSfovStacksWithAllZ.size(); i++) {
             final StackWithZValues align3DSfovStackWithAllZ = align3DSfovStacksWithAllZ.get(i);
-            final StackId align3DSfovStackId = align3DSfovStackWithAllZ.getStackId();
+            final StackId align3DSfovStackId = align3DSfovStackWithAllZ.stackId();
             if (layerAsTileStackLists.isExistingStack(align3DSfovStackId)) {
                 LOG.info("buildAlign3DSfovStacks: skipping creation of {} because it already exists",
                          align3DSfovStackId.toDevString());
@@ -661,9 +661,9 @@ public class LayerAsTileClient
 
             final Function<StackWithZValues, StackId> buildAlign3DStackFunction = stackWithAllZ -> {
 
-                LogUtilities.setupExecutorLog4j(stackWithAllZ.getStackId().toDevString());
+                LogUtilities.setupExecutorLog4j(stackWithAllZ.stackId().toDevString());
 
-                final StackId rawSfovStackId = stackWithAllZ.getStackId();
+                final StackId rawSfovStackId = stackWithAllZ.stackId();
                 final StackId renderedLayerStackId = rawSfovStackId.withStackSuffix(renderedLayerStackSuffix);
                 final StackId alignedLayerStackId = rawSfovStackId.withStackSuffix(alignedLayerStackSuffixForRaw);
                 final StackId align3DSfovStackId = rawSfovStackId.withStackSuffix(align3DSfovStackSuffix);
@@ -676,7 +676,7 @@ public class LayerAsTileClient
                 final StackMetaData rawSfovStackMetaData = workerDataClient.getStackMetaData(rawSfovStackId.getStack());
                 workerDataClient.setupDerivedStack(rawSfovStackMetaData, align3DSfovStack);
 
-                for (final Double z : stackWithAllZ.getzValues()) {
+                for (final Double z : stackWithAllZ.zValues()) {
                     final ResolvedTileSpecCollection align3DTiles = buildAlign3DTileSpecsForZ(workerDataClient,
                                                                                               rawSfovStackId.getStack(),
                                                                                               z,

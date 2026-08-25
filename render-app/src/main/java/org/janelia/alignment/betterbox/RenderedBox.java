@@ -10,15 +10,12 @@ import org.janelia.alignment.Utils;
  *
  * @author Eric Trautman
  */
-public class RenderedBox {
-
-    private final File file;
-    private final BufferedImage image;
+public record RenderedBox(File file, BufferedImage image) {
 
     /**
      * Loads image pixels from the specified file.
      *
-     * @param  file  rendered image file.
+     * @param file rendered image file.
      */
     public RenderedBox(final File file) {
         this(file, Utils.openImage(file.getAbsolutePath()));
@@ -27,26 +24,8 @@ public class RenderedBox {
     /**
      * Tracks specified image file and pixel data.
      *
-     * @param  file   image file.
-     * @param  image  image pixels.
+     * @param file  image file.
+     * @param image image pixels.
      */
-    public RenderedBox(final File file,
-                       final BufferedImage image) {
-        this.file = file;
-        this.image = image;
-    }
-
-    /**
-     * @return file for this rendered box.
-     */
-    public File getFile() {
-        return file;
-    }
-
-    /**
-     * @return pixels for this rendered box.
-     */
-    public BufferedImage getImage() {
-        return image;
-    }
+    public RenderedBox {}
 }

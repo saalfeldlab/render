@@ -86,7 +86,7 @@ public class ClusterCountClient {
         final List<StackWithZValues> stackWithZList = parameters.multiProject.buildListOfStackWithAllZ();
         for (final StackWithZValues stackWithZ : stackWithZList) {
 
-            final StackId stackId = stackWithZ.getStackId();
+            final StackId stackId = stackWithZ.stackId();
             final MatchCollectionId defaultMatchCollectionId =
                     parameters.multiProject.getMatchCollectionIdForStack(stackId);
 
@@ -105,7 +105,7 @@ public class ClusterCountClient {
             throws Exception {
 
 
-        final StackId stackId = stackWithZValues.getStackId();
+        final StackId stackId = stackWithZValues.stackId();
         final RenderDataClient matchDataClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
                                                                               matchCollectionId.getName());
 
@@ -113,7 +113,7 @@ public class ClusterCountClient {
                 renderDataClient.getStackZToSectionIdsMap(stackId.getStack(),
                                                           null,
                                                           null,
-                                                          stackWithZValues.getzValues());
+                                                          stackWithZValues.zValues());
 
         //TODO: For very large stacks (e.g. millions of tiles) we will not be able to keep all canvasIds
         //      (one per tile) in memory.

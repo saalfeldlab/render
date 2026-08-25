@@ -119,9 +119,9 @@ public class MFOVAsTileStackClient {
             throws IOException, IllegalStateException {
 
         final String baseDataUrl = renderDataClient.getBaseDataUrl();
-        final StackId sourceStackId = stackWithZ.getStackId();
+        final StackId sourceStackId = stackWithZ.stackId();
         final String sourceStackName = sourceStackId.getStack();
-        final StackId xAsTileStackId = stackWithZ.getStackId().withStackSuffix(xAsTileStackSuffix);
+        final StackId xAsTileStackId = stackWithZ.stackId().withStackSuffix(xAsTileStackSuffix);
 
         final StackMetaData stackMetaData = renderDataClient.getStackMetaData(sourceStackName);
         final String xAsTileStackName = xAsTileStackId.getStack();
@@ -130,7 +130,7 @@ public class MFOVAsTileStackClient {
         renderDataClient.setupDerivedStack(stackMetaData,
                                            xAsTileStackName);
 
-        for (final Double z : stackWithZ.getzValues()) {
+        for (final Double z : stackWithZ.zValues()) {
 
             final List<TileBounds> sourceTileBoundsListForZLayer =
                     renderDataClient.getTileBounds(sourceStackId.getStack(), z);

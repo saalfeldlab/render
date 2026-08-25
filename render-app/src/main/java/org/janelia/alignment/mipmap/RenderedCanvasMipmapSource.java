@@ -159,9 +159,9 @@ public class RenderedCanvasMipmapSource
             final long scaleDerivationStart = System.currentTimeMillis();
 
             final CoordinateTransformList<CoordinateTransform> renderTransformList =
-                    addRenderScaleAndOffset(canvas.getTransformList(), levelZeroScale, levelScale, x, y);
+                    addRenderScaleAndOffset(canvas.transformList(), levelZeroScale, levelScale, x, y);
 
-            final MipmapSource source = canvas.getSource();
+            final MipmapSource source = canvas.source();
 
             final double averageScale = Utils.sampleAverageScale(renderTransformList,
                                                                  source.getFullScaleWidth(),

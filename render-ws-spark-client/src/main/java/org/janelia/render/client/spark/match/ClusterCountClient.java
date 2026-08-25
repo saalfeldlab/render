@@ -138,7 +138,7 @@ public class ClusterCountClient
 
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
-            final StackId stackId = stackWithZ.getStackId();
+            final StackId stackId = stackWithZ.stackId();
             final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
             final RenderDataClient localDataClient = new RenderDataClient(baseDataUrl,
                                                                           stackId.getOwner(),

@@ -55,7 +55,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
         final CrossCorrelationWithNextRegionalData firstLayerData = dataList.getFirst();
         final int rowCount = firstLayerData.getRegionalRowCount();
         final int columnCount = firstLayerData.getRegionalColumnCount();
-        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+        final Bounds stackBounds = stackMetaData.getStats().stackBounds();
 
         if ((rowCount > 0) && (columnCount > 0)) {
 
@@ -174,7 +174,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                                                             final int columnCount) {
 
         final List<Double> stackResolutionValues = stackMetaData.getCurrentResolutionValues();
-        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+        final Bounds stackBounds = stackMetaData.getStats().stackBounds();
         final double pixelsPerColumn = stackBounds.getWidth() / (double) columnCount;
         final double columnResolution = pixelsPerColumn * stackResolutionValues.get(0);
         final double pixelsPerRow = stackBounds.getHeight() / (double) rowCount;
@@ -270,7 +270,7 @@ public class CrossCorrelationWithNextRegionalDataN5Writer
                                        "\"y\":[" + res.get(1).intValue() + "e-9,\"m\"]," +
                                        "\"z\":[" + res.get(2).intValue() + "e-9,\"m\"]";
 
-        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+        final Bounds stackBounds = stackMetaData.getStats().stackBounds();
         final Bounds exportBounds = stackBounds.withMinZ(exportMinZ + 0.5); // TODO: figure out why need to add 0.5
         final String positionAndScales = buildPositionAndScales(exportBounds,
                                                                 32,

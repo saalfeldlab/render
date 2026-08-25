@@ -96,7 +96,7 @@ public class TileSpecLayout {
                         String header = "BBOX ";
                         final StackStats stats = stackMetaData.getStats();
                         if (stats != null) {
-                            final Bounds bounds = stats.getStackBounds();
+                            final Bounds bounds = stats.stackBounds();
                             if (bounds != null) {
                                 header = header +
                                          bounds.getMinX() + ' ' + bounds.getMinY() + ' ' +

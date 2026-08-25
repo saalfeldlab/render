@@ -35,20 +35,7 @@ public class WorkerTools
 		return ids.stream().max(Integer::compare).orElse(Integer.MIN_VALUE);
 	}
 
-	public static class LayerDetails< M extends Model<M> >
-	{
-		final public String tileId;
-		final public int tileCol, tileRow;
-		final public Tile< M > prevGroupedTile;
-
-		public LayerDetails( final String tileId, final int tileCol, final int tileRow, final Tile< M > prevGroupedTile )
-		{
-			this.tileId = tileId;
-			this.tileCol = tileCol;
-			this.tileRow = tileRow;
-			this.prevGroupedTile = prevGroupedTile;
-		}
-	}
+    public record LayerDetails<M extends Model<M>>(String tileId, int tileCol, int tileRow, Tile<M> prevGroupedTile) {}
 
 	public static < M extends Model<M> & Affine2D< M >> ArrayList< LayerDetails< M > > layerDetails(
 			final ArrayList< Integer > allZ,

@@ -444,7 +444,7 @@ public class ImportFromRender_Plugin
                                 maxX = layout.getStageX() + firstTileSpec.getWidth();
                                 maxY = layout.getStageY() + firstTileSpec.getHeight();
                             } else {
-                                final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+                                final Bounds stackBounds = stackMetaData.getStats().stackBounds();
                                 maxX = stackBounds.getMaxX();
                                 maxY = stackBounds.getMaxY();
                             }

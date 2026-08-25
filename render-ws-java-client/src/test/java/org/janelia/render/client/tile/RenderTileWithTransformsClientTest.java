@@ -39,6 +39,7 @@ import org.janelia.alignment.transform.SEMDistortionTransformA;
 import org.janelia.alignment.util.LogbackTestTools;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -437,25 +438,13 @@ public class RenderTileWithTransformsClientTest {
         return fused;
     }
 
-    private static class TestResultWithContext {
-
-        public final String dataString;
-        public final double[] transformValues;
-        public final PairWiseStitchingResult result;
-        public final double renderScale;
-
-        public TestResultWithContext(final String dataString,
-                                     final double[] transformValues,
-                                     final PairWiseStitchingResult result,
-                                     final double renderScale) {
-            this.dataString = dataString;
-            this.transformValues = transformValues;
-            this.result = result;
-            this.renderScale = renderScale;
-        }
+    private record TestResultWithContext(String dataString,
+                                         double[] transformValues,
+                                         PairWiseStitchingResult result,
+                                         double renderScale) {
 
         @Override
-        public String toString() {
+        public @NonNull String toString() {
             return "parameters " + dataString + " with " + resultToString(result) + ", renderScale " + renderScale;
         }
 
@@ -484,21 +473,10 @@ public class RenderTileWithTransformsClientTest {
         }
     }
 
-    private static class StepParameters {
-        private final int stepNumber;
-        private final Map<Integer, Double> parameterIndexToStepSize;
-        private final double renderScale;
-
-        public StepParameters(final int stepNumber,
-                              final Map<Integer, Double> parameterIndexToStepSize,
-                              final double renderScale) {
-            this.stepNumber = stepNumber;
-            this.parameterIndexToStepSize = parameterIndexToStepSize;
-            this.renderScale = renderScale;
-        }
+    private record StepParameters(int stepNumber, Map<Integer, Double> parameterIndexToStepSize, double renderScale) {
 
         @Override
-        public String toString() {
+        public @NonNull String toString() {
             final StringBuilder sb = new StringBuilder(1024);
             sb.append("{stepNumber: ").append(String.format("%2d", stepNumber)).append(", parameterIndexToStepSize:{");
             for (final Integer index : parameterIndexToStepSize.keySet()) {

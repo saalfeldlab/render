@@ -146,20 +146,20 @@ public class AlignmentPipelineParameters
     }
 
     public StackIdNamingGroup getRawNamingGroup() {
-        return pipelineStackGroups == null ? null : pipelineStackGroups.getRaw();
+        return pipelineStackGroups == null ? null : pipelineStackGroups.raw();
     }
 
     public StackIdNamingGroup getAlignedNamingGroup() {
-        return pipelineStackGroups == null ? null : pipelineStackGroups.getAligned();
+        return pipelineStackGroups == null ? null : pipelineStackGroups.aligned();
     }
 
     @SuppressWarnings("unused")
     public StackIdNamingGroup getIntensityCorrectedNamingGroup() {
-        return pipelineStackGroups == null ? null : pipelineStackGroups.getIntensityCorrected();
+        return pipelineStackGroups == null ? null : pipelineStackGroups.intensityCorrected();
     }
 
     public StackIdNamingGroup getOtherNamingGroup() {
-        return pipelineStackGroups == null ? null : pipelineStackGroups.getOther();
+        return pipelineStackGroups == null ? null : pipelineStackGroups.other();
     }
 
     public List<AlignmentPipelineStepId> getPipelineSteps() {

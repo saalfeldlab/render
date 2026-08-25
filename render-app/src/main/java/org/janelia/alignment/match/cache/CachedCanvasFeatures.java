@@ -35,11 +35,11 @@ public class CachedCanvasFeatures implements CachedCanvasData {
     }
 
     public List<Feature> getFeatureList() {
-        return featuresWithSourceData.getFeatureList();
+        return featuresWithSourceData.featureList();
     }
 
     public int size() {
-        return featuresWithSourceData.getFeatureList().size();
+        return featuresWithSourceData.featureList().size();
     }
 
     public double[] getClipOffsets() {
@@ -47,12 +47,12 @@ public class CachedCanvasFeatures implements CachedCanvasData {
     }
 
     public RenderParameters getRenderParameters() {
-        return featuresWithSourceData.getRenderParameters();
+        return featuresWithSourceData.renderParameters();
     }
 
     public int getImageProcessorWidth() {
         int width = 0;
-        final ImageProcessorWithMasks renderedProcessors = featuresWithSourceData.getRenderedProcessorWithMasks();
+        final ImageProcessorWithMasks renderedProcessors = featuresWithSourceData.renderedProcessorWithMasks();
         if ((renderedProcessors != null) && (renderedProcessors.ip != null)) {
             width = renderedProcessors.ip.getWidth();
         }
@@ -61,7 +61,7 @@ public class CachedCanvasFeatures implements CachedCanvasData {
 
     public int getImageProcessorHeight() {
         int height = 0;
-        final ImageProcessorWithMasks renderedProcessors = featuresWithSourceData.getRenderedProcessorWithMasks();
+        final ImageProcessorWithMasks renderedProcessors = featuresWithSourceData.renderedProcessorWithMasks();
         if ((renderedProcessors != null) && (renderedProcessors.ip != null)) {
             height = renderedProcessors.ip.getHeight();
         }
@@ -70,7 +70,7 @@ public class CachedCanvasFeatures implements CachedCanvasData {
 
     public ImageProcessor getMaskProcessor() {
         ImageProcessor maskProcessor = null;
-        final ImageProcessorWithMasks renderedProcessors = featuresWithSourceData.getRenderedProcessorWithMasks();
+        final ImageProcessorWithMasks renderedProcessors = featuresWithSourceData.renderedProcessorWithMasks();
         if (renderedProcessors != null) {
             maskProcessor = renderedProcessors.mask;
         }

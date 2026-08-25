@@ -113,7 +113,7 @@ public class CopyMatchClient
 
             LogUtilities.setupExecutorLog4j(stackWithZ.toString());
 
-            final StackId stackId = stackWithZ.getStackId();
+            final StackId stackId = stackWithZ.stackId();
             final MatchCollectionId matchCollectionId = multiProjectParameters.getMatchCollectionIdForStack(stackId);
 
             final RenderDataClient sourceDataClient = new RenderDataClient(baseDataUrl,
@@ -128,7 +128,7 @@ public class CopyMatchClient
             final List<SectionData> sectionDataList = sourceDataClient.getStackSectionData(stackId.getStack(),
                                                                                            null,
                                                                                            null,
-                                                                                           stackWithZ.getzValues());
+                                                                                           stackWithZ.zValues());
 
             for (final SectionData sectionData : sectionDataList) {
                 org.janelia.render.client.CopyMatchClient.copyMatches(sourceMatchClient,

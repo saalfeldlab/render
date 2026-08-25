@@ -136,7 +136,7 @@ public class ImportSofimaClient
 
         final Function<StackWithZValues, StackId> importFieldFunction = stackWithAllZ -> {
 
-            final StackId sourceStackId = stackWithAllZ.getStackId();
+            final StackId sourceStackId = stackWithAllZ.stackId();
 
             LogUtilities.setupExecutorLog4j(sourceStackId.toDevString());
 

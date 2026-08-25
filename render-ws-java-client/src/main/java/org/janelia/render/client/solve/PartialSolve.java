@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 import org.janelia.alignment.RenderParameters;
 import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.spec.Bounds;
-import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ReferenceTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
@@ -334,7 +333,7 @@ public abstract class PartialSolve< B extends Model< B > & Affine2D< B > >
 			final StackStats stackStats = stackMetaData.getStats();
 			if (stackStats != null)
 			{
-				final Bounds stackBounds = stackStats.getStackBounds();
+				final Bounds stackBounds = stackStats.stackBounds();
 				if (stackBounds != null)
 				{
 					if (minZForRun == null)

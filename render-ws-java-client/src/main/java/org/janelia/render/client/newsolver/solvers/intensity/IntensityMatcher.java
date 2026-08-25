@@ -100,12 +100,12 @@ class IntensityMatcher {
 		final List<FlatIntensityMatches> pairwiseCoefficients = getPairwiseCoefficients(n, nCoefficientTiles);
 
 		// Iterate over all pixels in lockstep and feed matches into the match matrix
-		final Cursor<IntType> label1Cursor = Views.flatIterable(r1.coefficients).cursor();
-		final Cursor<IntType> label2Cursor = Views.flatIterable(r2.coefficients).cursor();
-		final Cursor<FloatType> weight1Cursor = Views.flatIterable(r1.weight).cursor();
-		final Cursor<FloatType> weight2Cursor = Views.flatIterable(r2.weight).cursor();
-		final Cursor<FloatType> pixel1Cursor = Views.flatIterable(r1.image).cursor();
-		final Cursor<FloatType> pixel2Cursor = Views.flatIterable(r2.image).cursor();
+		final Cursor<IntType> label1Cursor = Views.flatIterable(r1.coefficients()).cursor();
+		final Cursor<IntType> label2Cursor = Views.flatIterable(r2.coefficients()).cursor();
+		final Cursor<FloatType> weight1Cursor = Views.flatIterable(r1.weight()).cursor();
+		final Cursor<FloatType> weight2Cursor = Views.flatIterable(r2.weight()).cursor();
+		final Cursor<FloatType> pixel1Cursor = Views.flatIterable(r1.image()).cursor();
+		final Cursor<FloatType> pixel2Cursor = Views.flatIterable(r2.image()).cursor();
 
 		while (label1Cursor.hasNext()) {
 			final int label1 = label1Cursor.next().get();
@@ -188,8 +188,8 @@ class IntensityMatcher {
 		final float[] averages = new float[numCoefficients * numCoefficients];
 		final int[] counts = new int[numCoefficients * numCoefficients];
 
-		final Cursor<IntType> labelCursor = Views.flatIterable(rendered.coefficients).cursor();
-		final Cursor<FloatType> pixelCursor = Views.flatIterable(rendered.image).cursor();
+		final Cursor<IntType> labelCursor = Views.flatIterable(rendered.coefficients()).cursor();
+		final Cursor<FloatType> pixelCursor = Views.flatIterable(rendered.image()).cursor();
 		while (labelCursor.hasNext()) {
 			final int label = labelCursor.next().get();
 			final float p = pixelCursor.next().get();

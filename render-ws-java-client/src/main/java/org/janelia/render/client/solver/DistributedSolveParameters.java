@@ -484,7 +484,7 @@ public class DistributedSolveParameters extends CommandLineParameters
 			final StackStats stackStats = stackMetaData.getStats();
 			if (stackStats != null)
 			{
-				final Bounds stackBounds = stackStats.getStackBounds();
+				final Bounds stackBounds = stackStats.stackBounds();
 				if (stackBounds != null)
 				{
 					if (minZForRun == null)

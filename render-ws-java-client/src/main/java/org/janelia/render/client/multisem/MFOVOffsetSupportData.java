@@ -106,9 +106,9 @@ public class MFOVOffsetSupportData
 
         firstLayerMFOVToTileBoundsMap.clear();
 
-        final StackId renderStackId = stackWithZ.getStackId();
+        final StackId renderStackId = stackWithZ.stackId();
         final String stackName = renderStackId.getStack();
-        final Double z = stackWithZ.getzValues().getFirst();
+        final Double z = stackWithZ.zValues().getFirst();
 
         final List<TileBounds> tileBoundsList = renderDataClient.getTileBounds(stackName, z);
         for (final TileBounds tileBounds : tileBoundsList) {
@@ -137,7 +137,7 @@ public class MFOVOffsetSupportData
     private void buildTileIdToSameLayerPairAndMatchCountMaps(final RenderDataClient matchDataClient)
             throws IOException {
 
-        for (final Double z : stackWithZ.getzValues()) {
+        for (final Double z : stackWithZ.zValues()) {
 
             final String groupId = z.toString();
 

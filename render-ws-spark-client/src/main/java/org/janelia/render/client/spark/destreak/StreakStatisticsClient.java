@@ -164,8 +164,8 @@ public class StreakStatisticsClient implements Serializable {
 		final List<Tuple2<Double, LayerResults>> sortedResults = new ArrayList<>(result);
 		sortedResults.sort((a, b) -> a._1.compareTo(b._1));
 		final Img<DoubleType> data = statisticsToImage(sortedResults);
-		final Img<DoubleType> min = minMaxToImage(sortedResults, LayerResults::getMin);
-		final Img<DoubleType> max = minMaxToImage(sortedResults, LayerResults::getMax);
+		final Img<DoubleType> min = minMaxToImage(sortedResults, LayerResults::min);
+		final Img<DoubleType> max = minMaxToImage(sortedResults, LayerResults::max);
 		storeData(data, min, max, stackMetaData);
 	}
 
@@ -186,7 +186,7 @@ public class StreakStatisticsClient implements Serializable {
 		int z = 0;
 
 		for (final Tuple2<Double, LayerResults> zLayerToResult : zLayerToResults) {
-			final double[][] layerStatistics = zLayerToResult._2.getStatistics();
+			final double[][] layerStatistics = zLayerToResult._2.statistics();
 
 			position[2] = z++;
 			for (int x = 0; x < parameters.nCellsX(); x++) {
@@ -352,27 +352,6 @@ public class StreakStatisticsClient implements Serializable {
 	}
 
 
-	private static class LayerResults implements Serializable{
-		final private double[][] statistics;
-		final private double[] min;
-		final private double[] max;
-
-		public LayerResults(final double[][] statistics, final double[] min, final double[] max) {
-			this.statistics = statistics;
-			this.min = min;
-			this.max = max;
-		}
-
-		public double[][] getStatistics() {
-			return statistics;
-		}
-
-		public double[] getMin() {
-			return min;
-		}
-
-		public double[] getMax() {
-			return max;
-		}
-	}
+    private record LayerResults(double[][] statistics, double[] min, double[] max)
+            implements Serializable {}
 }

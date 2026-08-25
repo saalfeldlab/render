@@ -10,23 +10,4 @@ import org.janelia.alignment.mipmap.MipmapSource;
  *
  * @author Eric Trautman
  */
-public class TransformableCanvas {
-
-    private final MipmapSource source;
-    private final CoordinateTransformList<CoordinateTransform> transformList;
-
-    public TransformableCanvas(final MipmapSource source,
-                               final CoordinateTransformList<CoordinateTransform> transformList) {
-        this.source = source;
-        this.transformList = transformList;
-    }
-
-    public MipmapSource getSource() {
-        return source;
-    }
-
-    public CoordinateTransformList<CoordinateTransform> getTransformList() {
-        return transformList;
-    }
-
-}
+public record TransformableCanvas(MipmapSource source, CoordinateTransformList<CoordinateTransform> transformList) {}

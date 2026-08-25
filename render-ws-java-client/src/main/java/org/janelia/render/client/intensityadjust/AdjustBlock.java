@@ -301,7 +301,7 @@ public class AdjustBlock {
 
 		final RenderDataClient renderDataClient = new RenderDataClient(baseUrl, owner, project );
 		final StackMetaData meta =  renderDataClient.getStackMetaData( stack );
-		final Bounds stackBounds = meta.getStats().getStackBounds();
+		final Bounds stackBounds = meta.getStats().stackBounds();
 		final Interval interval = RenderTools.stackBounds( meta );
 
 		final int minZ = 23850;//27759;//20000;

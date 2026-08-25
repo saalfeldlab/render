@@ -136,7 +136,7 @@ public class MFOVMontageMatchPatchClient {
 
         if (patch.isCrossMfovPatchingNeeded()) {
             for (final StackWithZValues stackWithZValues : multiProject.buildListOfStackWithAllZ()) {
-                final StackId stackId = stackWithZValues.getStackId();
+                final StackId stackId = stackWithZValues.stackId();
                 final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackId);
                 deriveAndSaveCrossMfovMatchesForStack(defaultDataClient,
                                                       stackWithZValues,
@@ -260,7 +260,7 @@ public class MFOVMontageMatchPatchClient {
             throw new IllegalArgumentException("--xyNeighborFactor must be defined");
         }
 
-        final StackId stackId = stackWithZValues.getStackId();
+        final StackId stackId = stackWithZValues.stackId();
         final String stack = stackId.getStack();
 
         final RenderDataClient renderDataClient = defaultDataClient.buildClient(stackId.getOwner(),
@@ -272,7 +272,7 @@ public class MFOVMontageMatchPatchClient {
                 renderDataClient.getStackZToSectionIdsMap(stack,
                                                           null,
                                                           null,
-                                                          stackWithZValues.getzValues());
+                                                          stackWithZValues.zValues());
 
         final List<CanvasMatches> derivedMatches = new ArrayList<>();
 
@@ -314,7 +314,7 @@ public class MFOVMontageMatchPatchClient {
             throws IOException {
 
         final Double z = stackWithSingleZ.getFirstZ();
-        final String stack = stackWithSingleZ.getStackId().getStack();
+        final String stack = stackWithSingleZ.stackId().getStack();
 
         final List<OrderedCanvasIdPair> potentialPairs =
                 UnconnectedMontageMFOVClient.findPotentialSameLayerPairsWithDifferentMfovs(

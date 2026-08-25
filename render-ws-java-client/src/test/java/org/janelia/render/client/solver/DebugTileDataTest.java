@@ -236,7 +236,7 @@ public class DebugTileDataTest {
         // From what we've seen so far, the multi-sem stack bounds are very close to layer bounds.
         // However, it is technically possible for layers to have significantly different stage bounds
         // (e.g. after FIBSEM restarts).
-        final Bounds stackBounds = renderDataClient.getStackMetaData(stack).getStats().getStackBounds();
+        final Bounds stackBounds = renderDataClient.getStackMetaData(stack).getStats().stackBounds();
         // final Bounds layerBounds = renderDataClient.getLayerBounds(stack, z);
 
         final List<Double> zValues = renderDataClient.getStackZValues(stack);

@@ -186,7 +186,7 @@ public class ImportTransformChangesClient {
     private void addTileTransformToSectionData(final TileTransform tileTransform)
             throws IOException {
 
-        final String tileId = tileTransform.getTileId();
+        final String tileId = tileTransform.tileId();
 
         boolean tileFound = false;
         for (final SectionData sectionData : zToDataMap.values()) {
@@ -236,7 +236,7 @@ public class ImportTransformChangesClient {
         void addTileTransform(final TileTransform tileTransform)
                 throws IllegalArgumentException {
 
-            final String tileId = tileTransform.getTileId();
+            final String tileId = tileTransform.tileId();
 
             if (tileIdToLoadedTransformMap.containsKey(tileId)) {
                 throw new IllegalArgumentException("Tile ID " + tileId + " is listed more than once in " +
@@ -287,7 +287,7 @@ public class ImportTransformChangesClient {
             TileSpec tileSpec;
             for (final TileTransform tileTransform : tileIdToLoadedTransformMap.values()) {
 
-                tileId = tileTransform.getTileId();
+                tileId = tileTransform.tileId();
 
                 if (removeExistingTransforms) {
                     tileSpec = tileSpecs.getTileSpec(tileId);
@@ -299,7 +299,7 @@ public class ImportTransformChangesClient {
                     tileSpec.setTransforms(new ListTransformSpec());
                 }
 
-                tileSpecs.addTransformSpecToTile(tileId, tileTransform.getTransform(), applicationMethod);
+                tileSpecs.addTransformSpecToTile(tileId, tileTransform.transform(), applicationMethod);
                 tileSpecCount++;
 
                 if (timer.hasIntervalPassed()) {

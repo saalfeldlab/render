@@ -7,29 +7,12 @@ import org.janelia.alignment.json.JsonUtils;
  *
  * @author Eric Trautman
  */
-public class LastTileTransform {
-
-    private final String tileId;
-    private final TransformSpec lastTransform;
+public record LastTileTransform(String tileId, TransformSpec lastTransform) {
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     private LastTileTransform() {
         this(null, null);
-    }
-
-    public LastTileTransform(final String tileId,
-                             final TransformSpec lastTransform) {
-        this.tileId = tileId;
-        this.lastTransform = lastTransform;
-    }
-
-    public String getTileId() {
-        return tileId;
-    }
-
-    public TransformSpec getLastTransform() {
-        return lastTransform;
     }
 
     public String toJson() {

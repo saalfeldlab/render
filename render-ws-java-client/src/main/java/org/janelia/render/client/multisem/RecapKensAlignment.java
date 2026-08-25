@@ -283,7 +283,7 @@ public class RecapKensAlignment
 		final File file = new File( magC, "scan_005.csv" );
 		System.out.println( "Loading: " + file.getAbsolutePath() );
 
-		System.out.println("Angle: " + slabInfo.angle);
+		System.out.println("Angle: " + slabInfo.angle());
 
 		for ( int zIndex = 0; zIndex < numSlices; ++zIndex )
 		{
@@ -298,7 +298,7 @@ public class RecapKensAlignment
 			final TranslationModel2D fromOrigin = new TranslationModel2D();
 	
 			toOrigin.set( -centerX, -centerY );
-			rotate.set(Math.toRadians(slabInfo.angle), 0, 0);
+			rotate.set(Math.toRadians(slabInfo.angle()), 0, 0);
 			fromOrigin.set( centerX, centerY );
 
 			tzl.transformedImages.forEach( ti -> {

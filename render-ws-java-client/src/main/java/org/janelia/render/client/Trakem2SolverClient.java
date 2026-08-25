@@ -333,7 +333,7 @@ public class Trakem2SolverClient<B extends Model< B > & Affine2D< B >> {
             final StackMetaData stackMetaData = renderDataClient.getStackMetaData(parameters.stack);
             final StackStats stackStats = stackMetaData.getStats();
             if (stackStats != null) {
-                final Bounds stackBounds = stackStats.getStackBounds();
+                final Bounds stackBounds = stackStats.stackBounds();
                 if (stackBounds != null) {
                     if (minZForRun == null) {
                         minZForRun = stackBounds.getMinZ();

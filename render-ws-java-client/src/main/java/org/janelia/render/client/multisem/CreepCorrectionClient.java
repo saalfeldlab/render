@@ -557,26 +557,12 @@ public class CreepCorrectionClient {
         }
     }
 
-    /** A pair of tile IDs representing geometrically adjacent sFOVs. */
-    static class TilePair {
-        final String pTileId;
-        final String qTileId;
+    /**
+     * A pair of tile IDs representing geometrically adjacent sFOVs.
+     */
+    record TilePair(String pTileId, String qTileId) {}
 
-        TilePair(final String pTileId, final String qTileId) {
-            this.pTileId = pTileId;
-            this.qTileId = qTileId;
-        }
-    }
-
-    static class StageCoordinates {
-        final double x;
-        final double y;
-
-        StageCoordinates(final double x, final double y) {
-            this.x = x;
-            this.y = y;
-        }
-    }
+    record StageCoordinates(double x, double y) {}
 
     private static final Logger LOG = LoggerFactory.getLogger(CreepCorrectionClient.class);
 }

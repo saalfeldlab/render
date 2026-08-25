@@ -47,24 +47,12 @@ public class N5RetryUtil {
         }
     }
 
-    public static class RetryResultAndStats<T> {
+    public record RetryResultAndStats<T>(T result, RetryStats stats) {
 
-        private final T result;
-        private final RetryStats stats;
-
-        public RetryResultAndStats(final T result,
-                                   final RetryStats stats) {
-            this.result = result;
-            this.stats = stats;
-        }
-
+        @Override
         @SuppressWarnings("unused")
-        public T getResult() {
+        public T result() {
             return result;
-        }
-
-        public RetryStats getStats() {
-            return stats;
         }
     }
 

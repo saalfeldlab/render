@@ -186,7 +186,7 @@ public class CorrelationN5Client {
         final String stackUrlString = urls.getStackUrlString(parameters.stack);
 
         final StackMetaData stackMetaData = sourceDataClient.getStackMetaData(parameters.stack);
-        final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
+        final Bounds defaultBounds = stackMetaData.getStats().stackBounds();
         final Bounds boundsForRun = parameters.getBoundsForRun(defaultBounds);
         final int regionRowsForRun = parameters.getRegionRows(boundsForRun);
         final int regionColumnsForRun = parameters.getRegionColumns(boundsForRun);

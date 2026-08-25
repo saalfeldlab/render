@@ -111,7 +111,7 @@ public class UnconnectedMontageMFOVClient {
 
         for (final StackWithZValues stackWithZ : stackWithZList) {
             findIsolatedMFOVsInStack(stackWithZ,
-                                     parameters.multiProject.getMatchCollectionIdForStack(stackWithZ.getStackId()),
+                                     parameters.multiProject.getMatchCollectionIdForStack(stackWithZ.stackId()),
                                      renderDataClient,
                                      parameters.addIsolatedEdgeLabel,
                                      parameters.getStartPositionMatchWeight());
@@ -135,7 +135,7 @@ public class UnconnectedMontageMFOVClient {
 
         LOG.info("findIsolatedMFOVsInStack: entry, {}, matchCollectionId={}", stackWithZ, matchCollectionId);
 
-        final StackId renderStackId = stackWithZ.getStackId();
+        final StackId renderStackId = stackWithZ.stackId();
         final RenderDataClient matchClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
                                                                           matchCollectionId.getName());
 
@@ -290,7 +290,7 @@ public class UnconnectedMontageMFOVClient {
                 final List<CanvasMatches> derivedMatches =
                         deriveMatchesUsingStartPositions(problemPairs,
                                                          renderDataClient,
-                                                         stackWithSingleZ.getStackId().getStack(),
+                                                         stackWithSingleZ.stackId().getStack(),
                                                          z,
                                                          startPositionMatchWeight);
 

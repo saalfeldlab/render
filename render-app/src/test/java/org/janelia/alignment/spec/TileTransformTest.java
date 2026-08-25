@@ -41,10 +41,10 @@ public class TileTransformTest {
         final TileTransform tileTransform = TileTransform.fromJson(json);
 
         assertNotNull(tileTransform, "null object parsed for " + context);
-        assertEquals(EXPECTED_TILE_ID, tileTransform.getTileId(),
+        assertEquals(EXPECTED_TILE_ID, tileTransform.tileId(),
                      "invalid tileId parsed for " + context);
 
-        final TransformSpec transformSpec = tileTransform.getTransform();
+        final TransformSpec transformSpec = tileTransform.transform();
         assertNotNull(transformSpec, "null transform spec parsed for " + context);
         assertEquals(expectedTransformClass, transformSpec.getClass(),
                      "invalid transform spec parsed for " + context);

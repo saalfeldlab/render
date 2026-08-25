@@ -99,8 +99,8 @@ public class StackVersion
             this.cycleNumber = null;
             this.cycleStepNumber = null;
         } else {
-            this.cycleNumber = cycle.getNumber();
-            this.cycleStepNumber = cycle.getStepNumber();
+            this.cycleNumber = cycle.number();
+            this.cycleStepNumber = cycle.stepNumber();
         }
     }
 

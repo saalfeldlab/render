@@ -858,7 +858,7 @@ public class RenderImageService {
 
                 final StackStats stats = stackMetaData.getStats();
                 if (stats != null) {
-                    final Bounds stackBounds = stats.getStackBounds();
+                    final Bounds stackBounds = stats.stackBounds();
                     if (stackBounds != null) {
 
                         stackWidth = stackBounds.getMaxX().intValue();

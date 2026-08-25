@@ -106,7 +106,7 @@ public class RenderTilesClient {
                 final List<StackWithZValues> stackWithZValuesList = parameters.multiProject.buildListOfStackWithAllZ();
                 for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
 
-                    final StackId stackId = stackWithZValues.getStackId();
+                    final StackId stackId = stackWithZValues.stackId();
                     final RenderDataClient projectDataClient =
                             multiProjectDataClient.buildClientForProject(stackId.getProject());
 
@@ -114,7 +114,7 @@ public class RenderTilesClient {
                                                                            stackId.getStack(),
                                                                            parameters.tileRender);
                     client.setupHackStackAsNeeded();
-                    client.renderTiles(stackWithZValues.getzValues());
+                    client.renderTiles(stackWithZValues.zValues());
                     client.completeHackStackAsNeeded();
                 }
             }

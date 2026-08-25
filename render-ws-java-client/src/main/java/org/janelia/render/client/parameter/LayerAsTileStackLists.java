@@ -40,11 +40,11 @@ public class LayerAsTileStackLists implements Serializable {
         final Map<String, Set<String>> ownerToProjectNames = new HashMap<>();
         for (final StackWithZValues rawStackWithAllZ : this.align2DSfovStacksWithAllZ) {
 
-            final StackId rawSfovStackId = rawStackWithAllZ.getStackId();
+            final StackId rawSfovStackId = rawStackWithAllZ.stackId();
             final StackId renderedLayerStackId = layerAsTile.getRenderedLayerStackId(rawSfovStackId);
             final StackId align3DSfovStackId = layerAsTile.getAlign3DSfovStackId(rawSfovStackId);
 
-            final List<Double> allZValues = rawStackWithAllZ.getzValues();
+            final List<Double> allZValues = rawStackWithAllZ.zValues();
             this.renderedLayerStacksWithAllZ.add(new StackWithZValues(renderedLayerStackId, allZValues));
             this.align3DSfovStacksWithAllZ.add(new StackWithZValues(align3DSfovStackId, allZValues));
 
@@ -82,7 +82,7 @@ public class LayerAsTileStackLists implements Serializable {
     }
 
     public List<String> getOwners() {
-        return align2DSfovStacksWithAllZ.stream().map(s -> s.getStackId().getOwner())
+        return align2DSfovStacksWithAllZ.stream().map(s -> s.stackId().getOwner())
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
@@ -90,8 +90,8 @@ public class LayerAsTileStackLists implements Serializable {
 
     public List<String> getProjectsWithOwner(final String owner) {
         return align2DSfovStacksWithAllZ.stream()
-                .filter(s -> s.getStackId().getOwner().equals(owner))
-                .map(s -> s.getStackId().getProject())
+                .filter(s -> s.stackId().getOwner().equals(owner))
+                .map(s -> s.stackId().getProject())
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
@@ -101,7 +101,7 @@ public class LayerAsTileStackLists implements Serializable {
                                                                   final String project) {
         return renderedLayerStacksWithAllZ.stream()
                 .filter(stackWithZ -> {
-                    final StackId stackId = stackWithZ.getStackId();
+                    final StackId stackId = stackWithZ.stackId();
                     return stackId.getOwner().equals(owner) && stackId.getProject().equals(project);
                 }).collect(Collectors.toList());
     }

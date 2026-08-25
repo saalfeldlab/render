@@ -150,7 +150,7 @@ public class H5TileToN5PreviewClient {
             LOG.warn("buildAndExportPreview: skipping export for {}, no z layers exist and none were imported",
                      stackMetaDataAfterImport.getStackId());
         } else {
-            final ClusterRootPaths clusterRootPaths = volumeTransferInfo.getClusterRootPaths();
+            final ClusterRootPaths clusterRootPaths = volumeTransferInfo.clusterRootPaths();
             if (clusterRootPaths.isExportN5Defined()) {
                 final Path exportN5Path = Paths.get(clusterRootPaths.getExportN5()).toAbsolutePath();
                 exportPreview(sparkContext, exportN5Path, stackMetaDataAfterImport);
@@ -166,10 +166,10 @@ public class H5TileToN5PreviewClient {
     private StackMetaData setupPreviewStack(final VolumeTransferInfo volumeTransferInfo)
             throws IOException {
 
-        final RenderDataSet renderDataSet = volumeTransferInfo.getRenderDataSet();
+        final RenderDataSet renderDataSet = volumeTransferInfo.renderDataSet();
         final RenderDataClient driverRenderDataClient = new RenderDataClient(baseDataUrl,
-                                                                             renderDataSet.getOwner(),
-                                                                             renderDataSet.getProject());
+                                                                             renderDataSet.owner(),
+                                                                             renderDataSet.project());
         final String stackName = "imaging_preview";
 
         StackMetaData stackMetaData;
@@ -178,7 +178,7 @@ public class H5TileToN5PreviewClient {
         } catch (final Throwable t) {
 
             LOG.info("setupPreviewStack: {} stack does not exist, creating it ...", stackName);
-            final StackVersion stackVersion = buildStackVersion(volumeTransferInfo.getScopeDataSet());
+            final StackVersion stackVersion = buildStackVersion(volumeTransferInfo.scopeDataSet());
             driverRenderDataClient.saveStackVersion(stackName, stackVersion);
             stackMetaData = driverRenderDataClient.getStackMetaData(stackName);
 
@@ -192,8 +192,8 @@ public class H5TileToN5PreviewClient {
     }
 
     private static StackVersion buildStackVersion(final ScopeDataSet scopeDataSet) {
-        final Double xAndYNmPerPixel = scopeDataSet.getDatXAndYNmPerPixel().doubleValue();
-        final Double zNmPerPixel = scopeDataSet.getDatZNmPerPixel().doubleValue();
+        final Double xAndYNmPerPixel = scopeDataSet.datXAndYNmPerPixel().doubleValue();
+        final Double zNmPerPixel = scopeDataSet.datZNmPerPixel().doubleValue();
         return new StackVersion(new Date(), null, null, null,
                                 xAndYNmPerPixel, xAndYNmPerPixel, zNmPerPixel,
                                 null, null);
@@ -206,15 +206,15 @@ public class H5TileToN5PreviewClient {
 
         LOG.info("importPreviewTileData: entry, importing data for {}", previewStackMetaData.getStackId());
 
-        final ClusterRootPaths clusterRootPaths = volumeTransferInfo.getClusterRootPaths();
-        final ScopeDataSet scopeDataSet = volumeTransferInfo.getScopeDataSet();
+        final ClusterRootPaths clusterRootPaths = volumeTransferInfo.clusterRootPaths();
+        final ScopeDataSet scopeDataSet = volumeTransferInfo.scopeDataSet();
 
-        final List<Path> sortedAlignH5Paths = buildSortedAlignH5Paths(scopeDataSet.getFirstDatName(),
-                                                                      scopeDataSet.getLastDatName(),
+        final List<Path> sortedAlignH5Paths = buildSortedAlignH5Paths(scopeDataSet.firstDatName(),
+                                                                      scopeDataSet.lastDatName(),
                                                                       clusterRootPaths);
 
         final StackStats previewStackStats = previewStackMetaData.getStats();
-        final Long existingSectionCount = previewStackStats == null ? null : previewStackStats.getSectionCount();
+        final Long existingSectionCount = previewStackStats == null ? null : previewStackStats.sectionCount();
         final int startIndex = existingSectionCount == null ? 0 : existingSectionCount.intValue();
         final int numberOfZLayersToImport = sortedAlignH5Paths.size() - startIndex;
 
@@ -234,12 +234,12 @@ public class H5TileToN5PreviewClient {
         LOG.info("importPreviewTileData: created {} import batches, each with a max of {} h5 files",
                  batchedH5Paths.size(), zValuesPerBatch);
 
-        final int rowsPerZLayer = scopeDataSet.getRowsPerZLayer();
-        final int columnsPerZLayer = scopeDataSet.getColumnsPerZLayer();
+        final int rowsPerZLayer = scopeDataSet.rowsPerZLayer();
+        final int columnsPerZLayer = scopeDataSet.columnsPerZLayer();
 
-        final RenderDataSet renderDataSet = volumeTransferInfo.getRenderDataSet();
-        final Integer maskWidth = renderDataSet.getMaskWidth();
-        final Integer maskHeight = renderDataSet.getMaskHeight();
+        final RenderDataSet renderDataSet = volumeTransferInfo.renderDataSet();
+        final Integer maskWidth = renderDataSet.maskWidth();
+        final Integer maskHeight = renderDataSet.maskHeight();
 
         final String fibsemCorrectTransformId = "FIBSEM_correct";
         final String referenceTransformId =
@@ -401,7 +401,7 @@ public class H5TileToN5PreviewClient {
         Double maxZ = null;
         final StackStats stackStats = stackMetaData.getStats();
         if (stackStats != null) {
-            final Bounds stackBounds = stackStats.getStackBounds();
+            final Bounds stackBounds = stackStats.stackBounds();
             if (stackBounds != null) {
                 maxZ = stackBounds.getMaxZ();
             }
@@ -426,7 +426,7 @@ public class H5TileToN5PreviewClient {
             this.stackMetaData = stackMetaData;
 
             final StackId stackId = stackMetaData.getStackId();
-            final Bounds bounds = stackMetaData.getStats().getStackBounds();
+            final Bounds bounds = stackMetaData.getStats().stackBounds();
 
             this.min = new long[] {
                     bounds.getMinX().longValue(),
@@ -466,7 +466,7 @@ public class H5TileToN5PreviewClient {
         }
 
         public Bounds getBounds() {
-            return stackMetaData.getStats().getStackBounds();
+            return stackMetaData.getStats().stackBounds();
         }
     }
 

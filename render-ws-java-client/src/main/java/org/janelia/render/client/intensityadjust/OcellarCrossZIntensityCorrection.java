@@ -274,7 +274,7 @@ public class OcellarCrossZIntensityCorrection {
             throws IOException {
 
         final StackMetaData stackMetaData = dataClient.getStackMetaData(alignedIntensityCorrectedStack);
-        final double stackMaxZ = stackMetaData.getStats().getStackBounds().getMaxZ();
+        final double stackMaxZ = stackMetaData.getStats().stackBounds().getMaxZ();
 
         dataClient.ensureStackIsInLoadingState(alignedIntensityCorrectedStack, stackMetaData);
 

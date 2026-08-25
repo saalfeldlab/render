@@ -11,61 +11,24 @@ import java.util.List;
 
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.util.FileUtil;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Transfer information about a volume.
  *
  * @author Eric Trautman
  */
-public class VolumeTransferInfo implements Serializable {
-
-    private final ScopeDataSet scopeDataSet;
-    private final ClusterRootPaths clusterRootPaths;
-    private final Integer maxMipmapLevel;
-    private final RenderDataSet renderDataSet;
-    private final List<TransferTask> transferTasks;
+public record VolumeTransferInfo(@JsonGetter(value = "scope_data_set") ScopeDataSet scopeDataSet,
+                                 @JsonGetter(value = "cluster_root_paths") ClusterRootPaths clusterRootPaths,
+                                 @JsonGetter(value = "max_mipmap_level") Integer maxMipmapLevel,
+                                 @JsonGetter(value = "render_data_set") RenderDataSet renderDataSet,
+                                 @JsonGetter(value = "transfer_tasks") List<TransferTask> transferTasks)
+        implements Serializable {
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     public VolumeTransferInfo() {
         this(null, null, null, null, null);
-    }
-
-    public VolumeTransferInfo(final ScopeDataSet scopeDataSet,
-                              final ClusterRootPaths clusterRootPaths,
-                              final Integer maxMipmapLevel,
-                              final RenderDataSet renderDataSet,
-                              final List<TransferTask> transferTasks) {
-        this.scopeDataSet = scopeDataSet;
-        this.clusterRootPaths = clusterRootPaths;
-        this.maxMipmapLevel = maxMipmapLevel;
-        this.renderDataSet = renderDataSet;
-        this.transferTasks = transferTasks;
-    }
-
-    @JsonGetter(value = "scope_data_set")
-    public ScopeDataSet getScopeDataSet() {
-        return scopeDataSet;
-    }
-
-    @JsonGetter(value = "cluster_root_paths")
-    public ClusterRootPaths getClusterRootPaths() {
-        return clusterRootPaths;
-    }
-
-    @JsonGetter(value = "max_mipmap_level")
-    public Integer getMaxMipmapLevel() {
-        return maxMipmapLevel;
-    }
-
-    @JsonGetter(value = "render_data_set")
-    public RenderDataSet getRenderDataSet() {
-        return renderDataSet;
-    }
-
-    @JsonGetter(value = "transfer_tasks")
-    public List<TransferTask> getTransferTasks() {
-        return transferTasks;
     }
 
     public boolean hasApplyFibsemCorrectionTransformTask() {
@@ -77,7 +40,7 @@ public class VolumeTransferInfo implements Serializable {
     }
 
     @Override
-    public String toString() {
+    public @NonNull String toString() {
         return JSON_HELPER.toJson(this);
     }
 

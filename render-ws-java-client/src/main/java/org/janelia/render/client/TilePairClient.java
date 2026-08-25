@@ -116,12 +116,12 @@ public class TilePairClient {
                           final StackWithZValues stackWithZValues,
                           final TilePairDerivationParameters tpdp,
                           final String toJson) {
-            final StackId stackId = stackWithZValues.getStackId();
+            final StackId stackId = stackWithZValues.stackId();
             this.renderWeb.baseDataUrl = baseDataUrl;
             this.renderWeb.owner = stackId.getOwner();
             this.renderWeb.project = stackId.getProject();
             this.stack = stackId.getStack();
-            this.zValues = stackWithZValues.getzValues();
+            this.zValues = stackWithZValues.zValues();
             this.tpdp = tpdp;
             this.toJson = toJson;
         }

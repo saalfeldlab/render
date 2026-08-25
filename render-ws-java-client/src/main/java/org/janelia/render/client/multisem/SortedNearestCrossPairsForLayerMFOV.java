@@ -191,10 +191,10 @@ public class SortedNearestCrossPairsForLayerMFOV
 
         final List<SortedNearestCrossPairsForLayerMFOV> listOfMatchPairsLists = new ArrayList<>();
 
-        final StackId stackId = stackWithZ.getStackId();
+        final StackId stackId = stackWithZ.stackId();
         final String stackDevString = stackId.toDevString();
         final String stackName = stackId.getStack();
-        final List<Double> zValues = stackWithZ.getzValues();
+        final List<Double> zValues = stackWithZ.zValues();
 
         Map<LayerMFOV, List<TileBounds>> currentLayerMfovToMostConnectedTileBoundsMap = new HashMap<>();
 

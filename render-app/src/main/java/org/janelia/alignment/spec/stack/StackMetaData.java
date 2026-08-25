@@ -98,7 +98,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
     public Integer getLayoutWidth() {
         Integer layoutWidth = null;
         if (stats != null) {
-            layoutWidth = stats.getMaxTileWidth();
+            layoutWidth = stats.maxTileWidth();
         }
         return layoutWidth;
     }
@@ -106,7 +106,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
     public Integer getLayoutHeight() {
         Integer layoutHeight = null;
         if (stats != null) {
-            layoutHeight = stats.getMaxTileHeight();
+            layoutHeight = stats.maxTileHeight();
         }
         return layoutHeight;
     }
@@ -298,7 +298,7 @@ public class StackMetaData implements Comparable<StackMetaData>, Serializable {
      */
     public Bounds getStackBounds()
             throws IllegalStateException {
-        final Bounds stackBounds = (stats == null) ? null : stats.getStackBounds();
+        final Bounds stackBounds = (stats == null) ? null : stats.stackBounds();
         if (stackBounds == null) {
             throw new IllegalStateException("Stack bounds are missing for " + stackId +
                                             ".  Stack may need to be completed.");

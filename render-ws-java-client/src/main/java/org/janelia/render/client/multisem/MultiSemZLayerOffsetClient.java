@@ -91,7 +91,7 @@ public class MultiSemZLayerOffsetClient {
 
         final List<StackWithZValues> stackWithZValuesList = multiProject.buildListOfStackWithAllZ();
         for (final StackWithZValues stackWithZValues : stackWithZValuesList) {
-            final StackId stackId = stackWithZValues.getStackId();
+            final StackId stackId = stackWithZValues.stackId();
             final RenderDataClient dataClient = defaultDataClient.buildClient(stackId.getOwner(),
                                                                               stackId.getProject());
 
@@ -114,7 +114,7 @@ public class MultiSemZLayerOffsetClient {
             // This shows that the offsets need to be calculated per MFOV and not per z layer
             // because the offsets for z 75.0 and 76.0 with the default region are 0, -3.
 
-            final List<Double> zValues = stackWithZValues.getzValues();
+            final List<Double> zValues = stackWithZValues.zValues();
             final Map<Double, int[]> zToOffsets = deriveZOffsetsForStack(dataClient, stackId, zValues);
             if (offsetStackSuffix != null) {
                 createOffsetStack(dataClient, stackId, zValues, offsetStackSuffix, zToOffsets);

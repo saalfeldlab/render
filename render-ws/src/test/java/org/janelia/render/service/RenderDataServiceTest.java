@@ -176,8 +176,8 @@ public class RenderDataServiceTest {
         assertNotNull(lastTileTransformList, "null list returned");
         assertEquals(1, lastTileTransformList.size(), "invalid number of tiles");
         final LastTileTransform firstEntry = lastTileTransformList.getFirst();
-        assertEquals("140331142443008104", firstEntry.getTileId(), "invalid tileId for first entry");
-        assertEquals(LeafTransformSpec.class, firstEntry.getLastTransform().getClass(),
+        assertEquals("140331142443008104", firstEntry.tileId(), "invalid tileId for first entry");
+        assertEquals(LeafTransformSpec.class, firstEntry.lastTransform().getClass(),
                      "invalid last transform class");
     }
 

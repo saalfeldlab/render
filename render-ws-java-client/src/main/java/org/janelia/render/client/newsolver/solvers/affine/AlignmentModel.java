@@ -221,25 +221,21 @@ public class AlignmentModel extends AbstractAffineModel2D<AlignmentModel> implem
 	}
 
 
-	private static class AffineModel2DWrapper<T extends Model<T> & Affine2D<T>> implements Serializable {
-		private final T wrappedInstance;
+    private record AffineModel2DWrapper<T extends Model<T> & Affine2D<T>>(T wrappedInstance)
+            implements Serializable {
 
-		public AffineModel2DWrapper(final T instance) {
-			this.wrappedInstance = instance;
-		}
+        public Model<T> asModel() {
+            return wrappedInstance;
+        }
 
-		public Model<T> asModel() {
-			return wrappedInstance;
-		}
+        public Affine2D<T> asAffine2D() {
+            return wrappedInstance;
+        }
 
-		public Affine2D<T> asAffine2D() {
-			return wrappedInstance;
-		}
-
-		public static <S extends Model<S> & Affine2D<S>> AffineModel2DWrapper<S> wrapCopy(final AffineModel2DWrapper<S> wrapper) {
-			return new AffineModel2DWrapper<S>(wrapper.asModel().copy());
-		}
-	}
+        public static <S extends Model<S> & Affine2D<S>> AffineModel2DWrapper<S> wrapCopy(final AffineModel2DWrapper<S> wrapper) {
+            return new AffineModel2DWrapper<>(wrapper.asModel().copy());
+        }
+    }
 
 
 	/**

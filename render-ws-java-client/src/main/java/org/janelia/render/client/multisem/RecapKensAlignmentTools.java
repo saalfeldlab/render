@@ -44,25 +44,16 @@ import stitching.utils.Log;
 
 public class RecapKensAlignmentTools {
 
-	public static class SlabInfo {
-		public final int serialId;
-		public final int stageId;
-		public final double angle;
+    public record SlabInfo(int serialId, int stageId, double angle) {
 
-		public SlabInfo(final int serialId, final int stageId, final double angle) {
-			this.serialId = serialId;
-			this.stageId = stageId;
-			this.angle = angle;
-		}
+        public int slabNumber() {
+            return serialId;
+        }
 
-		public int slabNumber() {
-			return serialId;
-		}
-
-		public int stageIdPlus1() {
-			return stageId + 1;
-		}
-	}
+        public int stageIdPlus1() {
+            return stageId + 1;
+        }
+    }
 
 	public static RandomAccessibleInterval<UnsignedByteType> render(
 			final List< TransformedImage > transformedImages,

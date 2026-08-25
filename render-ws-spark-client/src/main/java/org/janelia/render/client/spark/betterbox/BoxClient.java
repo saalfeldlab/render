@@ -199,7 +199,7 @@ public class BoxClient
         final RenderDataClient driverDataClient = parameters.renderWeb.getDataClient();
 
         final StackMetaData stackMetaData = driverDataClient.getStackMetaData(parameters.box.stack);
-        final Bounds stackBounds = stackMetaData.getStats().getStackBounds();
+        final Bounds stackBounds = stackMetaData.getStats().stackBounds();
 
         if (parameters.validateLabelsOnly) {
             parameters.box.label = true;

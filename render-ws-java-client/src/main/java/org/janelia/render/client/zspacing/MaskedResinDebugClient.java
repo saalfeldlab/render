@@ -128,7 +128,7 @@ public class MaskedResinDebugClient {
         final RenderWebServiceUrls urls = renderDataClient.getUrls();
         final String stackUrlString = urls.getStackUrlString(parameters.stack);
 
-        final Bounds totalBounds = renderDataClient.getStackMetaData(parameters.stack).getStats().getStackBounds();
+        final Bounds totalBounds = renderDataClient.getStackMetaData(parameters.stack).getStats().stackBounds();
 
         final Bounds layerBounds;
         if (parameters.bounds.isDefined()) {
