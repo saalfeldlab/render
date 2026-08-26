@@ -23,6 +23,11 @@ public class MultiChannelMapper
     protected final int targetWidth;
     protected final int targetHeight;
 
+    // per-channel interpolation bounds (source and mask share dimensions), indexed like normalizedSourceList;
+    // computed once so per-pixel mapInterpolated calls avoid virtual getWidth()/getHeight() dispatches.
+    protected final double[] sourceMaxXList;
+    protected final double[] sourceMaxYList;
+
     public MultiChannelMapper(final ChannelMap sourceChannels,
                               final ChannelMap targetChannels,
                               final boolean isMappingInterpolated) {
@@ -78,6 +83,13 @@ public class MultiChannelMapper
 
         this.targetWidth = commonTargetWidth;
         this.targetHeight = commonTargetHeight;
+
+        this.sourceMaxXList = new double[normalizedSourceList.size()];
+        this.sourceMaxYList = new double[normalizedSourceList.size()];
+        for (int i = 0; i < normalizedSourceList.size(); i++) {
+            sourceMaxXList[i] = PixelMapper.safeMaxInterpolationCoordinate(normalizedSourceList.get(i).ip.getWidth());
+            sourceMaxYList[i] = PixelMapper.safeMaxInterpolationCoordinate(normalizedSourceList.get(i).ip.getHeight());
+        }
     }
 
     @Override
@@ -124,7 +136,9 @@ public class MultiChannelMapper
         for (int i = 0; i < normalizedSourceList.size(); i++) {
             normalizedSource = normalizedSourceList.get(i);
             target = targetList.get(i);
-            target.ip.set(targetX, targetY, normalizedSource.ip.getPixelInterpolated(sourceX, sourceY));
+            final double clampedX = PixelMapper.clampInterpolationCoordinate(sourceX, sourceMaxXList[i]);
+            final double clampedY = PixelMapper.clampInterpolationCoordinate(sourceY, sourceMaxYList[i]);
+            target.ip.set(targetX, targetY, normalizedSource.ip.getPixelInterpolated(clampedX, clampedY));
         }
     }
 

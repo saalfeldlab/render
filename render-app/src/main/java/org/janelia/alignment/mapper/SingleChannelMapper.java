@@ -18,6 +18,11 @@ public class SingleChannelMapper
     protected final ImageProcessorWithMasks target;
     protected final boolean isMappingInterpolated;
 
+    // source and (when present) mask share the same dimensions (enforced when tiles are loaded),
+    // so this bound covers interpolated sampling of either; computed once (not per pixel).
+    protected final double sourceMaxX;
+    protected final double sourceMaxY;
+
     public SingleChannelMapper(final ImageProcessorWithMasks source,
                                final ImageProcessorWithMasks target,
                                final boolean isMappingInterpolated) {
@@ -25,6 +30,8 @@ public class SingleChannelMapper
         this.normalizedSource = normalizeSourceForTarget(source, target.ip);
         this.target = target;
         this.isMappingInterpolated = isMappingInterpolated;
+        this.sourceMaxX = PixelMapper.safeMaxInterpolationCoordinate(normalizedSource.ip.getWidth());
+        this.sourceMaxY = PixelMapper.safeMaxInterpolationCoordinate(normalizedSource.ip.getHeight());
 
         if (isMappingInterpolated) {
             this.normalizedSource.ip.setInterpolationMethod(ImageProcessor.BILINEAR);
@@ -63,7 +70,9 @@ public class SingleChannelMapper
                                 final int targetX,
                                 final int targetY) {
 
-        target.ip.set(targetX, targetY, normalizedSource.ip.getPixelInterpolated(sourceX, sourceY));
+        final double clampedX = PixelMapper.clampInterpolationCoordinate(sourceX, sourceMaxX);
+        final double clampedY = PixelMapper.clampInterpolationCoordinate(sourceY, sourceMaxY);
+        target.ip.set(targetX, targetY, normalizedSource.ip.getPixelInterpolated(clampedX, clampedY));
     }
 
     public static ImageProcessorWithMasks normalizeSourceForTarget(final ImageProcessorWithMasks source,

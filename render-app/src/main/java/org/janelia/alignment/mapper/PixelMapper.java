@@ -1,11 +1,51 @@
 package org.janelia.alignment.mapper;
 
+import ij.process.ImageProcessor;
+
 /**
  * TODO: add javadoc
  *
  * @author Eric Trautman
  */
 public interface PixelMapper {
+
+    /**
+     * {@link ImageProcessor#getPixelInterpolated} returns 0 (black/transparent) for any sample whose
+     * coordinate falls outside the image (e.g. for an image of width 2000, any x in [1999, 2000] is
+     * treated as "out of range" and zeroed instead of being interpolated against the last valid column).
+     * This case is hit for nearly all transforms so that entire edges render as black. Clamp the sample
+     * to the last coordinate that still lands inside the valid domain.
+     * <p>
+     * Takes the pre-computed safe bound (see {@link #safeMaxInterpolationCoordinate}) rather than deriving
+     * it here, so the per-pixel hot path is just two comparisons &mdash; no {@code getWidth()}/
+     * {@code getHeight()} dispatch.
+     *
+     * @param  coordinate         source x or y coordinate.
+     * @param  safeMaxCoordinate  last coordinate on this axis that {@code getPixelInterpolated} will not
+     *                            zero out (see {@link #safeMaxInterpolationCoordinate}).
+     *
+     * @return the coordinate, clamped to {@code safeMaxCoordinate} if necessary.
+     */
+    static double clampInterpolationCoordinate(final double coordinate,
+                                               final double safeMaxCoordinate) {
+        if (coordinate < 0) {
+            return 0;
+        } else if (coordinate > safeMaxCoordinate) {
+            return safeMaxCoordinate;
+        }
+        return coordinate;
+    }
+
+    /**
+     * @param  sizeOnAxis  source image width or height.
+     *
+     * @return the largest coordinate on that axis for which {@link ImageProcessor#getPixelInterpolated}
+     *         will not incorrectly return 0; pass this once per source (not per pixel) to
+     *         {@link #clampInterpolationCoordinate}.
+     */
+    static double safeMaxInterpolationCoordinate(final int sizeOnAxis) {
+        return Math.nextDown(sizeOnAxis - 1.0);
+    }
 
     /**
      * @return width of the mapped local target.

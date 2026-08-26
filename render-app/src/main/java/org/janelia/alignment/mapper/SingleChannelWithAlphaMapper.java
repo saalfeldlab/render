@@ -48,10 +48,12 @@ public class SingleChannelWithAlphaMapper
                                 final int targetX,
                                 final int targetY) {
 
+        final double clampedX = PixelMapper.clampInterpolationCoordinate(sourceX, sourceMaxX);
+        final double clampedY = PixelMapper.clampInterpolationCoordinate(sourceY, sourceMaxY);
         setBlendedIntensity(targetX,
                             targetY,
-                            normalizedSource.ip.getPixelInterpolated(sourceX, sourceY),
-                            normalizedSource.mask.getPixelInterpolated(sourceX, sourceY));
+                            normalizedSource.ip.getPixelInterpolated(clampedX, clampedY),
+                            normalizedSource.mask.getPixelInterpolated(clampedX, clampedY));
     }
 
     public void setBlendedIntensity(final int targetX,
