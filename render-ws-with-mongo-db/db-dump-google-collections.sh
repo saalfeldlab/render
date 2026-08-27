@@ -93,7 +93,7 @@ LOCATION="google"
 
 if [[ -n "${ARG_STAGE}" ]]; then
   case "${ARG_STAGE}" in
-    00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5)
+    00_par|01_match|02_align|03_ic2d_nc4_hist_rs0p5|04a_layer_as_tile|04b_3d_align)
       STAGE="${ARG_STAGE}"
       ;;
     timestamp)
