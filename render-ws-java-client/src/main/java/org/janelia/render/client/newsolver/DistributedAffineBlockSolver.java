@@ -21,6 +21,7 @@ import mpicbg.models.RigidModel2D;
 
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.TileSpec;
+import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.newsolver.assembly.Assembler;
 import org.janelia.render.client.newsolver.assembly.BlockCombiner;
 import org.janelia.render.client.newsolver.assembly.GlobalSolver;
@@ -163,7 +164,8 @@ public class DistributedAffineBlockSolver implements Serializable
 
 		final ResultContainer<AffineModel2D> finalTiles = solveAndCombineBlocks(cmdLineSetup,
 																				allItems,
-																				alignmentSolver.blockFactory);
+																				alignmentSolver.blockFactory,
+																				alignmentSolver.renderSetup.getSourceStackId());
 
 		// save the re-aligned part
 		LOG.info("solveCombineAndSaveBlocks: saving target stack {}", cmdLineSetup.targetStack);
@@ -203,14 +205,16 @@ public class DistributedAffineBlockSolver implements Serializable
 	private static ResultContainer<AffineModel2D> solveAndCombineBlocks(
 			final AffineBlockSolverSetup cmdLineSetup,
 			final List<BlockData<AffineModel2D, ?>> allItems,
-			final BlockFactory blockFactory) {
+			final BlockFactory blockFactory,
+			final StackId sourceStackId) {
 
 		final BlockCombiner<AffineModel2D, AffineModel2D, RigidModel2D, AffineModel2D> fusion = chooseCombiner(blockFactory);
 
 		final GlobalSolver<RigidModel2D, AffineModel2D> globalSolver =
 				new GlobalSolver<>(new RigidModel2D(),
 								   new SameTileMatchCreatorAffine2D<AffineModel2D>(),
-								   cmdLineSetup.distributedSolve);
+								   cmdLineSetup.distributedSolve,
+								   sourceStackId);
 
 		final Assembler<AffineModel2D, RigidModel2D, AffineModel2D> assembler =
 				new Assembler<>(globalSolver, fusion, (r) -> {
