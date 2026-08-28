@@ -153,7 +153,8 @@ public class DistributedIntensityCorrectionSolver implements Serializable {
 		final GlobalSolver<TranslationModel1D, ArrayList<AffineModel1D>> globalSolver =
 				new GlobalSolver<>(new TranslationModel1D(),
 								   new SameTileMatchCreatorAffineIntensity(),
-								   solverSetup.distributedSolve);
+								   solverSetup.distributedSolve,
+								   renderSetup.getSourceStackId());
 
 		final Assembler<ArrayList<AffineModel1D>, TranslationModel1D, ArrayList<AffineModel1D>> assembler =
 				new Assembler<>(globalSolver, fusion, r -> {
