@@ -18,6 +18,8 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
+import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -28,6 +30,7 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackMetaData;
 import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.render.client.ClientRunner;
+import org.janelia.render.client.ClusterCountClient;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.multisem.MFOVAsTileStackClient;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
@@ -35,6 +38,7 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.LayerAsTileParameters;
 import org.janelia.render.client.parameter.LayerAsTileStackLists;
 import org.janelia.render.client.parameter.MultiProjectParameters;
+import org.janelia.render.client.parameter.TileClusterParameters;
 import org.janelia.render.client.parameter.TileRenderParameters;
 import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.match.MultiStagePointMatchClient;
@@ -297,19 +301,22 @@ public class LayerAsTileClient
 
                 final MultiStagePointMatchClient matchClient = new MultiStagePointMatchClient();
 
-                final List<String> projectStackNameList = new ArrayList<>();
+                final List<StackWithZValues> projectStacks = layerAsTileStackLists.getRenderedLayerStacksWithAllZ(owner,
+                                                                                                                  project);
+                final List<String> stacksNeedingMatches = new ArrayList<>();
                 final List<StackWithZValues> listOfRenderedLayerStackLayersInProject = new ArrayList<>();
 
-                for (final StackWithZValues stackWithZ : layerAsTileStackLists.getRenderedLayerStacksWithAllZ(owner, project)) {
+                for (final StackWithZValues stackWithZ : projectStacks) {
 
                     final StackId stackId = stackWithZ.getStackId();
+                    final String stack = stackId.getStack();
                     final String matchCollectionName = stackId.getDefaultMatchCollectionId(false).getName();
 
                     if (existingMatchCollectionNames.contains(matchCollectionName)) {
                         LOG.info("generateLayerAsTileMatches: skipping {} match generation because it already exists",
                                  matchCollectionName);
                     } else {
-                        projectStackNameList.add(stackId.getStack());
+                        stacksNeedingMatches.add(stack);
                         for (final Double z : stackWithZ.getzValues()) {
                             listOfRenderedLayerStackLayersInProject.add(new StackWithZValues(stackId,
                                                                                              Collections.singletonList(z)));
@@ -317,16 +324,16 @@ public class LayerAsTileClient
                     }
                 }
 
-                if (! projectStackNameList.isEmpty()) {
+                if (! stacksNeedingMatches.isEmpty()) {
 
                     LOG.info("generateLayerAsTileMatches: starting generation for project {} with stacks {}",
-                             project, projectStackNameList);
+                             project, stacksNeedingMatches);
 
                     final MultiProjectParameters multiProject = new MultiProjectParameters();
                     multiProject.baseDataUrl = baseDataUrl;
                     multiProject.owner = owner;
                     multiProject.project = project;
-                    multiProject.stackIdWithZ.stackNames = projectStackNameList;
+                    multiProject.stackIdWithZ.stackNames = stacksNeedingMatches;
 
                     matchClient.generatePairsAndMatchesForRunList(sparkContext,
                                                                   multiProject,
@@ -334,10 +341,64 @@ public class LayerAsTileClient
                                                                   layerMatchRunList);
                 }
 
+                validateEachStackIsConnectedWithOneMatchCluster(baseDataUrl,
+                                                                projectStacks);
             }
         }
 
         LOG.info("generateLayerAsTileMatches: exit");
+    }
+
+    private static void validateEachStackIsConnectedWithOneMatchCluster(final String baseDataUrl,
+                                                                        final List<StackWithZValues> projectStacks)
+            throws IOException {
+
+        final StringBuilder clusterCountErrors = new StringBuilder();
+
+        for (final StackWithZValues stackWithZValues : projectStacks) {
+
+            final StackId stackId = stackWithZValues.getStackId();
+            final String matchCollectionName = stackId.getDefaultMatchCollectionId(false).getName();
+            final MatchCollectionId matchCollectionId = new MatchCollectionId(stackId.getOwner(),
+                                                                              matchCollectionName);
+            final RenderDataClient renderDataClient = new RenderDataClient(baseDataUrl,
+                                                                           stackId.getOwner(),
+                                                                           stackId.getProject());
+
+            final ClusterCountClient.Parameters jcccp = new ClusterCountClient.Parameters();
+            jcccp.multiProject = MultiProjectParameters.singleStackInstance(baseDataUrl, stackId);
+            jcccp.tileCluster = new TileClusterParameters();
+
+            final int zCount = stackWithZValues.getZCount();
+            jcccp.tileCluster.maxSmallClusterSize = 0;
+            jcccp.tileCluster.includeMatchesOutsideGroup = true;
+            jcccp.tileCluster.maxLayersPerBatch = zCount + 1;
+            jcccp.tileCluster.maxOverlapLayers = 6;
+
+            final ClusterCountClient javaClusterCountClient = new ClusterCountClient(jcccp);
+
+            final ConnectedTileClusterSummaryForStack summary;
+            try {
+                summary = javaClusterCountClient.findConnectedClustersForStack(stackWithZValues,
+                                                                               matchCollectionId,
+                                                                               renderDataClient,
+                                                                               jcccp.tileCluster);
+            } catch (final Exception e) {
+                throw new IOException(e);
+            }
+
+            final String countErrorString = summary.buildCountErrorString(1,
+                                                                          0,
+                                                                          0);
+            if (! countErrorString.isEmpty()) {
+                clusterCountErrors.append(matchCollectionName).append(": ").append(countErrorString).append("\n");
+            }
+
+        }
+
+        if (clusterCountErrors.length() > 0) {
+            throw new IOException("The following match collections do not have one single cluster: " + clusterCountErrors);
+        }
     }
 
     private static void alignRenderedLayerAsTileStacks(final JavaSparkContext sparkContext,
