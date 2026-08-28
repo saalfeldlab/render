@@ -21,6 +21,7 @@ import org.apache.spark.api.java.function.Function;
 import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection.TransformApplicationMethod;
@@ -138,6 +139,9 @@ public class LayerAsTileClient
         buildDynamicLayerAsTileStacks(sparkContext, layerAsTileStackLists);
 
         buildRenderedLayerAsTileStacks(sparkContext, layerAsTileStackLists);
+
+        // the rendered layer stacks now exist, so their bounds can be used to derive match parameters
+        layerAsTileStackLists.loadRenderedLayerStackBounds();
 
         generateLayerAsTileMatches(sparkContext, layerAsTileStackLists);
 
@@ -288,7 +292,6 @@ public class LayerAsTileClient
         LOG.info("generateLayerAsTileMatches: entry");
 
         final String baseDataUrl = layerAsTileStackLists.getBaseDataUrl();
-        final List<MatchRunParameters> layerMatchRunList = layerAsTileStackLists.getLayerAsTile().buildLayerMatchRunList();
 
         for (final String owner : layerAsTileStackLists.getOwners()) {
 
@@ -303,9 +306,8 @@ public class LayerAsTileClient
 
                 final List<StackWithZValues> projectStacks = layerAsTileStackLists.getRenderedLayerStacksWithAllZ(owner,
                                                                                                                   project);
-                final List<String> stacksNeedingMatches = new ArrayList<>();
-                final List<StackWithZValues> listOfRenderedLayerStackLayersInProject = new ArrayList<>();
-
+                // NOTE: match parameters are derived from each stack's bounds,
+                //       so matches get generated one stack at a time
                 for (final StackWithZValues stackWithZ : projectStacks) {
 
                     final StackId stackId = stackWithZ.getStackId();
@@ -315,29 +317,35 @@ public class LayerAsTileClient
                     if (existingMatchCollectionNames.contains(matchCollectionName)) {
                         LOG.info("generateLayerAsTileMatches: skipping {} match generation because it already exists",
                                  matchCollectionName);
-                    } else {
-                        stacksNeedingMatches.add(stack);
-                        for (final Double z : stackWithZ.getzValues()) {
-                            listOfRenderedLayerStackLayersInProject.add(new StackWithZValues(stackId,
-                                                                                             Collections.singletonList(z)));
-                        }
+                        continue;
                     }
-                }
 
-                if (! stacksNeedingMatches.isEmpty()) {
+                    final Bounds stackBounds = layerAsTileStackLists.getRenderedLayerStackBounds(stackId);
+                    final List<MatchRunParameters> layerMatchRunList =
+                            layerAsTileStackLists.getLayerAsTile().buildLayerMatchRunList(stackBounds);
 
-                    LOG.info("generateLayerAsTileMatches: starting generation for project {} with stacks {}",
-                             project, stacksNeedingMatches);
+                    final List<StackWithZValues> listOfRenderedLayerStackLayers = new ArrayList<>();
+                    for (final Double z : stackWithZ.getzValues()) {
+                        listOfRenderedLayerStackLayers.add(new StackWithZValues(stackId,
+                                                                                Collections.singletonList(z)));
+                    }
+
+                    LOG.info("generateLayerAsTileMatches: starting generation for stack {} with {} layers, " +
+                             "stack bounds are {} so minNumInliers is {}",
+                             stack,
+                             listOfRenderedLayerStackLayers.size(),
+                             stackBounds,
+                             LayerAsTileParameters.deriveMatchMinNumInliers(stackBounds));
 
                     final MultiProjectParameters multiProject = new MultiProjectParameters();
                     multiProject.baseDataUrl = baseDataUrl;
                     multiProject.owner = owner;
                     multiProject.project = project;
-                    multiProject.stackIdWithZ.stackNames = stacksNeedingMatches;
+                    multiProject.stackIdWithZ.stackNames = Collections.singletonList(stack);
 
                     matchClient.generatePairsAndMatchesForRunList(sparkContext,
                                                                   multiProject,
-                                                                  listOfRenderedLayerStackLayersInProject,
+                                                                  listOfRenderedLayerStackLayers,
                                                                   layerMatchRunList);
                 }
 

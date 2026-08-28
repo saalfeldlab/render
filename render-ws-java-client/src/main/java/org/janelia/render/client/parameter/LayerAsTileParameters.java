@@ -11,6 +11,7 @@ import org.janelia.alignment.match.ModelType;
 import org.janelia.alignment.match.parameters.FeatureRenderClipParameters;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
 import org.janelia.alignment.match.parameters.MatchStageParameters;
+import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.render.client.newsolver.blocksolveparameters.FIBSEMAlignmentParameters;
 import org.janelia.render.client.newsolver.setup.AffineBlockSolverSetup;
@@ -125,10 +126,20 @@ public class LayerAsTileParameters
         return this.renderedLayerRunTimestamp;
     }
 
-    public List<MatchRunParameters> buildLayerMatchRunList() {
+    public List<MatchRunParameters> buildLayerMatchRunList(final Bounds renderedLayerStackBounds) {
         final List<MatchRunParameters> layerMatchRunList = new ArrayList<>();
-        layerMatchRunList.add(buildCrossMatchRunParameters());
+        layerMatchRunList.add(buildCrossMatchRunParameters(renderedLayerStackBounds));
         return layerMatchRunList;
+    }
+
+    /**
+     * @return the minimum number of match inliers to require for layers with the specified bounds.
+     *         Larger layers need more inliers, so the count is derived from the layer area
+     *         instead of being hard-coded for layers of any size.
+     */
+    public static int deriveMatchMinNumInliers(final Bounds renderedLayerStackBounds) {
+        final double layerPixelCount = renderedLayerStackBounds.getDeltaX() * renderedLayerStackBounds.getDeltaY();
+        return (int) Math.round(layerPixelCount / PIXELS_PER_MIN_INLIER);
     }
 
     public AffineBlockSolverSetup buildLayerAffineBlockSolverSetup() {
@@ -172,10 +183,12 @@ public class LayerAsTileParameters
         return setup;
     }
 
-    private static MatchRunParameters buildCrossMatchRunParameters() {
+    private static MatchRunParameters buildCrossMatchRunParameters(final Bounds renderedLayerStackBounds) {
 
         // renderWithFilter = true greatly improves results when no intensity correction has been run on SFOVs
         final boolean renderWithFilter = true;
+
+        final int matchMinNumInliers = deriveMatchMinNumInliers(renderedLayerStackBounds);
 
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(
@@ -186,7 +199,7 @@ public class LayerAsTileParameters
                                                  new FeatureRenderClipParameters(),
                                                  MFOVAsTileParameters.buildFeatureExtractionParameters(),
                                                  MFOVAsTileParameters.buildFeatureMatchDerivation(MatchFilter.FilterType.AGGREGATED_CONSENSUS_SETS,
-                                                                                                  100,
+                                                                                                  matchMinNumInliers,
                                                                                                   ModelType.RIGID),
                                                  MFOVAsTileParameters.buildDisabledGeometricDescriptorAndMatch(),
                                                  null,
@@ -200,4 +213,10 @@ public class LayerAsTileParameters
                                                                                              true),
                                       matchStageParametersList);
     }
+
+    /**
+     * Number of layer pixels for each required match inlier.
+     * Layers with 12 million pixels typically need a minimum of 100 inliers.
+     */
+    private static final double PIXELS_PER_MIN_INLIER = 120_000.0;
 }
