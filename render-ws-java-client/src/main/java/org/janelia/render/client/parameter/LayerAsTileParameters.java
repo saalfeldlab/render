@@ -126,20 +126,24 @@ public class LayerAsTileParameters
         return this.renderedLayerRunTimestamp;
     }
 
-    public List<MatchRunParameters> buildLayerMatchRunList(final Bounds renderedLayerStackBounds) {
+    public List<MatchRunParameters> buildLayerMatchRunList(final int matchMinNumInliers) {
         final List<MatchRunParameters> layerMatchRunList = new ArrayList<>();
-        layerMatchRunList.add(buildCrossMatchRunParameters(renderedLayerStackBounds));
+        layerMatchRunList.add(buildCrossMatchRunParameters(matchMinNumInliers));
         return layerMatchRunList;
     }
 
     /**
      * @return the minimum number of match inliers to require for layers with the specified bounds.
-     *         Larger layers need more inliers, so the count is derived from the layer area
-     *         instead of being hard-coded for layers of any size.
+     *         Larger layers need more inliers, so the count is derived from the layer area.
+     *         The derived count is rounded to a multiple of {@link #MIN_INLIER_ROUNDING_FACTOR}
+     *         so that similarly sized stacks share the same count and can be matched together.
      */
     public static int deriveMatchMinNumInliers(final Bounds renderedLayerStackBounds) {
         final double layerPixelCount = renderedLayerStackBounds.getDeltaX() * renderedLayerStackBounds.getDeltaY();
-        return (int) Math.round(layerPixelCount / PIXELS_PER_MIN_INLIER);
+        final long roundedInliers = Math.round(layerPixelCount / PIXELS_PER_MIN_INLIER / MIN_INLIER_ROUNDING_FACTOR) *
+                                    MIN_INLIER_ROUNDING_FACTOR;
+        // never require fewer than one rounding factor of inliers, even for the smallest layers
+        return (int) Math.max(MIN_INLIER_ROUNDING_FACTOR, roundedInliers);
     }
 
     public AffineBlockSolverSetup buildLayerAffineBlockSolverSetup() {
@@ -183,12 +187,10 @@ public class LayerAsTileParameters
         return setup;
     }
 
-    private static MatchRunParameters buildCrossMatchRunParameters(final Bounds renderedLayerStackBounds) {
+    private static MatchRunParameters buildCrossMatchRunParameters(final int matchMinNumInliers) {
 
         // renderWithFilter = true greatly improves results when no intensity correction has been run on SFOVs
         final boolean renderWithFilter = true;
-
-        final int matchMinNumInliers = deriveMatchMinNumInliers(renderedLayerStackBounds);
 
         final List<MatchStageParameters> matchStageParametersList =
                 List.of(
@@ -219,4 +221,10 @@ public class LayerAsTileParameters
      * Layers with 12 million pixels typically need a minimum of 100 inliers.
      */
     private static final double PIXELS_PER_MIN_INLIER = 120_000.0;
+
+    /**
+     * Derived minimum inlier counts are rounded to a multiple of this factor so that
+     * stacks with similar layer sizes can be batched together for match generation.
+     */
+    private static final int MIN_INLIER_ROUNDING_FACTOR = 25;
 }

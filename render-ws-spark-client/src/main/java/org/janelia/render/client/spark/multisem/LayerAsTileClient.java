@@ -8,8 +8,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import mpicbg.trakem2.transform.AffineModel2D;
@@ -306,12 +308,14 @@ public class LayerAsTileClient
 
                 final List<StackWithZValues> projectStacks = layerAsTileStackLists.getRenderedLayerStacksWithAllZ(owner,
                                                                                                                   project);
-                // NOTE: match parameters are derived from each stack's bounds,
-                //       so matches get generated one stack at a time
+                // match parameters are derived from each stack's bounds, so group the stacks
+                // that need matches by their derived minNumInliers and then generate matches
+                // for each of those groups in one batch
+                final Map<Integer, List<StackWithZValues>> stacksForMinNumInliers = new TreeMap<>();
+
                 for (final StackWithZValues stackWithZ : projectStacks) {
 
                     final StackId stackId = stackWithZ.getStackId();
-                    final String stack = stackId.getStack();
                     final String matchCollectionName = stackId.getDefaultMatchCollectionId(false).getName();
 
                     if (existingMatchCollectionNames.contains(matchCollectionName)) {
@@ -321,31 +325,43 @@ public class LayerAsTileClient
                     }
 
                     final Bounds stackBounds = layerAsTileStackLists.getRenderedLayerStackBounds(stackId);
-                    final List<MatchRunParameters> layerMatchRunList =
-                            layerAsTileStackLists.getLayerAsTile().buildLayerMatchRunList(stackBounds);
+                    final int minNumInliers = LayerAsTileParameters.deriveMatchMinNumInliers(stackBounds);
 
-                    final List<StackWithZValues> listOfRenderedLayerStackLayers = new ArrayList<>();
-                    for (final Double z : stackWithZ.getzValues()) {
-                        listOfRenderedLayerStackLayers.add(new StackWithZValues(stackId,
-                                                                                Collections.singletonList(z)));
+                    LOG.info("generateLayerAsTileMatches: stack {} has bounds {} so its minNumInliers is {}",
+                             stackId.getStack(), stackBounds, minNumInliers);
+
+                    stacksForMinNumInliers.computeIfAbsent(minNumInliers, k -> new ArrayList<>()).add(stackWithZ);
+                }
+
+                for (final Integer minNumInliers : stacksForMinNumInliers.keySet()) {
+
+                    final List<StackWithZValues> batchStacks = stacksForMinNumInliers.get(minNumInliers);
+                    final List<String> batchStackNames = new ArrayList<>();
+                    final List<StackWithZValues> batchLayers = new ArrayList<>();
+
+                    for (final StackWithZValues stackWithZ : batchStacks) {
+                        final StackId stackId = stackWithZ.getStackId();
+                        batchStackNames.add(stackId.getStack());
+                        for (final Double z : stackWithZ.getzValues()) {
+                            batchLayers.add(new StackWithZValues(stackId, Collections.singletonList(z)));
+                        }
                     }
 
-                    LOG.info("generateLayerAsTileMatches: starting generation for stack {} with {} layers, " +
-                             "stack bounds are {} so minNumInliers is {}",
-                             stack,
-                             listOfRenderedLayerStackLayers.size(),
-                             stackBounds,
-                             LayerAsTileParameters.deriveMatchMinNumInliers(stackBounds));
+                    LOG.info("generateLayerAsTileMatches: starting generation with minNumInliers {} for {} layers in stacks {}",
+                             minNumInliers, batchLayers.size(), batchStackNames);
 
                     final MultiProjectParameters multiProject = new MultiProjectParameters();
                     multiProject.baseDataUrl = baseDataUrl;
                     multiProject.owner = owner;
                     multiProject.project = project;
-                    multiProject.stackIdWithZ.stackNames = Collections.singletonList(stack);
+                    multiProject.stackIdWithZ.stackNames = batchStackNames;
+
+                    final List<MatchRunParameters> layerMatchRunList =
+                            layerAsTileStackLists.getLayerAsTile().buildLayerMatchRunList(minNumInliers);
 
                     matchClient.generatePairsAndMatchesForRunList(sparkContext,
                                                                   multiProject,
-                                                                  listOfRenderedLayerStackLayers,
+                                                                  batchLayers,
                                                                   layerMatchRunList);
                 }
 
