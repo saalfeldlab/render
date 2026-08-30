@@ -142,9 +142,6 @@ public class LayerAsTileClient
 
         buildRenderedLayerAsTileStacks(sparkContext, layerAsTileStackLists);
 
-        // the rendered layer stacks now exist, so their bounds can be used to derive match parameters
-        layerAsTileStackLists.loadRenderedLayerStackBounds();
-
         generateLayerAsTileMatches(sparkContext, layerAsTileStackLists);
 
         alignRenderedLayerAsTileStacks(sparkContext, layerAsTileStackLists);
@@ -304,6 +301,9 @@ public class LayerAsTileClient
 
             for (final String project : layerAsTileStackLists.getProjectsWithOwner(owner)) {
 
+                final RenderDataClient projectStackClient = new RenderDataClient(baseDataUrl,
+                                                                                 owner,
+                                                                                 project);
                 final MultiStagePointMatchClient matchClient = new MultiStagePointMatchClient();
 
                 final List<StackWithZValues> projectStacks = layerAsTileStackLists.getRenderedLayerStacksWithAllZ(owner,
@@ -316,6 +316,8 @@ public class LayerAsTileClient
                 for (final StackWithZValues stackWithZ : projectStacks) {
 
                     final StackId stackId = stackWithZ.getStackId();
+                    final Bounds stackBounds = projectStackClient.getStackMetaData(stackId.getStack()).getStackBounds();
+
                     final String matchCollectionName = stackId.getDefaultMatchCollectionId(false).getName();
 
                     if (existingMatchCollectionNames.contains(matchCollectionName)) {
@@ -324,7 +326,6 @@ public class LayerAsTileClient
                         continue;
                     }
 
-                    final Bounds stackBounds = layerAsTileStackLists.getRenderedLayerStackBounds(stackId);
                     final int minNumInliers = LayerAsTileParameters.deriveMatchMinNumInliers(stackBounds);
 
                     LOG.info("generateLayerAsTileMatches: stack {} has bounds {} so its minNumInliers is {}",
