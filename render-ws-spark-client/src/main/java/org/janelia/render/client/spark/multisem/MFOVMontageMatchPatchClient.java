@@ -35,7 +35,9 @@ import org.slf4j.LoggerFactory;
 import static org.janelia.render.client.multisem.UnconnectedMontageMFOVClient.findIsolatedMFOVsInStack;
 
 /**
- * Spark client for patching matches missing from adjacent SFOV tile pairs within the same MFOV and z layer.
+ * Spark client for patching matches missing from adjacent SFOV tile pairs within the same z layer.
+ * Pairs within the same MFOV are patched with work distributed by MFOV while pairs that span two MFOVs
+ * are patched with work distributed by z layer.
  * Core logic is implemented in {@link org.janelia.render.client.multisem.MFOVMontageMatchPatchClient}.
  *
  * @author Eric Trautman
@@ -160,15 +162,25 @@ public class MFOVMontageMatchPatchClient
             patchIsolatedMFOVs(sparkContext, multiProjectParameters, patchParameters);
         }
 
-        patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
+        if (patchParameters.isWithinMfovPatchingNeeded()) {
 
-        // If second pass is requested, run it ...
-        // The intent of the second patch is to patch pairs that were not patched in first pass.
-        // Hopefully, patched data from the first pass will enable patching for all remaining unconnected pairs
-        // (typically with a significantly reduced weight).
-        if (patchParameters.secondPassDerivedMatchWeight != null) {
-            patchParameters.setWeightsForSecondPass();
-            patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 2);
+            patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
+
+            // If second pass is requested, run it ...
+            // The intent of the second patch is to patch pairs that were not patched in first pass.
+            // Hopefully, patched data from the first pass will enable patching for all remaining unconnected pairs
+            // (typically with a significantly reduced weight).
+            if (patchParameters.secondPassDerivedMatchWeight != null) {
+                patchParameters.setWeightsForSecondPass();
+                patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 2);
+            }
+
+        } else {
+            LOG.info("patchMFOVs: skipping within MFOV passes since none of their weights were specified");
+        }
+
+        if (patchParameters.isCrossMfovPatchingNeeded()) {
+            patchCrossMfovPairs(sparkContext, multiProjectParameters, patchParameters);
         }
 
         LOG.info("patchMFOVs: exit");
@@ -280,6 +292,62 @@ public class MFOVMontageMatchPatchClient
                  passName, numberOfDerivedMatchPairs);
     }
 
+    /**
+     * Patches unconnected same layer pairs whose p and q tiles are in different MFOVs.
+     * <br/><br/>
+     * Adjacent MFOVs are only known once all tiles in a layer are loaded, so this work is distributed by
+     * z layer instead of by MFOV like {@link #patchPairsForPass}.
+     * Task size therefore comes from the multiProject
+     * {@link org.janelia.render.client.parameter.StackIdWithZParameters#zValuesPerBatch} value
+     * instead of from
+     * {@link org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters#numberOfMFOVsPerBatch}.
+     */
+    private void patchCrossMfovPairs(final JavaSparkContext sparkContext,
+                                     final MultiProjectParameters multiProjectParameters,
+                                     final MFOVMontageMatchPatchParameters patchParameters)
+            throws IOException {
+
+        LOG.info("patchCrossMfovPairs: entry");
+
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
+        final List<StackWithZValues> batchedStackWithZValuesList =
+                multiProjectParameters.buildListOfStackWithBatchedZ();
+
+        LOG.info("patchCrossMfovPairs: distributing tasks for {} batches of z layers",
+                 batchedStackWithZValuesList.size());
+
+        final JavaRDD<StackWithZValues> rddStackWithZValues =
+                sparkContext.parallelize(batchedStackWithZValuesList);
+
+        final Function<StackWithZValues, Integer> patchFunction = stackWithZValues -> {
+
+            LogUtilities.setupExecutorLog4j(stackWithZValues.toString());
+
+            final StackId stackId = stackWithZValues.getStackId();
+            final RenderDataClient defaultDataClient = new RenderDataClient(baseDataUrl,
+                                                                            stackId.getOwner(),
+                                                                            stackId.getProject());
+
+            final MatchCollectionId matchCollectionId =
+                    multiProjectParameters.getMatchCollectionIdForStack(stackId);
+
+            return org.janelia.render.client.multisem.MFOVMontageMatchPatchClient
+                    .deriveAndSaveCrossMfovMatchesForStack(defaultDataClient,
+                                                           stackWithZValues,
+                                                           matchCollectionId,
+                                                           patchParameters.getMatchStorageCollectionName(matchCollectionId),
+                                                           patchParameters);
+        };
+
+        final JavaRDD<Integer> rddPatch = rddStackWithZValues.map(patchFunction);
+        final long numberOfDerivedMatchPairs = rddPatch.collect().stream()
+                .mapToLong(Integer::longValue)
+                .reduce(0, Long::sum);
+
+        LOG.info("patchCrossMfovPairs: exit, derived matches for {} cross MFOV tile pairs",
+                 numberOfDerivedMatchPairs);
+    }
+
     private void createTrimStacks(final MultiProjectParameters multiProject,
                                   final MFOVMontageMatchPatchParameters patchParameters)
             throws IOException {
@@ -345,9 +413,10 @@ public class MFOVMontageMatchPatchClient
             final List<Double> zValues = renderDataClient.getStackZValues(stackId.getStack());
 
             int expectedTileClusterCount = zValues.size();
-            if (! patchParameters.isIsolatedMfovPatchingNeeded()) {
-                // resin MFOV patching derives the only cross MFOV matches (isolated edge labelling derives none),
-                // so without it the expected cluster count is the total number of layer MFOVs
+            if (! (patchParameters.isIsolatedMfovPatchingNeeded() || patchParameters.isCrossMfovPatchingNeeded())) {
+                // resin MFOV and cross MFOV patching derive the only cross MFOV matches
+                // (isolated edge labelling derives none),
+                // so without them the expected cluster count is the total number of layer MFOVs
                 expectedTileClusterCount = 0;
                 for (final Double z : zValues) {
                     final List<String> sortedMFOVNames =

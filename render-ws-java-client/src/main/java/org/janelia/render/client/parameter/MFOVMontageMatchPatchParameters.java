@@ -109,6 +109,16 @@ public class MFOVMontageMatchPatchParameters
     public boolean patchUnconnectedPairsWithinAnMfovUsingStageCoordinates = false;
 
     @Parameter(
+            names = "--crossMfovStartPositionMatchWeight",
+            description = "Weight (e.g. 0.00001) for matches derived from SFOV start positions for unconnected " +
+                          "same layer pairs in which the p and q tiles are in different MFOVs.  " +
+                          "Since this patching needs all tiles in a layer, it is distributed by z layer " +
+                          "instead of by MFOV, so its task size comes from the multiProject " +
+                          "zValuesPerBatch value instead of from numberOfMFOVsPerBatch.  " +
+                          "Omit (or specify a non-positive value) to skip cross MFOV derivation.")
+    public Double crossMfovStartPositionMatchWeight;
+
+    @Parameter(
             names = "--addIsolatedEdgeLabel",
             description = "Specify to add the label 'isolated_edge' to all SFOVs in MFOVs with isolated edges.  " +
                           "Isolated edges are when SFOVs along the edge of an MFOV are connected to each other " +
@@ -155,6 +165,7 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.matchStorageFile = this.matchStorageFile;
         clonedParameters.trimMfovsWithNoConnectedTiles = this.trimMfovsWithNoConnectedTiles;
         clonedParameters.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates = this.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates;
+        clonedParameters.crossMfovStartPositionMatchWeight = this.crossMfovStartPositionMatchWeight;
         clonedParameters.addIsolatedEdgeLabel = this.addIsolatedEdgeLabel;
         clonedParameters.resinMfovStartPositionMatchWeight = this.resinMfovStartPositionMatchWeight;
         clonedParameters.checkLayerConnectedClusters = this.checkLayerConnectedClusters;
@@ -225,6 +236,33 @@ public class MFOVMontageMatchPatchParameters
 
     public boolean isIsolatedMfovPatchingNeeded() {
         return addIsolatedEdgeLabel || (getResinMfovStartPositionMatchWeight() != null);
+    }
+
+    /**
+     * @return the weight for cross MFOV matches derived from SFOV start positions
+     *         or null if cross MFOV derivation should be skipped
+     *         (non-positive weights are used to exclude cross MFOV pairs from patching).
+     */
+    public Double getCrossMfovStartPositionMatchWeight() {
+        return ((crossMfovStartPositionMatchWeight != null) && (crossMfovStartPositionMatchWeight > 0.0)) ?
+               crossMfovStartPositionMatchWeight : null;
+    }
+
+    public boolean isCrossMfovPatchingNeeded() {
+        return getCrossMfovStartPositionMatchWeight() != null;
+    }
+
+    /**
+     * @return true if any patching of pairs within an MFOV is needed.
+     *         When false, the MFOV distributed passes derive nothing and can be skipped
+     *         (which is the normal case when only cross MFOV patching is requested).
+     */
+    public boolean isWithinMfovPatchingNeeded() {
+        return (sameLayerDerivedMatchWeight != null) ||
+               (crossLayerDerivedMatchWeight != null) ||
+               (secondPassDerivedMatchWeight != null) ||
+               (startPositionMatchWeight != null) ||
+               trimMfovsWithNoConnectedTiles;
     }
 
     public static MFOVMontageMatchPatchParameters fromJson(final Reader json) {

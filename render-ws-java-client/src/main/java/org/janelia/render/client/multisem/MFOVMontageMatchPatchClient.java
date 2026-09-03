@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +23,7 @@ import org.janelia.alignment.spec.TileBounds;
 import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.spec.stack.StackWithZValues;
 import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
@@ -60,6 +62,11 @@ import com.beust.jcommander.ParametersDelegate;
  *     point matches are set at the corners of the area where the two tiles overlap in the acquisition stack.
  *   </li>
  * </ul>
+ * Steps 1 through 3 only consider pairs in which both SFOV tiles belong to the same MFOV.
+ * Separately, if a crossMfovStartPositionMatchWeight is specified, unconnected same layer pairs in which
+ * the p and q tiles belong to <b>different</b> MFOVs are patched with acquisition stack overlap matches
+ * (see {@link #deriveAndSaveCrossMfovMatchesForStack}).  That work is scoped to a z layer rather than to
+ * an MFOV, so it cannot be distributed by MFOV like steps 1 through 3.
  *
  * @author Stephan Preibisch
  * @author Eric Trautman
@@ -111,18 +118,35 @@ public class MFOVMontageMatchPatchClient {
             throws Exception {
 
         final RenderDataClient defaultDataClient = multiProject.getDataClient();
-        final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
-                multiProject.buildListOfStackMFOVWithAllZ(patch.getMultiFieldOfViewId());
 
-        for (final StackMFOVWithZValues stackMFOVWithZValues : stackMFOVWithZValuesList) {
-            final StackId stackId = stackMFOVWithZValues.getStackId();
-            this.patch = this.patch.withMultiFieldOfViewId(stackMFOVWithZValues.getmFOVId());
-            final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackId);
-            final String matchStorageCollectionName = patch.getMatchStorageCollectionName(matchCollectionId);
-            deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
-                                                           stackMFOVWithZValues,
-                                                           matchCollectionId,
-                                                           matchStorageCollectionName);
+        if (patch.isWithinMfovPatchingNeeded()) {
+            final List<StackMFOVWithZValues> stackMFOVWithZValuesList =
+                    multiProject.buildListOfStackMFOVWithAllZ(patch.getMultiFieldOfViewId());
+
+            for (final StackMFOVWithZValues stackMFOVWithZValues : stackMFOVWithZValuesList) {
+                final StackId stackId = stackMFOVWithZValues.getStackId();
+                this.patch = this.patch.withMultiFieldOfViewId(stackMFOVWithZValues.getmFOVId());
+                final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackId);
+                final String matchStorageCollectionName = patch.getMatchStorageCollectionName(matchCollectionId);
+                deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
+                                                               stackMFOVWithZValues,
+                                                               matchCollectionId,
+                                                               matchStorageCollectionName);
+            }
+        } else {
+            LOG.info("deriveAndSaveMatchesForAllUnconnectedPairs: skipping within MFOV patching since none of its weights were specified");
+        }
+
+        if (patch.isCrossMfovPatchingNeeded()) {
+            for (final StackWithZValues stackWithZValues : multiProject.buildListOfStackWithAllZ()) {
+                final StackId stackId = stackWithZValues.getStackId();
+                final MatchCollectionId matchCollectionId = multiProject.getMatchCollectionIdForStack(stackId);
+                deriveAndSaveCrossMfovMatchesForStack(defaultDataClient,
+                                                      stackWithZValues,
+                                                      matchCollectionId,
+                                                      patch.getMatchStorageCollectionName(matchCollectionId),
+                                                      patch);
+            }
         }
     }
 
@@ -200,33 +224,172 @@ public class MFOVMontageMatchPatchClient {
                                                                            patch.startPositionMatchWeight));
         }
 
-        final int numberOfDerivedMatchPairs = derivedMatchesForMFOV.size();
-        if (numberOfDerivedMatchPairs > 0) {
-
-            final String firstPairKey = derivedMatchesForMFOV.get(0).toKeyString();
-            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: saving matches for {} pairs in {}, first save pair is {}",
-                     numberOfDerivedMatchPairs, stackMFOVWithZValues, firstPairKey);
-
-            if (patch.matchStorageFile != null) {
-                final Path storagePath = Paths.get(patch.matchStorageFile).toAbsolutePath();
-                FileUtil.saveJsonFile(storagePath.toString(), derivedMatchesForMFOV);
-            } else {
-                final RenderDataClient matchStorageClient = matchClient.buildClient(matchCollectionId.getOwner(),
-                                                                                    matchStorageCollectionName);
-                matchStorageClient.saveMatches(derivedMatchesForMFOV);
-            }
-
-        } else {
-            LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: no pairs have matches in {} so there is nothing to save",
-                     stackMFOVWithZValues);
-        }
+        final int numberOfDerivedMatchPairs = saveDerivedMatches(derivedMatchesForMFOV,
+                                                                 patch.matchStorageFile,
+                                                                 matchClient,
+                                                                 matchCollectionId,
+                                                                 matchStorageCollectionName,
+                                                                 String.valueOf(stackMFOVWithZValues));
 
         LOG.info("deriveAndSaveMatchesForUnconnectedPairsInStack: exit, returning {} for {}",
                  numberOfDerivedMatchPairs, stackMFOVWithZValues);
 
-        return derivedMatchesForMFOV.size();
+        return numberOfDerivedMatchPairs;
     }
-    
+
+    /**
+     * Derives and saves acquisition stack overlap matches for all unconnected same layer pairs in the specified
+     * stack in which the p and q tiles are in different MFOVs.
+     * <br/><br/>
+     * Unlike {@link #deriveAndSaveMatchesForUnconnectedPairsInStack}, this derivation needs all tiles in a
+     * layer (adjacent MFOVs are only known once the whole layer is loaded), so callers that want to distribute
+     * this work must do so by z layer rather than by MFOV.
+     *
+     * @return the number of tile pairs that had derived matches saved.
+     */
+    public static int deriveAndSaveCrossMfovMatchesForStack(final RenderDataClient defaultDataClient,
+                                                            final StackWithZValues stackWithZValues,
+                                                            final MatchCollectionId matchCollectionId,
+                                                            final String matchStorageCollectionName,
+                                                            final MFOVMontageMatchPatchParameters patch)
+            throws IOException, IllegalArgumentException {
+
+        LOG.info("deriveAndSaveCrossMfovMatchesForStack: entry, stackWithZValues={}", stackWithZValues);
+
+        final Double derivedMatchWeight = patch.getCrossMfovStartPositionMatchWeight();
+        if (derivedMatchWeight == null) {
+            throw new IllegalArgumentException("--crossMfovStartPositionMatchWeight must be a positive value");
+        }
+        if (patch.xyNeighborFactor == null) {
+            throw new IllegalArgumentException("--xyNeighborFactor must be defined");
+        }
+
+        final StackId stackId = stackWithZValues.getStackId();
+        final String stack = stackId.getStack();
+
+        final RenderDataClient renderDataClient = defaultDataClient.buildClient(stackId.getOwner(),
+                                                                                stackId.getProject());
+        final RenderDataClient matchClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
+                                                                          matchCollectionId.getName());
+
+        final Map<Double, Set<String>> zToSectionIdsMap =
+                renderDataClient.getStackZToSectionIdsMap(stack,
+                                                          null,
+                                                          null,
+                                                          stackWithZValues.getzValues());
+
+        final List<CanvasMatches> derivedMatches = new ArrayList<>();
+
+        for (final StackWithZValues stackWithSingleZ : stackWithZValues.splitByZ()) {
+            final Double z = stackWithSingleZ.getFirstZ();
+            final Set<String> sectionIds = zToSectionIdsMap.get(z);
+            if (sectionIds == null) {
+                LOG.warn("deriveAndSaveCrossMfovMatchesForStack: skipping z {} because it has no section ids in {}",
+                         z, stack);
+            } else {
+                derivedMatches.addAll(deriveCrossMfovMatchesForLayer(stackWithSingleZ,
+                                                                     sectionIds,
+                                                                     patch.xyNeighborFactor,
+                                                                     derivedMatchWeight,
+                                                                     renderDataClient,
+                                                                     matchClient));
+            }
+        }
+
+        final int numberOfDerivedMatchPairs = saveDerivedMatches(derivedMatches,
+                                                                 patch.matchStorageFile,
+                                                                 matchClient,
+                                                                 matchCollectionId,
+                                                                 matchStorageCollectionName,
+                                                                 "cross MFOV pairs in " + stackWithZValues);
+
+        LOG.info("deriveAndSaveCrossMfovMatchesForStack: exit, returning {} for {}",
+                 numberOfDerivedMatchPairs, stackWithZValues);
+
+        return numberOfDerivedMatchPairs;
+    }
+
+    /** @return acquisition stack overlap matches for unconnected cross MFOV pairs in one z layer. */
+    private static List<CanvasMatches> deriveCrossMfovMatchesForLayer(final StackWithZValues stackWithSingleZ,
+                                                                      final Set<String> sectionIds,
+                                                                      final double xyNeighborFactor,
+                                                                      final double derivedMatchWeight,
+                                                                      final RenderDataClient renderDataClient,
+                                                                      final RenderDataClient matchClient)
+            throws IOException {
+
+        final Double z = stackWithSingleZ.getFirstZ();
+        final String stack = stackWithSingleZ.getStackId().getStack();
+
+        final List<OrderedCanvasIdPair> potentialPairs =
+                UnconnectedMontageMFOVClient.findPotentialSameLayerPairsWithDifferentMfovs(
+                        renderDataClient.getBaseDataUrl(),
+                        stackWithSingleZ,
+                        xyNeighborFactor);
+
+        // query web service to find connected tile pairs and remove them from the potential set
+        final Set<OrderedCanvasIdPair> existingPairs = new HashSet<>();
+        for (final String groupId : sectionIds) {
+            matchClient.getMatchesWithinGroup(groupId, true).stream()
+                    .map(CanvasMatches::toOrderedPair)
+                    .forEach(existingPairs::add);
+        }
+
+        final List<OrderedCanvasIdPair> unconnectedPairs =
+                potentialPairs.stream()
+                        .filter(pair -> ! existingPairs.contains(pair))
+                        .sorted()
+                        .collect(Collectors.toList());
+
+        LOG.info("deriveCrossMfovMatchesForLayer: {} out of {} potential cross MFOV pairs are unconnected in z {} of stack {}",
+                 unconnectedPairs.size(), potentialPairs.size(), z, stack);
+
+        if (unconnectedPairs.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // note that pairs whose start positions do not overlap are excluded from the returned list
+        return UnconnectedMontageMFOVClient.deriveMatchesUsingStartPositions(unconnectedPairs,
+                                                                             renderDataClient,
+                                                                             stack,
+                                                                             z,
+                                                                             derivedMatchWeight);
+    }
+
+    /** @return the number of pairs saved. */
+    private static int saveDerivedMatches(final List<CanvasMatches> derivedMatches,
+                                          final String matchStorageFile,
+                                          final RenderDataClient matchClient,
+                                          final MatchCollectionId matchCollectionId,
+                                          final String matchStorageCollectionName,
+                                          final String context)
+            throws IOException {
+
+        final int numberOfDerivedMatchPairs = derivedMatches.size();
+
+        if (numberOfDerivedMatchPairs > 0) {
+
+            final String firstPairKey = derivedMatches.get(0).toKeyString();
+            LOG.info("saveDerivedMatches: saving matches for {} pairs in {}, first save pair is {}",
+                     numberOfDerivedMatchPairs, context, firstPairKey);
+
+            if (matchStorageFile != null) {
+                final Path storagePath = Paths.get(matchStorageFile).toAbsolutePath();
+                FileUtil.saveJsonFile(storagePath.toString(), derivedMatches);
+            } else {
+                final RenderDataClient matchStorageClient = matchClient.buildClient(matchCollectionId.getOwner(),
+                                                                                    matchStorageCollectionName);
+                matchStorageClient.saveMatches(derivedMatches);
+            }
+
+        } else {
+            LOG.info("saveDerivedMatches: no pairs have matches in {} so there is nothing to save", context);
+        }
+
+        return numberOfDerivedMatchPairs;
+    }
+
+
     public void updatePositionPairDataForZ(final String stack,
                                            final Double z,
                                            final Set<String> sectionIds,

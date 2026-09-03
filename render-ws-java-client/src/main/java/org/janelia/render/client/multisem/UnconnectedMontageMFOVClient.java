@@ -347,10 +347,19 @@ public class UnconnectedMontageMFOVClient {
     public static List<OrderedCanvasIdPair> findPotentialSameLayerPairsWithDifferentMfovs(final String baseDataUrl,
                                                                                           final StackWithZValues stackWithZ)
             throws IOException {
+        return findPotentialSameLayerPairsWithDifferentMfovs(baseDataUrl,
+                                                             stackWithZ,
+                                                             DEFAULT_XY_NEIGHBOR_FACTOR);
+    }
+
+    public static List<OrderedCanvasIdPair> findPotentialSameLayerPairsWithDifferentMfovs(final String baseDataUrl,
+                                                                                          final StackWithZValues stackWithZ,
+                                                                                          final double xyNeighborFactor)
+            throws IOException {
 
         final TilePairDerivationParameters tpdp = new TilePairDerivationParameters();
 
-        tpdp.xyNeighborFactor = 0.6;
+        tpdp.xyNeighborFactor = xyNeighborFactor;
         tpdp.zNeighborDistance = 0;
         tpdp.excludeSameMfovNeighbors = true;
 
@@ -489,4 +498,7 @@ public class UnconnectedMontageMFOVClient {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UnconnectedMontageMFOVClient.class);
+
+    /** Neighbor factor used for cross MFOV pair derivation when a caller does not specify one. */
+    private static final double DEFAULT_XY_NEIGHBOR_FACTOR = 0.6;
 }
