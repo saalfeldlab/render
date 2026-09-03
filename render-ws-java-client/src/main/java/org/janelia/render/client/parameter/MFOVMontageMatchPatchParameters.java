@@ -26,7 +26,9 @@ public class MFOVMontageMatchPatchParameters
 
     @Parameter(
             names = "--matchStorageCollection",
-            description = "Collection for storage of derived matches (omit to store to source collection)")
+            description = "Collection for storage of derived matches (omit to store to source collection).  " +
+                          "Cannot be combined with secondPassDerivedMatchWeight since derivation always reads " +
+                          "existing matches from the source collection.")
     public String matchStorageCollection;
 
     @Parameter(

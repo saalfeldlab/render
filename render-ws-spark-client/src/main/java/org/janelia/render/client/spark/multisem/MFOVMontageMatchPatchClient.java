@@ -93,6 +93,8 @@ public class MFOVMontageMatchPatchClient
             final MFOVMontageMatchPatchParameters patchParameters =
                     MFOVMontageMatchPatchParameters.fromJsonFile(clientParameters.matchPatchJson);
 
+            validatePatchParameters(patchParameters);
+
             TileClusterParameters tileClusterParameters = null;
             if (patchParameters.checkLayerConnectedClusters) {
                 if (clientParameters.tileClusterJson == null) {
@@ -120,9 +122,31 @@ public class MFOVMontageMatchPatchClient
         final MFOVMontageMatchPatchParameters patchParameters = pipelineParameters.getMfovMontagePatch();
         AlignmentPipelineParameters.validateRequiredElementExists("mfovMontagePatch",
                                                                   patchParameters);
+        validatePatchParameters(patchParameters);
         if (patchParameters.checkLayerConnectedClusters) {
             AlignmentPipelineParameters.validateRequiredElementExists("tileCluster",
                                                                       pipelineParameters.getTileCluster());
+        }
+    }
+
+    /**
+     * Validates patch parameter combinations that cannot work for a Spark job.
+     *
+     * @throws IllegalArgumentException
+     *   if the specified parameters are inconsistent.
+     */
+    private static void validatePatchParameters(final MFOVMontageMatchPatchParameters patchParameters)
+            throws IllegalArgumentException {
+
+        // The second pass exists to patch pairs left unconnected by the first pass, so it needs to see the
+        // first pass results.  Derivation always reads existing matches from the source collection, so
+        // storing the first pass results in a different collection would leave the second pass with
+        // nothing to build upon and it would simply overwrite the first pass results at a lower weight.
+        if ((patchParameters.secondPassDerivedMatchWeight != null) &&
+            (patchParameters.matchStorageCollection != null)) {
+            throw new IllegalArgumentException(
+                    "matchStorageCollection cannot be combined with secondPassDerivedMatchWeight because " +
+                    "the second pass reads first pass matches from the source collection");
         }
     }
 
@@ -273,7 +297,7 @@ public class MFOVMontageMatchPatchClient
                         javaPatchClient.deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
                                                                                        stackMFOVWithZ,
                                                                                        matchCollectionId,
-                                                                                       matchCollectionId.getName());
+                                                                                       patchParameters.getMatchStorageCollectionName(matchCollectionId));
             }
 
             return numberOfDerivedMatchPairs;
