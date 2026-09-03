@@ -111,25 +111,31 @@ public class UnconnectedMontageMFOVClient {
 
         for (final StackWithZValues stackWithZ : stackWithZList) {
             findIsolatedMFOVsInStack(stackWithZ,
-                                     parameters.multiProject.deriveMatchCollectionNamesFromProject,
+                                     parameters.multiProject.getMatchCollectionIdForStack(stackWithZ.getStackId()),
                                      renderDataClient,
                                      parameters.addIsolatedEdgeLabel,
                                      parameters.getStartPositionMatchWeight());
         }
     }
 
+    /**
+     * Finds (and optionally patches) isolated MFOVs in the specified stack.
+     *
+     * @param  matchCollectionId  collection from which existing matches are read and to which any derived
+     *                            matches are saved.  Callers with {@link MultiProjectParameters} should build
+     *                            this with {@link MultiProjectParameters#getMatchCollectionIdForStack} so that
+     *                            explicit and derived collection names are both honored.
+     */
     public static IsolatedMfovsForStack findIsolatedMFOVsInStack(final StackWithZValues stackWithZ,
-                                                                 final boolean deriveMatchCollectionNamesFromProject,
+                                                                 final MatchCollectionId matchCollectionId,
                                                                  final RenderDataClient renderDataClient,
                                                                  final boolean addIsolatedEdgeLabel,
                                                                  final Double startPositionMatchWeight)
             throws IOException {
 
-        LOG.info("findIsolatedMFOVsInStack: entry, {}", stackWithZ);
+        LOG.info("findIsolatedMFOVsInStack: entry, {}, matchCollectionId={}", stackWithZ, matchCollectionId);
 
         final StackId renderStackId = stackWithZ.getStackId();
-        final MatchCollectionId matchCollectionId =
-                renderStackId.getDefaultMatchCollectionId(deriveMatchCollectionNamesFromProject);
         final RenderDataClient matchClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
                                                                           matchCollectionId.getName());
 

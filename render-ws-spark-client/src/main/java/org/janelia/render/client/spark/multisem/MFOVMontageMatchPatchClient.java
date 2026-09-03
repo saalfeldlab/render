@@ -138,15 +138,26 @@ public class MFOVMontageMatchPatchClient
     private static void validatePatchParameters(final MFOVMontageMatchPatchParameters patchParameters)
             throws IllegalArgumentException {
 
-        // The second pass exists to patch pairs left unconnected by the first pass, so it needs to see the
-        // first pass results.  Derivation always reads existing matches from the source collection, so
-        // storing the first pass results in a different collection would leave the second pass with
-        // nothing to build upon and it would simply overwrite the first pass results at a lower weight.
-        if ((patchParameters.secondPassDerivedMatchWeight != null) &&
-            (patchParameters.matchStorageCollection != null)) {
-            throw new IllegalArgumentException(
-                    "matchStorageCollection cannot be combined with secondPassDerivedMatchWeight because " +
-                    "the second pass reads first pass matches from the source collection");
+        if (patchParameters.matchStorageCollection != null) {
+
+            // The second pass exists to patch pairs left unconnected by the first pass, so it needs to see the
+            // first pass results.  Derivation always reads existing matches from the source collection, so
+            // storing the first pass results in a different collection would leave the second pass with
+            // nothing to build upon and it would simply overwrite the first pass results at a lower weight.
+            if (patchParameters.secondPassDerivedMatchWeight != null) {
+                throw new IllegalArgumentException(
+                        "matchStorageCollection cannot be combined with secondPassDerivedMatchWeight because " +
+                        "the second pass reads first pass matches from the source collection");
+            }
+
+            // Resin MFOV patching reads and writes through one collection, so it cannot honor a separate
+            // storage collection.  Rejecting the combination avoids silently scattering the derived matches
+            // for one run across two collections.
+            if (patchParameters.getResinMfovStartPositionMatchWeight() != null) {
+                throw new IllegalArgumentException(
+                        "matchStorageCollection cannot be combined with resinMfovStartPositionMatchWeight " +
+                        "because resin MFOV patching saves to the source collection");
+            }
         }
     }
 
@@ -232,7 +243,7 @@ public class MFOVMontageMatchPatchClient
                     new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
 
             findIsolatedMFOVsInStack(stackWithZValues,
-                                     false,
+                                     multiProjectParameters.getMatchCollectionIdForStack(stackId),
                                      renderDataClient,
                                      patchParameters.addIsolatedEdgeLabel,
                                      patchParameters.getResinMfovStartPositionMatchWeight());
