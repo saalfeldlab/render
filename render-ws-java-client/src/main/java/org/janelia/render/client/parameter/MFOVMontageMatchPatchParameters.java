@@ -82,12 +82,6 @@ public class MFOVMontageMatchPatchParameters
     public String qMagcMfovSfovPrefix;
 
     @Parameter(
-            names = "--matchStorageFile",
-            description = "File to store matches (omit if matches should be stored through web service)"
-    )
-    public String matchStorageFile;
-
-    @Parameter(
             names = "--numberOfMFOVsPerBatch",
             description = "Number of MFOVs to process in each batch")
     public int numberOfMFOVsPerBatch = 1;
@@ -162,7 +156,6 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.xyNeighborFactor = this.xyNeighborFactor;
         clonedParameters.pTileId = this.pTileId;
         clonedParameters.qTileId = this.qTileId;
-        clonedParameters.matchStorageFile = this.matchStorageFile;
         clonedParameters.trimMfovsWithNoConnectedTiles = this.trimMfovsWithNoConnectedTiles;
         clonedParameters.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates = this.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates;
         clonedParameters.crossMfovStartPositionMatchWeight = this.crossMfovStartPositionMatchWeight;
@@ -302,10 +295,6 @@ public class MFOVMontageMatchPatchParameters
         } else {
             pMagcMfovSfovPrefix = multiFieldOfViewId;
             qMagcMfovSfovPrefix = multiFieldOfViewId;
-        }
-
-        if (matchStorageFile != null) {
-            MultiSemUtilities.validateMatchStorageLocation(matchStorageFile);
         }
     }
 

@@ -1,8 +1,6 @@
 package org.janelia.render.client.multisem;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,7 +22,6 @@ import org.janelia.alignment.spec.TileBoundsRTree;
 import org.janelia.alignment.spec.TileSpec;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
-import org.janelia.alignment.util.FileUtil;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.parameter.CommandLineParameters;
@@ -225,7 +222,6 @@ public class MFOVMontageMatchPatchClient {
         }
 
         final int numberOfDerivedMatchPairs = saveDerivedMatches(derivedMatchesForMFOV,
-                                                                 patch.matchStorageFile,
                                                                  matchClient,
                                                                  matchCollectionId,
                                                                  matchStorageCollectionName,
@@ -297,7 +293,6 @@ public class MFOVMontageMatchPatchClient {
         }
 
         final int numberOfDerivedMatchPairs = saveDerivedMatches(derivedMatches,
-                                                                 patch.matchStorageFile,
                                                                  matchClient,
                                                                  matchCollectionId,
                                                                  matchStorageCollectionName,
@@ -358,7 +353,6 @@ public class MFOVMontageMatchPatchClient {
 
     /** @return the number of pairs saved. */
     private static int saveDerivedMatches(final List<CanvasMatches> derivedMatches,
-                                          final String matchStorageFile,
                                           final RenderDataClient matchClient,
                                           final MatchCollectionId matchCollectionId,
                                           final String matchStorageCollectionName,
@@ -373,14 +367,9 @@ public class MFOVMontageMatchPatchClient {
             LOG.info("saveDerivedMatches: saving matches for {} pairs in {}, first save pair is {}",
                      numberOfDerivedMatchPairs, context, firstPairKey);
 
-            if (matchStorageFile != null) {
-                final Path storagePath = Paths.get(matchStorageFile).toAbsolutePath();
-                FileUtil.saveJsonFile(storagePath.toString(), derivedMatches);
-            } else {
-                final RenderDataClient matchStorageClient = matchClient.buildClient(matchCollectionId.getOwner(),
-                                                                                    matchStorageCollectionName);
-                matchStorageClient.saveMatches(derivedMatches);
-            }
+            final RenderDataClient matchStorageClient = matchClient.buildClient(matchCollectionId.getOwner(),
+                                                                                matchStorageCollectionName);
+            matchStorageClient.saveMatches(derivedMatches);
 
         } else {
             LOG.info("saveDerivedMatches: no pairs have matches in {} so there is nothing to save", context);
