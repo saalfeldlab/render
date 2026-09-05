@@ -46,12 +46,9 @@ import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.util.ImageProcessorCache;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.spark.LogUtilities;
-import org.slf4j.ILoggerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.LoggerContext;
+import org.slf4j.event.Level;
 
 /**
  * Serializable task for aligning SFOVs within a single MFOV.
@@ -133,26 +130,8 @@ public class MfovPrealignTask implements Serializable {
                 MatchFilter.class.getName()
         };
 
-        final ILoggerFactory factory = LoggerFactory.getILoggerFactory();
         for (final String loggerName : reducedLoggerNames) {
-
-            if (factory instanceof LoggerContext) {
-
-                // Janelia Spark clusters use logback
-                final LoggerContext loggerContext = (LoggerContext) LoggerFactory.getILoggerFactory();
-                final ch.qos.logback.classic.Logger logger = loggerContext.getLogger(loggerName);
-                if (logger == null) {
-                    throw new IllegalArgumentException("logger with name '" + loggerName + "' not found");
-                }
-                logger.setLevel(Level.WARN);
-
-            } else if ("org.apache.logging.slf4j.Log4jLoggerFactory".equals(factory.getClass().getName())) {
-
-                // Google Dataproc Spark clusters use Log4j
-                org.apache.logging.log4j.core.config.Configurator.setLevel(loggerName,
-                                                                           org.apache.logging.log4j.Level.WARN);
-
-            }
+            LogUtilities.setLogLevel(loggerName, Level.WARN);
         }
 
         // Setup executor log4j for runs at Janelia which will place layerMfovDevString in the %X{context} element.

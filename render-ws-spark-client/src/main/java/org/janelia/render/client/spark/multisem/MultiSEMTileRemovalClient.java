@@ -15,7 +15,6 @@ import java.util.stream.Collectors;
 
 import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.alignment.spec.stack.StackId;
-import org.janelia.alignment.util.LogbackTestTools;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
 import org.janelia.render.client.multisem.PeakScanData;
@@ -24,13 +23,13 @@ import org.janelia.render.client.parameter.MultiProjectParameters;
 import org.janelia.render.client.parameter.MultiSEMTileRemovalParameters;
 import org.janelia.render.client.parameter.StackWithRemovalParameters;
 import org.janelia.render.client.parameter.TileRemovalSetup;
+import org.janelia.render.client.spark.LogUtilities;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineParameters;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import ch.qos.logback.classic.Level;
+import org.slf4j.event.Level;
 
 /**
  * Client for removing tiles from multi-SEM stacks.
@@ -150,8 +149,8 @@ public class MultiSEMTileRemovalClient
 
         // reduce RenderDataClient logging while removing tiles
         final String rdcLoggerName = RenderDataClient.class.getName();
-        final Level originalLoggerLevel = LogbackTestTools.getLogLevel(rdcLoggerName);
-        LogbackTestTools.setLogLevel(rdcLoggerName, Level.WARN);
+        final Level originalLoggerLevel = LogUtilities.getLogLevel(rdcLoggerName);
+        LogUtilities.setLogLevel(rdcLoggerName, Level.WARN);
 
         try {
 
@@ -165,7 +164,7 @@ public class MultiSEMTileRemovalClient
 
         } finally {
             // restore logging even when removal fails so that later work is not left quiet
-            LogbackTestTools.setLogLevel(rdcLoggerName, originalLoggerLevel);
+            LogUtilities.setLogLevel(rdcLoggerName, originalLoggerLevel);
         }
 
         LOG.info("removeTiles: exit");
