@@ -5,6 +5,7 @@ import com.beust.jcommander.ParametersDelegate;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -68,32 +69,32 @@ public class MultiSEMTileRemovalClient
                 LOG.info("runClient: entry, parameters={}", parameters);
 
                 final MultiProjectParameters multiProject = parameters.multiProject;
-                final TileRemovalSetup tileRemovalSetup;
+
+                List<StackWithRemovalParameters> stackWithRemovalList = Collections.emptyList();
 
                 if (parameters.peakScanJson == null) {
 
                     parameters.tileRemoval.validate();
 
                     // apply the same removal parameters to each stack identified by the multiProject parameters
-                    final List<StackWithRemovalParameters> stackWithRemovalList =
+                    stackWithRemovalList =
                             multiProject.stackIdWithZ.getStackIdList(multiProject.getDataClient()).stream()
                                     .map(stackId -> new StackWithRemovalParameters(stackId, parameters.tileRemoval))
                                     .collect(Collectors.toList());
 
-                    tileRemovalSetup = new TileRemovalSetup(null, stackWithRemovalList);
-
-                } else {
-
-                    tileRemovalSetup = new TileRemovalSetup(parameters.peakScanJson, null);
-
+                    // fail fast for parameters that match no stacks
+                    if (stackWithRemovalList.isEmpty()) {
+                        throw new IllegalArgumentException("no stacks match parameters: " +
+                                                           multiProject.stackIdWithZ);
+                    }
                 }
-
-                // fail fast for an empty peakScanJson value or for parameters that match no stacks
-                tileRemovalSetup.validate();
 
                 // NOTE: no spark context is needed here because all removal is run on the driver
                 final MultiSEMTileRemovalClient client = new MultiSEMTileRemovalClient();
-                client.removeTiles(multiProject.getBaseDataUrl(), tileRemovalSetup);
+                client.removeTiles(multiProject.getBaseDataUrl(),
+                                   multiProject.owner,
+                                   parameters.peakScanJson,
+                                   stackWithRemovalList);
             }
         };
         clientRunner.run();
@@ -122,8 +123,12 @@ public class MultiSEMTileRemovalClient
                                 final AlignmentPipelineParameters pipelineParameters)
             throws IllegalArgumentException, IOException {
 
+        final TileRemovalSetup tileRemovalSetup = pipelineParameters.getTileRemoval();
+
         removeTiles(pipelineParameters.getMultiProject(null).getBaseDataUrl(),
-                    pipelineParameters.getTileRemoval());
+                    tileRemovalSetup.getOwner(),
+                    tileRemovalSetup.getPeakScanJson(),
+                    tileRemovalSetup.getStackList());
     }
 
     @Override
@@ -132,35 +137,45 @@ public class MultiSEMTileRemovalClient
     }
 
     public void removeTiles(final String baseDataUrl,
-                            final TileRemovalSetup tileRemovalSetup)
+                            final String owner,
+                            final String peakScanJson,
+                            final List<StackWithRemovalParameters> stackWithRemovalList)
             throws IOException {
 
-        LOG.info("removeTiles: entry, tileRemovalSetup={}", tileRemovalSetup);
+        LOG.info("removeTiles: entry, owner={}, peakScanJson={}, stackWithRemovalList has {} stack(s)",
+                 owner, peakScanJson, stackWithRemovalList.size());
 
-        if (tileRemovalSetup.hasPeakScanJson()) {
-            removeScansAfterPeak(baseDataUrl, tileRemovalSetup.getPeakScanJson());
+        if ((peakScanJson != null) && (! peakScanJson.trim().isEmpty())) {
+            removeScansAfterPeak(baseDataUrl, owner, peakScanJson);
         }
 
-        if (tileRemovalSetup.hasStackList()) {
-            removeTilesForStackList(baseDataUrl, tileRemovalSetup.getStackList());
+        if (! stackWithRemovalList.isEmpty()) {
+            removeTilesForStackList(baseDataUrl, stackWithRemovalList);
         }
 
         LOG.info("removeTiles: exit");
     }
 
     /**
-     * Removes all layers for scans after the peak scan from every stack
-     * associated with a slab in the specified peak scan data.
+     * Removes all layers for scans after the peak scan from every stack of the specified owner
+     * that is associated with a slab in the specified peak scan data.
+     *
+     * @throws IllegalArgumentException
+     *   if the owner is not defined.
      *
      * @throws IOException
      *   if the peak scan data cannot be read or if any request fails.
      */
     private void removeScansAfterPeak(final String baseDataUrl,
+                                      final String owner,
                                       final String peakScanJson)
-            throws IOException {
+            throws IllegalArgumentException, IOException {
+
+        if ((owner == null) || owner.trim().isEmpty()) {
+            throw new IllegalArgumentException("owner must be defined to remove scans after peak");
+        }
 
         final PeakScanData peakScanData = PeakScanData.fromJson(peakScanJson);
-        final String owner = peakScanData.getOwner();
         final Set<String> peakScanProjects = peakScanData.getProjectNames();
 
         final org.janelia.render.client.multisem.MultiSEMTileRemovalClient javaClient =
