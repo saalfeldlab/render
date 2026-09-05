@@ -15,11 +15,12 @@ import java.util.stream.Collectors;
 
 import org.apache.spark.api.java.JavaSparkContext;
 import org.janelia.alignment.spec.stack.StackId;
+import org.janelia.alignment.util.LogbackTestTools;
 import org.janelia.render.client.ClientRunner;
 import org.janelia.render.client.RenderDataClient;
+import org.janelia.render.client.multisem.PeakScanData;
 import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.MultiProjectParameters;
-import org.janelia.render.client.multisem.PeakScanData;
 import org.janelia.render.client.parameter.MultiSEMTileRemovalParameters;
 import org.janelia.render.client.parameter.StackWithRemovalParameters;
 import org.janelia.render.client.parameter.TileRemovalSetup;
@@ -28,6 +29,8 @@ import org.janelia.render.client.spark.pipeline.AlignmentPipelineStep;
 import org.janelia.render.client.spark.pipeline.AlignmentPipelineStepId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import ch.qos.logback.classic.Level;
 
 /**
  * Client for removing tiles from multi-SEM stacks.
@@ -145,6 +148,11 @@ public class MultiSEMTileRemovalClient
         LOG.info("removeTiles: entry, owner={}, peakScanJson={}, stackWithRemovalList has {} stack(s)",
                  owner, peakScanJson, stackWithRemovalList.size());
 
+        // reduce RenderDataClient logging while removing tiles
+        final String rdcLoggerName = RenderDataClient.class.getName();
+        final Level originalLoggerLevel = LogbackTestTools.getLogLevel(rdcLoggerName);
+        LogbackTestTools.setLogLevel(rdcLoggerName, Level.WARN);
+
         if ((peakScanJson != null) && (! peakScanJson.trim().isEmpty())) {
             removeScansAfterPeak(baseDataUrl, owner, peakScanJson);
         }
@@ -152,6 +160,8 @@ public class MultiSEMTileRemovalClient
         if (! stackWithRemovalList.isEmpty()) {
             removeTilesForStackList(baseDataUrl, stackWithRemovalList);
         }
+
+        LogbackTestTools.setLogLevel(rdcLoggerName, originalLoggerLevel);
 
         LOG.info("removeTiles: exit");
     }
