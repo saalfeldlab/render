@@ -7,6 +7,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -20,9 +22,12 @@ import org.apache.spark.SparkConf;
 import org.apache.spark.api.java.JavaRDD;
 import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.api.java.function.Function;
+import org.janelia.alignment.match.CanvasId;
+import org.janelia.alignment.match.CanvasMatches;
 import org.janelia.alignment.match.ConnectedTileClusterSummaryForStack;
 import org.janelia.alignment.match.MatchCollectionId;
 import org.janelia.alignment.match.parameters.MatchRunParameters;
+import org.janelia.alignment.match.stage.StageMatcher;
 import org.janelia.alignment.spec.Bounds;
 import org.janelia.alignment.spec.LeafTransformSpec;
 import org.janelia.alignment.spec.ResolvedTileSpecCollection;
@@ -366,16 +371,16 @@ public class LayerAsTileClient
                                                                   layerMatchRunList);
                 }
 
-                validateEachStackIsConnectedWithOneMatchCluster(baseDataUrl,
-                                                                projectStacks);
+                patchAndValidateEachStackIsConnectedWithOneMatchCluster(baseDataUrl,
+                                                                        projectStacks);
             }
         }
 
         LOG.info("generateLayerAsTileMatches: exit");
     }
 
-    private static void validateEachStackIsConnectedWithOneMatchCluster(final String baseDataUrl,
-                                                                        final List<StackWithZValues> projectStacks)
+    private static void patchAndValidateEachStackIsConnectedWithOneMatchCluster(final String baseDataUrl,
+                                                                                final List<StackWithZValues> projectStacks)
             throws IOException {
 
         final StringBuilder clusterCountErrors = new StringBuilder();
@@ -390,26 +395,28 @@ public class LayerAsTileClient
                                                                            stackId.getOwner(),
                                                                            stackId.getProject());
 
-            final ClusterCountClient.Parameters jcccp = new ClusterCountClient.Parameters();
-            jcccp.multiProject = MultiProjectParameters.singleStackInstance(baseDataUrl, stackId);
-            jcccp.tileCluster = new TileClusterParameters();
+            ConnectedTileClusterSummaryForStack summary = buildConnectedTileClusterSummary(stackWithZValues,
+                                                                                           matchCollectionId,
+                                                                                           renderDataClient);
 
-            final int zCount = stackWithZValues.getZCount();
-            jcccp.tileCluster.maxSmallClusterSize = 0;
-            jcccp.tileCluster.includeMatchesOutsideGroup = true;
-            jcccp.tileCluster.maxLayersPerBatch = zCount + 1;
-            jcccp.tileCluster.maxOverlapLayers = 6;
+            // Stacks left unconnected by standard matching are patched instead of being treated as an error.
+            // The summary is rebuilt afterward to confirm the patching produced one connected cluster.
+            if (summary.hasUnconnectedTiles() || summary.hasMultipleClusters()) {
 
-            final ClusterCountClient javaClusterCountClient = new ClusterCountClient(jcccp);
+                LOG.info("patchAndValidateEachStackIsConnectedWithOneMatchCluster: patching {}",
+                         summary);
 
-            final ConnectedTileClusterSummaryForStack summary;
-            try {
-                summary = javaClusterCountClient.findConnectedClustersForStack(stackWithZValues,
-                                                                               matchCollectionId,
-                                                                               renderDataClient,
-                                                                               jcccp.tileCluster);
-            } catch (final Exception e) {
-                throw new IOException(e);
+                final int patchedPairCount = patchLayerClusterBoundaries(stackWithZValues,
+                                                                         matchCollectionId,
+                                                                         renderDataClient);
+                if (patchedPairCount == 0) {
+                    throw new IOException("Patching failed to derive matches for any cluster boundary in " +
+                                          matchCollectionName + ".  " + summary.toDetailsString());
+                }
+
+                summary = buildConnectedTileClusterSummary(stackWithZValues,
+                                                           matchCollectionId,
+                                                           renderDataClient);
             }
 
             final String countErrorString = summary.buildCountErrorString(1,
@@ -424,6 +431,161 @@ public class LayerAsTileClient
         if (clusterCountErrors.length() > 0) {
             throw new IOException("The following match collections do not have one single cluster: " + clusterCountErrors);
         }
+    }
+
+    private static ConnectedTileClusterSummaryForStack buildConnectedTileClusterSummary(final StackWithZValues stackWithZValues,
+                                                                                        final MatchCollectionId matchCollectionId,
+                                                                                        final RenderDataClient renderDataClient)
+            throws IOException {
+
+        final ClusterCountClient.Parameters jcccp = new ClusterCountClient.Parameters();
+        jcccp.multiProject = MultiProjectParameters.singleStackInstance(renderDataClient.getBaseDataUrl(),
+                                                                        stackWithZValues.getStackId());
+        jcccp.tileCluster = new TileClusterParameters();
+
+        final int zCount = stackWithZValues.getZCount();
+        jcccp.tileCluster.maxSmallClusterSize = 0;
+        jcccp.tileCluster.includeMatchesOutsideGroup = true;
+        jcccp.tileCluster.maxLayersPerBatch = zCount + 1;
+        jcccp.tileCluster.maxOverlapLayers = 6;
+
+        final ClusterCountClient javaClusterCountClient = new ClusterCountClient(jcccp);
+
+        try {
+            return javaClusterCountClient.findConnectedClustersForStack(stackWithZValues,
+                                                                        matchCollectionId,
+                                                                        renderDataClient,
+                                                                        jcccp.tileCluster);
+        } catch (final Exception e) {
+            throw new IOException(e);
+        }
+    }
+
+    /**
+     * Connects the match clusters in the specified stack by deriving matches from the start positions of the
+     * layer tiles on either side of each cluster boundary.
+     * <br/><br/>
+     * Layer as tile stacks have one tile per z layer, so walking the layers in z order and only patching
+     * where the previous layer's cluster differs from the current layer's cluster bridges each boundary
+     * exactly once and leaves adjacent layers that are already connected (directly or through other layers)
+     * untouched.  A completely unconnected layer tile is its own cluster, so it gets bridged to the layers
+     * on both sides of it, while two otherwise connected clusters only get the one pair spanning the split.
+     *
+     * @return the number of tile pairs that had derived matches saved.
+     */
+    private static int patchLayerClusterBoundaries(final StackWithZValues stackWithZValues,
+                                                   final MatchCollectionId matchCollectionId,
+                                                   final RenderDataClient renderDataClient)
+            throws IOException {
+
+        final StackId stackId = stackWithZValues.getStackId();
+        final String stack = stackId.getStack();
+
+        LOG.info("patchLayerClusterBoundaries: entry, {}", stackId.toDevString());
+
+        // sort the layer tiles by z so that adjacent layers are neighbors in this list
+        final List<TileSpec> layerTileSpecs =
+                renderDataClient.getResolvedTilesForZRange(stack,
+                                                           stackWithZValues.getFirstZ(),
+                                                           stackWithZValues.getLastZ())
+                        .getTileSpecs().stream()
+                        .sorted(Comparator.comparing(TileSpec::getZ))
+                        .collect(Collectors.toList());
+
+        // Derive the clusters from every stored pair.  Looping over all pGroup ids covers each pair
+        // exactly once regardless of the p/q order the pair was stored with.
+        final Map<String, String> tileIdToClusterParent = new HashMap<>();
+        layerTileSpecs.forEach(ts -> tileIdToClusterParent.put(ts.getTileId(), ts.getTileId()));
+
+        final RenderDataClient matchClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
+                                                                          matchCollectionId.getName());
+        for (final String pGroupId : matchClient.getMatchPGroupIds()) {
+            for (final CanvasMatches pair : matchClient.getMatchesWithPGroupId(pGroupId, true)) {
+                // ignore pairs that reference tiles outside this stack
+                if (tileIdToClusterParent.containsKey(pair.getpId()) &&
+                    tileIdToClusterParent.containsKey(pair.getqId())) {
+                    joinClusters(tileIdToClusterParent, pair.getpId(), pair.getqId());
+                }
+            }
+        }
+
+        final List<CanvasMatches> derivedMatches = new ArrayList<>();
+
+        for (int i = 1; i < layerTileSpecs.size(); i++) {
+
+            final TileSpec pTileSpec = layerTileSpecs.get(i - 1);
+            final TileSpec qTileSpec = layerTileSpecs.get(i);
+
+            // joining returns false when both layers are already in the same cluster, so this both
+            // identifies the boundaries and records each bridge as it is derived
+            if (! joinClusters(tileIdToClusterParent, pTileSpec.getTileId(), qTileSpec.getTileId())) {
+                continue;
+            }
+
+            final CanvasId p = new CanvasId(pTileSpec.getSectionId(), pTileSpec.getTileId());
+            final CanvasId q = new CanvasId(qTileSpec.getSectionId(), qTileSpec.getTileId());
+
+            final CanvasMatches startPositionMatches =
+                    StageMatcher.generateStartPositionOverlapMatches(p,
+                                                                     pTileSpec.toTileBounds().toRectangle(),
+                                                                     q,
+                                                                     qTileSpec.toTileBounds().toRectangle(),
+                                                                     UNCONNECTED_LAYER_TILE_MATCH_WEIGHT);
+
+            if (startPositionMatches == null) {
+                // layer as tile specs all start at 0,0, so their bounds should always overlap
+                LOG.warn("patchLayerClusterBoundaries: z {} and z {} tiles in {} do not overlap, so no matches were derived",
+                         pTileSpec.getZ(), qTileSpec.getZ(), stackId.toDevString());
+            } else {
+                LOG.info("patchLayerClusterBoundaries: bridging cluster boundary between z {} and z {} in {}",
+                         pTileSpec.getZ(), qTileSpec.getZ(), stackId.toDevString());
+                derivedMatches.add(startPositionMatches);
+            }
+        }
+
+        if (! derivedMatches.isEmpty()) {
+            matchClient.saveMatches(derivedMatches);
+        }
+
+        LOG.info("patchLayerClusterBoundaries: exit, derived matches for {} cluster boundary pair(s) in {}",
+                 derivedMatches.size(), stackId.toDevString());
+
+        return derivedMatches.size();
+    }
+
+    /**
+     * Joins the clusters containing the two specified tiles.
+     *
+     * @return true if the tiles were in different clusters (and are now joined); false if they were
+     *         already in the same cluster.
+     */
+    private static boolean joinClusters(final Map<String, String> tileIdToClusterParent,
+                                        final String oneTileId,
+                                        final String anotherTileId) {
+        final String oneRoot = findClusterRoot(tileIdToClusterParent, oneTileId);
+        final String anotherRoot = findClusterRoot(tileIdToClusterParent, anotherTileId);
+        final boolean isJoinNeeded = ! oneRoot.equals(anotherRoot);
+        if (isJoinNeeded) {
+            tileIdToClusterParent.put(anotherRoot, oneRoot);
+        }
+        return isJoinNeeded;
+    }
+
+    /** @return the id of the tile at the root of the specified tile's cluster. */
+    private static String findClusterRoot(final Map<String, String> tileIdToClusterParent,
+                                          final String tileId) {
+        String root = tileId;
+        while (! root.equals(tileIdToClusterParent.get(root))) {
+            root = tileIdToClusterParent.get(root);
+        }
+        // point everything along the way at the root to keep later lookups short
+        String current = tileId;
+        while (! current.equals(root)) {
+            final String parent = tileIdToClusterParent.get(current);
+            tileIdToClusterParent.put(current, root);
+            current = parent;
+        }
+        return root;
     }
 
     private static void alignRenderedLayerAsTileStacks(final JavaSparkContext sparkContext,
@@ -701,4 +863,10 @@ public class LayerAsTileClient
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(LayerAsTileClient.class);
+
+    /**
+     * Weight for matches derived from the start positions of an unconnected layer tile and its adjacent
+     * layer tile(s).  Kept very small so that any standard matches are given precedence.
+     */
+    private static final double UNCONNECTED_LAYER_TILE_MATCH_WEIGHT = 0.001;
 }
