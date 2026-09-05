@@ -153,15 +153,20 @@ public class MultiSEMTileRemovalClient
         final Level originalLoggerLevel = LogbackTestTools.getLogLevel(rdcLoggerName);
         LogbackTestTools.setLogLevel(rdcLoggerName, Level.WARN);
 
-        if ((peakScanJson != null) && (! peakScanJson.trim().isEmpty())) {
-            removeScansAfterPeak(baseDataUrl, owner, peakScanJson);
-        }
+        try {
 
-        if (! stackWithRemovalList.isEmpty()) {
-            removeTilesForStackList(baseDataUrl, stackWithRemovalList);
-        }
+            if ((peakScanJson != null) && (! peakScanJson.trim().isEmpty())) {
+                removeScansAfterPeak(baseDataUrl, owner, peakScanJson);
+            }
 
-        LogbackTestTools.setLogLevel(rdcLoggerName, originalLoggerLevel);
+            if (! stackWithRemovalList.isEmpty()) {
+                removeTilesForStackList(baseDataUrl, stackWithRemovalList);
+            }
+
+        } finally {
+            // restore logging even when removal fails so that later work is not left quiet
+            LogbackTestTools.setLogLevel(rdcLoggerName, originalLoggerLevel);
+        }
 
         LOG.info("removeTiles: exit");
     }
