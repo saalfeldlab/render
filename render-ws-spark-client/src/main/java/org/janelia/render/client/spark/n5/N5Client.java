@@ -272,6 +272,12 @@ public class N5Client {
         final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
         final Bounds boundsForRun = parameters.getBoundsForRun(defaultBounds,
                                                                thicknessCorrectionData);
+        final int deltaZPlusOne = (int) Math.ceil(boundsForRun.getDeltaZ() + 1.0);
+        if (deltaZPlusOne < blockSize[2]) {
+            LOG.info("run: changing block z size from {} to {} so that it matches deltaZPlusOne",
+                     blockSize[2], deltaZPlusOne);
+            blockSize[2] = deltaZPlusOne;
+        }
 
         long[] min = {
                 boundsForRun.getMinX().longValue(),
