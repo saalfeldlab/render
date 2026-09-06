@@ -272,13 +272,6 @@ public class N5Client {
         final Bounds defaultBounds = stackMetaData.getStats().getStackBounds();
         final Bounds boundsForRun = parameters.getBoundsForRun(defaultBounds,
                                                                thicknessCorrectionData);
-        final int deltaZPlusOne = (int) Math.ceil(boundsForRun.getDeltaZ() + 1.0);
-        if (deltaZPlusOne < blockSize[2]) {
-            LOG.info("run: changing block z size from {} to {} so that it matches deltaZPlusOne",
-                     blockSize[2], deltaZPlusOne);
-            blockSize[2] = deltaZPlusOne;
-        }
-
         long[] min = {
                 boundsForRun.getMinX().longValue(),
                 boundsForRun.getMinY().longValue(),
@@ -300,6 +293,13 @@ public class N5Client {
             dimensions = new long[] { dimensions[0], dimensions[1] };
             blockSize = new int[] { blockSize[0], blockSize[1] };
             viewStackCommandOffsets = min[0] + "," + min[1];
+        } else {
+            final int stackZLayerCount = Double.valueOf(boundsForRun.getDeltaZ() + 1).intValue();
+            if (stackZLayerCount < blockSize[2]) {
+                LOG.info("run: changing block z size from {} to {} so that it matches the stack z layer count",
+                         blockSize[2], stackZLayerCount);
+                blockSize[2] = stackZLayerCount;
+            }
         }
 
         LOG.info("run: view stack command is n5_view.sh -i {} -d {} -o {}",
