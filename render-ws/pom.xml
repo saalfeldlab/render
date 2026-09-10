@@ -235,11 +235,21 @@
              It is important that this flapdoodle dependency (for testing) is
              listed after the swagger dependencies above.
              Swagger currently requires a newer version of commons-lang3 than flapdoodle.
+             TODO: determine if this constraint still exists after upgrading to flapdoodle 4.33.0
         -->
         <dependency>
             <groupId>de.flapdoodle.embed</groupId>
             <artifactId>de.flapdoodle.embed.mongo</artifactId>
-            <version>3.1.4</version> <!-- NOTE: versions 2.0+ depend upon java 8 -->
+            <!--
+                 NOTE: 4.x is needed for JDK 21.  The 3.x de.flapdoodle.embed.process picks its
+                 process id strategy with a switch over SourceVersion.latest() that only knows about
+                 RELEASE_9 through RELEASE_17, so anything newer falls back to the LEGACY reflection
+                 helper and floods the test output with NoSuchFieldException stack traces.
+                 4.x defaults that switch to Process.pid() instead.
+                 Note that 4.x replaces the MongodStarter API with the transitions API
+                 (see EmbeddedMongoDb).
+            -->
+            <version>4.33.0</version>
             <scope>test</scope>
             <exclusions>
                 <!-- filter out slf4j jar so that it does not conflict with jetty version -->
