@@ -19,9 +19,14 @@ import org.janelia.alignment.spec.stack.StackId;
 public class Layer {
 
 
+    /**
+     * @return w61_s071_r00_gc_icc_par_asoi_z002_scan005 for stack w61_s071_r00_gc_icc_par_asoi,
+     *         z 2, and scan name scan005.
+     */
     public static String toLayerAsTileName(final String stackName,
-                                           final int z) {
-        return String.format("%s_z%03d", stackName, z);
+                                           final int z,
+                                           final String scanName) {
+        return String.format("%s_z%03d_%s", stackName, z, scanName);
     }
 
     /**
@@ -59,6 +64,10 @@ public class Layer {
 
         final int numberOfTilesInZLayer = renderParameters.numberOfTileSpecs();
 
+        // all SFOVs in a z layer come from the same scan, so the first one identifies the layer's scan
+        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().get(0);
+        final String scanName = MultiSemUtilities.getScanStringForTileId(firstSfovTileSpec.getTileId());
+
         final double scaledImageWidth = Math.floor(renderParameters.width * renderScale);
         final double scaledImageHeight = Math.floor(renderParameters.height * renderScale);
         final double x = renderParameters.x * renderScale;
@@ -66,7 +75,7 @@ public class Layer {
 
         final TileSpec tileSpec = new TileSpec();
 
-        tileSpec.setTileId(toLayerAsTileName(stackId.getStack(), z.intValue()));
+        tileSpec.setTileId(toLayerAsTileName(stackId.getStack(), z.intValue(), scanName));
         tileSpec.setZ(z);
         tileSpec.setWidth(scaledImageWidth);
         tileSpec.setHeight(scaledImageHeight);
@@ -83,7 +92,6 @@ public class Layer {
         final String pngImageUrl = renderParametersUrl.replace("render-parameters", "png-image") +
                                    "&maxTileSpecsToRender=" + numberOfTilesInZLayer;
 
-        final TileSpec firstSfovTileSpec = renderParameters.getTileSpecs().get(0);
         final ImageAndMask firstSfovImageAndMask = firstSfovTileSpec.getFirstMipmapEntry().getValue();
         final ImageLoader.LoaderType firstSfovImageLoaderType = firstSfovImageAndMask.getImageLoaderType();
         ImageLoader.LoaderType loaderType = null;

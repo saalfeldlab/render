@@ -159,6 +159,63 @@ public class ResolvedTileSpecsWithMatchPairs
         this.matchPairs = normalizedMatchPairs;
     }
 
+    /**
+     * Remove any match pairs where the pTile and/or the qTile do not exist in this collection's resolvedTileSpecs.
+     */
+    public void removeMatchPairsThatReferenceTilesOutsideThisCollection() {
+
+        final Set<CanvasMatches> updatedMatchPairs = new HashSet<>(matchPairs.size());
+
+        for (final CanvasMatches pair : matchPairs) {
+            if (resolvedTileSpecs.hasTileSpec(pair.getpId()) &&
+                resolvedTileSpecs.hasTileSpec(pair.getqId())) {
+                updatedMatchPairs.add(pair);
+            }
+        }
+
+        // pairs from web service are not sorted, so sort here to make usage loops more intuitive
+        this.matchPairs = updatedMatchPairs.stream().sorted().collect(Collectors.toList());
+    }
+
+    /**
+     * Change all match points to world coordinates using tile min x and y as offset.
+     *
+     * @throws IllegalStateException
+     *   if any match pair identifies a tile spec that is missing from this collection.
+     */
+    public void changeMatchesToWorldCoordinates()
+            throws IllegalStateException {
+
+        for (final CanvasMatches pair : matchPairs) {
+
+            final TileSpec pTileSpec = resolvedTileSpecs.getTileSpec(pair.getpId());
+            final TileSpec qTileSpec = resolvedTileSpecs.getTileSpec(pair.getqId());
+
+            if ((pTileSpec != null) && (qTileSpec != null)) {
+
+                pair.getMatches().applyOffsets(pTileSpec.getMinX(),
+                                               pTileSpec.getMinY(),
+                                               qTileSpec.getMinX(),
+                                               qTileSpec.getMinY());
+
+            } else {
+
+                final StringBuilder sb = new StringBuilder();
+                if (qTileSpec == null) {
+                    if (pTileSpec == null) {
+                        sb.append("s ").append(pair.getpId()).append(" and ");
+                    }
+                    sb.append(" ").append(pair.getqId());
+                } else {
+                    sb.append(" ").append(pair.getpId());
+                }
+                throw new IllegalStateException("missing tile" + sb + " for match pair " + pair.toKeyString());
+
+            }
+        }
+
+    }
+
     public static ResolvedTileSpecsWithMatchPairs fromJson(final Reader json) {
         return JSON_HELPER.fromJson(json);
     }

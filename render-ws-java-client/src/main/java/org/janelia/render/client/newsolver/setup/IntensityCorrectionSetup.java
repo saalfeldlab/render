@@ -3,6 +3,10 @@ package org.janelia.render.client.newsolver.setup;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.Parameters;
 import com.beust.jcommander.ParametersDelegate;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import org.janelia.alignment.json.JsonUtils;
 import org.janelia.alignment.spec.stack.StackId;
 import org.janelia.alignment.spec.stack.StackWithZValues;
@@ -88,6 +92,52 @@ public class IntensityCorrectionSetup extends CommandLineParameters {
 		clone.targetStack.setValuesFromPipeline(sourceStackId, "_ic");
 
 		return clone;
+	}
+
+	/**
+	 * Builds a separate clone of this setup for each z layer in the specified stack so that
+	 * the layers can be corrected independently (and therefore concurrently).
+	 * <p>
+	 * This is only valid for 2D corrections without XY partitioning
+	 * (see {@link #is2DCorrectionWithoutXYPartitioning}) because layers in those runs
+	 * are not constrained by data in other layers or blocks.
+	 * <p>
+	 * Target stack completion is disabled in each clone so that each target stack can be completed
+	 * once after all of its layers have been saved.
+	 *
+	 * @param  baseDataUrl       base web service URL for data.
+	 * @param  stackWithZValues  identifies stack and z layers to correct.
+	 *
+	 * @return list with one clone of this setup for each z layer to correct.
+	 */
+	public List<IntensityCorrectionSetup> buildPipelineClonesForEachZ(final String baseDataUrl,
+																	  final StackWithZValues stackWithZValues) {
+
+		final List<IntensityCorrectionSetup> cloneList = new ArrayList<>();
+
+		for (final StackWithZValues stackWithOneZ : stackWithZValues.splitByZ()) {
+
+			final Double z = stackWithOneZ.getFirstZ();
+
+			if (isLayerInRange(z)) {
+				final IntensityCorrectionSetup clone = buildPipelineClone(baseDataUrl, stackWithOneZ);
+				clone.layerRange.minZ = z;
+				clone.layerRange.maxZ = z;
+				clone.targetStack.completeStack = false;
+				cloneList.add(clone);
+			}
+		}
+
+		return cloneList;
+	}
+
+	/**
+	 * @return true if the specified z is within this setup's configured layer range, otherwise false.
+	 */
+	private boolean isLayerInRange(final Double z) {
+		return (layerRange == null) ||
+			   (((layerRange.minZ == null) || (z >= layerRange.minZ)) &&
+				((layerRange.maxZ == null) || (z <= layerRange.maxZ)));
 	}
 
 	/** (Slowly) creates a clone of this setup by serializing it to and from JSON. */

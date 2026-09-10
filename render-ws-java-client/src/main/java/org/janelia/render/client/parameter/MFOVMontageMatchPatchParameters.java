@@ -26,7 +26,9 @@ public class MFOVMontageMatchPatchParameters
 
     @Parameter(
             names = "--matchStorageCollection",
-            description = "Collection for storage of derived matches (omit to store to source collection)")
+            description = "Collection for storage of derived matches (omit to store to source collection).  " +
+                          "Cannot be combined with secondPassDerivedMatchWeight since derivation always reads " +
+                          "existing matches from the source collection.")
     public String matchStorageCollection;
 
     @Parameter(
@@ -82,12 +84,6 @@ public class MFOVMontageMatchPatchParameters
     public String qMagcMfovSfovPrefix;
 
     @Parameter(
-            names = "--matchStorageFile",
-            description = "File to store matches (omit if matches should be stored through web service)"
-    )
-    public String matchStorageFile;
-
-    @Parameter(
             names = "--numberOfMFOVsPerBatch",
             description = "Number of MFOVs to process in each batch")
     public int numberOfMFOVsPerBatch = 1;
@@ -107,6 +103,16 @@ public class MFOVMontageMatchPatchParameters
                           "parameters if you want to patch all unconnected MFOV internal pairs with these stage locations.",
             arity = 0)
     public boolean patchUnconnectedPairsWithinAnMfovUsingStageCoordinates = false;
+
+    @Parameter(
+            names = "--crossMfovStartPositionMatchWeight",
+            description = "Weight (e.g. 0.00001) for matches derived from SFOV start positions for unconnected " +
+                          "same layer pairs in which the p and q tiles are in different MFOVs.  " +
+                          "Since this patching needs all tiles in a layer, it is distributed by z layer " +
+                          "instead of by MFOV, so its task size comes from the multiProject " +
+                          "zValuesPerBatch value instead of from numberOfMFOVsPerBatch.  " +
+                          "Omit (or specify a non-positive value) to skip cross MFOV derivation.")
+    public Double crossMfovStartPositionMatchWeight;
 
     @Parameter(
             names = "--addIsolatedEdgeLabel",
@@ -152,9 +158,9 @@ public class MFOVMontageMatchPatchParameters
         clonedParameters.xyNeighborFactor = this.xyNeighborFactor;
         clonedParameters.pTileId = this.pTileId;
         clonedParameters.qTileId = this.qTileId;
-        clonedParameters.matchStorageFile = this.matchStorageFile;
         clonedParameters.trimMfovsWithNoConnectedTiles = this.trimMfovsWithNoConnectedTiles;
         clonedParameters.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates = this.patchUnconnectedPairsWithinAnMfovUsingStageCoordinates;
+        clonedParameters.crossMfovStartPositionMatchWeight = this.crossMfovStartPositionMatchWeight;
         clonedParameters.addIsolatedEdgeLabel = this.addIsolatedEdgeLabel;
         clonedParameters.resinMfovStartPositionMatchWeight = this.resinMfovStartPositionMatchWeight;
         clonedParameters.checkLayerConnectedClusters = this.checkLayerConnectedClusters;
@@ -213,8 +219,45 @@ public class MFOVMontageMatchPatchParameters
         return trimMfovsWithNoConnectedTiles ? sourceStackName + "_trim" : null;
     }
 
+    /**
+     * @return the weight for matches derived from SFOV start positions
+     *         or null if start position derivation should be skipped
+     *         (non-positive weights are used to exclude cross MFOV pairs from patching).
+     */
+    public Double getResinMfovStartPositionMatchWeight() {
+        return ((resinMfovStartPositionMatchWeight != null) && (resinMfovStartPositionMatchWeight > 0.0)) ?
+               resinMfovStartPositionMatchWeight : null;
+    }
+
     public boolean isIsolatedMfovPatchingNeeded() {
-        return addIsolatedEdgeLabel || resinMfovStartPositionMatchWeight != null;
+        return addIsolatedEdgeLabel || (getResinMfovStartPositionMatchWeight() != null);
+    }
+
+    /**
+     * @return the weight for cross MFOV matches derived from SFOV start positions
+     *         or null if cross MFOV derivation should be skipped
+     *         (non-positive weights are used to exclude cross MFOV pairs from patching).
+     */
+    public Double getCrossMfovStartPositionMatchWeight() {
+        return ((crossMfovStartPositionMatchWeight != null) && (crossMfovStartPositionMatchWeight > 0.0)) ?
+               crossMfovStartPositionMatchWeight : null;
+    }
+
+    public boolean isCrossMfovPatchingNeeded() {
+        return getCrossMfovStartPositionMatchWeight() != null;
+    }
+
+    /**
+     * @return true if any patching of pairs within an MFOV is needed.
+     *         When false, the MFOV distributed passes derive nothing and can be skipped
+     *         (which is the normal case when only cross MFOV patching is requested).
+     */
+    public boolean isWithinMfovPatchingNeeded() {
+        return (sameLayerDerivedMatchWeight != null) ||
+               (crossLayerDerivedMatchWeight != null) ||
+               (secondPassDerivedMatchWeight != null) ||
+               (startPositionMatchWeight != null) ||
+               trimMfovsWithNoConnectedTiles;
     }
 
     public static MFOVMontageMatchPatchParameters fromJson(final Reader json) {
@@ -254,10 +297,6 @@ public class MFOVMontageMatchPatchParameters
         } else {
             pMagcMfovSfovPrefix = multiFieldOfViewId;
             qMagcMfovSfovPrefix = multiFieldOfViewId;
-        }
-
-        if (matchStorageFile != null) {
-            MultiSemUtilities.validateMatchStorageLocation(matchStorageFile);
         }
     }
 

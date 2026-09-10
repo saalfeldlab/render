@@ -117,6 +117,7 @@ public class TileBoundsRTreeTest {
                                                                                     false,
                                                                                     false,
                                                                                     false,
+                                                                                    false,
                                                                                     false);
 
         final Set<OrderedCanvasIdPair> expectedPairs = new TreeSet<>();
@@ -135,6 +136,7 @@ public class TileBoundsRTreeTest {
                                              neighborTrees,
                                              1.1,
                                              explicitRadius,
+                                             false,
                                              false,
                                              false,
                                              false,
@@ -168,6 +170,7 @@ public class TileBoundsRTreeTest {
                                                                                    false,
                                                                                    false,
                                                                                    false,
+                                                                                   false,
                                                                                    false);
 
         final Set<OrderedCanvasIdPair> expectedPairs = new TreeSet<>();
@@ -197,6 +200,7 @@ public class TileBoundsRTreeTest {
                                                  false,
                                                  false,
                                                  false,
+                                                 false,
                                                  false);
         int expectedNumberOfCombinations = tileBoundsList.size() - 1; // all tiles except the center
         Assert.assertEquals("incorrect number of combinations (with corner neighbors) in " + pairs,
@@ -206,6 +210,7 @@ public class TileBoundsRTreeTest {
         pairs = TileBoundsRTree.getDistinctPairs(centerTile,
                                                  tileBoundsList,
                                                  true,
+                                                 false,
                                                  false,
                                                  false,
                                                  true);
@@ -236,6 +241,7 @@ public class TileBoundsRTreeTest {
                                                  false,
                                                  false,
                                                  true,
+                                                 false,
                                                  false);
         Assert.assertEquals("incorrect number of combinations in " + pairs,
                             2, pairs.size());

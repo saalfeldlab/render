@@ -139,6 +139,19 @@ public class Matches implements Serializable {
         return matches;
     }
 
+    public void applyOffsets(final double pxOffset,
+                             final double pyOffset,
+                             final double qxOffset,
+                             final double qyOffset) {
+        // NOTE: point coordinates are stored by dimension, so p[0] holds all x values and p[1] holds all y values
+        for (int i = 0; i < w.length; ++i) {
+            p[0][i] += pxOffset;
+            p[1][i] += pyOffset;
+            q[0][i] += qxOffset;
+            q[1][i] += qyOffset;
+        }
+    }
+
     // NOTE: Convenience getter methods for derived data should be excluded from the JSON model - hence the JsonIgnore annotation.
     //       Newer Jackson versions (e.g. 2.9.6) fail to parse RealPoint with an IllegalArgumentException:
     //       Conflicting setter definitions for property "position": net.imglib2.RealPoint#setPosition(1 params) vs net.imglib2.RealPoint#setPosition(1 params)

@@ -57,10 +57,19 @@ public class UnconnectedMontageMFOVClient {
         @Parameter(
                 names = "--startPositionMatchWeight",
                 description = "Weight (e.g. 0.001) for matches derived from SFOV start positions.  " +
-                              "Specify to patch all unconnected pairs with positions based upon SFOV stage locations.  " +
-                              "Omit to skip start position derivation.")
+                              "Specify a positive value to patch all unconnected pairs with positions based upon " +
+                              "SFOV stage locations.  " +
+                              "Omit (or specify a non-positive value) to skip start position derivation.")
         public Double startPositionMatchWeight;
 
+        /**
+         * @return the start position match weight or null if derivation should be skipped
+         *         (non-positive weights are used to exclude cross MFOV pairs from patching).
+         */
+        public Double getStartPositionMatchWeight() {
+            return ((startPositionMatchWeight != null) && (startPositionMatchWeight > 0.0)) ?
+                   startPositionMatchWeight : null;
+        }
     }
 
     /** Label for tiles in MFOVs with isolated edges. */
@@ -102,25 +111,31 @@ public class UnconnectedMontageMFOVClient {
 
         for (final StackWithZValues stackWithZ : stackWithZList) {
             findIsolatedMFOVsInStack(stackWithZ,
-                                     parameters.multiProject.deriveMatchCollectionNamesFromProject,
+                                     parameters.multiProject.getMatchCollectionIdForStack(stackWithZ.getStackId()),
                                      renderDataClient,
                                      parameters.addIsolatedEdgeLabel,
-                                     parameters.startPositionMatchWeight);
+                                     parameters.getStartPositionMatchWeight());
         }
     }
 
+    /**
+     * Finds (and optionally patches) isolated MFOVs in the specified stack.
+     *
+     * @param  matchCollectionId  collection from which existing matches are read and to which any derived
+     *                            matches are saved.  Callers with {@link MultiProjectParameters} should build
+     *                            this with {@link MultiProjectParameters#getMatchCollectionIdForStack} so that
+     *                            explicit and derived collection names are both honored.
+     */
     public static IsolatedMfovsForStack findIsolatedMFOVsInStack(final StackWithZValues stackWithZ,
-                                                                 final boolean deriveMatchCollectionNamesFromProject,
+                                                                 final MatchCollectionId matchCollectionId,
                                                                  final RenderDataClient renderDataClient,
                                                                  final boolean addIsolatedEdgeLabel,
                                                                  final Double startPositionMatchWeight)
             throws IOException {
 
-        LOG.info("findIsolatedMFOVsInStack: entry, {}", stackWithZ);
+        LOG.info("findIsolatedMFOVsInStack: entry, {}, matchCollectionId={}", stackWithZ, matchCollectionId);
 
         final StackId renderStackId = stackWithZ.getStackId();
-        final MatchCollectionId matchCollectionId =
-                renderStackId.getDefaultMatchCollectionId(deriveMatchCollectionNamesFromProject);
         final RenderDataClient matchClient = renderDataClient.buildClient(matchCollectionId.getOwner(),
                                                                           matchCollectionId.getName());
 
@@ -338,10 +353,19 @@ public class UnconnectedMontageMFOVClient {
     public static List<OrderedCanvasIdPair> findPotentialSameLayerPairsWithDifferentMfovs(final String baseDataUrl,
                                                                                           final StackWithZValues stackWithZ)
             throws IOException {
+        return findPotentialSameLayerPairsWithDifferentMfovs(baseDataUrl,
+                                                             stackWithZ,
+                                                             DEFAULT_XY_NEIGHBOR_FACTOR);
+    }
+
+    public static List<OrderedCanvasIdPair> findPotentialSameLayerPairsWithDifferentMfovs(final String baseDataUrl,
+                                                                                          final StackWithZValues stackWithZ,
+                                                                                          final double xyNeighborFactor)
+            throws IOException {
 
         final TilePairDerivationParameters tpdp = new TilePairDerivationParameters();
 
-        tpdp.xyNeighborFactor = 0.6;
+        tpdp.xyNeighborFactor = xyNeighborFactor;
         tpdp.zNeighborDistance = 0;
         tpdp.excludeSameMfovNeighbors = true;
 
@@ -480,4 +504,7 @@ public class UnconnectedMontageMFOVClient {
     }
 
     private static final Logger LOG = LoggerFactory.getLogger(UnconnectedMontageMFOVClient.class);
+
+    /** Neighbor factor used for cross MFOV pair derivation when a caller does not specify one. */
+    private static final double DEFAULT_XY_NEIGHBOR_FACTOR = 0.6;
 }

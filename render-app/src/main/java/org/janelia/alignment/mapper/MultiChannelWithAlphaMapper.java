@@ -75,12 +75,14 @@ public class MultiChannelWithAlphaMapper
         ImageProcessorWithMasks normalizedSource;
         for (int i = 0; i < normalizedSourceList.size(); i++) {
             normalizedSource = normalizedSourceList.get(i);
+            final double clampedX = PixelMapper.clampInterpolationCoordinate(sourceX, sourceMaxXList[i]);
+            final double clampedY = PixelMapper.clampInterpolationCoordinate(sourceY, sourceMaxYList[i]);
             setBlendedIntensity(targetX,
                                 targetY,
                                 targetList.get(i),
                                 targetMaxMaskIntensityList.get(i),
-                                normalizedSource.ip.getPixelInterpolated(sourceX, sourceY),
-                                normalizedSource.mask.getPixelInterpolated(sourceX, sourceY),
+                                normalizedSource.ip.getPixelInterpolated(clampedX, clampedY),
+                                normalizedSource.mask.getPixelInterpolated(clampedX, clampedY),
                                 sourceMaxMaskIntensityList.get(i));
         }
     }

@@ -20,6 +20,10 @@ BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
 DUMP_PATTERN=""
 PATTERN_IS_ARG=false
 
+echo
+echo "Base dump directory is: ${BASE_DUMP_DIR}"
+echo
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --pattern)
@@ -174,7 +178,10 @@ for DUMP_DIR in "${SELECTED[@]}"; do
       done
     fi
 
+    echo
+    echo
     echo "restoring ${DUMP_FILE} ..."
+    echo
     # see https://www.mongodb.com/docs/database-tools/mongorestore/
     # notes: --dryRun option exists
     #        you can load into a different database and/or collection by specifying --db and --collection

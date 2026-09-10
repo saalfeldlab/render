@@ -35,7 +35,9 @@ import org.slf4j.LoggerFactory;
 import static org.janelia.render.client.multisem.UnconnectedMontageMFOVClient.findIsolatedMFOVsInStack;
 
 /**
- * Spark client for patching matches missing from adjacent SFOV tile pairs within the same MFOV and z layer.
+ * Spark client for patching matches missing from adjacent SFOV tile pairs within the same z layer.
+ * Pairs within the same MFOV are patched with work distributed by MFOV while pairs that span two MFOVs
+ * are patched with work distributed by z layer.
  * Core logic is implemented in {@link org.janelia.render.client.multisem.MFOVMontageMatchPatchClient}.
  *
  * @author Eric Trautman
@@ -91,6 +93,8 @@ public class MFOVMontageMatchPatchClient
             final MFOVMontageMatchPatchParameters patchParameters =
                     MFOVMontageMatchPatchParameters.fromJsonFile(clientParameters.matchPatchJson);
 
+            validatePatchParameters(patchParameters);
+
             TileClusterParameters tileClusterParameters = null;
             if (patchParameters.checkLayerConnectedClusters) {
                 if (clientParameters.tileClusterJson == null) {
@@ -104,6 +108,7 @@ public class MFOVMontageMatchPatchClient
             if (patchParameters.checkLayerConnectedClusters) {
                 checkLayerConnectedClusters(sparkContext,
                                             clientParameters.multiProject,
+                                            patchParameters,
                                             tileClusterParameters);
             }
 
@@ -117,9 +122,42 @@ public class MFOVMontageMatchPatchClient
         final MFOVMontageMatchPatchParameters patchParameters = pipelineParameters.getMfovMontagePatch();
         AlignmentPipelineParameters.validateRequiredElementExists("mfovMontagePatch",
                                                                   patchParameters);
+        validatePatchParameters(patchParameters);
         if (patchParameters.checkLayerConnectedClusters) {
             AlignmentPipelineParameters.validateRequiredElementExists("tileCluster",
                                                                       pipelineParameters.getTileCluster());
+        }
+    }
+
+    /**
+     * Validates patch parameter combinations that cannot work for a Spark job.
+     *
+     * @throws IllegalArgumentException
+     *   if the specified parameters are inconsistent.
+     */
+    private static void validatePatchParameters(final MFOVMontageMatchPatchParameters patchParameters)
+            throws IllegalArgumentException {
+
+        if (patchParameters.matchStorageCollection != null) {
+
+            // The second pass exists to patch pairs left unconnected by the first pass, so it needs to see the
+            // first pass results.  Derivation always reads existing matches from the source collection, so
+            // storing the first pass results in a different collection would leave the second pass with
+            // nothing to build upon and it would simply overwrite the first pass results at a lower weight.
+            if (patchParameters.secondPassDerivedMatchWeight != null) {
+                throw new IllegalArgumentException(
+                        "matchStorageCollection cannot be combined with secondPassDerivedMatchWeight because " +
+                        "the second pass reads first pass matches from the source collection");
+            }
+
+            // Resin MFOV patching reads and writes through one collection, so it cannot honor a separate
+            // storage collection.  Rejecting the combination avoids silently scattering the derived matches
+            // for one run across two collections.
+            if (patchParameters.getResinMfovStartPositionMatchWeight() != null) {
+                throw new IllegalArgumentException(
+                        "matchStorageCollection cannot be combined with resinMfovStartPositionMatchWeight " +
+                        "because resin MFOV patching saves to the source collection");
+            }
         }
     }
 
@@ -135,7 +173,10 @@ public class MFOVMontageMatchPatchClient
         patchMFOVs(sparkContext, multiProjectParameters, patchParameters);
 
         if (patchParameters.checkLayerConnectedClusters) {
-            checkLayerConnectedClusters(sparkContext, multiProjectParameters, pipelineParameters.getTileCluster());
+            checkLayerConnectedClusters(sparkContext,
+                                        multiProjectParameters,
+                                        patchParameters,
+                                        pipelineParameters.getTileCluster());
         }
     }
 
@@ -156,15 +197,25 @@ public class MFOVMontageMatchPatchClient
             patchIsolatedMFOVs(sparkContext, multiProjectParameters, patchParameters);
         }
 
-        patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
+        if (patchParameters.isWithinMfovPatchingNeeded()) {
 
-        // If second pass is requested, run it ...
-        // The intent of the second patch is to patch pairs that were not patched in first pass.
-        // Hopefully, patched data from the first pass will enable patching for all remaining unconnected pairs
-        // (typically with a significantly reduced weight).
-        if (patchParameters.secondPassDerivedMatchWeight != null) {
-            patchParameters.setWeightsForSecondPass();
-            patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 2);
+            patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 1);
+
+            // If second pass is requested, run it ...
+            // The intent of the second patch is to patch pairs that were not patched in first pass.
+            // Hopefully, patched data from the first pass will enable patching for all remaining unconnected pairs
+            // (typically with a significantly reduced weight).
+            if (patchParameters.secondPassDerivedMatchWeight != null) {
+                patchParameters.setWeightsForSecondPass();
+                patchPairsForPass(sparkContext, multiProjectParameters, patchParameters, 2);
+            }
+
+        } else {
+            LOG.info("patchMFOVs: skipping within MFOV passes since none of their weights were specified");
+        }
+
+        if (patchParameters.isCrossMfovPatchingNeeded()) {
+            patchCrossMfovPairs(sparkContext, multiProjectParameters, patchParameters);
         }
 
         LOG.info("patchMFOVs: exit");
@@ -192,10 +243,10 @@ public class MFOVMontageMatchPatchClient
                     new RenderDataClient(baseDataUrl, stackId.getOwner(), stackId.getProject());
 
             findIsolatedMFOVsInStack(stackWithZValues,
-                                     false,
+                                     multiProjectParameters.getMatchCollectionIdForStack(stackId),
                                      renderDataClient,
                                      patchParameters.addIsolatedEdgeLabel,
-                                     patchParameters.resinMfovStartPositionMatchWeight);
+                                     patchParameters.getResinMfovStartPositionMatchWeight());
             return null;
         };
 
@@ -257,7 +308,7 @@ public class MFOVMontageMatchPatchClient
                         javaPatchClient.deriveAndSaveMatchesForUnconnectedPairsInStack(defaultDataClient,
                                                                                        stackMFOVWithZ,
                                                                                        matchCollectionId,
-                                                                                       matchCollectionId.getName());
+                                                                                       patchParameters.getMatchStorageCollectionName(matchCollectionId));
             }
 
             return numberOfDerivedMatchPairs;
@@ -274,6 +325,62 @@ public class MFOVMontageMatchPatchClient
 
         LOG.info("patchPairsForPass: {}, exit, derived matches for {} tile pairs",
                  passName, numberOfDerivedMatchPairs);
+    }
+
+    /**
+     * Patches unconnected same layer pairs whose p and q tiles are in different MFOVs.
+     * <br/><br/>
+     * Adjacent MFOVs are only known once all tiles in a layer are loaded, so this work is distributed by
+     * z layer instead of by MFOV like {@link #patchPairsForPass}.
+     * Task size therefore comes from the multiProject
+     * {@link org.janelia.render.client.parameter.StackIdWithZParameters#zValuesPerBatch} value
+     * instead of from
+     * {@link org.janelia.render.client.parameter.MFOVMontageMatchPatchParameters#numberOfMFOVsPerBatch}.
+     */
+    private void patchCrossMfovPairs(final JavaSparkContext sparkContext,
+                                     final MultiProjectParameters multiProjectParameters,
+                                     final MFOVMontageMatchPatchParameters patchParameters)
+            throws IOException {
+
+        LOG.info("patchCrossMfovPairs: entry");
+
+        final String baseDataUrl = multiProjectParameters.getBaseDataUrl();
+        final List<StackWithZValues> batchedStackWithZValuesList =
+                multiProjectParameters.buildListOfStackWithBatchedZ();
+
+        LOG.info("patchCrossMfovPairs: distributing tasks for {} batches of z layers",
+                 batchedStackWithZValuesList.size());
+
+        final JavaRDD<StackWithZValues> rddStackWithZValues =
+                sparkContext.parallelize(batchedStackWithZValuesList);
+
+        final Function<StackWithZValues, Integer> patchFunction = stackWithZValues -> {
+
+            LogUtilities.setupExecutorLog4j(stackWithZValues.toString());
+
+            final StackId stackId = stackWithZValues.getStackId();
+            final RenderDataClient defaultDataClient = new RenderDataClient(baseDataUrl,
+                                                                            stackId.getOwner(),
+                                                                            stackId.getProject());
+
+            final MatchCollectionId matchCollectionId =
+                    multiProjectParameters.getMatchCollectionIdForStack(stackId);
+
+            return org.janelia.render.client.multisem.MFOVMontageMatchPatchClient
+                    .deriveAndSaveCrossMfovMatchesForStack(defaultDataClient,
+                                                           stackWithZValues,
+                                                           matchCollectionId,
+                                                           patchParameters.getMatchStorageCollectionName(matchCollectionId),
+                                                           patchParameters);
+        };
+
+        final JavaRDD<Integer> rddPatch = rddStackWithZValues.map(patchFunction);
+        final long numberOfDerivedMatchPairs = rddPatch.collect().stream()
+                .mapToLong(Integer::longValue)
+                .reduce(0, Long::sum);
+
+        LOG.info("patchCrossMfovPairs: exit, derived matches for {} cross MFOV tile pairs",
+                 numberOfDerivedMatchPairs);
     }
 
     private void createTrimStacks(final MultiProjectParameters multiProject,
@@ -319,6 +426,7 @@ public class MFOVMontageMatchPatchClient
 
     private void checkLayerConnectedClusters(final JavaSparkContext sparkContext,
                                              final MultiProjectParameters multiProjectParameters,
+                                             final MFOVMontageMatchPatchParameters patchParameters,
                                              final TileClusterParameters tileClusterParameters)
             throws IOException {
 
@@ -331,7 +439,6 @@ public class MFOVMontageMatchPatchClient
         final List<ConnectedTileClusterSummaryForStack> connectedTileClusterSummaryForStacks =
                 clusterCountClient.findConnectedClusters(sparkContext, clientParameters);
 
-
         final List<String> stackErrors = new ArrayList<>();
 
         for (final ConnectedTileClusterSummaryForStack summary : connectedTileClusterSummaryForStacks) {
@@ -339,7 +446,26 @@ public class MFOVMontageMatchPatchClient
             final RenderDataClient renderDataClient =
                     multiProjectParameters.getDataClient().buildClient(stackId.getOwner(), stackId.getProject());
             final List<Double> zValues = renderDataClient.getStackZValues(stackId.getStack());
-            final String countErrorString = summary.buildCountErrorString(zValues.size(),
+
+            int expectedTileClusterCount = zValues.size();
+            if (! (patchParameters.isIsolatedMfovPatchingNeeded() || patchParameters.isCrossMfovPatchingNeeded())) {
+                // resin MFOV and cross MFOV patching derive the only cross MFOV matches
+                // (isolated edge labelling derives none),
+                // so without them the expected cluster count is the total number of layer MFOVs
+                expectedTileClusterCount = 0;
+                for (final Double z : zValues) {
+                    final List<String> sortedMFOVNames =
+                            MultiProjectParameters.getSortedMFOVNamesForOneLayer(renderDataClient,
+                                                                                 stackId.getStack(),
+                                                                                 z);
+                    expectedTileClusterCount += sortedMFOVNames.size();
+                }
+            }
+
+            LOG.info("checkLayerConnectedClusters: expectedTileClusterCount is {} for {}",
+                     expectedTileClusterCount, stackId.toDevString());
+
+            final String countErrorString = summary.buildCountErrorString(expectedTileClusterCount,
                                                                           0,
                                                                           0);
             if (! countErrorString.isEmpty()) {
