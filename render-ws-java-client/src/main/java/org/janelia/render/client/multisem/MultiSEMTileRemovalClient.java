@@ -103,6 +103,9 @@ public class MultiSEMTileRemovalClient {
         final Map<String, Double> scanNameToZMap = buildScanNameToZMap(dataClient, stack, stackZValues);
         logMissingScanNames(stack, tileRemoval, scanNameToZMap);
 
+        // reversed so that each affected layer's scan can be identified in logs and errors
+        final Map<Double, String> zToScanNameMap = buildZToScanNameMap(scanNameToZMap);
+
         // work out (and check) what should be removed before changing anything
         final List<Double> zValuesToRemove = getZValuesToRemove(stack, tileRemoval, stackZValues, scanNameToZMap);
         final List<Double> sortedRemainingZValues = stackZValues.stream()
@@ -112,7 +115,7 @@ public class MultiSEMTileRemovalClient {
 
         final Map<Double, Set<String>> zToMfovNamesMap = buildZToMfovNamesMap(tileRemoval, scanNameToZMap);
 
-        validateMfovNames(dataClient, stack, zToMfovNamesMap, zValuesToRemove);
+        validateMfovNames(dataClient, stack, zToMfovNamesMap, zValuesToRemove, zToScanNameMap);
 
         // leave the stack alone if everything requested has already been removed
         if (zValuesToRemove.isEmpty() && zToMfovNamesMap.isEmpty()) {
@@ -122,7 +125,7 @@ public class MultiSEMTileRemovalClient {
 
         dataClient.setStackState(stack, StackMetaData.StackState.LOADING);
 
-        removeLayers(dataClient, stack, zValuesToRemove, sortedRemainingZValues.size());
+        removeLayers(dataClient, stack, zValuesToRemove, zToScanNameMap, sortedRemainingZValues.size());
 
         if (! zToMfovNamesMap.isEmpty()) {
 
@@ -130,9 +133,10 @@ public class MultiSEMTileRemovalClient {
             for (final Double z : zToMfovNamesMap.keySet()) {
                 final Set<String> mfovNames = zToMfovNamesMap.get(z);
                 if (sortedRemainingZValues.contains(z)) {
-                    removedTileCount += removeMfovTilesForZ(dataClient, stack, z, mfovNames);
+                    removedTileCount += removeMfovTilesForZ(dataClient, stack, z, zToScanNameMap.get(z), mfovNames);
                 } else {
-                    LOG.warn("removeTiles: skipping MFOVs {} because z {} is not in {}", mfovNames, z, stack);
+                    LOG.warn("removeTiles: skipping MFOVs {} because {}, z {} is not in {}",
+                             mfovNames, zToScanNameMap.get(z), z, stack);
                 }
             }
 
@@ -202,7 +206,8 @@ public class MultiSEMTileRemovalClient {
 
             dataClient.setStackState(stack, StackMetaData.StackState.LOADING);
 
-            removeLayers(dataClient, stack, zValuesToRemove, (stackZValues.size() - zValuesToRemove.size()));
+            removeLayers(dataClient, stack, zValuesToRemove, buildZToScanNameMap(postPeakScanNameToZMap),
+                         (stackZValues.size() - zValuesToRemove.size()));
 
             dataClient.setStackState(stack, StackMetaData.StackState.COMPLETE);
 
@@ -358,24 +363,29 @@ public class MultiSEMTileRemovalClient {
      * Confirms that each MFOV requested for removal exists in its layer.
      * MFOVs in layers that are being completely removed are logged and skipped.
      *
+     * @param  zToScanNameMap  map of z values to scan names used to identify each layer's scan
+     *                         in logs and errors.
+     *
      * @throws IOException
      *   if a requested MFOV does not exist or if any request fails.
      */
     private void validateMfovNames(final RenderDataClient dataClient,
                                    final String stack,
                                    final Map<Double, Set<String>> zToMfovNamesMap,
-                                   final List<Double> zValuesToRemove)
+                                   final List<Double> zValuesToRemove,
+                                   final Map<Double, String> zToScanNameMap)
             throws IOException {
 
         for (final Map.Entry<Double, Set<String>> entry : zToMfovNamesMap.entrySet()) {
 
             final Double z = entry.getKey();
             final Set<String> mfovNames = entry.getValue();
+            final String scanName = zToScanNameMap.get(z);
 
             if (zValuesToRemove.contains(z)) {
 
-                LOG.warn("validateMfovNames: MFOVs {} do not need to be removed because all of z {} " +
-                         "is being removed from {}", mfovNames, z, stack);
+                LOG.warn("validateMfovNames: MFOVs {} do not need to be removed because all of {}, z {} " +
+                         "is being removed from {}", mfovNames, scanName, z, stack);
 
             } else {
 
@@ -385,16 +395,26 @@ public class MultiSEMTileRemovalClient {
 
                 for (final String mfovName : mfovNames) {
                     if (! layerMfovNames.contains(mfovName)) {
-                        throw new IOException("requested MFOV " + mfovName + " does not exist in z " + z +
-                                              " of " + stack);
+                        throw new IOException("requested MFOV " + mfovName + " does not exist in " + scanName +
+                                              ", z " + z + " of " + stack);
                     }
                 }
             }
         }
     }
 
+    /** @return map of z values to scan names for the specified scan name to z value map. */
+    private Map<Double, String> buildZToScanNameMap(final Map<String, Double> scanNameToZMap) {
+        final Map<Double, String> zToScanNameMap = new HashMap<>();
+        scanNameToZMap.forEach((scanName, z) -> zToScanNameMap.put(z, scanName));
+        return zToScanNameMap;
+    }
+
     /**
      * Removes all tiles in each of the specified layers.
+     *
+     * @param  zToScanNameMap  map of z values to scan names used to identify each removed layer's scan
+     *                         in the log.
      *
      * @throws IOException
      *   if any request fails.
@@ -402,11 +422,12 @@ public class MultiSEMTileRemovalClient {
     private void removeLayers(final RenderDataClient dataClient,
                               final String stack,
                               final List<Double> zValuesToRemove,
+                              final Map<Double, String> zToScanNameMap,
                               final int remainingLayerCount)
             throws IOException {
 
         for (final Double z : zValuesToRemove) {
-            LOG.info("removeLayers: removing z {} from {}", z, stack);
+            LOG.info("removeLayers: removing {}, z {} from {}", zToScanNameMap.get(z), z, stack);
             dataClient.deleteStack(stack, z);
         }
 
@@ -417,6 +438,8 @@ public class MultiSEMTileRemovalClient {
     /**
      * Removes all tiles for the specified MFOVs from one layer.
      *
+     * @param  scanName  name of the layer's scan (used to identify the layer in the log).
+     *
      * @return the number of tiles removed.
      *
      * @throws IOException
@@ -425,6 +448,7 @@ public class MultiSEMTileRemovalClient {
     private int removeMfovTilesForZ(final RenderDataClient dataClient,
                                     final String stack,
                                     final Double z,
+                                    final String scanName,
                                     final Set<String> mfovNames)
             throws IOException {
 
@@ -434,11 +458,11 @@ public class MultiSEMTileRemovalClient {
                 .collect(Collectors.toList());
 
         if (tileIdsToRemove.isEmpty()) {
-            LOG.warn("removeMfovTilesForZ: no tiles in z {} of {} are in MFOVs {}",
-                     z, stack, mfovNames);
+            LOG.warn("removeMfovTilesForZ: no tiles in {}, z {} of {} are in MFOVs {}",
+                     scanName, z, stack, mfovNames);
         } else {
-            LOG.info("removeMfovTilesForZ: removing {} tiles from z {} of {} for MFOVs {}",
-                     tileIdsToRemove.size(), z, stack, mfovNames);
+            LOG.info("removeMfovTilesForZ: removing {} tiles from {}, z {} of {} for MFOVs {}",
+                     tileIdsToRemove.size(), scanName, z, stack, mfovNames);
             for (final String tileId : tileIdsToRemove) {
                 dataClient.deleteStackTile(stack, tileId);
             }

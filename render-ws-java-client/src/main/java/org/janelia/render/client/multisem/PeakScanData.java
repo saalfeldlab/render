@@ -22,12 +22,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The last (peak) scan that should be kept for each slab in each project of one owner.
+ * The last (peak) scan that should be kept for each slab in each project.
+ * <p>
+ * The owner is not part of this data because it is defined by whatever references it
+ * (see {@link org.janelia.render.client.parameter.TileRemovalSetup}).
  * <p>
  * The JSON representation looks like:
  * <pre>
  * {
- *   "owner": "hess_wafers_60_61",
  *   "project_to_slab_peak_scan": {
  *     "w61_serial_070_to_079": {
  *       "w61_s070": 82,
@@ -42,25 +44,17 @@ import org.slf4j.LoggerFactory;
 public class PeakScanData
         implements Serializable {
 
-    private final String owner;
-
     @JsonProperty("project_to_slab_peak_scan")
     private final Map<String, Map<String, Integer>> projectToSlabPeakScan;
 
     // no-arg constructor needed for JSON deserialization
     @SuppressWarnings("unused")
     public PeakScanData() {
-        this(null, null);
+        this(null);
     }
 
-    public PeakScanData(final String owner,
-                        final Map<String, Map<String, Integer>> projectToSlabPeakScan) {
-        this.owner = owner;
+    public PeakScanData(final Map<String, Map<String, Integer>> projectToSlabPeakScan) {
         this.projectToSlabPeakScan = projectToSlabPeakScan;
-    }
-
-    public String getOwner() {
-        return owner;
     }
 
     public Set<String> getProjectNames() {
@@ -97,10 +91,6 @@ public class PeakScanData
     public void validate()
             throws IllegalArgumentException {
 
-        if ((owner == null) || owner.trim().isEmpty()) {
-            throw new IllegalArgumentException("owner must be defined");
-        }
-
         if (getProjectNames().isEmpty()) {
             throw new IllegalArgumentException("project_to_slab_peak_scan must contain at least one project");
         }
@@ -115,9 +105,7 @@ public class PeakScanData
 
     @Override
     public String toString() {
-        return "{owner='" + owner + '\'' +
-               ", projectToSlabPeakScan=" + projectToSlabPeakScan +
-               '}';
+        return "{projectToSlabPeakScan=" + projectToSlabPeakScan + '}';
     }
 
     /**
@@ -148,8 +136,8 @@ public class PeakScanData
             throw new IOException("invalid peak scan data in " + location + ": " + e.getMessage(), e);
         }
 
-        LOG.info("fromJson: exit, read {} project(s) for owner {} from {}",
-                 peakScanData.getProjectNames().size(), peakScanData.getOwner(), location);
+        LOG.info("fromJson: exit, read {} project(s) from {}",
+                 peakScanData.getProjectNames().size(), location);
 
         return peakScanData;
     }
