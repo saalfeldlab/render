@@ -51,6 +51,24 @@
                                     <resource>META-INF/json/org.janelia.saalfeldlab.n5.Compression$CompressionType</resource>
                                 </transformer>
 
+                                <!--
+                                    As of n5 4.x, compressions and codecs (block codecs, sharding, chunk grids, and
+                                    chunk key encodings) are also registered by name with @NameConfig.Name annotations
+                                    that get serialized into
+                                    META-INF/json/org.janelia.saalfeldlab.n5.serialization.NameConfig$Name files.
+
+                                    org.janelia.saalfeldlab:n5, org.janelia.saalfeldlab:n5-zarr, and
+                                    org.janelia:n5-zstandard each define a different set of names (e.g. n5 defines the
+                                    n5bytes and sharding_indexed codecs while n5-zarr defines the bytes codec and the
+                                    v2 chunk key encoding), so these need to be combined just like the
+                                    Compression$CompressionType resource above. Keeping only one of them leaves the
+                                    fat jar unable to resolve the other jars' codecs by name at runtime.
+                                -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer"
+                                             combine.children="append">
+                                    <resource>META-INF/json/org.janelia.saalfeldlab.n5.serialization.NameConfig$Name</resource>
+                                </transformer>
+
                                 <!-- copied these transformers from hot-knife pom.xml -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                                     <resource>META-INF/json/org.scijava.plugin.Plugin</resource>
@@ -71,6 +89,7 @@
                                         <exclude>LICENSE</exclude>
                                         <exclude>META-INF/*</exclude>
                                         <exclude>META-INF/services/**</exclude>
+                                        <exclude>META-INF/third-party-licenses/**</exclude> <!-- overlaps in cdm-core and httpservices -->
                                         <exclude>META-INF/versions/**</exclude>
                                     </excludes>
                                 </filter>
@@ -99,6 +118,13 @@
                                     <excludes>
                                         <exclude>*.json</exclude>
                                         <exclude>*.jq</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <!-- both the v1 and v2 AWS SDKs are on the class path -->
+                                    <artifact>com.amazonaws:aws-java-sdk-s3</artifact>
+                                    <excludes> <!-- will get pulled in from software.amazon.awssdk:sdk-core -->
+                                        <exclude>mime.types</exclude>
                                     </excludes>
                                 </filter>
                                 <!--
