@@ -34,19 +34,19 @@ public class TileSpecTest {
         final Map.Entry<Integer, ImageAndMask> firstMipMap = tileSpec.getFirstMipmapEntry();
         Assert.assertNotNull("first mipmap entry is null", firstMipMap);
         Assert.assertEquals("mipmap sorting failed, unexpected first entry returned",
-                            new Integer(0), firstMipMap.getKey());
+                            Integer.valueOf(0), firstMipMap.getKey());
 
-        final ChannelSpec channelSpec = tileSpec.getAllChannels().get(0);
+        final ChannelSpec channelSpec = tileSpec.getAllChannels().getFirst();
 
         Map.Entry<Integer, ImageAndMask> floorMipMap = channelSpec.getFloorMipmapEntry(3);
         Assert.assertNotNull("floor 3 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
-                            new Integer(3), floorMipMap.getKey());
+                            Integer.valueOf(3), floorMipMap.getKey());
 
         floorMipMap = channelSpec.getFloorMipmapEntry(4);
         Assert.assertNotNull("floor 4 mipmap entry is null", floorMipMap);
         Assert.assertEquals("invalid key for floor 3 mipmap entry",
-                            new Integer(3), floorMipMap.getKey());
+                            Integer.valueOf(3), floorMipMap.getKey());
 
         final FilterSpec filterSpec = channelSpec.getFilterSpec();
         Assert.assertNotNull("filterSpec is null", filterSpec);

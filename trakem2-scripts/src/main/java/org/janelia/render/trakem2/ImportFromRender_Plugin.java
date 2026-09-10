@@ -69,7 +69,7 @@ public class ImportFromRender_Plugin
             final List<Project> projectList = Project.getProjects();
 
             final boolean isNewProject = PluginArgument.NEW_PROJECT.equals(pluginArgument) ||
-                                         (projectList.size() == 0);
+                                         (projectList.isEmpty());
 
             final boolean isImportLayer = PluginArgument.IMPORT_LAYER.equals(pluginArgument);
 
@@ -102,7 +102,7 @@ public class ImportFromRender_Plugin
                     final LayerSet trakLayerSet;
                     final Display front = Display.getFront();
                     if (front == null) {
-                        trakProject = projectList.get(0);
+                        trakProject = projectList.getFirst();
                         trakLayerSet = trakProject.getRootLayerSet();
                     } else {
                         trakLayerSet = front.getLayerSet();
@@ -170,7 +170,7 @@ public class ImportFromRender_Plugin
             try {
                 final List<ChannelSpec> allChannelSpecs = importData.channels.isEmpty() ? tileSpec.getAllChannels() :
                     tileSpec.getChannels(importData.channels);
-                final ChannelSpec firstChannelSpec = allChannelSpecs.get(0);
+                final ChannelSpec firstChannelSpec = allChannelSpecs.getFirst();
                 final ImageAndMask imageAndMask = firstChannelSpec.getFirstMipmapEntry().getValue();
                 final String imageFilePath = imageAndMask.getImageFilePath();
 
@@ -255,7 +255,7 @@ public class ImportFromRender_Plugin
             Utils.log("\nWARNING: Check console window for details about tile conversion failures!\n");
         }
 
-        if (skippedMasksCsvData.length() > 0) {
+        if (! skippedMasksCsvData.isEmpty()) {
             final String storageFolder = importData.trakProject.getLoader().getStorageFolder();
             final String csvFileName = "skipped_masks_" + new Date().getTime() + ".csv";
             final Path csvPath = Paths.get(storageFolder, csvFileName);
@@ -293,7 +293,7 @@ public class ImportFromRender_Plugin
 
     }
 
-    private class ImportData {
+    private static class ImportData {
 
         private Project trakProject;
         private LayerSet trakLayerSet;
@@ -302,7 +302,7 @@ public class ImportFromRender_Plugin
         private String renderOwner;
         private String renderProject;
         private String renderStack;
-        private Set<String> channels;
+        private final Set<String> channels;
         private double minZ;
         private double maxZ;
         private boolean splitSections;
@@ -325,7 +325,7 @@ public class ImportFromRender_Plugin
             renderOwner = "flyTEM";
             renderProject = "FAFB00";
             renderStack = "v12_acquire_merged";
-            channels = new HashSet<String>();
+            channels = new HashSet<>();
             minZ = 1.0;
             maxZ = minZ;
             imagePlusType = ImagePlus.GRAY8;
@@ -376,13 +376,13 @@ public class ImportFromRender_Plugin
                 renderOwner = dialog.getNextString();
                 renderProject = dialog.getNextString();
                 renderStack =  dialog.getNextString();
-                String channelString = dialog.getNextString();
-                if (channelString != null && channelString.length() > 0) {
+                final String channelString = dialog.getNextString();
+                if (channelString != null && (! channelString.isEmpty())) {
                     channels.add(channelString);
                 }
                 minZ = dialog.getNextNumber();
                 maxZ = dialog.getNextNumber();
-                imagePlusType = new Double(dialog.getNextNumber()).intValue();
+                imagePlusType = Double.valueOf(dialog.getNextNumber()).intValue();
                 loadMasks = dialog.getNextBoolean();
                 splitSections = dialog.getNextBoolean();
                 replaceLastWithStage = dialog.getNextBoolean();
@@ -420,7 +420,7 @@ public class ImportFromRender_Plugin
                         zValues.add(sectionData.getZ());
                     }
 
-                    if (zValues.size() == 0) {
+                    if (zValues.isEmpty()) {
                         throw new IllegalArgumentException(
                                 "The " + stackId + " does not contain any layers with z values between " +
                                 minZ + " and " + maxZ);
@@ -433,7 +433,7 @@ public class ImportFromRender_Plugin
 
                         if (isNewProject) {
 
-                            final TileSpec firstTileSpec = layerRenderParametersList.get(0).getTileSpecs().get(0);
+                            final TileSpec firstTileSpec = layerRenderParametersList.getFirst().getTileSpecs().getFirst();
                             @SuppressWarnings("WrapperTypeMayBePrimitive")
                             final Double meshCellSize = firstTileSpec.getMeshCellSize();
                             trakProject.setProperty("mesh_resolution", String.valueOf(meshCellSize.intValue()));
