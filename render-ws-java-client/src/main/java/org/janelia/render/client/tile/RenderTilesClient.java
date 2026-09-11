@@ -666,7 +666,12 @@ public class RenderTilesClient {
                         final RenderParameters renderParameters) throws IOException {
 
             // TODO: render parameters are currently ignored, so the behavior might differ from the file system version!
-            try (final LockedChannel lockedChannel = keyValueAccess.lockForWriting(uri.getPath())) {
+
+            // NOTE: the full URI (and not uri.getPath()) must be used here because
+            //       GoogleCloudStorageKeyValueAccess derives bucket keys with
+            //       GoogleCloudUtils.getGoogleCloudStorageKey, which treats the first element of a
+            //       scheme-less path as a bucket name and drops it.
+            try (final LockedChannel lockedChannel = keyValueAccess.lockForWriting(uri.toString())) {
                 final ByteArrayOutputStream oStream = new ByteArrayOutputStream();
                 ImageIO.write(image, format, oStream);
                 lockedChannel.newOutputStream().write(oStream.toByteArray());

@@ -151,8 +151,14 @@ public class PeakScanData
                                                      new GoogleCloudStorageURI(uri),
                                                      false);
 
+        // NOTE: the full location URI (and not uri.getPath()) must be used here because
+        //       GoogleCloudStorageKeyValueAccess derives bucket keys with
+        //       GoogleCloudUtils.getGoogleCloudStorageKey, which treats the first element of a
+        //       scheme-less path as a bucket name and drops it
+        //       (so /library/peak_scan.json would become just peak_scan.json).
+
         // NOTE: the channel must be closed along with the reader to release everything it tracks
-        try (final LockedChannel lockedChannel = keyValueAccess.lockForReading(uri.getPath());
+        try (final LockedChannel lockedChannel = keyValueAccess.lockForReading(location);
              final Reader reader = lockedChannel.newReader()) {
             return JSON_HELPER.fromJson(reader);
         }
