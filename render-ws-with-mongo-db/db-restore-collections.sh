@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 
 # ----------------------------------------------------------------------------
-# Usage: db-restore-collection.sh [--pattern DUMP_PATTERN]
+# Usage: db-restore-collection.sh [--pattern DUMP_PATTERN] [--exclude-pattern EXCLUDE_PATTERN]
 #
 # Example DUMP_PATTERNS are: 'par.*s70', 'match.*s115', 'align.*s90', 'ic2d.*s080'
+#
+# The --exclude-pattern option skips any collections whose dump file path matches EXCLUDE_PATTERN.
+# Example EXCLUDE_PATTERNs are: 'match', '__tile$', 'w60.*transform'
 #
 # Restore dump files to the mongodb database running on the current Google Cloud VM container.
 #
@@ -18,6 +21,7 @@
 
 BASE_DUMP_DIR="/mnt/disks/mongodb_dump_fs/dump"
 DUMP_PATTERN=""
+EXCLUDE_PATTERN=""
 PATTERN_IS_ARG=false
 
 echo
@@ -31,13 +35,26 @@ while [[ $# -gt 0 ]]; do
             PATTERN_IS_ARG=true
             shift 2
             ;;
+        --exclude-pattern)
+            EXCLUDE_PATTERN="${2:-}"
+            if [[ -z "$EXCLUDE_PATTERN" ]]; then
+                echo "ERROR: --exclude-pattern requires a value"
+                exit 1
+            fi
+            shift 2
+            ;;
         *)
             echo "Unknown argument: $1"
-            echo "Usage: $0 [--pattern DUMP_PATTERN]"
+            echo "Usage: $0 [--pattern DUMP_PATTERN] [--exclude-pattern EXCLUDE_PATTERN]"
             exit 1
             ;;
     esac
 done
+
+if [[ -n "$EXCLUDE_PATTERN" ]]; then
+    echo "Collections matching '${EXCLUDE_PATTERN}' will be excluded"
+    echo
+fi
 
 # List unique child directory names one level below $1.
 list_level() {
@@ -164,6 +181,12 @@ URI="mongodb://localhost:27017"
 shopt -s nullglob
 for DUMP_DIR in "${SELECTED[@]}"; do
   for DUMP_FILE in "${DUMP_DIR}"/*.bson.gz; do
+
+    # skip collections excluded with --exclude-pattern
+    if [[ -n "$EXCLUDE_PATTERN" ]] && echo "$DUMP_FILE" | grep -q "$EXCLUDE_PATTERN"; then
+      echo "skipping ${DUMP_FILE} since it matches exclude pattern '${EXCLUDE_PATTERN}'"
+      continue
+    fi
 
     # check for match db dumps and prompt for load since they are typically large and take ~3 minutes to load
     if [[ "$DUMP_FILE" == *match.bson.gz ]]; then
