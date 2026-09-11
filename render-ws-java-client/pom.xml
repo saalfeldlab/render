@@ -5,7 +5,7 @@
     <parent>
         <artifactId>modules-root</artifactId>
         <groupId>org.janelia.render</groupId>
-        <version>4.3.0-SNAPSHOT</version>
+        <version>5.0.0-SNAPSHOT</version>
     </parent>
 
     <name>Render Web Service Java Client</name>
@@ -111,7 +111,7 @@
                                     </excludes>
                                 </filter>
                                 <filter>
-                                    <artifact>sc.fiji:SPIM_Registration</artifact>
+                                    <artifact>net.preibisch:multiview-reconstruction</artifact>
                                     <excludes>
                                         <exclude>META-INF/json/**</exclude>
                                     </excludes>
@@ -270,11 +270,11 @@
             <version>${n5-version}</version>
         </dependency>
 
-        <!-- Use older version of jackson to keep consistent with render-ws jackson-jaxrs-json-provider version. -->
+        <!-- Version comes from the jackson.version property in the root pom, which keeps jackson-databind
+             in sync with jackson-core, jackson-annotations and the jaxrs provider. -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson-version}</version>
         </dependency>
 
         <!-- Dependencies not defined in SciJava -->

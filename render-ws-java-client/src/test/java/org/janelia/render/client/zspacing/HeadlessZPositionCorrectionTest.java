@@ -294,7 +294,7 @@ public class HeadlessZPositionCorrectionTest {
         final int minZ = 10;
         final int maxZ = minZ + 9; // inclusive
         final List<Double> sortedZList = IntStream.rangeClosed(minZ, maxZ)
-                .boxed().map(Double::new).collect(Collectors.toList());
+                .boxed().map(Double::valueOf).collect(Collectors.toList());
 
         // for 19m VNC, layers were rendered at scale 0.125
         final double renderScale = 0.25;

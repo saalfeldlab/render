@@ -67,7 +67,7 @@ public class ValidateTilesClient {
 
                 final ValidateTilesClient client = new ValidateTilesClient(parameters);
                 for (final String z : parameters.zValues) {
-                    client.validateTilesForZ(new Double(z));
+                    client.validateTilesForZ(Double.valueOf(z));
                 }
                 client.completeStackIfNecessary();
             }

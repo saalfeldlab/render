@@ -1,6 +1,6 @@
 #!/bin/bash
 
-JETTY_VERSION="10.0.13" # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/Dockerfile
+JETTY_VERSION="10.0.26" # NOTE: jetty version should be kept in sync with values in render/render-ws/pom.xml and render/Dockerfile
 JETTY_DIST="jetty-home-${JETTY_VERSION}"
 # URLs for Jetty 10, SLF4J 1.7, Logback 1.1, and Swagger 2.1
 MAVEN_CENTRAL_URL="https://repo1.maven.org"
@@ -91,7 +91,7 @@ JETTY_WRAPPER_SCRIPT="${JETTY_BASE}/jetty_wrapper.sh"
 sed "
   s~/opt/local/jetty_home~${JETTY_HOME}~
   s~/opt/local/jetty_base~${JETTY_BASE}~
-  s~/misc/sc/jdks/zulu11~${JAVA_HOME}~
+  s~/misc/sc/jdks/zulu21~${JAVA_HOME}~
 " "${SCRIPTS_DIR}"/jetty/jetty_wrapper.sh > "${JETTY_WRAPPER_SCRIPT}"
 
 chmod 755 "${JETTY_WRAPPER_SCRIPT}"

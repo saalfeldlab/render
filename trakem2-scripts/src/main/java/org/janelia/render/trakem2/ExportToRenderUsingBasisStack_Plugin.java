@@ -36,9 +36,9 @@ import ini.trakem2.utils.Utils;
 /**
  * This plug-in exports TrakEM patch data into a render web services stack using a basis stack
  * to identify shared lens correction transformations.
- *
+ * -
  * WARNING: this is a hack!
- *
+ * -
  * Make sure transformation logic in {@link #exportPatches()} matches your use case before using.
  *
  * @author Eric Trautman
@@ -85,9 +85,9 @@ public class ExportToRenderUsingBasisStack_Plugin
                                                                             true,
                                                                             true);
 
-            if (displayableList.size() > 0) {
+            if (! displayableList.isEmpty()) {
 
-                final Patch firstPatch = (Patch) displayableList.get(0);
+                final Patch firstPatch = (Patch) displayableList.getFirst();
                 final Matcher m = TILE_SECTION_ID_PATTERN.matcher(firstPatch.getTitle());
                 if (! m.matches()) {
                     throw new IllegalArgumentException("cannot parse sectionId from patch title (tileId): " +
@@ -142,8 +142,7 @@ public class ExportToRenderUsingBasisStack_Plugin
                     final CoordinateTransform stageTransform = flattenedTransformList.get(stageTransformIndex);
                     final CoordinateTransform alignmentTransform = flattenedTransformList.get(alignmentTransformIndex);
 
-                    if (alignmentTransform instanceof AffineModel2D) {
-                        final AffineModel2D alignmentModel = (AffineModel2D) alignmentTransform;
+                    if (alignmentTransform instanceof final AffineModel2D alignmentModel) {
                         if (stageTransform instanceof TranslationModel2D) {
                             alignmentModel.concatenate((TranslationModel2D) stageTransform);
                         } else if (stageTransform instanceof AffineModel2D) {
@@ -221,7 +220,7 @@ public class ExportToRenderUsingBasisStack_Plugin
 
     private static ExportData exportData = null;
 
-    private class ExportData {
+    private static class ExportData {
 
         private String baseDataUrl;
         private String basisRenderOwner;
@@ -311,7 +310,8 @@ public class ExportToRenderUsingBasisStack_Plugin
                         try {
                             for (final String zPair : trakZToTargetZMapString.split(",")) {
                                 final String[] zPairArray = zPair.split("=");
-                                trakZToTargetZMap.put(new Double(zPairArray[0]), new Double(zPairArray[1]));
+                                trakZToTargetZMap.put(Double.parseDouble(zPairArray[0]),
+                                                      Double.parseDouble(zPairArray[1]));
                             }
                         } catch (final Throwable t) {
                             throw new IllegalArgumentException(
@@ -349,7 +349,7 @@ public class ExportToRenderUsingBasisStack_Plugin
         }
 
         boolean hasMappedZValues() {
-             return trakZToTargetZMapString.length() > 0;
+             return !trakZToTargetZMapString.isEmpty();
         }
 
         Double getRenderStackZ(final Double forTrakZ) {

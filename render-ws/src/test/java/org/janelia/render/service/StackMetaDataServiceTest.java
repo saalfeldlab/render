@@ -44,7 +44,7 @@ public class StackMetaDataServiceTest {
     private static RenderDao renderDao;
 
     @BeforeClass
-    public static void before() throws Exception {
+    public static void before() {
         loadingStackId = new StackId("flyTEM", "test_project", "test_stack");
         completeStackId = new StackId("flyTEM", "test", "elastic");
 
@@ -75,7 +75,7 @@ public class StackMetaDataServiceTest {
     }
 
     @AfterClass
-    public static void after() throws Exception {
+    public static void after() {
         embeddedMongoDb.stop();
     }
 
@@ -199,14 +199,14 @@ public class StackMetaDataServiceTest {
 
         Assert.assertEquals("invalid stackBounds.minZ", 3903.0, stackBounds.getMinZ(), 0.01);
 
-        Assert.assertEquals("invalid sectionCount", new Long(2), stats.getSectionCount());
-        Assert.assertEquals("invalid nonIntegralSectionCount", new Long(1), stats.getNonIntegralSectionCount());
-        Assert.assertEquals("invalid tileCount", new Long(14), stats.getTileCount());
-        Assert.assertEquals("invalid transformCount", new Long(3), stats.getTransformCount());
-        Assert.assertEquals("invalid minTileWidth", new Integer(2631), stats.getMinTileWidth());
-        Assert.assertEquals("invalid maxTileWidth", new Integer(2772), stats.getMaxTileWidth());
-        Assert.assertEquals("invalid minTileHeight", new Integer(2257), stats.getMinTileHeight());
-        Assert.assertEquals("invalid maxTileHeight", new Integer(2414), stats.getMaxTileHeight());
+        Assert.assertEquals("invalid sectionCount", Long.valueOf(2), stats.getSectionCount());
+        Assert.assertEquals("invalid nonIntegralSectionCount", Long.valueOf(1), stats.getNonIntegralSectionCount());
+        Assert.assertEquals("invalid tileCount", Long.valueOf(14), stats.getTileCount());
+        Assert.assertEquals("invalid transformCount", Long.valueOf(3), stats.getTransformCount());
+        Assert.assertEquals("invalid minTileWidth", Integer.valueOf(2631), stats.getMinTileWidth());
+        Assert.assertEquals("invalid maxTileWidth", Integer.valueOf(2772), stats.getMaxTileWidth());
+        Assert.assertEquals("invalid minTileHeight", Integer.valueOf(2257), stats.getMinTileHeight());
+        Assert.assertEquals("invalid maxTileHeight", Integer.valueOf(2414), stats.getMaxTileHeight());
 
         final Bounds stackBounds2 = service.getStackBounds(completeStackId.getOwner(),
                                                            completeStackId.getProject(),
