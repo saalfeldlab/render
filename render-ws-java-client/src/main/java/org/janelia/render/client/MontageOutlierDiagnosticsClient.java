@@ -160,7 +160,7 @@ public class MontageOutlierDiagnosticsClient {
                     // Z,Max PM Residual,Tile 1,Tile 2,PM X,PM Y,Mean Tile Pair Residual Is Outlier
                     final String[] v = line.split(",");
                     if (v.length > 3) {
-                        final Double z = new Double(v[0]);
+                        final Double z = Double.valueOf(v[0]);
                         if ((zValues == null) || (zValues.contains(z))) {
                             final List<OutlierPair> pairList =
                                     zToOutlierPairsMap.computeIfAbsent(z,
