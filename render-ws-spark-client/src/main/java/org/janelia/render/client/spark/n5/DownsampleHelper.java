@@ -19,6 +19,7 @@ import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.spark.downsample.N5DownsamplerSpark;
 import org.janelia.saalfeldlab.n5.spark.supplier.N5WriterSupplier;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,7 +97,7 @@ public class DownsampleHelper
                  basePathOrStorageUrl, sZeroDatasetPath, Arrays.toString(downsampleFactors), requiredSLevel, retryParameters);
 
         final N5WriterSupplier n5Supplier = () ->
-                new N5Factory().openWriter(N5Factory.StorageFormat.N5, basePathOrStorageUrl);
+                new N5Factory().openWriter(StorageFormat.N5, basePathOrStorageUrl);
 
         final N5Writer n5 = n5Supplier.get();
         final DatasetAttributes fullScaleAttributes = n5.getDatasetAttributes(sZeroDatasetPath);

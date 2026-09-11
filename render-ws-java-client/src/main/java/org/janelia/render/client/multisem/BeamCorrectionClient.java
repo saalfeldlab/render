@@ -26,12 +26,12 @@ import org.janelia.render.client.parameter.CommandLineParameters;
 import org.janelia.render.client.parameter.RenderWebServiceParameters;
 import org.janelia.saalfeldlab.n5.DataBlock;
 import org.janelia.saalfeldlab.n5.DataType;
+import org.janelia.saalfeldlab.n5.DatasetAttributes;
 import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5URI;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
-import org.janelia.saalfeldlab.n5.universe.N5Factory.StorageFormat;
-import org.janelia.saalfeldlab.n5.zarr.ZarrDatasetAttributes;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.janelia.saalfeldlab.n5.zarr.ZarrKeyValueReader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -395,10 +395,10 @@ public class BeamCorrectionClient {
 	/**
 	 * Reads all values of a 1D coordinate array as doubles, or returns null if the array's metadata is not present.
 	 * <p>
-	 * n5-zarr 1.3.5 fails to parse a {@code .zarray} whose {@code fill_value} is JSON {@code null} (which is how
+	 * n5-zarr fails to parse a {@code .zarray} whose {@code fill_value} is JSON {@code null} (which is how
 	 * xarray writes coordinate arrays), so {@link N5Utils#open} cannot be used here. Instead the {@code .zarray}
 	 * JSON is read directly, its {@code fill_value} is patched to a parseable value (it is irrelevant for chunks
-	 * that are physically present), the resulting {@link ZarrDatasetAttributes} is built via the reader, and the
+	 * that are physically present), the resulting {@link DatasetAttributes} is built via the reader, and the
 	 * chunks are read with {@link N5Reader#readBlock} (which honors the zarr little-endian byte order).
 	 */
 	private static double[] readCoordinateValues(final ZarrKeyValueReader reader,
@@ -410,7 +410,9 @@ public class BeamCorrectionClient {
 		if (!zArray.has("fill_value") || zArray.get("fill_value").isJsonNull()) {
 			zArray.add("fill_value", new JsonPrimitive("0"));
 		}
-		final ZarrDatasetAttributes attributes = reader.createDatasetAttributes(zArray);
+		// n5-zarr 2.x declares this as DatasetAttributes (it returns a ZarrDatasetAttributes instance);
+		// only the base accessors are needed here.
+		final DatasetAttributes attributes = reader.createDatasetAttributes(zArray);
 		if (attributes == null) {
 			throw new IllegalArgumentException("could not parse .zarray for coordinate dataset " + dataset);
 		}

@@ -124,6 +124,12 @@
                     <groupId>jakarta.validation</groupId>
                     <artifactId>jakarta.validation-api</artifactId>
                 </exclusion>
+                <!-- javax.annotation classes covered by javax.annotation:javax.annotation-api;
+                     the newer resteasy BOM (pom-scijava 45) adds this spec jar, causing duplicate classes -->
+                <exclusion>
+                    <groupId>org.jboss.spec.javax.annotation</groupId>
+                    <artifactId>jboss-annotations-api_1.3_spec</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -140,6 +146,12 @@
                 <exclusion>
                     <groupId>jakarta.validation</groupId>
                     <artifactId>jakarta.validation-api</artifactId>
+                </exclusion>
+                <!-- javax.annotation classes covered by javax.annotation:javax.annotation-api;
+                     the newer resteasy BOM (pom-scijava 45) adds this spec jar, causing duplicate classes -->
+                <exclusion>
+                    <groupId>org.jboss.spec.javax.annotation</groupId>
+                    <artifactId>jboss-annotations-api_1.3_spec</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

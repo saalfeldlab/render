@@ -24,6 +24,7 @@ import org.janelia.saalfeldlab.n5.N5Reader;
 import org.janelia.saalfeldlab.n5.N5Writer;
 import org.janelia.saalfeldlab.n5.imglib2.N5Utils;
 import org.janelia.saalfeldlab.n5.universe.N5Factory;
+import org.janelia.saalfeldlab.n5.universe.StorageFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,7 +107,7 @@ public class Wafer6061Inpainter {
 
 		// Read and cache some metadata of the tissue and mask datasets
 		// Assume that the tissue is a multiscale pyramid / mask is a standalone dataset
-		try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, param.n5Path)) {
+		try (final N5Reader n5 = new N5Factory().openReader(StorageFormat.N5, param.n5Path)) {
 			LOG.info("Reading metadata from {}", param.n5Path);
 			tissueAttributes = ExtendedAttributes.read(n5, param.fullDataset(), param.dataset);
 			maskAttributes = ExtendedAttributes.read(n5, param.mask, param.mask);
@@ -118,7 +119,7 @@ public class Wafer6061Inpainter {
 				throw new IllegalArgumentException("Dataset '" + param.output + "' is different from the input dataset and already exists. Stopping.");
 			} else {
 				LOG.info("Output dataset is '{}'. Creating new dataset.", param.output);
-				try (final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, param.n5Path)) {
+				try (final N5Writer n5Writer = new N5Factory().openWriter(StorageFormat.N5, param.n5Path)) {
 					n5Writer.createDataset(param.output, tissueAttributes.attrs);
 				}
 			}
@@ -179,7 +180,7 @@ public class Wafer6061Inpainter {
 
 		// Read the mask block and check if it is homogeneous
 		boolean isHomogeneous = true;
-		try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, param.n5Path)) {
+		try (final N5Reader n5 = new N5Factory().openReader(StorageFormat.N5, param.n5Path)) {
 			final Img<UnsignedByteType> mask = N5Utils.open(n5, param.mask);
 			final Interval interval = Intervals.intersect(mask, block);
 			final RandomAccessibleInterval<UnsignedByteType> maskPixels = Views.interval(mask, interval);
@@ -240,7 +241,7 @@ public class Wafer6061Inpainter {
 		// Preallocate the inpainted block
 		final Img<UnsignedByteType> inpaintedBlock = ArrayImgs.unsignedBytes(block.dimensions);
 
-		try (final N5Reader n5 = new N5Factory().openReader(N5Factory.StorageFormat.N5, param.n5Path)) {
+		try (final N5Reader n5 = new N5Factory().openReader(StorageFormat.N5, param.n5Path)) {
 			// Load and translate the tissue and mask data
 			LOG.info("Loading data at {}", block.offset);
 			final Img<UnsignedByteType> rawTissue = N5Utils.open(n5, param.fullDataset());
@@ -265,7 +266,7 @@ public class Wafer6061Inpainter {
 			LOG.info("Finished inpainting in {} ms", System.currentTimeMillis() - start);
 		}
 
-		try (final N5Writer n5Writer = new N5Factory().openWriter(N5Factory.StorageFormat.N5, param.n5Path)) {
+		try (final N5Writer n5Writer = new N5Factory().openWriter(StorageFormat.N5, param.n5Path)) {
 			N5Utils.saveBlock(inpaintedBlock, n5Writer, param.output, targetAttributes, block.gridPosition);
 			LOG.info("Wrote tissue block to '{}'", param.output);
 		} catch (final Exception e) {
