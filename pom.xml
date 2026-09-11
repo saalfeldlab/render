@@ -12,7 +12,7 @@
     <name>Janelia Render Tools And Services</name>
     <groupId>org.janelia.render</groupId>
     <artifactId>modules-root</artifactId>
-    <version>4.3.0-SNAPSHOT</version>
+    <version>5.0.0-SNAPSHOT</version>
 
     <description>A collection of tools and HTTP services (APIs) for rendering transformed image tiles.</description>
     <url>https://github.com/saalfeldlab/render</url>
@@ -185,6 +185,19 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <configuration>
                         <release>21</release>
+                        <!--
+                            Render has no annotation processors of its own and no scijava annotations
+                            (no @Plugin, no org.scijava.annotations usage), but scijava-common puts
+                            org.scijava.annotations.AnnotationProcessor on the class path where javac
+                            discovers it automatically.  That processor still declares
+                            @SupportedSourceVersion(SourceVersion.RELEASE_8) as of scijava-common 2.100.1,
+                            so every module compile prints:
+                              [WARNING] Supported source version 'RELEASE_8' from annotation processor
+                                        'org.scijava.annotations.AnnotationProcessor' less than -source '21'
+                            That warning is not covered by -Xlint:processing, so turn processing off
+                            instead.  Remove this if render ever needs a compile time annotation processor.
+                        -->
+                        <proc>none</proc>
                     </configuration>
                 </plugin>
                 <plugin>
